@@ -5,6 +5,7 @@ import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import { RepAnalytics, type RepStat } from "@/components/analytics/RepAnalytics";
 import { AreaChart, VIZ } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { CountUp } from "@/components/ui/CountUp";
 import {
   buildDeals,
   pipelineGrowthSeries,
@@ -114,7 +115,7 @@ export default async function AnalyticsPage({
               <InfoHint text="The big number is your open pipeline right now. The line shows how that pipeline built up over the period you've been tracking — each point adds in the deals created by then." />
             </p>
             <p className="text-[32px] font-bold text-text-primary tnum leading-none mt-1">
-              {formatMoney(openValue)}
+              <CountUp value={openValue} unit="money" />
             </p>
           </div>
         </div>

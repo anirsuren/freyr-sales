@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PipelineBoard } from "@/components/pipeline/PipelineBoard";
 import { PipelineAgentBanner } from "@/components/pipeline/PipelineAgentBanner";
+import { CountUp } from "@/components/ui/CountUp";
 import {
   buildDeals,
   formatMoney,
@@ -38,22 +39,33 @@ export default async function PipelinePage() {
   const insights = [
     {
       label: "Open deals",
-      value: String(open.length),
+      raw: open.length,
+      unit: "count" as const,
+      suffix: "",
+      warn: false,
       def: "How many deals are still in play right now — not yet won or lost.",
     },
     {
       label: "Weighted forecast",
-      value: formatMoney(weighted),
+      raw: weighted,
+      unit: "money" as const,
+      suffix: "",
+      warn: false,
       def: "What your pipeline is realistically worth: every deal's value adjusted for how likely it is to close at its current stage. A more honest number than the full total.",
     },
     {
       label: "Avg idle",
-      value: `${avgIdle}d`,
+      raw: avgIdle,
+      unit: "count" as const,
+      suffix: "d",
+      warn: false,
       def: "On average, how many days since anything happened on your open deals. Lower is better — it means you're staying in touch.",
     },
     {
       label: "Stalled (14d+)",
-      value: String(stalled),
+      raw: stalled,
+      unit: "count" as const,
+      suffix: "",
       warn: stalled > 0,
       def: "Open deals with no activity for more than 14 days. These are going cold and need a nudge before you lose them.",
     },
@@ -80,7 +92,7 @@ export default async function PipelinePage() {
                 s.warn ? "text-error" : "text-text-primary"
               }`}
             >
-              {s.value}
+              <CountUp value={s.raw} unit={s.unit} suffix={s.suffix} />
             </span>
           </Card>
         ))}

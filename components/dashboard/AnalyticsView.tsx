@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { CountUp } from "@/components/ui/CountUp";
 import { formatMoney } from "@/lib/pipeline";
 
 interface StageStat {
@@ -31,6 +32,8 @@ function Donut({ pct }: { pct: number }) {
         strokeDasharray={c}
         strokeDashoffset={off}
         transform="rotate(-90 65 65)"
+        className="donut-arc"
+        style={{ ["--donut-c" as string]: c }}
       />
       <text
         x="65"
@@ -74,7 +77,7 @@ export function AnalyticsView({
             <InfoHint text="The total dollar value of every deal still in play — nothing won or lost yet." />
           </p>
           <p className="text-[28px] font-bold text-text-primary mt-2 tnum">
-            {formatMoney(openValue)}
+            <CountUp value={openValue} unit="money" />
           </p>
         </Card>
         <Card>
@@ -83,7 +86,7 @@ export function AnalyticsView({
             <InfoHint text="How many deals are in this view — open and closed — for the time range you picked." />
           </p>
           <p className="text-[28px] font-bold text-text-primary mt-2 tnum">
-            {totalDeals}
+            <CountUp value={totalDeals} unit="count" />
           </p>
         </Card>
         <Card className="flex items-center justify-between">

@@ -17,10 +17,12 @@ function fmt(n: number, unit: Unit) {
 export function CountUp({
   value,
   unit = "count",
+  suffix = "",
   durationMs = 700,
 }: {
   value: number;
   unit?: Unit;
+  suffix?: string;
   durationMs?: number;
 }) {
   const [n, setN] = useState(0);
@@ -43,5 +45,10 @@ export function CountUp({
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [value, durationMs]);
-  return <>{fmt(n, unit)}</>;
+  return (
+    <>
+      {fmt(n, unit)}
+      {suffix}
+    </>
+  );
 }

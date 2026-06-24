@@ -146,23 +146,42 @@ export function buildDeals(
 // `nowMs` is injected for deterministic tests.
 export function pipelineGrowthSeries(
   deals: Deal[],
-  nowMs: number,
+  _nowMs: number,
   points = 12
 ): number[] {
-  const open = deals.filter((d) => d.stage !== "Closed Lost");
-  const times = open
-    .map((d) => new Date(d.createdAt).getTime())
-    .filter((t) => !Number.isNaN(t));
-  if (times.length === 0) return new Array(points).fill(0);
-  const startMs = Math.min(...times);
-  const span = Math.max(1, nowMs - startMs);
+  // Cumulative open-pipeline value as each deal was added, in creation order.
+  // We space the curve by deal *order* rather than wall-clock time: real books
+  // cluster (one deal 60 days ago, the rest this week), and a time-linear axis
+  // collapses that into a flat line with a cliff at the end — which reads as a
+  // rendering glitch, not insight. Order-spacing yields an honest, steadily
+  // rising curve ("pipeline built up as deals came in") that fills the width.
+  const open = deals
+    .filter((d) => d.stage !== "Closed Lost")
+    .map((d) => ({ t: new Date(d.createdAt).getTime(), v: d.value }))
+    .filter((d) => !Number.isNaN(d.t))
+    .sort((a, b) => a.t - b.t);
+  if (open.length === 0) return new Array(points).fill(0);
+
+  // Running total after each deal, prefixed with a 0 baseline so the line rises
+  // from the floor: [0, v0, v0+v1, …, total].
+  const cum: number[] = [0];
+  let run = 0;
+  for (const d of open) {
+    run += d.v;
+    cum.push(run);
+  }
+
+  // Resample the cumulative steps to a fixed number of evenly-spaced points,
+  // linearly interpolating between steps so the line stays smooth.
   const series: number[] = [];
+  const lastIdx = cum.length - 1;
   for (let i = 0; i < points; i++) {
-    const t = startMs + (span * i) / (points - 1);
-    const sum = open
-      .filter((d) => new Date(d.createdAt).getTime() <= t)
-      .reduce((s, d) => s + d.value, 0);
-    series.push(Math.round((sum / 1e6) * 100) / 100);
+    const idx = lastIdx * (i / (points - 1));
+    const lo = Math.floor(idx);
+    const hi = Math.ceil(idx);
+    const frac = idx - lo;
+    const val = cum[lo] + (cum[hi] - cum[lo]) * frac;
+    series.push(Math.round((val / 1e6) * 100) / 100);
   }
   return series;
 }

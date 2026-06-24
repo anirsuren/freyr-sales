@@ -61,33 +61,38 @@ export function AreaChart({
   const last = data[data.length - 1];
   const trend = last >= first ? "up" : "down";
   return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      className={cn("w-full", className)}
-      style={{ height }}
-      role="img"
-      aria-label={`Trend chart, ${data.length} points, trending ${trend}${
-        goalLabel ? `, ${goalLabel}` : ""
-      }`}
-    >
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${id})`} />
-      <path
-        d={line}
-        fill="none"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {goalY != null && (
-        <>
+    // Wrapper lets us overlay the goal label as crisp HTML — text inside a
+    // preserveAspectRatio="none" SVG gets stretched horizontally, which looked
+    // distorted. The line/area still live in the stretched SVG (that's fine for
+    // shapes); only the typography is lifted out.
+    <div className={cn("relative w-full", className)} style={{ height }}>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        className="w-full block"
+        style={{ height }}
+        role="img"
+        aria-label={`Trend chart, ${data.length} points, trending ${trend}${
+          goalLabel ? `, ${goalLabel}` : ""
+        }`}
+      >
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill={`url(#${id})`} className="chart-area" />
+        <path
+          d={line}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="chart-line"
+        />
+        {goalY != null && (
           <line
             x1={pad}
             y1={goalY}
@@ -97,21 +102,21 @@ export function AreaChart({
             strokeWidth="1.5"
             strokeDasharray="5 4"
           />
-          {goalLabel && (
-            <text
-              x={w - pad}
-              y={Math.max(12, goalY - 5)}
-              textAnchor="end"
-              fontSize="11"
-              fontWeight="700"
-              fill={VIZ.amber}
-            >
-              {goalLabel}
-            </text>
-          )}
-        </>
+        )}
+      </svg>
+      {goalY != null && goalLabel && (
+        <span
+          className="absolute left-2 text-[11px] font-bold tnum pointer-events-none"
+          style={{
+            top: `${(goalY / h) * 100}%`,
+            color: VIZ.amber,
+            transform: "translateY(3px)",
+          }}
+        >
+          {goalLabel}
+        </span>
       )}
-    </svg>
+    </div>
   );
 }
 
