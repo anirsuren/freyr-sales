@@ -3,25 +3,201 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --blue-primary: #0071e3;
+  --blue-hover: #0077ed;
+  --blue-light: #e8f1fb;
+  --blue-subtle: #c7dcfa;
+
+  --white: #ffffff;
+  --surface: #f9fafb;
+  --border: #d2d2d7;
+  --border-light: #e5e5ea;
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #8a8a8e;
+
+  --success: #34c759;
+  --warning: #ff9f0a;
+  --error: #ff3b30;
+  --neutral: #8e8e93;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-input-focus: 0 0 0 3px rgba(0, 113, 227, 0.15);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: #ffffff;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ----------------------------------------------------------------------------
+   Dark mode (#85). Opt-in via `.dark` on <html>; default stays light so the
+   verification suite (white bg, #0071E3 blue) is unaffected. We re-skin the
+   structural utility classes here rather than editing every component — blue
+   chrome and `text-white` are intentionally left untouched.
+---------------------------------------------------------------------------- */
+.dark {
+  color-scheme: dark;
+  --surface: #26262a;
+  --border: #3a3a3d;
+  --border-light: #2e2e31;
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1a6;
+  --text-tertiary: #76767b;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+html.dark,
+html.dark body {
+  background: #0b0b0d;
+  color: var(--text-primary);
+}
+.dark .bg-white {
+  background-color: #1c1c1e !important;
+}
+.dark .bg-surface {
+  background-color: #26262a !important;
+}
+.dark .text-text-primary {
+  color: #f5f5f7 !important;
+}
+.dark .text-text-secondary {
+  color: #a1a1a6 !important;
+}
+.dark .text-text-tertiary {
+  color: #76767b !important;
+}
+.dark .border-border-light {
+  border-color: #2e2e31 !important;
+}
+.dark .border-border {
+  border-color: #3a3a3d !important;
+}
+.dark .bg-blue-light {
+  background-color: rgba(10, 132, 255, 0.18) !important;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  /* Apply to all numeric stats and table figures */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Consistent keyboard focus rings on every interactive control */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface) 25%,
+    var(--border-light) 37%,
+    var(--surface) 63%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Toast entrance */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.toast-in {
+  animation: toastIn 0.2s ease;
+}
+
+/* Premium per-item entrance — each agent activity step fades + lifts in. */
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.step-in {
+  animation: stepIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Hide scrollbars on tab chips while keeping scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+textarea,
+input {
+  font-family: inherit;
+}
+
+/* Print: drop the app chrome so exported pages (e.g. weekly review) are clean. */
+@media print {
+  aside,
+  header {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
   }
 }

@@ -1,0 +1,7 @@
+.env
+.env.local
+.env*.local
+test-results
+tests
+playwright.config.ts
+shots-cycle.mjs
