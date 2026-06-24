@@ -392,6 +392,94 @@ export async function agentConverse(
   }
 }
 
+// A tool the agent can call. Plain shape so route code doesn't depend on the SDK.
+export interface AgentToolDef {
+  name: string;
+  description: string;
+  input_schema: {
+    type: "object";
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+// Real tool-using agent (V14). This is the production brain: Claude reasons over
+// the full pipeline (provided in `system`) and DECIDES when to call a tool —
+// reading deeper account detail or taking a real, human-led action — instead of
+// us pattern-matching the message. It answers anything, in any language, because
+// the model is in control. `runTool` executes the side effect and returns a
+// result the model folds into its reply. Returns null without a key or on any
+// error so the deterministic brain takes over and the chat never goes dark.
+export async function agentConverseAgentic(
+  system: string,
+  turns: { role: "user" | "assistant"; content: string }[],
+  tools: AgentToolDef[],
+  runTool: (name: string, input: any) => Promise<{ content: string; did?: string }>,
+  maxSteps = 6
+): Promise<{ text: string; dids: string[] } | null> {
+  if (!client) return null;
+  // Claude requires the first message from the user with alternating roles —
+  // collapse same-role runs so a malformed history can't 400 the call.
+  const messages: Anthropic.MessageParam[] = [];
+  for (const t of turns) {
+    if (!t.content?.trim()) continue;
+    if (messages.length === 0 && t.role !== "user") continue;
+    const prev = messages[messages.length - 1];
+    if (prev && prev.role === t.role && typeof prev.content === "string") {
+      prev.content += `\n\n${t.content}`;
+    } else {
+      messages.push({ role: t.role, content: t.content });
+    }
+  }
+  if (!messages.length || messages[messages.length - 1].role !== "user") return null;
+
+  const dids: string[] = [];
+  try {
+    for (let step = 0; step < maxSteps; step++) {
+      const response = await client.messages.create({
+        model: MODEL,
+        max_tokens: 1000,
+        system,
+        tools: tools as unknown as Anthropic.Tool[],
+        messages,
+      });
+      if (response.stop_reason !== "tool_use") {
+        return { text: textFrom(response).trim(), dids };
+      }
+      // Carry the assistant's tool-call turn, then answer each tool call.
+      messages.push({ role: "assistant", content: response.content });
+      const results: Anthropic.ToolResultBlockParam[] = [];
+      for (const block of response.content) {
+        if (block.type !== "tool_use") continue;
+        let out: { content: string; did?: string };
+        try {
+          out = await runTool(block.name, block.input);
+        } catch {
+          out = { content: `Couldn't run ${block.name} right now.` };
+        }
+        if (out.did) dids.push(out.did);
+        results.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: out.content,
+        });
+      }
+      messages.push({ role: "user", content: results });
+    }
+    // Used up the tool budget — make one final pass with no tools so the model
+    // has to produce a written answer rather than another tool call.
+    const final = await client.messages.create({
+      model: MODEL,
+      max_tokens: 800,
+      system,
+      messages,
+    });
+    return { text: textFrom(final).trim(), dids };
+  } catch {
+    return null;
+  }
+}
+
 // Narrate the agent's daily digest in one warm, specific line (V9). Returns null
 // without a key (or on error) so the console uses the deterministic didSummary.
 export async function narrateDigest(d: AgentDigestData): Promise<string | null> {

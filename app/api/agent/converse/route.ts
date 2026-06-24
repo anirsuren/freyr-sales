@@ -5,11 +5,13 @@ import { buildDeals, formatMoney, ROTTING_DAYS } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
 import {
   answerAgentChat,
+  findAccount,
+  parseWhen,
   type ChatContext,
   type ChatTurn,
   type ChatAction,
 } from "@/lib/agentChat";
-import { agentConverse } from "@/lib/claude";
+import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
 import type { Contact, PitchSession } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -76,54 +78,68 @@ export async function POST(req: Request) {
   };
 
   const base = answerAgentChat(message, ctx, history);
+  // `mock:true` forces the deterministic brain — used by the test suite so
+  // assertions stay reproducible whether or not a key is set.
+  const forceMock = body.mock === true;
 
-  const action = base.action;
-  // 1a) Show an account's real, already-prepared pitch (read-only).
-  if (action?.type === "show_pitch") {
-    const result = showPitch(action, sessions);
+  // Deterministic responder: the offline safety net. Runs for the test suite
+  // (mock:true) and whenever the live agent is unavailable (no key) or errors,
+  // so the chat is never silent. It detects actions by pattern as a best effort —
+  // the real reasoning lives in the tool-using agent below.
+  const deterministic = async () => {
+    const action = base.action;
+    if (action?.type === "show_pitch") {
+      const result = showPitch(action, sessions);
+      return NextResponse.json({
+        ok: true,
+        reply: result.reply,
+        suggestions: result.suggestions,
+        source: "pitch",
+        did: "show_pitch",
+      });
+    }
+    if (action) {
+      const result = await executeAction(db, action, contacts, history);
+      return NextResponse.json({
+        ok: true,
+        reply: result.reply,
+        suggestions: result.suggestions,
+        source: "action",
+        did: action.type,
+      });
+    }
     return NextResponse.json({
       ok: true,
-      reply: result.reply,
-      suggestions: result.suggestions,
-      source: "pitch",
-      did: "show_pitch",
+      reply: base.text,
+      suggestions: base.suggestions,
+      source: "mock",
     });
-  }
+  };
 
-  // 1b) The agent decided to DO something → execute it and report truthfully.
-  //     Actions never go through the LLM (they must be reliable and honest).
-  if (action) {
-    const result = await executeAction(db, action, contacts, history);
-    return NextResponse.json({
-      ok: true,
-      reply: result.reply,
-      suggestions: result.suggestions,
-      source: "action",
-      did: action.type,
-    });
-  }
+  if (forceMock) return deterministic();
 
-  // 2) Conversation. Claude drives when keyed; deterministic brain otherwise.
+  // -----------------------------------------------------------------------
+  // PRIMARY: the real tool-using agent. Claude gets the whole book and DECIDES
+  // what to do — read deeper detail, list/filter, or take a real (human-led)
+  // action — instead of us pattern-matching. It answers anything, in any
+  // language. Falls through to the deterministic net if there's no key/it errors.
+  // -----------------------------------------------------------------------
   const facts = buildFacts(ctx, deals, needsApproval, runs);
-  const system =
-    "You are Freyr's AI sales agent for Suren, the CEO (non-technical, regulatory/life-sciences). " +
-    "Be a decisive, action-oriented sales partner: warm, concise, plain English, NO jargon. " +
-    "Strongly prefer DOING over asking — only ask a clarifying question if you genuinely cannot proceed. " +
-    "You are human-led: you draft, recommend, and prep; Suren approves everything, and you NEVER " +
-    "claim to have sent an email, called anyone, or contacted a customer. " +
-    "You CAN take real actions in the app: save a draft onto an account, set a follow-up, or log a call. " +
-    "If Suren asks for one of those, confirm you'll do it (the app carries it out). " +
-    "DRAFTING: when asked to draft, write, re-engage, reach out to, nudge, or follow up with an account, " +
-    "WRITE THE FULL DRAFT IMMEDIATELY — do NOT ask questions first. Start with a 'Subject:' line, then " +
-    "3–5 short sentences, signed 'Suren Dheen · Freyr'. " +
-    "Assume the aim is to open a conversation about how Freyr helps clinical-stage life-sciences teams hit " +
-    "FDA/EMA submission timelines without adding headcount. Never use bracketed placeholders like " +
-    "[First Name]; if you don't know the name, write 'Hi there'. When Suren says 'make it shorter / more " +
-    "formal / warmer', rewrite the SAME draft in that style and keep the 'Subject:' line. " +
-    "After a draft, offer to save it. " +
-    "Ground every number, name, and figure ONLY in the LIVE DATA below — never invent accounts, deals, " +
-    "or amounts; if you don't have something, say so. Keep non-draft replies to 2–5 sentences.\n\n" +
-    "LIVE DATA (current pipeline):\n" +
+  const agentSystem =
+    "You are Freyr's AI sales agent for Suren Dheen, a senior rep/CEO in regulatory life-sciences. " +
+    "You are a sharp, decisive sales partner: warm, concise, plain English, NO jargon. " +
+    "Reply in the SAME language the user writes in (Spanish in → Spanish out, etc.). " +
+    "You are HUMAN-LED: you draft, prep, and recommend; Suren approves everything. You NEVER claim to have " +
+    "sent an email, made a call, or contacted anyone. The only real writes you make are saving a draft, " +
+    "setting a follow-up, and logging a touch the rep ALREADY had — each waits for Suren. " +
+    "Ground every number, name, email, and figure ONLY in the data below or in tool results — never invent. " +
+    "Use your tools: get_account_detail for depth on a named account, list_accounts to filter the book, " +
+    "save_draft / set_followup / log_touch to take a real action, show_pitch to surface a prepared pitch. " +
+    "When asked to draft/re-engage/reach out, WRITE the full draft yourself (a 'Subject:' line + 3–5 short " +
+    "sentences signed 'Suren Dheen · Freyr'), show it, then offer to save it — don't ask permission first, " +
+    "and never use bracketed placeholders like [First Name]. If the rep names an account you don't have, " +
+    "say so plainly. Keep non-draft answers to 2–5 sentences.\n\n" +
+    "LIVE PIPELINE (your grounding — full book):\n" +
     facts;
   const turns: { role: "user" | "assistant"; content: string }[] = [
     ...history.map((t) => ({
@@ -132,20 +148,303 @@ export async function POST(req: Request) {
     })),
     { role: "user" as const, content: message },
   ];
-  // `mock:true` forces the deterministic brain — used by the test suite and the
-  // conversation harness so they stay reproducible whether or not a key is set.
-  const forceMock = body.mock === true;
-  const llm = forceMock ? null : await agentConverse(system, turns);
 
-  return NextResponse.json({
-    ok: true,
-    // Make account names clickable in Claude's reply too (the deterministic brain
-    // already deep-links; this keeps the click-through UX when real AI answers).
-    reply: llm ? linkifyAccounts(llm, customers) : base.text,
-    suggestions: base.suggestions,
-    source: llm ? "claude" : "mock",
-  });
+  // Resolve whatever the model put in an `account` field to a real customer:
+  // a company name (full or partial), an id, OR a CONTACT's name — reps say
+  // "draft something for Priya" or "what's the latest with Lena Vogt" all the time.
+  const resolveAccount = (q: unknown) => {
+    const s = String(q || "").trim();
+    if (!s) return null;
+    const byCompany = findAccount(s, customers) || customers.find((c) => c.id === s);
+    if (byCompany) return byCompany;
+    const lc = s.toLowerCase();
+    if (lc.length < 3) return null;
+    const ct = contacts.find((x) => {
+      const fn = x.full_name
+        .toLowerCase()
+        .replace(/^(dr|mr|mrs|ms|prof)\.?\s+/, "")
+        .trim();
+      if (!fn) return false;
+      if (lc.includes(fn) || fn.includes(lc)) return true;
+      return fn
+        .split(/\s+/)
+        .some((p) => p.length >= 4 && new RegExp(`\\b${p}\\b`).test(lc));
+    });
+    return ct ? customers.find((c) => c.id === ct.customer_id) || null : null;
+  };
+  const dateOf = (iso: string) => new Date(iso).getTime();
+
+  const runTool = async (
+    name: string,
+    input: any
+  ): Promise<{ content: string; did?: string }> => {
+    const notFound = (q: unknown) => ({
+      content: `No account matching "${q}". Accounts on the book: ${customers
+        .map((c) => c.company_name)
+        .join(", ")}.`,
+    });
+
+    if (name === "get_account_detail") {
+      const c = resolveAccount(input?.account);
+      if (!c) return notFound(input?.account);
+      const cDeals = deals.filter((d) => d.customerId === c.id);
+      const open = cDeals.filter((d) => d.stage !== "Closed Lost");
+      const cContacts = contacts.filter((x) => x.customer_id === c.id);
+      const cInts = interactions
+        .filter((i) => i.customer_id === c.id)
+        .sort((a, b) => dateOf(b.created_at) - dateOf(a.created_at));
+      const health = accountHealth({
+        interactions: cInts,
+        deals: cDeals,
+        contactCount: cContacts.length,
+      });
+      const content = [
+        `Account: ${c.company_name} — ${c.industry}, ${c.geography}, size ${c.size_tier}`,
+        `Enrichment: ${c.enrichment_summary || "n/a"}`,
+        `Health: ${health.label} (${health.score}/100)`,
+        `Open deals (${open.length}, ${formatMoney(
+          open.reduce((s, d) => s + d.value, 0)
+        )}): ${open
+          .map((d) => `${d.stage} ${formatMoney(d.value)}, quiet ${d.staleDays}d`)
+          .join("; ") || "none"}`,
+        `Contacts (${cContacts.length}): ${cContacts
+          .map(
+            (x) =>
+              `${x.full_name}, ${x.job_title}${x.email ? ` <${x.email}>` : ""}`
+          )
+          .join("; ") || "none mapped"}`,
+        `Recent interactions: ${cInts
+          .slice(0, 6)
+          .map(
+            (i) =>
+              `${new Date(i.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })} ${i.outcome} — ${(i.notes || "").replace(/\s+/g, " ").slice(0, 100)}`
+          )
+          .join(" | ") || "none"}`,
+      ].join("\n");
+      return { content };
+    }
+
+    if (name === "list_accounts") {
+      const filter = String(input?.filter || "all");
+      const open = deals.filter((d) => d.stage !== "Closed Lost");
+      const healthOf = (c: (typeof customers)[number]) =>
+        accountHealth({
+          interactions: interactions.filter((i) => i.customer_id === c.id),
+          deals: deals.filter((d) => d.customerId === c.id),
+          contactCount: contacts.filter((x) => x.customer_id === c.id).length,
+        });
+      let rows: string[] = [];
+      if (filter === "at_risk") {
+        rows = customers
+          .filter((c) => healthOf(c).band === "at_risk")
+          .map((c) => `${c.company_name} — health ${healthOf(c).score}/100`);
+      } else if (filter === "cooling") {
+        rows = open
+          .filter((d) => d.staleDays > ROTTING_DAYS)
+          .sort((a, b) => b.staleDays - a.staleDays)
+          .map((d) => `${d.company} — ${formatMoney(d.value)}, quiet ${d.staleDays}d (${d.stage})`);
+      } else if (filter === "biggest") {
+        rows = [...open]
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 8)
+          .map((d) => `${d.company} — ${formatMoney(d.value)} (${d.stage})`);
+      } else {
+        rows = customers.map((c) => {
+          const d = open.find((x) => x.customerId === c.id);
+          return `${c.company_name} — ${d ? `${d.stage} ${formatMoney(d.value)}` : "no open deal"}, health ${healthOf(c).score}/100`;
+        });
+      }
+      return { content: rows.length ? rows.join("\n") : `No accounts match "${filter}".` };
+    }
+
+    if (name === "show_pitch") {
+      const c = resolveAccount(input?.account);
+      if (!c) return notFound(input?.account);
+      const result = showPitch(
+        { customerId: c.id, company: c.company_name },
+        sessions
+      );
+      return { content: result.reply, did: "show_pitch" };
+    }
+
+    if (name === "save_draft") {
+      const c = resolveAccount(input?.account);
+      if (!c) return notFound(input?.account);
+      const result = await executeAction(
+        db,
+        {
+          type: "save_draft",
+          customerId: c.id,
+          company: c.company_name,
+          body: String(input?.body || ""),
+        },
+        contacts,
+        history
+      );
+      return { content: result.reply, did: "save_draft" };
+    }
+
+    if (name === "set_followup") {
+      const c = resolveAccount(input?.account);
+      if (!c) return notFound(input?.account);
+      const when = parseWhen(String(input?.when || "next week"));
+      const result = await executeAction(
+        db,
+        {
+          type: "set_followup",
+          customerId: c.id,
+          company: c.company_name,
+          when: when.iso,
+          label: when.label,
+        },
+        contacts,
+        history
+      );
+      return { content: result.reply, did: "set_followup" };
+    }
+
+    if (name === "log_touch") {
+      const c = resolveAccount(input?.account);
+      if (!c) return notFound(input?.account);
+      const outcome = ["interested", "meeting_booked", "in_progress"].includes(
+        String(input?.outcome)
+      )
+        ? (input.outcome as "interested" | "meeting_booked" | "in_progress")
+        : "in_progress";
+      const result = await executeAction(
+        db,
+        {
+          type: "log_touch",
+          customerId: c.id,
+          company: c.company_name,
+          notes: String(input?.notes || "Logged a touch."),
+          outcome,
+        },
+        contacts,
+        history
+      );
+      return { content: result.reply, did: "log_touch" };
+    }
+
+    return { content: `Unknown tool: ${name}.` };
+  };
+
+  const agentResult = await agentConverseAgentic(
+    agentSystem,
+    turns,
+    AGENT_TOOLS,
+    runTool
+  );
+  if (agentResult && agentResult.text) {
+    return NextResponse.json({
+      ok: true,
+      reply: linkifyAccounts(agentResult.text, customers),
+      suggestions: base.suggestions,
+      source: "claude-agent",
+      did: agentResult.dids[0],
+    });
+  }
+
+  // No key, or the live agent errored → deterministic fallback.
+  return deterministic();
 }
+
+// Tools the live agent can call. Reads (detail/list/pitch) keep it grounded;
+// writes (draft/follow-up/log) are the only real side effects, and every one is
+// human-led — saved for Suren to review, never sent.
+const AGENT_TOOLS: AgentToolDef[] = [
+  {
+    name: "get_account_detail",
+    description:
+      "Full detail on ONE account: health score, every deal, all contacts (name, title, email), and recent interaction history. Use for any specific or in-depth question about a named account.",
+    input_schema: {
+      type: "object",
+      properties: {
+        account: {
+          type: "string",
+          description: "Company name; partial is fine (e.g. 'bionex').",
+        },
+      },
+      required: ["account"],
+    },
+  },
+  {
+    name: "list_accounts",
+    description:
+      "List accounts matching a filter, with key stats. Use for portfolio-level questions.",
+    input_schema: {
+      type: "object",
+      properties: {
+        filter: {
+          type: "string",
+          enum: ["at_risk", "cooling", "biggest", "all"],
+          description:
+            "at_risk = unhealthy; cooling = open deal gone quiet; biggest = by open value; all = everything.",
+        },
+      },
+      required: ["filter"],
+    },
+  },
+  {
+    name: "save_draft",
+    description:
+      "Save an outreach draft onto an account's timeline for Suren to review and send. NEVER sends. Provide the full draft body including a 'Subject:' line.",
+    input_schema: {
+      type: "object",
+      properties: {
+        account: { type: "string" },
+        body: { type: "string", description: "Full draft incl. 'Subject:' line." },
+      },
+      required: ["account", "body"],
+    },
+  },
+  {
+    name: "set_followup",
+    description: "Set a follow-up reminder on an account.",
+    input_schema: {
+      type: "object",
+      properties: {
+        account: { type: "string" },
+        when: {
+          type: "string",
+          description:
+            "Natural language: 'next week', 'in 3 days', 'Friday', 'June 30'.",
+        },
+      },
+      required: ["account", "when"],
+    },
+  },
+  {
+    name: "log_touch",
+    description:
+      "Log a call/meeting/email the rep ALREADY had with an account (a past touch). Do NOT use for future intentions.",
+    input_schema: {
+      type: "object",
+      properties: {
+        account: { type: "string" },
+        notes: { type: "string" },
+        outcome: {
+          type: "string",
+          enum: ["interested", "meeting_booked", "in_progress"],
+        },
+      },
+      required: ["account", "notes"],
+    },
+  },
+  {
+    name: "show_pitch",
+    description:
+      "Surface the pitch already prepared and stored for an account (subject + email body). Use when asked to show/pull up/review a pitch. Present the returned pitch to the rep verbatim — don't paraphrase it.",
+    input_schema: {
+      type: "object",
+      properties: { account: { type: "string" } },
+      required: ["account"],
+    },
+  },
+];
 
 // Deep-link the first mention of each account in free-form (Claude) text, longest
 // names first, unwrapping any surrounding ** so the link renders cleanly. The

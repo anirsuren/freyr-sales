@@ -56,7 +56,7 @@ function acctLink(company: string, customerId: string) {
 
 // Find an account named in the message (full name first, then a distinctive
 // first word like "Helix").
-function findAccount(msg: string, customers: Customer[]): Customer | null {
+export function findAccount(msg: string, customers: Customer[]): Customer | null {
   const m = msg.toLowerCase();
   let best: Customer | null = null;
   let bestLen = 0;
@@ -172,7 +172,7 @@ function extractDraft(text: string): string | null {
 }
 
 // Turn a natural phrase ("next week", "in 3 days", "friday") into a concrete date.
-function parseWhen(msg: string): { iso: string; label: string } {
+export function parseWhen(msg: string): { iso: string; label: string } {
   const now = new Date();
   const add = (days: number) => {
     const d = new Date(now);
