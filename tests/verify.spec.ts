@@ -3033,4 +3033,92 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).toContain("helix");
     expect(d.reply.toLowerCase()).toMatch(/draft|subject/);
   });
+
+  // -------------------------------------------------------------------------
+  // 213–232 — agent "tell me more about X" follow-ups (V14). Reported bug: a
+  // natural follow-up that names a just-listed account ("tell me more about
+  // bionex") fell through to the generic catch-all instead of summarizing the
+  // account. These lock down the fix across phrasings, partial names, and
+  // context-only references. Each must return a real account summary
+  // (`health (NN/100)`), name the account, and NOT hit the fallback.
+  // -------------------------------------------------------------------------
+  const FALLBACK_RE =
+    /not sure i caught that|i can dig into your pipeline or take an action/i;
+  const SUMMARY_RE = /health \(\d+\/100\)/i;
+  const atRiskHist = [
+    { role: "user", text: "Which accounts are at-risk?" },
+    {
+      role: "agent",
+      text: "4 accounts are at-risk:\n• Northwind Biosciences — $125K open\n• Meridian Pharmaceuticals — $0 open\n• Indavel Pharma — $0 open\n• BioNex Therapeutics — $250K open\n\nWant me to draft re-engagement for the top one?",
+    },
+  ];
+  const oneAcctHist = (name: string) => [
+    { role: "user", text: `tell me about ${name}` },
+    {
+      role: "agent",
+      text: `${name} — healthy health (78/100). 1 open deal worth $250K.`,
+    },
+  ];
+
+  const followupCases: [number, string, any[], string][] = [
+    [213, "tell me more about bionex", atRiskHist, "BioNex Therapeutics"],
+    [214, "tell me more about BioNex Therapeutics", [], "BioNex Therapeutics"],
+    [215, "what about northwind?", atRiskHist, "Northwind Biosciences"],
+    [216, "more on Indavel Pharma", [], "Indavel Pharma"],
+    [217, "how's helix doing?", [], "Helix Biologics"],
+    [218, "give me the rundown on Cortexa", [], "Cortexa Biopharma"],
+    [219, "fill me in on Quantum Oncology", [], "Quantum Oncology"],
+    [220, "who's the contact at Solara Consumer Health?", [], "Solara Consumer Health"],
+    [221, "what stage is BioNex at?", [], "BioNex Therapeutics"],
+    [222, "how big is the Helix deal?", [], "Helix Biologics"],
+    [223, "anything on Orion Vaccines?", [], "Orion Vaccines"],
+    [224, "what's going on with NovaGene?", [], "NovaGene Therapeutics"],
+    [225, "summarize Northwind", [], "Northwind Biosciences"],
+    [226, "is BioNex at risk?", [], "BioNex Therapeutics"],
+    [227, "and Meridian?", atRiskHist, "Meridian Pharmaceuticals"],
+    [228, "what's the latest on BioNex?", [], "BioNex Therapeutics"],
+    [229, "give me an overview of Aether Medical Devices", [], "Aether Medical Devices"],
+    [230, "tell me more about Solvance Pharma", [], "Solvance Pharma"],
+    [231, "tell me more", oneAcctHist("Helix Biologics"), "Helix Biologics"],
+    [232, "what about them?", oneAcctHist("Cortexa Biopharma"), "Cortexa Biopharma"],
+  ];
+
+  for (const [n, message, history, expectName] of followupCases) {
+    test(`${n} — agent follow-up summarizes "${message}" (V14)`, async ({
+      request,
+    }) => {
+      const res = await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message, history },
+      });
+      const reply = (await res.json()).reply as string;
+      expect(reply).not.toMatch(FALLBACK_RE);
+      expect(reply.toLowerCase()).toContain(expectName.toLowerCase());
+      expect(reply).toMatch(SUMMARY_RE);
+    });
+  }
+
+  // 233–234 — routing guardrails: broadening the detail intent must NOT steal
+  // pipeline / at-risk-list questions and turn them into a single-account
+  // summary. These pin the boundary the V14 fix had to respect.
+  test("233 — 'pipeline worth' still answers pipeline, not an account summary (V14)", async ({
+    request,
+  }) => {
+    const res = await request.post(`${BASE}/api/agent/converse`, {
+      data: { mock: true, message: "what's my open pipeline worth?", history: [] },
+    });
+    const reply = (await res.json()).reply as string;
+    expect(reply.toLowerCase()).toContain("weighted");
+    expect(reply).not.toMatch(SUMMARY_RE);
+  });
+
+  test("234 — 'which accounts are at-risk' still lists, not a single summary (V14)", async ({
+    request,
+  }) => {
+    const res = await request.post(`${BASE}/api/agent/converse`, {
+      data: { mock: true, message: "which accounts are at-risk?", history: [] },
+    });
+    const reply = (await res.json()).reply as string;
+    expect(reply.toLowerCase()).toMatch(/at-risk/);
+    expect(reply).not.toMatch(SUMMARY_RE);
+  });
 });

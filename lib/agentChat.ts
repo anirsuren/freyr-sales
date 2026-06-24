@@ -336,7 +336,7 @@ export function answerAgentChat(
   // Rep named a company we don't have on the book → say so clearly instead of
   // silently ignoring it or asking "which account?" as if they'd named nothing.
   const acctIntent =
-    /\b(draft|write|compose|send|email|re.?engage|reach out|follow.?up|remind|log|note|record|call(ed)?|spoke|met|emailed|tell me about|brief|summar|status|update on|pull up|show|prep|prepare|meeting)\b/i.test(
+    /\b(draft|write|compose|send|email|re.?engage|reach out|follow.?up|remind|log|note|record|call(ed)?|spoke|met|emailed|tell me (about|more)|more about|anything (on|about)|brief|summar|status|update on|pull up|show|prep|prepare|meeting)\b/i.test(
       message
     );
   if (!acct && acctIntent) {
@@ -584,20 +584,37 @@ export function answerAgentChat(
     return makeDraft(acct, ctx, { tone, length });
   }
 
-  // --- account detail (summary, contact, email, stage, value — anything about a named account) ---
-  if (
-    account &&
-    (/\b(tell me about|summar|brief|status|going on|how('?s| is)|update on|overview|who('?s| is)|contact|reach|point of contact|poc|talk to|speak to|email|phone|stage|worth|how (big|much)|the deal|details?)\b/.test(m) ||
-      m.split(/\s+/).length <= 4)
-  ) {
-    const snap = snapshot(account, ctx);
+  // --- account detail (summary, contact, email, stage, value — anything about an
+  //     account). Fires when an account is NAMED here ("tell me more about
+  //     BioNex"), OR when the message is a detail follow-up that only refers to
+  //     the account by context ("tell me more", "what about them") after we were
+  //     just discussing one. By this point every ACTION intent (draft, save,
+  //     follow-up, log, pitch, send) has already been handled above, so a message
+  //     that simply names an account is overwhelmingly a "what's the story here?"
+  //     ask — default to the summary rather than the generic fallback. ---
+  const namedDetailIntent =
+    /\b(tell me (more|about)|more (about|on)|details?|info(rmation)?|overview|brief(ing)?|summar|status|update on|going on|the (story|latest|deal)|latest|rundown|fill me in|catch me up|dig (in|into)|look into|how('?s| is| are| have| big| much)|who('?s| is| are)|contact|point of contact|poc|reach|talk to|speak to|email|phone|stage|worth|anything (on|about)|what('?s| is) (going on|happening|the story|up)|tell me)\b/.test(
+      m
+    );
+  const contextDetailIntent =
+    /\b(tell me more|more (about|on|detail)|what about (it|them|that|this|that one)|how about (it|them|that one)|fill me in|catch me up|the rundown|anything else (on|about) (it|them|that))\b/.test(
+      m
+    ) || /^(tell me more|more|and (what|how) about)\b/.test(m);
+  const detailTarget =
+    account && (namedDetailIntent || message.trim().split(/\s+/).length <= 6)
+      ? account
+      : !account && acct && contextDetailIntent
+      ? acct
+      : null;
+  if (detailTarget) {
+    const snap = snapshot(detailTarget, ctx);
     const band = snap.health.label.toLowerCase();
     const ct = snap.contacts[0];
     const stage = snap.open[0]?.stage;
     const threadNote = snap.contacts.length < 2 ? " It's single-threaded, so widening the relationship would de-risk it." : "";
     return {
       text:
-        `${account.company_name} — ${band} health (${snap.health.score}/100). ` +
+        `${detailTarget.company_name} — ${band} health (${snap.health.score}/100). ` +
         `${snap.open.length} open deal${snap.open.length === 1 ? "" : "s"} worth ${formatMoney(snap.openValue)}${stage ? `, currently ${stage}` : ""}. ` +
         `Main contact: ${ct ? `${ct.full_name}${ct.job_title ? `, ${ct.job_title}` : ""}${ct.email ? ` (${ct.email})` : ""}` : "none mapped yet"}` +
         `${snap.contacts.length > 1 ? ` (+${snap.contacts.length - 1} more)` : ""}. ` +
@@ -605,9 +622,9 @@ export function answerAgentChat(
         (snap.cooling ? " ⚠️ A deal here has gone quiet — worth re-engaging." : "") +
         `\n\nWant me to pull up their pitch, draft outreach, or set a follow-up?`,
       suggestions: [
-        `Show me the pitch for ${account.company_name}`,
-        `Draft an email to ${account.company_name}`,
-        `Set a follow-up with ${account.company_name} next week`,
+        `Show me the pitch for ${detailTarget.company_name}`,
+        `Draft an email to ${detailTarget.company_name}`,
+        `Set a follow-up with ${detailTarget.company_name} next week`,
       ],
     };
   }
