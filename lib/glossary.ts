@@ -114,7 +114,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   // --- sequences / cadences ------------------------------------------------
   sequence: {
     term: "Sequence",
-    def: "A pre-planned series of outreach steps (emails, calls, LinkedIn touches) spread over days, so no prospect slips through the cracks. Also called a cadence.",
+    def: "A pre-planned series of outreach steps (emails and calls) spread over days, so no prospect slips through the cracks. Also called a cadence.",
   },
   cadence: {
     term: "Cadence",

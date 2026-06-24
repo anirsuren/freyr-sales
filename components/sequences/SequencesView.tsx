@@ -37,7 +37,6 @@ export type Enrollment = {
 const CHANNEL_ICON: Record<SequenceChannel, typeof Mail> = {
   email: Mail,
   call: Phone,
-  linkedin: Users,
   wait: Clock,
 };
 
@@ -91,7 +90,7 @@ export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
         <Card className="flex flex-col justify-between h-[92px]">
           <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary inline-flex items-center gap-1">
             Active sequences
-            <InfoHint text="Outreach plans you have set up. Each is a series of steps (emails, calls, LinkedIn touches) spaced over days." />
+            <InfoHint text="Outreach plans you have set up. Each is a series of steps (emails and calls) spaced over days." />
           </span>
           <span className="text-[26px] font-bold text-text-primary tnum leading-none">
             {SEQUENCES.length}

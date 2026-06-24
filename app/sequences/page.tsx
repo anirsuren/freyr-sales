@@ -80,7 +80,7 @@ export default async function SequencesPage() {
     <div>
       <PageHeader
         title="Sequences"
-        subtitle="A sequence is a step-by-step outreach plan — emails, calls, and LinkedIn touches spaced over days — and which accounts are working through it."
+        subtitle="A sequence is a step-by-step outreach plan — emails and calls spaced over days — and which accounts are working through it."
       />
       <div className="rounded-xl border border-border-light bg-surface/60 px-4 py-3 mb-6 text-[13px] text-text-secondary leading-relaxed">
         <span className="font-semibold text-text-primary">How this works:</span> the agent

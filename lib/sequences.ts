@@ -1,7 +1,7 @@
 // Outbound cadence library (V2 #6). Static templates — the "execution loop"
 // surface shows steps + which accounts are enrolled and where they are.
 
-export type SequenceChannel = "email" | "call" | "linkedin" | "wait";
+export type SequenceChannel = "email" | "call" | "wait";
 
 export interface SequenceStep {
   day: number;
@@ -24,7 +24,7 @@ export const SEQUENCES: Sequence[] = [
       "7-touch cadence for VP / Head of Regulatory at clinical-stage biopharma.",
     steps: [
       { day: 0, channel: "email", label: "Intro email — submission-timeline angle" },
-      { day: 2, channel: "linkedin", label: "LinkedIn connect + light touch" },
+      { day: 2, channel: "email", label: "Follow-up email — share a relevant reviewer credential" },
       { day: 4, channel: "call", label: "First call attempt + voicemail" },
       { day: 7, channel: "email", label: "Value email — FDA/EMA reviewer credibility" },
       { day: 10, channel: "call", label: "Second call attempt" },
@@ -38,7 +38,7 @@ export const SEQUENCES: Sequence[] = [
     description: "Revive a stalled account after no response.",
     steps: [
       { day: 0, channel: "email", label: "Pattern-interrupt email — new regulatory signal" },
-      { day: 3, channel: "linkedin", label: "Share relevant guidance update" },
+      { day: 3, channel: "email", label: "Share a relevant regulatory guidance update" },
       { day: 6, channel: "call", label: "Check-in call" },
       { day: 10, channel: "email", label: "Soft breakup — leave the door open" },
     ],
@@ -58,6 +58,5 @@ export const SEQUENCES: Sequence[] = [
 export const CHANNEL_LABEL: Record<SequenceChannel, string> = {
   email: "Email",
   call: "Call",
-  linkedin: "LinkedIn",
   wait: "Wait",
 };
