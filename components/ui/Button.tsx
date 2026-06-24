@@ -17,7 +17,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center gap-2 text-[14px] font-semibold rounded-md px-5 py-2.5 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap";
+    "inline-flex items-center justify-center gap-2 text-[14px] font-semibold rounded-md px-5 py-2.5 transition-[transform,background-color,opacity,border-color] duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 whitespace-nowrap";
   const variants: Record<string, string> = {
     primary: "bg-blue-primary text-white hover:bg-blue-hover",
     secondary:

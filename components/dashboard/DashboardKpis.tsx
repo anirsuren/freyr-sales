@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { GLOSSARY } from "@/lib/glossary";
 import { cn } from "@/lib/utils";
+import { CountUp } from "@/components/ui/CountUp";
 
 export type KpiItem = {
   key: string;
@@ -176,7 +177,7 @@ export function DashboardKpis({
                   )}
                 </div>
                 <span className="text-[28px] font-bold text-text-primary leading-none tnum">
-                  {k.value}
+                  <CountUp value={k.cur} unit={k.unit} />
                 </span>
               </Card>
             </Link>

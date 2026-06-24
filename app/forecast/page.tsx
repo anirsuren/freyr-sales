@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Term } from "@/components/ui/Tooltip";
+import { CountUp } from "@/components/ui/CountUp";
 import {
   buildDeals,
   STAGES,
@@ -68,11 +69,13 @@ export default async function ForecastPage() {
   const Stat = ({
     label,
     value,
+    raw,
     accent,
     hint,
   }: {
     label: string;
     value: string;
+    raw?: number;
     accent?: boolean;
     hint?: string;
   }) => (
@@ -86,7 +89,7 @@ export default async function ForecastPage() {
           accent ? "text-blue-primary" : "text-text-primary"
         }`}
       >
-        {value}
+        {raw != null ? <CountUp value={raw} unit="money" /> : value}
       </span>
     </Card>
   );
@@ -102,22 +105,26 @@ export default async function ForecastPage() {
         <Stat
           label="Commit (weighted)"
           value={formatMoney(commit)}
+          raw={commit}
           accent
           hint="The realistic number — every open deal's value multiplied by its chance of closing, added up. What you can reasonably promise."
         />
         <Stat
           label="Best case (open)"
           value={formatMoney(bestCase)}
+          raw={bestCase}
           hint="The optimistic number — the full value of every open deal if they ALL closed. The ceiling, not the expectation."
         />
         <Stat
           label="Quarter quota"
           value={formatMoney(QUOTA)}
+          raw={QUOTA}
           hint="Your revenue target for the quarter."
         />
         <Stat
           label="Gap to quota"
           value={formatMoney(gap)}
+          raw={gap}
           hint="How much more committed revenue you need to hit the target."
         />
       </section>
