@@ -3121,4 +3121,99 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(reply.toLowerCase()).toMatch(/at-risk/);
     expect(reply).not.toMatch(SUMMARY_RE);
   });
+
+  // -------------------------------------------------------------------------
+  // 235–240 — Offerings repository (Suren video requirement #1, see
+  // SUREN-VIDEO-REVIEW.md): new nav item, visualization, filtering, detail with
+  // sales materials, entry, and customer-type/market definitions.
+  // -------------------------------------------------------------------------
+  test("235 — Offerings is in the nav and the repository renders (V15)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/dashboard`);
+    await page.click("nav >> text=Offerings");
+    await expect(page).toHaveURL(/offerings/);
+    await expect(page.getByRole("heading", { name: "Offerings" })).toBeVisible();
+    await expect(page.getByText("Freyr Register").first()).toBeVisible();
+    await expect(page.getByLabel("Filter by customer type")).toBeVisible();
+    await expect(page.getByLabel("Filter by market")).toBeVisible();
+  });
+
+  test("236 — Offerings search filters the visualization (V15)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings`);
+    await page.getByLabel("Search offerings").fill("Omni");
+    await expect(page.getByText("Omni Object").first()).toBeVisible();
+    await expect(page.getByText("Freyr Label")).toHaveCount(0);
+  });
+
+  test("237 — Offering detail shows availability, types, markets, materials (V15)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/of-003`);
+    await expect(
+      page.getByText("Freyr Register + Pic, Mia and Via Agent")
+    ).toBeVisible();
+    await expect(page.getByText(/V3 is available in July 2026/)).toBeVisible();
+    await expect(
+      page.getByText("Pharmaceutical - Large", { exact: true })
+    ).toBeVisible();
+    await expect(page.getByText("Korea", { exact: true })).toBeVisible();
+    // sales material is a real, clickable external link
+    await expect(
+      page.locator('a[target="_blank"][rel="noopener noreferrer"]').first()
+    ).toBeVisible();
+  });
+
+  test("238 — Customer types page shows the 9 definitions (V15)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/customer-types`);
+    await expect(
+      page.getByRole("heading", { name: /Customer types & markets/ })
+    ).toBeVisible();
+    await expect(page.getByText("Pharmaceutical - Small").first()).toBeVisible();
+    // a definition cell is present (revenue band from Suren's sheet)
+    await expect(page.getByText("Under $500M").first()).toBeVisible();
+    await expect(page.getByText("Bio Pharmaceutical - Large").first()).toBeVisible();
+  });
+
+  test("239 — Offerings API: list is seeded and create works (V15)", async ({
+    request,
+  }) => {
+    const list = await request.get(`${BASE}/api/offerings`);
+    const ld = await list.json();
+    expect(Array.isArray(ld.offerings)).toBe(true);
+    expect(ld.offerings.length).toBeGreaterThanOrEqual(14);
+    // each offering carries hydrated customer types + markets
+    expect(ld.offerings[0]).toHaveProperty("customerTypes");
+    expect(ld.offerings[0]).toHaveProperty("markets");
+
+    const created = await request.post(`${BASE}/api/offerings`, {
+      data: {
+        offering_name: "QA — Test Offering",
+        offering_type: "Freyr Module",
+        customer_type_ids: ["ct-pharma-l"],
+        market_ids: ["mkt-usa"],
+      },
+    });
+    const cd = await created.json();
+    expect(cd.ok).toBe(true);
+    expect(cd.offering.offering_name).toBe("QA — Test Offering");
+  });
+
+  test("240 — Customer-types & markets APIs return the seeded reference data (V15)", async ({
+    request,
+  }) => {
+    const ct = await (await request.get(`${BASE}/api/customer-types`)).json();
+    expect(ct.customerTypes.length).toBeGreaterThanOrEqual(9);
+    expect(ct.customerTypes.some((c: any) => c.name === "Pharmaceutical - Small")).toBe(
+      true
+    );
+    const mk = await (await request.get(`${BASE}/api/markets`)).json();
+    const names = mk.markets.map((m: any) => m.name);
+    for (const m of ["USA", "Europe", "Japan", "China", "Korea"])
+      expect(names).toContain(m);
+  });
 });

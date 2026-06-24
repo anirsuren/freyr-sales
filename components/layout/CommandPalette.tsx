@@ -32,6 +32,7 @@ const NAV: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Sessions", href: "/sessions", icon: CalendarClock },
   { label: "Pipeline", href: "/pipeline", icon: Columns3 },
   { label: "Customers", href: "/customers", icon: Building2 },
+  { label: "Offerings", href: "/offerings", icon: Package },
   { label: "Contacts", href: "/contacts", icon: Contact },
   { label: "Knowledge Base", href: "/admin", icon: Database },
   { label: "Service Catalog", href: "/services", icon: Package },
