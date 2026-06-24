@@ -169,10 +169,29 @@ export function AgentChat() {
   const [sending, setSending] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>(STARTERS);
   const [typingTs, setTypingTs] = useState<number | null>(null);
+  const [summary, setSummary] = useState<{
+    needsApproval: number;
+    cooling: number;
+    atRisk: number;
+  } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setConvos(load());
+  }, []);
+
+  // Proactive greeting: what's on the rep's plate (deterministic, no LLM call).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/agent/summary")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d?.ok) setSummary(d);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const active = convos.find((c) => c.id === activeId) || null;
@@ -354,17 +373,67 @@ export function AgentChat() {
       <div className="flex-1 min-w-0 flex flex-col">
         {!active || active.messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center px-6">
-            <span className="w-12 h-12 rounded-2xl bg-blue-primary text-white flex items-center justify-center mb-4">
+            <span
+              className="w-12 h-12 rounded-2xl bg-blue-primary text-white flex items-center justify-center mb-4 rise-in"
+              style={{ animationDelay: "0ms" }}
+            >
               <Sparkles size={24} strokeWidth={1.9} />
             </span>
-            <h1 className="text-[26px] font-semibold text-text-primary tracking-[-0.01em]">
+            <h1
+              className="text-[26px] font-semibold text-text-primary tracking-[-0.01em] rise-in"
+              style={{ animationDelay: "60ms" }}
+            >
               Hey Suren — what do you want to work on?
             </h1>
-            <p className="text-[14px] text-text-secondary mt-2 text-center max-w-[520px]">
+            <p
+              className="text-[14px] text-text-secondary mt-2 text-center max-w-[520px] rise-in"
+              style={{ animationDelay: "120ms" }}
+            >
               Ask about your pipeline, an account, or have me draft outreach. I&apos;ll
               do the work and leave everything for you to review.
             </p>
-            <div className="flex flex-wrap justify-center gap-2 mt-6 max-w-[640px]">
+
+            {/* Proactive: what's on the rep's plate right now — clickable. */}
+            {summary &&
+              (summary.needsApproval > 0 || summary.cooling > 0 || summary.atRisk > 0) && (
+                <div
+                  className="flex flex-wrap justify-center gap-2 mt-6 rise-in"
+                  style={{ animationDelay: "180ms" }}
+                >
+                  {summary.needsApproval > 0 && (
+                    <button
+                      onClick={() => send("What's waiting for my approval?")}
+                      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      {summary.needsApproval} waiting for your approval
+                    </button>
+                  )}
+                  {summary.cooling > 0 && (
+                    <button
+                      onClick={() => send("Which deals are cooling?")}
+                      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-error" />
+                      {summary.cooling} deal{summary.cooling === 1 ? "" : "s"} cooling
+                    </button>
+                  )}
+                  {summary.atRisk > 0 && (
+                    <button
+                      onClick={() => send("Which accounts are at-risk?")}
+                      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-error" />
+                      {summary.atRisk} at-risk
+                    </button>
+                  )}
+                </div>
+              )}
+
+            <div
+              className="flex flex-wrap justify-center gap-2 mt-3 max-w-[640px] rise-in"
+              style={{ animationDelay: "240ms" }}
+            >
               {STARTERS.map((s) => (
                 <button
                   key={s}

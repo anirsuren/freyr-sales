@@ -3004,6 +3004,18 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).not.toContain("here's where i'd start");
   });
 
+  test("212 — agent summary endpoint returns the rep's workload (V13)", async ({
+    request,
+  }) => {
+    const res = await request.get(`${BASE}/api/agent/summary`);
+    const d = await res.json();
+    expect(d.ok).toBe(true);
+    expect(typeof d.needsApproval).toBe("number");
+    expect(typeof d.cooling).toBe("number");
+    expect(typeof d.atRisk).toBe("number");
+    expect(typeof d.openValueLabel).toBe("string");
+  });
+
   test("211 — fallback brain drafts for 'that one' using conversation context (V13)", async ({
     request,
   }) => {

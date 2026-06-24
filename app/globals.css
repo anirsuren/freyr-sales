@@ -177,6 +177,27 @@ select:focus-visible,
   animation: stepIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Staggered entrance for hero/empty states (icon, heading, chips lift in). */
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise-in {
+  animation: riseIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise-in,
+  .step-in {
+    animation: none;
+  }
+}
+
 /* Hide scrollbars on tab chips while keeping scroll */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
