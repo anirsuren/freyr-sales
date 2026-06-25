@@ -50,7 +50,7 @@ export const RECORDINGS: Recording[] = [
       "Earned the next step with a specific, low-friction ask (20 minutes with the NDA owner).",
     ],
     needsImprovement: [
-      "Talk-to-listen ratio was 61% — let the prospect carry more of the conversation.",
+      "Talk-to-listen ratio was 64% — let the prospect carry more of the conversation.",
       "Mentioned pricing too early; defer until value is established.",
     ],
     coaching: [
