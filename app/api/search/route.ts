@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { listOfferings } from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,21 @@ export async function GET(req: Request) {
         label: ct.full_name,
         sublabel: ct.job_title || "",
         href: `/contacts/${ct.id}`,
+      });
+    }
+  }
+  // Offerings are a core object now — make them findable in global search too.
+  for (const o of listOfferings()) {
+    if (
+      o.offering_name.toLowerCase().includes(q) ||
+      (o.offering_type || "").toLowerCase().includes(q) ||
+      (o.offering_description || "").toLowerCase().includes(q)
+    ) {
+      results.push({
+        type: "Offering",
+        label: o.offering_name,
+        sublabel: o.offering_type || "",
+        href: `/offerings/${o.id}`,
       });
     }
   }

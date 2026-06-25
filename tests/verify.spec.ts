@@ -3408,4 +3408,20 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText(/offerings? across \d+ type/i).first()
     ).toBeVisible({ timeout: 12000 });
   });
+
+  test("253 — offerings are findable in global search (V20)", async ({
+    request,
+  }) => {
+    const r = await (
+      await request.get(`${BASE}/api/search?q=${encodeURIComponent("Freya Register")}`)
+    ).json();
+    expect(
+      r.results.some(
+        (x: any) => x.type === "Offering" && /Freya Register/.test(x.label)
+      )
+    ).toBe(true);
+    // existing customer/contact search didn't regress
+    const r2 = await (await request.get(`${BASE}/api/search?q=Helix`)).json();
+    expect(r2.results.some((x: any) => x.type === "Customer")).toBe(true);
+  });
 });
