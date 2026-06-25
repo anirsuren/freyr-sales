@@ -49,17 +49,28 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     ]
       .filter(Boolean)
       .join("; ");
-    const bits = [
-      `${o.customerTypes.length} customer type${o.customerTypes.length === 1 ? "" : "s"}`,
-      `${o.markets.length} market${o.markets.length === 1 ? "" : "s"}`,
-    ];
-    if (o.materials.length)
-      bits.push(`${o.materials.length} sales material${o.materials.length === 1 ? "" : "s"}`);
+    const isMapped =
+      o.customerTypes.length > 0 ||
+      o.markets.length > 0 ||
+      o.materials.length > 0;
+    let detail: string;
+    if (isMapped) {
+      const bits = [
+        `${o.customerTypes.length} customer type${o.customerTypes.length === 1 ? "" : "s"}`,
+        `${o.markets.length} market${o.markets.length === 1 ? "" : "s"}`,
+      ];
+      if (o.materials.length)
+        bits.push(`${o.materials.length} sales material${o.materials.length === 1 ? "" : "s"}`);
+      detail = ` It's mapped to ${bits.join(", ")}.`;
+    } else {
+      // Plain-English, not a robotic "0 customer types, 0 markets".
+      detail = ` It's in the repository but not yet mapped to customer types or markets — open it to fill that in.`;
+    }
     return {
       reply:
         `**${o.offering_name}** (${o.offering_type})` +
         (o.offering_description ? ` — ${o.offering_description}` : "") +
-        `. ${bits.join(", ")}.` +
+        `.${detail}` +
         (avail ? ` Availability: ${avail}.` : "") +
         `\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
       suggestions: [
