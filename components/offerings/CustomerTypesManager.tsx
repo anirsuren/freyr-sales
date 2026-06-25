@@ -48,6 +48,9 @@ export function CustomerTypesManager({
   const [employees, setEmployees] = useState("");
   const [focus, setFocus] = useState("");
   const [newMarket, setNewMarket] = useState("");
+  // Markets in use by offerings get a confirm step before removal — deleting one
+  // cascades, unmapping it from every offering.
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
   async function addType() {
     setBusy(true);
@@ -113,6 +116,7 @@ export function CustomerTypesManager({
 
   async function removeMarket(m: Market) {
     setBusy(true);
+    setConfirmRemove(null);
     try {
       const res = await fetch(`/api/markets/${m.id}`, { method: "DELETE" });
       const data = await res.json();
@@ -298,31 +302,64 @@ export function CustomerTypesManager({
           Markets ({markets.length})
         </h2>
         <div className="flex flex-wrap gap-2 mb-4">
-          {markets.map((m) => (
-            <span
-              key={m.id}
-              className="group inline-flex items-center text-[12.5px] font-medium bg-surface border border-border-light rounded-md transition-colors hover:border-blue-subtle"
-            >
-              <Link
-                href={`/offerings?market=${m.id}`}
-                className="inline-flex items-center gap-1.5 text-text-primary group-hover:text-blue-primary pl-2.5 pr-1 py-1"
-              >
-                {m.name}
-                <span className="text-[11px] text-text-tertiary tnum">
-                  {marketCounts[m.id] || 0}
+          {markets.map((m) => {
+            const count = marketCounts[m.id] || 0;
+            if (confirmRemove === m.id) {
+              return (
+                <span
+                  key={m.id}
+                  className="inline-flex items-center gap-2 text-[12.5px] font-medium bg-error/5 border border-error/30 rounded-md pl-2.5 pr-1.5 py-1"
+                >
+                  <span className="text-text-primary">
+                    Remove {m.name}?{" "}
+                    <span className="text-text-tertiary">
+                      {count} offering{count === 1 ? "" : "s"}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeMarket(m)}
+                    disabled={busy}
+                    className="font-semibold text-error hover:underline disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRemove(null)}
+                    className="font-semibold text-text-secondary hover:text-text-primary"
+                  >
+                    Keep
+                  </button>
                 </span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => removeMarket(m)}
-                disabled={busy}
-                aria-label={`Remove ${m.name}`}
-                className="text-text-tertiary hover:text-error px-1.5 py-1 disabled:opacity-50"
+              );
+            }
+            return (
+              <span
+                key={m.id}
+                className="group inline-flex items-center text-[12.5px] font-medium bg-surface border border-border-light rounded-md transition-colors hover:border-blue-subtle"
               >
-                <X size={12} strokeWidth={2.2} />
-              </button>
-            </span>
-          ))}
+                <Link
+                  href={`/offerings?market=${m.id}`}
+                  className="inline-flex items-center gap-1.5 text-text-primary group-hover:text-blue-primary pl-2.5 pr-1 py-1"
+                >
+                  {m.name}
+                  <span className="text-[11px] text-text-tertiary tnum">
+                    {count}
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => (count > 0 ? setConfirmRemove(m.id) : removeMarket(m))}
+                  disabled={busy}
+                  aria-label={`Remove ${m.name}`}
+                  className="text-text-tertiary hover:text-error px-1.5 py-1 disabled:opacity-50"
+                >
+                  <X size={12} strokeWidth={2.2} />
+                </button>
+              </span>
+            );
+          })}
         </div>
         <div className="flex items-center gap-2 max-w-[420px]">
           <input

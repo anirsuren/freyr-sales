@@ -3631,4 +3631,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(pharmaSmall.length).toBe(1);
     expect(pharmaSmall[0].operational_focus).toBe("Refined by test");
   });
+
+  test("265 — removing an in-use market asks first (V32)", async ({ page }) => {
+    await page.goto(`${BASE}/offerings/customer-types`);
+    // Europe is mapped to offerings → X opens an inline confirm, nothing deleted
+    await page.getByRole("button", { name: "Remove Europe" }).click();
+    await expect(page.getByText(/Remove Europe\?/)).toBeVisible();
+    await page.getByRole("button", { name: /^Keep$/ }).click();
+    await expect(page.getByText(/Remove Europe\?/)).toHaveCount(0);
+    const markets = (
+      await (await page.request.get(`${BASE}/api/markets`)).json()
+    ).markets;
+    expect(markets.some((m: any) => m.name === "Europe")).toBe(true);
+  });
 });
