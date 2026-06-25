@@ -3464,4 +3464,15 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(mat.source).toBe("offerings");
     expect(mat.reply.toLowerCase()).toContain("sales materials");
   });
+
+  test("256 — offerings sort is deep-linkable (V23)", async ({ page }) => {
+    const sortSel = 'select[aria-label="Sort offerings"]';
+    await page.goto(`${BASE}/offerings?sort=name`);
+    await expect(page.locator(sortSel)).toHaveValue("name");
+    await page.goto(`${BASE}/offerings?sort=type`);
+    await expect(page.locator(sortSel)).toHaveValue("type");
+    // an unknown sort value falls back to catalog order
+    await page.goto(`${BASE}/offerings?sort=bogus`);
+    await expect(page.locator(sortSel)).toHaveValue("default");
+  });
 });

@@ -13,8 +13,10 @@ import {
   Sparkles,
   X,
   Download,
+  Package,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 import type { CustomerType, Market } from "@/lib/offerings";
 
@@ -22,6 +24,10 @@ import type { CustomerType, Market } from "@/lib/offerings";
 function csv(v: string) {
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
+
+// Sort options — also valid ?sort= deep-link values, kept in sync with the
+// rest of the filter bar so a sorted view can be shared/bookmarked.
+const SORTS = ["default", "name", "type", "mapped"];
 
 export interface HydratedOffering {
   id: string;
@@ -63,11 +69,14 @@ export function OfferingsBrowser({
   const initStatus = ["mapped", "unmapped"].includes(params.get("status") || "")
     ? params.get("status")!
     : "";
+  const initSort = SORTS.includes(params.get("sort") || "")
+    ? params.get("sort")!
+    : "default";
   const [q, setQ] = useState(params.get("q") ?? "");
   const [ctId, setCtId] = useState(initType);
   const [mktId, setMktId] = useState(initMkt);
   const [status, setStatus] = useState(initStatus);
-  const [sort, setSort] = useState("default");
+  const [sort, setSort] = useState(initSort);
 
   // Keep filters in sync when the URL changes via in-app navigation (chips, the
   // "still to map" stat link, etc.) — useState only seeds on first mount, so
@@ -76,10 +85,12 @@ export function OfferingsBrowser({
     const t = params.get("type");
     const m = params.get("market");
     const s = params.get("status") || "";
+    const so = params.get("sort") || "";
     setQ(params.get("q") ?? "");
     setCtId(customerTypes.some((c) => c.id === t) ? t! : "");
     setMktId(markets.some((mm) => mm.id === m) ? m! : "");
     setStatus(["mapped", "unmapped"].includes(s) ? s : "");
+    setSort(SORTS.includes(so) ? so : "default");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
@@ -394,31 +405,36 @@ export function OfferingsBrowser({
       </div>
 
       {offerings.length === 0 ? (
-        <Card className="text-center py-16">
-          <p className="text-[14px] font-medium text-text-primary">
-            No offerings yet.
-          </p>
-          <p className="text-[13px] text-text-secondary mt-1 mb-4">
-            Build the repository by adding your first offering.
-          </p>
-          <Link
-            href="/offerings/new"
-            className="inline-flex items-center justify-center text-[13px] font-semibold rounded-md px-4 py-2 bg-blue-primary text-white hover:bg-blue-hover transition-colors"
-          >
-            + New offering
-          </Link>
+        <Card className="p-0">
+          <EmptyState
+            icon={Package}
+            title="No offerings yet."
+            description="Build the repository by adding your first offering — its type, who it's for, the markets it covers, and the sales materials behind it."
+            action={
+              <Link
+                href="/offerings/new"
+                className="inline-flex items-center justify-center text-[13px] font-semibold rounded-md px-4 py-2 bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+              >
+                + New offering
+              </Link>
+            }
+          />
         </Card>
       ) : filtered.length === 0 ? (
-        <Card className="text-center py-16">
-          <p className="text-[14px] font-medium text-text-primary">
-            No offerings match these filters.
-          </p>
-          <button
-            onClick={clearAll}
-            className="text-[13px] font-semibold text-blue-primary hover:underline mt-1"
-          >
-            Clear filters
-          </button>
+        <Card className="p-0">
+          <EmptyState
+            icon={Search}
+            title="No offerings match these filters."
+            description="Try a different market, customer type, or search term."
+            action={
+              <button
+                onClick={clearAll}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-4 py-2 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
+              >
+                <X size={14} strokeWidth={2} /> Clear filters
+              </button>
+            }
+          />
         </Card>
       ) : sort === "type" ? (
         <div className="space-y-6">
