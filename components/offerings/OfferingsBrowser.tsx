@@ -10,6 +10,7 @@ import {
   DollarSign,
   ChevronRight,
   Sparkles,
+  X,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
@@ -63,14 +64,15 @@ export function OfferingsBrowser({
     });
   }, [offerings, q, ctId, mktId]);
 
-  const selectCls =
-    "h-9 rounded-md border border-border bg-white px-3 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
+  const activeFilters = !!(q || ctId || mktId);
+  const inputCls =
+    "h-10 rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary transition-shadow focus:outline-none focus:border-blue-subtle focus:shadow-input-focus";
 
   return (
     <div>
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative flex-1 min-w-[200px]">
+      {/* Filter bar */}
+      <div className="rounded-xl border border-border-light bg-surface/50 p-2.5 mb-4 flex flex-wrap items-center gap-2.5">
+        <div className="relative flex-1 min-w-[220px]">
           <Search
             size={16}
             strokeWidth={1.8}
@@ -81,14 +83,14 @@ export function OfferingsBrowser({
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search offerings…"
             aria-label="Search offerings"
-            className="w-full h-9 rounded-md border border-border bg-white pl-9 pr-3 text-[13px] focus:outline-none focus:shadow-input-focus"
+            className={`${inputCls} w-full pl-9 pr-3`}
           />
         </div>
         <select
           value={ctId}
           onChange={(e) => setCtId(e.target.value)}
           aria-label="Filter by customer type"
-          className={selectCls}
+          className={inputCls}
         >
           <option value="">All customer types</option>
           {customerTypes.map((c) => (
@@ -101,7 +103,7 @@ export function OfferingsBrowser({
           value={mktId}
           onChange={(e) => setMktId(e.target.value)}
           aria-label="Filter by market"
-          className={selectCls}
+          className={inputCls}
         >
           <option value="">All markets</option>
           {markets.map((m) => (
@@ -110,90 +112,142 @@ export function OfferingsBrowser({
             </option>
           ))}
         </select>
+        {activeFilters && (
+          <button
+            onClick={() => {
+              setQ("");
+              setCtId("");
+              setMktId("");
+            }}
+            className="h-10 px-3 rounded-lg text-[13px] font-semibold text-text-secondary hover:text-blue-primary hover:bg-blue-light transition-colors inline-flex items-center gap-1"
+          >
+            <X size={14} strokeWidth={2} /> Clear
+          </button>
+        )}
       </div>
 
-      <p className="text-[12px] text-text-tertiary mb-3 tnum">
+      <p className="text-[12px] text-text-tertiary mb-4 tnum">
         Showing {filtered.length} of {offerings.length} offerings
       </p>
 
       {filtered.length === 0 ? (
-        <Card className="text-center text-[13px] text-text-secondary py-12">
-          No offerings match these filters.
+        <Card className="text-center py-16">
+          <p className="text-[14px] font-medium text-text-primary">
+            No offerings match these filters.
+          </p>
+          <p className="text-[13px] text-text-secondary mt-1">
+            Try clearing a filter or widening your search.
+          </p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((o) => {
+          {filtered.map((o, i) => {
             const matKinds = Array.from(new Set(o.materials.map((m) => m.kind)));
+            const mapped =
+              o.customerTypes.length > 0 ||
+              o.markets.length > 0 ||
+              o.materials.length > 0;
             return (
-              <Link key={o.id} href={`/offerings/${o.id}`} className="group">
-                <Card className="h-full p-5 flex flex-col gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card hover:border-blue-subtle">
+              <Link
+                key={o.id}
+                href={`/offerings/${o.id}`}
+                className="group rise-in"
+                style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
+              >
+                <Card className="h-full p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-blue-primary bg-blue-light rounded px-1.5 py-0.5">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
                       <Sparkles size={11} strokeWidth={2} />
                       {o.offering_type || "Offering"}
                     </span>
                     <ChevronRight
                       size={16}
                       strokeWidth={1.6}
-                      className="text-text-tertiary group-hover:text-blue-primary shrink-0"
+                      className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform shrink-0 mt-0.5"
                     />
                   </div>
                   <div>
-                    <h3 className="text-[15px] font-semibold text-text-primary leading-snug">
+                    <h3 className="text-[15.5px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
                       {o.offering_name}
                     </h3>
                     {o.offering_description && (
-                      <p className="text-[12.5px] text-text-secondary mt-1 line-clamp-2">
+                      <p className="text-[12.5px] text-text-secondary mt-1 line-clamp-2 leading-relaxed">
                         {o.offering_description}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5">
-                    {o.current_availability && (
-                      <span className="text-[11px] font-medium text-success bg-success/10 rounded px-1.5 py-0.5">
-                        {o.current_availability}
-                      </span>
-                    )}
-                    {o.future_availability && (
-                      <span className="text-[11px] font-medium text-warning bg-warning/10 rounded px-1.5 py-0.5">
-                        {o.future_availability}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-border-light">
-                    <div className="flex flex-wrap gap-1">
-                      {o.markets.slice(0, 4).map((m) => (
-                        <span
-                          key={m.id}
-                          className="text-[10.5px] font-medium text-text-secondary bg-surface rounded px-1.5 py-0.5"
-                        >
-                          {m.name}
+                  {(o.current_availability || o.future_availability) && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {o.current_availability && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/10 rounded-md px-2 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                          {o.current_availability}
                         </span>
-                      ))}
+                      )}
+                      {o.future_availability && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/10 rounded-md px-2 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                          {o.future_availability}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {matKinds.map((k) => {
-                        const Icon = MATERIAL_ICON[k] || FileText;
-                        return (
-                          <Icon
-                            key={k}
-                            size={14}
-                            strokeWidth={1.7}
-                            className="text-text-tertiary"
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
+                  )}
 
-                  <p className="text-[11px] text-text-tertiary">
-                    {o.customerTypes.length} customer type
-                    {o.customerTypes.length === 1 ? "" : "s"} ·{" "}
-                    {o.materials.length} sales material
-                    {o.materials.length === 1 ? "" : "s"}
-                  </p>
+                  <div className="mt-auto pt-3 border-t border-border-light">
+                    {mapped ? (
+                      <>
+                        {o.markets.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {o.markets.slice(0, 4).map((m) => (
+                              <span
+                                key={m.id}
+                                className="text-[10.5px] font-medium text-text-secondary bg-surface rounded px-1.5 py-0.5"
+                              >
+                                {m.name}
+                              </span>
+                            ))}
+                            {o.markets.length > 4 && (
+                              <span className="text-[10.5px] text-text-tertiary self-center">
+                                +{o.markets.length - 4}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[11px] text-text-tertiary">
+                            {o.customerTypes.length} customer type
+                            {o.customerTypes.length === 1 ? "" : "s"}
+                            {o.materials.length > 0 && (
+                              <>
+                                {" · "}
+                                {o.materials.length} material
+                                {o.materials.length === 1 ? "" : "s"}
+                              </>
+                            )}
+                          </p>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {matKinds.map((k) => {
+                              const Icon = MATERIAL_ICON[k] || FileText;
+                              return (
+                                <Icon
+                                  key={k}
+                                  size={14}
+                                  strokeWidth={1.7}
+                                  className="text-text-tertiary"
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                        <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
+                        Not yet mapped — open to add types, markets &amp; materials
+                      </p>
+                    )}
+                  </div>
                 </Card>
               </Link>
             );
