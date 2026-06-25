@@ -3608,6 +3608,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const before = (
       await (await request.get(`${BASE}/api/customer-types`)).json()
     ).customerTypes;
+    // remember the seeded definition so we can put it back — this mutates a
+    // real, shared customer type, and leaving "Refined by test" behind would
+    // pollute the dev/demo app's store until the next server restart.
+    const original = before.find(
+      (c: any) => c.name === "Pharmaceutical - Small"
+    )?.operational_focus;
     const res = await (
       await request.post(`${BASE}/api/customer-types`, {
         data: {
@@ -3628,6 +3634,16 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     );
     expect(pharmaSmall.length).toBe(1);
     expect(pharmaSmall[0].operational_focus).toBe("Refined by test");
+    // restore the seeded definition so the suite leaves no junk behind
+    if (original) {
+      await request.post(`${BASE}/api/customer-types`, {
+        data: {
+          family: "Pharmaceutical",
+          size: "Small",
+          operational_focus: original,
+        },
+      });
+    }
   });
 
   test("265 — removing an in-use market asks first (V32)", async ({ page }) => {
