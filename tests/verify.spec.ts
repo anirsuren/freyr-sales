@@ -3134,7 +3134,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.click("nav >> text=Offerings");
     await expect(page).toHaveURL(/offerings/);
     await expect(page.getByRole("heading", { name: "Offerings" })).toBeVisible();
-    await expect(page.getByText("Freyr Register").first()).toBeVisible();
+    await expect(page.getByText("Freya Register").first()).toBeVisible();
     await expect(page.getByLabel("Filter by customer type")).toBeVisible();
     await expect(page.getByLabel("Filter by market")).toBeVisible();
   });
@@ -3145,7 +3145,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.goto(`${BASE}/offerings`);
     await page.getByLabel("Search offerings").fill("Omni");
     await expect(page.getByText("Omni Object").first()).toBeVisible();
-    await expect(page.getByText("Freyr Label")).toHaveCount(0);
+    await expect(page.getByText("Freya Label")).toHaveCount(0);
   });
 
   test("237 — Offering detail shows availability, types, markets, materials (V15)", async ({
@@ -3153,7 +3153,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/offerings/of-003`);
     await expect(
-      page.getByText("Freyr Register + Pic, Mia and Via Agent")
+      page.getByText("Freya Register + Pia, Mia and Via Agents")
     ).toBeVisible();
     await expect(page.getByText(/V3 is available in July 2026/)).toBeVisible();
     await expect(

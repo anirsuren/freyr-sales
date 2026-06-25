@@ -142,99 +142,62 @@ function off(
     offering_type,
     offering_name,
     offering_description,
-    current_availability: opts.current_availability ?? "Available now",
+    // Defaults are blank to mirror Suren's sheet (most rows are unfilled — he
+    // populates them via the entry screen). Populated rows pass values in.
+    current_availability: opts.current_availability ?? "",
     future_availability: opts.future_availability ?? "",
-    customer_type_ids: opts.customer_type_ids ?? ALL_CT,
-    market_ids: opts.market_ids ?? ["mkt-usa", "mkt-europe"],
+    customer_type_ids: opts.customer_type_ids ?? [],
+    market_ids: opts.market_ids ?? [],
     materials: opts.materials ?? [],
     created_at: opts.created_at ?? "2026-06-20T12:00:00.000Z",
   };
 }
 
+// Seeded VERBATIM from Suren's "Digital Sales and Marketing.xlsx" → Sheet1
+// (names, descriptions, and the customer-type Y-matrix exactly as he has them).
+// In his sheet only 3 rows carry customer-type marks (all 9 each); the rest are
+// blank. Availability/markets/materials come from the video where he showed them
+// (the downloaded file is an earlier trim without those columns).
 function seedOfferings(): Offering[] {
   return [
-    off("of-001", "Freyr Module", "Freyr Register",
-      "Regulatory information management for registrations and submissions.", {
-        market_ids: ALL_MKT,
-        materials: [
-          { id: "m-001", kind: "video", label: "Freyr Register overview", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-          { id: "m-002", kind: "presentation", label: "Register sales deck", url: "https://example.com/freyr-register-deck.pdf" },
-        ],
-      }),
-    off("of-002", "Freyr – Module + Module Agent", "Freyr Register + Pic, Mia",
-      "Freyr Register paired with the Pic and Mia module agents."),
-    off("of-003", "Freyr – Module + Module Agent + Add-on Agent", "Freyr Register + Pic, Mia and Via Agent",
-      "Full Register stack with Pic, Mia and the Via add-on agent.", {
-        current_availability: "V1 is available now",
-        future_availability: "V3 is available in July 2026",
-        customer_type_ids: ALL_CT,
-        market_ids: ALL_MKT,
-        materials: [
-          { id: "m-003", kind: "video", label: "Via Agent demo", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-          { id: "m-004", kind: "whitepaper", label: "Post-approval change automation", url: "https://example.com/via-agent-whitepaper.pdf" },
-          { id: "m-005", kind: "pricing", label: "Register stack pricing", url: "https://example.com/register-pricing.pdf" },
-        ],
-      }),
-    off("of-004", "Freyr – Module + Agent", "Freyr GRR – MPR-PAC + Via Agent",
-      "Via agent enables customers to manage post-approval changes.", {
-        customer_type_ids: ["ct-pharma-s", "ct-pharma-m", "ct-pharma-l"],
-        market_ids: ["mkt-usa", "mkt-europe", "mkt-japan"],
-        materials: [
-          { id: "m-006", kind: "presentation", label: "GRR MPR-PAC overview", url: "https://example.com/grr-mpr-pac.pdf" },
-        ],
-      }),
-    off("of-005", "Freyr – Module", "Freyr GRR + Freyr Chat",
-      "Global regulatory reporting with the conversational Freyr Chat layer."),
-    off("of-006", "Freyr – Module + Agent", "Freyr GRR + Freyr Chat + RIA Agent + Workflow",
-      "GRR with Freyr Chat, the RIA agent and workflow automation.", {
-        customer_type_ids: ["ct-pharma-m", "ct-pharma-l", "ct-bio-m", "ct-bio-l", "ct-biopharma-m", "ct-biopharma-l"],
-        market_ids: ALL_MKT,
-      }),
-    off("of-007", "Freyr Module", "Freyr Label",
-      "End-to-end labeling and artwork management.", {
-        materials: [
-          { id: "m-007", kind: "video", label: "Freyr Label walkthrough", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-        ],
-      }),
-    off("of-008", "Freyr Module", "Freyr Submit",
-      "Publishing and submission management to global health authorities.", {
-        market_ids: ALL_MKT,
-      }),
-    off("of-009", "Freyr Module", "Freyr Docs",
-      "Regulatory document management and authoring."),
-    off("of-010", "Freyr Platform", "Agentic Workbench",
-      "The platform workbench for orchestrating Freyr's regulatory agents.", {
-        current_availability: "Available now",
-        future_availability: "Expanded agent library in 2026",
-        customer_type_ids: ALL_CT,
-        market_ids: ALL_MKT,
-        materials: [
-          { id: "m-008", kind: "video", label: "Agentic Workbench launch", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-          { id: "m-009", kind: "whitepaper", label: "Agentic regulatory operations", url: "https://example.com/agentic-workbench.pdf" },
-        ],
-      }),
-    off("of-011", "Freyr Platform", "Omni Object",
-      "Customer assets can be classified and assessed for impact based on an AI-based model.", {
-        customer_type_ids: ["ct-pharma-l", "ct-bio-l", "ct-biopharma-l"],
-        market_ids: ALL_MKT,
-      }),
+    off("of-001", "Freya Module", "Freya Register", ""),
+    off("of-002", "Freya - Module + Module Agent", "Freya Register + Pia, Mia", ""),
+    off("of-003", "Freya - Module + Module Agent + Add on Agent", "Freya Register + Pia, Mia and Via Agents", "", {
+      current_availability: "V1 is available now",
+      future_availability: "V3 is available in July 2026",
+      customer_type_ids: ALL_CT,
+      market_ids: ALL_MKT,
+      materials: [
+        { id: "m-003", kind: "video", label: "Via Agents demo", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+        { id: "m-004", kind: "whitepaper", label: "Post-approval change automation", url: "https://example.com/via-agents-whitepaper.pdf" },
+        { id: "m-005", kind: "pricing", label: "Register stack pricing", url: "https://example.com/register-pricing.pdf" },
+      ],
+    }),
+    off("of-004", "Freya - Module + Agent", "Freya GRR - MPR-PAC + Via Agent",
+      "Via agent enables customers to manage post approval changes"),
+    off("of-005", "Freya - Module", "Freya GRI + Freya chat", "", {
+      customer_type_ids: ALL_CT,
+      market_ids: ALL_MKT,
+    }),
+    off("of-006", "Freya - Module + Agent", "Freya GRI + Freya chat + RIA agent + Workflow", "", {
+      customer_type_ids: ALL_CT,
+      market_ids: ALL_MKT,
+    }),
+    off("of-007", "Freya Module", "Freya Label", ""),
+    off("of-008", "Freya Module", "Freya Submit", ""),
+    off("of-009", "Freya Module", "Freya Docs", ""),
+    off("of-010", "Freya Platform", "Agentic Workbench", "", {
+      materials: [
+        { id: "m-008", kind: "video", label: "Agentic Workbench launch", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+        { id: "m-009", kind: "whitepaper", label: "Agentic regulatory operations", url: "https://example.com/agentic-workbench.pdf" },
+      ],
+    }),
+    off("of-011", "Freya Platform", "Omni Object",
+      "Customer assets can be classified and assessed for impact based on a AI based model"),
     off("of-012", "Freyr AI Native Service", "Publishing Operations",
-      "Publishing services performed by human resources using AI-based tools for document-level publishing and quality check.", {
-        customer_type_ids: ALL_CT,
-        market_ids: ["mkt-usa", "mkt-europe"],
-        materials: [
-          { id: "m-010", kind: "pricing", label: "Publishing Ops pricing", url: "https://example.com/publishing-ops-pricing.pdf" },
-        ],
-      }),
-    off("of-013", "Freyr – Module + Agent", "Freyr GRR – MPR-CTA + Agent",
-      "Global regulatory reporting for clinical trial applications with agent support.", {
-        customer_type_ids: ["ct-bio-s", "ct-bio-m", "ct-bio-l", "ct-biopharma-s", "ct-biopharma-m", "ct-biopharma-l"],
-      }),
-    off("of-014", "Freyr – Module + Agent", "Freyr GRR – MEM-PAC + Via Agent",
-      "Membership/PAC reporting with the Via agent for post-approval changes.", {
-        customer_type_ids: ["ct-pharma-m", "ct-pharma-l"],
-        market_ids: ["mkt-usa", "mkt-europe", "mkt-japan"],
-      }),
+      "Publishing services are performed by Human resources using AI based skills for Document level publishing and Quality check"),
+    off("of-013", "Freya - Module + Agent", "Freya GRR - MPR-CTA + Agent", ""),
+    off("of-014", "Freya - Module + Agent", "Freya GRR - MDV-PAC + Via Agent", ""),
   ];
 }
 

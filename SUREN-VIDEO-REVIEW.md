@@ -83,3 +83,35 @@ USA · Europe · Japan · China · Korea
 9. Built so it can be **rolled out**: clean entry + maintenance screens.
 
 > Scope note: this is requirement #1. Suren said the next function comes after this one is approved.
+
+---
+
+## Reconciliation with the downloaded Excel (`Digital Sales and Marketing.xlsx`)
+
+After building from the (low-quality) video frames, Suren shared the actual file.
+Corrections applied to the seed so it matches his data verbatim:
+
+- **Brand is "Freya", not "Freyr"** on the offerings (Freya Register, Freya GRI,
+  Freya Label, Freya Platform, …). One row is literally "Freyr AI Native Service".
+  ⚠️ **Open question for Suren:** is "Freya" intended, or a typo for "Freyr"
+  (the company)? Seeded exactly as written; say the word and I'll switch them.
+- Misreads fixed: **Pia** (not Pic), **GRI** (not GRR) on the Freya GRI + chat
+  rows, **MDV-PAC** (not MEM-PAC), "Via **Agents**" (plural).
+- Descriptions for of-004 / of-011 / of-012 now match his wording exactly.
+- **Customer-type Y-matrix** now mirrors the file: only 3 offerings are mapped
+  (Freya Register + Pia, Mia and Via Agents; Freya GRI + Freya chat; Freya GRI +
+  Freya chat + RIA agent + Workflow) — all 9 types each. The other 11 are blank
+  in his sheet (to be filled via the entry screen).
+
+Differences kept on purpose (file is an earlier trim; video + audio are richer):
+- **Availability** kept as two fields (Current + Future) — the video showed two
+  columns and Suren's audio explicitly said "available now" vs "available July
+  2026". The downloaded file has a single "Offering Availability" column.
+  ⚠️ Tell me if you want it collapsed to one.
+- **Markets** (USA/Europe/Japan/China/Korea) and **Sales Materials**
+  (Videos / Presentations / Whitepapers / Pricing) are kept — they're in the
+  video frames and the audio, but not in this downloaded snapshot. Per-offering
+  market/material values on the 3 mapped rows are sample data.
+
+The **Definition** sheet (9 customer types + product type / revenue / employees /
+operational focus) matched the build exactly — no changes needed.
