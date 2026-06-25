@@ -57,6 +57,14 @@ export default function OfferingDetailPage({
       )
     : [];
 
+  // At-a-glance mapping status, mirroring the list cards so an incomplete
+  // offering is obvious the moment you open it (feeds Suren's "still to map"
+  // worklist).
+  const isMapped =
+    o.customerTypes.length > 0 ||
+    o.markets.length > 0 ||
+    o.materials.length > 0;
+
   return (
     <div className="max-w-[900px]">
       <RecordView
@@ -74,11 +82,17 @@ export default function OfferingDetailPage({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
               <Sparkles size={11} strokeWidth={2} />
               {o.offering_type || "Offering"}
             </span>
+            {!isMapped && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary bg-surface border border-border-light rounded-md px-2 py-1">
+                <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
+                Not yet mapped
+              </span>
+            )}
           </div>
           <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-text-primary">
             {o.offering_name}

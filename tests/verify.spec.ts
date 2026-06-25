@@ -3493,4 +3493,15 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.goto(`${BASE}/offerings?sort=bogus`);
     await expect(page.locator(sortSel)).toHaveValue("default");
   });
+
+  test("257 — offering detail shows mapping status at a glance (V24)", async ({
+    page,
+  }) => {
+    // of-001 (Freya Register) is seeded unmapped → badge present
+    await page.goto(`${BASE}/offerings/of-001`);
+    await expect(page.getByText("Not yet mapped")).toBeVisible();
+    // of-003 is fully mapped → no badge
+    await page.goto(`${BASE}/offerings/of-003`);
+    await expect(page.getByText("Not yet mapped")).toHaveCount(0);
+  });
 });
