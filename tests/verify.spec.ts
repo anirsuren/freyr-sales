@@ -3393,4 +3393,19 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.source).not.toBe("offerings");
     expect((d.reply || "").length).toBeGreaterThan(0);
   });
+
+  test("252 — agent empty state surfaces the offerings starter (V20)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/agent`);
+    const chip = page.getByRole("button", {
+      name: "What offerings do we have?",
+    });
+    await expect(chip).toBeVisible({ timeout: 8000 });
+    await chip.click();
+    // The agent replies with the grounded offerings overview.
+    await expect(
+      page.getByText(/offerings? across \d+ type/i).first()
+    ).toBeVisible({ timeout: 12000 });
+  });
 });

@@ -23,6 +23,8 @@ const STARTERS = [
   "What should I focus on today?",
   "Which deals are cooling?",
   "What's my open pipeline worth?",
+  // Surfaces the offerings repository through the agent (factual lookup).
+  "What offerings do we have?",
   // An action starter (not just a question) — shows the agent DOES work, not
   // only answers. Resolves to the real quietest account and drafts it.
   "Draft a re-engagement for a cooling account",
