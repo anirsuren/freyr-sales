@@ -657,9 +657,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("56 — intake: recent prospects prefill the form", async ({ page }) => {
     await page.goto(`${BASE}/intake`);
     await expect(page.getByText("Recent prospects")).toBeVisible();
-    await page.getByRole("button", { name: /Helix Biologics/ }).click();
+    await page.getByRole("button", { name: /Lumen Therapeutics/ }).click();
     await expect(page.locator('input[name="companyName"]')).toHaveValue(
-      "Helix Biologics"
+      "Lumen Therapeutics"
     );
   });
 

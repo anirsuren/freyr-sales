@@ -20,19 +20,23 @@ type Recent = {
   linkedinUrl: string;
 };
 
+// Sample "recent prospects" shown before the rep has researched anyone. These
+// are net-new companies (deliberately NOT existing CRM accounts) so clicking
+// one starts a fresh session for a new prospect — and so they never contradict
+// a real account's contact/website. Names, domains and emails are self-consistent.
 const SEED_RECENTS: Recent[] = [
   {
-    companyName: "Helix Biologics",
-    websiteUrl: "https://helixbio.com",
+    companyName: "Lumen Therapeutics",
+    websiteUrl: "https://lumentherapeutics.com",
     contactName: "Dr. Aria Voss",
-    contactEmail: "aria.voss@helixbio.com",
+    contactEmail: "aria.voss@lumentherapeutics.com",
     linkedinUrl: "https://linkedin.com/in/aria-voss",
   },
   {
-    companyName: "Aether Devices",
-    websiteUrl: "https://aetherdevices.com",
+    companyName: "Halcyon Biopharma",
+    websiteUrl: "https://halcyonbiopharma.com",
     contactName: "Marcus Lindqvist",
-    contactEmail: "m.lindqvist@aetherdevices.com",
+    contactEmail: "m.lindqvist@halcyonbiopharma.com",
     linkedinUrl: "https://linkedin.com/in/marcus-lindqvist",
   },
 ];
