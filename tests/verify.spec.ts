@@ -3570,4 +3570,19 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.locator('input[placeholder="e.g. Freya Register"]')
     ).toBeFocused();
   });
+
+  test("262 — half-filled material row blocks save instead of vanishing (V29)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/new`);
+    await page
+      .locator('input[placeholder="e.g. Freya Register"]')
+      .fill("QA Material Guard");
+    await page.getByRole("button", { name: /Add material/i }).click();
+    await page.getByPlaceholder("Label").first().fill("Pricing deck");
+    // URL intentionally left blank — must be flagged, not silently dropped
+    await page.getByRole("button", { name: /Save offering/i }).click();
+    await expect(page).toHaveURL(/\/offerings\/new/);
+    await expect(page.getByText(/Add a link for/i)).toBeVisible();
+  });
 });

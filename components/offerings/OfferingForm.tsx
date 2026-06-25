@@ -113,6 +113,21 @@ export function OfferingForm({
       nameRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
     }
+    // A material row with only a name or only a link is a half-filled mistake —
+    // it would be silently dropped on save. Flag it so the user doesn't lose it.
+    const partial = materials.find(
+      (m) =>
+        (m.label.trim() && !m.url.trim()) || (!m.label.trim() && m.url.trim())
+    );
+    if (partial) {
+      toast(
+        partial.label.trim()
+          ? `Add a link for “${partial.label.trim()}” — or remove that material.`
+          : "Add a name for that material — or remove the empty link.",
+        "error"
+      );
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(
