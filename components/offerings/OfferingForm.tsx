@@ -64,6 +64,22 @@ export function OfferingForm({
     return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
   }
 
+  // Group the customer-type chips by family for scannable selection.
+  const CT_FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
+  const ctGroups = CT_FAMILY_ORDER.map((fam) => ({
+    fam,
+    types: customerTypes.filter((c) => c.family === fam),
+  })).filter((g) => g.types.length > 0);
+  const ctOther = customerTypes.filter(
+    (c) => !CT_FAMILY_ORDER.includes(c.family)
+  );
+  const chipCls = (on: boolean) =>
+    `text-[12.5px] font-medium rounded-md px-2.5 py-1.5 border transition-colors ${
+      on
+        ? "border-blue-primary bg-blue-light text-blue-primary"
+        : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
+    }`;
+
   async function submit() {
     if (!offeringName.trim()) {
       toast("Give the offering a name first.", "error");
@@ -162,25 +178,69 @@ export function OfferingForm({
       {/* Customer types */}
       <Card>
         <label className={LABEL}>Applicable customer types</label>
-        <div className="flex flex-wrap gap-2">
-          {customerTypes.map((c) => {
-            const on = ctIds.includes(c.id);
+        <div className="space-y-3 mt-0.5">
+          {ctGroups.map(({ fam, types }) => {
+            const ids = types.map((t) => t.id);
+            const allOn = ids.every((id) => ctIds.includes(id));
             return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCtIds((l) => toggle(l, c.id))}
-                aria-pressed={on}
-                className={`text-[12.5px] font-medium rounded-md px-2.5 py-1.5 border transition-colors ${
-                  on
-                    ? "border-blue-primary bg-blue-light text-blue-primary"
-                    : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
-                }`}
-              >
-                {c.name}
-              </button>
+              <div key={fam}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                    {fam}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCtIds((l) =>
+                        allOn
+                          ? l.filter((id) => !ids.includes(id))
+                          : Array.from(new Set([...l, ...ids]))
+                      )
+                    }
+                    className="text-[11px] font-semibold text-blue-primary hover:underline"
+                  >
+                    {allOn ? "Clear" : "All"}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {types.map((c) => {
+                    const on = ctIds.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setCtIds((l) => toggle(l, c.id))}
+                        aria-pressed={on}
+                        aria-label={c.name}
+                        title={c.name}
+                        className={chipCls(on)}
+                      >
+                        {c.size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
+          {ctOther.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {ctOther.map((c) => {
+                const on = ctIds.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCtIds((l) => toggle(l, c.id))}
+                    aria-pressed={on}
+                    className={chipCls(on)}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Card>
 

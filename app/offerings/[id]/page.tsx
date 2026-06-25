@@ -159,35 +159,40 @@ export default function OfferingDetailPage({
             papers or pricing
           </Link>
         ) : (
-          <div className="space-y-4">
-            {KIND_ORDER.map((kind) => {
-              const items = o.materials.filter((m) => m.kind === kind);
-              if (items.length === 0) return null;
-              const Icon = MATERIAL_ICON[kind];
-              return (
-                <div key={kind}>
-                  <p className="flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary mb-1.5">
-                    <Icon size={14} strokeWidth={1.8} />
-                    {MATERIAL_META[kind].plural}
-                  </p>
-                  <ul className="space-y-1">
-                    {items.map((m) => (
-                      <li key={m.id}>
-                        <a
-                          href={m.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-[13.5px] text-blue-primary hover:underline"
-                        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {KIND_ORDER.flatMap((kind) =>
+              o.materials
+                .filter((m) => m.kind === kind)
+                .map((m) => {
+                  const Icon = MATERIAL_ICON[kind];
+                  return (
+                    <a
+                      key={m.id}
+                      href={m.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center gap-3 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+                    >
+                      <span className="w-9 h-9 rounded-md bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                        <Icon size={16} strokeWidth={1.8} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
                           {m.label}
-                          <ExternalLink size={13} strokeWidth={1.7} />
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
+                        </span>
+                        <span className="block text-[11px] text-text-tertiary">
+                          {MATERIAL_META[kind].label}
+                        </span>
+                      </span>
+                      <ExternalLink
+                        size={14}
+                        strokeWidth={1.7}
+                        className="text-text-tertiary group-hover:text-blue-primary shrink-0"
+                      />
+                    </a>
+                  );
+                })
+            )}
           </div>
         )}
       </Card>
