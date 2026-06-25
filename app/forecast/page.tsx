@@ -35,8 +35,13 @@ export default async function ForecastPage() {
     (s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0),
     0
   );
-  const commitPct = Math.min(100, Math.round((commit / QUOTA) * 100));
-  const bestPct = Math.min(100, Math.round((bestCase / QUOTA) * 100));
+  // True attainment for the labels — best case can exceed 100% of quota, which
+  // is good news worth showing, not capping away. The bars below cap at 100% so
+  // they never overflow the track.
+  const commitPct = Math.round((commit / QUOTA) * 100);
+  const bestPct = Math.round((bestCase / QUOTA) * 100);
+  const commitBar = Math.min(100, commitPct);
+  const bestBar = Math.min(100, bestPct);
   const gap = Math.max(0, QUOTA - commit);
 
   const byStage = STAGES.map((stage) => {
@@ -145,12 +150,12 @@ export default async function ForecastPage() {
         <div className="relative h-4 rounded-full bg-surface overflow-hidden">
           <div
             className="absolute inset-y-0 left-0 rounded-full bg-blue-subtle"
-            style={{ width: `${bestPct}%` }}
+            style={{ width: `${bestBar}%` }}
             title={`Best case ${formatMoney(bestCase)}`}
           />
           <div
             className="absolute inset-y-0 left-0 rounded-full bg-blue-primary"
-            style={{ width: `${commitPct}%` }}
+            style={{ width: `${commitBar}%` }}
             title={`Commit ${formatMoney(commit)}`}
           />
         </div>
