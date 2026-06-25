@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { ClipboardCheck, CalendarClock, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ClipboardCheck, CalendarClock, ArrowRight, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { AgentActions } from "@/components/agent/AgentActions";
+import { nextBestActions, focusActions } from "@/lib/agent";
 import { formatDate, cn } from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
 
@@ -27,11 +29,12 @@ function dueInfo(due: string, todayMs: number) {
 
 export default async function TasksPage() {
   const db = getDb();
-  const [sessions, customers, contacts, interactions] = await Promise.all([
+  const [sessions, customers, contacts, interactions, agentPrefs] = await Promise.all([
     db.pitchSessions.list(),
     db.customers.list(),
     db.contacts.list(),
     db.interactions.list(),
+    db.agentPrefs.get(),
   ]);
 
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
@@ -70,6 +73,16 @@ export default async function TasksPage() {
   const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const overdueCount = followUps.filter((t) => dueInfo(t.due, todayMs).kind === "overdue").length;
 
+  // Lead with the agent's real, draftable next-best-actions for exactly these
+  // accounts — the same surface the dashboard and account pages use — so Tasks
+  // isn't just a list of problems but a place to have the agent clear them
+  // (it drafts; the human still approves).
+  const agentActions = focusActions(
+    nextBestActions({ sessions, customers, contacts, interactions }),
+    customers,
+    agentPrefs
+  ).actions.slice(0, 4);
+
   return (
     <div>
       <PageHeader
@@ -89,6 +102,25 @@ export default async function TasksPage() {
         />
       ) : (
         <div className="space-y-8 max-w-[820px]">
+          {agentActions.length > 0 && (
+            <Card className="bg-blue-light/40 border-blue-subtle">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[15px] font-semibold text-text-primary flex items-center gap-2">
+                  <Sparkles size={17} strokeWidth={1.8} className="text-blue-primary" />
+                  Let the agent clear these
+                </h2>
+                <Link
+                  href="/agent"
+                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+                >
+                  Open Agent
+                  <ArrowRight size={13} strokeWidth={1.8} />
+                </Link>
+              </div>
+              <AgentActions actions={agentActions} compact />
+            </Card>
+          )}
+
           <section>
             <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3 flex items-center gap-2">
               <ClipboardCheck size={15} strokeWidth={1.7} className="text-blue-primary" />
