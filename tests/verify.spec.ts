@@ -3684,4 +3684,16 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.locator('input[placeholder="e.g. Freya Register"]')
     ).toBeFocused();
   });
+
+  test("269 — add-type panel says update, not add, for an existing pair (V36)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/customer-types`);
+    await page.getByRole("button", { name: /Add customer type/i }).click();
+    // default Pharmaceutical · Small is seeded → the form refines, not adds
+    await expect(page.getByText(/already has a definition/)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Update definition/ })
+    ).toBeVisible();
+  });
 });

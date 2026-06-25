@@ -147,6 +147,13 @@ export function CustomerTypesManager({
     (c) => !FAMILIES.includes(c.family as CustomerFamily)
   );
 
+  // Every family+size pair is seeded, so the form usually refines an existing
+  // definition rather than adding a new one — reflect that in the button/hint so
+  // the action is never a surprise.
+  const typeExists = customerTypes.some(
+    (c) => c.family === family && c.size === size
+  );
+
   return (
     <div className="space-y-6">
       {/* Add-type panel */}
@@ -209,8 +216,14 @@ export function CustomerTypesManager({
               <label className={LABEL}>Operational focus</label>
               <input className={FIELD} value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Their operational profile" />
             </div>
+            {typeExists && (
+              <p className="text-[12px] text-text-tertiary -mt-1">
+                {family} · {size} already has a definition — saving will update
+                it.
+              </p>
+            )}
             <Button onClick={addType} loading={busy}>
-              Add customer type
+              {typeExists ? "Update definition" : "Add customer type"}
             </Button>
           </div>
         )}
