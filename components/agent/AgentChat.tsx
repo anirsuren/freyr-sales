@@ -46,6 +46,21 @@ function uid() {
   return `c-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
+// A thread's title is its first real message — but a bare greeting ("hi",
+// "hey", "what's up") makes a useless label that then sticks forever, so the
+// recent list reads "hi / hey / hi". Greetings return "" here (the list falls
+// back to "New chat"); the title is then taken from the first message that
+// actually says what the chat is about.
+const GREETING_ONLY =
+  /^(hi+|hey+|hello+|yo|sup|wass?up|what'?s? up|hiya|howdy|hey there|good (morning|afternoon|evening)|how('?s| is) (it going|things)|how are you|heybuddy)[\s!.,?]*$/i;
+
+function smartTitle(text: string): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (!t || GREETING_ONLY.test(t)) return "";
+  const cleaned = t.charAt(0).toUpperCase() + t.slice(1);
+  return cleaned.length > 48 ? cleaned.slice(0, 47).trimEnd() + "…" : cleaned;
+}
+
 // --- lightweight markdown: [link](/path), **bold**, *italic*, `code` + bullets -
 // Links are restricted to internal paths (href must start with "/") so the chat
 // can only ever deep-link inside the app, never to an external URL.
@@ -217,16 +232,19 @@ export function AgentChat() {
       // very next message continues the same thread (don't mutate inside the updater).
       const isNew = !activeId;
       const id = activeId || uid();
+      const derivedTitle = smartTitle(text);
       setActiveId(id);
       setConvos((prev) => {
         let next = isNew
-          ? [{ id, title: text.slice(0, 48), messages: [], updated: Date.now() }, ...prev]
+          ? [{ id, title: derivedTitle, messages: [], updated: Date.now() }, ...prev]
           : [...prev];
         next = next.map((c) =>
           c.id === id
             ? {
                 ...c,
-                title: c.messages.length === 0 ? text.slice(0, 48) : c.title,
+                // Keep a meaningful title once we have one; until then, take it
+                // from the first message that isn't just a greeting.
+                title: c.title || derivedTitle,
                 messages: [...c.messages, { role: "user", text, ts: Date.now() }],
                 updated: Date.now(),
               }
