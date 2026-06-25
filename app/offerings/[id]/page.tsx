@@ -109,9 +109,12 @@ export default function OfferingDetailPage({
                   side="top"
                   align="left"
                 >
-                  <span className="text-[12px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2 py-1 cursor-help">
+                  <Link
+                    href={`/offerings?type=${c.id}`}
+                    className="inline-block text-[12px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2 py-1 transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                  >
                     {c.name}
-                  </span>
+                  </Link>
                 </Tooltip>
               ))}
             </div>
@@ -133,12 +136,13 @@ export default function OfferingDetailPage({
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {o.markets.map((m) => (
-                <span
+                <Link
                   key={m.id}
-                  className="text-[12px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2 py-1"
+                  href={`/offerings?market=${m.id}`}
+                  className="inline-block text-[12px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2 py-1 transition-colors hover:border-blue-subtle hover:text-blue-primary"
                 >
                   {m.name}
-                </span>
+                </Link>
               ))}
             </div>
           )}

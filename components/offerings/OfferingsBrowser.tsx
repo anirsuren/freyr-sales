@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Video,
@@ -44,9 +45,18 @@ export function OfferingsBrowser({
   customerTypes: CustomerType[];
   markets: Market[];
 }) {
-  const [q, setQ] = useState("");
-  const [ctId, setCtId] = useState("");
-  const [mktId, setMktId] = useState("");
+  // Seed filters from the URL so chips elsewhere can deep-link into a filtered
+  // view (e.g. /offerings?market=mkt-europe from a market chip on an offering).
+  const params = useSearchParams();
+  const initType = customerTypes.some((c) => c.id === params.get("type"))
+    ? params.get("type")!
+    : "";
+  const initMkt = markets.some((m) => m.id === params.get("market"))
+    ? params.get("market")!
+    : "";
+  const [q, setQ] = useState(params.get("q") ?? "");
+  const [ctId, setCtId] = useState(initType);
+  const [mktId, setMktId] = useState(initMkt);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();

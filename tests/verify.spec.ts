@@ -3249,4 +3249,20 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.offering.customer_type_ids).toContain("ct-pharma-l");
     expect(d.offering.materials[0].id).toBeTruthy();
   });
+
+  test("242 — market/type chips deep-link into a filtered offerings view (V16)", async ({
+    page,
+  }) => {
+    // A ?market= deep link pre-filters the list to that market.
+    await page.goto(`${BASE}/offerings?market=mkt-europe`);
+    await page.waitForTimeout(400);
+    await expect(
+      page.getByText("Freya GRI + Freya chat", { exact: true })
+    ).toBeVisible(); // of-005 carries Europe
+    await expect(page.getByText("Freya Submit")).toHaveCount(0); // of-008 has no market
+    // A market chip on an offering links into that filtered view.
+    await page.goto(`${BASE}/offerings/of-003`);
+    await page.getByRole("link", { name: "Japan", exact: true }).click();
+    await expect(page).toHaveURL(/market=mkt-japan/);
+  });
 });

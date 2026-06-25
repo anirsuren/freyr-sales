@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -86,11 +87,13 @@ export default function OfferingsPage() {
         <Stat label="Markets" value={markets.length} />
       </div>
 
-      <OfferingsBrowser
-        offerings={offerings}
-        customerTypes={customerTypes}
-        markets={markets}
-      />
+      <Suspense fallback={null}>
+        <OfferingsBrowser
+          offerings={offerings}
+          customerTypes={customerTypes}
+          markets={markets}
+        />
+      </Suspense>
     </div>
   );
 }
