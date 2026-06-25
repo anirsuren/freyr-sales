@@ -8,6 +8,8 @@ import {
   DollarSign,
   ExternalLink,
   Sparkles,
+  Pencil,
+  Plus,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -46,20 +48,30 @@ export default function OfferingDetailPage({
         <ArrowLeft size={15} strokeWidth={1.8} /> All offerings
       </Link>
 
-      <div className="flex items-center gap-2 mb-1">
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-blue-primary bg-blue-light rounded px-1.5 py-0.5">
-          <Sparkles size={11} strokeWidth={2} />
-          {o.offering_type || "Offering"}
-        </span>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
+              <Sparkles size={11} strokeWidth={2} />
+              {o.offering_type || "Offering"}
+            </span>
+          </div>
+          <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-text-primary">
+            {o.offering_name}
+          </h1>
+          {o.offering_description && (
+            <p className="text-[14px] text-text-secondary mt-2 max-w-[680px] leading-relaxed">
+              {o.offering_description}
+            </p>
+          )}
+        </div>
+        <Link
+          href={`/offerings/${o.id}/edit`}
+          className="shrink-0 inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-4 py-2 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
+        >
+          <Pencil size={14} strokeWidth={1.8} /> Edit offering
+        </Link>
       </div>
-      <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-text-primary">
-        {o.offering_name}
-      </h1>
-      {o.offering_description && (
-        <p className="text-[14px] text-text-secondary mt-2 max-w-[680px]">
-          {o.offering_description}
-        </p>
-      )}
 
       {/* Availability */}
       <div className="flex flex-wrap gap-2 mt-4">
@@ -82,7 +94,12 @@ export default function OfferingDetailPage({
             Applicable customer types ({o.customerTypes.length})
           </h2>
           {o.customerTypes.length === 0 ? (
-            <p className="text-[13px] text-text-secondary">None selected.</p>
+            <Link
+              href={`/offerings/${o.id}/edit`}
+              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+            >
+              <Plus size={13} strokeWidth={2} /> Add customer types
+            </Link>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {o.customerTypes.map((c) => (
@@ -107,7 +124,12 @@ export default function OfferingDetailPage({
             Applicable markets ({o.markets.length})
           </h2>
           {o.markets.length === 0 ? (
-            <p className="text-[13px] text-text-secondary">None selected.</p>
+            <Link
+              href={`/offerings/${o.id}/edit`}
+              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+            >
+              <Plus size={13} strokeWidth={2} /> Add markets
+            </Link>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {o.markets.map((m) => (
@@ -129,9 +151,13 @@ export default function OfferingDetailPage({
           Sales materials ({o.materials.length})
         </h2>
         {o.materials.length === 0 ? (
-          <p className="text-[13px] text-text-secondary">
-            No sales materials added yet.
-          </p>
+          <Link
+            href={`/offerings/${o.id}/edit`}
+            className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+          >
+            <Plus size={13} strokeWidth={2} /> Add videos, presentations, white
+            papers or pricing
+          </Link>
         ) : (
           <div className="space-y-4">
             {KIND_ORDER.map((kind) => {

@@ -27,22 +27,38 @@ const LABEL =
 export function OfferingForm({
   customerTypes,
   markets,
+  offeringId,
+  initial,
 }: {
   customerTypes: CustomerType[];
   markets: Market[];
+  offeringId?: string;
+  initial?: {
+    offering_type?: string;
+    offering_name?: string;
+    offering_description?: string;
+    current_availability?: string;
+    future_availability?: string;
+    customer_type_ids?: string[];
+    market_ids?: string[];
+    materials?: MaterialRow[];
+  };
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const isEdit = !!offeringId;
   const [saving, setSaving] = useState(false);
 
-  const [offeringType, setOfferingType] = useState("");
-  const [offeringName, setOfferingName] = useState("");
-  const [description, setDescription] = useState("");
-  const [current, setCurrent] = useState("");
-  const [future, setFuture] = useState("");
-  const [ctIds, setCtIds] = useState<string[]>([]);
-  const [mktIds, setMktIds] = useState<string[]>([]);
-  const [materials, setMaterials] = useState<MaterialRow[]>([]);
+  const [offeringType, setOfferingType] = useState(initial?.offering_type ?? "");
+  const [offeringName, setOfferingName] = useState(initial?.offering_name ?? "");
+  const [description, setDescription] = useState(initial?.offering_description ?? "");
+  const [current, setCurrent] = useState(initial?.current_availability ?? "");
+  const [future, setFuture] = useState(initial?.future_availability ?? "");
+  const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
+  const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
+  const [materials, setMaterials] = useState<MaterialRow[]>(
+    initial?.materials ?? []
+  );
 
   function toggle(list: string[], id: string) {
     return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -55,24 +71,27 @@ export function OfferingForm({
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/offerings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          offering_type: offeringType,
-          offering_name: offeringName,
-          offering_description: description,
-          current_availability: current,
-          future_availability: future,
-          customer_type_ids: ctIds,
-          market_ids: mktIds,
-          materials: materials.filter((m) => m.label.trim() && m.url.trim()),
-        }),
-      });
+      const res = await fetch(
+        isEdit ? `/api/offerings/${offeringId}` : "/api/offerings",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            offering_type: offeringType,
+            offering_name: offeringName,
+            offering_description: description,
+            current_availability: current,
+            future_availability: future,
+            customer_type_ids: ctIds,
+            market_ids: mktIds,
+            materials: materials.filter((m) => m.label.trim() && m.url.trim()),
+          }),
+        }
+      );
       const data = await res.json();
       if (data.ok) {
-        toast("Offering saved.");
-        router.push(`/offerings/${data.offering.id}`);
+        toast(isEdit ? "Offering updated." : "Offering saved.");
+        router.push(`/offerings/${isEdit ? offeringId : data.offering.id}`);
         router.refresh();
       } else {
         toast(data.error || "Couldn't save the offering.", "error");
@@ -264,11 +283,13 @@ export function OfferingForm({
 
       <div className="flex items-center gap-3">
         <Button onClick={submit} loading={saving}>
-          Save offering
+          {isEdit ? "Save changes" : "Save offering"}
         </Button>
         <button
           type="button"
-          onClick={() => router.push("/offerings")}
+          onClick={() =>
+            router.push(isEdit ? `/offerings/${offeringId}` : "/offerings")
+          }
           className="text-[14px] font-semibold text-text-secondary hover:text-text-primary"
         >
           Cancel

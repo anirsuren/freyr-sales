@@ -3216,4 +3216,31 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     for (const m of ["USA", "Europe", "Japan", "China", "Korea"])
       expect(names).toContain(m);
   });
+
+  test("241 — an existing offering can be edited (maintainable repository) (V16)", async ({
+    page,
+    request,
+  }) => {
+    // Detail page exposes an Edit affordance...
+    await page.goto(`${BASE}/offerings/of-009`);
+    await expect(page.getByRole("link", { name: /Edit offering/ })).toBeVisible();
+    // ...the edit route renders the form pre-filled with the offering's name...
+    await page.goto(`${BASE}/offerings/of-009/edit`);
+    await expect(
+      page.getByRole("heading", { name: "Edit offering" })
+    ).toBeVisible();
+    await expect(page.locator('input[value="Freya Docs"]')).toBeVisible();
+    // ...and PATCH actually persists a mapping (material gets a server id).
+    const res = await request.patch(`${BASE}/api/offerings/of-009`, {
+      data: {
+        customer_type_ids: ["ct-pharma-l"],
+        market_ids: ["mkt-europe"],
+        materials: [{ kind: "video", label: "Docs demo", url: "https://youtu.be/x" }],
+      },
+    });
+    const d = await res.json();
+    expect(d.ok).toBe(true);
+    expect(d.offering.customer_type_ids).toContain("ct-pharma-l");
+    expect(d.offering.materials[0].id).toBeTruthy();
+  });
 });

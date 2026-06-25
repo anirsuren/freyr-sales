@@ -297,7 +297,10 @@ export function updateOffering(
 ): Offering | null {
   const i = store.offerings.findIndex((o) => o.id === id);
   if (i === -1) return null;
-  store.offerings[i] = { ...store.offerings[i], ...data, id };
+  const materials = data.materials
+    ? data.materials.map((m) => ({ ...m, id: m.id || rid("m") }))
+    : store.offerings[i].materials;
+  store.offerings[i] = { ...store.offerings[i], ...data, materials, id };
   return store.offerings[i];
 }
 
