@@ -15,6 +15,7 @@ import {
 } from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Offerings" };
 
 function Stat({
   label,

@@ -12,6 +12,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
+export function generateMetadata({ params }: { params: { id: string } }) {
+  const o = getOffering(params.id);
+  return { title: o ? `Edit ${o.offering_name} · Offerings` : "Edit offering" };
+}
+
 export default function EditOfferingPage({
   params,
 }: {

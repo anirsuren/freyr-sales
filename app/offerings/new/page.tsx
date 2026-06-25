@@ -15,6 +15,7 @@ function distinctTypes() {
 }
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "New offering" };
 
 export default function NewOfferingPage() {
   return (

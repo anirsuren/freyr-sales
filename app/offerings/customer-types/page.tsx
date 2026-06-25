@@ -9,6 +9,7 @@ import {
 } from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Customer types & markets" };
 
 export default function CustomerTypesPage() {
   // How many offerings are mapped to each customer type / market — lets the

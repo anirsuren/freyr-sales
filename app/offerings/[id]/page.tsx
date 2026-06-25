@@ -25,6 +25,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
+export function generateMetadata({ params }: { params: { id: string } }) {
+  const o = getOffering(params.id);
+  return { title: o ? `${o.offering_name} · Offerings` : "Offering" };
+}
+
 const MATERIAL_ICON: Record<MaterialKind, typeof Video> = {
   video: Video,
   presentation: Presentation,
