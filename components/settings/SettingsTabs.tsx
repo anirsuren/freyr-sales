@@ -63,10 +63,10 @@ const SERVICE_LABELS: Record<string, string> = {
 
 type Member = { name: string; email: string; role: string; you?: boolean };
 const DEFAULT_TEAM: Member[] = [
-  { name: "Suren Dheen", email: "suren.dheen@freyr.example", role: "Admin", you: true },
-  { name: "Mark Miller", email: "mark.miller@freyr.example", role: "Manager" },
-  { name: "Dana Whitfield", email: "dana@freyr.example", role: "Rep" },
-  { name: "Owen Bradley", email: "owen@freyr.example", role: "Rep" },
+  { name: "Suren Dheen", email: "suren.dheen@freyrsolutions.com", role: "Admin", you: true },
+  { name: "Mark Miller", email: "mark.miller@freyrsolutions.com", role: "Manager" },
+  { name: "Dana Whitfield", email: "dana@freyrsolutions.com", role: "Rep" },
+  { name: "Owen Bradley", email: "owen@freyrsolutions.com", role: "Rep" },
 ];
 
 const NOTIFS = [
@@ -110,7 +110,7 @@ export function SettingsTabs({
   const [profile, setProfile] = useState({
     name: "Suren Dheen",
     title: "Senior Sales Rep",
-    email: "suren.dheen@freyr.example",
+    email: "suren.dheen@freyrsolutions.com",
     signature: "Suren Dheen\nFreyr Solutions",
   });
   const [team, setTeam] = useState<Member[]>(DEFAULT_TEAM);

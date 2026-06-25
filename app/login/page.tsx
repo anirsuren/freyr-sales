@@ -37,7 +37,7 @@ export default function LoginPage() {
             router.replace("/dashboard");
           }}
         >
-          <Input type="email" placeholder="Email" defaultValue="suren.dheen@freyr.example" />
+          <Input type="email" placeholder="Email" defaultValue="suren.dheen@freyrsolutions.com" />
           <Input type="password" placeholder="Password" defaultValue="••••••••" />
           <Button type="submit" className="w-full">
             Sign in
