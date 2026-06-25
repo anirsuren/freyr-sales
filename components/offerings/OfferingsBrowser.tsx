@@ -173,14 +173,36 @@ export function OfferingsBrowser({
         Showing {filtered.length} of {offerings.length} offerings
       </p>
 
-      {filtered.length === 0 ? (
+      {offerings.length === 0 ? (
+        <Card className="text-center py-16">
+          <p className="text-[14px] font-medium text-text-primary">
+            No offerings yet.
+          </p>
+          <p className="text-[13px] text-text-secondary mt-1 mb-4">
+            Build the repository by adding your first offering.
+          </p>
+          <Link
+            href="/offerings/new"
+            className="inline-flex items-center justify-center text-[13px] font-semibold rounded-md px-4 py-2 bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+          >
+            + New offering
+          </Link>
+        </Card>
+      ) : filtered.length === 0 ? (
         <Card className="text-center py-16">
           <p className="text-[14px] font-medium text-text-primary">
             No offerings match these filters.
           </p>
-          <p className="text-[13px] text-text-secondary mt-1">
-            Try clearing a filter or widening your search.
-          </p>
+          <button
+            onClick={() => {
+              setQ("");
+              setCtId("");
+              setMktId("");
+            }}
+            className="text-[13px] font-semibold text-blue-primary hover:underline mt-1"
+          >
+            Clear filters
+          </button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">

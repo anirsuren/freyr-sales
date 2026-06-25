@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingForm } from "@/components/offerings/OfferingForm";
-import { getOffering, listCustomerTypes, listMarkets } from "@/lib/offerings";
+import {
+  getOffering,
+  listCustomerTypes,
+  listMarkets,
+  listOfferings,
+} from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +49,11 @@ export default function EditOfferingPage({
         }}
         customerTypes={listCustomerTypes()}
         markets={listMarkets()}
+        existingTypes={Array.from(
+          new Set(
+            listOfferings().map((x) => x.offering_type).filter(Boolean)
+          )
+        ).sort()}
       />
     </div>
   );

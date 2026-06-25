@@ -2,7 +2,17 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingForm } from "@/components/offerings/OfferingForm";
-import { listCustomerTypes, listMarkets } from "@/lib/offerings";
+import {
+  listCustomerTypes,
+  listMarkets,
+  listOfferings,
+} from "@/lib/offerings";
+
+function distinctTypes() {
+  return Array.from(
+    new Set(listOfferings().map((o) => o.offering_type).filter(Boolean))
+  ).sort();
+}
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +29,11 @@ export default function NewOfferingPage() {
         title="New offering"
         subtitle="Add an offering to the repository — its type, who it's for, the markets it's available in, and the sales materials behind it."
       />
-      <OfferingForm customerTypes={listCustomerTypes()} markets={listMarkets()} />
+      <OfferingForm
+        customerTypes={listCustomerTypes()}
+        markets={listMarkets()}
+        existingTypes={distinctTypes()}
+      />
     </div>
   );
 }

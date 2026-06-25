@@ -27,11 +27,13 @@ const LABEL =
 export function OfferingForm({
   customerTypes,
   markets,
+  existingTypes = [],
   offeringId,
   initial,
 }: {
   customerTypes: CustomerType[];
   markets: Market[];
+  existingTypes?: string[];
   offeringId?: string;
   initial?: {
     offering_type?: string;
@@ -129,8 +131,17 @@ export function OfferingForm({
               className={FIELD}
               value={offeringType}
               onChange={(e) => setOfferingType(e.target.value)}
-              placeholder="e.g. Freyr Module, Freyr Platform"
+              placeholder="e.g. Freya Module, Freya Platform"
+              list="offering-types"
+              autoComplete="off"
             />
+            {existingTypes.length > 0 && (
+              <datalist id="offering-types">
+                {existingTypes.map((t) => (
+                  <option key={t} value={t} />
+                ))}
+              </datalist>
+            )}
           </div>
           <div>
             <label className={LABEL}>
