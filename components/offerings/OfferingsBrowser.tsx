@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -54,16 +54,39 @@ export function OfferingsBrowser({
   const initMkt = markets.some((m) => m.id === params.get("market"))
     ? params.get("market")!
     : "";
+  const initStatus = ["mapped", "unmapped"].includes(params.get("status") || "")
+    ? params.get("status")!
+    : "";
   const [q, setQ] = useState(params.get("q") ?? "");
   const [ctId, setCtId] = useState(initType);
   const [mktId, setMktId] = useState(initMkt);
+  const [status, setStatus] = useState(initStatus);
   const [sort, setSort] = useState("default");
+
+  // Keep filters in sync when the URL changes via in-app navigation (chips, the
+  // "still to map" stat link, etc.) — useState only seeds on first mount, so
+  // without this a client-side nav to ?status=unmapped wouldn't apply.
+  useEffect(() => {
+    const t = params.get("type");
+    const m = params.get("market");
+    const s = params.get("status") || "";
+    setQ(params.get("q") ?? "");
+    setCtId(customerTypes.some((c) => c.id === t) ? t! : "");
+    setMktId(markets.some((mm) => mm.id === m) ? m! : "");
+    setStatus(["mapped", "unmapped"].includes(s) ? s : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
+  const isMapped = (o: HydratedOffering) =>
+    o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return offerings.filter((o) => {
       if (ctId && !o.customerTypes.some((c) => c.id === ctId)) return false;
       if (mktId && !o.markets.some((m) => m.id === mktId)) return false;
+      if (status === "mapped" && !isMapped(o)) return false;
+      if (status === "unmapped" && isMapped(o)) return false;
       if (
         needle &&
         !`${o.offering_name} ${o.offering_type} ${o.offering_description}`
@@ -73,10 +96,8 @@ export function OfferingsBrowser({
         return false;
       return true;
     });
-  }, [offerings, q, ctId, mktId]);
-
-  const isMapped = (o: HydratedOffering) =>
-    o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerings, q, ctId, mktId, status]);
   const sorted = useMemo(() => {
     const arr = [...filtered];
     if (sort === "name")
@@ -96,7 +117,13 @@ export function OfferingsBrowser({
     return arr; // "default" keeps catalog (sheet) order
   }, [filtered, sort]);
 
-  const activeFilters = !!(q || ctId || mktId);
+  const activeFilters = !!(q || ctId || mktId || status);
+  const clearAll = () => {
+    setQ("");
+    setCtId("");
+    setMktId("");
+    setStatus("");
+  };
   const inputCls =
     "h-10 rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary transition-shadow focus:outline-none focus:border-blue-subtle focus:shadow-input-focus";
 
@@ -155,13 +182,21 @@ export function OfferingsBrowser({
           <option value="type">By type</option>
           <option value="mapped">Mapped first</option>
         </select>
+        {status && (
+          <span className="h-10 inline-flex items-center gap-1.5 px-3 rounded-lg bg-blue-light text-[12.5px] font-semibold text-blue-primary">
+            {status === "unmapped" ? "Needs mapping" : "Mapped only"}
+            <button
+              onClick={() => setStatus("")}
+              aria-label="Clear status filter"
+              className="hover:opacity-70"
+            >
+              <X size={13} strokeWidth={2.2} />
+            </button>
+          </span>
+        )}
         {activeFilters && (
           <button
-            onClick={() => {
-              setQ("");
-              setCtId("");
-              setMktId("");
-            }}
+            onClick={clearAll}
             className="h-10 px-3 rounded-lg text-[13px] font-semibold text-text-secondary hover:text-blue-primary hover:bg-blue-light transition-colors inline-flex items-center gap-1"
           >
             <X size={14} strokeWidth={2} /> Clear
@@ -194,11 +229,7 @@ export function OfferingsBrowser({
             No offerings match these filters.
           </p>
           <button
-            onClick={() => {
-              setQ("");
-              setCtId("");
-              setMktId("");
-            }}
+            onClick={clearAll}
             className="text-[13px] font-semibold text-blue-primary hover:underline mt-1"
           >
             Clear filters

@@ -3281,4 +3281,18 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.locator('input[value="Freya Register (copy)"]')
     ).toBeVisible();
   });
+
+  test("244 — 'still to map' opens an actionable unmapped worklist (V17)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings`);
+    await page.getByRole("link", { name: /still to map/ }).click();
+    await page.waitForURL(/status=unmapped/, { timeout: 8000 });
+    await expect(page.getByText("Needs mapping")).toBeVisible();
+    // an unmapped offering shows; a mapped one is excluded
+    await expect(page.getByText("Freya Label")).toBeVisible();
+    await expect(
+      page.getByText("Freya GRI + Freya chat", { exact: true })
+    ).toHaveCount(0);
+  });
 });

@@ -20,10 +20,12 @@ function Stat({
   label,
   value,
   sub,
+  subHref,
 }: {
   label: string;
   value: number;
   sub?: string;
+  subHref?: string;
 }) {
   return (
     <Card className="p-4">
@@ -33,7 +35,17 @@ function Stat({
       <p className="text-[24px] font-bold text-text-primary leading-none mt-1.5 tnum">
         <CountUp value={value} unit="count" />
       </p>
-      {sub && <p className="text-[11px] text-text-tertiary mt-1">{sub}</p>}
+      {sub &&
+        (subHref ? (
+          <Link
+            href={subHref}
+            className="inline-block text-[11px] font-medium text-blue-primary hover:underline mt-1"
+          >
+            {sub} →
+          </Link>
+        ) : (
+          <p className="text-[11px] text-text-tertiary mt-1">{sub}</p>
+        ))}
     </Card>
   );
 }
@@ -82,6 +94,7 @@ export default function OfferingsPage() {
           label="Mapped"
           value={mapped}
           sub={toMap > 0 ? `${toMap} still to map` : "all mapped"}
+          subHref={toMap > 0 ? "/offerings?status=unmapped" : undefined}
         />
         <Stat label="Customer types" value={customerTypes.length} />
         <Stat label="Markets" value={markets.length} />
