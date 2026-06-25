@@ -3156,8 +3156,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText("Freya Register + Pia, Mia and Via Agents")
     ).toBeVisible();
     await expect(page.getByText(/V3 is available in July 2026/)).toBeVisible();
+    // customer types are grouped by family on the detail page
     await expect(
-      page.getByText("Pharmaceutical - Large", { exact: true })
+      page.getByText("Bio Pharmaceutical", { exact: true })
     ).toBeVisible();
     await expect(page.getByText("Korea", { exact: true })).toBeVisible();
     // sales material is a real, clickable external link

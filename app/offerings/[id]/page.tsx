@@ -32,6 +32,7 @@ const MATERIAL_ICON: Record<MaterialKind, typeof Video> = {
   pricing: DollarSign,
 };
 const KIND_ORDER: MaterialKind[] = ["video", "presentation", "whitepaper", "pricing"];
+const CT_FAMILIES = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
 export default function OfferingDetailPage({
   params,
@@ -130,22 +131,35 @@ export default function OfferingDetailPage({
               <Plus size={13} strokeWidth={2} /> Add customer types
             </Link>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {o.customerTypes.map((c) => (
-                <Tooltip
-                  key={c.id}
-                  label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
-                  side="top"
-                  align="left"
-                >
-                  <Link
-                    href={`/offerings?type=${c.id}`}
-                    className="inline-block text-[12px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2 py-1 transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                  >
-                    {c.name}
-                  </Link>
-                </Tooltip>
-              ))}
+            <div className="space-y-3">
+              {CT_FAMILIES.map((fam) => {
+                const types = o.customerTypes.filter((c) => c.family === fam);
+                if (types.length === 0) return null;
+                return (
+                  <div key={fam}>
+                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
+                      {fam}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {types.map((c) => (
+                        <Tooltip
+                          key={c.id}
+                          label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
+                          side="top"
+                          align="left"
+                        >
+                          <Link
+                            href={`/offerings?type=${c.id}`}
+                            className="inline-block text-[12px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2 py-1 transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                          >
+                            {c.size}
+                          </Link>
+                        </Tooltip>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Card>
