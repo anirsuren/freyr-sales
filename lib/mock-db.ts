@@ -278,7 +278,9 @@ function seed(): MockStore {
     id: "kb-001",
     structured_kb: MOCK_FREYR_KB,
     raw_crawl_text: MOCK_FREYR_CRAWL_PAGES.join("\n\n---\n\n"),
-    crawled_at: new Date("2025-11-10").toISOString(),
+    // Relative to "now" so the KB reads as recently maintained, not perpetually
+    // stale off a hardcoded 2025 date (same fix as the dynamic dashboard date).
+    crawled_at: iso(9),
     page_count: MOCK_FREYR_CRAWL_PAGES.length,
     version: 1,
   };
