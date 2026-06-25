@@ -171,6 +171,134 @@ export function OfferingsBrowser({
     URL.revokeObjectURL(url);
   }
 
+  const renderCard = (o: HydratedOffering, i: number) => {
+    const matKinds = Array.from(new Set(o.materials.map((m) => m.kind)));
+    const mapped =
+      o.customerTypes.length > 0 ||
+      o.markets.length > 0 ||
+      o.materials.length > 0;
+    return (
+      <Link
+        key={o.id}
+        href={`/offerings/${o.id}`}
+        className="group rise-in"
+        style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
+      >
+        <Card
+          className={`p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle ${
+            mapped ? "" : "bg-surface/40"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
+              <Sparkles size={11} strokeWidth={2} />
+              {o.offering_type || "Offering"}
+            </span>
+            <ChevronRight
+              size={16}
+              strokeWidth={1.6}
+              className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform shrink-0 mt-0.5"
+            />
+          </div>
+          <div>
+            <h3 className="text-[15.5px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
+              {o.offering_name}
+            </h3>
+            {o.offering_description && (
+              <p className="text-[12.5px] text-text-secondary mt-1 line-clamp-2 leading-relaxed">
+                {o.offering_description}
+              </p>
+            )}
+          </div>
+
+          {(o.current_availability || o.future_availability) && (
+            <div className="flex flex-wrap gap-1.5">
+              {o.current_availability && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/10 rounded-md px-2 py-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                  {o.current_availability}
+                </span>
+              )}
+              {o.future_availability && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/10 rounded-md px-2 py-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                  {o.future_availability}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="mt-auto pt-3 border-t border-border-light">
+            {mapped ? (
+              <>
+                {o.markets.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {o.markets.slice(0, 4).map((m) => (
+                      <span
+                        key={m.id}
+                        className="text-[10.5px] font-medium text-text-secondary bg-surface rounded px-1.5 py-0.5"
+                      >
+                        {m.name}
+                      </span>
+                    ))}
+                    {o.markets.length > 4 && (
+                      <span className="text-[10.5px] text-text-tertiary self-center">
+                        +{o.markets.length - 4}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-text-tertiary">
+                    {o.customerTypes.length} customer type
+                    {o.customerTypes.length === 1 ? "" : "s"}
+                    {o.materials.length > 0 && (
+                      <>
+                        {" · "}
+                        {o.materials.length} material
+                        {o.materials.length === 1 ? "" : "s"}
+                      </>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {matKinds.map((k) => {
+                      const Icon = MATERIAL_ICON[k] || FileText;
+                      return (
+                        <Icon
+                          key={k}
+                          size={14}
+                          strokeWidth={1.7}
+                          className="text-text-tertiary"
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
+                Not yet mapped — open to add types, markets &amp; materials
+              </p>
+            )}
+          </div>
+        </Card>
+      </Link>
+    );
+  };
+
+  // When sorted "By type", render the cards in labelled type groups (mirrors how
+  // Suren's sheet is organised). sorted is already type→name ordered.
+  const typeGroups: { type: string; items: HydratedOffering[] }[] = [];
+  if (sort === "type") {
+    for (const o of sorted) {
+      const t = o.offering_type || "Other";
+      const g = typeGroups.find((x) => x.type === t);
+      if (g) g.items.push(o);
+      else typeGroups.push({ type: t, items: [o] });
+    }
+  }
+
   const inputCls =
     "h-10 rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary transition-shadow focus:outline-none focus:border-blue-subtle focus:shadow-input-focus";
 
@@ -292,123 +420,25 @@ export function OfferingsBrowser({
             Clear filters
           </button>
         </Card>
+      ) : sort === "type" ? (
+        <div className="space-y-6">
+          {typeGroups.map((g) => (
+            <div key={g.type}>
+              <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary mb-2.5">
+                {g.type || "Other"}
+                <span className="text-text-tertiary/70 tnum">
+                  ({g.items.length})
+                </span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+                {g.items.map((o, i) => renderCard(o, i))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-          {sorted.map((o, i) => {
-            const matKinds = Array.from(new Set(o.materials.map((m) => m.kind)));
-            const mapped =
-              o.customerTypes.length > 0 ||
-              o.markets.length > 0 ||
-              o.materials.length > 0;
-            return (
-              <Link
-                key={o.id}
-                href={`/offerings/${o.id}`}
-                className="group rise-in"
-                style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
-              >
-                <Card
-                  className={`p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle ${
-                    mapped ? "" : "bg-surface/40"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
-                      <Sparkles size={11} strokeWidth={2} />
-                      {o.offering_type || "Offering"}
-                    </span>
-                    <ChevronRight
-                      size={16}
-                      strokeWidth={1.6}
-                      className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform shrink-0 mt-0.5"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-[15.5px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
-                      {o.offering_name}
-                    </h3>
-                    {o.offering_description && (
-                      <p className="text-[12.5px] text-text-secondary mt-1 line-clamp-2 leading-relaxed">
-                        {o.offering_description}
-                      </p>
-                    )}
-                  </div>
-
-                  {(o.current_availability || o.future_availability) && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {o.current_availability && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/10 rounded-md px-2 py-0.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                          {o.current_availability}
-                        </span>
-                      )}
-                      {o.future_availability && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/10 rounded-md px-2 py-0.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-warning" />
-                          {o.future_availability}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mt-auto pt-3 border-t border-border-light">
-                    {mapped ? (
-                      <>
-                        {o.markets.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {o.markets.slice(0, 4).map((m) => (
-                              <span
-                                key={m.id}
-                                className="text-[10.5px] font-medium text-text-secondary bg-surface rounded px-1.5 py-0.5"
-                              >
-                                {m.name}
-                              </span>
-                            ))}
-                            {o.markets.length > 4 && (
-                              <span className="text-[10.5px] text-text-tertiary self-center">
-                                +{o.markets.length - 4}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] text-text-tertiary">
-                            {o.customerTypes.length} customer type
-                            {o.customerTypes.length === 1 ? "" : "s"}
-                            {o.materials.length > 0 && (
-                              <>
-                                {" · "}
-                                {o.materials.length} material
-                                {o.materials.length === 1 ? "" : "s"}
-                              </>
-                            )}
-                          </p>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {matKinds.map((k) => {
-                              const Icon = MATERIAL_ICON[k] || FileText;
-                              return (
-                                <Icon
-                                  key={k}
-                                  size={14}
-                                  strokeWidth={1.7}
-                                  className="text-text-tertiary"
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
-                        <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
-                        Not yet mapped — open to add types, markets &amp; materials
-                      </p>
-                    )}
-                  </div>
-                </Card>
-              </Link>
-            );
-          })}
+          {sorted.map((o, i) => renderCard(o, i))}
         </div>
       )}
     </div>
