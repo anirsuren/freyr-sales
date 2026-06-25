@@ -268,7 +268,7 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
 // Mock pitches (Section 8.3 fallback)
 // ---------------------------------------------------------------------------
 export const MOCK_PITCHES: PitchOutput = {
-  pitch_5min_script: `Hi Dr. Mehta, I'm [Name] from Freyr Solutions — I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
+  pitch_5min_script: `Hi Dr. Mehta, I'm Suren Dheen from Freyr Solutions — I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
 
 With your NDA submission coming up in 2025 and two compounds in Phase 2, you're entering the period where regulatory execution either accelerates or stalls your timeline. Freyr has completed over 5,000 regulatory submissions globally, and our team includes former FDA and EMA reviewers — people who know exactly what the agency expects to see.
 
@@ -297,12 +297,12 @@ Happy to show you a quick example of how we've handled similar NDA submissions f
 
 Would a 20-minute call next week make sense?
 
-[Name]
+Suren Dheen
 Freyr Solutions`,
   },
   pitch_call_script: {
     opener:
-      "Hi, is this Dr. Priya Mehta? Great — this is [Name] from Freyr Solutions. I know you're not expecting my call, so I'll be brief.",
+      "Hi, is this Dr. Priya Mehta? Great — this is Suren Dheen from Freyr Solutions. I know you're not expecting my call, so I'll be brief.",
     value_prop:
       "We support pharmaceutical and biotech companies with regulatory submissions globally — FDA, EMA, and 120+ other agencies. We've completed over 5,000 submissions and our team includes former FDA CDER reviewers.",
     permission_question:
