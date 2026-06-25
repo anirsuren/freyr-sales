@@ -445,7 +445,11 @@ export function OfferingsBrowser({
         <Card className="p-0">
           <EmptyState
             icon={Search}
-            title="No offerings match these filters."
+            title={
+              q.trim()
+                ? `No offerings match “${q.trim()}”.`
+                : "No offerings match these filters."
+            }
             description="Try a different market, customer type, or search term."
             action={
               <button

@@ -3655,10 +3655,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(
       await page.locator('a[href^="/offerings/of-"]').count()
     ).toBeGreaterThanOrEqual(3);
-    // a genuine non-match still shows the empty state
+    // a genuine non-match shows the empty state, echoing the actual query
     await page.goto(`${BASE}/offerings?q=zzznope`);
     await expect(page.locator('a[href^="/offerings/of-"]')).toHaveCount(0);
-    await expect(page.getByText(/No offerings match/i)).toBeVisible();
+    await expect(page.getByText(/No offerings match .*zzznope/)).toBeVisible();
   });
 
   test("267 — global search finds offerings by mapped market (V34)", async ({
