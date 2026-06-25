@@ -140,7 +140,7 @@ export function OfferingsBrowser({
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
           {filtered.map((o, i) => {
             const matKinds = Array.from(new Set(o.materials.map((m) => m.kind)));
             const mapped =
@@ -154,7 +154,11 @@ export function OfferingsBrowser({
                 className="group rise-in"
                 style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
               >
-                <Card className="h-full p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle">
+                <Card
+                  className={`p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle ${
+                    mapped ? "" : "bg-surface/40"
+                  }`}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
                       <Sparkles size={11} strokeWidth={2} />
