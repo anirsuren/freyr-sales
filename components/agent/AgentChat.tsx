@@ -131,6 +131,20 @@ function MarkdownText({ text }: { text: string }) {
   return <>{blocks}</>;
 }
 
+// While the typewriter reveals a reply char-by-char, the visible slice can end
+// mid-markdown-link ("· [open →](/x" before it closes), which flashes raw
+// syntax. Hide a trailing *incomplete* link token (and its dangling separator)
+// so a link only ever appears once fully formed, then renders normally.
+function trimStreamingLink(s: string): string {
+  const lb = s.lastIndexOf("[");
+  if (lb === -1) return s;
+  const tail = s.slice(lb);
+  if (/^\[[^\]]*$/.test(tail) || /^\[[^\]]*\]\([^)]*$/.test(tail)) {
+    return s.slice(0, lb).replace(/\s*[·•–—-]\s*$/, "");
+  }
+  return s;
+}
+
 // Quick typewriter reveal for the freshest agent reply (ChatGPT-style).
 function Typewriter({
   text,
@@ -162,7 +176,7 @@ function Typewriter({
     }, 14);
     return () => clearTimeout(t);
   }, [n, text, onDone, onTick]);
-  return <MarkdownText text={text.slice(0, n)} />;
+  return <MarkdownText text={trimStreamingLink(text.slice(0, n))} />;
 }
 
 function ThinkingDots() {
