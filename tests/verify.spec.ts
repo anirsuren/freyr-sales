@@ -3504,4 +3504,19 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.goto(`${BASE}/offerings/of-003`);
     await expect(page.getByText("Not yet mapped")).toHaveCount(0);
   });
+
+  test("258 — Markets stat deep-links to the markets section (V25)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings`);
+    await expect(
+      page.locator('a[href="/offerings/customer-types#markets"]')
+    ).toBeVisible();
+    // the anchor target exists on the management page
+    await page.goto(`${BASE}/offerings/customer-types`);
+    await expect(page.locator("#markets")).toBeVisible();
+    await expect(
+      page.locator("#markets").getByText(/Markets \(\d+\)/)
+    ).toBeVisible();
+  });
 });

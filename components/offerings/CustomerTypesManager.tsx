@@ -289,7 +289,7 @@ export function CustomerTypesManager({
       )}
 
       {/* Markets */}
-      <Card>
+      <Card id="markets" className="scroll-mt-20">
         <h2 className="text-[15px] font-semibold text-text-primary mb-3">
           Markets ({markets.length})
         </h2>

@@ -101,7 +101,7 @@ export default function OfferingsPage() {
 
       {/* Repository at a glance */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <Stat label="Offerings" value={offerings.length} />
+        <Stat label="Offerings" value={offerings.length} href="/offerings" />
         <Stat
           label="Mapped"
           value={mapped}
@@ -116,7 +116,7 @@ export default function OfferingsPage() {
         <Stat
           label="Markets"
           value={markets.length}
-          href="/offerings/customer-types"
+          href="/offerings/customer-types#markets"
         />
       </div>
 
