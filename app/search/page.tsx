@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Building2, Contact as ContactIcon, Clock, ArrowRight } from "lucide-react";
+import { Search, Building2, Contact as ContactIcon, Clock, ArrowRight, Package } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -12,7 +12,14 @@ import { getRecent, type RecentItem } from "@/lib/recent";
 type Result = { type: string; label: string; sublabel: string; href: string };
 
 function Row({ item }: { item: { type: string; label: string; sublabel?: string; href: string } }) {
-  const Icon = item.type === "Customer" ? Building2 : item.type === "Contact" ? ContactIcon : Clock;
+  const Icon =
+    item.type === "Customer"
+      ? Building2
+      : item.type === "Contact"
+      ? ContactIcon
+      : item.type === "Offering"
+      ? Package
+      : Clock;
   return (
     <Link
       href={item.href}
@@ -39,7 +46,7 @@ function Row({ item }: { item: { type: string; label: string; sublabel?: string;
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<PageHeader title="Search" subtitle="Find any customer, contact, or record." />}>
+    <Suspense fallback={<PageHeader title="Search" subtitle="Find any customer, contact, offering, or record." />}>
       <SearchInner />
     </Suspense>
   );
@@ -92,7 +99,7 @@ function SearchInner() {
 
   return (
     <div className="max-w-[760px]">
-      <PageHeader title="Search" subtitle="Find any customer, contact, or record." />
+      <PageHeader title="Search" subtitle="Find any customer, contact, offering, or record." />
 
       <div className="relative mb-6">
         <Search size={18} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
@@ -100,7 +107,7 @@ function SearchInner() {
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search companies, contacts, or industries…"
+          placeholder="Search companies, contacts, offerings…"
           className="w-full bg-surface border border-border rounded-lg pl-11 pr-4 py-3 text-[15px] outline-none focus:border-blue-primary"
         />
       </div>
