@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -102,6 +102,24 @@ export function CustomerTypesManager({
       }
     } catch {
       toast("Couldn't add the market.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeMarket(m: Market) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/markets/${m.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.ok) {
+        toast(`Removed ${m.name}.`);
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't remove the market.", "error");
+      }
+    } catch {
+      toast("Couldn't remove the market.", "error");
     } finally {
       setBusy(false);
     }
@@ -277,16 +295,29 @@ export function CustomerTypesManager({
         </h2>
         <div className="flex flex-wrap gap-2 mb-4">
           {markets.map((m) => (
-            <Link
+            <span
               key={m.id}
-              href={`/offerings?market=${m.id}`}
-              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2.5 py-1 transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              className="group inline-flex items-center text-[12.5px] font-medium bg-surface border border-border-light rounded-md transition-colors hover:border-blue-subtle"
             >
-              {m.name}
-              <span className="text-[11px] text-text-tertiary tnum">
-                {marketCounts[m.id] || 0}
-              </span>
-            </Link>
+              <Link
+                href={`/offerings?market=${m.id}`}
+                className="inline-flex items-center gap-1.5 text-text-primary group-hover:text-blue-primary pl-2.5 pr-1 py-1"
+              >
+                {m.name}
+                <span className="text-[11px] text-text-tertiary tnum">
+                  {marketCounts[m.id] || 0}
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => removeMarket(m)}
+                disabled={busy}
+                aria-label={`Remove ${m.name}`}
+                className="text-text-tertiary hover:text-error px-1.5 py-1 disabled:opacity-50"
+              >
+                <X size={12} strokeWidth={2.2} />
+              </button>
+            </span>
           ))}
         </div>
         <div className="flex items-center gap-2 max-w-[420px]">

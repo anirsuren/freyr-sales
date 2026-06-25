@@ -3315,4 +3315,23 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const after = await request.get(`${BASE}/api/offerings/${id}`);
     expect(after.status()).toBe(404);
   });
+
+  test("246 — a market can be added and removed (V18)", async ({
+    page,
+    request,
+  }) => {
+    const created = await request.post(`${BASE}/api/markets`, {
+      data: { name: "Brazil QA" },
+    });
+    const mid = (await created.json()).market.id;
+
+    await page.goto(`${BASE}/offerings/customer-types`);
+    await expect(page.getByText("Brazil QA")).toBeVisible();
+    await page.getByRole("button", { name: "Remove Brazil QA" }).click();
+    await expect(page.getByText("Brazil QA")).toHaveCount(0);
+
+    // Gone from the data layer too.
+    const mk = await (await request.get(`${BASE}/api/markets`)).json();
+    expect(mk.markets.some((m: any) => m.id === mid)).toBe(false);
+  });
 });

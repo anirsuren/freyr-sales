@@ -269,6 +269,17 @@ export function createMarket(name: string): Market {
   return record;
 }
 
+export function deleteMarket(id: string): boolean {
+  const before = store.markets.length;
+  store.markets = store.markets.filter((m) => m.id !== id);
+  if (store.markets.length === before) return false;
+  // Strip the removed market from every offering so nothing references a ghost id.
+  for (const o of store.offerings) {
+    o.market_ids = o.market_ids.filter((mid) => mid !== id);
+  }
+  return true;
+}
+
 export function listOfferings(): Offering[] {
   return [...store.offerings];
 }
