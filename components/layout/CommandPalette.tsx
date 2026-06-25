@@ -204,7 +204,12 @@ export function CommandPalette({
         list.push({
           key: `rec:${i}`,
           section: "Records",
-          icon: r.type === "Customer" ? Building : User,
+          icon:
+            r.type === "Customer"
+              ? Building
+              : r.type === "Offering"
+              ? Package
+              : User,
           label: r.label,
           sublabel: r.sublabel,
           rightLabel: r.type,
