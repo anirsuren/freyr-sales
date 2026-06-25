@@ -52,7 +52,7 @@ const AGENT_CMDS: AgentCmd[] = [
   { key: "inbox", label: "Open Agent Inbox", icon: Inbox, kind: "nav", href: "/agent/inbox" },
   { key: "new-offering", label: "New offering", icon: Package, kind: "nav", href: "/offerings/new" },
   { key: "autopilot", label: "Run autopilot", icon: Rocket, kind: "run", endpoint: "/api/agent/autopilot" },
-  { key: "cadence", label: "Run re-engagement cadence", icon: Zap, kind: "run", endpoint: "/api/agent/cadence-run" },
+  { key: "cadence", label: "Prep the re-engagement sequence", icon: Zap, kind: "run", endpoint: "/api/agent/cadence-run" },
 ];
 
 interface Result {
@@ -142,7 +142,7 @@ export function CommandPalette({
           if (cmd.key === "autopilot") {
             toast(`Autopilot handled ${data.handled} · ${data.escalated} need approval`);
           } else if (cmd.key === "cadence") {
-            toast(`Cadence: enrolled ${data.enrolled} · advanced ${data.advanced}`);
+            toast(`Sequence: enrolled ${data.enrolled} · advanced ${data.advanced}`);
           } else {
             toast("Done");
           }

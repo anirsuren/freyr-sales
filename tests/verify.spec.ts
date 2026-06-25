@@ -1460,7 +1460,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("button", { name: /Search companies, contacts/ }).click();
     await expect(
-      page.getByText("Run re-engagement cadence")
+      page.getByText("Prep the re-engagement sequence")
     ).toBeVisible();
     await page.getByRole("button", { name: "Open Agent Inbox" }).click();
     await expect(page).toHaveURL(/\/agent\/inbox/);
