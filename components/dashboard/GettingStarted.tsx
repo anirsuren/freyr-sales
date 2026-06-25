@@ -2,42 +2,60 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, X, ArrowRight, Rocket } from "lucide-react";
+import { X, ArrowRight, Rocket } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { cn } from "@/lib/utils";
 
+// Setup steps for a brand-new workspace. Each is a real link to where the
+// work actually happens — outcome-worded, no fake "check it off yourself"
+// boxes (those lied: the dashboard would show "0 of 5" next to a full book
+// of business). The list is honest by construction — once you've actually
+// run a pitch session the workspace is "established" and this card is gone.
 const STEPS = [
-  { key: "session", label: "Run your first pitch session", href: "/intake" },
-  { key: "invite", label: "Invite your team", href: "/settings" },
-  { key: "crm", label: "Connect your CRM", href: "/settings" },
-  { key: "approve", label: "Approve & send a pitch", href: "/sessions" },
-  { key: "sequence", label: "Enroll an account in a sequence", href: "/sequences" },
+  {
+    key: "session",
+    label: "Run your first pitch session",
+    desc: "Pick an account and let the agent draft a tailored pitch.",
+    href: "/intake",
+  },
+  {
+    key: "approve",
+    label: "Review and send a pitch",
+    desc: "Approve a drafted pitch — nothing goes out until you say so.",
+    href: "/agent/inbox",
+  },
+  {
+    key: "sequence",
+    label: "Put an account in a sequence",
+    desc: "Queue the follow-ups the agent preps for you to send.",
+    href: "/sequences",
+  },
+  {
+    key: "crm",
+    label: "Connect your CRM",
+    desc: "Sync your accounts and activity both ways.",
+    href: "/settings",
+  },
+  {
+    key: "invite",
+    label: "Invite your team",
+    desc: "Bring your reps in so the whole desk runs on Freyr.",
+    href: "/settings",
+  },
 ];
 
-const DONE_KEY = "freyr.onboarding.done.v1";
 const DISMISS_KEY = "freyr.onboarding.dismissed.v1";
 
-export function GettingStarted() {
+export function GettingStarted({ established }: { established: boolean }) {
   const [mounted, setMounted] = useState(false);
-  const [done, setDone] = useState<Record<string, boolean>>({});
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     try {
-      const d = localStorage.getItem(DONE_KEY);
-      if (d) setDone(JSON.parse(d));
       setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
     } catch {}
     setMounted(true);
   }, []);
 
-  function toggle(key: string) {
-    const next = { ...done, [key]: !done[key] };
-    setDone(next);
-    try {
-      localStorage.setItem(DONE_KEY, JSON.stringify(next));
-    } catch {}
-  }
   function dismiss() {
     setDismissed(true);
     try {
@@ -45,11 +63,12 @@ export function GettingStarted() {
     } catch {}
   }
 
-  // avoid hydration flicker; don't render once dismissed
-  if (!mounted || dismissed) return null;
-
-  const completed = STEPS.filter((s) => done[s.key]).length;
-  const pct = Math.round((completed / STEPS.length) * 100);
+  // Onboarding is for an empty workspace. The moment there's real work in
+  // Freyr, a setup checklist on the dashboard is just noise (and looked fake
+  // sitting next to live pipeline) — so it steps aside and the agent's
+  // recommendations lead. Also hidden once the user dismisses it.
+  // avoid hydration flicker before we can read localStorage
+  if (!mounted || established || dismissed) return null;
 
   return (
     <Card>
@@ -63,7 +82,7 @@ export function GettingStarted() {
               Get started with Freyr
             </h2>
             <p className="text-[12px] text-text-secondary">
-              {completed} of {STEPS.length} complete
+              A few steps to set up your workspace.
             </p>
           </div>
         </div>
@@ -76,52 +95,30 @@ export function GettingStarted() {
         </button>
       </div>
 
-      <div className="h-1.5 rounded-full bg-surface overflow-hidden mb-4">
-        <div
-          className="h-full rounded-full bg-blue-primary transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-
       <ul className="space-y-1">
-        {STEPS.map((s) => {
-          const isDone = !!done[s.key];
-          return (
-            <li
-              key={s.key}
-              className="flex items-center gap-3 py-1.5 group"
+        {STEPS.map((s) => (
+          <li key={s.key}>
+            <Link
+              href={s.href}
+              className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-surface transition-colors group"
             >
-              <button
-                onClick={() => toggle(s.key)}
-                aria-label={isDone ? `Mark "${s.label}" not done` : `Mark "${s.label}" done`}
-                aria-pressed={isDone}
-                className={cn(
-                  "w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
-                  isDone
-                    ? "bg-blue-primary border-blue-primary text-white"
-                    : "border-border hover:border-blue-subtle"
-                )}
-              >
-                {isDone && <Check size={12} strokeWidth={3} />}
-              </button>
-              <span
-                className={cn(
-                  "text-[14px] flex-1",
-                  isDone ? "text-text-tertiary line-through" : "text-text-primary"
-                )}
-              >
-                {s.label}
+              <span className="w-5 h-5 rounded-full border border-border group-hover:border-blue-subtle flex items-center justify-center shrink-0 transition-colors" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[14px] text-text-primary">
+                  {s.label}
+                </span>
+                <span className="block text-[12px] text-text-secondary truncate">
+                  {s.desc}
+                </span>
               </span>
-              <Link
-                href={s.href}
-                className="text-text-tertiary group-hover:text-blue-primary transition-colors"
-                aria-label={`Go: ${s.label}`}
-              >
-                <ArrowRight size={15} strokeWidth={1.6} />
-              </Link>
-            </li>
-          );
-        })}
+              <ArrowRight
+                size={15}
+                strokeWidth={1.6}
+                className="text-text-tertiary group-hover:text-blue-primary transition-colors shrink-0"
+              />
+            </Link>
+          </li>
+        ))}
       </ul>
     </Card>
   );

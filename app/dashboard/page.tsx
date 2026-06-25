@@ -252,7 +252,9 @@ export default async function DashboardPage({
         comparable={!!days}
         rangeLabel={range === "all" ? "all time" : `prev ${range}`}
       />
-      <GettingStarted />
+      {/* Setup checklist only for a brand-new workspace; once real pitch
+          sessions exist it steps aside so the agent's recommendations lead. */}
+      <GettingStarted established={allSessions.length > 0} />
 
       {/* Agent next-best-actions (V9) — agent surfaces lead, everywhere */}
       {agentActions.length > 0 && (

@@ -930,14 +930,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator('nav[aria-label="Primary"]')).toHaveCount(0);
   });
 
-  test("76 — dashboard getting-started checklist (V3)", async ({ page }) => {
+  test("76 — dashboard hides the setup checklist once the workspace is in use (V3)", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
-    await expect(page.getByText("Get started with Freyr")).toBeVisible();
-    await page
-      .getByRole("button", { name: /Mark .*Run your first pitch session.* done/ })
-      .click();
-    await expect(page.getByText("1 of 5 complete")).toBeVisible();
-    await page.getByRole("button", { name: "Dismiss getting started" }).click();
+    await expect(page.getByText("Active Pipeline")).toBeVisible();
+    // Established workspace (real pitch sessions exist) — no contradictory
+    // "0 of 5 complete / run your first pitch session" checklist next to a
+    // full book of business. The agent's recommendations lead instead.
     await expect(page.getByText("Get started with Freyr")).toHaveCount(0);
   });
 
