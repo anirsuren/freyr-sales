@@ -3557,4 +3557,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByRole("link", { name: /Browse offerings/ })
     ).toBeVisible();
   });
+
+  test("261 — new-offering form focuses the name field on empty submit (V28)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/new`);
+    await page.getByRole("button", { name: /Save offering/i }).click();
+    // submit is blocked and the required name field is focused so the user
+    // knows exactly what to fix
+    await expect(page).toHaveURL(/\/offerings\/new/);
+    await expect(
+      page.locator('input[placeholder="e.g. Freya Register"]')
+    ).toBeFocused();
+  });
 });

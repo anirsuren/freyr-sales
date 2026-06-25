@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -74,6 +74,7 @@ export function OfferingForm({
     }
   }
 
+  const nameRef = useRef<HTMLInputElement>(null);
   const [offeringType, setOfferingType] = useState(initial?.offering_type ?? "");
   const [offeringName, setOfferingName] = useState(initial?.offering_name ?? "");
   const [description, setDescription] = useState(initial?.offering_description ?? "");
@@ -108,6 +109,8 @@ export function OfferingForm({
   async function submit() {
     if (!offeringName.trim()) {
       toast("Give the offering a name first.", "error");
+      nameRef.current?.focus();
+      nameRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
     }
     setSaving(true);
@@ -171,6 +174,7 @@ export function OfferingForm({
               Offering name <span className="text-error">*</span>
             </label>
             <input
+              ref={nameRef}
               className={FIELD}
               value={offeringName}
               onChange={(e) => setOfferingName(e.target.value)}
