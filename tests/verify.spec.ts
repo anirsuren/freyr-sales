@@ -3585,4 +3585,22 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/offerings\/new/);
     await expect(page.getByText(/Add a link for/i)).toBeVisible();
   });
+
+  test("263 — bare-domain material links get an https scheme (V30)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/new`);
+    await page
+      .locator('input[placeholder="e.g. Freya Register"]')
+      .fill("QA URL Normalize");
+    await page.getByRole("button", { name: /Add material/i }).click();
+    await page.getByPlaceholder("Label").first().fill("Pricing deck");
+    // bare domain, no scheme — must be saved as an absolute https link
+    await page.getByPlaceholder("https://…").first().fill("example.com/pricing.pdf");
+    await page.getByRole("button", { name: /Save offering/i }).click();
+    await expect(page).toHaveURL(/\/offerings\/of-/);
+    await expect(
+      page.locator('a[href="https://example.com/pricing.pdf"]')
+    ).toBeVisible();
+  });
 });

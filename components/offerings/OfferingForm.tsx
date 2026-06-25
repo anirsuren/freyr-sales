@@ -19,6 +19,15 @@ interface MaterialRow {
   url: string;
 }
 
+// A material link a rep pastes as a bare domain ("example.com/deck.pdf") would
+// render as a relative href and 404 on click. Give it a scheme; leave full URLs
+// and root-relative paths (/internal/...) alone.
+function normalizeUrl(u: string) {
+  const t = u.trim();
+  if (!t || /^https?:\/\//i.test(t) || t.startsWith("/")) return t;
+  return `https://${t}`;
+}
+
 const FIELD =
   "w-full rounded-md border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:shadow-input-focus";
 const LABEL =
@@ -143,7 +152,9 @@ export function OfferingForm({
             future_availability: future,
             customer_type_ids: ctIds,
             market_ids: mktIds,
-            materials: materials.filter((m) => m.label.trim() && m.url.trim()),
+            materials: materials
+              .filter((m) => m.label.trim() && m.url.trim())
+              .map((m) => ({ ...m, url: normalizeUrl(m.url) })),
           }),
         }
       );
