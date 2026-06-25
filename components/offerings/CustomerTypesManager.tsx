@@ -102,9 +102,23 @@ export function CustomerTypesManager({
     }
   }
 
+  // Group the definitions by family (each family shares a product type; only
+  // revenue / employees / focus vary by size) — far more scannable than a flat,
+  // repetitive table.
+  const sizeOrder: Record<string, number> = { Small: 0, "Mid size": 1, Large: 2 };
+  const groups = FAMILIES.map((fam) => ({
+    fam,
+    types: customerTypes
+      .filter((c) => c.family === fam)
+      .sort((a, b) => (sizeOrder[a.size] ?? 9) - (sizeOrder[b.size] ?? 9)),
+  })).filter((g) => g.types.length > 0);
+  const otherTypes = customerTypes.filter(
+    (c) => !FAMILIES.includes(c.family as CustomerFamily)
+  );
+
   return (
     <div className="space-y-6">
-      {/* Customer types table */}
+      {/* Add-type panel */}
       <Card className="p-0 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-border-light">
           <h2 className="text-[15px] font-semibold text-text-primary">
@@ -170,41 +184,73 @@ export function CustomerTypesManager({
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-left text-text-tertiary border-b border-border-light">
-                <th className="font-semibold px-4 py-2.5">Customer type</th>
-                <th className="font-semibold px-4 py-2.5">Product type</th>
-                <th className="font-semibold px-4 py-2.5">Revenue</th>
-                <th className="font-semibold px-4 py-2.5">Employees</th>
-                <th className="font-semibold px-4 py-2.5">Operational focus</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customerTypes.map((c) => (
-                <tr key={c.id} className="border-b border-border-light last:border-0 align-top">
-                  <td className="px-4 py-3 font-semibold text-text-primary whitespace-nowrap">
-                    {c.name}
-                  </td>
-                  <td className="px-4 py-3 text-text-secondary max-w-[260px]">
-                    {c.product_type}
-                  </td>
-                  <td className="px-4 py-3 text-text-secondary whitespace-nowrap">
-                    {c.revenue}
-                  </td>
-                  <td className="px-4 py-3 text-text-secondary whitespace-nowrap">
-                    {c.employees}
-                  </td>
-                  <td className="px-4 py-3 text-text-secondary max-w-[260px]">
-                    {c.operational_focus}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {adding ? null : (
+          <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
+            Grouped by family — each family shares a product type; revenue,
+            employees and focus vary by size.
+          </p>
+        )}
       </Card>
+
+      {/* Definitions, grouped by family */}
+      {groups.map(({ fam, types }) => (
+        <Card key={fam} className="p-0 overflow-hidden">
+          <div className="p-4 border-b border-border-light">
+            <h3 className="text-[15px] font-semibold text-text-primary">{fam}</h3>
+            <p className="text-[12.5px] text-text-secondary mt-0.5 leading-relaxed max-w-[680px]">
+              {types[0].product_type}
+            </p>
+          </div>
+          <div className="hidden sm:grid grid-cols-[120px_150px_140px_1fr] gap-3 px-4 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary border-b border-border-light bg-surface/40">
+            <span>Size</span>
+            <span>Revenue</span>
+            <span>Employees</span>
+            <span>Operational focus</span>
+          </div>
+          <div className="divide-y divide-border-light">
+            {types.map((t) => (
+              <div
+                key={t.id}
+                className="grid grid-cols-1 sm:grid-cols-[120px_150px_140px_1fr] gap-x-3 gap-y-1 px-4 py-3 items-baseline"
+              >
+                <span className="inline-flex w-fit text-[11px] font-semibold text-blue-primary bg-blue-light rounded px-2 py-0.5">
+                  {t.size}
+                </span>
+                <span className="text-[13px] text-text-primary tnum">
+                  {t.revenue}
+                </span>
+                <span className="text-[13px] text-text-secondary tnum">
+                  {t.employees}
+                </span>
+                <span className="text-[13px] text-text-secondary leading-relaxed">
+                  {t.operational_focus}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ))}
+
+      {otherTypes.length > 0 && (
+        <Card className="p-0 overflow-hidden">
+          <div className="p-4 border-b border-border-light">
+            <h3 className="text-[15px] font-semibold text-text-primary">Other</h3>
+          </div>
+          <div className="divide-y divide-border-light">
+            {otherTypes.map((t) => (
+              <div key={t.id} className="px-4 py-3">
+                <p className="text-[13px] font-semibold text-text-primary">
+                  {t.name}
+                </p>
+                <p className="text-[12.5px] text-text-secondary mt-0.5">
+                  {t.product_type} · {t.revenue} · {t.employees} ·{" "}
+                  {t.operational_focus}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Markets */}
       <Card>

@@ -3166,17 +3166,23 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("238 — Customer types page shows the 9 definitions (V15)", async ({
+  test("238 — Customer types page shows the definitions, grouped by family (V15)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings/customer-types`);
     await expect(
       page.getByRole("heading", { name: /Customer types & markets/ })
     ).toBeVisible();
-    await expect(page.getByText("Pharmaceutical - Small").first()).toBeVisible();
-    // a definition cell is present (revenue band from Suren's sheet)
+    // family group headers
+    await expect(
+      page.getByRole("heading", { name: "Pharmaceutical", exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Bio Pharmaceutical", exact: true })
+    ).toBeVisible();
+    // a size row + a definition value (revenue band from Suren's sheet)
+    await expect(page.getByText("Mid size").first()).toBeVisible();
     await expect(page.getByText("Under $500M").first()).toBeVisible();
-    await expect(page.getByText("Bio Pharmaceutical - Large").first()).toBeVisible();
   });
 
   test("239 — Offerings API: list is seeded and create works (V15)", async ({
