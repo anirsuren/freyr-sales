@@ -51,6 +51,10 @@ export function CustomerTypesManager({
 
   async function addType() {
     setBusy(true);
+    // family+size already on file → this refines its definition, not a new row.
+    const exists = customerTypes.some(
+      (c) => c.family === family && c.size === size
+    );
     try {
       const res = await fetch("/api/customer-types", {
         method: "POST",
@@ -66,7 +70,7 @@ export function CustomerTypesManager({
       });
       const data = await res.json();
       if (data.ok) {
-        toast(`Added ${data.customerType.name}.`);
+        toast(`${exists ? "Updated" : "Added"} ${data.customerType.name}.`);
         setProductType("");
         setRevenue("");
         setEmployees("");

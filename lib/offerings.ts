@@ -242,6 +242,21 @@ export function getCustomerType(id: string): CustomerType | null {
   return store.customerTypes.find((c) => c.id === id) || null;
 }
 export function createCustomerType(data: Omit<CustomerType, "id">): CustomerType {
+  // A family+size pair identifies a customer type, so don't create a second
+  // "Pharmaceutical - Small" — refine the existing definition instead (blank
+  // fields leave the current value intact). Mirrors createMarket's dedupe.
+  const existing = store.customerTypes.find(
+    (c) => c.family === data.family && c.size === data.size
+  );
+  if (existing) {
+    existing.product_type = data.product_type || existing.product_type;
+    existing.revenue = data.revenue || existing.revenue;
+    existing.employees = data.employees || existing.employees;
+    existing.operational_focus =
+      data.operational_focus || existing.operational_focus;
+    existing.name = data.name || existing.name;
+    return existing;
+  }
   const record: CustomerType = { ...data, id: rid("ct") };
   store.customerTypes.push(record);
   return record;

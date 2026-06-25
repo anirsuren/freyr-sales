@@ -3603,4 +3603,32 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.locator('a[href="https://example.com/pricing.pdf"]')
     ).toBeVisible();
   });
+
+  test("264 — re-adding a customer type refines it, never duplicates (V31)", async ({
+    request,
+  }) => {
+    const before = (
+      await (await request.get(`${BASE}/api/customer-types`)).json()
+    ).customerTypes;
+    const res = await (
+      await request.post(`${BASE}/api/customer-types`, {
+        data: {
+          family: "Pharmaceutical",
+          size: "Small",
+          operational_focus: "Refined by test",
+        },
+      })
+    ).json();
+    expect(res.ok).toBe(true);
+    const after = (
+      await (await request.get(`${BASE}/api/customer-types`)).json()
+    ).customerTypes;
+    // no duplicate row, and the existing definition was refined
+    expect(after.length).toBe(before.length);
+    const pharmaSmall = after.filter(
+      (c: any) => c.name === "Pharmaceutical - Small"
+    );
+    expect(pharmaSmall.length).toBe(1);
+    expect(pharmaSmall[0].operational_focus).toBe("Refined by test");
+  });
 });
