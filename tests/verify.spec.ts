@@ -3344,4 +3344,53 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ]);
     expect(download.suggestedFilename()).toBe("freyr-offerings.csv");
   });
+
+  // -------------------------------------------------------------------------
+  // 248–251 — the agent is factually aware of the Offerings repository (V20).
+  // Grounded, read-only lookups (no fuzzy account matching); runs in the
+  // deterministic path so production gets it without a key.
+  // -------------------------------------------------------------------------
+  test("248 — agent gives an offerings overview (V20)", async ({ request }) => {
+    const res = await request.post(`${BASE}/api/agent/converse`, {
+      data: { mock: true, message: "what offerings do we have?" },
+    });
+    const d = await res.json();
+    expect(d.source).toBe("offerings");
+    expect(d.reply).toMatch(/offerings? across \d+ type/i);
+  });
+
+  test("249 — agent describes a specific offering with a deep link (V20)", async ({
+    request,
+  }) => {
+    const res = await request.post(`${BASE}/api/agent/converse`, {
+      data: { mock: true, message: "tell me about Freya Register" },
+    });
+    const d = await res.json();
+    expect(d.source).toBe("offerings");
+    expect(d.reply).toContain("Freya Register");
+    expect(d.reply).toMatch(/\/offerings\/of-/);
+  });
+
+  test("250 — agent lists offerings by market (V20)", async ({ request }) => {
+    const res = await request.post(`${BASE}/api/agent/converse`, {
+      data: { mock: true, message: "which offerings are available in Europe?" },
+    });
+    const d = await res.json();
+    expect(d.source).toBe("offerings");
+    expect(d.reply.toLowerCase()).toContain("europe");
+    expect(d.reply).toContain("Freya GRI + Freya chat");
+  });
+
+  test("251 — offerings answers don't hijack normal pipeline questions (V20)", async ({
+    request,
+  }) => {
+    const res = await request.post(`${BASE}/api/agent/converse`, {
+      data: { mock: true, message: "which deals are cooling?" },
+    });
+    const d = await res.json();
+    // The point of the control: a pipeline question is NOT routed to the
+    // offerings responder (it stays on the normal brain).
+    expect(d.source).not.toBe("offerings");
+    expect((d.reply || "").length).toBeGreaterThan(0);
+  });
 });

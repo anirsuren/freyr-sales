@@ -12,6 +12,7 @@ import {
   type ChatAction,
 } from "@/lib/agentChat";
 import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
+import { offeringsAnswer } from "@/lib/offeringsAgent";
 import type { Contact, PitchSession } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,21 @@ export async function POST(req: Request) {
   };
 
   const base = answerAgentChat(message, ctx, history);
+
+  // Factual offerings questions ("what offerings do we have", "tell me about
+  // Freya Register", "offerings in Europe") are answered straight from the
+  // repository — grounded, no LLM, works with or without a key. Read-only and
+  // tightly scoped, so it never intercepts normal pipeline/account questions.
+  const off = offeringsAnswer(message);
+  if (off) {
+    return NextResponse.json({
+      ok: true,
+      reply: off.reply,
+      suggestions: off.suggestions,
+      source: "offerings",
+    });
+  }
+
   // `mock:true` forces the deterministic brain — used by the test suite so
   // assertions stay reproducible whether or not a key is set.
   const forceMock = body.mock === true;
