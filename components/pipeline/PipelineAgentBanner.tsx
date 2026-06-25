@@ -45,7 +45,7 @@ export function PipelineAgentBanner({ coolingCount }: { coolingCount: number }) 
   }
 
   return (
-    <div className="rounded-2xl border border-blue-subtle bg-blue-light/50 p-4 mb-6 flex items-center justify-between gap-3">
+    <div className="rounded-2xl border border-blue-subtle bg-blue-light/50 p-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
           <Sparkles size={16} strokeWidth={1.9} />
