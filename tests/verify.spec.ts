@@ -3660,4 +3660,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator('a[href^="/offerings/of-"]')).toHaveCount(0);
     await expect(page.getByText(/No offerings match/i)).toBeVisible();
   });
+
+  test("267 — global search finds offerings by mapped market (V34)", async ({
+    request,
+  }) => {
+    // "Europe" only appears as a mapped market, so offering hits prove global
+    // search matches the mapping — consistent with the in-page offerings search.
+    const r = await (await request.get(`${BASE}/api/search?q=Europe`)).json();
+    const offerings = r.results.filter((x: any) => x.type === "Offering");
+    expect(offerings.length).toBeGreaterThanOrEqual(3);
+    // existing customer search by name still works (no regression)
+    const helix = await (await request.get(`${BASE}/api/search?q=Helix`)).json();
+    expect(helix.results.some((x: any) => x.type === "Customer")).toBe(true);
+  });
 });

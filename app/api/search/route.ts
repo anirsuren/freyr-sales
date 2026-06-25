@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { listOfferings } from "@/lib/offerings";
+import { listOfferings, hydrateOffering } from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
 
@@ -51,13 +51,16 @@ export async function GET(req: Request) {
       });
     }
   }
-  // Offerings are a core object now — make them findable in global search too.
-  for (const o of listOfferings()) {
-    if (
-      o.offering_name.toLowerCase().includes(q) ||
-      (o.offering_type || "").toLowerCase().includes(q) ||
-      (o.offering_description || "").toLowerCase().includes(q)
-    ) {
+  // Offerings are a core object now — make them findable in global search too,
+  // matching the same fields the in-page offerings search does (name, type,
+  // description, plus the markets and customer types they're mapped to) so
+  // "Europe" or "pharmaceutical" surface their offerings here as well.
+  for (const raw of listOfferings()) {
+    const o = hydrateOffering(raw);
+    const hay = `${o.offering_name} ${o.offering_type} ${o.offering_description} ${o.markets
+      .map((m) => m.name)
+      .join(" ")} ${o.customerTypes.map((c) => c.name).join(" ")}`.toLowerCase();
+    if (hay.includes(q)) {
       results.push({
         type: "Offering",
         label: o.offering_name,
