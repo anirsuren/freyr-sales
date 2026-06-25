@@ -2,11 +2,27 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CustomerTypesManager } from "@/components/offerings/CustomerTypesManager";
-import { listCustomerTypes, listMarkets } from "@/lib/offerings";
+import {
+  listCustomerTypes,
+  listMarkets,
+  listOfferings,
+} from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
 
 export default function CustomerTypesPage() {
+  // How many offerings are mapped to each customer type / market — lets the
+  // definitions page link straight to "the offerings for this type".
+  const offerings = listOfferings();
+  const typeCounts: Record<string, number> = {};
+  const marketCounts: Record<string, number> = {};
+  for (const o of offerings) {
+    for (const id of o.customer_type_ids)
+      typeCounts[id] = (typeCounts[id] || 0) + 1;
+    for (const id of o.market_ids)
+      marketCounts[id] = (marketCounts[id] || 0) + 1;
+  }
+
   return (
     <div>
       <Link
@@ -22,6 +38,8 @@ export default function CustomerTypesPage() {
       <CustomerTypesManager
         customerTypes={listCustomerTypes()}
         markets={listMarkets()}
+        typeCounts={typeCounts}
+        marketCounts={marketCounts}
       />
     </div>
   );

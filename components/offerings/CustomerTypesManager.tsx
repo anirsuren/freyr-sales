@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -27,9 +28,13 @@ const SIZES: CustomerSize[] = ["Small", "Mid size", "Large"];
 export function CustomerTypesManager({
   customerTypes,
   markets,
+  typeCounts = {},
+  marketCounts = {},
 }: {
   customerTypes: CustomerType[];
   markets: Market[];
+  typeCounts?: Record<string, number>;
+  marketCounts?: Record<string, number>;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -201,32 +206,45 @@ export function CustomerTypesManager({
               {types[0].product_type}
             </p>
           </div>
-          <div className="hidden sm:grid grid-cols-[120px_150px_140px_1fr] gap-3 px-4 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary border-b border-border-light bg-surface/40">
+          <div className="hidden sm:grid grid-cols-[110px_140px_120px_1fr_auto] gap-3 px-4 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary border-b border-border-light bg-surface/40">
             <span>Size</span>
             <span>Revenue</span>
             <span>Employees</span>
             <span>Operational focus</span>
+            <span className="text-right">Offerings</span>
           </div>
           <div className="divide-y divide-border-light">
-            {types.map((t) => (
-              <div
-                key={t.id}
-                className="grid grid-cols-1 sm:grid-cols-[120px_150px_140px_1fr] gap-x-3 gap-y-1 px-4 py-3 items-baseline"
-              >
-                <span className="inline-flex w-fit text-[11px] font-semibold text-blue-primary bg-blue-light rounded px-2 py-0.5">
-                  {t.size}
-                </span>
-                <span className="text-[13px] text-text-primary tnum">
-                  {t.revenue}
-                </span>
-                <span className="text-[13px] text-text-secondary tnum">
-                  {t.employees}
-                </span>
-                <span className="text-[13px] text-text-secondary leading-relaxed">
-                  {t.operational_focus}
-                </span>
-              </div>
-            ))}
+            {types.map((t) => {
+              const count = typeCounts[t.id] || 0;
+              return (
+                <Link
+                  key={t.id}
+                  href={`/offerings?type=${t.id}`}
+                  className="grid grid-cols-1 sm:grid-cols-[110px_140px_120px_1fr_auto] gap-x-3 gap-y-1 px-4 py-3 items-baseline hover:bg-surface transition-colors group"
+                >
+                  <span className="inline-flex w-fit text-[11px] font-semibold text-blue-primary bg-blue-light rounded px-2 py-0.5">
+                    {t.size}
+                  </span>
+                  <span className="text-[13px] text-text-primary tnum">
+                    {t.revenue}
+                  </span>
+                  <span className="text-[13px] text-text-secondary tnum">
+                    {t.employees}
+                  </span>
+                  <span className="text-[13px] text-text-secondary leading-relaxed">
+                    {t.operational_focus}
+                  </span>
+                  <span className="inline-flex items-center gap-1 self-center justify-self-start sm:justify-self-end whitespace-nowrap text-[11px] font-medium text-text-tertiary group-hover:text-blue-primary">
+                    {count} offering{count === 1 ? "" : "s"}
+                    <ArrowRight
+                      size={12}
+                      strokeWidth={2}
+                      className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+                    />
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </Card>
       ))}
@@ -259,12 +277,16 @@ export function CustomerTypesManager({
         </h2>
         <div className="flex flex-wrap gap-2 mb-4">
           {markets.map((m) => (
-            <span
+            <Link
               key={m.id}
-              className="text-[12.5px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2.5 py-1"
+              href={`/offerings?market=${m.id}`}
+              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2.5 py-1 transition-colors hover:border-blue-subtle hover:text-blue-primary"
             >
               {m.name}
-            </span>
+              <span className="text-[11px] text-text-tertiary tnum">
+                {marketCounts[m.id] || 0}
+              </span>
+            </Link>
           ))}
         </div>
         <div className="flex items-center gap-2 max-w-[420px]">
