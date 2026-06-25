@@ -476,7 +476,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
         </div>
       )}
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-4 overflow-x-auto pb-4 stagger">
       {order.map((stage, colIdx) => {
         const items = byStage[stage] || [];
         const total = items.reduce((sum, d) => sum + d.value, 0);

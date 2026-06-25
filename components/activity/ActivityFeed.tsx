@@ -151,7 +151,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                 {g.label}
                 <span className="text-text-tertiary/70 tnum"> · {g.items.length}</span>
               </h2>
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 stagger">
                 {g.items.map((it) => (
                   <Link key={it.id} href={`/customers/${it.customerId}`}>
                     <Card className="p-4 hover:border-blue-subtle transition-colors group">

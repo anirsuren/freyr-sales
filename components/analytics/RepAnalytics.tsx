@@ -63,7 +63,7 @@ export function RepAnalytics({
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* leaderboard — click to drill in */}
-        <div className="space-y-3">
+        <div className="space-y-3 stagger">
           {reps.map((rep, i) => (
             <button
               key={rep.name}

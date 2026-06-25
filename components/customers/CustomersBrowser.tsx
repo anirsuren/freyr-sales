@@ -358,7 +358,7 @@ export function CustomersBrowser({
           }
         />
       ) : view === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 stagger">
           {paged.map((c) => (
             <CustomerCard
               key={c.id}
@@ -387,7 +387,7 @@ export function CustomersBrowser({
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-light">
+              <tbody className="divide-y divide-border-light stagger">
                 {paged.map((c) => {
                   const isSel = selected.has(c.id);
                   return (

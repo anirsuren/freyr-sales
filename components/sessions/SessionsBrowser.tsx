@@ -156,7 +156,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-light">
+              <tbody className="divide-y divide-border-light stagger">
                 {view.map((r) => (
                   <tr key={r.id} className="hover:bg-surface transition-colors group">
                     <td className="px-5 py-4 text-[13px] font-semibold text-text-primary">{r.company}</td>

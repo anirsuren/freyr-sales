@@ -183,7 +183,7 @@ export function ContactsBrowser({ rows }: { rows: ContactRow[] }) {
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger">
           {view.map((c) => {
             const isSel = selected.has(c.id);
             const body = (

@@ -150,7 +150,7 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
           <EmptyState icon={Package} title="No services match" description="Try a different search, or add a service." />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger">
           {view.map(({ svc, idx }) => (
             <Card key={idx}>
               {editIdx === idx ? (

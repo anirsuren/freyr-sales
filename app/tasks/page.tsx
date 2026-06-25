@@ -98,7 +98,7 @@ export default async function TasksPage() {
             {reviewTasks.length === 0 ? (
               <p className="text-[13px] text-text-secondary">Nothing in the review queue.</p>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 stagger">
                 {reviewTasks.map((t) => (
                   <Link key={t.id} href={`/sessions/${t.id}`}>
                     <Card className="p-4 hover:border-blue-subtle transition-colors group flex items-center gap-3">
@@ -146,7 +146,7 @@ export default async function TasksPage() {
             {followUps.length === 0 ? (
               <p className="text-[13px] text-text-secondary">No follow-ups scheduled.</p>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 stagger">
                 {followUps.map((t) => {
                   const d = dueInfo(t.due, todayMs);
                   return (

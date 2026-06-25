@@ -384,7 +384,7 @@ export default async function DashboardPage({
                 View all
               </Link>
             </div>
-            <div className="divide-y divide-border-light">
+            <div className="divide-y divide-border-light stagger">
               {atRisk.map((a) => (
                 <Link key={a.id} href={`/customers/${a.id}`} className="p-5 flex justify-between items-center gap-3 hover:bg-surface transition-colors group">
                   <div className="flex gap-4 items-center min-w-0">
@@ -428,7 +428,7 @@ export default async function DashboardPage({
               ) : (
                 <>
                   <div className="absolute left-[31px] top-5 bottom-5 w-px bg-border-light" />
-                  <div className="space-y-5">
+                  <div className="space-y-5 stagger">
                     {recentActivity.map((a) => {
                       const positive =
                         a.outcome === "meeting_booked" || a.outcome === "interested";
@@ -494,7 +494,7 @@ export default async function DashboardPage({
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-light">
+              <tbody className="divide-y divide-border-light stagger">
                 {recentSessions.map((s) => {
                   const customer = customerById[s.customer_id];
                   const contact = contactById[s.contact_id];

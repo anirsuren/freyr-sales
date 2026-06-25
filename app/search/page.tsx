@@ -126,7 +126,7 @@ function SearchInner() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary mb-2">
                   {type}s
                 </p>
-                <Card className="p-0 overflow-hidden">
+                <Card className="p-0 overflow-hidden stagger">
                   {rows.map((r) => (
                     <Row key={r.href} item={r} />
                   ))}
@@ -140,7 +140,7 @@ function SearchInner() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary mb-2 flex items-center gap-1.5">
             <Clock size={13} strokeWidth={1.7} /> Recently viewed
           </p>
-          <Card className="p-0 overflow-hidden">
+          <Card className="p-0 overflow-hidden stagger">
             {recent.map((r) => (
               <Row key={r.href} item={r} />
             ))}

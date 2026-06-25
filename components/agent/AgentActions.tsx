@@ -108,7 +108,7 @@ export function AgentActions({
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5 stagger">
       {actions.map((a) => {
         const m = META[a.kind];
         const Icon = m.icon;
