@@ -104,9 +104,14 @@ export function OfferingsBrowser({
       if (mktId && !o.markets.some((m) => m.id === mktId)) return false;
       if (status === "mapped" && !isMapped(o)) return false;
       if (status === "unmapped" && isMapped(o)) return false;
+      // Search across what's actually on the card — name, type, description,
+      // AND the markets / customer types it's mapped to — so typing "Europe" or
+      // "pharmaceutical" finds matches instead of looking broken.
       if (
         needle &&
-        !`${o.offering_name} ${o.offering_type} ${o.offering_description}`
+        !`${o.offering_name} ${o.offering_type} ${o.offering_description} ${o.markets
+          .map((m) => m.name)
+          .join(" ")} ${o.customerTypes.map((c) => c.name).join(" ")}`
           .toLowerCase()
           .includes(needle)
       )

@@ -3644,4 +3644,20 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).markets;
     expect(markets.some((m: any) => m.name === "Europe")).toBe(true);
   });
+
+  test("266 — offerings search reaches markets and customer types (V33)", async ({
+    page,
+  }) => {
+    // "Europe" isn't in any offering name/type/description — only as a mapped
+    // market — so a non-zero result proves search reaches the mapping, not just
+    // the text fields (the false-negative that read as "search is broken").
+    await page.goto(`${BASE}/offerings?q=Europe`);
+    expect(
+      await page.locator('a[href^="/offerings/of-"]').count()
+    ).toBeGreaterThanOrEqual(3);
+    // a genuine non-match still shows the empty state
+    await page.goto(`${BASE}/offerings?q=zzznope`);
+    await expect(page.locator('a[href^="/offerings/of-"]')).toHaveCount(0);
+    await expect(page.getByText(/No offerings match/i)).toBeVisible();
+  });
 });
