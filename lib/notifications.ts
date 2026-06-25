@@ -71,13 +71,29 @@ export function buildNotifications(input: {
       });
     }
     if (i.follow_up_date) {
+      // A follow-up whose date has already passed is overdue, not "due" — say so
+      // rather than "Follow-up due … scheduled for [last December]", which reads
+      // as a contradiction. Compare by day so today's follow-up still counts as due.
+      const due = new Date(i.follow_up_date);
+      const dueDay = new Date(
+        due.getFullYear(),
+        due.getMonth(),
+        due.getDate()
+      ).getTime();
+      const now = new Date();
+      const todayDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+      ).getTime();
+      const overdue = dueDay < todayDay;
       out.push({
         id: `followup-${i.id}`,
         type: "followup",
-        title: "Follow-up due",
-        body: `${company} — scheduled for ${new Date(
-          i.follow_up_date
-        ).toLocaleDateString()}.`,
+        title: overdue ? "Follow-up overdue" : "Follow-up due",
+        body: `${company} — ${
+          overdue ? "was due" : "scheduled for"
+        } ${due.toLocaleDateString()}.`,
         href: "/tasks",
         ts: i.follow_up_date,
       });
