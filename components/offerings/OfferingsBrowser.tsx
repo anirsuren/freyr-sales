@@ -142,6 +142,22 @@ export function OfferingsBrowser({
     setStatus("");
   };
 
+  // Name the export by its active filter so repeated exports (Europe, then
+  // Pharma-Large) don't all land as "freyr-offerings (1).csv" in Suren's
+  // Downloads. Unfiltered stays "freyr-offerings.csv".
+  const exportFilename = () => {
+    const slug = (s: string) =>
+      s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const parts = ["freyr-offerings"];
+    const mkt = markets.find((m) => m.id === mktId);
+    const ct = customerTypes.find((c) => c.id === ctId);
+    if (mkt) parts.push(slug(mkt.name));
+    if (ct) parts.push(slug(ct.name));
+    if (status) parts.push(status);
+    if (parts.length === 1 && q.trim()) parts.push("filtered");
+    return `${parts.join("-")}.csv`;
+  };
+
   // Export the current (filtered) view to CSV — Suren built this from Excel, so
   // round-tripping back out is natural.
   function exportCsv() {
@@ -175,7 +191,7 @@ export function OfferingsBrowser({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "freyr-offerings.csv";
+    a.download = exportFilename();
     document.body.appendChild(a);
     a.click();
     a.remove();

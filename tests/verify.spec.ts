@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "fs/promises";
 
 // App runs on :3001 here (:3000 was occupied by another project).
 const BASE = "http://localhost:3001";
@@ -3343,6 +3344,23 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByRole("button", { name: /Export CSV/ }).click(),
     ]);
     expect(download.suggestedFilename()).toBe("freyr-offerings.csv");
+
+    // Content is well-formed: exact column header + comma-bearing names quoted.
+    const csv = await readFile(await download.path(), "utf8");
+    const [header, ...rows] = csv.split("\n");
+    expect(header).toBe(
+      "Offering Type,Offering,Description,Current Availability,Future Availability,Customer Types,Markets,Sales Materials"
+    );
+    expect(rows.length).toBeGreaterThanOrEqual(14);
+    expect(csv).toContain('"Freya Register + Pia, Mia and Via Agents"');
+
+    // Filtered exports are named by their filter (Excel-friendly).
+    await page.goto(`${BASE}/offerings?market=mkt-europe`);
+    const [dl2] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: /Export CSV/ }).click(),
+    ]);
+    expect(dl2.suggestedFilename()).toBe("freyr-offerings-europe.csv");
   });
 
   // -------------------------------------------------------------------------
