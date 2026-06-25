@@ -423,7 +423,7 @@ export default function IntakePage() {
             ))}
           </ol>
           <p className="text-[12px] text-text-tertiary mt-5 pt-4 border-t border-border-light leading-relaxed">
-            Takes ~30 seconds. We enrich the company and contact, match Freyr&apos;s
+            Takes ~30 seconds. We research the company and contact, match Freyr&apos;s
             services, and draft three ready-to-send pitch formats.
           </p>
         </Card>

@@ -4,11 +4,11 @@ import { Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const PIPELINE_STEPS = [
-  { key: "scraping_website", label: "Scraping website" },
-  { key: "linkedin", label: "Fetching LinkedIn profile" },
+  { key: "scraping_website", label: "Reading their website" },
+  { key: "linkedin", label: "Reading their LinkedIn profile" },
   { key: "analyzing", label: "Analyzing customer fit" },
   { key: "matching", label: "Matching Freyr services" },
-  { key: "pitches", label: "Generating pitch materials" },
+  { key: "pitches", label: "Writing the pitch materials" },
 ];
 
 export type StepStatus = "pending" | "running" | "done" | "error";

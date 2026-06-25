@@ -239,7 +239,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator("text=/linkedin/i").first()).toBeVisible();
     await expect(page.locator("text=/analyz/i").first()).toBeVisible();
     await expect(page.locator("text=/match/i").first()).toBeVisible();
-    await expect(page.locator("text=/generat/i").first()).toBeVisible();
+    await expect(page.locator("text=/pitch material/i").first()).toBeVisible();
   });
 
   // ---- Enterprise polish-pass conformance ----
