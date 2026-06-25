@@ -298,7 +298,7 @@ export function buildAccountBriefing(c: AccountContext): AccountBriefing {
     c.contactCount < 2
       ? " It's single-threaded, so widening the relationship would de-risk the deal."
       : "";
-  const narrative = `${headline}${threadNote} Recommended next move: ${asClause(recommendation).toLowerCase()}.`;
+  const narrative = `${headline}${threadNote} Recommended next move: ${asClause(recommendation)}.`;
 
   return { headline, reads, recommendation, narrative };
 }
@@ -346,7 +346,7 @@ export function buildDealBriefing(d: {
     ? "Lock in a clear next step with the buyer."
     : "Keep the deal moving toward the next stage.";
 
-  const narrative = `${headline} Recommended next move: ${asClause(recommendation).toLowerCase()}.`;
+  const narrative = `${headline} Recommended next move: ${asClause(recommendation)}.`;
 
   return { headline, reads, recommendation, narrative };
 }
@@ -407,7 +407,7 @@ export function buildContactBriefing(c: {
     },
   ];
 
-  const narrative = `${headline} Recommended next move: ${asClause(c.recommendation).toLowerCase()}.`;
+  const narrative = `${headline} Recommended next move: ${asClause(c.recommendation)}.`;
 
   return { headline, reads, recommendation: c.recommendation, narrative };
 }
