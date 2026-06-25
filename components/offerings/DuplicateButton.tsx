@@ -49,8 +49,10 @@ export function DuplicateButton({
       });
       const data = await res.json();
       if (data.ok) {
-        toast("Duplicated — edit the copy.");
-        router.push(`/offerings/${data.offering.id}/edit`);
+        toast("Duplicated — rename the copy.");
+        // ?focus=name drops the cursor in the name field (selected) so the first
+        // thing a rep does after cloning a variant — renaming it — is immediate.
+        router.push(`/offerings/${data.offering.id}/edit?focus=name`);
         router.refresh();
       } else {
         toast(data.error || "Couldn't duplicate.", "error");

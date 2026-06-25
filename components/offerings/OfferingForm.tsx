@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -84,6 +84,15 @@ export function OfferingForm({
   }
 
   const nameRef = useRef<HTMLInputElement>(null);
+  const params = useSearchParams();
+  // Arriving from Duplicate (?focus=name) → land the cursor in the name, text
+  // selected, so renaming the copy is a single keystroke away.
+  useEffect(() => {
+    if (params.get("focus") === "name") {
+      nameRef.current?.focus();
+      nameRef.current?.select();
+    }
+  }, [params]);
   const [offeringType, setOfferingType] = useState(initial?.offering_type ?? "");
   const [offeringName, setOfferingName] = useState(initial?.offering_name ?? "");
   const [description, setDescription] = useState(initial?.offering_description ?? "");

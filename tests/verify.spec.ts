@@ -3673,4 +3673,15 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const helix = await (await request.get(`${BASE}/api/search?q=Helix`)).json();
     expect(helix.results.some((x: any) => x.type === "Customer")).toBe(true);
   });
+
+  test("268 — duplicating lands with the copy's name focused to rename (V35)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/of-003`);
+    await page.getByRole("button", { name: /Duplicate/ }).click();
+    await expect(page).toHaveURL(/\/offerings\/of-[a-z0-9]+\/edit\?focus=name/);
+    await expect(
+      page.locator('input[placeholder="e.g. Freya Register"]')
+    ).toBeFocused();
+  });
 });
