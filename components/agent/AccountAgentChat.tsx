@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, ArrowUp, Eraser } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type AccountContext } from "@/lib/agent";
@@ -17,9 +17,13 @@ type Msg = { role: "agent" | "me"; text: string; source?: "claude" | "mock" };
 export function AccountAgentChat({
   context,
   customerId,
+  initialInput,
 }: {
   context: AccountContext;
   customerId: string;
+  // A request pre-loaded into the composer (e.g. from the Deliverables rail),
+  // ready for the rep to send — the agent drafts, the human stays in control.
+  initialInput?: string;
 }) {
   const greeting: Msg = {
     role: "agent",
@@ -28,6 +32,16 @@ export function AccountAgentChat({
   const [msgs, setMsgs] = useState<Msg[]>([greeting]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // When the parent hands us a request (a deliverable to draft), drop it into
+  // the composer and focus it so the rep can review and send with one keystroke.
+  useEffect(() => {
+    if (initialInput) {
+      setInput(initialInput);
+      inputRef.current?.focus();
+    }
+  }, [initialInput]);
 
   // Load the persisted thread so the conversation survives navigation (V9 #45).
   useEffect(() => {
@@ -135,7 +149,7 @@ export function AccountAgentChat({
             <div
               key={i}
               className={cn(
-                "max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed",
+                "max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed whitespace-pre-line",
                 m.role === "agent"
                   ? "bg-surface text-text-primary"
                   : "bg-blue-primary text-white ml-auto"
@@ -165,6 +179,7 @@ export function AccountAgentChat({
           </div>
           <div className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2 focus-within:border-blue-primary transition-colors">
             <input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && ask()}

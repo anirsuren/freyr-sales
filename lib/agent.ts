@@ -108,6 +108,90 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
   const next = c.topAction
     ? `The top next step is: ${c.topAction}.`
     : "There's no urgent action right now — keep nurturing.";
+
+  // Deliverable drafts — the account "Deliverables" rail hands these to the
+  // agent to draft. Grounded ONLY in this account's real data; where we don't
+  // have a fact (e.g. external market numbers) we flag what to check rather
+  // than inventing it. Each is explicitly a first draft for the rep to edit.
+  const move = c.topAction || "Keep nurturing — no urgent move right now";
+  const dealWord = `${c.dealCount} open deal${c.dealCount === 1 ? "" : "s"}`;
+  const threadLine =
+    c.contactCount < 2
+      ? `Single-threaded${c.topContact ? ` on ${c.topContact}` : ""} — worth widening.`
+      : `${c.contactCount} contacts mapped${c.topContact ? `, e.g. ${c.topContact}` : ""}.`;
+
+  if (/account brief/.test(s)) {
+    return [
+      `Account brief — ${c.company}`,
+      ``,
+      `• Health: ${c.healthLabel} (${c.healthScore}/100).`,
+      `• Pipeline: ${dealWord} worth ${c.openValue}.`,
+      `• Relationship: ${threadLine}`,
+      c.owner ? `• Owner: ${c.owner}.` : null,
+      c.competitor ? `• Incumbent on file: ${c.competitor}.` : null,
+      c.lastActivity ? `• Last activity: ${c.lastActivity}.` : null,
+      `• Recommended next move: ${asClause(move)}.`,
+      ``,
+      `A first draft from your live account data — edit before you share it.`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (/market (report|read|landscape)/.test(s)) {
+    return [
+      `Market read — ${c.company}`,
+      ``,
+      `From your data:`,
+      `• Standing: ${c.healthLabel} (${c.healthScore}/100), ${c.openValue} open across ${dealWord}.`,
+      c.competitor ? `• Competitive: ${c.competitor} is on file as the incumbent.` : null,
+      ``,
+      `Worth confirming before the next conversation:`,
+      `• Recent regulatory guidance in their space that could shift submission timelines.`,
+      `• Whether they're expanding (hiring, new programs) — a signal of more workload.`,
+      `• Any funding or pipeline milestones that raise their urgency.`,
+      ``,
+      `A scaffold — I've flagged what to check rather than guessing at numbers.`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (/abm plan|account[- ]based/.test(s)) {
+    return [
+      `ABM plan — ${c.company}`,
+      ``,
+      `Target: ${c.company} (${c.healthLabel}, ${c.openValue} open).`,
+      `Primary contact: ${c.topContact || `to identify — only ${c.contactCount} mapped`}.`,
+      c.contactCount < 2
+        ? `Gap: single-threaded — map 2–3 more stakeholders to de-risk.`
+        : null,
+      ``,
+      `Recommended motion:`,
+      `1. ${asClause(move)}.`,
+      `2. Multi-thread beyond ${c.topContact || "the primary contact"}.`,
+      `3. Bring a relevant proof point (an offering or case study) to the next touch.`,
+      ``,
+      `A first-pass plan from your account data — shape it to the deal.`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (/slide outline|\bdeck\b|\bslides\b/.test(s)) {
+    return [
+      `Slide outline — ${c.company}`,
+      ``,
+      `1. Title — ${c.company} × Freyr`,
+      `2. Where things stand — ${c.healthLabel} (${c.healthScore}/100), ${c.openValue} open across ${dealWord}`,
+      `3. Why now — ${asClause(move)}`,
+      `4. Our fit — the offerings that match their needs`,
+      `5. Proof — a relevant result or case`,
+      `6. The ask — a clear next step${c.topContact ? ` with ${c.topContact}` : ""}`,
+      ``,
+      `An outline to build the deck from — your real facts are slotted in.`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
   if (/health|risk|churn|doing/.test(s)) {
     return `${c.company} is ${c.healthLabel} (${c.healthScore}/100). ${next}`;
   }

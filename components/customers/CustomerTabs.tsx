@@ -76,10 +76,10 @@ const STAGE_TONE: Record<string, string> = {
 const TEAM = ["Suren Dheen", "Mark Miller", "Priya Nair", "Diego Alvarez"];
 
 const DELIVERABLES = [
-  { label: "Account Brief", icon: ClipboardList },
-  { label: "Market Report", icon: BarChart3 },
-  { label: "ABM Plan", icon: FileText },
-  { label: "Slide Outline", icon: Presentation },
+  { label: "Account Brief", icon: ClipboardList, ask: "Prepare an account brief for" },
+  { label: "Market Report", icon: BarChart3, ask: "Draft a market report for" },
+  { label: "ABM Plan", icon: FileText, ask: "Outline an ABM plan for" },
+  { label: "Slide Outline", icon: Presentation, ask: "Draft a slide outline for" },
 ];
 
 export function CustomerTabs({
@@ -97,6 +97,9 @@ export function CustomerTabs({
 }) {
   const { toast } = useToast();
   const [tab, setTab] = useState("overview");
+  // A deliverable request handed to the in-page agent to draft (see the
+  // Deliverables rail) — pre-loaded into the Ask Agent composer.
+  const [askPrefill, setAskPrefill] = useState("");
 
   // editable account fields (#55 owner, #59 competitor, #60 notes/attachments)
   const [owner, setOwner] = useState(customer.owner || "");
@@ -536,7 +539,11 @@ export function CustomerTabs({
         )}
 
         {tab === "ask" && (
-          <AccountAgentChat context={agentContext} customerId={customer.id} />
+          <AccountAgentChat
+            context={agentContext}
+            customerId={customer.id}
+            initialInput={askPrefill}
+          />
         )}
 
         {tab === "sessions" && (
@@ -829,7 +836,10 @@ export function CustomerTabs({
               return (
                 <button
                   key={d.label}
-                  onClick={() => toast(`Generating ${d.label}…`)}
+                  onClick={() => {
+                    setAskPrefill(`${d.ask} ${customer.company_name}`);
+                    setTab("ask");
+                  }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-light text-[14px] text-text-primary hover:border-blue-subtle hover:bg-surface transition-colors text-left"
                 >
                   <Icon size={18} strokeWidth={1.5} className="text-blue-primary" />
