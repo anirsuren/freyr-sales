@@ -519,7 +519,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                       ? "bg-error text-white border-error"
                       : "text-text-tertiary bg-white border-border-light"
                   )}
-                  title={limit != null ? `${items.length} of WIP limit ${limit}` : undefined}
+                  title={limit != null ? `${items.length} of a ${limit}-deal limit` : undefined}
                 >
                   {items.length}
                   {limit != null ? `/${limit}` : ""}
@@ -563,12 +563,12 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 underline={false}
                 className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary underline decoration-dotted decoration-text-tertiary/50 underline-offset-2"
               >
-                WIP limit
+                Deal limit
               </Term>
               <input
                 type="text"
                 inputMode="numeric"
-                aria-label={`WIP limit for ${stage}`}
+                aria-label={`Deal limit for ${stage}`}
                 value={limit ?? ""}
                 onChange={(e) => setWipLimit(stage, e.target.value)}
                 placeholder="∞"

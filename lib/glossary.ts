@@ -43,10 +43,10 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     def: "The expected annual contract value if this deal closes — the full amount, before adjusting for how likely it is.",
   },
 
-  // --- WIP / board ---------------------------------------------------------
+  // --- deal / board cap ----------------------------------------------------
   wip_limit: {
-    term: "WIP limit",
-    def: "Work-in-progress limit — the most deals you want sitting in this stage at once. Go over it and the column turns red, a gentle nudge to push deals forward instead of letting them pile up. Optional — leave it blank for no limit.",
+    term: "Deal limit",
+    def: "The most deals you want sitting in this stage at once. Go over it and the column turns red, a gentle nudge to push deals forward instead of letting them pile up. Optional — leave it blank for no limit.",
   },
 
   // --- stages --------------------------------------------------------------

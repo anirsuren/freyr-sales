@@ -686,9 +686,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(teamBtn).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("59 — pipeline: WIP limit + column reorder", async ({ page }) => {
+  test("59 — pipeline: deal limit + column reorder", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
-    const limit = page.getByLabel("WIP limit for Prospect");
+    const limit = page.getByLabel("Deal limit for Prospect");
     await expect(limit).toBeVisible();
     await limit.fill("3");
     await expect(limit).toHaveValue("3");
