@@ -3265,4 +3265,20 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.getByRole("link", { name: "Japan", exact: true }).click();
     await expect(page).toHaveURL(/market=mkt-japan/);
   });
+
+  test("243 — an offering can be duplicated into an editable copy (V17)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/of-001`);
+    await page.getByRole("button", { name: /Duplicate/ }).click();
+    // Lands in the editor for the new copy...
+    await page.waitForURL(/\/offerings\/of-[a-z0-9]+\/edit/, { timeout: 8000 });
+    await expect(
+      page.getByRole("heading", { name: "Edit offering" })
+    ).toBeVisible();
+    // ...pre-filled with the "(copy)" name.
+    await expect(
+      page.locator('input[value="Freya Register (copy)"]')
+    ).toBeVisible();
+  });
 });

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { DuplicateButton } from "@/components/offerings/DuplicateButton";
 import {
   getOffering,
   hydrateOffering,
@@ -75,12 +76,30 @@ export default function OfferingDetailPage({
             </p>
           )}
         </div>
-        <Link
-          href={`/offerings/${o.id}/edit`}
-          className="shrink-0 inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-4 py-2 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
-        >
-          <Pencil size={14} strokeWidth={1.8} /> Edit offering
-        </Link>
+        <div className="shrink-0 flex items-center gap-2">
+          <DuplicateButton
+            offering={{
+              offering_type: o.offering_type,
+              offering_name: o.offering_name,
+              offering_description: o.offering_description,
+              current_availability: o.current_availability,
+              future_availability: o.future_availability,
+              customer_type_ids: raw.customer_type_ids,
+              market_ids: raw.market_ids,
+              materials: raw.materials.map((m) => ({
+                kind: m.kind,
+                label: m.label,
+                url: m.url,
+              })),
+            }}
+          />
+          <Link
+            href={`/offerings/${o.id}/edit`}
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-4 py-2 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
+          >
+            <Pencil size={14} strokeWidth={1.8} /> Edit offering
+          </Link>
+        </div>
       </div>
 
       {/* Availability */}
