@@ -57,6 +57,7 @@ export function OfferingsBrowser({
   const [q, setQ] = useState(params.get("q") ?? "");
   const [ctId, setCtId] = useState(initType);
   const [mktId, setMktId] = useState(initMkt);
+  const [sort, setSort] = useState("default");
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -73,6 +74,27 @@ export function OfferingsBrowser({
       return true;
     });
   }, [offerings, q, ctId, mktId]);
+
+  const isMapped = (o: HydratedOffering) =>
+    o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    if (sort === "name")
+      arr.sort((a, b) => a.offering_name.localeCompare(b.offering_name));
+    else if (sort === "type")
+      arr.sort(
+        (a, b) =>
+          a.offering_type.localeCompare(b.offering_type) ||
+          a.offering_name.localeCompare(b.offering_name)
+      );
+    else if (sort === "mapped")
+      arr.sort(
+        (a, b) =>
+          Number(isMapped(b)) - Number(isMapped(a)) ||
+          a.offering_name.localeCompare(b.offering_name)
+      );
+    return arr; // "default" keeps catalog (sheet) order
+  }, [filtered, sort]);
 
   const activeFilters = !!(q || ctId || mktId);
   const inputCls =
@@ -122,6 +144,17 @@ export function OfferingsBrowser({
             </option>
           ))}
         </select>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          aria-label="Sort offerings"
+          className={inputCls}
+        >
+          <option value="default">Catalog order</option>
+          <option value="name">Name (A–Z)</option>
+          <option value="type">By type</option>
+          <option value="mapped">Mapped first</option>
+        </select>
         {activeFilters && (
           <button
             onClick={() => {
@@ -151,7 +184,7 @@ export function OfferingsBrowser({
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-          {filtered.map((o, i) => {
+          {sorted.map((o, i) => {
             const matKinds = Array.from(new Set(o.materials.map((m) => m.kind)));
             const mapped =
               o.customerTypes.length > 0 ||
