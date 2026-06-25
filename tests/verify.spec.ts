@@ -3424,4 +3424,24 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const r2 = await (await request.get(`${BASE}/api/search?q=Helix`)).json();
     expect(r2.results.some((x: any) => x.type === "Customer")).toBe(true);
   });
+
+  test("254 — agent answers offerings by availability (V21)", async ({
+    request,
+  }) => {
+    const now = await (
+      await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message: "which offerings are available now?" },
+      })
+    ).json();
+    expect(now.source).toBe("offerings");
+    expect(now.reply.toLowerCase()).toContain("available now");
+
+    const soon = await (
+      await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message: "what offerings are coming soon?" },
+      })
+    ).json();
+    expect(soon.source).toBe("offerings");
+    expect(soon.reply.toLowerCase()).toContain("coming up");
+  });
 });

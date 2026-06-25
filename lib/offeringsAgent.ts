@@ -144,7 +144,31 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     };
   }
 
-  // 4) General "what offerings do we have" → grouped overview.
+  // 4) Availability — Suren explicitly tracks "now" vs "future" availability.
+  if (/\b(available now|coming soon|upcoming|future|roadmap|launching|available)\b/.test(m)) {
+    const wantsFuture = /\b(coming soon|upcoming|future|roadmap|launching|next year|2026)\b/.test(m);
+    const list = offs.filter((o) =>
+      wantsFuture ? o.future_availability : o.current_availability
+    );
+    if (list.length === 0) {
+      return {
+        reply: `No offerings have ${wantsFuture ? "future" : "current"} availability noted yet — add it on each offering.\n\n[Open Offerings →](/offerings)`,
+        suggestions: SUGGESTIONS,
+      };
+    }
+    const lines = list
+      .slice(0, 8)
+      .map(
+        (o) =>
+          `• [${o.offering_name}](/offerings/${o.id}) — ${wantsFuture ? o.future_availability : o.current_availability}`
+      );
+    return {
+      reply: `${list.length} offering${list.length === 1 ? "" : "s"} ${wantsFuture ? "coming up" : "available now"}:\n\n${lines.join("\n")}`,
+      suggestions: SUGGESTIONS,
+    };
+  }
+
+  // 5) General "what offerings do we have" → grouped overview.
   const byType = new Map<string, number>();
   for (const o of offs) {
     const t = o.offering_type || "Other";
