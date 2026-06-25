@@ -3544,8 +3544,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   });
 
   test("260 — bad links land on a branded 404 (V27)", async ({ page }) => {
-    const resp = await page.goto(`${BASE}/offerings/does-not-exist-xyz`);
-    expect(resp?.status()).toBe(404);
+    // Detail routes stream via loading.tsx, so notFound() renders the branded
+    // page with a 200 (same as customers/contacts) — what matters is that the
+    // user sees the branded not-found content and a way back, not Next's bare
+    // default 404.
+    await page.goto(`${BASE}/offerings/does-not-exist-xyz`);
     await expect(page.getByText(/We couldn.t find that page/)).toBeVisible();
     await expect(
       page.getByRole("link", { name: /Back to dashboard/ })
