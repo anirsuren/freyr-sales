@@ -50,6 +50,29 @@ export function OfferingForm({
   const { toast } = useToast();
   const isEdit = !!offeringId;
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function remove() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/offerings/${offeringId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast("Offering deleted.");
+        router.push("/offerings");
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't delete the offering.", "error");
+        setDeleting(false);
+      }
+    } catch {
+      toast("Couldn't delete the offering.", "error");
+      setDeleting(false);
+    }
+  }
 
   const [offeringType, setOfferingType] = useState(initial?.offering_type ?? "");
   const [offeringName, setOfferingName] = useState(initial?.offering_name ?? "");
@@ -366,6 +389,36 @@ export function OfferingForm({
           Cancel
         </button>
       </div>
+
+      {isEdit && (
+        <div className="pt-4 mt-2 border-t border-border-light">
+          {!confirmDelete ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-error hover:underline"
+            >
+              <Trash2 size={14} strokeWidth={1.8} /> Delete offering
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[13px] text-text-secondary">
+                Delete this offering? This can&apos;t be undone.
+              </span>
+              <Button variant="destructive" onClick={remove} loading={deleting}>
+                Delete
+              </Button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="text-[13px] font-semibold text-text-secondary hover:text-text-primary"
+              >
+                Keep
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

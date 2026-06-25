@@ -304,6 +304,12 @@ export function updateOffering(
   return store.offerings[i];
 }
 
+export function deleteOffering(id: string): boolean {
+  const before = store.offerings.length;
+  store.offerings = store.offerings.filter((o) => o.id !== id);
+  return store.offerings.length < before;
+}
+
 // Helper: hydrate an offering with its customer-type + market objects.
 export function hydrateOffering(o: Offering) {
   return {

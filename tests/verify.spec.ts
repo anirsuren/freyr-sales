@@ -3295,4 +3295,24 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText("Freya GRI + Freya chat", { exact: true })
     ).toHaveCount(0);
   });
+
+  test("245 — an offering can be deleted from the edit screen (V18)", async ({
+    page,
+    request,
+  }) => {
+    // Throwaway offering so we don't disturb the seeded catalog.
+    const created = await request.post(`${BASE}/api/offerings`, {
+      data: { offering_name: "Delete Me QA", offering_type: "Freya Module" },
+    });
+    const id = (await created.json()).offering.id;
+
+    await page.goto(`${BASE}/offerings/${id}/edit`);
+    await page.getByRole("button", { name: /Delete offering/ }).click();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.waitForURL((u) => u.pathname === "/offerings", { timeout: 8000 });
+
+    // It's gone.
+    const after = await request.get(`${BASE}/api/offerings/${id}`);
+    expect(after.status()).toBe(404);
+  });
 });
