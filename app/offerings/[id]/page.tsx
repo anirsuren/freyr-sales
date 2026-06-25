@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { RecordView } from "@/components/RecordView";
 import { DuplicateButton } from "@/components/offerings/DuplicateButton";
 import {
   getOffering,
@@ -58,6 +59,12 @@ export default function OfferingDetailPage({
 
   return (
     <div className="max-w-[900px]">
+      <RecordView
+        type="Offering"
+        label={o.offering_name}
+        sublabel={o.offering_type || ""}
+        href={`/offerings/${o.id}`}
+      />
       <Link
         href="/offerings"
         className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
