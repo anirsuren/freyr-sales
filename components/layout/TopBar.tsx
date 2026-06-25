@@ -31,6 +31,7 @@ const NEW_ITEMS = [
   { icon: Sparkles, label: "Sales session", sub: "Research + generate a pitch", href: "/intake" },
   { icon: Building2, label: "Customer account", sub: "Add a company to track", href: "/intake" },
   { icon: UserPlus, label: "Contact", sub: "Add a buying-committee member", href: "/intake" },
+  { icon: Package, label: "Offering", sub: "Add to the offering repository", href: "/offerings/new" },
 ];
 
 export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
