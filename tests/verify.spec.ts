@@ -3444,4 +3444,24 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(soon.source).toBe("offerings");
     expect(soon.reply.toLowerCase()).toContain("coming up");
   });
+
+  test("255 — agent answers offerings by sales material (V22)", async ({
+    request,
+  }) => {
+    const vid = await (
+      await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message: "which offerings have a demo video?" },
+      })
+    ).json();
+    expect(vid.source).toBe("offerings");
+    expect(vid.reply.toLowerCase()).toContain("video");
+
+    const mat = await (
+      await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message: "which offerings have sales materials?" },
+      })
+    ).json();
+    expect(mat.source).toBe("offerings");
+    expect(mat.reply.toLowerCase()).toContain("sales materials");
+  });
 });

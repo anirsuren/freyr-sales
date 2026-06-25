@@ -9,6 +9,8 @@ import {
   hydrateOffering,
   listMarkets,
   listCustomerTypes,
+  MATERIAL_META,
+  type MaterialKind,
 } from "./offerings";
 
 export interface OfferingsAnswer {
@@ -168,7 +170,42 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     };
   }
 
-  // 5) General "what offerings do we have" → grouped overview.
+  // 5) Sales materials — Suren modeled videos / decks / white papers / pricing
+  // specifically so a rep can grab them for a pitch. Let them ask "which
+  // offerings have a deck / a demo / pricing".
+  const matKind: MaterialKind | null = /\b(video|demo|webinar)\b/.test(m)
+    ? "video"
+    : /\b(deck|slides|presentation|pitch)\b/.test(m)
+    ? "presentation"
+    : /\b(white ?paper|thought leadership)\b/.test(m)
+    ? "whitepaper"
+    : /\b(pricing|price sheet|price list|prices)\b/.test(m)
+    ? "pricing"
+    : null;
+  if (matKind || /\b(materials|collateral|assets|sales material|resources)\b/.test(m)) {
+    const list = offs.filter((o) =>
+      matKind ? o.materials.some((x) => x.kind === matKind) : o.materials.length > 0
+    );
+    const label = matKind ? MATERIAL_META[matKind].plural.toLowerCase() : "sales materials";
+    if (list.length === 0) {
+      return {
+        reply: `No offerings have ${label} attached yet — add them on each offering.\n\n[Open Offerings →](/offerings)`,
+        suggestions: SUGGESTIONS,
+      };
+    }
+    const lines = list.slice(0, 8).map((o) => {
+      const n = matKind
+        ? o.materials.filter((x) => x.kind === matKind).length
+        : o.materials.length;
+      return `• [${o.offering_name}](/offerings/${o.id}) — ${n} ${n === 1 ? "item" : "items"}`;
+    });
+    return {
+      reply: `${list.length} offering${list.length === 1 ? "" : "s"} with ${label}:\n\n${lines.join("\n")}`,
+      suggestions: SUGGESTIONS,
+    };
+  }
+
+  // 6) General "what offerings do we have" → grouped overview.
   const byType = new Map<string, number>();
   for (const o of offs) {
     const t = o.offering_type || "Other";
