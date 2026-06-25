@@ -106,14 +106,14 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
       >
         <Menu size={20} strokeWidth={1.7} />
       </button>
-      <div className="flex-1 max-w-xl">
+      <div className="flex-1 max-w-xl min-w-0">
         <button
           onClick={() => setPaletteOpen(true)}
           className="w-full flex items-center gap-2 bg-surface border border-transparent rounded-full pl-10 pr-3 py-2 text-[14px] text-text-tertiary hover:border-border-light transition-colors relative"
         >
-          <Search size={18} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2" />
-          <span>Search companies, contacts, or jump to a page…</span>
-          <span className="ml-auto text-[11px] text-text-tertiary border border-border-light rounded px-1.5 py-0.5">
+          <Search size={18} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0" />
+          <span className="truncate">Search companies, contacts, or jump to a page…</span>
+          <span className="ml-auto shrink-0 text-[11px] text-text-tertiary border border-border-light rounded px-1.5 py-0.5">
             ⌘K
           </span>
         </button>

@@ -174,7 +174,7 @@ export function OfferingForm({
               className={FIELD}
               value={offeringName}
               onChange={(e) => setOfferingName(e.target.value)}
-              placeholder="e.g. Freyr Register"
+              placeholder="e.g. Freya Register"
             />
           </div>
         </div>

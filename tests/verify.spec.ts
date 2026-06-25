@@ -3200,7 +3200,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const created = await request.post(`${BASE}/api/offerings`, {
       data: {
         offering_name: "QA — Test Offering",
-        offering_type: "Freyr Module",
+        offering_type: "Freya Module",
         customer_type_ids: ["ct-pharma-l"],
         market_ids: ["mkt-usa"],
       },
