@@ -66,7 +66,18 @@ export function AnalyticsView({
 }) {
   const maxStageVal = Math.max(1, ...stages.map((s) => s.value));
   const maxOutcome = Math.max(1, ...outcomes.map((o) => o.count));
-  const maxFunnel = Math.max(1, ...stages.map((s) => s.count));
+
+  // A real conversion funnel: how many (open) deals have REACHED each step. A
+  // deal in a later stage necessarily passed through the earlier ones, so each
+  // rung is the running total from that stage onward — which makes it actually
+  // narrow downward, unlike the raw per-stage snapshot. Closed-lost deals are
+  // left out (we don't know how far they got), so this tracks the live pipeline.
+  const funnelStages = stages.filter((s) => s.stage !== "Closed Lost");
+  const funnel = funnelStages.map((s, i) => ({
+    stage: s.stage,
+    count: funnelStages.slice(i).reduce((sum, x) => sum + x.count, 0),
+  }));
+  const maxFunnel = Math.max(1, funnel[0]?.count ?? 1);
 
   return (
     <div className="space-y-8">
@@ -165,10 +176,10 @@ export function AnalyticsView({
       <Card>
         <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
           Conversion Funnel
-          <InfoHint text="How many deals sit at each step, top to bottom. A smooth narrowing is healthy; a sharp drop between two steps is where deals get stuck." />
+          <InfoHint text="How many open deals have reached each step. A real funnel narrows as deals convert — a sharp drop between two steps is where deals stall. Closed-lost deals aren't counted here." />
         </h2>
         <div className="space-y-2">
-          {stages.map((s) => (
+          {funnel.map((s) => (
             <div key={s.stage} className="flex items-center gap-3">
               <span className="w-28 shrink-0 text-[13px] text-text-secondary text-right">
                 {s.stage}
