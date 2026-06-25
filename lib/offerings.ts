@@ -168,9 +168,9 @@ function seedOfferings(): Offering[] {
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
       materials: [
-        { id: "m-003", kind: "video", label: "Via Agents demo", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-        { id: "m-004", kind: "whitepaper", label: "Post-approval change automation", url: "https://example.com/via-agents-whitepaper.pdf" },
-        { id: "m-005", kind: "pricing", label: "Register stack pricing", url: "https://example.com/register-pricing.pdf" },
+        { id: "m-003", kind: "video", label: "Via Agents demo", url: "https://www.freyrsolutions.com/resources" },
+        { id: "m-004", kind: "whitepaper", label: "Post-approval change automation", url: "https://www.freyrsolutions.com/insights" },
+        { id: "m-005", kind: "pricing", label: "Register stack pricing", url: "https://www.freyrsolutions.com/contact-us" },
       ],
     }),
     off("of-004", "Freya - Module + Agent", "Freya GRR - MPR-PAC + Via Agent",
@@ -188,8 +188,8 @@ function seedOfferings(): Offering[] {
     off("of-009", "Freya Module", "Freya Docs", ""),
     off("of-010", "Freya Platform", "Agentic Workbench", "", {
       materials: [
-        { id: "m-008", kind: "video", label: "Agentic Workbench launch", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-        { id: "m-009", kind: "whitepaper", label: "Agentic regulatory operations", url: "https://example.com/agentic-workbench.pdf" },
+        { id: "m-008", kind: "video", label: "Agentic Workbench launch", url: "https://www.freyrsolutions.com/resources" },
+        { id: "m-009", kind: "whitepaper", label: "Agentic regulatory operations", url: "https://www.freyrsolutions.com/insights" },
       ],
     }),
     off("of-011", "Freya Platform", "Omni Object",
