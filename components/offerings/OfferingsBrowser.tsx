@@ -208,11 +208,11 @@ export function OfferingsBrowser({
       <Link
         key={o.id}
         href={`/offerings/${o.id}`}
-        className="group rise-in flex h-full"
+        className="group rise-in flex h-full rounded-lg"
         style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
       >
         <Card
-          className={`h-full w-full p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle ${
+          className={`h-full w-full p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle group-focus-visible:-translate-y-1 group-focus-visible:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-focus-visible:border-blue-subtle ${
             mapped ? "" : "bg-surface/40"
           }`}
         >
@@ -224,7 +224,7 @@ export function OfferingsBrowser({
             <ChevronRight
               size={16}
               strokeWidth={1.6}
-              className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform shrink-0 mt-0.5"
+              className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 group-focus-visible:text-blue-primary group-focus-visible:translate-x-0.5 transition-transform shrink-0 mt-0.5"
             />
           </div>
           <div>
