@@ -59,7 +59,7 @@ export default function OfferingDetailPage({
         <ArrowLeft size={15} strokeWidth={1.8} /> All offerings
       </Link>
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
