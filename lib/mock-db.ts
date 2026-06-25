@@ -153,8 +153,11 @@ function seed(): MockStore {
   const NOW = Date.UTC(2026, 5, 19, 12, 0, 0);
   const iso = (daysAgo: number) =>
     new Date(NOW - daysAgo * 86400000).toISOString();
+  // domain/handle from a company or person name. No length cap — a 16-char
+  // slice was truncating real names mid-word into broken domains like
+  // "novagenetherapeu.com" / "northwindbioscie.com", which read as fake.
   const slug = (s: string) =>
-    s.toLowerCase().replace(/[^a-z]+/g, "").slice(0, 16);
+    s.toLowerCase().replace(/[^a-z]+/g, "");
 
   type Spec = {
     id: string;
