@@ -21,14 +21,16 @@ function Stat({
   value,
   sub,
   subHref,
+  href,
 }: {
   label: string;
   value: number;
   sub?: string;
   subHref?: string;
+  href?: string;
 }) {
-  return (
-    <Card className="p-4">
+  const body = (
+    <>
       <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
         {label}
       </p>
@@ -46,7 +48,16 @@ function Stat({
         ) : (
           <p className="text-[11px] text-text-tertiary mt-1">{sub}</p>
         ))}
-    </Card>
+    </>
+  );
+  return href ? (
+    <Link href={href} className="block">
+      <Card className="p-4 h-full transition-colors hover:border-blue-subtle">
+        {body}
+      </Card>
+    </Link>
+  ) : (
+    <Card className="p-4 h-full">{body}</Card>
   );
 }
 
@@ -96,8 +107,16 @@ export default function OfferingsPage() {
           sub={toMap > 0 ? `${toMap} still to map` : "all mapped"}
           subHref={toMap > 0 ? "/offerings?status=unmapped" : undefined}
         />
-        <Stat label="Customer types" value={customerTypes.length} />
-        <Stat label="Markets" value={markets.length} />
+        <Stat
+          label="Customer types"
+          value={customerTypes.length}
+          href="/offerings/customer-types"
+        />
+        <Stat
+          label="Markets"
+          value={markets.length}
+          href="/offerings/customer-types"
+        />
       </div>
 
       <Suspense fallback={null}>
