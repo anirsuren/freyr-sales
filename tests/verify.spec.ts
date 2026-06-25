@@ -3542,4 +3542,16 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       );
     }
   });
+
+  test("260 — bad links land on a branded 404 (V27)", async ({ page }) => {
+    const resp = await page.goto(`${BASE}/offerings/does-not-exist-xyz`);
+    expect(resp?.status()).toBe(404);
+    await expect(page.getByText(/We couldn.t find that page/)).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Back to dashboard/ })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Browse offerings/ })
+    ).toBeVisible();
+  });
 });
