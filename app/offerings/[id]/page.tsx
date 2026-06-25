@@ -10,12 +10,14 @@ import {
   Sparkles,
   Pencil,
   Plus,
+  ChevronRight,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
   getOffering,
   hydrateOffering,
+  listOfferings,
   MATERIAL_META,
   type MaterialKind,
 } from "@/lib/offerings";
@@ -38,6 +40,14 @@ export default function OfferingDetailPage({
   const raw = getOffering(params.id);
   if (!raw) notFound();
   const o = hydrateOffering(raw);
+
+  // Sibling offerings of the same type — Suren's catalog is variant-heavy, so a
+  // quick way to compare the family (e.g. the Freya Register stack) is useful.
+  const related = raw.offering_type
+    ? listOfferings().filter(
+        (x) => x.id !== raw.id && x.offering_type === raw.offering_type
+      )
+    : [];
 
   return (
     <div className="max-w-[900px]">
@@ -200,6 +210,40 @@ export default function OfferingDetailPage({
           </div>
         )}
       </Card>
+
+      {/* Related offerings (same type) */}
+      {related.length > 0 && (
+        <Card className="mt-4">
+          <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
+            More in {o.offering_type} ({related.length})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {related.map((r) => (
+              <Link
+                key={r.id}
+                href={`/offerings/${r.id}`}
+                className="group flex items-center justify-between gap-2 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
+                    {r.offering_name}
+                  </span>
+                  {r.current_availability && (
+                    <span className="block text-[11px] text-text-tertiary">
+                      {r.current_availability}
+                    </span>
+                  )}
+                </span>
+                <ChevronRight
+                  size={16}
+                  strokeWidth={1.6}
+                  className="text-text-tertiary group-hover:text-blue-primary shrink-0"
+                />
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
