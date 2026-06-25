@@ -21,7 +21,7 @@ export const SEQUENCES: Sequence[] = [
     id: "reg-exec",
     name: "Regulatory Exec Outreach",
     description:
-      "7-touch cadence for VP / Head of Regulatory at clinical-stage biopharma.",
+      "7-step outreach for a VP / Head of Regulatory at clinical-stage biopharma.",
     steps: [
       { day: 0, channel: "email", label: "Intro email — submission-timeline angle" },
       { day: 2, channel: "email", label: "Follow-up email — share a relevant reviewer credential" },

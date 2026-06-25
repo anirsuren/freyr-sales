@@ -210,7 +210,7 @@ export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
                     advance(
                       { sequenceId: activeId },
                       "all",
-                      "Cadence advanced"
+                      "Sequence advanced"
                     )
                   }
                   disabled={busy !== null}
@@ -223,7 +223,7 @@ export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
             </div>
             {activeEnrollments.length === 0 ? (
               <p className="text-[13px] text-text-secondary">
-                No accounts are enrolled in this cadence yet.
+                No accounts are enrolled in this sequence yet.
               </p>
             ) : (
               <div className="space-y-2.5">

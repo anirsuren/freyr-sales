@@ -48,10 +48,10 @@ export function SequenceAgentBanner({
         });
         router.refresh();
       } else {
-        toast(data.error || "Agent couldn't run the cadence", "error");
+        toast(data.error || "Agent couldn't prep the steps", "error");
       }
     } catch {
-      toast("Agent couldn't run the cadence", "error");
+      toast("Agent couldn't prep the steps", "error");
     } finally {
       setBusy(false);
     }
@@ -67,7 +67,7 @@ export function SequenceAgentBanner({
           <p className="text-[14px] font-semibold text-text-primary">
             {pending
               ? `${candidateCount} to enroll · ${dueCount} due to advance`
-              : `${sequenceName} cadence is up to date`}
+              : `${sequenceName} is up to date`}
           </p>
           <p className="text-[12px] text-text-secondary">
             {pending
