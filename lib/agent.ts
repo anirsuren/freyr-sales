@@ -157,6 +157,13 @@ export interface AccountBriefing {
   narrative: string;
 }
 
+// A recommendation is sometimes a full sentence ending in "." and sometimes a
+// bare action; strip any trailing sentence punctuation before it's spliced into
+// the narrative so we never double-punctuate (e.g. "...right now..").
+function asClause(s: string): string {
+  return s.trim().replace(/[.!?]+$/, "");
+}
+
 export function buildAccountBriefing(c: AccountContext): AccountBriefing {
   const band = c.healthLabel.toLowerCase();
   const atRisk = /risk|cool|declin/.test(band);
@@ -207,7 +214,7 @@ export function buildAccountBriefing(c: AccountContext): AccountBriefing {
     c.contactCount < 2
       ? " It's single-threaded, so widening the relationship would de-risk the deal."
       : "";
-  const narrative = `${headline}${threadNote} Recommended next move: ${recommendation.toLowerCase()}.`;
+  const narrative = `${headline}${threadNote} Recommended next move: ${asClause(recommendation).toLowerCase()}.`;
 
   return { headline, reads, recommendation, narrative };
 }
@@ -255,7 +262,7 @@ export function buildDealBriefing(d: {
     ? "Lock in a clear next step with the buyer."
     : "Keep the deal moving toward the next stage.";
 
-  const narrative = `${headline} Recommended next move: ${recommendation.toLowerCase()}.`;
+  const narrative = `${headline} Recommended next move: ${asClause(recommendation).toLowerCase()}.`;
 
   return { headline, reads, recommendation, narrative };
 }
@@ -316,7 +323,7 @@ export function buildContactBriefing(c: {
     },
   ];
 
-  const narrative = `${headline} Recommended next move: ${c.recommendation.toLowerCase()}.`;
+  const narrative = `${headline} Recommended next move: ${asClause(c.recommendation).toLowerCase()}.`;
 
   return { headline, reads, recommendation: c.recommendation, narrative };
 }
