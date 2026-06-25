@@ -3519,4 +3519,27 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.locator("#markets").getByText(/Markets \(\d+\)/)
     ).toBeVisible();
   });
+
+  test("259 — agent offerings suggestions never dead-end (V26)", async ({
+    request,
+  }) => {
+    const overview = await (
+      await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message: "what offerings do we have?" },
+      })
+    ).json();
+    expect(overview.source).toBe("offerings");
+    expect(overview.suggestions.length).toBeGreaterThan(0);
+    // every suggested follow-up must itself be an answerable offerings query
+    for (const s of overview.suggestions) {
+      const r = await (
+        await request.post(`${BASE}/api/agent/converse`, {
+          data: { mock: true, message: s },
+        })
+      ).json();
+      expect(r.source, `suggestion "${s}" should be answerable`).toBe(
+        "offerings"
+      );
+    }
+  });
 });

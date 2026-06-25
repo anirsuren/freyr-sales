@@ -19,9 +19,9 @@ export interface OfferingsAnswer {
 }
 
 const SUGGESTIONS = [
-  "What offerings do we have?",
-  "Which offerings are available in Europe?",
-  "What's my open pipeline worth?",
+  "Which offerings are available now?",
+  "Which offerings have a demo video?",
+  "Offerings for pharmaceutical large",
 ];
 
 export function offeringsAnswer(message: string): OfferingsAnswer | null {
@@ -218,11 +218,11 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
   return {
     reply:
       `Freyr's repository has ${offs.length} offering${offs.length === 1 ? "" : "s"} across ${byType.size} type${byType.size === 1 ? "" : "s"}:\n\n${typeLines.join("\n")}` +
-      `\n\nAsk me about a specific one (e.g. “tell me about Freya Register”) or by market.\n\n[Open Offerings →](/offerings)`,
+      `\n\nYou can ask about a specific one (e.g. “tell me about Freya Register”), by market, what's available now, or which have sales materials.\n\n[Open Offerings →](/offerings)`,
     suggestions: [
       "Tell me about Freya Register",
       "Which offerings are available in Europe?",
-      "Offerings for pharmaceutical large",
+      "Which offerings have a demo video?",
     ],
   };
 }
