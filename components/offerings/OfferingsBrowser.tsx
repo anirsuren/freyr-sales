@@ -181,11 +181,11 @@ export function OfferingsBrowser({
       <Link
         key={o.id}
         href={`/offerings/${o.id}`}
-        className="group rise-in"
+        className="group rise-in flex h-full"
         style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
       >
         <Card
-          className={`p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle ${
+          className={`h-full w-full p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle ${
             mapped ? "" : "bg-surface/40"
           }`}
         >
@@ -430,14 +430,14 @@ export function OfferingsBrowser({
                   ({g.items.length})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
                 {g.items.map((o, i) => renderCard(o, i))}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
           {sorted.map((o, i) => renderCard(o, i))}
         </div>
       )}
