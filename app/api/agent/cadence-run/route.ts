@@ -7,8 +7,8 @@ import type { AgentRunStep } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-// Sequence auto-run (V9 #20). One play that runs a cadence end to end: it
-// ENROLLS every cooling account not yet in the cadence, then ADVANCES everyone
+// Sequence auto-run (V9 #20). One play that runs a sequence end to end: it
+// ENROLLS every cooling account not yet in the sequence, then ADVANCES everyone
 // already enrolled who is due a touch — logging each step and recording a single
 // transparent agent run. The full re-engagement motion in one click. Mock-first.
 export async function POST(req: Request) {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const sequenceId = String(body.sequenceId || "reengage");
   const seq = SEQUENCES.find((s) => s.id === sequenceId);
   if (!seq) {
-    return NextResponse.json({ error: "Unknown cadence" }, { status: 400 });
+    return NextResponse.json({ error: "Unknown sequence" }, { status: 400 });
   }
   const lastIdx = seq.steps.length - 1;
 
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   let completed = 0;
   let enrolled = 0;
 
-  // 1) Advance everyone already in the cadence who isn't finished.
+  // 1) Advance everyone already in the sequence who isn't finished.
   for (const e of enrollments.filter((x) => x.sequence_id === sequenceId)) {
     if (e.step_index >= lastIdx) continue;
     const nextIdx = e.step_index + 1;
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         contact_id: cid,
         outcome: "in_progress",
         notes: isDone
-          ? `🤖 Agent completed the “${seq.name}” cadence for ${co}`
+          ? `🤖 Agent completed the “${seq.name}” sequence for ${co}`
           : `🤖 Agent advanced ${co} to step ${nextIdx + 1} (${CHANNEL_LABEL[step.channel]}): ${step.label}`,
         follow_up_date: null,
         logged_by: "Freyr Agent",
@@ -64,12 +64,12 @@ export async function POST(req: Request) {
     if (isDone) completed++;
     steps.push({
       label: `${co} → step ${nextIdx + 1} of ${seq.steps.length}`,
-      detail: isDone ? `Completed the ${seq.name} cadence` : step.label,
+      detail: isDone ? `Completed the ${seq.name} sequence` : step.label,
       status: "done",
     });
   }
 
-  // 2) Enroll cooling accounts not yet in the cadence.
+  // 2) Enroll cooling accounts not yet in the sequence.
   const inCadence = new Set(
     enrollments
       .filter((x) => x.sequence_id === sequenceId)
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
         customer_id: d.customerId,
         contact_id: cid,
         outcome: "in_progress",
-        notes: `🤖 Agent enrolled ${d.company} in the “${seq.name}” cadence`,
+        notes: `🤖 Agent enrolled ${d.company} in the “${seq.name}” sequence`,
         follow_up_date: null,
         logged_by: "Freyr Agent",
       });
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
     enrolled++;
     steps.push({
       label: `Enrolled ${d.company}`,
-      detail: `Started the “${seq.name}” cadence at step 1`,
+      detail: `Started the “${seq.name}” sequence at step 1`,
       status: "done",
     });
   }
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
   if (advanced || enrolled) {
     const run = await db.agentRuns.create({
       kind: "plan",
-      title: `Ran the ${seq.name} cadence`,
+      title: `Ran the ${seq.name} sequence`,
       customer_id: null,
       company: null,
       outcome: "handled",
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
     });
     runId = run?.id || null;
     notifyTelegram(
-      `🤖 <b>Cadence auto-run</b>\n${seq.name}: enrolled ${enrolled}, advanced ${advanced}${
+      `🤖 <b>Sequence auto-run</b>\n${seq.name}: enrolled ${enrolled}, advanced ${advanced}${
         completed ? `, completed ${completed}` : ""
       }.`
     );

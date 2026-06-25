@@ -7,7 +7,7 @@ import type { AgentRunStep } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 // Sequences agent surface (V9 #15). The agent enrolls one or more accounts into
-// a cadence as part of a play — persisted, so they show on Sequences and the
+// a sequence as part of a play — persisted, so they show on Sequences and the
 // account timeline. Mock-first; dedupes against existing enrollments.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         customer_id: cid,
         contact_id: contactId,
         outcome: "in_progress",
-        notes: `🤖 Agent enrolled ${co} in the “${seq.name}” cadence`,
+        notes: `🤖 Agent enrolled ${co} in the “${seq.name}” sequence`,
         follow_up_date: null,
         logged_by: "Freyr Agent",
       });
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     enrolled.push(co);
     steps.push({
       label: `Enrolled ${co}`,
-      detail: `Started the “${seq.name}” cadence at step 1`,
+      detail: `Started the “${seq.name}” sequence at step 1`,
       status: "done",
     });
   }
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       outcome: "handled",
       summary: `${enrolled.length} account${
         enrolled.length === 1 ? "" : "s"
-      } started the ${seq.name} cadence.`,
+      } started the ${seq.name} sequence.`,
       steps,
     });
     notifyTelegram(

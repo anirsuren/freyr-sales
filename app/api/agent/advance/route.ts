@@ -6,11 +6,11 @@ import type { AgentRunStep, SequenceEnrollment } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-// Sequence step advance (V9 #19). The agent executes a cadence: it advances an
+// Sequence step advance (V9 #19). The agent executes a sequence: it advances an
 // enrolled account to its next step, logging the touch (channel + label) to the
-// account timeline, and marks the cadence complete at the last step. Accepts a
+// account timeline, and marks the sequence complete at the last step. Accepts a
 // single enrollmentId, or { sequenceId, all: true } to advance every active
-// enrollment in a cadence. Mock-first; persisted so progress survives.
+// enrollment in a sequence. Mock-first; persisted so progress survives.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const db = getDb();
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
         contact_id: contactId,
         outcome: "in_progress",
         notes: isDone
-          ? `🤖 Agent completed the “${seq.name}” cadence for ${co}`
+          ? `🤖 Agent completed the “${seq.name}” sequence for ${co}`
           : `🤖 Agent advanced ${co} to step ${nextIdx + 1} (${CHANNEL_LABEL[step.channel]}): ${step.label}`,
         follow_up_date: null,
         logged_by: "Freyr Agent",
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     if (isDone) completed++;
     steps.push({
       label: `${co} → step ${nextIdx + 1} of ${seq.steps.length}`,
-      detail: isDone ? `Completed the ${seq.name} cadence` : step.label,
+      detail: isDone ? `Completed the ${seq.name} sequence` : step.label,
       status: "done",
     });
   }
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   if (advanced) {
     await db.agentRuns.create({
       kind: "act",
-      title: `Advanced ${advanced} cadence step${advanced === 1 ? "" : "s"}`,
+      title: `Advanced ${advanced} sequence step${advanced === 1 ? "" : "s"}`,
       customer_id:
         targets.length === 1 ? targets[0].customer_id : null,
       company:
@@ -78,12 +78,12 @@ export async function POST(req: Request) {
           : null,
       outcome: "handled",
       summary: `${advanced} step${advanced === 1 ? "" : "s"} advanced${
-        completed ? `, ${completed} cadence${completed === 1 ? "" : "s"} completed` : ""
+        completed ? `, ${completed} sequence${completed === 1 ? "" : "s"} completed` : ""
       }.`,
       steps,
     });
     notifyTelegram(
-      `🤖 <b>Cadence advanced</b>\n${advanced} step(s)${
+      `🤖 <b>Sequence advanced</b>\n${advanced} step(s)${
         completed ? ` · ${completed} completed` : ""
       }`
     );
