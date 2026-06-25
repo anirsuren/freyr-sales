@@ -3334,4 +3334,13 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const mk = await (await request.get(`${BASE}/api/markets`)).json();
     expect(mk.markets.some((m: any) => m.id === mid)).toBe(false);
   });
+
+  test("247 — the offerings view exports to CSV (V19)", async ({ page }) => {
+    await page.goto(`${BASE}/offerings`);
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: /Export CSV/ }).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe("freyr-offerings.csv");
+  });
 });

@@ -12,10 +12,16 @@ import {
   ChevronRight,
   Sparkles,
   X,
+  Download,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import type { CustomerType, Market } from "@/lib/offerings";
+
+// CSV-safe a cell (quote if it has commas/quotes/newlines).
+function csv(v: string) {
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
 
 export interface HydratedOffering {
   id: string;
@@ -124,6 +130,47 @@ export function OfferingsBrowser({
     setMktId("");
     setStatus("");
   };
+
+  // Export the current (filtered) view to CSV — Suren built this from Excel, so
+  // round-tripping back out is natural.
+  function exportCsv() {
+    const header = [
+      "Offering Type",
+      "Offering",
+      "Description",
+      "Current Availability",
+      "Future Availability",
+      "Customer Types",
+      "Markets",
+      "Sales Materials",
+    ];
+    const rows = sorted.map((o) =>
+      [
+        o.offering_type,
+        o.offering_name,
+        o.offering_description,
+        o.current_availability,
+        o.future_availability,
+        o.customerTypes.map((c) => c.name).join("; "),
+        o.markets.map((m) => m.name).join("; "),
+        o.materials.map((m) => `${m.label} (${m.url})`).join(" | "),
+      ]
+        .map((x) => csv(String(x || "")))
+        .join(",")
+    );
+    const blob = new Blob([[header.join(","), ...rows].join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "freyr-offerings.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   const inputCls =
     "h-10 rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary transition-shadow focus:outline-none focus:border-blue-subtle focus:shadow-input-focus";
 
@@ -204,9 +251,19 @@ export function OfferingsBrowser({
         )}
       </div>
 
-      <p className="text-[12px] text-text-tertiary mb-4 tnum">
-        Showing {filtered.length} of {offerings.length} offerings
-      </p>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <p className="text-[12px] text-text-tertiary tnum">
+          Showing {filtered.length} of {offerings.length} offerings
+        </p>
+        {sorted.length > 0 && (
+          <button
+            onClick={exportCsv}
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary hover:text-blue-primary transition-colors"
+          >
+            <Download size={14} strokeWidth={1.9} /> Export CSV
+          </button>
+        )}
+      </div>
 
       {offerings.length === 0 ? (
         <Card className="text-center py-16">
