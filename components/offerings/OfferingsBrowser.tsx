@@ -16,6 +16,9 @@ import {
   Package,
   Users,
   UserRound,
+  Swords,
+  BookOpen,
+  Quote,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -42,6 +45,7 @@ export interface HydratedOffering {
   current_availability: string;
   future_availability: string;
   poc: string;
+  early_adopters: string[];
   customerTypes: CustomerType[];
   markets: Market[];
   materials: { id: string; kind: string; label: string; url: string }[];
@@ -52,6 +56,9 @@ const MATERIAL_ICON: Record<string, typeof Video> = {
   presentation: Presentation,
   whitepaper: FileText,
   pricing: DollarSign,
+  competition: Swords,
+  case_study: BookOpen,
+  reference: Quote,
 };
 
 export function OfferingsBrowser({
@@ -199,6 +206,7 @@ export function OfferingsBrowser({
       "Description",
       "Current Availability",
       "Availability Comments",
+      "Early Adopters",
       "Service Delivery POC",
       "Customer Types",
       "Markets",
@@ -211,6 +219,7 @@ export function OfferingsBrowser({
         o.offering_description,
         o.current_availability,
         o.future_availability,
+        o.early_adopters.join("; "),
         o.poc,
         o.customerTypes.map((c) => c.name).join("; "),
         o.markets.map((m) => m.name).join("; "),
@@ -343,6 +352,14 @@ export function OfferingsBrowser({
               <p className="inline-flex items-center gap-1 text-[11px] text-text-tertiary mb-2">
                 <UserRound size={11} strokeWidth={1.8} />
                 POC: {o.poc}
+              </p>
+            )}
+            {/* Early adopters — customers piloting/using it first */}
+            {o.early_adopters.length > 0 && (
+              <p className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-primary mb-2">
+                <Sparkles size={11} strokeWidth={2} />
+                Early adopter{o.early_adopters.length === 1 ? "" : "s"}:{" "}
+                {o.early_adopters.join(", ")}
               </p>
             )}
             {mapped ? (

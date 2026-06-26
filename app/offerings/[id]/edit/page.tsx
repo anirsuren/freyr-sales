@@ -49,6 +49,7 @@ export default function EditOfferingPage({
           current_availability: o.current_availability,
           future_availability: o.future_availability,
           poc: o.poc,
+          early_adopters: o.early_adopters,
           customer_type_ids: o.customer_type_ids,
           market_ids: o.market_ids,
           materials: o.materials.map((m) => ({

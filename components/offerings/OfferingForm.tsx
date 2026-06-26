@@ -82,6 +82,7 @@ export function OfferingForm({
     current_availability?: string;
     future_availability?: string;
     poc?: string;
+    early_adopters?: string[];
     customer_type_ids?: string[];
     market_ids?: string[];
     materials?: MaterialRow[];
@@ -135,6 +136,8 @@ export function OfferingForm({
   const current = buildAvailability(availMode, availMonth, availYear);
   const [future, setFuture] = useState(initial?.future_availability ?? "");
   const [poc, setPoc] = useState(initial?.poc ?? "");
+  // Early adopters edited as a simple comma-separated list of customer names.
+  const [early, setEarly] = useState((initial?.early_adopters ?? []).join(", "));
   const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
   const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
   const [materials, setMaterials] = useState<MaterialRow[]>(
@@ -197,6 +200,10 @@ export function OfferingForm({
             current_availability: current,
             future_availability: future,
             poc,
+            early_adopters: early
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
             customer_type_ids: ctIds,
             market_ids: mktIds,
             materials: materials
@@ -321,14 +328,28 @@ export function OfferingForm({
             />
           </div>
         </div>
-        <div>
-          <label className={LABEL}>Service delivery POC</label>
-          <input
-            className={FIELD}
-            value={poc}
-            onChange={(e) => setPoc(e.target.value)}
-            placeholder="Who owns this offering's data — e.g. Ragav"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL}>Service delivery POC</label>
+            <input
+              className={FIELD}
+              value={poc}
+              onChange={(e) => setPoc(e.target.value)}
+              placeholder="Who owns this offering's data — e.g. Ragav"
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Early adopters</label>
+            <input
+              className={FIELD}
+              value={early}
+              onChange={(e) => setEarly(e.target.value)}
+              placeholder="Customers using it first — e.g. Galderma"
+            />
+            <p className="text-[11.5px] text-text-tertiary mt-1">
+              Separate multiple customers with commas.
+            </p>
+          </div>
         </div>
       </Card>
 

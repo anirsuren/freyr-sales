@@ -3133,7 +3133,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.click("nav >> text=Offerings");
     await expect(page).toHaveURL(/offerings/);
     await expect(page.getByRole("heading", { name: "Offerings" })).toBeVisible();
-    await expect(page.getByText("Freya Register").first()).toBeVisible();
+    await expect(page.getByText("Freya.Register").first()).toBeVisible();
     await expect(page.getByLabel("Filter by customer type")).toBeVisible();
     await expect(page.getByLabel("Filter by market")).toBeVisible();
   });
@@ -3143,18 +3143,18 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/offerings`);
     await page.getByLabel("Search offerings").fill("Omni");
-    await expect(page.getByText("Omni Object").first()).toBeVisible();
-    await expect(page.getByText("Freya Label")).toHaveCount(0);
+    await expect(page.getByText("Freya.OmniObject").first()).toBeVisible();
+    await expect(page.getByText("Freya.Label")).toHaveCount(0);
   });
 
   test("237 — Offering detail shows availability, types, markets, materials (V15)", async ({
     page,
   }) => {
-    await page.goto(`${BASE}/offerings/of-003`);
-    await expect(
-      page.getByText("Freya Register + Pia, Mia and Via Agents")
-    ).toBeVisible();
-    await expect(page.getByText(/V3 is available in July 2026/)).toBeVisible();
+    // of-001 (Freya.Register) carries availability, all customer types, all
+    // markets, and sales materials — the fully-detailed example.
+    await page.goto(`${BASE}/offerings/of-001`);
+    await expect(page.getByText("Freya.Register", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Version 1/)).toBeVisible();
     // customer types are grouped by family on the detail page
     await expect(
       page.getByText("Bio Pharmaceutical", { exact: true })
@@ -3199,7 +3199,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const created = await request.post(`${BASE}/api/offerings`, {
       data: {
         offering_name: "QA — Test Offering",
-        offering_type: "Freya Module",
+        offering_type: "Freya Fusion (Module)",
         customer_type_ids: ["ct-pharma-l"],
         market_ids: ["mkt-usa"],
       },
@@ -3235,7 +3235,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(
       page.getByRole("heading", { name: "Edit offering" })
     ).toBeVisible();
-    await expect(page.locator('input[value="Freya Docs"]')).toBeVisible();
+    await expect(page.locator('input[value="Freya.OmniObject"]')).toBeVisible();
     // ...and PATCH actually persists a mapping (material gets a server id).
     const res = await request.patch(`${BASE}/api/offerings/of-009`, {
       data: {
@@ -3257,9 +3257,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.goto(`${BASE}/offerings?market=mkt-europe`);
     await page.waitForTimeout(400);
     await expect(
-      page.getByText("Freya GRI + Freya chat", { exact: true })
-    ).toBeVisible(); // of-005 carries Europe
-    await expect(page.getByText("Freya Submit")).toHaveCount(0); // of-008 has no market
+      page.getByText("Freya.Register", { exact: true })
+    ).toBeVisible(); // of-001 carries Europe
+    await expect(page.getByText("Freya.Submit")).toHaveCount(0); // of-005 has no market
     // A market chip on an offering links into that filtered view.
     await page.goto(`${BASE}/offerings/of-003`);
     await page.getByRole("link", { name: "Japan", exact: true }).click();
@@ -3278,7 +3278,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
     // ...pre-filled with the "(copy)" name.
     await expect(
-      page.locator('input[value="Freya Register (copy)"]')
+      page.locator('input[value="Freya.Register (copy)"]')
     ).toBeVisible();
   });
 
@@ -3291,10 +3291,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.locator('a[href="/offerings?status=unmapped"]').click();
     await page.waitForURL(/status=unmapped/, { timeout: 8000 });
     await expect(page.getByText("Awaiting details").first()).toBeVisible();
-    // an unmapped offering shows; a mapped one is excluded
-    await expect(page.getByText("Freya Label")).toBeVisible();
+    // a service offering still awaiting its details shows; a fully-detailed one is excluded
+    await expect(page.getByText("Publishing Operations")).toBeVisible();
     await expect(
-      page.getByText("Freya GRI + Freya chat", { exact: true })
+      page.getByText("Freya.Register", { exact: true })
     ).toHaveCount(0);
   });
 
@@ -3349,10 +3349,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const csv = await readFile(await download.path(), "utf8");
     const [header, ...rows] = csv.split("\n");
     expect(header).toBe(
-      "Offering Type,Offering,Description,Current Availability,Availability Comments,Service Delivery POC,Customer Types,Markets,Sales Materials"
+      "Offering Type,Offering,Description,Current Availability,Availability Comments,Early Adopters,Service Delivery POC,Customer Types,Markets,Sales Materials"
     );
     expect(rows.length).toBeGreaterThanOrEqual(14);
-    expect(csv).toContain('"Freya Register + Pia, Mia and Via Agents"');
+    expect(csv).toContain("Freya.Register");
+    // the Early Adopters column carries through (Galderma on Freya.Register)
+    expect(csv).toContain("Galderma");
 
     // Filtered exports are named by their filter (Excel-friendly).
     await page.goto(`${BASE}/offerings?market=mkt-europe`);
@@ -3390,7 +3392,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
     const d = await res.json();
     expect(d.source).toBe("offerings");
-    expect(d.reply).toContain("Freya Register");
+    expect(d.reply).toContain("Freya.Register");
     expect(d.reply).toMatch(/\/offerings\/of-/);
   });
 
@@ -3401,7 +3403,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const d = await res.json();
     expect(d.source).toBe("offerings");
     expect(d.reply.toLowerCase()).toContain("europe");
-    expect(d.reply).toContain("Freya GRI + Freya chat");
+    expect(d.reply).toContain("Freya.Register");
   });
 
   test("251 — offerings answers don't hijack normal pipeline questions (V20)", async ({
@@ -3436,11 +3438,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     request,
   }) => {
     const r = await (
-      await request.get(`${BASE}/api/search?q=${encodeURIComponent("Freya Register")}`)
+      await request.get(`${BASE}/api/search?q=${encodeURIComponent("Freya.Register")}`)
     ).json();
     expect(
       r.results.some(
-        (x: any) => x.type === "Offering" && /Freya Register/.test(x.label)
+        (x: any) => x.type === "Offering" && /Freya\.Register/.test(x.label)
       )
     ).toBe(true);
     // existing customer/contact search didn't regress
@@ -3502,11 +3504,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("257 — offering detail shows completeness status at a glance (V24)", async ({
     page,
   }) => {
-    // of-001 (Freya Register) is seeded without details → badge present
-    await page.goto(`${BASE}/offerings/of-001`);
+    // of-013 (Publishing Operations) is a service still awaiting its details → badge present
+    await page.goto(`${BASE}/offerings/of-013`);
     await expect(page.getByText("Awaiting details")).toBeVisible();
-    // of-003 is fully detailed → no badge
-    await page.goto(`${BASE}/offerings/of-003`);
+    // of-001 (Freya.Register) is fully detailed → no badge
+    await page.goto(`${BASE}/offerings/of-001`);
     await expect(page.getByText("Awaiting details")).toHaveCount(0);
   });
 
@@ -3726,12 +3728,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(
       page.getByRole("heading", { name: "Offering types", exact: true })
     ).toBeVisible();
-    await expect(page.getByText("Freya Platform", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("Freyr AI Native Service", { exact: true })
+      page.getByText("Freya Fusion (Module)", { exact: true })
     ).toBeVisible();
-    // each type takes a plain-English description
-    await expect(page.getByText("Add a description").first()).toBeVisible();
+    await expect(
+      page.getByText("Freyr AI Native Services", { exact: true })
+    ).toBeVisible();
+    // types carry their plain-English description from Suren's sheet
+    await expect(page.getByText(/system of record/i).first()).toBeVisible();
     await expect(
       page.getByRole("button", { name: /Add offering type/i })
     ).toBeVisible();
@@ -3744,10 +3748,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       await request.get(`${BASE}/api/offering-types`)
     ).json();
     expect(Array.isArray(list.offeringTypes)).toBe(true);
-    expect(list.offeringTypes.length).toBeGreaterThanOrEqual(7);
+    expect(list.offeringTypes.length).toBeGreaterThanOrEqual(5);
     expect(
       list.offeringTypes.some(
-        (t: any) => t.name === "Freyr AI Native Service"
+        (t: any) => t.name === "Freyr AI Native Services"
       )
     ).toBe(true);
     const created = await (
@@ -3769,7 +3773,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // deep-link to the AI-native type → only Publishing Operations shows
     await page.goto(`${BASE}/offerings?otype=ot-freyr-ai-native`);
     await expect(page.getByText("Publishing Operations")).toBeVisible();
-    await expect(page.getByText("Freya Register", { exact: true })).toHaveCount(
+    await expect(page.getByText("Freya.Register", { exact: true })).toHaveCount(
       0
     );
   });
@@ -3786,7 +3790,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
     // the offering type still appears, now secondary
     await expect(
-      card.getByText("Freya - Module + Module Agent + Add on Agent")
+      card.getByText("Freya Fusion (Module)")
     ).toBeVisible();
   });
 
@@ -3859,28 +3863,34 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(res.status()).toBe(403);
   });
 
-  test("278 — Saras's MPR services are seeded with their POCs (V41)", async ({
+  test("278 — service offerings are seeded with their delivery POCs (V41)", async ({
     page,
     request,
   }) => {
-    // all 15 MPR services are in the repository under the MPR Service type
+    // The four service offerings from Suren's sheet carry their POCs (Sara's list).
     const data = await (await request.get(`${BASE}/api/offerings`)).json();
-    const mpr = data.offerings.filter(
-      (o: { offering_type: string }) => o.offering_type === "MPR Service"
+    const services = data.offerings.filter(
+      (o: { offering_type: string }) =>
+        o.offering_type === "Freyr Services" ||
+        o.offering_type === "Freyr AI Native Services"
     );
-    expect(mpr.length).toBe(15);
-    const publishing = mpr.find(
-      (o: { offering_name: string }) => o.offering_name === "Publishing"
+    expect(services.length).toBe(4);
+    const publishing = data.offerings.find(
+      (o: { offering_name: string }) => o.offering_name === "Publishing Operations"
     );
     expect(publishing.poc).toBe("Ragav");
-    // and the service-delivery POC is visible on the offering
+    const regAffairs = data.offerings.find(
+      (o: { offering_name: string }) => o.offering_name === "Regulatory Affairs"
+    );
+    expect(regAffairs.poc).toBe("Mukundh / Suresh Modugu");
+    // the service-delivery POC is visible on the offering
     await page.goto(`${BASE}/offerings/${publishing.id}`);
     await expect(page.getByText("Ragav")).toBeVisible();
     // filterable as a group via the offering-type filter
-    await page.goto(`${BASE}/offerings?otype=ot-mpr-service`);
-    await expect(page.getByText("Market Access", { exact: true })).toBeVisible();
+    await page.goto(`${BASE}/offerings?otype=ot-freyr-services`);
+    await expect(page.getByText("Label Operations", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("Pharmacovigilance", { exact: true })
+      page.getByText("Regulatory Affairs", { exact: true })
     ).toBeVisible();
   });
 
@@ -3890,7 +3900,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // A specific offering's answer names its data POC.
     const one = await (
       await request.post(`${BASE}/api/agent/converse`, {
-        data: { mock: true, message: "tell me about Publishing" },
+        data: { mock: true, message: "tell me about Publishing Operations" },
       })
     ).json();
     expect(one.source).toBe("offerings");
@@ -3904,7 +3914,54 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).json();
     expect(byPoc.source).toBe("offerings");
     expect(byPoc.reply).toMatch(/Ragav is the data POC for/i);
-    expect(byPoc.reply).toContain("Publishing");
-    expect(byPoc.reply).toContain("Submissions Planning");
+    expect(byPoc.reply).toContain("Publishing Operations");
+  });
+
+  // 280–282 — Suren's live meeting + Digital Sales and Marketing.xlsx:
+  // early adopters, the new material types, and offering-type descriptions.
+  // -------------------------------------------------------------------------
+  test("280 — early adopters show on the offering and export (V43)", async ({
+    page,
+    request,
+  }) => {
+    // Galderma is seeded as the early adopter of Freya.Register (his ask).
+    const data = await (await request.get(`${BASE}/api/offerings`)).json();
+    const reg = data.offerings.find(
+      (o: { offering_name: string }) => o.offering_name === "Freya.Register"
+    );
+    expect(reg.early_adopters).toContain("Galderma");
+    // visible on the detail page
+    await page.goto(`${BASE}/offerings/of-001`);
+    await expect(
+      page.getByRole("heading", { name: "Early adopters" })
+    ).toBeVisible();
+    await expect(page.getByText("Galderma").first()).toBeVisible();
+    // and it round-trips out to CSV (verified by the header in test 247)
+  });
+
+  test("281 — offerings support the new material types (V43)", async ({
+    page,
+  }) => {
+    // of-012 carries a Competition material.
+    await page.goto(`${BASE}/offerings/of-012`);
+    await expect(page.getByText("Competition").first()).toBeVisible();
+    // of-001 carries a Customer reference + a Case study.
+    await page.goto(`${BASE}/offerings/of-001`);
+    await expect(page.getByText("Customer reference").first()).toBeVisible();
+    await expect(page.getByText("Case study").first()).toBeVisible();
+  });
+
+  test("282 — offering types carry their descriptions from the sheet (V43)", async ({
+    page,
+    request,
+  }) => {
+    const list = await (await request.get(`${BASE}/api/offering-types`)).json();
+    const fusion = list.offeringTypes.find(
+      (t: { name: string }) => t.name === "Freya Fusion (Module)"
+    );
+    expect(fusion.description).toMatch(/system of record/i);
+    // shown as context on an offering whose own description is still blank
+    await page.goto(`${BASE}/offerings/of-001`);
+    await expect(page.getByText(/system of record/i).first()).toBeVisible();
   });
 });

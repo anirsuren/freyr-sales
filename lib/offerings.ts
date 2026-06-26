@@ -35,7 +35,14 @@ export interface OfferingType {
   description: string;
 }
 
-export type MaterialKind = "video" | "presentation" | "whitepaper" | "pricing";
+export type MaterialKind =
+  | "video"
+  | "presentation"
+  | "whitepaper"
+  | "pricing"
+  | "competition"
+  | "case_study"
+  | "reference";
 
 export interface OfferingMaterial {
   id: string;
@@ -52,6 +59,7 @@ export interface Offering {
   current_availability: string;
   future_availability: string; // "Availability comments" in the UI
   poc: string; // SME / service-delivery POC who owns this offering's data
+  early_adopters: string[]; // customers piloting/using it first (Suren's live-meeting ask)
   customer_type_ids: string[]; // applicable customer types (one or more)
   market_ids: string[]; // applicable markets
   materials: OfferingMaterial[];
@@ -69,6 +77,10 @@ export const MATERIAL_META: Record<
     plural: "Whitepapers & thought leadership",
   },
   pricing: { label: "Pricing", plural: "Pricing" },
+  // Added from Suren's live meeting — material types a rep grabs per offering.
+  competition: { label: "Competition", plural: "Competition" },
+  case_study: { label: "Case study", plural: "Case studies" },
+  reference: { label: "Customer reference", plural: "Customer references" },
 };
 
 // ---------------------------------------------------------------------------
@@ -132,43 +144,43 @@ function seedMarkets(): Market[] {
   ];
 }
 
-// The distinct offering types Suren uses in his sheet (matches the New-offering
-// dropdown). Descriptions start blank — he fills them in, like the offerings
-// themselves. Names match the offering_type strings on the seeded offerings so
-// the new Offering-type filter lines up exactly.
+// The 5 offering types, VERBATIM from Suren's "Digital Sales and Marketing.xlsx"
+// → "Offering Type" sheet, descriptions and all. (He confirmed these in the live
+// meeting: "these are all the offering types.")
 function seedOfferingTypes(): OfferingType[] {
   return [
-    { id: "ot-freya-module", name: "Freya Module", description: "" },
-    { id: "ot-freya-mod", name: "Freya - Module", description: "" },
-    { id: "ot-freya-mod-agent", name: "Freya - Module + Agent", description: "" },
-    { id: "ot-freya-mod-magent", name: "Freya - Module + Module Agent", description: "" },
-    { id: "ot-freya-mod-magent-addon", name: "Freya - Module + Module Agent + Add on Agent", description: "" },
-    { id: "ot-freya-platform", name: "Freya Platform", description: "" },
-    { id: "ot-freyr-ai-native", name: "Freyr AI Native Service", description: "" },
-    { id: "ot-mpr-service", name: "MPR Service", description: "" },
+    {
+      id: "ot-fusion-module",
+      name: "Freya Fusion (Module)",
+      description:
+        "Freya Fusion is a platform comprising multiple modules, such as Freya.Register and Freya.Submit. These modules serve as the system of record for Product Registration and Health Authority Submissions data, providing the foundational data for each respective module.",
+    },
+    {
+      id: "ot-fusion-agent",
+      name: "Freya Fusion (Module + Module Agent/s)",
+      description:
+        'The Freya Fusion platform includes specialized agents tailored to specific modules or their underlying data. For instance, the "Via" agent operates on the GRR (Post-Approval Changes) module, while the "Pia" and "Mia" agents function within the Freya.Register module.',
+    },
+    {
+      id: "ot-fusion-addon",
+      name: "Freya Fusion (Module + Module Agent/s + Add on Agent/s)",
+      description:
+        'Offerings can be customized to include modules, module-specific agents, and additional agents not natively connected to the primary module. For example, the "Via" agent can be bundled with the Freya.Register module and its corresponding agents, "Pia" and "Mia."',
+    },
+    {
+      id: "ot-freyr-ai-native",
+      name: "Freyr AI Native Services",
+      description:
+        "Building on years of regulatory experience, Freyr has transitioned into a new era by integrating AI-driven digital capabilities with human expertise to deliver cost and efficiency.",
+    },
+    {
+      id: "ot-freyr-services",
+      name: "Freyr Services",
+      description:
+        "While not all Freyr services have transitioned to an AI-native model yet, the company is actively working toward ensuring that all future service offerings become fully AI-native.",
+    },
   ];
 }
-
-// MPR service offerings from Saras (inputs from Mythri, Ganesh & Naomi). Each
-// has a service-delivery POC — the SME the team collects the app data from.
-// Details (markets, customer types, availability) are gathered from the POCs.
-const MPR_SERVICES: [string, string][] = [
-  ["Publishing", "Ragav"],
-  ["Submissions Planning", "Ragav"],
-  ["Label Change Management", "Sathya K"],
-  ["Label Content Management Services", "Sathya K"],
-  ["Artwork Change Management", "Pranab Gogoi"],
-  ["Reg Affairs Strategy", "Mukundh / Suresh Modugu"],
-  ["Reg Affairs Submissions", "Mukundh / Suresh Modugu"],
-  ["Local Reg Affairs", "Mukundh / Suresh Modugu"],
-  ["Regulatory Strategy", "Wajeed"],
-  ["Market Access", "Tamal"],
-  ["Pharmacovigilance", "Gurpreet Kaur"],
-  ["Medical Writing - Clinical", "Seema Gurbani"],
-  ["Medical Writing - Non Clinical", "Seema Gurbani"],
-  ["Compliance and Audit", "Anushta Chandrapalan"],
-  ["Medical & Scientific Communication", "Padmaja Jagannathan"],
-];
 
 const ALL_CT = [
   "ct-pharma-s", "ct-pharma-m", "ct-pharma-l",
@@ -176,6 +188,13 @@ const ALL_CT = [
   "ct-biopharma-s", "ct-biopharma-m", "ct-biopharma-l",
 ];
 const ALL_MKT = ["mkt-usa", "mkt-europe", "mkt-japan", "mkt-china", "mkt-korea"];
+// Suren's sheet marks Freya.Label and Freya.Artwork "Not Applicable" for the
+// Small segment of every family — those start at mid-size.
+const NO_SMALL_CT = [
+  "ct-pharma-m", "ct-pharma-l",
+  "ct-bio-m", "ct-bio-l",
+  "ct-biopharma-m", "ct-biopharma-l",
+];
 
 function off(
   id: string,
@@ -194,6 +213,7 @@ function off(
     current_availability: opts.current_availability ?? "",
     future_availability: opts.future_availability ?? "",
     poc: opts.poc ?? "",
+    early_adopters: opts.early_adopters ?? [],
     customer_type_ids: opts.customer_type_ids ?? [],
     market_ids: opts.market_ids ?? [],
     materials: opts.materials ?? [],
@@ -201,57 +221,107 @@ function off(
   };
 }
 
-// Seeded VERBATIM from Suren's "Digital Sales and Marketing.xlsx" → Sheet1
-// (names, descriptions, and the customer-type Y-matrix exactly as he has them).
-// In his sheet only 3 rows carry customer-type marks (all 9 each); the rest are
-// blank. Availability/markets/materials come from the video where he showed them
-// (the downloaded file is an earlier trim without those columns).
+// Seeded VERBATIM from Suren's "Digital Sales and Marketing.xlsx" → "Offerings"
+// sheet: the offering names, current-availability + comments, the customer-type
+// applicability matrix (Label/Artwork are Not Applicable to Small), and the
+// Early Adopters column. Offering descriptions are blank in his sheet — they come
+// from the sales materials we write (per the live meeting), and the offering
+// TYPE description carries the system-of-record / data framing meanwhile.
+// Markets are sample values on the currently-available core modules (his sheet
+// has no markets column). Service-delivery POCs on the four service offerings
+// carry over from Sara's MPR list.
+const FREYR_URL = {
+  resources: "https://www.freyrsolutions.com/resources",
+  insights: "https://www.freyrsolutions.com/insights",
+  contact: "https://www.freyrsolutions.com/contact-us",
+};
+const MODULE = "Freya Fusion (Module)";
+const MODULE_AGENT = "Freya Fusion (Module + Module Agent/s)";
+const MODULE_AGENT_ADDON = "Freya Fusion (Module + Module Agent/s + Add on Agent/s)";
+
 function seedOfferings(): Offering[] {
   return [
-    off("of-001", "Freya Module", "Freya Register", ""),
-    off("of-002", "Freya - Module + Module Agent", "Freya Register + Pia, Mia", ""),
-    off("of-003", "Freya - Module + Module Agent + Add on Agent", "Freya Register + Pia, Mia and Via Agents", "", {
-      current_availability: "V1 is available now",
-      future_availability: "V3 is available in July 2026",
+    off("of-001", MODULE, "Freya.Register", "", {
+      current_availability: "Currently available",
+      future_availability: "Version 1",
+      early_adopters: ["Galderma"],
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
       materials: [
-        { id: "m-003", kind: "video", label: "Via Agents demo", url: "https://www.freyrsolutions.com/resources" },
-        { id: "m-004", kind: "whitepaper", label: "Post-approval change automation", url: "https://www.freyrsolutions.com/insights" },
-        { id: "m-005", kind: "pricing", label: "Register stack pricing", url: "https://www.freyrsolutions.com/contact-us" },
+        { id: "m-001", kind: "video", label: "Freya.Register overview", url: FREYR_URL.resources },
+        { id: "m-002", kind: "reference", label: "Galderma — early-adopter story", url: FREYR_URL.insights },
+        { id: "m-003", kind: "case_study", label: "Cutting registration cycle time", url: FREYR_URL.insights },
       ],
     }),
-    off("of-004", "Freya - Module + Agent", "Freya GRR - MPR-PAC + Via Agent",
-      "Via agent enables customers to manage post approval changes"),
-    off("of-005", "Freya - Module", "Freya GRI + Freya chat", "", {
+    off("of-002", MODULE, "Freya.Intelligence", "", {
+      current_availability: "Currently available",
+      future_availability: "Version 1",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-006", "Freya - Module + Agent", "Freya GRI + Freya chat + RIA agent + Workflow", "", {
+    off("of-003", MODULE, "Freya.GRR - PAC  ( Global Regulatory Requirements for Post Approval Changes)", "", {
+      current_availability: "Currently available",
+      future_availability: "Version 1",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-007", "Freya Module", "Freya Label", ""),
-    off("of-008", "Freya Module", "Freya Submit", ""),
-    off("of-009", "Freya Module", "Freya Docs", ""),
-    off("of-010", "Freya Platform", "Agentic Workbench", "", {
+    off("of-004", MODULE, "Freya.Label", "", {
+      current_availability: "October 2026",
+      customer_type_ids: NO_SMALL_CT,
+    }),
+    off("of-005", MODULE, "Freya.Submit", "", {
+      current_availability: "December 2026",
+      customer_type_ids: ALL_CT,
+    }),
+    off("of-006", MODULE, "Freya.Artwork", "", {
+      current_availability: "October 2026",
+      customer_type_ids: NO_SMALL_CT,
+    }),
+    off("of-007", MODULE, "Freya.Plan & Track", "", {
+      customer_type_ids: ALL_CT,
+    }),
+    off("of-008", MODULE, "Freya.RA Changes", "", {
+      current_availability: "To be decided",
+      future_availability: "May be next year",
+      customer_type_ids: ALL_CT,
+    }),
+    off("of-009", MODULE, "Freya.OmniObject", "", {
+      current_availability: "To be decided",
+      future_availability: "End of this year",
+      customer_type_ids: ALL_CT,
+    }),
+    off("of-010", MODULE_AGENT, "Freya.Register + Pia +Mia", "", {
+      current_availability: "Currently available",
+      customer_type_ids: ALL_CT,
+      market_ids: ALL_MKT,
+    }),
+    off("of-011", MODULE_AGENT, "Freya.GRR-PAC + Via", "", {
+      customer_type_ids: ALL_CT,
+    }),
+    off("of-012", MODULE_AGENT_ADDON, "Freya.Register + Pia +Mia + Via", "", {
+      current_availability: "To be decided",
+      future_availability: "Pilot available now",
+      customer_type_ids: ALL_CT,
+      market_ids: ALL_MKT,
       materials: [
-        { id: "m-008", kind: "video", label: "Agentic Workbench launch", url: "https://www.freyrsolutions.com/resources" },
-        { id: "m-009", kind: "whitepaper", label: "Agentic regulatory operations", url: "https://www.freyrsolutions.com/insights" },
+        { id: "m-012a", kind: "video", label: "Via Agents demo", url: FREYR_URL.resources },
+        { id: "m-012b", kind: "whitepaper", label: "Post-approval change automation", url: FREYR_URL.insights },
+        { id: "m-012c", kind: "pricing", label: "Register stack pricing", url: FREYR_URL.contact },
+        { id: "m-012d", kind: "competition", label: "Freya vs. legacy RIM vendors", url: FREYR_URL.insights },
       ],
     }),
-    off("of-011", "Freya Platform", "Omni Object",
-      "Customer assets can be classified and assessed for impact based on a AI based model"),
-    off("of-012", "Freyr AI Native Service", "Publishing Operations",
-      "Publishing services are performed by Human resources using AI based skills for Document level publishing and Quality check"),
-    off("of-013", "Freya - Module + Agent", "Freya GRR - MPR-CTA + Agent", ""),
-    off("of-014", "Freya - Module + Agent", "Freya GRR - MDV-PAC + Via Agent", ""),
-    // MPR service offerings (Saras's list) — awaiting details, collected per POC.
-    ...MPR_SERVICES.map(([name, poc], i) =>
-      off(`of-mpr-${String(i + 1).padStart(2, "0")}`, "MPR Service", name, "", {
-        poc,
-      })
-    ),
+    off("of-013", "Freyr AI Native Services", "Publishing Operations", "", {
+      poc: "Ragav",
+    }),
+    off("of-014", "Freyr Services", "Label Operations", "", {
+      poc: "Sathya K",
+    }),
+    off("of-015", "Freyr Services", "Artwork Operations", "", {
+      poc: "Pranab Gogoi",
+    }),
+    off("of-016", "Freyr Services", "Regulatory Affairs", "", {
+      poc: "Mukundh / Suresh Modugu",
+    }),
   ];
 }
 
@@ -426,6 +496,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     current_availability: data.current_availability || "",
     future_availability: data.future_availability || "",
     poc: data.poc || "",
+    early_adopters: data.early_adopters || [],
     customer_type_ids: data.customer_type_ids || [],
     market_ids: data.market_ids || [],
     materials: (data.materials || []).map((m) => ({ ...m, id: m.id || rid("m") })),

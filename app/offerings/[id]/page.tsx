@@ -12,6 +12,9 @@ import {
   Plus,
   ChevronRight,
   UserRound,
+  Swords,
+  BookOpen,
+  Quote,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -38,8 +41,19 @@ const MATERIAL_ICON: Record<MaterialKind, typeof Video> = {
   presentation: Presentation,
   whitepaper: FileText,
   pricing: DollarSign,
+  competition: Swords,
+  case_study: BookOpen,
+  reference: Quote,
 };
-const KIND_ORDER: MaterialKind[] = ["video", "presentation", "whitepaper", "pricing"];
+const KIND_ORDER: MaterialKind[] = [
+  "video",
+  "presentation",
+  "whitepaper",
+  "pricing",
+  "case_study",
+  "reference",
+  "competition",
+];
 const CT_FAMILIES = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
 export default function OfferingDetailPage({
@@ -100,11 +114,17 @@ export default function OfferingDetailPage({
           <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-text-primary">
             {o.offering_name}
           </h1>
-          {o.offering_description && (
+          {o.offering_description ? (
             <p className="text-[14px] text-text-secondary mt-2 max-w-[680px] leading-relaxed">
               {o.offering_description}
             </p>
-          )}
+          ) : o.offeringType?.description ? (
+            // Until the per-offering description is written from sales materials,
+            // show the offering type's description for context (Suren's sheet).
+            <p className="text-[14px] text-text-secondary mt-2 max-w-[680px] leading-relaxed">
+              {o.offeringType.description}
+            </p>
+          ) : null}
         </div>
         {admin && (
         <div className="shrink-0 flex items-center gap-2">
@@ -116,6 +136,7 @@ export default function OfferingDetailPage({
               current_availability: o.current_availability,
               future_availability: o.future_availability,
               poc: o.poc,
+              early_adopters: raw.early_adopters,
               customer_type_ids: raw.customer_type_ids,
               market_ids: raw.market_ids,
               materials: raw.materials.map((m) => ({
@@ -160,6 +181,27 @@ export default function OfferingDetailPage({
           </span>
         )}
       </div>
+
+      {/* Early adopters — customers piloting/using it first (Suren's ask). */}
+      {o.early_adopters.length > 0 && (
+        <div className="mt-5">
+          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
+            <Sparkles size={13} strokeWidth={2} className="text-blue-primary" />
+            Early adopters
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {o.early_adopters.map((name) => (
+              <span
+                key={name}
+                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-blue-primary bg-blue-light rounded-md px-3 py-1.5"
+              >
+                <UserRound size={13} strokeWidth={1.8} />
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
         {/* Customer types */}

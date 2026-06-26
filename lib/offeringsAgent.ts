@@ -29,9 +29,14 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
   const offs = listOfferings();
   if (offs.length === 0) return null;
 
+  // Normalize dots/spaces so a rep who types "Freya Register" still matches the
+  // sheet's "Freya.Register" (Suren's offering names are dotted).
+  const norm = (s: string) => s.toLowerCase().replace(/[.\s]+/g, " ").trim();
+  const mNorm = norm(message);
+
   // A specific offering named in the message (longest match wins).
   const named = [...offs]
-    .filter((o) => o.offering_name && m.includes(o.offering_name.toLowerCase()))
+    .filter((o) => o.offering_name && mNorm.includes(norm(o.offering_name)))
     .sort((a, b) => b.offering_name.length - a.offering_name.length)[0];
 
   // Service-delivery POC lookups. Sara's MPR list is organised by POC — the team
