@@ -14,11 +14,15 @@ import {
   X,
   Download,
   Package,
+  Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
-import type { CustomerType, Market } from "@/lib/offerings";
+import type { CustomerType, Market, OfferingType } from "@/lib/offerings";
+
+// Canonical family order so the "who it's for" chips read consistently.
+const FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
 // CSV-safe a cell (quote if it has commas/quotes/newlines).
 function csv(v: string) {
@@ -52,10 +56,12 @@ export function OfferingsBrowser({
   offerings,
   customerTypes,
   markets,
+  offeringTypes,
 }: {
   offerings: HydratedOffering[];
   customerTypes: CustomerType[];
   markets: Market[];
+  offeringTypes: OfferingType[];
 }) {
   // Seed filters from the URL so chips elsewhere can deep-link into a filtered
   // view (e.g. /offerings?market=mkt-europe from a market chip on an offering).
@@ -66,6 +72,9 @@ export function OfferingsBrowser({
   const initMkt = markets.some((m) => m.id === params.get("market"))
     ? params.get("market")!
     : "";
+  const initOt = offeringTypes.some((t) => t.id === params.get("otype"))
+    ? params.get("otype")!
+    : "";
   const initStatus = ["mapped", "unmapped"].includes(params.get("status") || "")
     ? params.get("status")!
     : "";
@@ -75,6 +84,7 @@ export function OfferingsBrowser({
   const [q, setQ] = useState(params.get("q") ?? "");
   const [ctId, setCtId] = useState(initType);
   const [mktId, setMktId] = useState(initMkt);
+  const [otId, setOtId] = useState(initOt);
   const [status, setStatus] = useState(initStatus);
   const [sort, setSort] = useState(initSort);
 
@@ -84,11 +94,13 @@ export function OfferingsBrowser({
   useEffect(() => {
     const t = params.get("type");
     const m = params.get("market");
+    const ot = params.get("otype");
     const s = params.get("status") || "";
     const so = params.get("sort") || "";
     setQ(params.get("q") ?? "");
     setCtId(customerTypes.some((c) => c.id === t) ? t! : "");
     setMktId(markets.some((mm) => mm.id === m) ? m! : "");
+    setOtId(offeringTypes.some((tt) => tt.id === ot) ? ot! : "");
     setStatus(["mapped", "unmapped"].includes(s) ? s : "");
     setSort(SORTS.includes(so) ? so : "default");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,11 +109,17 @@ export function OfferingsBrowser({
   const isMapped = (o: HydratedOffering) =>
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
 
+  // Offering type is a string on each offering; map the selected id → its name.
+  const otName = otId
+    ? offeringTypes.find((t) => t.id === otId)?.name ?? ""
+    : "";
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return offerings.filter((o) => {
       if (ctId && !o.customerTypes.some((c) => c.id === ctId)) return false;
       if (mktId && !o.markets.some((m) => m.id === mktId)) return false;
+      if (otName && o.offering_type !== otName) return false;
       if (status === "mapped" && !isMapped(o)) return false;
       if (status === "unmapped" && isMapped(o)) return false;
       // Search across what's actually on the card — name, type, description,
@@ -119,7 +137,7 @@ export function OfferingsBrowser({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerings, q, ctId, mktId, status]);
+  }, [offerings, q, ctId, mktId, otName, status]);
   const sorted = useMemo(() => {
     const arr = [...filtered];
     if (sort === "name")
@@ -145,11 +163,12 @@ export function OfferingsBrowser({
     return arr;
   }, [filtered, sort]);
 
-  const activeFilters = !!(q || ctId || mktId || status);
+  const activeFilters = !!(q || ctId || mktId || otId || status);
   const clearAll = () => {
     setQ("");
     setCtId("");
     setMktId("");
+    setOtId("");
     setStatus("");
   };
 
@@ -215,6 +234,16 @@ export function OfferingsBrowser({
       o.customerTypes.length > 0 ||
       o.markets.length > 0 ||
       o.materials.length > 0;
+    // Suren's change #3: customer type is the primary qualifier. Lead the card
+    // with the customer-type families it's for; the offering type moves below.
+    const fams = Array.from(
+      new Set(o.customerTypes.map((c) => c.family as string))
+    );
+    const families = [
+      ...FAMILY_ORDER.filter((f) => fams.includes(f)),
+      ...fams.filter((f) => !FAMILY_ORDER.includes(f)),
+    ];
+    const hasCt = o.customerTypes.length > 0;
     return (
       <Link
         key={o.id}
@@ -228,10 +257,31 @@ export function OfferingsBrowser({
           }`}
         >
           <div className="flex items-start justify-between gap-2">
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
-              <Sparkles size={11} strokeWidth={2} />
-              {o.offering_type || "Offering"}
-            </span>
+            {hasCt ? (
+              // Primary: who it's for (customer-type families)
+              <div className="flex flex-wrap items-center gap-1">
+                <Users
+                  size={12}
+                  strokeWidth={2}
+                  className="text-blue-primary mr-0.5 shrink-0"
+                />
+                {families.map((f) => (
+                  <span
+                    key={f}
+                    className="inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1"
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              // No customer types yet → fall back to the offering type so the
+              // card still has a header.
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary bg-surface rounded-md px-2 py-1">
+                <Sparkles size={11} strokeWidth={2} />
+                {o.offering_type || "Offering"}
+              </span>
+            )}
             <ChevronRight
               size={16}
               strokeWidth={1.6}
@@ -267,6 +317,17 @@ export function OfferingsBrowser({
           )}
 
           <div className="mt-auto pt-3 border-t border-border-light">
+            {/* Offering type — secondary, sits below the customer types */}
+            {hasCt && o.offering_type && (
+              <p className="inline-flex items-center gap-1 text-[11px] font-medium text-text-secondary mb-2">
+                <Sparkles
+                  size={11}
+                  strokeWidth={2}
+                  className="text-text-tertiary"
+                />
+                {o.offering_type}
+              </p>
+            )}
             {mapped ? (
               <>
                 {o.markets.length > 0 && (
@@ -369,6 +430,19 @@ export function OfferingsBrowser({
           {customerTypes.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={otId}
+          onChange={(e) => setOtId(e.target.value)}
+          aria-label="Filter by offering type"
+          className={inputCls}
+        >
+          <option value="">All offering types</option>
+          {offeringTypes.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
             </option>
           ))}
         </select>

@@ -27,6 +27,14 @@ export interface Market {
   name: string; // USA, Europe, Japan, China, Korea …
 }
 
+// An offering type as a managed master list (Suren's change #2, Jun 25 video):
+// each type carries a name + a description, like the customer-type definitions.
+export interface OfferingType {
+  id: string;
+  name: string; // e.g. "Freya - Module + Agent", "Freyr AI Native Service"
+  description: string;
+}
+
 export type MaterialKind = "video" | "presentation" | "whitepaper" | "pricing";
 
 export interface OfferingMaterial {
@@ -123,6 +131,22 @@ function seedMarkets(): Market[] {
   ];
 }
 
+// The distinct offering types Suren uses in his sheet (matches the New-offering
+// dropdown). Descriptions start blank — he fills them in, like the offerings
+// themselves. Names match the offering_type strings on the seeded offerings so
+// the new Offering-type filter lines up exactly.
+function seedOfferingTypes(): OfferingType[] {
+  return [
+    { id: "ot-freya-module", name: "Freya Module", description: "" },
+    { id: "ot-freya-mod", name: "Freya - Module", description: "" },
+    { id: "ot-freya-mod-agent", name: "Freya - Module + Agent", description: "" },
+    { id: "ot-freya-mod-magent", name: "Freya - Module + Module Agent", description: "" },
+    { id: "ot-freya-mod-magent-addon", name: "Freya - Module + Module Agent + Add on Agent", description: "" },
+    { id: "ot-freya-platform", name: "Freya Platform", description: "" },
+    { id: "ot-freyr-ai-native", name: "Freyr AI Native Service", description: "" },
+  ];
+}
+
 const ALL_CT = [
   "ct-pharma-s", "ct-pharma-m", "ct-pharma-l",
   "ct-bio-s", "ct-bio-m", "ct-bio-l",
@@ -207,6 +231,7 @@ function seedOfferings(): Offering[] {
 interface OfferingsStore {
   customerTypes: CustomerType[];
   markets: Market[];
+  offeringTypes: OfferingType[];
   offerings: Offering[];
 }
 
@@ -219,6 +244,7 @@ function seed(): OfferingsStore {
   return {
     customerTypes: seedCustomerTypes(),
     markets: seedMarkets(),
+    offeringTypes: seedOfferingTypes(),
     offerings: seedOfferings(),
   };
 }
@@ -227,6 +253,9 @@ const store: OfferingsStore = globalThis.__FREYR_OFFERINGS_STORE__ ?? seed();
 if (!globalThis.__FREYR_OFFERINGS_STORE__) {
   globalThis.__FREYR_OFFERINGS_STORE__ = store;
 }
+// Back-fill collections added in a later build onto a store that an earlier build
+// already created (matters only for dev HMR; prod always starts fresh).
+if (!store.offeringTypes) store.offeringTypes = seedOfferingTypes();
 
 function rid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -295,6 +324,63 @@ export function deleteMarket(id: string): boolean {
   return true;
 }
 
+// ---- Offering types (managed master list) --------------------------------
+export function listOfferingTypes(): OfferingType[] {
+  return [...store.offeringTypes];
+}
+export function getOfferingType(id: string): OfferingType | null {
+  return store.offeringTypes.find((t) => t.id === id) || null;
+}
+export function createOfferingType(data: {
+  name: string;
+  description?: string;
+}): OfferingType {
+  const name = String(data.name || "").trim();
+  // Dedupe by name (like markets) — re-adding an existing type updates its
+  // description instead of creating a duplicate.
+  const existing = store.offeringTypes.find(
+    (t) => t.name.toLowerCase() === name.toLowerCase()
+  );
+  if (existing) {
+    if (data.description) existing.description = data.description.trim();
+    return existing;
+  }
+  const record: OfferingType = {
+    id: rid("ot"),
+    name,
+    description: (data.description || "").trim(),
+  };
+  store.offeringTypes.push(record);
+  return record;
+}
+export function updateOfferingType(
+  id: string,
+  data: Partial<Omit<OfferingType, "id">>
+): OfferingType | null {
+  const i = store.offeringTypes.findIndex((t) => t.id === id);
+  if (i === -1) return null;
+  store.offeringTypes[i] = { ...store.offeringTypes[i], ...data, id };
+  return store.offeringTypes[i];
+}
+export function deleteOfferingType(id: string): boolean {
+  // Removes the definition from the master list. Offerings keep their
+  // offering_type string — this just drops the managed entry/description.
+  const before = store.offeringTypes.length;
+  store.offeringTypes = store.offeringTypes.filter((t) => t.id !== id);
+  return store.offeringTypes.length < before;
+}
+// Keep the master list complete when an offering introduces a brand-new type
+// name via the entry form, so it shows up in the filter and the manager.
+function ensureOfferingType(name: string) {
+  const n = String(name || "").trim();
+  if (!n) return;
+  if (
+    !store.offeringTypes.some((t) => t.name.toLowerCase() === n.toLowerCase())
+  ) {
+    store.offeringTypes.push({ id: rid("ot"), name: n, description: "" });
+  }
+}
+
 export function listOfferings(): Offering[] {
   return [...store.offerings];
 }
@@ -314,6 +400,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     materials: (data.materials || []).map((m) => ({ ...m, id: m.id || rid("m") })),
     created_at: new Date().toISOString(),
   };
+  ensureOfferingType(record.offering_type);
   store.offerings.unshift(record);
   return record;
 }
@@ -327,6 +414,7 @@ export function updateOffering(
     ? data.materials.map((m) => ({ ...m, id: m.id || rid("m") }))
     : store.offerings[i].materials;
   store.offerings[i] = { ...store.offerings[i], ...data, materials, id };
+  if (data.offering_type) ensureOfferingType(store.offerings[i].offering_type);
   return store.offerings[i];
 }
 
@@ -346,5 +434,9 @@ export function hydrateOffering(o: Offering) {
     markets: o.market_ids
       .map((id) => store.markets.find((m) => m.id === id))
       .filter((m): m is Market => !!m),
+    // The matched master offering type (carries the description), looked up by
+    // name since offerings store the type as a string.
+    offeringType:
+      store.offeringTypes.find((t) => t.name === o.offering_type) || null,
   };
 }

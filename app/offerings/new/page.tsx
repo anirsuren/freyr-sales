@@ -6,12 +6,18 @@ import {
   listCustomerTypes,
   listMarkets,
   listOfferings,
+  listOfferingTypes,
 } from "@/lib/offerings";
 
+// Suggest from the managed master list first, plus any type strings already on
+// offerings (in case one isn't in the master list yet).
 function distinctTypes() {
   return Array.from(
-    new Set(listOfferings().map((o) => o.offering_type).filter(Boolean))
-  ).sort();
+    new Set([
+      ...listOfferingTypes().map((t) => t.name),
+      ...listOfferings().map((o) => o.offering_type).filter(Boolean),
+    ])
+  );
 }
 
 export const dynamic = "force-dynamic";

@@ -3712,4 +3712,76 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByRole("button", { name: /Update definition/ })
     ).toBeVisible();
   });
+
+  // 270–273 — Suren's Jun 25 video #2: offering type as a managed master list,
+  // an offering-type filter, and customer type as the primary card qualifier.
+  // -------------------------------------------------------------------------
+  test("270 — Offering types master list renders (V37)", async ({ page }) => {
+    await page.goto(`${BASE}/offerings/offering-types`);
+    await expect(
+      page.getByRole("heading", { name: "Offering types", exact: true })
+    ).toBeVisible();
+    await expect(page.getByText("Freya Platform", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Freyr AI Native Service", { exact: true })
+    ).toBeVisible();
+    // each type takes a plain-English description
+    await expect(page.getByText("Add a description").first()).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Add offering type/i })
+    ).toBeVisible();
+  });
+
+  test("271 — Offering types API: seeded list and create (V37)", async ({
+    request,
+  }) => {
+    const list = await (
+      await request.get(`${BASE}/api/offering-types`)
+    ).json();
+    expect(Array.isArray(list.offeringTypes)).toBe(true);
+    expect(list.offeringTypes.length).toBeGreaterThanOrEqual(7);
+    expect(
+      list.offeringTypes.some(
+        (t: any) => t.name === "Freyr AI Native Service"
+      )
+    ).toBe(true);
+    const created = await (
+      await request.post(`${BASE}/api/offering-types`, {
+        data: { name: "QA — Offering Type", description: "QA desc" },
+      })
+    ).json();
+    expect(created.ok).toBe(true);
+    expect(created.offeringType.name).toBe("QA — Offering Type");
+    // leave no junk behind for later tests
+    await request.delete(`${BASE}/api/offering-types/${created.offeringType.id}`);
+  });
+
+  test("272 — offerings can be filtered by offering type (V37)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings`);
+    await expect(page.getByLabel("Filter by offering type")).toBeVisible();
+    // deep-link to the AI-native type → only Publishing Operations shows
+    await page.goto(`${BASE}/offerings?otype=ot-freyr-ai-native`);
+    await expect(page.getByText("Publishing Operations")).toBeVisible();
+    await expect(page.getByText("Freya Register", { exact: true })).toHaveCount(
+      0
+    );
+  });
+
+  test("273 — cards lead with customer types, offering type below (V38)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings`);
+    const card = page.locator('a[href="/offerings/of-003"]');
+    // customer-type families are the primary qualifier on the card
+    await expect(card.getByText("Pharmaceutical", { exact: true })).toBeVisible();
+    await expect(
+      card.getByText("Bio Pharmaceutical", { exact: true })
+    ).toBeVisible();
+    // the offering type still appears, now secondary
+    await expect(
+      card.getByText("Freya - Module + Module Agent + Add on Agent")
+    ).toBeVisible();
+  });
 });
