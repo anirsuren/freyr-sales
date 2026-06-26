@@ -211,9 +211,11 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     const t = o.offering_type || "Other";
     byType.set(t, (byType.get(t) || 0) + 1);
   }
+  // List every type — the headline counts all of them, so a capped list would
+  // contradict it ("8 types" but only 6 shown, counts not summing to the total).
+  // The offering types are a small managed master list, so this stays readable.
   const typeLines = Array.from(byType.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
     .map(([t, n]) => `• ${t} (${n})`);
   return {
     reply:

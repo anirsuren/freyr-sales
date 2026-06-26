@@ -3375,6 +3375,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const d = await res.json();
     expect(d.source).toBe("offerings");
     expect(d.reply).toMatch(/offerings? across \d+ type/i);
+    // The list must show EVERY type it claims — a capped list that says
+    // "8 types" but bullets only 6 (counts not summing) reads as broken.
+    const stated = Number(d.reply.match(/across (\d+) type/i)![1]);
+    const bullets = (d.reply.match(/^•/gm) || []).length;
+    expect(bullets).toBe(stated);
   });
 
   test("249 — agent describes a specific offering with a deep link (V20)", async ({
