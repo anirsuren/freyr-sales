@@ -34,12 +34,31 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     .filter((o) => o.offering_name && m.includes(o.offering_name.toLowerCase()))
     .sort((a, b) => b.offering_name.length - a.offering_name.length)[0];
 
+  // Service-delivery POC lookups. Sara's MPR list is organised by POC — the team
+  // collects each offering's data from its POC — so "who owns X's data?" and
+  // "what is <name> the POC for?" are real, grounded questions worth answering.
+  const pocNames = Array.from(
+    new Set(
+      offs
+        .map((o) => o.poc)
+        .filter(Boolean)
+        .flatMap((p) => [p, ...p.split(/[/&,]|\band\b/i)])
+        .flatMap((s) => [s, ...s.split(/\s+/)])
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => s.length >= 4)
+    )
+  );
+  const matchedPoc = pocNames.find((n) => m.includes(n)) || null;
+  const pocIntent =
+    /\b(poc|owner|owns|own|responsible|in charge|data owner|collect)\b/.test(m);
+
   const mentionsOfferings =
     /\boffering(s)?\b/.test(m) ||
     /\bwhat do we (sell|offer)\b/.test(m) ||
     /\bour (products|catalog|catalogue)\b/.test(m) ||
     /\bfreya\b/.test(m) ||
-    !!named;
+    !!named ||
+    (!!matchedPoc && (pocIntent || /\boffering/.test(m)));
   if (!mentionsOfferings) return null;
 
   // 1) A specific offering → describe it factually + deep link.
@@ -68,11 +87,13 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       // Plain-English, not a robotic "0 customer types, 0 markets".
       detail = ` It's in the repository, but its details aren't filled in yet — open it to add who it's for, its markets, and sales materials.`;
     }
+    const pocLine = o.poc ? ` The data POC is ${o.poc}.` : "";
     return {
       reply:
         `**${o.offering_name}** (${o.offering_type})` +
         (o.offering_description ? ` — ${o.offering_description}` : "") +
         `.${detail}` +
+        pocLine +
         (avail ? ` Availability: ${avail}.` : "") +
         `\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
       suggestions: [
@@ -81,6 +102,28 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
         "Which offerings are available in Europe?",
       ],
     };
+  }
+
+  // 1.5) A service-delivery POC named in the message → what they own. Serves the
+  // team's actual rollout task: "what do I collect from <person>?"
+  if (matchedPoc && (pocIntent || /\boffering/.test(m))) {
+    const mine = offs.filter((o) => (o.poc || "").toLowerCase().includes(matchedPoc));
+    if (mine.length) {
+      const display = mine[0].poc;
+      const lines = mine
+        .slice(0, 12)
+        .map((o) => `• [${o.offering_name}](/offerings/${o.id})`);
+      return {
+        reply:
+          `${display} is the data POC for ${mine.length} offering${mine.length === 1 ? "" : "s"}:\n\n${lines.join("\n")}` +
+          `\n\nThe team collects each one's details from its POC.`,
+        suggestions: [
+          "Who's the data POC for Publishing?",
+          "What offerings do we have?",
+          "Which offerings are available now?",
+        ],
+      };
+    }
   }
 
   // 2) Offerings available in a named market.
@@ -224,7 +267,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     suggestions: [
       "Tell me about Freya Register",
       "Which offerings are available in Europe?",
-      "Which offerings have a demo video?",
+      "What is Ragav the data POC for?",
     ],
   };
 }

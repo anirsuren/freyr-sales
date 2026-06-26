@@ -3883,4 +3883,28 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText("Pharmacovigilance", { exact: true })
     ).toBeVisible();
   });
+
+  test("279 — agent answers service-delivery POC questions (V42)", async ({
+    request,
+  }) => {
+    // A specific offering's answer names its data POC.
+    const one = await (
+      await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message: "tell me about Publishing" },
+      })
+    ).json();
+    expect(one.source).toBe("offerings");
+    expect(one.reply).toMatch(/data POC is Ragav/i);
+
+    // A POC named in the message → the offerings they own.
+    const byPoc = await (
+      await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message: "what is Ragav the POC for?" },
+      })
+    ).json();
+    expect(byPoc.source).toBe("offerings");
+    expect(byPoc.reply).toMatch(/Ragav is the data POC for/i);
+    expect(byPoc.reply).toContain("Publishing");
+    expect(byPoc.reply).toContain("Submissions Planning");
+  });
 });
