@@ -237,7 +237,7 @@ export function OfferingForm({
               className={FIELD}
               value={offeringType}
               onChange={(e) => setOfferingType(e.target.value)}
-              placeholder="e.g. Freya Module, Freya Platform"
+              placeholder="e.g. Freya Fusion (Module), Freyr Services"
               list="offering-types"
               autoComplete="off"
             />
@@ -258,7 +258,7 @@ export function OfferingForm({
               className={FIELD}
               value={offeringName}
               onChange={(e) => setOfferingName(e.target.value)}
-              placeholder="e.g. Freya Register"
+              placeholder="e.g. Freya.Register"
             />
           </div>
         </div>
@@ -463,8 +463,9 @@ export function OfferingForm({
         </div>
         {materials.length === 0 && (
           <p className="text-[13px] text-text-tertiary">
-            Add video / YouTube links, sales presentations, white papers, and
-            pricing documents.
+            Add the materials behind this offering — videos, sales presentations,
+            white papers, pricing, competition, case studies, and customer
+            references.
           </p>
         )}
         {materials.map((m, i) => (

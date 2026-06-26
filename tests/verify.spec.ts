@@ -3576,7 +3576,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // knows exactly what to fix
     await expect(page).toHaveURL(/\/offerings\/new/);
     await expect(
-      page.locator('input[placeholder="e.g. Freya Register"]')
+      page.locator('input[placeholder="e.g. Freya.Register"]')
     ).toBeFocused();
   });
 
@@ -3585,7 +3585,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/offerings/new`);
     await page
-      .locator('input[placeholder="e.g. Freya Register"]')
+      .locator('input[placeholder="e.g. Freya.Register"]')
       .fill("QA Material Guard");
     await page.getByRole("button", { name: /Add material/i }).click();
     await page.getByPlaceholder("Label").first().fill("Pricing deck");
@@ -3600,7 +3600,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/offerings/new`);
     await page
-      .locator('input[placeholder="e.g. Freya Register"]')
+      .locator('input[placeholder="e.g. Freya.Register"]')
       .fill("QA URL Normalize");
     await page.getByRole("button", { name: /Add material/i }).click();
     await page.getByPlaceholder("Label").first().fill("Pricing deck");
@@ -3706,7 +3706,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.getByRole("button", { name: /Duplicate/ }).click();
     await expect(page).toHaveURL(/\/offerings\/of-[a-z0-9]+\/edit\?focus=name/);
     await expect(
-      page.locator('input[placeholder="e.g. Freya Register"]')
+      page.locator('input[placeholder="e.g. Freya.Register"]')
     ).toBeFocused();
   });
 
