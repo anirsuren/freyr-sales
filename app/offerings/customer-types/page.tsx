@@ -7,6 +7,7 @@ import {
   listMarkets,
   listOfferings,
 } from "@/lib/offerings";
+import { isAdmin } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Customer types & markets" };
@@ -41,6 +42,7 @@ export default function CustomerTypesPage() {
         markets={listMarkets()}
         typeCounts={typeCounts}
         marketCounts={marketCounts}
+        canEdit={isAdmin()}
       />
     </div>
   );

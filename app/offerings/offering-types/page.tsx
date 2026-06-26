@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingTypesManager } from "@/components/offerings/OfferingTypesManager";
 import { listOfferingTypes, listOfferings } from "@/lib/offerings";
+import { isAdmin } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offering types" };
@@ -34,6 +35,7 @@ export default function OfferingTypesPage() {
       <OfferingTypesManager
         offeringTypes={offeringTypes}
         offeringCounts={offeringCounts}
+        canEdit={isAdmin()}
       />
     </div>
   );

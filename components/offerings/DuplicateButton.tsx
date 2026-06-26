@@ -17,6 +17,7 @@ export function DuplicateButton({
     offering_description: string;
     current_availability: string;
     future_availability: string;
+    poc: string;
     customer_type_ids: string[];
     market_ids: string[];
     materials: { kind: string; label: string; url: string }[];
@@ -38,6 +39,7 @@ export function DuplicateButton({
           offering_description: offering.offering_description,
           current_availability: offering.current_availability,
           future_availability: offering.future_availability,
+          poc: offering.poc,
           customer_type_ids: offering.customer_type_ids,
           market_ids: offering.market_ids,
           materials: offering.materials.map((m) => ({

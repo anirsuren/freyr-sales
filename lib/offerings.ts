@@ -50,7 +50,8 @@ export interface Offering {
   offering_name: string;
   offering_description: string;
   current_availability: string;
-  future_availability: string;
+  future_availability: string; // "Availability comments" in the UI
+  poc: string; // SME / service-delivery POC who owns this offering's data
   customer_type_ids: string[]; // applicable customer types (one or more)
   market_ids: string[]; // applicable markets
   materials: OfferingMaterial[];
@@ -144,8 +145,30 @@ function seedOfferingTypes(): OfferingType[] {
     { id: "ot-freya-mod-magent-addon", name: "Freya - Module + Module Agent + Add on Agent", description: "" },
     { id: "ot-freya-platform", name: "Freya Platform", description: "" },
     { id: "ot-freyr-ai-native", name: "Freyr AI Native Service", description: "" },
+    { id: "ot-mpr-service", name: "MPR Service", description: "" },
   ];
 }
+
+// MPR service offerings from Saras (inputs from Mythri, Ganesh & Naomi). Each
+// has a service-delivery POC — the SME the team collects the app data from.
+// Details (markets, customer types, availability) are gathered from the POCs.
+const MPR_SERVICES: [string, string][] = [
+  ["Publishing", "Ragav"],
+  ["Submissions Planning", "Ragav"],
+  ["Label Change Management", "Sathya K"],
+  ["Label Content Management Services", "Sathya K"],
+  ["Artwork Change Management", "Pranab Gogoi"],
+  ["Reg Affairs Strategy", "Mukundh / Suresh Modugu"],
+  ["Reg Affairs Submissions", "Mukundh / Suresh Modugu"],
+  ["Local Reg Affairs", "Mukundh / Suresh Modugu"],
+  ["Regulatory Strategy", "Wajeed"],
+  ["Market Access", "Tamal"],
+  ["Pharmacovigilance", "Gurpreet Kaur"],
+  ["Medical Writing - Clinical", "Seema Gurbani"],
+  ["Medical Writing - Non Clinical", "Seema Gurbani"],
+  ["Compliance and Audit", "Anushta Chandrapalan"],
+  ["Medical & Scientific Communication", "Padmaja Jagannathan"],
+];
 
 const ALL_CT = [
   "ct-pharma-s", "ct-pharma-m", "ct-pharma-l",
@@ -170,6 +193,7 @@ function off(
     // populates them via the entry screen). Populated rows pass values in.
     current_availability: opts.current_availability ?? "",
     future_availability: opts.future_availability ?? "",
+    poc: opts.poc ?? "",
     customer_type_ids: opts.customer_type_ids ?? [],
     market_ids: opts.market_ids ?? [],
     materials: opts.materials ?? [],
@@ -222,6 +246,12 @@ function seedOfferings(): Offering[] {
       "Publishing services are performed by Human resources using AI based skills for Document level publishing and Quality check"),
     off("of-013", "Freya - Module + Agent", "Freya GRR - MPR-CTA + Agent", ""),
     off("of-014", "Freya - Module + Agent", "Freya GRR - MDV-PAC + Via Agent", ""),
+    // MPR service offerings (Saras's list) — awaiting details, collected per POC.
+    ...MPR_SERVICES.map(([name, poc], i) =>
+      off(`of-mpr-${String(i + 1).padStart(2, "0")}`, "MPR Service", name, "", {
+        poc,
+      })
+    ),
   ];
 }
 
@@ -395,6 +425,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     offering_description: data.offering_description || "",
     current_availability: data.current_availability || "",
     future_availability: data.future_availability || "",
+    poc: data.poc || "",
     customer_type_ids: data.customer_type_ids || [],
     market_ids: data.market_ids || [],
     materials: (data.materials || []).map((m) => ({ ...m, id: m.id || rid("m") })),

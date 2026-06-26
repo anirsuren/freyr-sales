@@ -8,7 +8,10 @@ import {
   listCustomerTypes,
   listMarkets,
   listOfferings,
+  listOfferingTypes,
 } from "@/lib/offerings";
+import { isAdmin } from "@/lib/role";
+import { ViewOnlyNotice } from "@/components/offerings/ViewOnlyNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +27,7 @@ export default function EditOfferingPage({
 }) {
   const o = getOffering(params.id);
   if (!o) notFound();
+  if (!isAdmin()) return <ViewOnlyNotice backHref={`/offerings/${o.id}`} />;
   return (
     <div>
       <Link
@@ -44,6 +48,7 @@ export default function EditOfferingPage({
           offering_description: o.offering_description,
           current_availability: o.current_availability,
           future_availability: o.future_availability,
+          poc: o.poc,
           customer_type_ids: o.customer_type_ids,
           market_ids: o.market_ids,
           materials: o.materials.map((m) => ({
@@ -55,10 +60,11 @@ export default function EditOfferingPage({
         customerTypes={listCustomerTypes()}
         markets={listMarkets()}
         existingTypes={Array.from(
-          new Set(
-            listOfferings().map((x) => x.offering_type).filter(Boolean)
-          )
-        ).sort()}
+          new Set([
+            ...listOfferingTypes().map((t) => t.name),
+            ...listOfferings().map((x) => x.offering_type).filter(Boolean),
+          ])
+        )}
       />
     </div>
   );

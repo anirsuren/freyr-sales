@@ -33,6 +33,37 @@ const FIELD =
 const LABEL =
   "block text-[12px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5";
 
+// Current availability is a pick list (Suren's change #5): currently available,
+// a date (month + year), or to be decided — nothing else.
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+type AvailMode = "" | "current" | "date" | "tbd";
+
+// Parse a stored availability string back into the picker's state. Legacy
+// free-text (e.g. "V1 is available now") maps to the closest option.
+function parseAvailability(val?: string): {
+  mode: AvailMode;
+  month: string;
+  year: string;
+} {
+  const v = (val || "").trim();
+  if (!v) return { mode: "", month: "", year: "" };
+  if (/^to be decided$/i.test(v)) return { mode: "tbd", month: "", year: "" };
+  const m = v.match(/^([A-Za-z]+)\s+(\d{4})$/);
+  if (m && MONTHS.includes(m[1]))
+    return { mode: "date", month: m[1], year: m[2] };
+  return { mode: "current", month: "", year: "" };
+}
+
+function buildAvailability(mode: AvailMode, month: string, year: string) {
+  if (mode === "current") return "Currently available";
+  if (mode === "tbd") return "To be decided";
+  if (mode === "date") return month && year ? `${month} ${year}` : "";
+  return "";
+}
+
 export function OfferingForm({
   customerTypes,
   markets,
@@ -50,6 +81,7 @@ export function OfferingForm({
     offering_description?: string;
     current_availability?: string;
     future_availability?: string;
+    poc?: string;
     customer_type_ids?: string[];
     market_ids?: string[];
     materials?: MaterialRow[];
@@ -96,8 +128,13 @@ export function OfferingForm({
   const [offeringType, setOfferingType] = useState(initial?.offering_type ?? "");
   const [offeringName, setOfferingName] = useState(initial?.offering_name ?? "");
   const [description, setDescription] = useState(initial?.offering_description ?? "");
-  const [current, setCurrent] = useState(initial?.current_availability ?? "");
+  const initAvail = parseAvailability(initial?.current_availability);
+  const [availMode, setAvailMode] = useState<AvailMode>(initAvail.mode);
+  const [availMonth, setAvailMonth] = useState(initAvail.month);
+  const [availYear, setAvailYear] = useState(initAvail.year);
+  const current = buildAvailability(availMode, availMonth, availYear);
   const [future, setFuture] = useState(initial?.future_availability ?? "");
+  const [poc, setPoc] = useState(initial?.poc ?? "");
   const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
   const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
   const [materials, setMaterials] = useState<MaterialRow[]>(
@@ -159,6 +196,7 @@ export function OfferingForm({
             offering_description: description,
             current_availability: current,
             future_availability: future,
+            poc,
             customer_type_ids: ctIds,
             market_ids: mktIds,
             materials: materials
@@ -229,22 +267,68 @@ export function OfferingForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={LABEL}>Current availability</label>
-            <input
+            <select
               className={FIELD}
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              placeholder="e.g. V1 is available now"
-            />
+              value={availMode}
+              aria-label="Current availability"
+              onChange={(e) => setAvailMode(e.target.value as AvailMode)}
+            >
+              <option value="">Not set</option>
+              <option value="current">Currently available</option>
+              <option value="date">Available from a date</option>
+              <option value="tbd">To be decided</option>
+            </select>
+            {availMode === "date" && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <select
+                  className={FIELD}
+                  value={availMonth}
+                  aria-label="Availability month"
+                  onChange={(e) => setAvailMonth(e.target.value)}
+                >
+                  <option value="">Month</option>
+                  {MONTHS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className={FIELD}
+                  value={availYear}
+                  aria-label="Availability year"
+                  onChange={(e) => setAvailYear(e.target.value)}
+                >
+                  <option value="">Year</option>
+                  {Array.from({ length: 8 }, (_, k) =>
+                    String(new Date().getFullYear() - 1 + k)
+                  ).map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <div>
-            <label className={LABEL}>Future availability</label>
+            <label className={LABEL}>Availability comments</label>
             <input
               className={FIELD}
               value={future}
               onChange={(e) => setFuture(e.target.value)}
-              placeholder="e.g. V3 is available in July 2026"
+              placeholder="e.g. Version 1 · pilot now · end of this year"
             />
           </div>
+        </div>
+        <div>
+          <label className={LABEL}>Service delivery POC</label>
+          <input
+            className={FIELD}
+            value={poc}
+            onChange={(e) => setPoc(e.target.value)}
+            placeholder="Who owns this offering's data — e.g. Ragav"
+          />
         </div>
       </Card>
 

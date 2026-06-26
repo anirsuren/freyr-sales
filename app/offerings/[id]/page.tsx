@@ -11,11 +11,13 @@ import {
   Pencil,
   Plus,
   ChevronRight,
+  UserRound,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { RecordView } from "@/components/RecordView";
 import { DuplicateButton } from "@/components/offerings/DuplicateButton";
+import { isAdmin } from "@/lib/role";
 import {
   getOffering,
   hydrateOffering,
@@ -64,6 +66,7 @@ export default function OfferingDetailPage({
     o.customerTypes.length > 0 ||
     o.markets.length > 0 ||
     o.materials.length > 0;
+  const admin = isAdmin();
 
   return (
     <div className="max-w-[900px]">
@@ -103,6 +106,7 @@ export default function OfferingDetailPage({
             </p>
           )}
         </div>
+        {admin && (
         <div className="shrink-0 flex items-center gap-2">
           <DuplicateButton
             offering={{
@@ -111,6 +115,7 @@ export default function OfferingDetailPage({
               offering_description: o.offering_description,
               current_availability: o.current_availability,
               future_availability: o.future_availability,
+              poc: o.poc,
               customer_type_ids: raw.customer_type_ids,
               market_ids: raw.market_ids,
               materials: raw.materials.map((m) => ({
@@ -127,18 +132,31 @@ export default function OfferingDetailPage({
             <Pencil size={14} strokeWidth={1.8} /> Edit offering
           </Link>
         </div>
+        )}
       </div>
 
-      {/* Availability */}
+      {/* Availability + comments */}
       <div className="flex flex-wrap gap-2 mt-4">
         {o.current_availability && (
-          <span className="text-[12px] font-medium text-success bg-success/10 rounded-md px-2.5 py-1">
-            Now: {o.current_availability}
+          <span
+            className={`text-[12px] font-medium rounded-md px-2.5 py-1 ${
+              /current|now|available/i.test(o.current_availability)
+                ? "text-success bg-success/10"
+                : "text-warning bg-warning/10"
+            }`}
+          >
+            {o.current_availability}
           </span>
         )}
         {o.future_availability && (
-          <span className="text-[12px] font-medium text-warning bg-warning/10 rounded-md px-2.5 py-1">
-            Future: {o.future_availability}
+          <span className="text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2.5 py-1">
+            {o.future_availability}
+          </span>
+        )}
+        {o.poc && (
+          <span className="inline-flex items-center gap-1 text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2.5 py-1">
+            <UserRound size={12} strokeWidth={1.8} className="text-text-tertiary" />
+            POC: {o.poc}
           </span>
         )}
       </div>

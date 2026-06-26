@@ -14,6 +14,8 @@ import {
   listOfferingTypes,
   hydrateOffering,
 } from "@/lib/offerings";
+import { getRole } from "@/lib/role";
+import { RoleSwitcher } from "@/components/offerings/RoleSwitcher";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offerings" };
@@ -68,6 +70,8 @@ export default function OfferingsPage() {
   const customerTypes = listCustomerTypes();
   const markets = listMarkets();
   const offeringTypes = listOfferingTypes();
+  const role = getRole();
+  const admin = role === "admin";
 
   // Repository completeness — useful as Suren rolls this out and has the data entered.
   const mapped = offerings.filter(
@@ -84,7 +88,8 @@ export default function OfferingsPage() {
         title="Offerings"
         subtitle="Freyr's offering repository — what we sell, who it's for, the markets it's available in, and the sales materials behind each one."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <RoleSwitcher current={role} />
             <Link
               href="/offerings/offering-types"
               className="inline-flex items-center justify-center text-[14px] font-semibold rounded-md px-4 py-2.5 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
@@ -97,12 +102,14 @@ export default function OfferingsPage() {
             >
               Customer types
             </Link>
-            <Link
-              href="/offerings/new"
-              className="inline-flex items-center justify-center text-[14px] font-semibold rounded-md px-5 py-2.5 bg-blue-primary text-white hover:bg-blue-hover transition-colors"
-            >
-              + New offering
-            </Link>
+            {admin && (
+              <Link
+                href="/offerings/new"
+                className="inline-flex items-center justify-center text-[14px] font-semibold rounded-md px-5 py-2.5 bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+              >
+                + New offering
+              </Link>
+            )}
           </div>
         }
       />

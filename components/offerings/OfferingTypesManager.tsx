@@ -17,9 +17,11 @@ const LABEL =
 export function OfferingTypesManager({
   offeringTypes,
   offeringCounts = {},
+  canEdit = true,
 }: {
   offeringTypes: OfferingType[];
   offeringCounts?: Record<string, number>;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -125,15 +127,17 @@ export function OfferingTypesManager({
           <h2 className="text-[15px] font-semibold text-text-primary">
             Offering types ({offeringTypes.length})
           </h2>
-          <button
-            onClick={() => setAdding((a) => !a)}
-            className="inline-flex items-center gap-1 text-[13px] font-semibold text-blue-primary hover:bg-blue-light rounded-md px-2.5 py-1.5"
-          >
-            <Plus size={14} strokeWidth={2} /> Add offering type
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setAdding((a) => !a)}
+              className="inline-flex items-center gap-1 text-[13px] font-semibold text-blue-primary hover:bg-blue-light rounded-md px-2.5 py-1.5"
+            >
+              <Plus size={14} strokeWidth={2} /> Add offering type
+            </button>
+          )}
         </div>
 
-        {adding && (
+        {canEdit && adding && (
           <div className="p-4 bg-surface/60 border-b border-border-light space-y-3">
             <div>
               <label className={LABEL}>Offering type</label>
@@ -220,13 +224,17 @@ export function OfferingTypesManager({
                     <p className="text-[12.5px] text-text-secondary mt-0.5 leading-relaxed max-w-[640px]">
                       {t.description}
                     </p>
-                  ) : (
+                  ) : canEdit ? (
                     <button
                       onClick={() => startEdit(t)}
                       className="text-[12.5px] text-text-tertiary hover:text-blue-primary mt-0.5"
                     >
                       Add a description →
                     </button>
+                  ) : (
+                    <p className="text-[12.5px] text-text-tertiary mt-0.5">
+                      No description yet
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -241,6 +249,7 @@ export function OfferingTypesManager({
                       className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
                     />
                   </Link>
+                  {canEdit && (
                   <button
                     onClick={() => startEdit(t)}
                     aria-label={`Edit ${t.name}`}
@@ -248,7 +257,8 @@ export function OfferingTypesManager({
                   >
                     <Pencil size={13} strokeWidth={1.8} />
                   </button>
-                  {confirmRemove === t.id ? (
+                  )}
+                  {!canEdit ? null : confirmRemove === t.id ? (
                     <span className="inline-flex items-center gap-1.5 text-[12px]">
                       <button
                         onClick={() => removeType(t)}

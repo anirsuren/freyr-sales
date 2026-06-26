@@ -15,6 +15,7 @@ import {
   Download,
   Package,
   Users,
+  UserRound,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -40,6 +41,7 @@ export interface HydratedOffering {
   offering_description: string;
   current_availability: string;
   future_availability: string;
+  poc: string;
   customerTypes: CustomerType[];
   markets: Market[];
   materials: { id: string; kind: string; label: string; url: string }[];
@@ -196,7 +198,8 @@ export function OfferingsBrowser({
       "Offering",
       "Description",
       "Current Availability",
-      "Future Availability",
+      "Availability Comments",
+      "Service Delivery POC",
       "Customer Types",
       "Markets",
       "Sales Materials",
@@ -208,6 +211,7 @@ export function OfferingsBrowser({
         o.offering_description,
         o.current_availability,
         o.future_availability,
+        o.poc,
         o.customerTypes.map((c) => c.name).join("; "),
         o.markets.map((m) => m.name).join("; "),
         o.materials.map((m) => `${m.label} (${m.url})`).join(" | "),
@@ -301,15 +305,21 @@ export function OfferingsBrowser({
 
           {(o.current_availability || o.future_availability) && (
             <div className="flex flex-wrap gap-1.5">
-              {o.current_availability && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/10 rounded-md px-2 py-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                  {o.current_availability}
-                </span>
-              )}
+              {o.current_availability &&
+                (/current|now|available/i.test(o.current_availability) ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/10 rounded-md px-2 py-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                    {o.current_availability}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/10 rounded-md px-2 py-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                    {o.current_availability}
+                  </span>
+                ))}
+              {/* Availability comments — neutral, it's a note not a date */}
               {o.future_availability && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/10 rounded-md px-2 py-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                <span className="inline-flex items-center text-[11px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2 py-0.5">
                   {o.future_availability}
                 </span>
               )}
@@ -326,6 +336,13 @@ export function OfferingsBrowser({
                   className="text-text-tertiary"
                 />
                 {o.offering_type}
+              </p>
+            )}
+            {/* Service-delivery POC — who owns this offering's data */}
+            {o.poc && (
+              <p className="inline-flex items-center gap-1 text-[11px] text-text-tertiary mb-2">
+                <UserRound size={11} strokeWidth={1.8} />
+                POC: {o.poc}
               </p>
             )}
             {mapped ? (

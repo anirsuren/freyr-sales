@@ -3349,7 +3349,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const csv = await readFile(await download.path(), "utf8");
     const [header, ...rows] = csv.split("\n");
     expect(header).toBe(
-      "Offering Type,Offering,Description,Current Availability,Future Availability,Customer Types,Markets,Sales Materials"
+      "Offering Type,Offering,Description,Current Availability,Availability Comments,Service Delivery POC,Customer Types,Markets,Sales Materials"
     );
     expect(rows.length).toBeGreaterThanOrEqual(14);
     expect(csv).toContain('"Freya Register + Pia, Mia and Via Agents"');
@@ -3782,6 +3782,100 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // the offering type still appears, now secondary
     await expect(
       card.getByText("Freya - Module + Module Agent + Add on Agent")
+    ).toBeVisible();
+  });
+
+  // 274–277 — Suren's Jun 26 video #3: availability pick list + comments rename,
+  // and admin vs sales (view-only) user roles.
+  // -------------------------------------------------------------------------
+  test("274 — availability is a pick list; future renamed to comments (V39)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/of-003/edit`);
+    const sel = page.getByLabel("Current availability");
+    await expect(sel).toBeVisible();
+    await expect(sel.locator('option[value="current"]')).toHaveText(
+      "Currently available"
+    );
+    await expect(sel.locator('option[value="date"]')).toHaveText(
+      "Available from a date"
+    );
+    await expect(sel.locator('option[value="tbd"]')).toHaveText("To be decided");
+    // choosing a date reveals month + year pickers
+    await sel.selectOption("date");
+    await expect(page.getByLabel("Availability month")).toBeVisible();
+    await expect(page.getByLabel("Availability year")).toBeVisible();
+    // the old "future availability" is now "Availability comments"
+    await expect(page.getByText("Availability comments")).toBeVisible();
+  });
+
+  test("275 — admin sees the edit controls (V40)", async ({ page }) => {
+    await page.goto(`${BASE}/offerings`);
+    await expect(
+      page.getByRole("link", { name: "+ New offering" })
+    ).toBeVisible();
+    await page.goto(`${BASE}/offerings/of-003`);
+    await expect(
+      page.getByRole("link", { name: /Edit offering/ })
+    ).toBeVisible();
+  });
+
+  test("276 — sales user is view-only across the module (V40)", async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([
+      { name: "freyr_role", value: "sales", url: BASE },
+    ]);
+    await page.goto(`${BASE}/offerings`);
+    await expect(
+      page.getByRole("link", { name: "+ New offering" })
+    ).toHaveCount(0);
+    // detail page hides Edit + Duplicate
+    await page.goto(`${BASE}/offerings/of-003`);
+    await expect(page.getByRole("link", { name: /Edit offering/ })).toHaveCount(
+      0
+    );
+    // reaching an editing screen shows a view-only notice
+    await page.goto(`${BASE}/offerings/new`);
+    await expect(page.getByText("View only")).toBeVisible();
+    // managers hide their add controls
+    await page.goto(`${BASE}/offerings/offering-types`);
+    await expect(
+      page.getByRole("button", { name: /Add offering type/i })
+    ).toHaveCount(0);
+  });
+
+  test("277 — sales cannot write via the API (V40)", async ({ request }) => {
+    const res = await request.post(`${BASE}/api/offerings`, {
+      headers: { Cookie: "freyr_role=sales" },
+      data: { offering_name: "Should Be Blocked" },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test("278 — Saras's MPR services are seeded with their POCs (V41)", async ({
+    page,
+    request,
+  }) => {
+    // all 15 MPR services are in the repository under the MPR Service type
+    const data = await (await request.get(`${BASE}/api/offerings`)).json();
+    const mpr = data.offerings.filter(
+      (o: { offering_type: string }) => o.offering_type === "MPR Service"
+    );
+    expect(mpr.length).toBe(15);
+    const publishing = mpr.find(
+      (o: { offering_name: string }) => o.offering_name === "Publishing"
+    );
+    expect(publishing.poc).toBe("Ragav");
+    // and the service-delivery POC is visible on the offering
+    await page.goto(`${BASE}/offerings/${publishing.id}`);
+    await expect(page.getByText("Ragav")).toBeVisible();
+    // filterable as a group via the offering-type filter
+    await page.goto(`${BASE}/offerings?otype=ot-mpr-service`);
+    await expect(page.getByText("Market Access", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Pharmacovigilance", { exact: true })
     ).toBeVisible();
   });
 });

@@ -30,11 +30,13 @@ export function CustomerTypesManager({
   markets,
   typeCounts = {},
   marketCounts = {},
+  canEdit = true,
 }: {
   customerTypes: CustomerType[];
   markets: Market[];
   typeCounts?: Record<string, number>;
   marketCounts?: Record<string, number>;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -162,15 +164,17 @@ export function CustomerTypesManager({
           <h2 className="text-[15px] font-semibold text-text-primary">
             Customer types ({customerTypes.length})
           </h2>
-          <button
-            onClick={() => setAdding((a) => !a)}
-            className="inline-flex items-center gap-1 text-[13px] font-semibold text-blue-primary hover:bg-blue-light rounded-md px-2.5 py-1.5"
-          >
-            <Plus size={14} strokeWidth={2} /> Add customer type
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setAdding((a) => !a)}
+              className="inline-flex items-center gap-1 text-[13px] font-semibold text-blue-primary hover:bg-blue-light rounded-md px-2.5 py-1.5"
+            >
+              <Plus size={14} strokeWidth={2} /> Add customer type
+            </button>
+          )}
         </div>
 
-        {adding && (
+        {canEdit && adding && (
           <div className="p-4 bg-surface/60 border-b border-border-light space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -361,31 +365,35 @@ export function CustomerTypesManager({
                     {count}
                   </span>
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => (count > 0 ? setConfirmRemove(m.id) : removeMarket(m))}
-                  disabled={busy}
-                  aria-label={`Remove ${m.name}`}
-                  className="text-text-tertiary hover:text-error px-1.5 py-1 disabled:opacity-50"
-                >
-                  <X size={12} strokeWidth={2.2} />
-                </button>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => (count > 0 ? setConfirmRemove(m.id) : removeMarket(m))}
+                    disabled={busy}
+                    aria-label={`Remove ${m.name}`}
+                    className="text-text-tertiary hover:text-error px-1.5 py-1 disabled:opacity-50"
+                  >
+                    <X size={12} strokeWidth={2.2} />
+                  </button>
+                )}
               </span>
             );
           })}
         </div>
-        <div className="flex items-center gap-2 max-w-[420px]">
-          <input
-            className={`${FIELD} flex-1`}
-            value={newMarket}
-            onChange={(e) => setNewMarket(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addMarket()}
-            placeholder="Add a market (e.g. Canada)"
-          />
-          <Button variant="secondary" onClick={addMarket} loading={busy}>
-            Add
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex items-center gap-2 max-w-[420px]">
+            <input
+              className={`${FIELD} flex-1`}
+              value={newMarket}
+              onChange={(e) => setNewMarket(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addMarket()}
+              placeholder="Add a market (e.g. Canada)"
+            />
+            <Button variant="secondary" onClick={addMarket} loading={busy}>
+              Add
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );

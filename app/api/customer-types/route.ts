@@ -5,6 +5,7 @@ import {
   type CustomerFamily,
   type CustomerSize,
 } from "@/lib/offerings";
+import { isAdmin } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!isAdmin())
+    return NextResponse.json(
+      { error: "View only — admin access required" },
+      { status: 403 }
+    );
   const body = await req.json().catch(() => ({}));
   const family = String(body.family || "").trim() as CustomerFamily;
   const size = String(body.size || "").trim() as CustomerSize;
