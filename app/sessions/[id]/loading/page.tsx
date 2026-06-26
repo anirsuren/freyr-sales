@@ -102,7 +102,7 @@ export default function SessionLoadingPage() {
           Building your pitch
         </h1>
         <p className="text-[15px] text-text-secondary mt-1">
-          Enriching the customer and contact, then matching Freyr&apos;s
+          Researching the customer and contact, then matching Freyr&apos;s
           services.
         </p>
       </div>

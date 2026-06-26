@@ -202,7 +202,7 @@ export default function IntakePage() {
         JSON.stringify([...parsed, ...prev].slice(0, 100))
       );
     } catch {}
-    toast(`Queued ${n} prospect${n === 1 ? "" : "s"} for enrichment`);
+    toast(`Queued ${n} prospect${n === 1 ? "" : "s"} for research`);
     setBulkText("");
     setShowBulk(false);
   }
@@ -440,7 +440,7 @@ export default function IntakePage() {
           <span className="text-text-primary font-medium">
             Company, Contact, Email, LinkedIn
           </span>
-          . We&apos;ll queue each for enrichment.
+          . We&apos;ll research each one.
         </p>
         <Textarea
           value={bulkText}

@@ -56,13 +56,13 @@ export function ReEnrichButton({ customerId }: { customerId: string }) {
   return (
     <>
       <Button variant="secondary" onClick={reEnrich} loading={loading}>
-        Re-enrich
+        Refresh research
       </Button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Re-enrichment complete">
+      <Modal open={open} onClose={() => setOpen(false)} title="Research refreshed">
         <div className="flex items-center gap-2 text-[13px] text-blue-primary mb-3">
           <Sparkles size={15} strokeWidth={1.8} />
-          {changes.length} change{changes.length === 1 ? "" : "s"} since the last enrichment
+          {changes.length} change{changes.length === 1 ? "" : "s"} since we last researched this account
         </div>
         <ul className="divide-y divide-border-light border border-border-light rounded-lg overflow-hidden">
           {changes.map((c, i) => (

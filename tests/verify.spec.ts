@@ -155,7 +155,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(
       page.locator("text=/in.progress|interested|meeting/i").first()
     ).toBeVisible();
-    await expect(page.locator('button:has-text("Re-enrich")')).toBeVisible();
+    await expect(page.locator('button:has-text("Refresh research")')).toBeVisible();
   });
 
   test("12 — contact detail page renders correctly", async ({ page }) => {
@@ -724,10 +724,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(name, { exact: true })).toBeVisible();
   });
 
-  test("62 — account: re-enrich shows a diff", async ({ page }) => {
+  test("62 — account: refresh research shows a diff", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Re-enrich" }).click();
-    await expect(page.getByText("Re-enrichment complete")).toBeVisible();
+    await page.getByRole("button", { name: "Refresh research" }).click();
+    await expect(page.getByText("Research refreshed")).toBeVisible();
     await expect(page.getByText("Employee count")).toBeVisible();
   });
 
