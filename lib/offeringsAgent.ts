@@ -63,10 +63,10 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       ];
       if (o.materials.length)
         bits.push(`${o.materials.length} sales material${o.materials.length === 1 ? "" : "s"}`);
-      detail = ` It's mapped to ${bits.join(", ")}.`;
+      detail = ` It's set up with ${bits.join(", ")}.`;
     } else {
       // Plain-English, not a robotic "0 customer types, 0 markets".
-      detail = ` It's in the repository but not yet mapped to customer types or markets — open it to fill that in.`;
+      detail = ` It's in the repository, but its details aren't filled in yet — open it to add who it's for, its markets, and sales materials.`;
     }
     return {
       reply:

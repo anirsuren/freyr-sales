@@ -136,7 +136,13 @@ export function OfferingsBrowser({
           Number(isMapped(b)) - Number(isMapped(a)) ||
           a.offering_name.localeCompare(b.offering_name)
       );
-    return arr; // "default" keeps catalog (sheet) order
+    else
+      // "default" — keep the catalog (sheet) order, but lead with the
+      // fully-detailed offerings so the page opens looking like a live catalog
+      // instead of a wall of blank cards. Array sort is stable, so the original
+      // catalog order is preserved within each group.
+      arr.sort((a, b) => Number(isMapped(b)) - Number(isMapped(a)));
+    return arr;
   }, [filtered, sort]);
 
   const activeFilters = !!(q || ctId || mktId || status);
@@ -310,7 +316,8 @@ export function OfferingsBrowser({
             ) : (
               <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
                 <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
-                Not yet mapped — open to add types, markets &amp; materials
+                Awaiting details — add who it&apos;s for, its markets &amp; sales
+                materials
               </p>
             )}
           </div>
@@ -384,14 +391,14 @@ export function OfferingsBrowser({
           aria-label="Sort offerings"
           className={inputCls}
         >
-          <option value="default">Catalog order</option>
+          <option value="default">Recommended</option>
           <option value="name">Name (A–Z)</option>
           <option value="type">By type</option>
-          <option value="mapped">Mapped first</option>
+          <option value="mapped">Most complete first</option>
         </select>
         {status && (
           <span className="h-10 inline-flex items-center gap-1.5 px-3 rounded-lg bg-blue-light text-[12.5px] font-semibold text-blue-primary">
-            {status === "unmapped" ? "Needs mapping" : "Mapped only"}
+            {status === "unmapped" ? "Awaiting details" : "Fully detailed"}
             <button
               onClick={() => setStatus("")}
               aria-label="Clear status filter"

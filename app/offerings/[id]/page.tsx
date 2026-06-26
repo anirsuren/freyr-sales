@@ -90,7 +90,7 @@ export default function OfferingDetailPage({
             {!isMapped && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary bg-surface border border-border-light rounded-md px-2 py-1">
                 <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
-                Not yet mapped
+                Awaiting details
               </span>
             )}
           </div>

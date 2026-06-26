@@ -103,9 +103,9 @@ export default function OfferingsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Stat label="Offerings" value={offerings.length} href="/offerings" />
         <Stat
-          label="Mapped"
+          label="Fully detailed"
           value={mapped}
-          sub={toMap > 0 ? `${toMap} still to map` : "all mapped"}
+          sub={toMap > 0 ? `${toMap} awaiting details` : "all detailed"}
           subHref={toMap > 0 ? "/offerings?status=unmapped" : undefined}
         />
         <Stat

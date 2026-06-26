@@ -34,7 +34,7 @@ export default function CustomerTypesPage() {
       </Link>
       <PageHeader
         title="Customer types & markets"
-        subtitle="The customer-type definitions and markets that offerings are mapped to. Add more as the book grows."
+        subtitle="The customer-type definitions and markets you can attach to each offering. Add more as the catalog grows."
       />
       <CustomerTypesManager
         customerTypes={listCustomerTypes()}

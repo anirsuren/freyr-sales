@@ -3282,13 +3282,15 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("244 — 'still to map' opens an actionable unmapped worklist (V17)", async ({
+  test("244 — 'awaiting details' opens an actionable worklist (V17)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
-    await page.getByRole("link", { name: /still to map/ }).click();
+    // the "X awaiting details" stat sub-link → the worklist of offerings
+    // still needing their team data entered
+    await page.locator('a[href="/offerings?status=unmapped"]').click();
     await page.waitForURL(/status=unmapped/, { timeout: 8000 });
-    await expect(page.getByText("Needs mapping")).toBeVisible();
+    await expect(page.getByText("Awaiting details").first()).toBeVisible();
     // an unmapped offering shows; a mapped one is excluded
     await expect(page.getByText("Freya Label")).toBeVisible();
     await expect(
@@ -3492,15 +3494,15 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator(sortSel)).toHaveValue("default");
   });
 
-  test("257 — offering detail shows mapping status at a glance (V24)", async ({
+  test("257 — offering detail shows completeness status at a glance (V24)", async ({
     page,
   }) => {
-    // of-001 (Freya Register) is seeded unmapped → badge present
+    // of-001 (Freya Register) is seeded without details → badge present
     await page.goto(`${BASE}/offerings/of-001`);
-    await expect(page.getByText("Not yet mapped")).toBeVisible();
-    // of-003 is fully mapped → no badge
+    await expect(page.getByText("Awaiting details")).toBeVisible();
+    // of-003 is fully detailed → no badge
     await page.goto(`${BASE}/offerings/of-003`);
-    await expect(page.getByText("Not yet mapped")).toHaveCount(0);
+    await expect(page.getByText("Awaiting details")).toHaveCount(0);
   });
 
   test("258 — Markets stat deep-links to the markets section (V25)", async ({
