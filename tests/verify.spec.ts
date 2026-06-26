@@ -3778,20 +3778,18 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     );
   });
 
-  test("273 — cards lead with customer types, offering type below (V38)", async ({
+  test("273 — cards lead with the offering name, details below (V38)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
     const card = page.locator('a[href="/offerings/of-003"]');
-    // customer-type families are the primary qualifier on the card
-    await expect(card.getByText("Pharmaceutical", { exact: true })).toBeVisible();
+    // the offering NAME is the primary element (Suren's live-meeting ask)
     await expect(
-      card.getByText("Bio Pharmaceutical", { exact: true })
+      card.getByRole("heading", { name: /Freya\.GRR - PAC/ })
     ).toBeVisible();
-    // the offering type still appears, now secondary
-    await expect(
-      card.getByText("Freya Fusion (Module)")
-    ).toBeVisible();
+    // who it's for + the offering type still appear, now below/de-emphasized
+    await expect(card.getByText(/Pharmaceutical/)).toBeVisible();
+    await expect(card.getByText("Freya Fusion (Module)")).toBeVisible();
   });
 
   // 274–277 — Suren's Jun 26 video #3: availability pick list + comments rename,
@@ -3963,5 +3961,27 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // shown as context on an offering whose own description is still blank
     await page.goto(`${BASE}/offerings/of-001`);
     await expect(page.getByText(/system of record/i).first()).toBeVisible();
+  });
+
+  test("283 — offerings have a tile / grid view toggle (V44)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings`);
+    // both views are offered
+    await expect(page.getByRole("button", { name: "Tile view" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Grid view" })).toBeVisible();
+    // switching to grid renders a scannable table with column headers
+    await page.getByRole("button", { name: "Grid view" }).click();
+    await expect(
+      page.getByRole("columnheader", { name: "Offering" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("columnheader", { name: "Markets" })
+    ).toBeVisible();
+    // and ?view=grid deep-links straight to the table
+    await page.goto(`${BASE}/offerings?view=grid`);
+    await expect(
+      page.getByRole("columnheader", { name: "Who it's for" })
+    ).toBeVisible();
   });
 });

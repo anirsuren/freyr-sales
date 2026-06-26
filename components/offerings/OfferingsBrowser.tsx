@@ -19,6 +19,8 @@ import {
   Swords,
   BookOpen,
   Quote,
+  LayoutGrid,
+  Table2,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -90,12 +92,15 @@ export function OfferingsBrowser({
   const initSort = SORTS.includes(params.get("sort") || "")
     ? params.get("sort")!
     : "default";
+  const initView = params.get("view") === "grid" ? "grid" : "tile";
   const [q, setQ] = useState(params.get("q") ?? "");
   const [ctId, setCtId] = useState(initType);
   const [mktId, setMktId] = useState(initMkt);
   const [otId, setOtId] = useState(initOt);
   const [status, setStatus] = useState(initStatus);
   const [sort, setSort] = useState(initSort);
+  // Tile (cards) vs Grid (compact table) — Suren's live-meeting ask.
+  const [view, setView] = useState<"tile" | "grid">(initView);
 
   // Keep filters in sync when the URL changes via in-app navigation (chips, the
   // "still to map" stat link, etc.) — useState only seeds on first mount, so
@@ -112,6 +117,7 @@ export function OfferingsBrowser({
     setOtId(offeringTypes.some((tt) => tt.id === ot) ? ot! : "");
     setStatus(["mapped", "unmapped"].includes(s) ? s : "");
     setSort(SORTS.includes(so) ? so : "default");
+    setView(params.get("view") === "grid" ? "grid" : "tile");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
@@ -269,48 +275,23 @@ export function OfferingsBrowser({
             mapped ? "" : "bg-surface/40"
           }`}
         >
+          {/* Offering name is the primary element (Suren's live-meeting ask —
+              the customer-type families move down so they don't compete). */}
           <div className="flex items-start justify-between gap-2">
-            {hasCt ? (
-              // Primary: who it's for (customer-type families)
-              <div className="flex flex-wrap items-center gap-1">
-                <Users
-                  size={12}
-                  strokeWidth={2}
-                  className="text-blue-primary mr-0.5 shrink-0"
-                />
-                {families.map((f) => (
-                  <span
-                    key={f}
-                    className="inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1"
-                  >
-                    {f}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              // No customer types yet → fall back to the offering type so the
-              // card still has a header.
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary bg-surface rounded-md px-2 py-1">
-                <Sparkles size={11} strokeWidth={2} />
-                {o.offering_type || "Offering"}
-              </span>
-            )}
+            <h3 className="text-[16px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
+              {o.offering_name}
+            </h3>
             <ChevronRight
               size={16}
               strokeWidth={1.6}
               className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 group-focus-visible:text-blue-primary group-focus-visible:translate-x-0.5 transition-transform shrink-0 mt-0.5"
             />
           </div>
-          <div>
-            <h3 className="text-[15.5px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
-              {o.offering_name}
-            </h3>
-            {o.offering_description && (
-              <p className="text-[12.5px] text-text-secondary mt-1 line-clamp-2 leading-relaxed">
-                {o.offering_description}
-              </p>
-            )}
-          </div>
+          {o.offering_description && (
+            <p className="text-[12.5px] text-text-secondary line-clamp-2 leading-relaxed">
+              {o.offering_description}
+            </p>
+          )}
 
           {(o.current_availability || o.future_availability) && (
             <div className="flex flex-wrap gap-1.5">
@@ -335,10 +316,10 @@ export function OfferingsBrowser({
             </div>
           )}
 
-          <div className="mt-auto pt-3 border-t border-border-light">
-            {/* Offering type — secondary, sits below the customer types */}
-            {hasCt && o.offering_type && (
-              <p className="inline-flex items-center gap-1 text-[11px] font-medium text-text-secondary mb-2">
+          <div className="mt-auto pt-3 border-t border-border-light space-y-2">
+            {/* Offering type */}
+            {o.offering_type && (
+              <p className="inline-flex items-center gap-1 text-[11px] font-medium text-text-secondary">
                 <Sparkles
                   size={11}
                   strokeWidth={2}
@@ -347,68 +328,70 @@ export function OfferingsBrowser({
                 {o.offering_type}
               </p>
             )}
-            {/* Service-delivery POC — who owns this offering's data */}
-            {o.poc && (
-              <p className="inline-flex items-center gap-1 text-[11px] text-text-tertiary mb-2">
-                <UserRound size={11} strokeWidth={1.8} />
-                POC: {o.poc}
+            {/* Who it's for — de-emphasized so it doesn't take away from the name */}
+            {hasCt && (
+              <p className="flex items-start gap-1.5 text-[11px] text-text-tertiary">
+                <Users size={11} strokeWidth={1.8} className="mt-[1px] shrink-0" />
+                <span>{families.join(" · ")}</span>
               </p>
+            )}
+            {/* Markets */}
+            {o.markets.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {o.markets.slice(0, 4).map((m) => (
+                  <span
+                    key={m.id}
+                    className="text-[10.5px] font-medium text-text-secondary bg-surface rounded px-1.5 py-0.5"
+                  >
+                    {m.name}
+                  </span>
+                ))}
+                {o.markets.length > 4 && (
+                  <span className="text-[10.5px] text-text-tertiary self-center">
+                    +{o.markets.length - 4}
+                  </span>
+                )}
+              </div>
             )}
             {/* Early adopters — customers piloting/using it first */}
             {o.early_adopters.length > 0 && (
-              <p className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-primary mb-2">
+              <p className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-primary">
                 <Sparkles size={11} strokeWidth={2} />
                 Early adopter{o.early_adopters.length === 1 ? "" : "s"}:{" "}
                 {o.early_adopters.join(", ")}
               </p>
             )}
-            {mapped ? (
-              <>
-                {o.markets.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {o.markets.slice(0, 4).map((m) => (
-                      <span
-                        key={m.id}
-                        className="text-[10.5px] font-medium text-text-secondary bg-surface rounded px-1.5 py-0.5"
-                      >
-                        {m.name}
-                      </span>
-                    ))}
-                    {o.markets.length > 4 && (
-                      <span className="text-[10.5px] text-text-tertiary self-center">
-                        +{o.markets.length - 4}
-                      </span>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] text-text-tertiary">
-                    {o.customerTypes.length} customer type
-                    {o.customerTypes.length === 1 ? "" : "s"}
-                    {o.materials.length > 0 && (
-                      <>
-                        {" · "}
-                        {o.materials.length} material
-                        {o.materials.length === 1 ? "" : "s"}
-                      </>
-                    )}
-                  </p>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {matKinds.map((k) => {
-                      const Icon = MATERIAL_ICON[k] || FileText;
-                      return (
-                        <Icon
-                          key={k}
-                          size={14}
-                          strokeWidth={1.7}
-                          className="text-text-tertiary"
-                        />
-                      );
-                    })}
-                  </div>
+            {/* Service-delivery POC */}
+            {o.poc && (
+              <p className="inline-flex items-center gap-1 text-[11px] text-text-tertiary">
+                <UserRound size={11} strokeWidth={1.8} />
+                POC: {o.poc}
+              </p>
+            )}
+            {/* Materials count + type icons */}
+            {o.materials.length > 0 && (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-text-tertiary">
+                  {o.materials.length} material
+                  {o.materials.length === 1 ? "" : "s"}
+                </p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {matKinds.map((k) => {
+                    const Icon = MATERIAL_ICON[k] || FileText;
+                    return (
+                      <Icon
+                        key={k}
+                        size={14}
+                        strokeWidth={1.7}
+                        className="text-text-tertiary"
+                      />
+                    );
+                  })}
                 </div>
-              </>
-            ) : (
+              </div>
+            )}
+            {/* Nothing filled in yet */}
+            {!mapped && (
               <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
                 <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
                 Awaiting details — add who it&apos;s for, its markets &amp; sales
@@ -530,14 +513,51 @@ export function OfferingsBrowser({
         <p className="text-[12px] text-text-tertiary tnum">
           Showing {filtered.length} of {offerings.length} offerings
         </p>
-        {sorted.length > 0 && (
-          <button
-            onClick={exportCsv}
-            className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary hover:text-blue-primary transition-colors"
+        <div className="flex items-center gap-3">
+          {/* Tile vs Grid view toggle (Suren's live-meeting ask) */}
+          <div
+            role="group"
+            aria-label="View"
+            className="inline-flex items-center rounded-lg border border-border-light bg-surface/60 p-0.5"
           >
-            <Download size={14} strokeWidth={1.9} /> Export CSV
-          </button>
-        )}
+            <button
+              type="button"
+              onClick={() => setView("tile")}
+              aria-label="Tile view"
+              aria-pressed={view === "tile"}
+              title="Tile view"
+              className={`inline-flex items-center gap-1 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-colors ${
+                view === "tile"
+                  ? "bg-white text-blue-primary shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              <LayoutGrid size={14} strokeWidth={2} /> Tiles
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("grid")}
+              aria-label="Grid view"
+              aria-pressed={view === "grid"}
+              title="Grid view"
+              className={`inline-flex items-center gap-1 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-colors ${
+                view === "grid"
+                  ? "bg-white text-blue-primary shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              <Table2 size={14} strokeWidth={2} /> Grid
+            </button>
+          </div>
+          {sorted.length > 0 && (
+            <button
+              onClick={exportCsv}
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary hover:text-blue-primary transition-colors"
+            >
+              <Download size={14} strokeWidth={1.9} /> Export CSV
+            </button>
+          )}
+        </div>
       </div>
 
       {offerings.length === 0 ? (
@@ -575,6 +595,79 @@ export function OfferingsBrowser({
               </button>
             }
           />
+        </Card>
+      ) : view === "grid" ? (
+        // Grid (compact table) view — Suren's live-meeting ask; mirrors his
+        // Excel so the whole catalog is scannable in rows.
+        <Card className="p-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px] border-collapse">
+              <thead>
+                <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <th className="px-4 py-2.5">Offering</th>
+                  <th className="px-4 py-2.5">Type</th>
+                  <th className="px-4 py-2.5">Availability</th>
+                  <th className="px-4 py-2.5">Who it&apos;s for</th>
+                  <th className="px-4 py-2.5">Markets</th>
+                  <th className="px-4 py-2.5">Materials</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((o) => {
+                  const fams = Array.from(
+                    new Set(o.customerTypes.map((c) => c.family as string))
+                  );
+                  const famList = [
+                    ...FAMILY_ORDER.filter((f) => fams.includes(f)),
+                    ...fams.filter((f) => !FAMILY_ORDER.includes(f)),
+                  ];
+                  return (
+                    <tr
+                      key={o.id}
+                      className="border-b border-border-light last:border-0 align-top hover:bg-surface/50 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/offerings/${o.id}`}
+                          className="font-semibold text-text-primary hover:text-blue-primary"
+                        >
+                          {o.offering_name}
+                        </Link>
+                        {o.early_adopters.length > 0 && (
+                          <span className="block text-[11px] text-blue-primary mt-0.5">
+                            Early adopter{o.early_adopters.length === 1 ? "" : "s"}:{" "}
+                            {o.early_adopters.join(", ")}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {o.offering_type || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary whitespace-nowrap">
+                        {o.current_availability || "—"}
+                        {o.future_availability && (
+                          <span className="block text-[11px] text-text-tertiary">
+                            {o.future_availability}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {famList.length ? famList.join(" · ") : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {o.markets.length
+                          ? o.markets.map((m) => m.name).join(", ")
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary tnum">
+                        {o.materials.length || "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </Card>
       ) : sort === "type" ? (
         <div className="space-y-6">
