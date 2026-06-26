@@ -633,6 +633,11 @@ export function OfferingsBrowser({
                         >
                           {o.offering_name}
                         </Link>
+                        {o.poc && (
+                          <span className="block text-[11px] text-text-tertiary mt-0.5">
+                            POC: {o.poc}
+                          </span>
+                        )}
                         {o.early_adopters.length > 0 && (
                           <span className="block text-[11px] text-blue-primary mt-0.5">
                             Early adopter{o.early_adopters.length === 1 ? "" : "s"}:{" "}

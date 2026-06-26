@@ -239,6 +239,30 @@ const MODULE = "Freya Fusion (Module)";
 const MODULE_AGENT = "Freya Fusion (Module + Module Agent/s)";
 const MODULE_AGENT_ADDON = "Freya Fusion (Module + Module Agent/s + Add on Agent/s)";
 
+// MPR service offerings — Sara's services-team list, with the updates from
+// Mukundh & Pragyan (Label/Artwork "Management", Regulatory Intelligence
+// Services under Aditi Kalia, and the new RIMS Data Services). One offering
+// type ("Freyr Services"); each carries its service-delivery POC. Markets /
+// customer types / materials are collected per POC, so they start blank.
+const MPR_SERVICES: [string, string][] = [
+  ["Publishing", "Ragav"],
+  ["Submissions Planning", "Ragav"],
+  ["Label Management", "Sathya K"],
+  ["Label Content Management Services", "Sathya K"],
+  ["Artwork Management", "Pranab Gogoi"],
+  ["Regulatory Affairs Strategy", "Mukundh / Suresh Modugu"],
+  ["Regulatory Affairs Submissions", "Mukundh / Suresh Modugu"],
+  ["Local Regulatory Affairs", "Mukundh / Suresh Modugu"],
+  ["Regulatory Intelligence Services", "Aditi Kalia"],
+  ["Market Access", "Tamal"],
+  ["Pharmacovigilance", "Gurpreet Kaur"],
+  ["Medical Writing - Clinical", "Seema Gurbani"],
+  ["Medical Writing - Non Clinical", "Seema Gurbani"],
+  ["Compliance and Audit", "Anushta Chandrapalan"],
+  ["Medical & Scientific Communication", "Padmaja Jagannathan"],
+  ["RIMS Data Services (Data QC, Veeva support, PLM, Master Data Mgt.)", "Vikrant Mahajan"],
+];
+
 function seedOfferings(): Offering[] {
   return [
     off("of-001", MODULE, "Freya.Register", "", {
@@ -310,18 +334,12 @@ function seedOfferings(): Offering[] {
         { id: "m-012d", kind: "competition", label: "Freya vs. legacy RIM vendors", url: FREYR_URL.insights },
       ],
     }),
-    off("of-013", "Freyr AI Native Services", "Publishing Operations", "", {
-      poc: "Ragav",
-    }),
-    off("of-014", "Freyr Services", "Label Operations", "", {
-      poc: "Sathya K",
-    }),
-    off("of-015", "Freyr Services", "Artwork Operations", "", {
-      poc: "Pranab Gogoi",
-    }),
-    off("of-016", "Freyr Services", "Regulatory Affairs", "", {
-      poc: "Mukundh / Suresh Modugu",
-    }),
+    // of-013 onward: the granular MPR services from Sara's list.
+    ...MPR_SERVICES.map(([name, poc], i) =>
+      off(`of-${String(13 + i).padStart(3, "0")}`, "Freyr Services", name, "", {
+        poc,
+      })
+    ),
   ];
 }
 

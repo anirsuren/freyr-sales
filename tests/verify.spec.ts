@@ -3292,7 +3292,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.waitForURL(/status=unmapped/, { timeout: 8000 });
     await expect(page.getByText("Awaiting details").first()).toBeVisible();
     // a service offering still awaiting its details shows; a fully-detailed one is excluded
-    await expect(page.getByText("Publishing Operations")).toBeVisible();
+    await expect(
+      page.getByText("Publishing", { exact: true })
+    ).toBeVisible();
     await expect(
       page.getByText("Freya.Register", { exact: true })
     ).toHaveCount(0);
@@ -3770,9 +3772,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/offerings`);
     await expect(page.getByLabel("Filter by offering type")).toBeVisible();
-    // deep-link to the AI-native type → only Publishing Operations shows
-    await page.goto(`${BASE}/offerings?otype=ot-freyr-ai-native`);
-    await expect(page.getByText("Publishing Operations")).toBeVisible();
+    // deep-link to the services type → service offerings show, Freya modules don't
+    await page.goto(`${BASE}/offerings?otype=ot-freyr-services`);
+    await expect(page.getByText("Publishing", { exact: true })).toBeVisible();
     await expect(page.getByText("Freya.Register", { exact: true })).toHaveCount(
       0
     );
@@ -3865,31 +3867,33 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
     request,
   }) => {
-    // The four service offerings from Suren's sheet carry their POCs (Sara's list).
+    // The 16 MPR service offerings (Sara's list) carry their delivery POCs.
     const data = await (await request.get(`${BASE}/api/offerings`)).json();
     const services = data.offerings.filter(
-      (o: { offering_type: string }) =>
-        o.offering_type === "Freyr Services" ||
-        o.offering_type === "Freyr AI Native Services"
+      (o: { offering_type: string }) => o.offering_type === "Freyr Services"
     );
-    expect(services.length).toBe(4);
+    expect(services.length).toBe(16);
     const publishing = data.offerings.find(
-      (o: { offering_name: string }) => o.offering_name === "Publishing Operations"
+      (o: { offering_name: string }) => o.offering_name === "Publishing"
     );
     expect(publishing.poc).toBe("Ragav");
-    const regAffairs = data.offerings.find(
-      (o: { offering_name: string }) => o.offering_name === "Regulatory Affairs"
+    // Mukundh & Pragyan's updates are reflected
+    const intel = data.offerings.find(
+      (o: { offering_name: string }) =>
+        o.offering_name === "Regulatory Intelligence Services"
     );
-    expect(regAffairs.poc).toBe("Mukundh / Suresh Modugu");
+    expect(intel.poc).toBe("Aditi Kalia");
+    const rims = data.offerings.find((o: { offering_name: string }) =>
+      o.offering_name.startsWith("RIMS Data Services")
+    );
+    expect(rims.poc).toBe("Vikrant Mahajan");
     // the service-delivery POC is visible on the offering
     await page.goto(`${BASE}/offerings/${publishing.id}`);
     await expect(page.getByText("Ragav")).toBeVisible();
     // filterable as a group via the offering-type filter
     await page.goto(`${BASE}/offerings?otype=ot-freyr-services`);
-    await expect(page.getByText("Label Operations", { exact: true })).toBeVisible();
-    await expect(
-      page.getByText("Regulatory Affairs", { exact: true })
-    ).toBeVisible();
+    await expect(page.getByText("Pharmacovigilance", { exact: true })).toBeVisible();
+    await expect(page.getByText("Market Access", { exact: true })).toBeVisible();
   });
 
   test("279 — agent answers service-delivery POC questions (V42)", async ({
@@ -3898,13 +3902,13 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // A specific offering's answer names its data POC.
     const one = await (
       await request.post(`${BASE}/api/agent/converse`, {
-        data: { mock: true, message: "tell me about Publishing Operations" },
+        data: { mock: true, message: "tell me about Publishing" },
       })
     ).json();
     expect(one.source).toBe("offerings");
     expect(one.reply).toMatch(/data POC is Ragav/i);
 
-    // A POC named in the message → the offerings they own.
+    // A POC named in the message → the offerings they own (Ragav owns 2).
     const byPoc = await (
       await request.post(`${BASE}/api/agent/converse`, {
         data: { mock: true, message: "what is Ragav the POC for?" },
@@ -3912,7 +3916,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).json();
     expect(byPoc.source).toBe("offerings");
     expect(byPoc.reply).toMatch(/Ragav is the data POC for/i);
-    expect(byPoc.reply).toContain("Publishing Operations");
+    expect(byPoc.reply).toContain("Publishing");
+    expect(byPoc.reply).toContain("Submissions Planning");
   });
 
   // 280–282 — Suren's live meeting + Digital Sales and Marketing.xlsx:
