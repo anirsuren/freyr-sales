@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Download, Search } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -28,6 +29,7 @@ const SORTS = [
 ];
 
 export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const [outcome, setOutcome] = useState("all");
   const [sort, setSort] = useState("recent");
@@ -158,7 +160,11 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
               </thead>
               <tbody className="divide-y divide-border-light stagger">
                 {view.map((r) => (
-                  <tr key={r.id} className="hover:bg-surface transition-colors group">
+                  <tr
+                    key={r.id}
+                    onClick={() => router.push(`/sessions/${r.id}`)}
+                    className="hover:bg-surface transition-colors group cursor-pointer"
+                  >
                     <td className="px-5 py-4 text-[13px] font-semibold text-text-primary">{r.company}</td>
                     <td className="px-5 py-4">
                       <div className="text-[13px] text-text-primary">{r.contact}</div>

@@ -83,7 +83,7 @@ export default function OfferingDetailPage({
   const admin = isAdmin();
 
   return (
-    <div className="max-w-[900px]">
+    <div>
       <RecordView
         type="Offering"
         label={o.offering_name}

@@ -101,7 +101,7 @@ export default async function TasksPage() {
           description="No pitches awaiting review and no follow-ups due. Submit a pitch for compliance review and it will appear here."
         />
       ) : (
-        <div className="space-y-8 max-w-[820px]">
+        <div className="space-y-8">
           {agentActions.length > 0 && (
             <Card className="bg-blue-light/40 border-blue-subtle">
               <div className="flex items-center justify-between mb-3">
@@ -132,7 +132,7 @@ export default async function TasksPage() {
             ) : (
               <div className="space-y-2.5 stagger">
                 {reviewTasks.map((t) => (
-                  <Link key={t.id} href={`/sessions/${t.id}`}>
+                  <Link key={t.id} href={`/sessions/${t.id}`} className="block">
                     <Card className="p-4 hover:border-blue-subtle transition-colors group flex items-center gap-3">
                       <Avatar name={t.company} className="w-9 h-9 text-[12px] rounded-lg shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -182,7 +182,7 @@ export default async function TasksPage() {
                 {followUps.map((t) => {
                   const d = dueInfo(t.due, todayMs);
                   return (
-                  <Link key={t.id} href={`/customers/${t.customerId}`}>
+                  <Link key={t.id} href={`/customers/${t.customerId}`} className="block">
                     <Card className="p-4 hover:border-blue-subtle transition-colors group flex items-center gap-3">
                       <Avatar name={t.company} className="w-9 h-9 text-[12px] rounded-lg shrink-0" />
                       <div className="min-w-0 flex-1">
