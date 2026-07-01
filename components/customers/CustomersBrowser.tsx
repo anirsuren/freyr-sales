@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { SearchX, Search, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { SearchX, Search, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -24,13 +25,6 @@ type EnrichedCustomer = Customer & {
   last_session_date: string | null;
   health: AccountHealth;
 };
-
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "small", label: "Small" },
-  { key: "mid", label: "Mid" },
-  { key: "large", label: "Large" },
-];
 
 // Plain-English explanations for the table columns a rep might not recognize.
 const COL_HINTS: Record<string, string> = {
@@ -83,8 +77,8 @@ export function CustomersBrowser({
   customers: EnrichedCustomer[];
 }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("all");
   const [healthFilter, setHealthFilter] = useState("all");
   const [sort, setSort] = useState("recent");
   const [view, setView] = useState<"grid" | "table">("grid");
@@ -96,6 +90,7 @@ export function CustomersBrowser({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOwner, setBulkOwner] = useState(REPS[0]);
   const [assigning, setAssigning] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
 
   function toggleSel(id: string) {
     setSelected((s) => {
@@ -113,10 +108,9 @@ export function CustomersBrowser({
         !query ||
         c.company_name.toLowerCase().includes(query.toLowerCase()) ||
         (c.industry || "").toLowerCase().includes(query.toLowerCase());
-      const matchesFilter = filter === "all" || c.size_tier === filter;
       const matchesHealth =
         healthFilter === "all" || c.health.band === healthFilter;
-      return matchesQuery && matchesFilter && matchesHealth;
+      return matchesQuery && matchesHealth;
     });
     v = [...v];
     if (sort === "company") v.sort((a, b) => a.company_name.localeCompare(b.company_name));
@@ -130,12 +124,12 @@ export function CustomersBrowser({
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     return v;
-  }, [customers, query, filter, healthFilter, sort]);
+  }, [customers, query, healthFilter, sort]);
 
   // reset to first page whenever the result set changes
   useEffect(() => {
     setPage(1);
-  }, [query, filter, healthFilter, sort]);
+  }, [query, healthFilter, sort]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const current = Math.min(page, pageCount);
@@ -146,12 +140,24 @@ export function CustomersBrowser({
 
   function rowsToCsv(list: EnrichedCustomer[]) {
     return toCSV(
-      ["Company", "Size", "Industry", "Geography", "Contacts", "Last Outcome", "Last Session"],
+      [
+        "Company",
+        "Size",
+        "Industry",
+        "Geography",
+        "Health",
+        "Contacts",
+        "Last Outcome",
+        "Last Session",
+      ],
       list.map((c) => [
         c.company_name,
         c.size_tier ? SIZE_TIER_LABEL[c.size_tier] || c.size_tier : "",
         c.industry || "",
         c.geography || "",
+        // Health leads the list (a badge on every card, sortable + filterable),
+        // so it belongs in the Excel export too.
+        c.health ? `${c.health.label} (${c.health.score}/100)` : "",
         c.contact_count,
         c.last_outcome ? OUTCOME_META[c.last_outcome]?.label || c.last_outcome : "",
         c.last_session_date ? formatDate(c.last_session_date) : "",
@@ -188,6 +194,46 @@ export function CustomersBrowser({
     }
   }
 
+  // Bulk "Run customer analysis" (Suren's Jun 27 ask): for ~1000 customers he
+  // can't run each one, so select-all → analyze → auto-saves the qualified type,
+  // ownership, and revenue for every selected account.
+  async function runAnalysis() {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    setAnalyzing(true);
+    let done = 0;
+    try {
+      await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const a = await fetch(`/api/customers/${id}/analyze`, {
+              method: "POST",
+            }).then((r) => r.json());
+            if (!a.ok) return;
+            await fetch(`/api/customers/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                customer_type: a.analysis.customer_type,
+                ownership: a.analysis.ownership,
+                revenue: a.analysis.revenue,
+                analyzed_at: true,
+              }),
+            });
+            done++;
+          } catch {
+            /* skip this one */
+          }
+        })
+      );
+      toast(`Analyzed ${done} account${done === 1 ? "" : "s"} — profiles updated.`);
+      setSelected(new Set());
+      router.refresh();
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-6">
@@ -199,22 +245,6 @@ export function CustomersBrowser({
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9"
           />
-        </div>
-        <div className="flex gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={cn(
-                "text-[13px] font-medium px-3.5 py-2 rounded-md border transition-colors",
-                filter === f.key
-                  ? "border-blue-primary bg-blue-light text-blue-primary"
-                  : "border-border text-text-secondary hover:bg-surface"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
         </div>
         <div className="flex items-center gap-2 lg:ml-auto">
           <select
@@ -288,6 +318,15 @@ export function CustomersBrowser({
             {selected.size} selected
           </span>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <button
+              onClick={runAnalysis}
+              disabled={analyzing}
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50"
+            >
+              <Sparkles size={15} strokeWidth={1.8} />
+              {analyzing ? "Analyzing…" : "Run analysis"}
+            </button>
+            <span className="w-px h-5 bg-border-light" />
             <span className="text-[12px] text-text-secondary">Assign owner</span>
             <select
               aria-label="Bulk assign owner"
@@ -304,7 +343,7 @@ export function CustomersBrowser({
             <button
               onClick={assignOwner}
               disabled={assigning}
-              className="text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50"
+              className="text-[13px] font-semibold px-3 py-1.5 rounded-md bg-white border border-border text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
             >
               {assigning ? "Assigning…" : "Assign"}
             </button>
@@ -341,13 +380,12 @@ export function CustomersBrowser({
         <EmptyState
           icon={SearchX}
           title="No customers match"
-          description="Try a different search term or clear the size filter."
+          description="Try a different search term or clear the filters."
           action={
-            query || filter !== "all" || healthFilter !== "all" ? (
+            query || healthFilter !== "all" ? (
               <button
                 onClick={() => {
                   setQuery("");
-                  setFilter("all");
                   setHealthFilter("all");
                 }}
                 className="text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
@@ -366,6 +404,7 @@ export function CustomersBrowser({
               contactCount={c.contact_count}
               lastOutcome={c.last_outcome}
               lastSessionDate={c.last_session_date}
+              health={c.health}
             />
           ))}
         </div>

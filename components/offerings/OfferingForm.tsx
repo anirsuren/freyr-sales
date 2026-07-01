@@ -11,6 +11,7 @@ import {
   type CustomerType,
   type Market,
   type MaterialKind,
+  type OfferingCategory,
 } from "@/lib/offerings";
 
 interface MaterialRow {
@@ -68,21 +69,23 @@ export function OfferingForm({
   customerTypes,
   markets,
   existingTypes = [],
+  offeringCategories = [],
   offeringId,
   initial,
 }: {
   customerTypes: CustomerType[];
   markets: Market[];
   existingTypes?: string[];
+  offeringCategories?: OfferingCategory[];
   offeringId?: string;
   initial?: {
     offering_type?: string;
+    offering_category?: string;
     offering_name?: string;
     offering_description?: string;
     current_availability?: string;
     future_availability?: string;
     poc?: string;
-    early_adopters?: string[];
     customer_type_ids?: string[];
     market_ids?: string[];
     materials?: MaterialRow[];
@@ -127,6 +130,9 @@ export function OfferingForm({
     }
   }, [params]);
   const [offeringType, setOfferingType] = useState(initial?.offering_type ?? "");
+  const [offeringCategory, setOfferingCategory] = useState(
+    initial?.offering_category ?? ""
+  );
   const [offeringName, setOfferingName] = useState(initial?.offering_name ?? "");
   const [description, setDescription] = useState(initial?.offering_description ?? "");
   const initAvail = parseAvailability(initial?.current_availability);
@@ -136,8 +142,6 @@ export function OfferingForm({
   const current = buildAvailability(availMode, availMonth, availYear);
   const [future, setFuture] = useState(initial?.future_availability ?? "");
   const [poc, setPoc] = useState(initial?.poc ?? "");
-  // Early adopters edited as a simple comma-separated list of customer names.
-  const [early, setEarly] = useState((initial?.early_adopters ?? []).join(", "));
   const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
   const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
   const [materials, setMaterials] = useState<MaterialRow[]>(
@@ -195,15 +199,12 @@ export function OfferingForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             offering_type: offeringType,
+            offering_category: offeringCategory,
             offering_name: offeringName,
             offering_description: description,
             current_availability: current,
             future_availability: future,
             poc,
-            early_adopters: early
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
             customer_type_ids: ctIds,
             market_ids: mktIds,
             materials: materials
@@ -330,6 +331,31 @@ export function OfferingForm({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
+            <label className={LABEL}>Offering category</label>
+            <select
+              className={FIELD}
+              value={offeringCategory}
+              aria-label="Offering category"
+              onChange={(e) => setOfferingCategory(e.target.value)}
+            >
+              <option value="">No category</option>
+              {/* The offering's current category, if it's not in the master list */}
+              {offeringCategory &&
+                !offeringCategories.some((c) => c.name === offeringCategory) && (
+                  <option value={offeringCategory}>{offeringCategory}</option>
+                )}
+              {offeringCategories.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11.5px] text-text-tertiary mt-1">
+              Manage the list under{" "}
+              <span className="font-medium">Offering categories</span>.
+            </p>
+          </div>
+          <div>
             <label className={LABEL}>Service delivery POC</label>
             <input
               className={FIELD}
@@ -337,18 +363,6 @@ export function OfferingForm({
               onChange={(e) => setPoc(e.target.value)}
               placeholder="Who owns this offering's data — e.g. Ragav"
             />
-          </div>
-          <div>
-            <label className={LABEL}>Early adopters</label>
-            <input
-              className={FIELD}
-              value={early}
-              onChange={(e) => setEarly(e.target.value)}
-              placeholder="Customers using it first — e.g. Galderma"
-            />
-            <p className="text-[11.5px] text-text-tertiary mt-1">
-              Separate multiple customers with commas.
-            </p>
           </div>
         </div>
       </Card>

@@ -18,8 +18,11 @@ import {
   Plus,
   Check,
   Pencil,
+  Users,
+  Briefcase,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +33,7 @@ import { cn, formatDate } from "@/lib/utils";
 import {
   buildDeals,
   formatMoney,
+  ownerFor,
   STAGES,
   STAGE_PROBABILITY,
 } from "@/lib/pipeline";
@@ -101,8 +105,11 @@ export function CustomerTabs({
   // Deliverables rail) — pre-loaded into the Ask Agent composer.
   const [askPrefill, setAskPrefill] = useState("");
 
-  // editable account fields (#55 owner, #59 competitor, #60 notes/attachments)
-  const [owner, setOwner] = useState(customer.owner || "");
+  // editable account fields (#55 owner, #59 competitor, #60 notes/attachments).
+  // Default to the deterministic rep the pipeline + report already attribute this
+  // account to (ownerFor), so it never reads a bare "Unassigned" — every account
+  // shows a consistent owner across the app until a rep changes it.
+  const [owner, setOwner] = useState(customer.owner || ownerFor(customer));
   const [competitor, setCompetitor] = useState(customer.competitor || "");
   const [editingComp, setEditingComp] = useState(false);
   const [compDraft, setCompDraft] = useState(customer.competitor || "");
@@ -175,9 +182,17 @@ export function CustomerTabs({
         : undefined,
       topAction: agentActions[0]?.title,
       competitor: customer.competitor,
-      owner: customer.owner,
+      owner: customer.owner || ownerFor(customer),
     }),
-    [customer, health, allDealsValue, dealCount, contacts, interactions, agentActions]
+    [
+      customer,
+      health,
+      allDealsValue,
+      dealCount,
+      contacts,
+      interactions,
+      agentActions,
+    ]
   );
 
   async function patchCustomer(payload: Record<string, unknown>) {
@@ -452,7 +467,12 @@ export function CustomerTabs({
               </Link>
             ))}
             {contacts.length === 0 && (
-              <p className="text-[13px] text-text-secondary">No contacts yet.</p>
+              <EmptyState
+                icon={Users}
+                title="No contacts yet"
+                description="Add the people you work with at this account and they'll show up here."
+                className="md:col-span-2"
+              />
             )}
           </div>
         )}
@@ -530,9 +550,11 @@ export function CustomerTabs({
                 </Card>
               ))}
               {dealCount === 0 && (
-                <p className="text-[13px] text-text-secondary">
-                  No deals yet. Add one or generate a session.
-                </p>
+                <EmptyState
+                  icon={Briefcase}
+                  title="No deals yet"
+                  description="Add a deal or generate a session to start building pipeline for this account."
+                />
               )}
             </div>
           </div>
@@ -570,9 +592,11 @@ export function CustomerTabs({
                 );
               })}
               {sessions.length === 0 && (
-                <p className="px-5 py-4 text-[13px] text-text-secondary">
-                  No sessions yet.
-                </p>
+                <EmptyState
+                  icon={FileText}
+                  title="No sessions yet"
+                  description="Generate a pitch session for this account and it'll appear here."
+                />
               )}
             </div>
           </Card>

@@ -43,7 +43,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="toast-in pointer-events-auto flex items-center gap-2.5 bg-white border border-border-light rounded-lg shadow-card px-4 py-3 text-[13px] text-text-primary min-w-[240px]"
+            className="toast-in pointer-events-auto flex items-center gap-2.5 bg-white border border-border-light rounded-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,0.18)] px-4 py-3 text-[13px] text-text-primary min-w-[240px]"
           >
             {t.variant === "error" ? (
               <AlertCircle size={18} strokeWidth={1.5} className="text-error" />

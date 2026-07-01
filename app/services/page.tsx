@@ -1,5 +1,6 @@
 import { Package } from "lucide-react";
 import { getDb } from "@/lib/db";
+import { isAdmin } from "@/lib/role";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -12,12 +13,17 @@ export default async function ServiceCatalogPage() {
   const db = getDb();
   const kb = await db.freyrKb.get();
   const services: any[] = kb?.structured_kb?.services || [];
+  const admin = isAdmin();
 
   return (
     <div>
       <PageHeader
         title="Service Catalog"
-        subtitle="The Freyr services the system matches against — searchable and editable."
+        subtitle={
+          admin
+            ? "The Freyr services the system matches against — searchable and editable."
+            : "The Freyr services the system matches against."
+        }
       />
       {services.length === 0 ? (
         <Card className="p-0">
@@ -28,7 +34,7 @@ export default async function ServiceCatalogPage() {
           />
         </Card>
       ) : (
-        <ServiceCatalog services={services} />
+        <ServiceCatalog services={services} admin={admin} />
       )}
     </div>
   );

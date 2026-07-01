@@ -12,6 +12,14 @@ import { Card } from "@/components/ui/Card";
 // run a pitch session the workspace is "established" and this card is gone.
 const STEPS = [
   {
+    // Offerings first — Suren's north star is the offering repository, so a new
+    // workspace is guided to set that up before anything else.
+    key: "offerings",
+    label: "Set up your offerings",
+    desc: "Build the repository of what Freyr sells — who it's for and where it's available.",
+    href: "/offerings",
+  },
+  {
     key: "session",
     label: "Run your first pitch session",
     desc: "Pick an account and let the agent draft a tailored pitch.",

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Download, Search } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Avatar } from "@/components/ui/Avatar";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CalendarClock } from "lucide-react";
@@ -165,7 +166,12 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                     onClick={() => router.push(`/sessions/${r.id}`)}
                     className="hover:bg-surface transition-colors group cursor-pointer"
                   >
-                    <td className="px-5 py-4 text-[13px] font-semibold text-text-primary">{r.company}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={r.company} className="w-8 h-8 text-[12px] rounded-md" />
+                        <span className="text-[13px] font-semibold text-text-primary">{r.company}</span>
+                      </div>
+                    </td>
                     <td className="px-5 py-4">
                       <div className="text-[13px] text-text-primary">{r.contact}</div>
                       <div className="text-[11px] text-text-tertiary">{r.title}</div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDb } from "@/lib/db";
-import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchX, ArrowLeft } from "lucide-react";
 import { IntelligenceRail } from "@/components/sessions/IntelligenceRail";
 import { PitchWorkspace } from "@/components/sessions/PitchWorkspace";
 import { EngagementRail } from "@/components/sessions/EngagementRail";
@@ -21,22 +22,21 @@ export default async function SessionPage({
 
   if (!session) {
     return (
-      <div className="p-8 max-w-[560px]">
-        <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary mb-2">
-          Session not found
-        </h1>
-        <Card>
-          <p className="text-[14px] text-text-secondary mb-4">
-            This pitch session doesn&apos;t exist yet, or the link is invalid.
-          </p>
+      <EmptyState
+        icon={SearchX}
+        title="Session not found"
+        description="This pitch session doesn't exist yet, or the link is invalid. Head back to your sessions to find it."
+        className="py-24"
+        action={
           <Link
-            href="/intake"
-            className="text-[14px] text-blue-primary hover:underline"
+            href="/sessions"
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
           >
-            Start a new session →
+            <ArrowLeft size={15} strokeWidth={2} />
+            Back to sessions
           </Link>
-        </Card>
-      </div>
+        }
+      />
     );
   }
 

@@ -2,12 +2,30 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { TrendingUp, TrendingDown, SlidersHorizontal, Check } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Users,
+  Target,
+  Presentation,
+  BarChart3,
+  type LucideIcon,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { GLOSSARY } from "@/lib/glossary";
-import { cn } from "@/lib/utils";
 import { CountUp } from "@/components/ui/CountUp";
+import { KPI_STORE, KPI_COMPARE, KPI_EVENT } from "./KpiCustomize";
+
+// A soft icon per metric gives each card identity + visual weight (premium feel
+// vs. a hollow label+number). Keyed by the KPI key from the dashboard.
+const KPI_ICON: Record<string, LucideIcon> = {
+  pipeline: Wallet,
+  leads: Users,
+  winRate: Target,
+  sessions: Presentation,
+};
 
 export type KpiItem = {
   key: string;
@@ -18,8 +36,6 @@ export type KpiItem = {
   unit: "money" | "count" | "pct";
   href: string;
 };
-
-const STORE = "freyr.kpis.hidden.v1";
 
 function deltaLabel(item: KpiItem): { text: string; dir: "up" | "down" } | null {
   if (item.prev == null) return null;
@@ -39,146 +55,79 @@ function deltaLabel(item: KpiItem): { text: string; dir: "up" | "down" } | null 
 export function DashboardKpis({
   kpis,
   comparable,
-  rangeLabel,
 }: {
   kpis: KpiItem[];
   comparable: boolean;
-  rangeLabel: string;
 }) {
+  // Read-only mirror of the customize state — the controls now live in the header
+  // (KpiCustomize); we sync from localStorage on mount + whenever it broadcasts.
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [compareOn, setCompareOn] = useState(true);
-  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORE);
-      if (raw) setHidden(new Set(JSON.parse(raw)));
-      const c = localStorage.getItem("freyr.kpis.compare");
-      if (c != null) setCompareOn(c === "1");
-    } catch {}
+    const sync = () => {
+      try {
+        const raw = localStorage.getItem(KPI_STORE);
+        setHidden(raw ? new Set(JSON.parse(raw)) : new Set());
+        const c = localStorage.getItem(KPI_COMPARE);
+        setCompareOn(c == null ? true : c === "1");
+      } catch {}
+    };
+    sync();
+    window.addEventListener(KPI_EVENT, sync);
+    return () => window.removeEventListener(KPI_EVENT, sync);
   }, []);
-
-  function persist(next: Set<string>) {
-    setHidden(next);
-    try {
-      localStorage.setItem(STORE, JSON.stringify(Array.from(next)));
-    } catch {}
-  }
-  function toggleHidden(key: string) {
-    const next = new Set(hidden);
-    next.has(key) ? next.delete(key) : next.add(key);
-    // never hide all
-    if (next.size >= kpis.length) return;
-    persist(next);
-  }
-  function toggleCompare() {
-    const v = !compareOn;
-    setCompareOn(v);
-    try {
-      localStorage.setItem("freyr.kpis.compare", v ? "1" : "0");
-    } catch {}
-  }
 
   const shown = kpis.filter((k) => !hidden.has(k.key));
   const showDelta = comparable && compareOn;
 
   return (
     <section>
-      <div className="flex items-center justify-end gap-2 mb-3">
-        {comparable && (
-          <button
-            onClick={toggleCompare}
-            aria-pressed={compareOn}
-            className={cn(
-              "text-[12px] font-medium px-2.5 py-1 rounded-md border transition-colors",
-              compareOn
-                ? "border-blue-primary bg-blue-light text-blue-primary"
-                : "border-border text-text-secondary hover:bg-surface"
-            )}
-          >
-            vs {rangeLabel}
-          </button>
-        )}
-        <div className="relative">
-          <button
-            onClick={() => setCustomizeOpen((o) => !o)}
-            aria-haspopup="menu"
-            aria-expanded={customizeOpen}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-          >
-            <SlidersHorizontal size={13} strokeWidth={1.8} />
-            Customize
-          </button>
-          {customizeOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setCustomizeOpen(false)} />
-              <div
-                role="menu"
-                aria-label="Customize KPIs"
-                className="absolute right-0 mt-2 w-[220px] bg-white border border-border-light rounded-xl shadow-card z-50 p-1.5"
-              >
-                <p className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  Show metrics
-                </p>
-                {kpis.map((k) => {
-                  const on = !hidden.has(k.key);
-                  return (
-                    <button
-                      key={k.key}
-                      role="menuitemcheckbox"
-                      aria-checked={on}
-                      onClick={() => toggleHidden(k.key)}
-                      className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
-                    >
-                      {k.label}
-                      <span
-                        className={cn(
-                          "w-4 h-4 rounded border flex items-center justify-center",
-                          on
-                            ? "bg-blue-primary border-blue-primary text-white"
-                            : "border-border"
-                        )}
-                      >
-                        {on && <Check size={12} strokeWidth={3} />}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
         {shown.map((k) => {
           const d = showDelta ? deltaLabel(k) : null;
+          const Icon = KPI_ICON[k.key] || BarChart3;
           return (
             <Link key={k.key} href={k.href} className="block">
-              <Card className="h-[120px] flex flex-col justify-between hover:border-blue-subtle transition-colors group">
-                <div className="flex justify-between items-start">
-                  <Tooltip label={GLOSSARY["kpi_" + k.key.toLowerCase()]?.def} side="bottom" align="left">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary group-hover:text-blue-primary transition-colors cursor-help">
-                      {k.label}
-                    </span>
-                  </Tooltip>
+              <Card className="h-[136px] flex flex-col justify-between hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-200 group">
+                <div className="flex items-start justify-between">
+                  <span className="w-9 h-9 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 transition-colors group-hover:bg-blue-primary group-hover:text-white">
+                    <Icon size={18} strokeWidth={1.9} />
+                  </span>
                   {d && (
                     <span
-                      className="flex items-center gap-1 text-[12px] font-semibold tnum"
-                      style={{ color: d.dir === "down" ? "#B02020" : "#1A7A35" }}
+                      className="inline-flex items-center gap-1 text-[12px] font-semibold tnum px-1.5 py-0.5 rounded-md"
+                      style={{
+                        color: d.dir === "down" ? "#B02020" : "#1A7A35",
+                        background:
+                          d.dir === "down"
+                            ? "rgba(176,32,32,0.08)"
+                            : "rgba(26,122,53,0.08)",
+                      }}
                     >
-                      {d.text}
                       {d.dir === "down" ? (
-                        <TrendingDown size={14} strokeWidth={2} />
+                        <TrendingDown size={13} strokeWidth={2} />
                       ) : (
-                        <TrendingUp size={14} strokeWidth={2} />
+                        <TrendingUp size={13} strokeWidth={2} />
                       )}
+                      {d.text}
                     </span>
                   )}
                 </div>
-                <span className="text-[28px] font-bold text-text-primary leading-none tnum">
-                  <CountUp value={k.cur} unit={k.unit} />
-                </span>
+                <div>
+                  <Tooltip
+                    label={GLOSSARY["kpi_" + k.key.toLowerCase()]?.def}
+                    side="bottom"
+                    align="left"
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary cursor-help">
+                      {k.label}
+                    </span>
+                  </Tooltip>
+                  <p className="text-[28px] font-bold text-text-primary leading-none tnum mt-1.5">
+                    <CountUp value={k.cur} unit={k.unit} />
+                  </p>
+                </div>
               </Card>
             </Link>
           );

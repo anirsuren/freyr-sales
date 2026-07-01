@@ -1,6 +1,19 @@
 // Mock call-recording data for the Recordings / Call Coach surface.
 // Not part of the Supabase schema (a demo intelligence layer), so it lives here.
 
+// Dates are relative to today (not pinned) so the call log stays current as time
+// passes — matching the rest of the seeded data. Formatted in UTC by hand so the
+// string is identical on the server and the client (no hydration mismatch) and
+// independent of the viewer's timezone.
+const _MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+function daysAgo(days: number): string {
+  const d = new Date(Date.now() - days * 86400000);
+  return `${_MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}
+
 export interface KeyMoment {
   at: string; // mm:ss
   label: string;
@@ -37,13 +50,13 @@ export const RECORDINGS: Recording[] = [
     contact: "Dr. Priya Mehta",
     contactTitle: "VP Regulatory Affairs",
     rep: "Suren Dheen",
-    title: "Discovery — BioNex 2025 NDA",
-    date: "Jun 18, 2026",
+    title: "Discovery — BioNex NDA",
+    date: daysAgo(1),
     duration: "24:18",
     score: 88,
     outcome: "Meeting Booked",
     summary:
-      "Strong discovery call. Suren Dheen opened by referencing Dr. Mehta's FDA background and tied the conversation to the 2025 NDA timeline. Surfaced a clear pain around CTD dossier throughput and booked a follow-up with the NDA owner.",
+      "Strong discovery call. Suren Dheen opened by referencing Dr. Mehta's FDA background and tied the conversation to the upcoming NDA timeline. Surfaced a clear pain around CTD dossier throughput and booked a follow-up with the NDA owner.",
     didWell: [
       "Opened with a relevant, researched hook (FDA CDER background) instead of a generic intro.",
       "Quantified the pain — asked how the team is currently handling CTD dossier prep.",
@@ -77,7 +90,7 @@ export const RECORDINGS: Recording[] = [
     contactTitle: "SVP Global Regulatory",
     rep: "Mark Miller",
     title: "Exec Briefing — Helix Global Labeling",
-    date: "Jun 17, 2026",
+    date: daysAgo(2),
     duration: "31:42",
     score: 74,
     outcome: "In Progress",
@@ -114,7 +127,7 @@ export const RECORDINGS: Recording[] = [
     contactTitle: "Head of CMC",
     rep: "Suren Dheen",
     title: "Cold Call — Cortexa CMC",
-    date: "Jun 16, 2026",
+    date: daysAgo(3),
     duration: "06:54",
     score: 81,
     outcome: "Interested",
@@ -144,7 +157,7 @@ export const RECORDINGS: Recording[] = [
     contactTitle: "Director, Labeling",
     rep: "Mark Miller",
     title: "Follow-up — Indavel 483 Remediation",
-    date: "Jun 15, 2026",
+    date: daysAgo(4),
     duration: "18:07",
     score: 67,
     outcome: "In Progress",
@@ -177,7 +190,7 @@ export const RECORDINGS: Recording[] = [
     contactTitle: "Chief Medical Officer",
     rep: "Suren Dheen",
     title: "Discovery — Quantum Trial Regulatory",
-    date: "Jun 14, 2026",
+    date: daysAgo(5),
     duration: "27:31",
     score: 92,
     outcome: "Meeting Booked",
@@ -209,7 +222,7 @@ export const RECORDINGS: Recording[] = [
     contactTitle: "Global Head, Reg Submissions",
     rep: "Mark Miller",
     title: "Intro — Meridian Submissions",
-    date: "Jun 12, 2026",
+    date: daysAgo(7),
     duration: "09:38",
     score: 54,
     outcome: "Not Interested",
@@ -241,7 +254,7 @@ export const RECORDINGS: Recording[] = [
     contactTitle: "VP Regulatory Strategy",
     rep: "Suren Dheen",
     title: "Discovery — Orion Reg Intelligence",
-    date: "Jun 11, 2026",
+    date: daysAgo(8),
     duration: "21:09",
     score: 79,
     outcome: "Interested",

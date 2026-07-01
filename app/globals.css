@@ -27,7 +27,7 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-input-focus: 0 0 0 3px rgba(0, 113, 227, 0.15);
 }
 
@@ -192,6 +192,32 @@ select:focus-visible,
   animation: riseIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Modal entrance — backdrop fades in, dialog scales up subtly (premium feel). */
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.modal-in {
+  animation: modalIn 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes backdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.backdrop-in {
+  animation: backdropIn 0.18s ease-out both;
+}
+
 /* Staggered list/grid entrance — add `stagger` to a container and its direct
    children (cards, rows) rise in one after another, like the Offerings grid. */
 .stagger > * {
@@ -228,6 +254,8 @@ select:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .rise-in,
   .step-in,
+  .modal-in,
+  .backdrop-in,
   .stagger > * {
     animation: none;
   }

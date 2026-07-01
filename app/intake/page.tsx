@@ -120,6 +120,26 @@ export default function IntakePage() {
     contactName?: boolean;
   }>({});
 
+  // Prefill from the URL when launched from an existing account ("New session"
+  // on the customer page deep-links here with the company + primary contact), so
+  // a rep can start a pitch in one click instead of re-typing it.
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const company = sp.get("company");
+      const contact = sp.get("contact");
+      const website = sp.get("website");
+      if (company || contact || website) {
+        setForm((f) => ({
+          ...f,
+          companyName: company || f.companyName,
+          contactName: contact || f.contactName,
+          websiteUrl: website || f.websiteUrl,
+        }));
+      }
+    } catch {}
+  }, []);
+
   // recent prospects (#71)
   const [recents, setRecents] = useState<Recent[]>([]);
   useEffect(() => {

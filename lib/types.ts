@@ -50,6 +50,14 @@ export interface Customer {
   notes_log?: AccountNote[];
   attachments?: AccountAttachment[];
   account_deals?: AccountDeal[];
+  // Customer analysis (Suren's Jun 27 ask): the offerings customer-type this
+  // account qualifies as (e.g. "Pharmaceutical - Large"), whether it's a public
+  // or private company, and its revenue — proposed by "Analyze the customer"
+  // from the web, then approved.
+  customer_type?: string | null;
+  ownership?: string | null; // "Public" | "Private"
+  revenue?: string | null;
+  analyzed_at?: string | null;
 }
 
 export interface Contact {

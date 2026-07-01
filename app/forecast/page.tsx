@@ -1,10 +1,12 @@
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ForecastExport } from "@/components/forecast/ForecastExport";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Term } from "@/components/ui/Tooltip";
 import { CountUp } from "@/components/ui/CountUp";
+import { CircleCheck, TrendingUp, Target, Flag, type LucideIcon } from "lucide-react";
 import {
   buildDeals,
   STAGES,
@@ -77,20 +79,31 @@ export default async function ForecastPage() {
     raw,
     accent,
     hint,
+    icon: Icon,
   }: {
     label: string;
     value: string;
     raw?: number;
     accent?: boolean;
     hint?: string;
+    icon: LucideIcon;
   }) => (
-    <Card className="h-[108px] flex flex-col justify-between">
+    <Card className="h-[136px] flex flex-col">
+      <span
+        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mb-3 ${
+          accent
+            ? "bg-blue-primary text-white"
+            : "bg-blue-light text-blue-primary"
+        }`}
+      >
+        <Icon size={16} strokeWidth={1.9} />
+      </span>
       <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary inline-flex items-center gap-1">
         {label}
         {hint && <InfoHint text={hint} />}
       </span>
       <span
-        className={`text-[28px] font-bold leading-none tnum ${
+        className={`mt-auto text-[28px] font-bold leading-none tnum ${
           accent ? "text-blue-primary" : "text-text-primary"
         }`}
       >
@@ -104,6 +117,16 @@ export default async function ForecastPage() {
       <PageHeader
         title="Forecast"
         subtitle="How much revenue you're likely to land this quarter, and how that tracks against your target."
+        action={
+          <ForecastExport
+            commit={commit}
+            bestCase={bestCase}
+            quota={QUOTA}
+            gap={gap}
+            byStage={byStage}
+            byRep={byRep}
+          />
+        }
       />
 
       <section className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -112,24 +135,28 @@ export default async function ForecastPage() {
           value={formatMoney(commit)}
           raw={commit}
           accent
+          icon={CircleCheck}
           hint="The realistic number — every open deal's value multiplied by its chance of closing, added up. What you can reasonably promise."
         />
         <Stat
           label="Best case (open)"
           value={formatMoney(bestCase)}
           raw={bestCase}
+          icon={TrendingUp}
           hint="The optimistic number — the full value of every open deal if they ALL closed. The ceiling, not the expectation."
         />
         <Stat
           label="Quarter quota"
           value={formatMoney(QUOTA)}
           raw={QUOTA}
+          icon={Target}
           hint="Your revenue target for the quarter."
         />
         <Stat
           label="Gap to quota"
           value={formatMoney(gap)}
           raw={gap}
+          icon={Flag}
           hint="How much more committed revenue you need to hit the target."
         />
       </section>

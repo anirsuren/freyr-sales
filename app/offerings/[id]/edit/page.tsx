@@ -9,6 +9,7 @@ import {
   listMarkets,
   listOfferings,
   listOfferingTypes,
+  listOfferingCategories,
 } from "@/lib/offerings";
 import { isAdmin } from "@/lib/role";
 import { ViewOnlyNotice } from "@/components/offerings/ViewOnlyNotice";
@@ -44,12 +45,12 @@ export default function EditOfferingPage({
         offeringId={o.id}
         initial={{
           offering_type: o.offering_type,
+          offering_category: o.offering_category,
           offering_name: o.offering_name,
           offering_description: o.offering_description,
           current_availability: o.current_availability,
           future_availability: o.future_availability,
           poc: o.poc,
-          early_adopters: o.early_adopters,
           customer_type_ids: o.customer_type_ids,
           market_ids: o.market_ids,
           materials: o.materials.map((m) => ({
@@ -66,6 +67,7 @@ export default function EditOfferingPage({
             ...listOfferings().map((x) => x.offering_type).filter(Boolean),
           ])
         )}
+        offeringCategories={listOfferingCategories()}
       />
     </div>
   );

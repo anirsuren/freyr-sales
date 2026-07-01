@@ -12,6 +12,7 @@ import {
   Send,
   Files,
   ChevronDown,
+  MoreHorizontal,
   RotateCcw,
   Mail,
   CalendarClock,
@@ -552,15 +553,9 @@ export function PitchWorkspace({
                 </>
               )}
             </div>
-            {/* Version history (#43) */}
-            <button
-              onClick={openHistory}
-              className="flex items-center gap-1.5 px-3 py-2 border border-border-light rounded-lg hover:bg-surface transition-colors text-text-secondary text-[13px] font-medium"
-            >
-              <History size={16} strokeWidth={1.6} />
-              History
-            </button>
-            {/* More (Duplicate, #49) */}
+            {/* More — version history + duplicate tucked into one ⋯ menu so the
+                action row stays on a single line (Suren: History/Duplicate were
+                each wrapping onto their own line). */}
             <div className="relative">
               <button
                 onClick={() => setMoreOpen((o) => !o)}
@@ -569,7 +564,7 @@ export function PitchWorkspace({
                 aria-expanded={moreOpen}
                 className="p-2 border border-border-light rounded-lg hover:bg-surface transition-colors text-text-secondary"
               >
-                <ChevronDown size={18} strokeWidth={1.5} />
+                <MoreHorizontal size={18} strokeWidth={1.8} />
               </button>
               {moreOpen && (
                 <>
@@ -577,8 +572,19 @@ export function PitchWorkspace({
                   <div
                     role="menu"
                     aria-label="More actions"
-                    className="absolute right-0 mt-2 w-[200px] bg-white border border-border-light rounded-xl shadow-card z-50 p-1.5"
+                    className="absolute right-0 mt-2 w-[210px] bg-white border border-border-light rounded-xl shadow-card z-50 p-1.5"
                   >
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        openHistory();
+                      }}
+                      className="w-full flex items-center gap-2 text-left px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
+                    >
+                      <History size={15} strokeWidth={1.7} className="text-text-tertiary" />
+                      Version history
+                    </button>
                     <button
                       role="menuitem"
                       onClick={duplicate}

@@ -15,6 +15,7 @@ import {
   Swords,
   BookOpen,
   Quote,
+  Layers,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -56,7 +57,7 @@ const KIND_ORDER: MaterialKind[] = [
 ];
 const CT_FAMILIES = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
-export default function OfferingDetailPage({
+export default async function OfferingDetailPage({
   params,
 }: {
   params: { id: string };
@@ -100,6 +101,15 @@ export default function OfferingDetailPage({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            {o.offering_category && (
+              <Link
+                href={`/offerings?cat=${o.offeringCategory?.id ?? ""}`}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-secondary bg-surface border border-border-light rounded-md px-2 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+              >
+                <Layers size={11} strokeWidth={2} />
+                {o.offering_category}
+              </Link>
+            )}
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
               <Sparkles size={11} strokeWidth={2} />
               {o.offering_type || "Offering"}
@@ -121,9 +131,16 @@ export default function OfferingDetailPage({
           ) : o.offeringType?.description ? (
             // Until the per-offering description is written from sales materials,
             // show the offering type's description for context (Suren's sheet).
-            <p className="text-[14px] text-text-secondary mt-2 max-w-[680px] leading-relaxed">
-              {o.offeringType.description}
-            </p>
+            // Label it so it reads as the type's shared description, not this
+            // offering's own — otherwise the generic text looks offering-specific.
+            <div className="mt-2 max-w-[680px]">
+              <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-text-tertiary mb-1">
+                About {o.offering_type}
+              </p>
+              <p className="text-[14px] text-text-secondary leading-relaxed">
+                {o.offeringType.description}
+              </p>
+            </div>
           ) : null}
         </div>
         {admin && (
@@ -131,12 +148,12 @@ export default function OfferingDetailPage({
           <DuplicateButton
             offering={{
               offering_type: o.offering_type,
+              offering_category: o.offering_category,
               offering_name: o.offering_name,
               offering_description: o.offering_description,
               current_availability: o.current_availability,
               future_availability: o.future_availability,
               poc: o.poc,
-              early_adopters: raw.early_adopters,
               customer_type_ids: raw.customer_type_ids,
               market_ids: raw.market_ids,
               materials: raw.materials.map((m) => ({
@@ -182,26 +199,38 @@ export default function OfferingDetailPage({
         )}
       </div>
 
-      {/* Early adopters — customers piloting/using it first (Suren's ask). */}
-      {o.early_adopters.length > 0 && (
-        <div className="mt-5">
-          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
-            <Sparkles size={13} strokeWidth={2} className="text-blue-primary" />
-            Early adopters
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {o.early_adopters.map((name) => (
-              <span
-                key={name}
-                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-blue-primary bg-blue-light rounded-md px-3 py-1.5"
+      {/* Offering category — its plain-English description + the offering owner
+          (Suren's Jun 27 grouping). The category is a first-class object: this
+          links out to everything in the same category. */}
+      {o.offeringCategory &&
+        (o.offeringCategory.description || o.offeringCategory.owner) && (
+          <Card className="mt-5">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                <Layers size={13} strokeWidth={2} className="text-blue-primary" />
+                {o.offeringCategory.name}
+              </h2>
+              <Link
+                href={`/offerings?cat=${o.offeringCategory.id}`}
+                className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline shrink-0"
               >
-                <UserRound size={13} strokeWidth={1.8} />
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+                See all in this category
+                <ChevronRight size={13} strokeWidth={2} />
+              </Link>
+            </div>
+            {o.offeringCategory.description && (
+              <p className="text-[13.5px] text-text-secondary leading-relaxed max-w-[680px] mt-2">
+                {o.offeringCategory.description}
+              </p>
+            )}
+            {o.offeringCategory.owner && (
+              <p className="inline-flex items-center gap-1.5 text-[12.5px] text-text-secondary mt-3">
+                <UserRound size={13} strokeWidth={1.8} className="text-text-tertiary" />
+                Offering owner: {o.offeringCategory.owner}
+              </p>
+            )}
+          </Card>
+        )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
         {/* Customer types */}
@@ -210,12 +239,16 @@ export default function OfferingDetailPage({
             Applicable customer types ({o.customerTypes.length})
           </h2>
           {o.customerTypes.length === 0 ? (
-            <Link
-              href={`/offerings/${o.id}/edit`}
-              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-            >
-              <Plus size={13} strokeWidth={2} /> Add customer types
-            </Link>
+            admin ? (
+              <Link
+                href={`/offerings/${o.id}/edit`}
+                className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+              >
+                <Plus size={13} strokeWidth={2} /> Add customer types
+              </Link>
+            ) : (
+              <p className="text-[13px] text-text-tertiary">Not specified yet</p>
+            )
           ) : (
             <div className="space-y-3">
               {CT_FAMILIES.map((fam) => {
@@ -256,12 +289,16 @@ export default function OfferingDetailPage({
             Applicable markets ({o.markets.length})
           </h2>
           {o.markets.length === 0 ? (
-            <Link
-              href={`/offerings/${o.id}/edit`}
-              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-            >
-              <Plus size={13} strokeWidth={2} /> Add markets
-            </Link>
+            admin ? (
+              <Link
+                href={`/offerings/${o.id}/edit`}
+                className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+              >
+                <Plus size={13} strokeWidth={2} /> Add markets
+              </Link>
+            ) : (
+              <p className="text-[13px] text-text-tertiary">Not specified yet</p>
+            )
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {o.markets.map((m) => (
@@ -284,13 +321,17 @@ export default function OfferingDetailPage({
           Sales materials ({o.materials.length})
         </h2>
         {o.materials.length === 0 ? (
-          <Link
-            href={`/offerings/${o.id}/edit`}
-            className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-          >
-            <Plus size={13} strokeWidth={2} /> Add videos, presentations, white
-            papers or pricing
-          </Link>
+          admin ? (
+            <Link
+              href={`/offerings/${o.id}/edit`}
+              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+            >
+              <Plus size={13} strokeWidth={2} /> Add videos, presentations, white
+              papers or pricing
+            </Link>
+          ) : (
+            <p className="text-[13px] text-text-tertiary">No materials yet</p>
+          )
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {KIND_ORDER.flatMap((kind) =>

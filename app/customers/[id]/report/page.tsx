@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { ReportToolbar } from "@/components/customers/ReportToolbar";
-import { buildDeals, formatMoney } from "@/lib/pipeline";
+import { buildDeals, formatMoney, ownerFor } from "@/lib/pipeline";
 import { formatDate, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
 
@@ -56,7 +56,9 @@ export default async function AccountReportPage({
         ? SIZE_TIER_LABEL[customer.size_tier] || customer.size_tier
         : "—",
     },
-    { label: "Owner", value: customer.owner || "Unassigned" },
+    // Show the effective owner (the same rep the pipeline/forecast assign) so the
+    // report doesn't read "Unassigned" while the deal is clearly owned elsewhere.
+    { label: "Owner", value: ownerFor(customer) },
     { label: "Competitor", value: customer.competitor || "—" },
     {
       label: "Open value",

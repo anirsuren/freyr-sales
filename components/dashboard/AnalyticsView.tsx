@@ -1,3 +1,4 @@
+import { Wallet, Briefcase, Target } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
@@ -67,6 +68,14 @@ export function AnalyticsView({
   const maxStageVal = Math.max(1, ...stages.map((s) => s.value));
   const maxOutcome = Math.max(1, ...outcomes.map((o) => o.count));
 
+  // Real supporting context for the stat cards (derived, not invented): how many
+  // deals are still open vs. closed, so the two headline figures read as full,
+  // intentional cards instead of a number floating in empty space.
+  const openCount = stages
+    .filter((s) => s.stage !== "Closed Lost")
+    .reduce((n, s) => n + s.count, 0);
+  const closedCount = Math.max(0, totalDeals - openCount);
+
   // A real conversion funnel: how many (open) deals have REACHED each step. A
   // deal in a later stage necessarily passed through the earlier ones, so each
   // rung is the running total from that stage onward — which makes it actually
@@ -82,26 +91,41 @@ export function AnalyticsView({
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="h-full">
+          <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 mb-3">
+            <Wallet size={16} strokeWidth={1.9} />
+          </span>
           <p className="flex items-center gap-1 text-[13px] text-text-secondary">
             Open Pipeline Value
             <InfoHint text="The total dollar value of every deal still in play — nothing won or lost yet." />
           </p>
-          <p className="text-[28px] font-bold text-text-primary mt-2 tnum">
+          <p className="text-[28px] font-bold text-text-primary mt-1.5 tnum">
             <CountUp value={openValue} unit="money" />
           </p>
+          <p className="text-[13px] text-text-tertiary mt-1">
+            Across {openCount} open {openCount === 1 ? "deal" : "deals"}
+          </p>
         </Card>
-        <Card>
+        <Card className="h-full">
+          <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 mb-3">
+            <Briefcase size={16} strokeWidth={1.9} />
+          </span>
           <p className="flex items-center gap-1 text-[13px] text-text-secondary">
             Total Deals
             <InfoHint text="How many deals are in this view — open and closed — for the time range you picked." />
           </p>
-          <p className="text-[28px] font-bold text-text-primary mt-2 tnum">
+          <p className="text-[28px] font-bold text-text-primary mt-1.5 tnum">
             <CountUp value={totalDeals} unit="count" />
           </p>
+          <p className="text-[13px] text-text-tertiary mt-1">
+            {openCount} open · {closedCount} closed
+          </p>
         </Card>
-        <Card className="flex items-center justify-between">
+        <Card className="h-full flex items-center justify-between">
           <div>
+            <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 mb-3">
+              <Target size={16} strokeWidth={1.9} />
+            </span>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
               Win Rate
               <InfoHint text="Of the deals you've actively worked (past the first-contact step), the share that reached Qualified or further — a quick read on how often effort turns into progress." />

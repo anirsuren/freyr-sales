@@ -84,7 +84,7 @@ export async function POST(req: Request) {
   // Freya Register", "offerings in Europe") are answered straight from the
   // repository — grounded, no LLM, works with or without a key. Read-only and
   // tightly scoped, so it never intercepts normal pipeline/account questions.
-  const off = offeringsAnswer(message);
+  const off = offeringsAnswer(message, customers);
   if (off) {
     return NextResponse.json({
       ok: true,
@@ -534,7 +534,7 @@ async function executeAction(
       contact_id: contactId,
       pitch_session_id: null,
       outcome: "in_progress",
-      notes: `🔔 Follow-up reminder set by the agent (${action.label}).`,
+      notes: `Follow-up reminder set by the agent (${action.label}).`,
       follow_up_date: action.when,
       logged_by: "Agent",
     });
@@ -567,7 +567,7 @@ async function executeAction(
     contact_id: contactId,
     pitch_session_id: null,
     outcome: action.outcome,
-    notes: `📝 ${action.notes}`,
+    notes: action.notes,
     follow_up_date: null,
     logged_by: "Suren Dheen",
   });

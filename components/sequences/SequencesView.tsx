@@ -12,6 +12,8 @@ import {
   Zap,
   Play,
   CheckCircle2,
+  ListChecks,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -39,6 +41,33 @@ const CHANNEL_ICON: Record<SequenceChannel, typeof Mail> = {
   call: Phone,
   wait: Clock,
 };
+
+function SeqStat({
+  label,
+  value,
+  hint,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <Card className="p-4 h-full">
+      <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 mb-3">
+        <Icon size={16} strokeWidth={1.9} />
+      </span>
+      <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+        {label}
+        <InfoHint text={hint} />
+      </span>
+      <p className="text-[24px] font-bold text-text-primary leading-none mt-1.5 tnum">
+        {value}
+      </p>
+    </Card>
+  );
+}
 
 export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
   const [activeId, setActiveId] = useState(SEQUENCES[0].id);
@@ -87,33 +116,24 @@ export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
     <div>
       {/* stat strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="flex flex-col justify-between h-[92px]">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary inline-flex items-center gap-1">
-            Active sequences
-            <InfoHint text="Outreach plans you have set up. Each is a series of steps (emails and calls) spaced over days." />
-          </span>
-          <span className="text-[26px] font-bold text-text-primary tnum leading-none">
-            {SEQUENCES.length}
-          </span>
-        </Card>
-        <Card className="flex flex-col justify-between h-[92px]">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary inline-flex items-center gap-1">
-            Accounts enrolled
-            <InfoHint text="Accounts currently working through a sequence — i.e. somewhere in the middle of the plan." />
-          </span>
-          <span className="text-[26px] font-bold text-text-primary tnum leading-none">
-            {enrollments.length}
-          </span>
-        </Card>
-        <Card className="flex flex-col justify-between h-[92px]">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary inline-flex items-center gap-1">
-            Total steps
-            <InfoHint text="Every step across all your sequences combined — the size of the plan, not work done on its own." />
-          </span>
-          <span className="text-[26px] font-bold text-text-primary tnum leading-none">
-            {totalSteps}
-          </span>
-        </Card>
+        <SeqStat
+          label="Active sequences"
+          value={SEQUENCES.length}
+          icon={Zap}
+          hint="Outreach plans you have set up. Each is a series of steps (emails and calls) spaced over days."
+        />
+        <SeqStat
+          label="Accounts enrolled"
+          value={enrollments.length}
+          icon={Users}
+          hint="Accounts currently working through a sequence — i.e. somewhere in the middle of the plan."
+        />
+        <SeqStat
+          label="Total steps"
+          value={totalSteps}
+          icon={ListChecks}
+          hint="Every step across all your sequences combined — the size of the plan, not work done on its own."
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">

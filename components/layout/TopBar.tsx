@@ -109,13 +109,13 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
       <div className="flex-1 max-w-xl min-w-0">
         <button
           onClick={() => setPaletteOpen(true)}
-          className="w-full flex items-center gap-2 bg-surface border border-transparent rounded-full pl-10 pr-3 py-2 text-[14px] text-text-tertiary hover:border-border-light transition-colors relative"
+          className="w-full flex items-center gap-2 bg-surface border border-border-light rounded-full pl-10 pr-2.5 py-2 text-[14px] text-text-tertiary hover:bg-white hover:border-blue-subtle hover:shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all relative"
         >
           <Search size={18} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0" />
-          <span className="truncate">Search companies, contacts, or jump to a page…</span>
-          <span className="ml-auto shrink-0 text-[11px] text-text-tertiary border border-border-light rounded px-1.5 py-0.5">
+          <span className="truncate">Search offerings, companies, contacts, or jump to a page…</span>
+          <kbd className="ml-auto shrink-0 inline-flex items-center text-[11px] font-medium text-text-secondary bg-white border border-border-light rounded-md px-1.5 py-0.5 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
             ⌘K
-          </span>
+          </kbd>
         </button>
       </div>
 
@@ -126,7 +126,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
             aria-haspopup="menu"
             aria-expanded={newOpen}
             onClick={() => setNewOpen((o) => !o)}
-            className="flex items-center gap-1.5 h-9 pl-3 pr-2.5 rounded-full bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors"
+            className="flex items-center gap-1.5 h-9 pl-3 pr-2.5 rounded-full bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
           >
             <Plus size={16} strokeWidth={2.2} />
             <span className="hidden sm:block">New</span>

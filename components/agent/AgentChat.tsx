@@ -21,10 +21,11 @@ const KEY = "freyr.agent.conversations";
 
 const STARTERS = [
   "What should I focus on today?",
+  // Offerings-first (Suren's north star): surface the offering repository high
+  // in the agent's starters, not buried below the pipeline questions.
+  "What offerings do we have?",
   "Which deals are cooling?",
   "What's my open pipeline worth?",
-  // Surfaces the offerings repository through the agent (factual lookup).
-  "What offerings do we have?",
   // An action starter (not just a question) — shows the agent DOES work, not
   // only answers. Resolves to the real quietest account and drafts it.
   "Draft a re-engagement for a cooling account",
@@ -540,6 +541,7 @@ export function AgentChat() {
             <div className="flex items-end gap-2 bg-surface border border-border rounded-2xl px-3 py-2 focus-within:border-blue-primary transition-colors">
               <textarea
                 value={input}
+                autoFocus
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {

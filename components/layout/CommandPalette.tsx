@@ -28,11 +28,12 @@ import { useToast } from "@/components/ui/Toast";
 
 const NAV: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  // Offerings near the top, consistent with the offerings-first sidebar order.
+  { label: "Offerings", href: "/offerings", icon: Package },
   { label: "New Session", href: "/intake", icon: FilePlus2 },
   { label: "Sessions", href: "/sessions", icon: CalendarClock },
   { label: "Pipeline", href: "/pipeline", icon: Columns3 },
   { label: "Customers", href: "/customers", icon: Building2 },
-  { label: "Offerings", href: "/offerings", icon: Package },
   { label: "Contacts", href: "/contacts", icon: Contact },
   { label: "Knowledge Base", href: "/admin", icon: Database },
   { label: "Service Catalog", href: "/services", icon: Package },

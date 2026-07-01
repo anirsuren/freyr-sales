@@ -19,16 +19,34 @@ import {
   Swords,
   BookOpen,
   Quote,
+  Layers,
   LayoutGrid,
   Table2,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { cn } from "@/lib/utils";
-import type { CustomerType, Market, OfferingType } from "@/lib/offerings";
+import type {
+  CustomerType,
+  Market,
+  OfferingType,
+  OfferingCategory,
+} from "@/lib/offerings";
 
 // Canonical family order so the "who it's for" chips read consistently.
 const FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
+
+// "Pharmaceutical · Biologics · Bio Pharmaceutical" for an offering that covers
+// every customer type is just noise — when it applies to all of them, say so
+// plainly so a rep reads "this is for everyone" at a glance (Suren's cleaner-
+// cards ask).
+function whoForLabel(
+  famList: string[],
+  coveredCount: number,
+  totalCount: number
+): string {
+  if (totalCount > 0 && coveredCount === totalCount) return "All customer types";
+  return famList.join(" · ");
+}
 
 // CSV-safe a cell (quote if it has commas/quotes/newlines).
 function csv(v: string) {
@@ -37,17 +55,17 @@ function csv(v: string) {
 
 // Sort options — also valid ?sort= deep-link values, kept in sync with the
 // rest of the filter bar so a sorted view can be shared/bookmarked.
-const SORTS = ["default", "name", "type", "mapped"];
+const SORTS = ["default", "name", "type", "category", "mapped"];
 
 export interface HydratedOffering {
   id: string;
   offering_type: string;
+  offering_category: string;
   offering_name: string;
   offering_description: string;
   current_availability: string;
   future_availability: string;
   poc: string;
-  early_adopters: string[];
   customerTypes: CustomerType[];
   markets: Market[];
   materials: { id: string; kind: string; label: string; url: string }[];
@@ -68,11 +86,13 @@ export function OfferingsBrowser({
   customerTypes,
   markets,
   offeringTypes,
+  offeringCategories,
 }: {
   offerings: HydratedOffering[];
   customerTypes: CustomerType[];
   markets: Market[];
   offeringTypes: OfferingType[];
+  offeringCategories: OfferingCategory[];
 }) {
   // Seed filters from the URL so chips elsewhere can deep-link into a filtered
   // view (e.g. /offerings?market=mkt-europe from a market chip on an offering).
@@ -86,6 +106,9 @@ export function OfferingsBrowser({
   const initOt = offeringTypes.some((t) => t.id === params.get("otype"))
     ? params.get("otype")!
     : "";
+  const initCat = offeringCategories.some((c) => c.id === params.get("cat"))
+    ? params.get("cat")!
+    : "";
   const initStatus = ["mapped", "unmapped"].includes(params.get("status") || "")
     ? params.get("status")!
     : "";
@@ -97,6 +120,7 @@ export function OfferingsBrowser({
   const [ctId, setCtId] = useState(initType);
   const [mktId, setMktId] = useState(initMkt);
   const [otId, setOtId] = useState(initOt);
+  const [catId, setCatId] = useState(initCat);
   const [status, setStatus] = useState(initStatus);
   const [sort, setSort] = useState(initSort);
   // Tile (cards) vs Grid (compact table) — Suren's live-meeting ask.
@@ -109,12 +133,14 @@ export function OfferingsBrowser({
     const t = params.get("type");
     const m = params.get("market");
     const ot = params.get("otype");
+    const cat = params.get("cat");
     const s = params.get("status") || "";
     const so = params.get("sort") || "";
     setQ(params.get("q") ?? "");
     setCtId(customerTypes.some((c) => c.id === t) ? t! : "");
     setMktId(markets.some((mm) => mm.id === m) ? m! : "");
     setOtId(offeringTypes.some((tt) => tt.id === ot) ? ot! : "");
+    setCatId(offeringCategories.some((cc) => cc.id === cat) ? cat! : "");
     setStatus(["mapped", "unmapped"].includes(s) ? s : "");
     setSort(SORTS.includes(so) ? so : "default");
     setView(params.get("view") === "grid" ? "grid" : "tile");
@@ -124,9 +150,13 @@ export function OfferingsBrowser({
   const isMapped = (o: HydratedOffering) =>
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
 
-  // Offering type is a string on each offering; map the selected id → its name.
+  // Offering type / category are strings on each offering; map the selected id
+  // → its name.
   const otName = otId
     ? offeringTypes.find((t) => t.id === otId)?.name ?? ""
+    : "";
+  const catName = catId
+    ? offeringCategories.find((c) => c.id === catId)?.name ?? ""
     : "";
 
   const filtered = useMemo(() => {
@@ -135,16 +165,19 @@ export function OfferingsBrowser({
       if (ctId && !o.customerTypes.some((c) => c.id === ctId)) return false;
       if (mktId && !o.markets.some((m) => m.id === mktId)) return false;
       if (otName && o.offering_type !== otName) return false;
+      if (catName && o.offering_category !== catName) return false;
       if (status === "mapped" && !isMapped(o)) return false;
       if (status === "unmapped" && isMapped(o)) return false;
-      // Search across what's actually on the card — name, type, description,
-      // AND the markets / customer types it's mapped to — so typing "Europe" or
-      // "pharmaceutical" finds matches instead of looking broken.
+      // Search across what's actually on the card — name, type, category,
+      // description, AND the markets / customer types it's mapped to — so typing
+      // "Europe", "intelligence" or "pharmaceutical" finds matches.
       if (
         needle &&
-        !`${o.offering_name} ${o.offering_type} ${o.offering_description} ${o.markets
-          .map((m) => m.name)
-          .join(" ")} ${o.customerTypes.map((c) => c.name).join(" ")}`
+        !`${o.offering_name} ${o.offering_type} ${o.offering_category} ${
+          o.offering_description
+        } ${o.markets.map((m) => m.name).join(" ")} ${o.customerTypes
+          .map((c) => c.name)
+          .join(" ")}`
           .toLowerCase()
           .includes(needle)
       )
@@ -152,7 +185,7 @@ export function OfferingsBrowser({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerings, q, ctId, mktId, otName, status]);
+  }, [offerings, q, ctId, mktId, otName, catName, status]);
   const sorted = useMemo(() => {
     const arr = [...filtered];
     if (sort === "name")
@@ -161,6 +194,12 @@ export function OfferingsBrowser({
       arr.sort(
         (a, b) =>
           a.offering_type.localeCompare(b.offering_type) ||
+          a.offering_name.localeCompare(b.offering_name)
+      );
+    else if (sort === "category")
+      arr.sort(
+        (a, b) =>
+          a.offering_category.localeCompare(b.offering_category) ||
           a.offering_name.localeCompare(b.offering_name)
       );
     else if (sort === "mapped")
@@ -178,12 +217,13 @@ export function OfferingsBrowser({
     return arr;
   }, [filtered, sort]);
 
-  const activeFilters = !!(q || ctId || mktId || otId || status);
+  const activeFilters = !!(q || ctId || mktId || otId || catId || status);
   const clearAll = () => {
     setQ("");
     setCtId("");
     setMktId("");
     setOtId("");
+    setCatId("");
     setStatus("");
   };
 
@@ -209,10 +249,10 @@ export function OfferingsBrowser({
     const header = [
       "Offering Type",
       "Offering",
+      "Offering Category",
       "Description",
       "Current Availability",
       "Availability Comments",
-      "Early Adopters",
       "Service Delivery POC",
       "Customer Types",
       "Markets",
@@ -222,10 +262,15 @@ export function OfferingsBrowser({
       [
         o.offering_type,
         o.offering_name,
-        o.offering_description,
+        o.offering_category,
+        // Fall back to the offering type's description when the offering's own
+        // isn't written yet — same as the detail page — so the Excel export
+        // isn't a column of blanks for the not-yet-detailed offerings.
+        o.offering_description ||
+          offeringTypes.find((t) => t.name === o.offering_type)?.description ||
+          "",
         o.current_availability,
         o.future_availability,
-        o.early_adopters.join("; "),
         o.poc,
         o.customerTypes.map((c) => c.name).join("; "),
         o.markets.map((m) => m.name).join("; "),
@@ -317,13 +362,25 @@ export function OfferingsBrowser({
           )}
 
           <div className="mt-auto pt-3 border-t border-border-light space-y-2">
+            {/* Offering category — Suren's Jun 27 grouping (replaces markets on
+                the tile). The primary qualifier above the offering type. */}
+            {o.offering_category && (
+              <p className="flex items-center gap-1 text-[11px] font-medium text-text-secondary">
+                <Layers
+                  size={11}
+                  strokeWidth={2}
+                  className="text-text-tertiary shrink-0"
+                />
+                {o.offering_category}
+              </p>
+            )}
             {/* Offering type */}
             {o.offering_type && (
-              <p className="inline-flex items-center gap-1 text-[11px] font-medium text-text-secondary">
+              <p className="flex items-center gap-1 text-[11px] font-medium text-text-secondary">
                 <Sparkles
                   size={11}
                   strokeWidth={2}
-                  className="text-text-tertiary"
+                  className="text-text-tertiary shrink-0"
                 />
                 {o.offering_type}
               </p>
@@ -332,33 +389,13 @@ export function OfferingsBrowser({
             {hasCt && (
               <p className="flex items-start gap-1.5 text-[11px] text-text-tertiary">
                 <Users size={11} strokeWidth={1.8} className="mt-[1px] shrink-0" />
-                <span>{families.join(" · ")}</span>
-              </p>
-            )}
-            {/* Markets */}
-            {o.markets.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {o.markets.slice(0, 4).map((m) => (
-                  <span
-                    key={m.id}
-                    className="text-[10.5px] font-medium text-text-secondary bg-surface rounded px-1.5 py-0.5"
-                  >
-                    {m.name}
-                  </span>
-                ))}
-                {o.markets.length > 4 && (
-                  <span className="text-[10.5px] text-text-tertiary self-center">
-                    +{o.markets.length - 4}
-                  </span>
-                )}
-              </div>
-            )}
-            {/* Early adopters — customers piloting/using it first */}
-            {o.early_adopters.length > 0 && (
-              <p className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-primary">
-                <Sparkles size={11} strokeWidth={2} />
-                Early adopter{o.early_adopters.length === 1 ? "" : "s"}:{" "}
-                {o.early_adopters.join(", ")}
+                <span>
+                  {whoForLabel(
+                    families,
+                    o.customerTypes.length,
+                    customerTypes.length
+                  )}
+                </span>
               </p>
             )}
             {/* Service-delivery POC */}
@@ -416,6 +453,19 @@ export function OfferingsBrowser({
     }
   }
 
+  // When sorted "By category", group under each offering category — Suren's
+  // primary grouping ("if I pick Global Regulatory Intelligence I see these
+  // offerings"). sorted is already category→name ordered.
+  const catGroups: { cat: string; items: HydratedOffering[] }[] = [];
+  if (sort === "category") {
+    for (const o of sorted) {
+      const c = o.offering_category || "Uncategorized";
+      const g = catGroups.find((x) => x.cat === c);
+      if (g) g.items.push(o);
+      else catGroups.push({ cat: c, items: [o] });
+    }
+  }
+
   const inputCls =
     "h-10 rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary transition-shadow focus:outline-none focus:border-blue-subtle focus:shadow-input-focus";
 
@@ -451,6 +501,19 @@ export function OfferingsBrowser({
           ))}
         </select>
         <select
+          value={catId}
+          onChange={(e) => setCatId(e.target.value)}
+          aria-label="Filter by offering category"
+          className={inputCls}
+        >
+          <option value="">All categories</option>
+          {offeringCategories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select
           value={otId}
           onChange={(e) => setOtId(e.target.value)}
           aria-label="Filter by offering type"
@@ -462,30 +525,6 @@ export function OfferingsBrowser({
               {t.name}
             </option>
           ))}
-        </select>
-        <select
-          value={mktId}
-          onChange={(e) => setMktId(e.target.value)}
-          aria-label="Filter by market"
-          className={inputCls}
-        >
-          <option value="">All markets</option>
-          {markets.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          aria-label="Sort offerings"
-          className={inputCls}
-        >
-          <option value="default">Recommended</option>
-          <option value="name">Name (A–Z)</option>
-          <option value="type">By type</option>
-          <option value="mapped">Most complete first</option>
         </select>
         {status && (
           <span className="h-10 inline-flex items-center gap-1.5 px-3 rounded-lg bg-blue-light text-[12.5px] font-semibold text-blue-primary">
@@ -514,6 +553,20 @@ export function OfferingsBrowser({
           Showing {filtered.length} of {offerings.length} offerings
         </p>
         <div className="flex items-center gap-3">
+          {/* Sort — a display control, so it lives here with view + export rather
+              than wrapping onto a lonely second line under the filters. */}
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            aria-label="Sort offerings"
+            className="h-9 rounded-lg border border-border-light bg-white px-2.5 text-[12px] font-medium text-text-secondary transition-shadow focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
+          >
+            <option value="default">Recommended</option>
+            <option value="name">Name (A–Z)</option>
+            <option value="category">By category</option>
+            <option value="type">By type</option>
+            <option value="mapped">Most complete first</option>
+          </select>
           {/* Tile vs Grid view toggle (Suren's live-meeting ask) */}
           <div
             role="group"
@@ -605,10 +658,10 @@ export function OfferingsBrowser({
               <thead>
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                   <th className="px-4 py-2.5">Offering</th>
+                  <th className="px-4 py-2.5">Category</th>
                   <th className="px-4 py-2.5">Type</th>
                   <th className="px-4 py-2.5">Availability</th>
                   <th className="px-4 py-2.5">Who it&apos;s for</th>
-                  <th className="px-4 py-2.5">Markets</th>
                   <th className="px-4 py-2.5">Materials</th>
                 </tr>
               </thead>
@@ -638,12 +691,9 @@ export function OfferingsBrowser({
                             POC: {o.poc}
                           </span>
                         )}
-                        {o.early_adopters.length > 0 && (
-                          <span className="block text-[11px] text-blue-primary mt-0.5">
-                            Early adopter{o.early_adopters.length === 1 ? "" : "s"}:{" "}
-                            {o.early_adopters.join(", ")}
-                          </span>
-                        )}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {o.offering_category || "—"}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
                         {o.offering_type || "—"}
@@ -657,11 +707,12 @@ export function OfferingsBrowser({
                         )}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {famList.length ? famList.join(" · ") : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-text-secondary">
-                        {o.markets.length
-                          ? o.markets.map((m) => m.name).join(", ")
+                        {famList.length
+                          ? whoForLabel(
+                              famList,
+                              o.customerTypes.length,
+                              customerTypes.length
+                            )
                           : "—"}
                       </td>
                       <td className="px-4 py-3 text-text-secondary tnum">
@@ -674,6 +725,23 @@ export function OfferingsBrowser({
             </table>
           </div>
         </Card>
+      ) : sort === "category" ? (
+        <div className="space-y-6">
+          {catGroups.map((g) => (
+            <div key={g.cat}>
+              <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary mb-2.5">
+                <Layers size={12} strokeWidth={2} className="text-text-tertiary" />
+                {g.cat || "Uncategorized"}
+                <span className="text-text-tertiary/70 tnum">
+                  ({g.items.length})
+                </span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+                {g.items.map((o, i) => renderCard(o, i))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : sort === "type" ? (
         <div className="space-y-6">
           {typeGroups.map((g) => (

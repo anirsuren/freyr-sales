@@ -19,6 +19,15 @@ export type ActivityItem = {
   customerId: string;
 };
 
+// Notes once carried a leading emoji (🔔/📝) as a makeshift icon; we now render a
+// proper muted lucide glyph instead, so strip any leftover leading emoji from
+// older logged notes for a clean, consistent line.
+function cleanNote(note: string): string {
+  // Strip a leading run of emoji (UTF-16 surrogate code units), BMP symbols,
+  // variation selectors and whitespace — without the `u` flag (build target).
+  return note.replace(/^[\uD800-\uDFFF☀-➿️\s]+/, "");
+}
+
 export function ActivityFeed({ items }: { items: ActivityItem[] }) {
   const [outcome, setOutcome] = useState("all");
   const [q, setQ] = useState("");
@@ -171,8 +180,13 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                             {it.contactName}
                           </p>
                           {it.notes && (
-                            <p className="text-[13px] text-text-secondary leading-relaxed mt-1.5">
-                              {it.notes}
+                            <p className="flex items-start gap-1.5 text-[13px] text-text-secondary leading-relaxed mt-1.5">
+                              <MessageSquareText
+                                size={13}
+                                strokeWidth={1.7}
+                                className="text-text-tertiary shrink-0 mt-[3px]"
+                              />
+                              <span>{cleanNote(it.notes)}</span>
                             </p>
                           )}
                         </div>

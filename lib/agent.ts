@@ -120,6 +120,17 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
       ? `Single-threaded${c.topContact ? ` on ${c.topContact}` : ""} — worth widening.`
       : `${c.contactCount} contacts mapped${c.topContact ? `, e.g. ${c.topContact}` : ""}.`;
 
+  // Draft/outreach requests on the read-only Ask panel — point to the action
+  // surface instead of returning a confusing account summary. (Drafting lives
+  // in the main agent + the "Draft it for me" buttons; this panel answers.)
+  if (
+    /\b(draft|write|compose|send)\b[^?]*\b(email|note|message|outreach|follow[- ]?up|recap|reply|re-?engage)\b/.test(
+      s
+    )
+  ) {
+    return `I can draft that for ${c.company} — use “Draft it for me” on the account, or ask me in the main agent chat and I'll write it for your review. Nothing goes out until you approve it.`;
+  }
+
   if (/account brief/.test(s)) {
     return [
       `Account brief — ${c.company}`,
@@ -195,6 +206,21 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
   if (/health|risk|churn|doing/.test(s)) {
     return `${c.company} is ${c.healthLabel} (${c.healthScore}/100). ${next}`;
   }
+  // Contacts / who-to-talk-to — checked BEFORE the next-step intent so
+  // "who should I talk to?" names the contact instead of matching "should" and
+  // returning the generic next step. Uses specific phrasing (not bare "who") so
+  // "who's the owner / who's the competition" still reach their own handlers.
+  if (
+    /\bcontacts?\b|\bstakeholders?\b|\bchampion\b|\bdecision[- ]?makers?\b|\btalk to\b|\bspeak (to|with)\b|\breach out\b|\bwho (should|do|can) i\b|\bwho to (talk|contact)\b/.test(
+      s
+    )
+  ) {
+    return `There ${c.contactCount === 1 ? "is" : "are"} ${c.contactCount} mapped contact${
+      c.contactCount === 1 ? "" : "s"
+    }${c.topContact ? `, e.g. ${c.topContact}` : ""}.${
+      c.contactCount < 2 ? " Worth multi-threading to de-risk the deal." : ""
+    }`;
+  }
   if (/next|should|do|recommend|action|play/.test(s)) {
     return next;
   }
@@ -203,14 +229,7 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
       c.dealCount === 1 ? "" : "s"
     } worth ${c.openValue} in open value.`;
   }
-  if (/who|contact|stakeholder|thread|people|champion/.test(s)) {
-    return `There ${c.contactCount === 1 ? "is" : "are"} ${c.contactCount} mapped contact${
-      c.contactCount === 1 ? "" : "s"
-    }${c.topContact ? `, e.g. ${c.topContact}` : ""}.${
-      c.contactCount < 2 ? " Worth multi-threading to de-risk the deal." : ""
-    }`;
-  }
-  if (/competitor|incumbent|against|versus/.test(s)) {
+  if (/competitor|competition|competitive|incumbent|against|versus|\bvs\b/.test(s)) {
     return c.competitor
       ? `The incumbent/competitor on file is ${c.competitor}.`
       : "No competitor or incumbent is recorded for this account.";

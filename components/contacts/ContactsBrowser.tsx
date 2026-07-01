@@ -60,9 +60,11 @@ export function ContactsBrowser({ rows }: { rows: ContactRow[] }) {
   }, [rows, q, role, sort]);
 
   function rowsToCsv(list: ContactRow[]) {
+    // Email is the whole point of a contact export (outreach lists) and shows on
+    // every card — it was missing from the CSV, so add it.
     return toCSV(
-      ["Name", "Title", "Company", "Role"],
-      list.map((r) => [r.name, r.title, r.company, r.role])
+      ["Name", "Title", "Company", "Role", "Email"],
+      list.map((r) => [r.name, r.title, r.company, r.role, r.email])
     );
   }
   function exportCsv() {

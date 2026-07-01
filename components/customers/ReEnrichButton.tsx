@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Sparkles, Plus } from "lucide-react";
+import { ArrowRight, Sparkles, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 
@@ -55,7 +55,13 @@ export function ReEnrichButton({ customerId }: { customerId: string }) {
 
   return (
     <>
-      <Button variant="secondary" onClick={reEnrich} loading={loading}>
+      <Button
+        variant="secondary"
+        onClick={reEnrich}
+        loading={loading}
+        className="text-[13px] font-medium text-text-secondary px-3 py-2 gap-1.5"
+      >
+        <RefreshCw size={15} strokeWidth={1.7} />
         Refresh research
       </Button>
 

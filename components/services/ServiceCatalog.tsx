@@ -37,7 +37,13 @@ function Chips({ items, icon: Icon }: { items: string[]; icon: any }) {
   );
 }
 
-export function ServiceCatalog({ services }: { services: Service[] }) {
+export function ServiceCatalog({
+  services,
+  admin = true,
+}: {
+  services: Service[];
+  admin?: boolean;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [q, setQ] = useState("");
@@ -121,13 +127,15 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
           <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search services…" className="pl-9" />
         </div>
-        <Button onClick={() => setAdding((a) => !a)} className="sm:ml-auto gap-1.5">
-          <Plus size={16} strokeWidth={2} />
-          Add service
-        </Button>
+        {admin && (
+          <Button onClick={() => setAdding((a) => !a)} className="sm:ml-auto gap-1.5">
+            <Plus size={16} strokeWidth={2} />
+            Add service
+          </Button>
+        )}
       </div>
 
-      {adding && (
+      {admin && adding && (
         <Card className="mb-5">
           <h3 className="text-[15px] font-semibold text-text-primary mb-3">New service</h3>
           <div className="space-y-3">
@@ -173,22 +181,24 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
                         <p className="text-[13px] text-text-secondary leading-relaxed mt-1">{svc.description}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => setEditIdx(idx)}
-                        aria-label="Edit service"
-                        className="p-1.5 rounded-md text-text-tertiary hover:text-blue-primary hover:bg-surface transition-colors"
-                      >
-                        <Pencil size={16} strokeWidth={1.5} />
-                      </button>
-                      <button
-                        onClick={() => setConfirmIdx(idx)}
-                        aria-label="Delete service"
-                        className="p-1.5 rounded-md text-text-tertiary hover:text-error hover:bg-surface transition-colors"
-                      >
-                        <Trash2 size={16} strokeWidth={1.5} />
-                      </button>
-                    </div>
+                    {admin && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => setEditIdx(idx)}
+                          aria-label="Edit service"
+                          className="p-1.5 rounded-md text-text-tertiary hover:text-blue-primary hover:bg-surface transition-colors"
+                        >
+                          <Pencil size={16} strokeWidth={1.5} />
+                        </button>
+                        <button
+                          onClick={() => setConfirmIdx(idx)}
+                          aria-label="Delete service"
+                          className="p-1.5 rounded-md text-text-tertiary hover:text-error hover:bg-surface transition-colors"
+                        >
+                          <Trash2 size={16} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="mt-3 space-y-2">
                     <Chips items={svc.target_roles || []} icon={Users} />

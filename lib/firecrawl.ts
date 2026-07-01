@@ -9,7 +9,7 @@ export const MOCK_CUSTOMER_SCRAPE = `
 BioNex Therapeutics is a mid-size clinical-stage biopharmaceutical company focused on developing
 novel biologics for oncology and autoimmune diseases. Headquartered in Princeton, NJ with offices
 in London and Singapore. Approximately 450 employees globally. Series D funded ($280M raised).
-Currently has 3 compounds in Phase 2 trials and 1 preparing for NDA submission in 2025.
+Currently has 3 compounds in Phase 2 trials and 1 preparing for NDA submission later this year.
 Strong pipeline in monoclonal antibodies and ADCs. Working across FDA and EMA jurisdictions.
 `;
 
@@ -77,6 +77,45 @@ async function pollCrawlJob(jobId: string): Promise<string[]> {
     }
     if (data.status === "failed") throw new Error("Firecrawl crawl failed");
     await new Promise((r) => setTimeout(r, 3000)); // poll every 3s
+  }
+}
+
+// Web search + scrape via Firecrawl's /search (returns the top results already
+// scraped to markdown). Used by customer analysis to gather firmographics —
+// revenue, employee count, public/private — from across the web, not just the
+// company's own site. Returns [] when no key so the caller falls back to mock.
+export interface WebResult {
+  url: string;
+  title: string;
+  markdown: string;
+}
+export async function searchWeb(
+  query: string,
+  limit = 5
+): Promise<WebResult[]> {
+  if (!process.env.FIRECRAWL_API_KEY) return [];
+  try {
+    const response = await fetch(`${FIRECRAWL_BASE}/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        limit,
+        scrapeOptions: { formats: ["markdown"] },
+      }),
+    });
+    const data = await response.json();
+    const items = data.data || data.results || [];
+    return items.map((r: any) => ({
+      url: r.url || "",
+      title: r.title || r.metadata?.title || "",
+      markdown: r.markdown || r.description || "",
+    }));
+  } catch {
+    return [];
   }
 }
 

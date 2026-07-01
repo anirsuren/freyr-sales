@@ -75,6 +75,32 @@ export function findAccount(msg: string, customers: Customer[]): Customer | null
   return null;
 }
 
+// Find a CONTACT named in the message (full name first, then a distinctive last
+// name like "Vogt"/"Mehta"). Contacts are objects too — a rep should be able to
+// ask "tell me about Dr. Lena Vogt" and get the person, not a generic answer.
+export function findContact(msg: string, contacts: Contact[]): Contact | null {
+  const m = msg.toLowerCase();
+  let best: Contact | null = null;
+  let bestLen = 0;
+  for (const c of contacts) {
+    const name = c.full_name.toLowerCase();
+    if (m.includes(name) && name.length > bestLen) {
+      best = c;
+      bestLen = name.length;
+    }
+  }
+  if (best) return best;
+  for (const c of contacts) {
+    const parts = c.full_name
+      .toLowerCase()
+      .replace(/^(dr|mr|ms|mrs|prof)\.?\s+/, "")
+      .split(/\s+/);
+    const last = parts[parts.length - 1];
+    if (last && last.length >= 4 && new RegExp(`\\b${last}\\b`).test(m)) return c;
+  }
+  return null;
+}
+
 // Pronouns / common words that follow to/about/with/for but are NOT a company.
 const NOT_ACCOUNT_WORDS = new Set([
   "them", "they", "it", "that", "this", "the", "you", "me", "us", "him", "her",
@@ -328,6 +354,15 @@ export function answerAgentChat(
   const topDeals = [...open].sort((a, b) => b.value - a.value);
 
   const acct = account || lastAccount(history, ctx.customers);
+  // If the rep named a CONTACT (not an account) for an action — "draft an email
+  // to Dr. Lena Vogt" — resolve it to that contact's account so the action can
+  // run, instead of asking "which account?". Used only by the action handlers
+  // below; informational contact questions still fall through to the contact
+  // answer so "tell me about Dr. Lena Vogt" stays about the person.
+  const namedContactForAction = findContact(message, ctx.contacts);
+  const contactAcct = namedContactForAction
+    ? ctx.customers.find((c) => c.id === namedContactForAction.customer_id) || null
+    : null;
   const lastAgent = [...history].reverse().find((t) => t.role === "agent")?.text || "";
   const hadDraft =
     /subject:/i.test(lastAgent) ||
@@ -391,17 +426,18 @@ export function answerAgentChat(
     /\b(save|store|keep|log) (it|that|this|the draft|the email|as a draft)\b/.test(m) ||
     /\b(save|add) (it|that|this )?(as )?(a )?draft\b/.test(m);
   if (savePhrase && (hadDraft || /\bdraft\b/.test(m))) {
-    if (!acct) {
+    const t = acct || contactAcct;
+    if (!t) {
       return {
         text: "Happy to save a draft — which account is it for?",
         suggestions: ctx.customers.slice(0, 3).map((c) => `Draft an email to ${c.company_name}`),
       };
     }
-    const body = extractDraft(lastAgent) || extractDraft(makeDraft(acct, ctx, {}).text) || "";
+    const body = extractDraft(lastAgent) || extractDraft(makeDraft(t, ctx, {}).text) || "";
     return {
       text: "",
       suggestions: [],
-      action: { type: "save_draft", customerId: acct.id, company: acct.company_name, body },
+      action: { type: "save_draft", customerId: t.id, company: t.company_name, body },
     };
   }
 
@@ -414,7 +450,7 @@ export function answerAgentChat(
   const followupQuery = /\b(who|which|what|any|when do|do i (have|need)|how many|list)\b/.test(m);
   if (mentionsFollowup && !followupQuery && (followupVerb || /\b(with|for|on)\b/.test(m))) {
     // Resolve a named account, else a described one ("my most at-risk account").
-    const target = acct || criterionAccount(m, ctx)?.customer || null;
+    const target = acct || contactAcct || criterionAccount(m, ctx)?.customer || null;
     if (!target) {
       return {
         text: "Sure — who should I set the follow-up with?",
@@ -438,8 +474,9 @@ export function answerAgentChat(
     /\b(called|phoned|spoke|talked|met|emailed|messaged|reached out|left (a |them a |her a |him a )?voicemail|had (a )?(call|meeting|chat|conversation|demo)|caught up|connected with|got on (a|the) (call|phone))\b/.test(m);
   const futureOrNeg =
     /\b(should i|need to|want to|going to|gonna|will|i'?ll|can i|could i|who (should|do|can|to)|when (should|do)|how do i|haven'?t|hasn'?t|didn'?t|never|not yet)\b/.test(m);
-  if ((logVerb && touchNoun) || (acct && pastTouch && !futureOrNeg)) {
-    if (!acct) {
+  if ((logVerb && touchNoun) || ((acct || contactAcct) && pastTouch && !futureOrNeg)) {
+    const t = acct || contactAcct;
+    if (!t) {
       return {
         text: "Got it — which account should I log that on?",
         suggestions: ctx.customers.slice(0, 3).map((c) => `Log a call with ${c.company_name}`),
@@ -453,7 +490,7 @@ export function answerAgentChat(
     return {
       text: "",
       suggestions: [],
-      action: { type: "log_touch", customerId: acct.id, company: acct.company_name, notes: message.trim(), outcome },
+      action: { type: "log_touch", customerId: t.id, company: t.company_name, notes: message.trim(), outcome },
     };
   }
 
@@ -564,6 +601,14 @@ export function answerAgentChat(
   if (wantsDraft) {
     const tone: "formal" | "warm" = /\bformal\b/.test(m) ? "formal" : "warm";
     const length: "short" | "normal" = /\b(short|quick|brief)\b/.test(m) ? "short" : "normal";
+    // Account named, else the named contact's account, else a criterion match.
+    if (!acct && contactAcct && namedContactForAction) {
+      return makeDraft(contactAcct, ctx, {
+        tone,
+        length,
+        lead: `Drafting to ${namedContactForAction.full_name} at ${contactAcct.company_name} — review before anything goes out:`,
+      });
+    }
     if (!acct) {
       // No name, but a criterion ("a cooling account", "my biggest deal")? Pick
       // the real best match and say which one — don't punt with "which account?".
@@ -793,6 +838,30 @@ export function answerAgentChat(
     if (/account|customer|compan/.test(m)) return { text: `You have ${ctx.customers.length} accounts on your book, ${open.length} with open deals.`, suggestions: DEFAULT_SUGGESTIONS };
     if (/contact|people|stakeholder/.test(m)) return { text: `${ctx.contacts.length} contacts are mapped across your accounts.`, suggestions: DEFAULT_SUGGESTIONS };
     if (/deal|opportunit/.test(m)) return { text: `${open.length} open deals, worth ${formatMoney(openValue)} together.`, suggestions: ["What are my biggest deals?", "Which deals are cooling?"] };
+  }
+
+  // --- a contact named by name → answer about the person (their account, role,
+  //     email) before falling back. Last, so account/action/focus intents win. ---
+  const namedContact = findContact(message, ctx.contacts);
+  if (namedContact) {
+    const cust = ctx.customers.find((x) => x.id === namedContact.customer_id);
+    const title = namedContact.job_title ? `, ${namedContact.job_title}` : "";
+    const where = cust
+      ? ` at [${cust.company_name}](/customers/${cust.id})`
+      : "";
+    const email = namedContact.email ? ` · ${namedContact.email}` : "";
+    return {
+      text:
+        `**${namedContact.full_name}**${title}${where}.${email}` +
+        `\n\n[Open contact →](/contacts/${namedContact.id})`,
+      suggestions: cust
+        ? [
+            `Tell me about ${cust.company_name}`,
+            `Draft an email to ${cust.company_name}`,
+            "What should I focus on today?",
+          ]
+        : DEFAULT_SUGGESTIONS,
+    };
   }
 
   // --- fallback (varied + grounded, points at real things I can do) ---

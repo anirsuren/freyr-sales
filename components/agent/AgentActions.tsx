@@ -131,8 +131,7 @@ export function AgentActions({
                   {a.rationale}
                 </p>
               </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 mt-2.5">
+              <div className="flex items-center justify-end gap-2 shrink-0">
               {draftable &&
                 (isDone ? (
                   <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-success">
@@ -187,6 +186,7 @@ export function AgentActions({
                 {a.cta}
                 <ArrowRight size={13} strokeWidth={1.8} />
               </Link>
+              </div>
             </div>
 
             {/* Decline reason — sent back to the rep who'll rework it (#66) */}

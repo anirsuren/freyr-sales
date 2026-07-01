@@ -1,19 +1,23 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
-import { SizeBadge, OutcomeBadge } from "@/components/ui/Badge";
+import { SizeBadge, OutcomeBadge, Badge } from "@/components/ui/Badge";
+import { HealthBadge } from "@/components/ui/HealthBadge";
 import { formatDate } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
+import type { AccountHealth } from "@/lib/health";
 
 export function CustomerCard({
   customer,
   contactCount,
   lastOutcome,
   lastSessionDate,
+  health,
 }: {
   customer: Customer;
   contactCount: number;
   lastOutcome?: string | null;
   lastSessionDate?: string | null;
+  health?: AccountHealth;
 }) {
   return (
     <Link href={`/customers/${customer.id}`} className="block">
@@ -33,11 +37,22 @@ export function CustomerCard({
           </span>
           {lastSessionDate && <span>Last session {formatDate(lastSessionDate)}</span>}
         </div>
-        {lastOutcome && (
-          <div className="mt-3">
+        <div className="mt-3 flex items-center gap-2 flex-wrap">
+          {/* Health leads — it's the primary filter/sort, so surface it on the
+              card too (was only in the table view). */}
+          {health && <HealthBadge health={health} />}
+          {lastOutcome ? (
             <OutcomeBadge outcome={lastOutcome} />
-          </div>
-        )}
+          ) : (
+            // No logged outcome yet — show a neutral chip so the card still
+            // reads as complete instead of leaving an empty gap.
+            <Badge
+              label="No outcome yet"
+              bg="rgba(142,142,147,0.12)"
+              color="#6E6E73"
+            />
+          )}
+        </div>
       </Card>
     </Link>
   );

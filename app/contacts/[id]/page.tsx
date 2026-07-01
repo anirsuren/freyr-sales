@@ -9,9 +9,11 @@ import {
   Brain,
   CheckCircle2,
   XCircle,
+  SearchX,
+  ArrowLeft,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
@@ -37,12 +39,21 @@ export default async function ContactDetailPage({
 
   if (!contact) {
     return (
-      <div>
-        <PageHeader title="Contact not found" />
-        <Link href="/customers" className="text-blue-primary hover:underline">
-          ← Back to customers
-        </Link>
-      </div>
+      <EmptyState
+        icon={SearchX}
+        title="Contact not found"
+        description="The link may be out of date, or this contact was removed. Head back to your contacts to find them."
+        className="py-24"
+        action={
+          <Link
+            href="/contacts"
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+          >
+            <ArrowLeft size={15} strokeWidth={2} />
+            Back to contacts
+          </Link>
+        }
+      />
     );
   }
 
@@ -180,7 +191,7 @@ export default async function ContactDetailPage({
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* LinkedIn profile */}
         <Card>
           <h2 className="text-[17px] font-semibold text-text-primary mb-3">

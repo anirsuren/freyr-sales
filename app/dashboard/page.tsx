@@ -34,6 +34,7 @@ import { HealthBadge } from "@/components/ui/HealthBadge";
 import { DashboardExport } from "@/components/dashboard/DashboardExport";
 import { DateRangeControl } from "@/components/dashboard/DateRangeControl";
 import { DashboardKpis } from "@/components/dashboard/DashboardKpis";
+import { KpiCustomize } from "@/components/dashboard/KpiCustomize";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { WeeklyDigest } from "@/components/dashboard/WeeklyDigest";
 import type { RecommendedService } from "@/lib/types";
@@ -247,11 +248,7 @@ export default async function DashboardPage({
     <>
       {/* Lead with the rep's real status + the agent's next actions; the
           onboarding checklist sits just below so it doesn't own prime space. */}
-      <DashboardKpis
-        kpis={kpis}
-        comparable={!!days}
-        rangeLabel={range === "all" ? "all time" : `prev ${range}`}
-      />
+      <DashboardKpis kpis={kpis} comparable={!!days} />
       {/* Setup checklist only for a brand-new workspace; once real pitch
           sessions exist it steps aside so the agent's recommendations lead. */}
       <GettingStarted established={allSessions.length > 0} />
@@ -564,6 +561,11 @@ export default async function DashboardPage({
       actions={
         <>
           <DateRangeControl value={range} />
+          <KpiCustomize
+            kpis={kpis.map((k) => ({ key: k.key, label: k.label }))}
+            comparable={!!days}
+            rangeLabel={range === "all" ? "all time" : `prev ${range}`}
+          />
           <WeeklyDigest
             kpis={kpis.map((k) => ({ label: k.label, value: k.value }))}
             period={range === "all" ? "all time" : `last ${range}`}

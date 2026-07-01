@@ -226,11 +226,11 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
       service_name: "Regulatory Submission Services",
       relevance_score: 9,
       why_this_customer:
-        "BioNex has an NDA targeted for 2025 and a multi-compound biologics pipeline across FDA and EMA — exactly the high-stakes submission workload Freyr's dossier teams are built for.",
+        "BioNex has an NDA targeted for later this year and a multi-compound biologics pipeline across FDA and EMA — exactly the high-stakes submission workload Freyr's dossier teams are built for.",
       why_this_contact:
         "Dr. Mehta is a former FDA CDER reviewer who has led 12 NDA/MAA approvals; she will value submission expertise from former agency reviewers over generic outsourcing.",
       pitch_angle:
-        "Accelerate the 2025 NDA with CTD dossier preparation handled by former FDA/EMA reviewers, cutting prep time 30–40%.",
+        "Accelerate the upcoming NDA with CTD dossier preparation handled by former FDA/EMA reviewers, cutting prep time 30–40%.",
       freyr_language_to_use: [
         "accelerate your regulatory journey",
         "global dossier expertise",
@@ -270,14 +270,14 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
 export const MOCK_PITCHES: PitchOutput = {
   pitch_5min_script: `Hi Dr. Mehta, I'm Suren Dheen from Freyr Solutions — I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
 
-With your NDA submission coming up in 2025 and two compounds in Phase 2, you're entering the period where regulatory execution either accelerates or stalls your timeline. Freyr has completed over 5,000 regulatory submissions globally, and our team includes former FDA and EMA reviewers — people who know exactly what the agency expects to see.
+With your NDA submission coming up later this year and two compounds in Phase 2, you're entering the period where regulatory execution either accelerates or stalls your timeline. Freyr has completed over 5,000 regulatory submissions globally, and our team includes former FDA and EMA reviewers — people who know exactly what the agency expects to see.
 
 Specifically for BioNex, I think two things are worth a conversation: first, our CTD dossier preparation service where we've consistently cut submission prep time by 30-40% for companies your size. Second, our Regulatory Intelligence service — given that you're working across FDA and EMA simultaneously, having automated monitoring across 120+ agencies in one place would remove a lot of manual tracking burden from your team.
 
 I'm not here to sell you a contract today — I'd love 20 minutes with you and whoever owns the NDA prep to show you specifically how we've handled submissions for similar biologics pipelines. Would next week work?`,
   pitch_email: {
     subject_lines: [
-      "Freyr + BioNex — regulatory support for your 2025 NDA",
+      "Freyr + BioNex — regulatory support for your upcoming NDA",
       "Former FDA reviewer perspective on your upcoming submission",
       "How we helped 3 similar biologics companies cut submission time by 35%",
     ],
@@ -285,7 +285,7 @@ I'm not here to sell you a contract today — I'd love 20 minutes with you and w
 
 Your background at FDA CDER caught my attention — you know better than most what makes a submission succeed or stall.
 
-With BioNex's NDA filing targeted for 2025, I wanted to reach out now rather than when timelines get tight. Freyr Solutions has supported 5,000+ regulatory submissions globally, and our team includes former FDA and EMA reviewers who work directly on dossier preparation.
+With BioNex's NDA filing targeted for later this year, I wanted to reach out now rather than when timelines get tight. Freyr Solutions has supported 5,000+ regulatory submissions globally, and our team includes former FDA and EMA reviewers who work directly on dossier preparation.
 
 For companies at BioNex's stage — mid-size, multi-compound pipeline, working across FDA and EMA — we typically find the highest value in two areas:
 
@@ -306,7 +306,7 @@ Freyr Solutions`,
     value_prop:
       "We support pharmaceutical and biotech companies with regulatory submissions globally — FDA, EMA, and 120+ other agencies. We've completed over 5,000 submissions and our team includes former FDA CDER reviewers.",
     permission_question:
-      "I noticed BioNex has an NDA coming up in 2025 and I had a specific thought about how we might be able to help — do you have 90 seconds or is this a genuinely terrible time?",
+      "I noticed BioNex has an NDA coming up later this year and I had a specific thought about how we might be able to help — do you have 90 seconds or is this a genuinely terrible time?",
     if_bad_time_voicemail:
       "No problem at all. I'll send you a brief email — just wanted to mention we've helped several similar biologics companies significantly cut their NDA prep timeline. If that's relevant, worth a look. Have a good day.",
     if_good_time_continue:
@@ -626,6 +626,169 @@ Return JSON:
       geography: "Unknown",
       enrichment_summary: scrapeText.slice(0, 280),
     };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Customer-type qualification (Suren's Jun 27 ask) — reconcile gathered web
+// data against HIS dynamic customer-type definitions and decide the type,
+// ownership, and revenue. The definitions are passed in so it always classifies
+// against the current master list (he keeps adding types). Returns null when no
+// key, so the caller falls back to the deterministic engine.
+// ---------------------------------------------------------------------------
+export interface CustomerTypeDef {
+  name: string;
+  family: string;
+  size: string;
+  revenue: string;
+  employees: string;
+  product_type: string;
+  operational_focus: string;
+}
+export async function qualifyCustomerType(
+  companyName: string,
+  webText: string,
+  definitions: CustomerTypeDef[]
+): Promise<{
+  customer_type: string;
+  ownership: "Public" | "Private";
+  revenue: string;
+  rationale: string;
+  confidence: "high" | "medium" | "low";
+} | null> {
+  if (!client) return null;
+  const defs = definitions
+    .map(
+      (d) =>
+        `- "${d.name}" → family ${d.family}, size ${d.size}; revenue ${d.revenue}; employees ${d.employees}; ${d.product_type}`
+    )
+    .join("\n");
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 700,
+    system:
+      "You qualify a company for a regulatory-affairs firm by matching it to ONE of the provided customer-type definitions, using real web data. Pick the definition whose family AND size band best fit the company's actual revenue, employee count, and product focus. Return ONLY valid JSON.",
+    messages: [
+      {
+        role: "user",
+        content: `Company: ${companyName}
+
+Web research (search results + site content):
+${(webText || "").slice(0, 14000)}
+
+Customer-type definitions to choose from (pick exactly one "name"):
+${defs}
+
+Return JSON:
+{
+  "customer_type": "<must be one of the definition names above>",
+  "ownership": "Public" | "Private",
+  "revenue": "<annual revenue with units, e.g. $8.2B; best estimate, or empty string if a private company with no figure>",
+  "rationale": "<one sentence citing the evidence (revenue/employees/what they do) behind the match>",
+  "confidence": "high" | "medium" | "low"
+}`,
+      },
+    ],
+  });
+  try {
+    const out = parseJson(textFrom(response)) as {
+      customer_type: string;
+      ownership: "Public" | "Private";
+      revenue: string;
+      rationale: string;
+      confidence: "high" | "medium" | "low";
+    };
+    // Guard the type to a real definition name; otherwise signal a fallback.
+    if (!out || !definitions.some((d) => d.name === out.customer_type))
+      return null;
+    if (out.ownership !== "Public" && out.ownership !== "Private")
+      out.ownership = "Private";
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+// Same qualification, but Claude does the web research itself via its native
+// web-search tool — so it works with just the Anthropic key (no Firecrawl
+// needed). Returns the verdict + the source URLs Claude actually cited.
+export async function qualifyCustomerTypeWithSearch(
+  companyName: string,
+  definitions: CustomerTypeDef[],
+  websiteUrl?: string | null
+): Promise<{
+  customer_type: string;
+  ownership: "Public" | "Private";
+  revenue: string;
+  rationale: string;
+  confidence: "high" | "medium" | "low";
+  sources: string[];
+} | null> {
+  if (!client) return null;
+  const defs = definitions
+    .map(
+      (d) =>
+        `- "${d.name}" → family ${d.family}, size ${d.size}; revenue ${d.revenue}; employees ${d.employees}; ${d.product_type}`
+    )
+    .join("\n");
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 1500,
+      tools: [
+        // Anthropic server-side web search — Claude searches, reads, and cites.
+        { type: "web_search_20250305", name: "web_search", max_uses: 5 } as any,
+      ],
+      system:
+        "You are a B2B account-qualification analyst for a regulatory-affairs firm. Search the web to find the company's real annual revenue, employee count, whether it is publicly traded or private, and what it does. Then match it to ONE of the provided customer-type definitions by family AND size band. End your turn with ONLY a JSON object (no prose around it).",
+      messages: [
+        {
+          role: "user",
+          content: `Research this company and qualify it: ${companyName}${
+            websiteUrl ? ` (${websiteUrl})` : ""
+          }
+
+Customer-type definitions (choose exactly one "name"):
+${defs}
+
+After researching, reply with ONLY this JSON:
+{
+  "customer_type": "<one of the definition names>",
+  "ownership": "Public" | "Private",
+  "revenue": "<annual revenue with units e.g. $8.2B, or empty string if private with no figure>",
+  "rationale": "<one sentence citing the evidence found>",
+  "confidence": "high" | "medium" | "low"
+}`,
+        },
+      ],
+    });
+
+    // Pull every text block (the JSON answer is the last one) + the cited URLs.
+    const text = response.content
+      .map((b: any) => (b.type === "text" ? b.text : ""))
+      .join("\n");
+    const sources: string[] = [];
+    for (const b of response.content as any[]) {
+      if (b.type === "web_search_tool_result" && Array.isArray(b.content)) {
+        for (const r of b.content) if (r?.url) sources.push(r.url);
+      }
+    }
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const out = JSON.parse(match[0]) as {
+      customer_type: string;
+      ownership: "Public" | "Private";
+      revenue: string;
+      rationale: string;
+      confidence: "high" | "medium" | "low";
+    };
+    if (!out || !definitions.some((d) => d.name === out.customer_type))
+      return null;
+    if (out.ownership !== "Public" && out.ownership !== "Private")
+      out.ownership = "Private";
+    return { ...out, sources: Array.from(new Set(sources)).slice(0, 5) };
+  } catch {
+    return null;
   }
 }
 

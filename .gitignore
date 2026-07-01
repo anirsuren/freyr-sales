@@ -38,3 +38,8 @@ next-env.d.ts
 # playwright test artifacts
 /test-results/
 /playwright-report/
+
+# internal Teams meeting recordings + working artifacts (raw video/audio/frames/
+# transcripts of Freyr internal calls — not app code, keep off GitHub)
+teams-video*/
+TEAMS-VIDEO*-REVIEW.md

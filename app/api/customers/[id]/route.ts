@@ -36,6 +36,14 @@ export async function PATCH(
   if (typeof body.owner === "string") patch.owner = body.owner || null;
   if (typeof body.competitor === "string")
     patch.competitor = body.competitor.trim() || null;
+  // Customer analysis fields (Suren's Jun 27 ask) — set on approval.
+  if (typeof body.customer_type === "string")
+    patch.customer_type = body.customer_type.trim() || null;
+  if (typeof body.ownership === "string")
+    patch.ownership = body.ownership.trim() || null;
+  if (typeof body.revenue === "string")
+    patch.revenue = body.revenue.trim() || null;
+  if (body.analyzed_at) patch.analyzed_at = new Date().toISOString();
 
   if (body.addNote && String(body.addNote.body || "").trim()) {
     const note: AccountNote = {

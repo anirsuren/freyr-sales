@@ -118,6 +118,20 @@ function seed(): MockStore {
     },
   ];
 
+  // Seed "now" — anchored to TODAY (noon UTC at seed time), not a hardcoded
+  // date, so the demo never ages: a pinned date silently drifts from real time,
+  // which made "this week" windows (weekly review, agent activity) go empty and
+  // every account's last touch look weeks old once real time moved past the pin.
+  // Live windows (notifications, pipeline staleness, the review's 7-day cut) all
+  // use real `Date.now()`, so anchoring here keeps the seed aligned with them and
+  // every relative date current whenever Suren opens it. Defined here (not
+  // further down) so the hardcoded BioNex / cont-001 session + interaction below
+  // can be dated relative to it too.
+  const _t = new Date();
+  const NOW = Date.UTC(_t.getUTCFullYear(), _t.getUTCMonth(), _t.getUTCDate(), 12, 0, 0);
+  const iso = (daysAgo: number) =>
+    new Date(NOW - daysAgo * 86400000).toISOString();
+
   const pitchSessions: PitchSession[] = [
     {
       id: "sess-001",
@@ -129,8 +143,8 @@ function seed(): MockStore {
       pitch_5min_script: MOCK_PITCHES.pitch_5min_script,
       pitch_call_script: MOCK_PITCHES.pitch_call_script,
       additional_context:
-        "Met at DIA Annual Meeting. She mentioned their 2025 NDA timeline is tight.",
-      created_at: new Date("2025-11-16").toISOString(),
+        "Met at DIA Annual Meeting. She mentioned their NDA timeline is tight.",
+      created_at: iso(6),
     },
   ];
 
@@ -143,16 +157,16 @@ function seed(): MockStore {
       outcome: "in_progress",
       notes:
         "Had intro call. She is interested in CTD dossier support. Sending proposal next week.",
-      follow_up_date: "2025-12-10",
+      // Relative to NOW so the contact reads as freshly worked: contacted a few
+      // days ago, with a comfortably-upcoming follow-up (~3 weeks out so it
+      // stays in the future as the demo date drifts) — not months overdue.
+      follow_up_date: iso(-21).slice(0, 10),
       logged_by: "Suren Dheen",
-      created_at: new Date("2025-11-20").toISOString(),
+      created_at: iso(5),
     },
   ];
 
   // ---- Extended book of business so every screen reflects a living pipeline ----
-  const NOW = Date.UTC(2026, 5, 19, 12, 0, 0);
-  const iso = (daysAgo: number) =>
-    new Date(NOW - daysAgo * 86400000).toISOString();
   // domain/handle from a company or person name. No length cap — a 16-char
   // slice was truncating real names mid-word into broken domains like
   // "novagenetherapeu.com" / "northwindbioscie.com", which read as fake.
@@ -182,14 +196,14 @@ function seed(): MockStore {
   const specs: Spec[] = [
     { id: "003", company: "Cortexa Biopharma", size: "mid", industry: "Biotechnology", geo: "United States (Boston, MA)", csum: "Clinical-stage neuro biotech, ~300 staff, two Phase 2 CNS assets, first EMA filing planned.", contact: "Marcus Thorne", title: "Head of CMC", role: "Quality Assurance", csumc: "15 yrs CMC across biologics; owns dossier technical writing.", service: "NDA/MAA CMC Writing", score: 9, outcome: "interested", days: 6, note: "Keen on CTD/CMC support for the EMA filing.", follow: 5, review: "in_review" },
     { id: "004", company: "Helix Biologics", size: "large", industry: "Pharmaceutical", geo: "United Kingdom (Cambridge)", csum: "Top-20 pharma, global biologics portfolio, simultaneous FDA/EMA/PMDA programs.", contact: "Dr. Lena Vogt", title: "SVP Global Regulatory", role: "Executive", csumc: "Former EMA assessor; runs a 60-person global RA org.", service: "Global Labeling Strategy", score: 8, outcome: "meeting_booked", days: 3, note: "Booked exec briefing for next Thursday.", follow: 7 },
-    { id: "005", company: "Solvance Pharma", size: "large", industry: "Pharmaceutical", geo: "United States (San Diego, CA)", csum: "Commercial-stage; expanding rare-disease pipeline into EU and Japan.", contact: "Prithvi Nair", title: "Director, Regulatory Ops", role: "Regulatory Affairs", csumc: "Owns submission operations and publishing tooling.", service: "Regulatory Submission Services", score: 9, outcome: "in_progress", days: 9, note: "Reviewing our eCTD throughput benchmarks.", follow: 4 },
-    { id: "006", company: "NovaGene Therapeutics", size: "mid", industry: "Biotechnology", geo: "United States (Princeton, NJ)", csum: "Gene-therapy biotech, first BLA in 18 months, lean RA team.", contact: "Dana Whitfield", title: "VP Regulatory Affairs", role: "Regulatory Affairs", csumc: "Built RA from scratch; needs scalable submission capacity.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "interested", days: 12, note: "Wants IND-to-BLA roadmap.", follow: 6 },
-    { id: "007", company: "Aether Medical Devices", size: "mid", industry: "Medical Device", geo: "Germany (Munich)", csum: "Class III cardiovascular devices, navigating EU MDR transition.", contact: "Stefan Bauer", title: "Head of Regulatory", role: "Regulatory Affairs", csumc: "MDR specialist under technical-documentation deadline pressure.", service: "Regulatory Intelligence", score: 7, outcome: "no_response", days: 14 },
+    { id: "005", company: "Solvance Pharma", size: "large", industry: "Pharmaceutical", geo: "United States (San Diego, CA)", csum: "Commercial-stage; expanding rare-disease pipeline into EU and Japan.", contact: "Prithvi Nair", title: "Director, Regulatory Ops", role: "Regulatory Affairs", csumc: "Owns submission operations and publishing tooling.", service: "Regulatory Submission Services", score: 9, outcome: "in_progress", days: 17, note: "Reviewing our eCTD throughput benchmarks.", follow: 4 },
+    { id: "006", company: "NovaGene Therapeutics", size: "mid", industry: "Biotechnology", geo: "United States (Princeton, NJ)", csum: "Gene-therapy biotech, first BLA in 18 months, lean RA team.", contact: "Dana Whitfield", title: "VP Regulatory Affairs", role: "Regulatory Affairs", csumc: "Built RA from scratch; needs scalable submission capacity.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "interested", days: 19, note: "Wants IND-to-BLA roadmap.", follow: 6 },
+    { id: "007", company: "Aether Medical Devices", size: "mid", industry: "Medical Device", geo: "Germany (Munich)", csum: "Class III cardiovascular devices, navigating EU MDR transition.", contact: "Stefan Bauer", title: "Head of Regulatory", role: "Regulatory Affairs", csumc: "MDR specialist under technical-documentation deadline pressure.", service: "Regulatory Intelligence", score: 7, outcome: "no_response", days: 22 },
     { id: "008", company: "Solara Consumer Health", size: "small", industry: "Consumer Health", geo: "United States (Chicago, IL)", csum: "OTC and supplements brand expanding into EU and Canada.", contact: "Megan Ruiz", title: "Compliance Manager", role: "Compliance", csumc: "Owns OTC labeling and ingredient compliance.", service: "Labeling and Artwork Management", score: 7, outcome: "in_progress", days: 5, note: "Multi-market labeling pain across 6 SKUs.", follow: 3 },
     { id: "009", company: "Quantum Oncology", size: "mid", industry: "Biotechnology", geo: "United States (South SF, CA)", csum: "Precision-oncology biotech, ADC platform, two pivotal trials.", contact: "Dr. Arun Pillai", title: "Chief Medical Officer", role: "Medical Affairs", csumc: "Physician-scientist; cares about trial regulatory de-risking.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "meeting_booked", days: 2, note: "Exec sponsor engaged; aligning on scope.", follow: 8, review: "approved" },
     { id: "010", company: "Meridian Pharmaceuticals", size: "large", industry: "Pharmaceutical", geo: "Switzerland (Basel)", csum: "Global generics + specialty; high-volume ANDA/MAA submissions.", contact: "Claudia Hofmann", title: "Global Head, Reg Submissions", role: "Executive", csumc: "Runs a high-throughput global submissions factory.", service: "Regulatory Submission Services", score: 9, outcome: "not_interested", days: 18, note: "Has incumbent vendor mid-contract.", },
     { id: "011", company: "Northwind Biosciences", size: "small", industry: "Biotechnology", geo: "Canada (Toronto)", csum: "Seed-stage biotech, pre-IND, first-time FDA filer.", contact: "Owen Bradley", title: "Co-founder & COO", role: "Executive", csumc: "Wears many hats; needs end-to-end regulatory hand-holding.", service: "Clinical Trial Regulatory Support", score: 7, outcome: null, days: 1 },
-    { id: "012", company: "Orion Vaccines", size: "mid", industry: "Biotechnology", geo: "United States (Rockville, MD)", csum: "Vaccine developer, pandemic-preparedness portfolio, EUA experience.", contact: "Dr. Hana Kim", title: "VP Regulatory Strategy", role: "Regulatory Affairs", csumc: "Led multiple EUAs; values speed and agency relationships.", service: "Regulatory Intelligence", score: 8, outcome: "interested", days: 8, note: "Wants global guidance monitoring.", follow: 5 },
+    { id: "012", company: "Orion Vaccines", size: "mid", industry: "Biotechnology", geo: "United States (Rockville, MD)", csum: "Vaccine developer, pandemic-preparedness portfolio, EUA experience.", contact: "Dr. Hana Kim", title: "VP Regulatory Strategy", role: "Regulatory Affairs", csumc: "Led multiple EUAs; values speed and agency relationships.", service: "Regulatory Intelligence", score: 8, outcome: "interested", days: 16, note: "Wants global guidance monitoring.", follow: 5 },
   ];
 
   for (const s of specs) {
@@ -345,7 +359,7 @@ function seed(): MockStore {
     autopilot_last_run: null,
     digest_cadence: "off",
     digest_last_sent: null,
-    updated_at: new Date("2026-06-19").toISOString(),
+    updated_at: iso(0),
   };
 
   // A seeded snippet so the library reads as live and "Insert" works on day one.

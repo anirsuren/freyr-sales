@@ -29,13 +29,17 @@ import { Avatar } from "@/components/ui/Avatar";
 // One flat, scannable list — no section headers, no scrolling. Reference/tool
 // pages (Knowledge base, Service catalog, Recordings) live in the account menu;
 // the agent's queue is a tab inside Agent; notifications are the topbar bell.
+// Offerings sits high — right under Dashboard — because Suren's north star is
+// offerings-first ("offerings is module #1; I want to start with offerings; a
+// sales guy comes in and looks at the offer"). The repository of what we sell
+// shouldn't be buried below pipeline/forecast/customers.
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/agent", label: "Agent", icon: Sparkles },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/offerings", label: "Offerings", icon: Package },
   { href: "/pipeline", label: "Pipeline", icon: Columns3 },
   { href: "/forecast", label: "Forecast", icon: Target },
   { href: "/customers", label: "Customers", icon: Building2 },
-  { href: "/offerings", label: "Offerings", icon: Package },
   { href: "/contacts", label: "Contacts", icon: Contact },
   { href: "/sessions", label: "Sessions", icon: CalendarClock },
   { href: "/sequences", label: "Sequences", icon: Zap },
@@ -186,7 +190,7 @@ export function Sidebar({
           onClick={() => router.push("/intake")}
           title={collapsed ? "New Session" : undefined}
           className={cn(
-            "w-full py-2 bg-blue-primary text-white rounded-lg flex items-center justify-center gap-2 text-[14px] font-semibold hover:bg-blue-hover transition-colors active:scale-[0.98]",
+            "w-full py-2 bg-blue-primary text-white rounded-lg flex items-center justify-center gap-2 text-[14px] font-semibold hover:bg-blue-hover transition-all active:scale-[0.98] shadow-[0_1px_2px_rgba(0,113,227,0.25)] hover:shadow-[0_4px_14px_rgba(0,113,227,0.32)]",
             collapsed ? "px-0" : "px-4"
           )}
         >

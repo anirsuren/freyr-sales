@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowUpRight, Clock, Flame, BookOpen, Sparkles } from "lucide-react";
+import { ArrowUpRight, Clock, Flame, BookOpen, Sparkles, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { Badge, SizeBadge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { AgentActions } from "@/components/agent/AgentActions";
 import { AgentRunPanel } from "@/components/agent/AgentRunPanel";
@@ -36,12 +36,21 @@ export default async function DealDetailPage({
   const session = await db.pitchSessions.get(params.id);
   if (!session) {
     return (
-      <div>
-        <PageHeader title="Deal not found" />
-        <Link href="/pipeline" className="text-blue-primary hover:underline">
-          ← Back to pipeline
-        </Link>
-      </div>
+      <EmptyState
+        icon={SearchX}
+        title="Deal not found"
+        description="The link may be out of date, or this deal was closed or removed. Head back to the pipeline to pick up where you left off."
+        className="py-24"
+        action={
+          <Link
+            href="/pipeline"
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+          >
+            <ArrowLeft size={15} strokeWidth={2} />
+            Back to pipeline
+          </Link>
+        }
+      />
     );
   }
 

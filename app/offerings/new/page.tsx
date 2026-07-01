@@ -9,6 +9,7 @@ import {
   listMarkets,
   listOfferings,
   listOfferingTypes,
+  listOfferingCategories,
 } from "@/lib/offerings";
 
 // Suggest from the managed master list first, plus any type strings already on
@@ -43,6 +44,7 @@ export default function NewOfferingPage() {
         customerTypes={listCustomerTypes()}
         markets={listMarkets()}
         existingTypes={distinctTypes()}
+        offeringCategories={listOfferingCategories()}
       />
     </div>
   );

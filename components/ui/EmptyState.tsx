@@ -21,10 +21,12 @@ export function EmptyState({
         className
       )}
     >
-      <span className="flex items-center justify-center w-12 h-12 rounded-full bg-surface text-text-tertiary mb-4 border border-border-light">
-        <Icon size={22} strokeWidth={1.5} />
+      <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-b from-white to-surface text-text-tertiary mb-4 border border-border-light shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+        <Icon size={24} strokeWidth={1.5} />
       </span>
-      <p className="text-[15px] font-medium text-text-primary">{title}</p>
+      <p className="text-[16px] font-semibold text-text-primary tracking-[-0.01em]">
+        {title}
+      </p>
       {description && (
         <p className="text-[13px] text-text-secondary mt-1 max-w-[340px] leading-relaxed">
           {description}
