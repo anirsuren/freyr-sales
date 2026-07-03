@@ -25,6 +25,10 @@ import { personaFor } from "@/lib/persona";
 import { suggestForContact, buildContactBriefing } from "@/lib/agent";
 import { RecordView } from "@/components/RecordView";
 import { formatDate } from "@/lib/utils";
+import { ContactOutreachPanel } from "@/components/contacts/ContactOutreachPanel";
+import { rankOfferingsForContact } from "@/lib/outreach";
+import { listCustomerTypes, listOfferings } from "@/lib/offerings";
+import { hasElevenLabs } from "@/lib/env";
 
 export const metadata = { title: "Contact" };
 export const dynamic = "force-dynamic";
@@ -72,6 +76,29 @@ export default async function ContactDetailPage({
   const persona = personaFor(contact.role_bucket);
   const lastContacted = interactions[0]?.created_at || null;
   const nextStep = interactions.find((i) => i.follow_up_date)?.follow_up_date || null;
+
+  // Contact⇄offering link (Suren, Jul 3): the contact inherits the customer's
+  // applicable offerings; their role keywords rank which fit THIS person best.
+  const matchedType = customer?.customer_type
+    ? listCustomerTypes().find((t) => t.name === customer.customer_type)
+    : null;
+  const contactApplicable = matchedType
+    ? listOfferings().filter((o) =>
+        o.customer_type_ids.includes(matchedType.id)
+      )
+    : [];
+  const rankedOfferings = rankOfferingsForContact(contact, contactApplicable).map(
+    ({ offering, score, matched }) => ({
+      id: offering.id,
+      name: offering.offering_name,
+      category: offering.offering_category,
+      type: offering.offering_type,
+      availability: offering.current_availability,
+      score,
+      matched,
+      materials: offering.materials.length,
+    })
+  );
 
   // Pre-call contact briefing (#74) — the agent's read on this individual.
   const contactSuggestion = suggestForContact({
@@ -191,8 +218,23 @@ export default async function ContactDetailPage({
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* LinkedIn profile */}
+      {/* Offerings for this person + on-demand outreach (Suren, Jul 3) — his
+          first-level requirement on a contact, so it LEADS the working area;
+          the profile/persona reference cards follow below. */}
+      <ContactOutreachPanel
+        contactId={contact.id}
+        customerId={customer?.id || null}
+        firstName={contact.full_name.replace(/^(Dr|Mr|Ms|Mrs)\.?\s+/i, "").split(/\s+/)[0]}
+        companyName={customer?.company_name || "their account"}
+        classified={!!matchedType}
+        offerings={rankedOfferings}
+        voiceWired={hasElevenLabs()}
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start mt-8">
+        {/* Left: who they are + who else we know there — the two shorter cards
+            pair up so neither column ends in a void. */}
+        <div className="space-y-8">
         <Card>
           <h2 className="text-[17px] font-semibold text-text-primary mb-3">
             LinkedIn Profile
@@ -245,7 +287,41 @@ export default async function ContactDetailPage({
           )}
         </Card>
 
-        {/* Agent + persona + multi-thread */}
+          <Card>
+            <h2 className="text-[17px] font-semibold text-text-primary mb-3 flex items-center gap-2">
+              <Users size={18} strokeWidth={1.75} className="text-blue-primary" />
+              Multi-thread map
+            </h2>
+            {siblings.length === 0 ? (
+              <p className="text-[13px] text-text-secondary">
+                No other contacts mapped at {customer?.company_name || "this account"} yet — worth widening the thread.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {siblings.map((s) => (
+                  <li key={s.id}>
+                    <Link
+                      href={`/contacts/${s.id}`}
+                      className="flex items-center gap-3 p-2 -m-2 rounded-lg hover:bg-surface transition-colors"
+                    >
+                      <Avatar name={s.full_name} className="w-8 h-8 text-[12px]" />
+                      <span className="min-w-0">
+                        <span className="block text-[14px] font-medium text-text-primary truncate">
+                          {s.full_name}
+                        </span>
+                        <span className="block text-[12px] text-text-tertiary truncate">
+                          {s.job_title}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+
+        {/* Right: the agent's read — recommendation + how to engage */}
         <div className="space-y-8">
           {customer && (
             <ContactAgentCard
@@ -284,38 +360,6 @@ export default async function ContactDetailPage({
             </div>
           </Card>
 
-          <Card>
-            <h2 className="text-[17px] font-semibold text-text-primary mb-3 flex items-center gap-2">
-              <Users size={18} strokeWidth={1.75} className="text-blue-primary" />
-              Multi-thread map
-            </h2>
-            {siblings.length === 0 ? (
-              <p className="text-[13px] text-text-secondary">
-                No other contacts mapped at {customer?.company_name || "this account"} yet — worth widening the thread.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {siblings.map((s) => (
-                  <li key={s.id}>
-                    <Link
-                      href={`/contacts/${s.id}`}
-                      className="flex items-center gap-3 p-2 -m-2 rounded-lg hover:bg-surface transition-colors"
-                    >
-                      <Avatar name={s.full_name} className="w-8 h-8 text-[12px]" />
-                      <span className="min-w-0">
-                        <span className="block text-[14px] font-medium text-text-primary truncate">
-                          {s.full_name}
-                        </span>
-                        <span className="block text-[12px] text-text-tertiary truncate">
-                          {s.job_title}
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
         </div>
       </div>
 

@@ -9,11 +9,14 @@ export function Modal({
   onClose,
   title,
   children,
+  size = "default",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  // "wide" for content-heavy dialogs (editors, recipient pickers) — 640px.
+  size?: "default" | "wide";
 }) {
   useEffect(() => {
     if (!open) return;
@@ -34,7 +37,9 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-[440px] max-h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl border border-border-light shadow-[0_24px_64px_-16px_rgba(0,0,0,0.30)] modal-in"
+        className={`w-full ${
+          size === "wide" ? "max-w-[640px]" : "max-w-[440px]"
+        } max-h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl border border-border-light shadow-[0_24px_64px_-16px_rgba(0,0,0,0.30)] modal-in`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light shrink-0">

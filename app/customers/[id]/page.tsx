@@ -9,7 +9,12 @@ import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { CustomerTabs } from "@/components/customers/CustomerTabs";
 import { CustomerAnalyzePanel } from "@/components/customers/CustomerAnalyzePanel";
 import { RecordView } from "@/components/RecordView";
-import { listCustomerTypes, listOfferings } from "@/lib/offerings";
+import {
+  listCustomerTypes,
+  listOfferings,
+  MATERIAL_META,
+  type Offering,
+} from "@/lib/offerings";
 import { buildDeals } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
 
@@ -65,15 +70,41 @@ export default async function CustomerDetailPage({
   const matchedType = customer.customer_type
     ? customerTypes.find((t) => t.name === customer.customer_type)
     : null;
-  const applicableOfferings = matchedType
-    ? listOfferings()
+
+  // Customer⇄offering link (Suren, Jul 3): serialize the offerings applicable
+  // to this customer's type — and the ones already in use — WITH descriptions
+  // and sales materials, so the Offerings tab lets a rep work the account
+  // without ever leaving the customer page.
+  const toTabOffering = (o: Offering) => ({
+    id: o.id,
+    name: o.offering_name,
+    category: o.offering_category,
+    type: o.offering_type,
+    availability: o.current_availability,
+    poc: o.poc,
+    description: o.offering_description,
+    materials: o.materials.map((m) => ({
+      id: m.id,
+      kind: MATERIAL_META[m.kind]?.label || m.kind,
+      label: m.label,
+      url: m.url,
+    })),
+  });
+  const allOfferings = listOfferings();
+  const applicableRich = matchedType
+    ? allOfferings
         .filter((o) => o.customer_type_ids.includes(matchedType.id))
-        .map((o) => ({
-          id: o.id,
-          name: o.offering_name,
-          type: o.offering_category || o.offering_type,
-        }))
+        .map(toTabOffering)
     : [];
+  const inUseIds = new Set(customer.offerings_in_use || []);
+  const inUseRich = allOfferings
+    .filter((o) => inUseIds.has(o.id))
+    .map(toTabOffering);
+  const applicableOfferings = applicableRich.map((o) => ({
+    id: o.id,
+    name: o.name,
+    type: o.category || o.type,
+  }));
 
   return (
     <div>
@@ -147,6 +178,11 @@ export default async function CustomerDetailPage({
         sessions={sessions}
         interactions={interactions}
         agentRuns={agentRuns}
+        offeringsCatalog={{
+          typeOptions: customerTypes.map((t) => t.name),
+          applicable: applicableRich,
+          inUse: inUseRich,
+        }}
       />
     </div>
   );

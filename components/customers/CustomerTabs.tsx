@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Globe,
@@ -23,6 +23,10 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import {
+  CustomerOfferingsTab,
+  type TabOffering,
+} from "@/components/customers/CustomerOfferingsTab";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -61,6 +65,7 @@ import type {
 
 const TABS = [
   { key: "overview", label: "Overview" },
+  { key: "offerings", label: "Offerings" },
   { key: "contacts", label: "Contacts" },
   { key: "deals", label: "Deals" },
   { key: "ask", label: "Ask Agent" },
@@ -92,15 +97,33 @@ export function CustomerTabs({
   sessions,
   interactions,
   agentRuns = [],
+  offeringsCatalog,
 }: {
   customer: Customer;
   contacts: Contact[];
   sessions: PitchSession[];
   interactions: Interaction[];
   agentRuns?: AgentRun[];
+  // Customer⇄offering link (Suren, Jul 3): the master-list type options + the
+  // offerings applicable to this customer's type + the ones already in use,
+  // serialized by the server page for the Offerings tab.
+  offeringsCatalog?: {
+    typeOptions: string[];
+    applicable: TabOffering[];
+    inUse: TabOffering[];
+  };
 }) {
   const { toast } = useToast();
   const [tab, setTab] = useState("overview");
+  // Deep-link support (?tab=offerings etc.) — read after mount via
+  // window.location so SSR markup stays identical (same pattern as the intake
+  // prefill; avoids the useSearchParams Suspense requirement).
+  useEffect(() => {
+    try {
+      const wanted = new URLSearchParams(window.location.search).get("tab");
+      if (wanted && TABS.some((t) => t.key === wanted)) setTab(wanted);
+    } catch {}
+  }, []);
   // A deliverable request handed to the in-page agent to draft (see the
   // Deliverables rail) — pre-loaded into the Ask Agent composer.
   const [askPrefill, setAskPrefill] = useState("");
@@ -442,6 +465,16 @@ export function CustomerTabs({
               </div>
             </div>
           </div>
+        )}
+
+        {tab === "offerings" && offeringsCatalog && (
+          <CustomerOfferingsTab
+            customerId={customer.id}
+            customerType={customer.customer_type ?? null}
+            typeOptions={offeringsCatalog.typeOptions}
+            applicable={offeringsCatalog.applicable}
+            inUse={offeringsCatalog.inUse}
+          />
         )}
 
         {tab === "contacts" && (

@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ContactsBrowser, type ContactRow } from "@/components/contacts/ContactsBrowser";
+import { voiceStatus } from "@/lib/voice";
 
 export const metadata = { title: "Contacts" };
 export const dynamic = "force-dynamic";
@@ -25,7 +26,10 @@ export default async function ContactsPage() {
   return (
     <div>
       <PageHeader title="Contacts" subtitle="Decision-makers across your accounts." />
-      <ContactsBrowser rows={rows} />
+      <ContactsBrowser
+        rows={rows}
+        voiceCategories={Object.keys(voiceStatus().agents)}
+      />
     </div>
   );
 }

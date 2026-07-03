@@ -191,11 +191,17 @@ function seed(): MockStore {
     note?: string;
     follow?: number;
     review?: PitchSession["review_status"];
+    // Adoption-story fields (Suren's customer⇄offering link): a classified
+    // customer with offerings already in use demos the Offerings tab on open.
+    ctype?: string;
+    own?: string;
+    rev?: string;
+    inUse?: string[];
   };
 
   const specs: Spec[] = [
     { id: "003", company: "Cortexa Biopharma", size: "mid", industry: "Biotechnology", geo: "United States (Boston, MA)", csum: "Clinical-stage neuro biotech, ~300 staff, two Phase 2 CNS assets, first EMA filing planned.", contact: "Marcus Thorne", title: "Head of CMC", role: "Quality Assurance", csumc: "15 yrs CMC across biologics; owns dossier technical writing.", service: "NDA/MAA CMC Writing", score: 9, outcome: "interested", days: 6, note: "Keen on CTD/CMC support for the EMA filing.", follow: 5, review: "in_review" },
-    { id: "004", company: "Helix Biologics", size: "large", industry: "Pharmaceutical", geo: "United Kingdom (Cambridge)", csum: "Top-20 pharma, global biologics portfolio, simultaneous FDA/EMA/PMDA programs.", contact: "Dr. Lena Vogt", title: "SVP Global Regulatory", role: "Executive", csumc: "Former EMA assessor; runs a 60-person global RA org.", service: "Global Labeling Strategy", score: 8, outcome: "meeting_booked", days: 3, note: "Booked exec briefing for next Thursday.", follow: 7 },
+    { id: "004", company: "Helix Biologics", size: "large", industry: "Pharmaceutical", geo: "United Kingdom (Cambridge)", csum: "Top-20 pharma, global biologics portfolio, simultaneous FDA/EMA/PMDA programs.", contact: "Dr. Lena Vogt", title: "SVP Global Regulatory", role: "Executive", csumc: "Former EMA assessor; runs a 60-person global RA org.", service: "Global Labeling Strategy", score: 8, outcome: "meeting_booked", days: 3, note: "Booked exec briefing for next Thursday.", follow: 7, ctype: "Pharmaceutical - Large", own: "Public", rev: "$8.2B", inUse: ["of-001", "of-023"] },
     { id: "005", company: "Solvance Pharma", size: "large", industry: "Pharmaceutical", geo: "United States (San Diego, CA)", csum: "Commercial-stage; expanding rare-disease pipeline into EU and Japan.", contact: "Prithvi Nair", title: "Director, Regulatory Ops", role: "Regulatory Affairs", csumc: "Owns submission operations and publishing tooling.", service: "Regulatory Submission Services", score: 9, outcome: "in_progress", days: 17, note: "Reviewing our eCTD throughput benchmarks.", follow: 4 },
     { id: "006", company: "NovaGene Therapeutics", size: "mid", industry: "Biotechnology", geo: "United States (Princeton, NJ)", csum: "Gene-therapy biotech, first BLA in 18 months, lean RA team.", contact: "Dana Whitfield", title: "VP Regulatory Affairs", role: "Regulatory Affairs", csumc: "Built RA from scratch; needs scalable submission capacity.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "interested", days: 19, note: "Wants IND-to-BLA roadmap.", follow: 6 },
     { id: "007", company: "Aether Medical Devices", size: "mid", industry: "Medical Device", geo: "Germany (Munich)", csum: "Class III cardiovascular devices, navigating EU MDR transition.", contact: "Stefan Bauer", title: "Head of Regulatory", role: "Regulatory Affairs", csumc: "MDR specialist under technical-documentation deadline pressure.", service: "Regulatory Intelligence", score: 7, outcome: "no_response", days: 22 },
@@ -220,6 +226,15 @@ function seed(): MockStore {
       enrichment_summary: s.csum,
       created_at: iso(s.days + 30),
       last_enriched_at: iso(s.days),
+      ...(s.ctype
+        ? {
+            customer_type: s.ctype,
+            ownership: s.own || null,
+            revenue: s.rev || null,
+            analyzed_at: iso(s.days),
+            offerings_in_use: s.inUse || [],
+          }
+        : {}),
     });
     contacts.push({
       id: ctid,

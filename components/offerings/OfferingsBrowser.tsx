@@ -352,8 +352,10 @@ export function OfferingsBrowser({
                     {o.current_availability}
                   </span>
                 ))}
-              {/* Availability comments — neutral, it's a note not a date */}
-              {o.future_availability && (
+              {/* Availability comments — neutral, it's a note not a date. Long
+                  market-coverage notes are omitted here (they show on the detail
+                  page); only short version/timing tags render as a tile chip. */}
+              {o.future_availability && o.future_availability.length <= 40 && (
                 <span className="inline-flex items-center text-[11px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2 py-0.5">
                   {o.future_availability}
                 </span>

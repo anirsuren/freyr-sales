@@ -44,6 +44,11 @@ export async function PATCH(
   if (typeof body.revenue === "string")
     patch.revenue = body.revenue.trim() || null;
   if (body.analyzed_at) patch.analyzed_at = new Date().toISOString();
+  // Adoption link: which offerings this customer already uses (offering ids).
+  if (Array.isArray(body.offerings_in_use))
+    patch.offerings_in_use = body.offerings_in_use.filter(
+      (x: unknown): x is string => typeof x === "string"
+    );
 
   if (body.addNote && String(body.addNote.body || "").trim()) {
     const note: AccountNote = {

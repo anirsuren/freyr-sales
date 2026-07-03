@@ -58,6 +58,10 @@ export interface Customer {
   ownership?: string | null; // "Public" | "Private"
   revenue?: string | null;
   analyzed_at?: string | null;
+  // Offerings this customer ALREADY uses (offering ids) — the adoption link:
+  // the customer's Offerings tab splits the applicable list into "already
+  // using" vs. the opportunities left to sell.
+  offerings_in_use?: string[] | null;
 }
 
 export interface Contact {

@@ -3230,17 +3230,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
     request,
   }) => {
-    // Detail page exposes an Edit affordance...
-    await page.goto(`${BASE}/offerings/of-009`);
+    // Detail page exposes an Edit affordance... (of-014 = Freya.OmniObject)
+    await page.goto(`${BASE}/offerings/of-014`);
     await expect(page.getByRole("link", { name: /Edit offering/ })).toBeVisible();
     // ...the edit route renders the form pre-filled with the offering's name...
-    await page.goto(`${BASE}/offerings/of-009/edit`);
+    await page.goto(`${BASE}/offerings/of-014/edit`);
     await expect(
       page.getByRole("heading", { name: "Edit offering" })
     ).toBeVisible();
     await expect(page.locator('input[value="Freya.OmniObject"]')).toBeVisible();
     // ...and PATCH actually persists a mapping (material gets a server id).
-    const res = await request.patch(`${BASE}/api/offerings/of-009`, {
+    const res = await request.patch(`${BASE}/api/offerings/of-014`, {
       data: {
         customer_type_ids: ["ct-pharma-l"],
         market_ids: ["mkt-europe"],
@@ -3261,8 +3261,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.waitForTimeout(400);
     await expect(
       page.getByText("Freya.Register", { exact: true })
-    ).toBeVisible(); // of-001 carries Europe
-    await expect(page.getByText("Freya.Submit")).toHaveCount(0); // of-005 has no market
+    ).toBeVisible(); // every offering is available across all five markets
+    await expect(page.getByText("Freya.Submit").first()).toBeVisible();
     // A market chip on an offering links into that filtered view.
     await page.goto(`${BASE}/offerings/of-003`);
     await page.getByRole("link", { name: "Japan", exact: true }).click();
@@ -3294,9 +3294,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.locator('a[href="/offerings?status=unmapped"]').click();
     await page.waitForURL(/status=unmapped/, { timeout: 8000 });
     await expect(page.getByText("Awaiting details").first()).toBeVisible();
-    // a service offering still awaiting its details shows; a fully-detailed one is excluded
+    // a blank-in-the-sheet offering still awaiting its applicability shows;
+    // a fully-detailed one is excluded
     await expect(
-      page.getByText("Publishing", { exact: true })
+      page.getByText("Freya.RTQ", { exact: true })
     ).toBeVisible();
     await expect(
       page.getByText("Freya.Register", { exact: true })
@@ -3508,13 +3509,20 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("257 — offering detail shows completeness status at a glance (V24)", async ({
     page,
+    request,
   }) => {
-    // of-013 (Publishing Operations) is a service still awaiting its details → badge present
-    await page.goto(`${BASE}/offerings/of-013`);
+    // The seeded catalog is fully populated, so we spin up a bare offering to
+    // prove the "Awaiting details" badge appears for an un-mapped one.
+    const created = await request.post(`${BASE}/api/offerings`, {
+      data: { offering_name: "Completeness QA", offering_type: "Freyr Service" },
+    });
+    const id = (await created.json()).offering.id;
+    await page.goto(`${BASE}/offerings/${id}`);
     await expect(page.getByText("Awaiting details")).toBeVisible();
     // of-001 (Freya.Register) is fully detailed → no badge
     await page.goto(`${BASE}/offerings/of-001`);
     await expect(page.getByText("Awaiting details")).toHaveCount(0);
+    await request.delete(`${BASE}/api/offerings/${id}`); // cleanup
   });
 
   test("258 — Categories stat deep-links to the categories manager (V49)", async ({
@@ -3741,7 +3749,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText("Freya Fusion (Module)", { exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText("Freyr AI Native Services", { exact: true })
+      page.getByText("Freyr AI Native Service", { exact: true })
     ).toBeVisible();
     // types carry their plain-English description from Suren's sheet
     await expect(page.getByText(/system of record/i).first()).toBeVisible();
@@ -3760,7 +3768,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(list.offeringTypes.length).toBeGreaterThanOrEqual(5);
     expect(
       list.offeringTypes.some(
-        (t: any) => t.name === "Freyr AI Native Services"
+        (t: any) => t.name === "Freyr AI Native Service"
       )
     ).toBe(true);
     const created = await (
@@ -3782,7 +3790,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // deep-link to the services type → service offerings show, Freya modules don't
     await page.goto(`${BASE}/offerings?otype=ot-freyr-services`);
     await expect(
-      page.getByText("Submissions Planning", { exact: true })
+      page.getByText("Submissions Planning & Management", { exact: true })
     ).toBeVisible();
     await expect(page.getByText("Freya.Register", { exact: true })).toHaveCount(
       0
@@ -3882,19 +3890,19 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
     request,
   }) => {
-    // The 16 MPR service offerings (Sara's list) carry their delivery POCs.
+    // The service offerings (Freyr's master sheet) carry their delivery POCs.
     // Publishing is typed as the one AI-native service (Suren's live meeting),
-    // so 15 stay under "Freyr Services" and Publishing sits under AI-native.
+    // so 14 stay under "Freyr Service" and Publishing sits under AI-native.
     const data = await (await request.get(`${BASE}/api/offerings`)).json();
     const services = data.offerings.filter(
-      (o: { offering_type: string }) => o.offering_type === "Freyr Services"
+      (o: { offering_type: string }) => o.offering_type === "Freyr Service"
     );
-    expect(services.length).toBe(15);
+    expect(services.length).toBe(14);
     const publishing = data.offerings.find(
       (o: { offering_name: string }) => o.offering_name === "Publishing"
     );
     expect(publishing.poc).toBe("Ragav");
-    expect(publishing.offering_type).toBe("Freyr AI Native Services");
+    expect(publishing.offering_type).toBe("Freyr AI Native Service");
     // Mukundh & Pragyan's updates are reflected
     const intel = data.offerings.find(
       (o: { offering_name: string }) =>
@@ -3911,7 +3919,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // filterable as a group via the offering-type filter
     await page.goto(`${BASE}/offerings?otype=ot-freyr-services`);
     await expect(page.getByText("Pharmacovigilance", { exact: true })).toBeVisible();
-    await expect(page.getByText("Market Access", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Post-Approval Regulatory Affairs", { exact: true })
+    ).toBeVisible();
   });
 
   test("279 — agent answers service-delivery POC questions (V42)", async ({
@@ -4097,7 +4107,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const pub = data.offerings.find(
       (o: { offering_name: string }) => o.offering_name === "Publishing"
     );
-    expect(pub.offering_type).toBe("Freyr AI Native Services");
+    expect(pub.offering_type).toBe("Freyr AI Native Service");
     // so the AI-native type is no longer empty on the offering-types page
     await page.goto(`${BASE}/offerings?otype=ot-freyr-ai-native`);
     await expect(page.getByText("Publishing", { exact: true })).toBeVisible();
@@ -4396,9 +4406,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(yes.source).toBe("offerings");
     expect(yes.reply).toMatch(/yes/i);
     expect(yes.reply).toContain("Japan");
-    // an offering with no markets set says so rather than guessing
-    const unknown = await ask(request, "is Freya.Label available in China?");
-    expect(unknown.reply).toMatch(/aren't filled in|not.*filled/i);
+    // every offering in the master sheet is available across all five markets
+    const china = await ask(request, "is Freya.Label available in China?");
+    expect(china.reply).toMatch(/yes/i);
+    expect(china.reply).toContain("China");
   });
 
   test("305 — the catalog answers newer material-type questions (V51)", async ({
@@ -4650,5 +4661,163 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       `${BASE}/intake?company=Helix%20Biologics&contact=Dr.%20Lena%20Vogt`
     );
     await expect(page.getByText("New Sales Session")).toBeVisible();
+  });
+
+  // --- Customer⇄offering link (Suren's Jul 3 dictation): classify a customer
+  // against the SAME customer-type master list the offerings use, then the
+  // customer's Offerings tab shows everything applicable — with descriptions +
+  // sales materials inline — split into "already using" vs. what's left to
+  // sell. The rep never has to leave the customer page. ---
+
+  test("320 — an unclassified customer can be classified from the Offerings tab (V55)", async ({
+    page,
+  }) => {
+    // cust-012 (Orion Vaccines) is unclassified in the seed.
+    await page.goto(`${BASE}/customers/cust-012`);
+    await page.getByRole("tab", { name: "Offerings" }).click();
+    await expect(page.getByText("What type of customer is this?")).toBeVisible();
+    // pick from the master list (same names the offerings are mapped to)
+    await page.getByLabel("Customer type").selectOption("Biologics - Mid size");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    // the tab flips to the applicable list for that type
+    await expect(page.getByText(/offerings apply to/)).toBeVisible();
+    await expect(
+      page.getByText("Biologics - Mid size").first()
+    ).toBeVisible();
+    await expect(page.getByTestId("cust-offering-of-001")).toBeVisible(); // Freya.Register applies
+  });
+
+  test("321 — a classified customer shows applicable offerings with materials, split by adoption (V55)", async ({
+    page,
+  }) => {
+    // Helix (cust-004) is seeded classified (Pharmaceutical - Large) and
+    // already using Freya.Register + Regulatory Intelligence Services.
+    await page.goto(`${BASE}/customers/cust-004`);
+    await page.getByRole("tab", { name: "Offerings" }).click();
+    await expect(page.getByText(/offerings apply to/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Already using/ })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Opportunities to pitch/ })
+    ).toBeVisible();
+    // the in-use cards, with the offering's sales materials right on the tab
+    const register = page.getByTestId("cust-offering-of-001");
+    await expect(
+      register.getByRole("link", { name: "Freya.Register", exact: true })
+    ).toBeVisible();
+    await expect(register.getByText("In use")).toBeVisible();
+    await expect(
+      register.getByRole("link", { name: /Freya\.Register overview/ })
+    ).toBeVisible();
+    // service offering carries its delivery POC on the customer page too
+    await expect(page.getByText("POC: Aditi Kalia")).toBeVisible();
+  });
+
+  test("322 — marking an offering as already-using moves it out of the pitch list (V55)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/customers/cust-004`);
+    await page.getByRole("tab", { name: "Offerings" }).click();
+    await expect(page.getByText(/already using\s*2/i).first()).toBeVisible();
+    // Freya.Submit (of-005) sits in the opportunities list → mark it in use
+    await page
+      .getByTestId("cust-offering-of-005")
+      .getByRole("button", { name: /Mark as already using/ })
+      .click();
+    await expect(page.getByText(/already using\s*3/i).first()).toBeVisible();
+    await expect(
+      page.getByTestId("cust-offering-of-005").getByText("In use")
+    ).toBeVisible();
+    // ...and back, so the seeded state is restored for other tests
+    await page
+      .getByTestId("cust-offering-of-005")
+      .getByRole("button", { name: /Not using anymore/ })
+      .click();
+    await expect(page.getByText(/already using\s*2/i).first()).toBeVisible();
+  });
+
+  // --- Contact-level outreach (Suren's Jul 3 dictation, part 2): a contact
+  // inherits their customer's applicable offerings with role-keyword matches
+  // flagged; on-demand LinkedIn/email drafts; campaigns; voice-agent queue. ---
+
+  test("323 — a contact inherits applicable offerings with role matches flagged (V56)", async ({
+    page,
+  }) => {
+    // Lena Vogt (cont-004) @ Helix — classified Pharmaceutical - Large.
+    await page.goto(`${BASE}/contacts/cont-004`);
+    await expect(page.getByText("Offerings for Lena")).toBeVisible();
+    // her "Regulatory Strategy / Submissions / Compliance" skills flag strong matches
+    await expect(page.getByText("Strong match").first()).toBeVisible();
+    await expect(
+      page.getByTestId("contact-outreach").getByText(/matches:/).first()
+    ).toBeVisible();
+    // the three on-demand actions
+    await expect(
+      page.getByRole("button", { name: /LinkedIn message/ })
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Email message/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /AI voice call/ })).toBeVisible();
+  });
+
+  test("324 — on-demand LinkedIn draft is offering-grounded and char-budgeted (V56)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/contacts/cont-004`);
+    await page.getByRole("button", { name: /LinkedIn message/ }).click();
+    await expect(page.getByText("Message Lena")).toBeVisible();
+    await page.getByRole("button", { name: /Generate LinkedIn note/ }).click();
+    const box = page.getByLabel("Generated message");
+    await expect(box).toBeVisible();
+    await expect(box).toHaveValue(/Helix Biologics/);
+    await expect(page.getByText(/\/300 characters/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Copy message/ })).toBeVisible();
+    // nothing auto-sends — the draft is copy-out only
+    await expect(page.getByText(/Nothing sends from here/)).toBeVisible();
+  });
+
+  test("325 — a campaign drafts content, takes recipients, and queues honestly (V56)", async ({
+    page,
+    request,
+  }) => {
+    const created = await (
+      await request.post(`${BASE}/api/campaigns`, {
+        data: { name: "QA Blast", offeringId: "of-001" },
+      })
+    ).json();
+    expect(created.ok).toBe(true);
+    expect(created.campaign.subject).toContain("Freya.Register");
+    const q = await (
+      await request.patch(`${BASE}/api/campaigns/${created.campaign.id}`, {
+        data: { recipientContactIds: ["cont-004"], queue: true },
+      })
+    ).json();
+    expect(q.ok).toBe(true);
+    expect(q.campaign.status).toBe("queued");
+    // the page renders it with the honest queued status
+    await page.goto(`${BASE}/campaigns`);
+    await expect(page.getByText("QA Blast")).toBeVisible();
+    await expect(page.getByText("Queued", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/1 recipient/).first()).toBeVisible();
+  });
+
+  test("326 — bulk voice-agent runs queue per offering category (V56)", async ({
+    request,
+  }) => {
+    const res = await (
+      await request.post(`${BASE}/api/voice/queue`, {
+        data: {
+          contactIds: ["cont-004", "cont-005"],
+          category: "Global Regulatory Intelligence",
+        },
+      })
+    ).json();
+    expect(res.ok).toBe(true);
+    expect(res.queued).toBe(2);
+    expect(res.called).toBe(0); // mock mode / no phone number yet — honest
+    expect(res.status.phoneConnected).toBe(false);
+    const list = await (await request.get(`${BASE}/api/voice/queue`)).json();
+    expect(list.queue.length).toBeGreaterThanOrEqual(2);
+    expect(list.queue[0].category).toBe("Global Regulatory Intelligence");
   });
 });

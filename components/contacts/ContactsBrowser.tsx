@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Download, UserSearch, CheckSquare, Square, X, Mail } from "lucide-react";
+import { Search, Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { cn } from "@/lib/utils";
@@ -21,13 +23,57 @@ export interface ContactRow {
   email: string;
 }
 
-export function ContactsBrowser({ rows }: { rows: ContactRow[] }) {
+export function ContactsBrowser({
+  rows,
+  voiceCategories = [],
+}: {
+  rows: ContactRow[];
+  // Offering categories with a wired voice agent — powers the bulk run
+  // (Suren: "select a bunch of contacts, then for every offering category
+  // there's a voice agent that you select and run").
+  voiceCategories?: string[];
+}) {
   const { toast } = useToast();
   const [q, setQ] = useState("");
   const [role, setRole] = useState("all");
   const [sort, setSort] = useState("name");
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceCategory, setVoiceCategory] = useState(voiceCategories[0] || "");
+  const [voiceBusy, setVoiceBusy] = useState(false);
+
+  async function runVoiceAgent() {
+    if (!voiceCategory || selected.size === 0) return;
+    setVoiceBusy(true);
+    try {
+      const res = await fetch("/api/voice/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contactIds: Array.from(selected),
+          category: voiceCategory,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast(
+          data.called > 0
+            ? `Dialing ${data.called} of ${data.queued} now — the rest are queued.`
+            : `Queued ${data.queued} call${data.queued === 1 ? "" : "s"} — they dial as soon as a phone number is connected.`
+        );
+        setVoiceOpen(false);
+        setSelected(new Set());
+        setSelectMode(false);
+      } else {
+        toast(data.error || "Couldn't queue the calls.", "error");
+      }
+    } catch {
+      toast("Couldn't queue the calls.", "error");
+    } finally {
+      setVoiceBusy(false);
+    }
+  }
 
   function toggleSel(id: string) {
     setSelected((s) => {
@@ -137,6 +183,15 @@ export function ContactsBrowser({ rows }: { rows: ContactRow[] }) {
             {selected.size} selected
           </span>
           <div className="flex items-center gap-2 ml-auto">
+            {voiceCategories.length > 0 && (
+              <button
+                onClick={() => setVoiceOpen(true)}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md border border-blue-primary text-blue-primary hover:bg-white transition-colors"
+              >
+                <PhoneCall size={15} strokeWidth={1.8} />
+                Run voice agent
+              </button>
+            )}
             <button
               onClick={exportSelected}
               className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
@@ -154,6 +209,54 @@ export function ContactsBrowser({ rows }: { rows: ContactRow[] }) {
           </div>
         </div>
       )}
+
+      {/* Bulk voice-agent run (Suren, Jul 3) */}
+      <Modal
+        open={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        title={`Run a voice agent — ${selected.size} contact${selected.size === 1 ? "" : "s"}`}
+      >
+        <div className="space-y-3">
+          <p className="text-[13px] text-text-secondary leading-relaxed">
+            Each offering category has its own AI voice agent that knows the
+            category&apos;s offerings and the Freyr context. Pick which one
+            works this list.
+          </p>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
+              Offering category
+            </label>
+            <select
+              aria-label="Voice agent category"
+              value={voiceCategory}
+              onChange={(e) => setVoiceCategory(e.target.value)}
+              className="w-full rounded-md border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:shadow-input-focus"
+            >
+              {voiceCategories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-[12px] text-warning bg-warning/10 rounded-md px-3 py-2">
+            Calls queue until a phone number is connected — nothing dials
+            silently, and one-by-one beats bulk cold-calling for compliance.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setVoiceOpen(false)}
+              className="text-[13px] font-semibold text-text-secondary hover:text-text-primary px-3 py-2"
+            >
+              Cancel
+            </button>
+            <Button onClick={runVoiceAgent} loading={voiceBusy}>
+              <PhoneCall size={14} strokeWidth={1.9} className="mr-1.5" />
+              Queue the calls
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {view.length > 0 && (
         <p className="text-[13px] text-text-secondary mb-4 tnum">

@@ -19,6 +19,9 @@ export const hasTelegram = () => !!process.env.TELEGRAM_BOT_TOKEN;
 export const hasEmail = () =>
   !!(process.env.RESEND_API_KEY || process.env.SMTP_URL);
 
+// ElevenLabs — the offering-category voice agents (Suren's Jul 3 ask).
+export const hasElevenLabs = () => !!process.env.ELEVENLABS_API_KEY;
+
 // Convenience snapshot used by the /admin system-status panel.
 export function getServiceStatus() {
   return {
@@ -28,5 +31,6 @@ export function getServiceStatus() {
     apify: hasApify(),
     telegram: hasTelegram(),
     email: hasEmail(),
+    elevenlabs: hasElevenLabs(),
   };
 }

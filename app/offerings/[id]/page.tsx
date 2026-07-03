@@ -125,7 +125,7 @@ export default async function OfferingDetailPage({
             {o.offering_name}
           </h1>
           {o.offering_description ? (
-            <p className="text-[14px] text-text-secondary mt-2 max-w-[680px] leading-relaxed">
+            <p className="text-[14px] text-text-secondary mt-2 max-w-[680px] leading-relaxed whitespace-pre-line">
               {o.offering_description}
             </p>
           ) : o.offeringType?.description ? (
@@ -186,7 +186,7 @@ export default async function OfferingDetailPage({
             {o.current_availability}
           </span>
         )}
-        {o.future_availability && (
+        {o.future_availability && o.future_availability.length <= 40 && (
           <span className="text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2.5 py-1">
             {o.future_availability}
           </span>
@@ -198,6 +198,12 @@ export default async function OfferingDetailPage({
           </span>
         )}
       </div>
+      {o.future_availability && o.future_availability.length > 40 && (
+        <p className="text-[12px] text-text-secondary mt-2 max-w-[680px] leading-relaxed">
+          <span className="font-medium text-text-tertiary">Availability — </span>
+          {o.future_availability}
+        </p>
+      )}
 
       {/* Offering category — its plain-English description + the offering owner
           (Suren's Jun 27 grouping). The category is a first-class object: this

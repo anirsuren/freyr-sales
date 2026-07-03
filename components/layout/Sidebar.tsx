@@ -19,12 +19,14 @@ import {
   Target,
   Package,
   Sparkles,
+  Megaphone,
   PanelLeftClose,
   PanelLeftOpen,
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
+import { RELEASE_MODE, HOME_PATH, isReleased } from "@/lib/release";
 
 // One flat, scannable list — no section headers, no scrolling. Reference/tool
 // pages (Knowledge base, Service catalog, Recordings) live in the account menu;
@@ -33,7 +35,7 @@ import { Avatar } from "@/components/ui/Avatar";
 // offerings-first ("offerings is module #1; I want to start with offerings; a
 // sales guy comes in and looks at the offer"). The repository of what we sell
 // shouldn't be buried below pipeline/forecast/customers.
-const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
+const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/agent", label: "Agent", icon: Sparkles },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/offerings", label: "Offerings", icon: Package },
@@ -43,10 +45,15 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/contacts", label: "Contacts", icon: Contact },
   { href: "/sessions", label: "Sessions", icon: CalendarClock },
   { href: "/sequences", label: "Sequences", icon: Zap },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/analytics", label: "Analytics", icon: ChartColumnBig },
   { href: "/activity", label: "Activity", icon: Rss },
 ];
+
+// Release gating (Suren): the first Freyr rollout shows ONLY production-ready
+// modules — everything else stays hidden until it's released.
+const NAV_ITEMS = ALL_NAV_ITEMS.filter((i) => isReleased(i.href));
 
 const COLLAPSE_KEY = "freyr.sidebar.collapsed";
 
@@ -156,7 +163,7 @@ export function Sidebar({
           collapsed ? "px-0 flex-col gap-3" : "px-6 justify-between"
         )}
       >
-        <Link href="/dashboard" className="flex items-center gap-2.5" title="Freyr">
+        <Link href={HOME_PATH} className="flex items-center gap-2.5" title="Freyr">
           <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
             <Activity size={18} strokeWidth={2.25} />
           </span>
@@ -184,7 +191,8 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* New Session CTA */}
+      {/* New Session CTA — hidden in the offerings-only rollout (intake isn't released) */}
+      {RELEASE_MODE === "all" && (
       <div className={cn("mb-5", collapsed ? "px-3" : "px-4")}>
         <button
           onClick={() => router.push("/intake")}
@@ -198,6 +206,7 @@ export function Sidebar({
           {!collapsed && "New Session"}
         </button>
       </div>
+      )}
 
       {/* Nav */}
       <nav aria-label="Primary" className="flex-1 px-3 overflow-y-auto">
