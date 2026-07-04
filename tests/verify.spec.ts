@@ -1048,7 +1048,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("86 — account detail shows a health score (V5)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await expect(page.getByText("Account health")).toBeVisible();
+    await expect(page.getByText("Account snapshot")).toBeVisible();
     await expect(
       page.getByText(/Healthy|Watch|At risk/).first()
     ).toBeVisible();
@@ -1056,7 +1056,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("89 — account health trend + factor breakdown (V5)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await expect(page.getByText("Account health")).toBeVisible();
+    await expect(page.getByText("Account snapshot")).toBeVisible();
     await expect(page.getByText("Why")).toBeVisible();
     await expect(page.getByText(/pts · 4 wk/)).toBeVisible();
   });
@@ -1204,8 +1204,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("101 — per-account 'ask the agent' chat (V8)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.locator("main").getByRole("tab", { name: "Ask Agent" }).click();
-    await expect(page.getByText("Ask the agent")).toBeVisible();
+    await page.getByRole("button", { name: "Ask the agent" }).click();
+    await expect(page.getByRole("dialog", { name: "Ask the agent" })).toBeVisible();
     await page
       .getByRole("button", { name: "How healthy is this account?" })
       .click();
@@ -1610,7 +1610,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("130 — account chat is Claude-ready (V9)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.locator("main").getByRole("tab", { name: "Ask Agent" }).click();
+    await page.getByRole("button", { name: "Ask the agent" }).click();
     await expect(
       page.getByText(/Powered by Claude when a key is set/i)
     ).toBeVisible();
@@ -1968,14 +1968,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("157 — account chat thread survives a reload (V9)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-012`);
-    await page.locator("main").getByRole("tab", { name: "Ask Agent" }).click();
+    await page.getByRole("button", { name: "Ask the agent" }).click();
     await page
       .getByRole("button", { name: "How healthy is this account?" })
       .click();
     await expect(page.getByText(/\/100/).first()).toBeVisible();
     // reload → the persisted answer is restored without re-asking
     await page.reload();
-    await page.locator("main").getByRole("tab", { name: "Ask Agent" }).click();
+    await page.getByRole("button", { name: "Ask the agent" }).click();
     await expect(page.getByText(/\/100/).first()).toBeVisible();
   });
 
@@ -2037,14 +2037,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("160 — account chat 'Clear' resets the thread (V9)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-008`);
-    await page.locator("main").getByRole("tab", { name: "Ask Agent" }).click();
-    await page
+    await page.getByRole("button", { name: "Ask the agent" }).click();
+    const drawer160 = page.getByRole("dialog", { name: "Ask the agent" });
+    await drawer160
       .getByRole("button", { name: "How healthy is this account?" })
       .click();
-    await expect(page.getByText(/\/100/).first()).toBeVisible();
-    await page.getByRole("button", { name: /Clear/ }).click();
-    await expect(page.getByText(/Ask me anything about/)).toBeVisible();
-    await expect(page.getByText(/\/100/)).toHaveCount(0);
+    await expect(drawer160.getByText(/\/100/).first()).toBeVisible();
+    await drawer160.getByRole("button", { name: /Clear/ }).click();
+    await expect(drawer160.getByText(/Ask me anything about/)).toBeVisible();
+    // scoped to the drawer — the overview (with its own health numbers) stays
+    // visible behind it now, which is exactly the drawer's point
+    await expect(drawer160.getByText(/\/100/)).toHaveCount(0);
   });
 
   test("155 — weekly review is exportable (print + share) (V9)", async ({
@@ -4884,5 +4887,72 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.getByRole("button", { name: /New campaign/ }).click();
     await expect(page.getByLabel("Campaign name")).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+  test("330 — Ask Agent rides in a right-side drawer, no banner up top (V59)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/customers/cust-002`);
+    // the old announcement banner above the tabs is gone — the analyze flow
+    // lives in the Overview's Company profile card instead
+    await expect(
+      page.getByText(/surface the offerings that fit/)
+    ).toHaveCount(0);
+    // no Ask Agent tab anymore…
+    await expect(page.getByRole("tab", { name: "Ask Agent" })).toHaveCount(0);
+    // …the drawer opens from the rail button, over the page
+    await page.getByRole("button", { name: "Ask the agent" }).click();
+    const drawer = page.getByRole("dialog", { name: "Ask the agent" });
+    await expect(drawer).toBeVisible();
+    // un-analyzed account → the drawer carries the Analyze quick action
+    await expect(
+      drawer.getByRole("button", { name: /Analyze the customer/ })
+    ).toBeVisible();
+    // Esc closes it and the page is still there
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+  });
+
+  test("331 — seeded campaign shows real engagement graphs (V59)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/campaigns`);
+    // the sent demo campaign renders with delivery + engagement at a glance
+    await expect(page.getByText("Freya.Register Q3 awareness")).toBeVisible();
+    await expect(page.getByText("Sent", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/opened/).first()).toBeVisible();
+    // its detail page charts the funnel
+    await page
+      .getByRole("link", { name: /View campaign Freya\.Register Q3 awareness/ })
+      .click();
+    await expect(page.getByText("Delivery", { exact: true })).toBeVisible();
+    await expect(page.getByText("Opened", { exact: true })).toBeVisible();
+    await expect(page.getByText(/open rate/)).toBeVisible();
+    await expect(page.getByText(/reply rate/)).toBeVisible();
+  });
+
+  test("332 — voice page charts outcomes from the sample calls (V59)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/voice`);
+    await expect(page.getByText("How calls ended")).toBeVisible();
+    await expect(page.getByText("Connect rate")).toBeVisible();
+    await expect(page.getByText("Avg call length")).toBeVisible();
+    // outcome chips land in the queue table too
+    await expect(page.getByText("Interested").first()).toBeVisible();
+    await expect(page.getByText("Follow-up").first()).toBeVisible();
+  });
+
+  test("333 — overview leads About → Company profile in the flow (V59)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/customers/cust-004`);
+    // analyzed account: the profile card sits inside the Overview tab
+    await expect(page.getByText("About this account")).toBeVisible();
+    await expect(page.getByText("Company profile")).toBeVisible();
+    await expect(page.getByText("Pharmaceutical - Large").first()).toBeVisible();
+    // the visual snapshot rail is there with the health ring + glance stats
+    await expect(page.getByText("Account snapshot")).toBeVisible();
+    await expect(page.getByText("Why")).toBeVisible();
   });
 });

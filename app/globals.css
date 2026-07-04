@@ -217,6 +217,20 @@ select:focus-visible,
 .backdrop-in {
   animation: backdropIn 0.18s ease-out both;
 }
+/* Right-side slide-over (the Ask Agent drawer) */
+@keyframes drawerIn {
+  from {
+    transform: translateX(48px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.drawer-in {
+  animation: drawerIn 0.24s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
 
 /* Staggered list/grid entrance — add `stagger` to a container and its direct
    children (cards, rows) rise in one after another, like the Offerings grid. */

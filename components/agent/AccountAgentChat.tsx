@@ -18,12 +18,16 @@ export function AccountAgentChat({
   context,
   customerId,
   initialInput,
+  embedded = false,
 }: {
   context: AccountContext;
   customerId: string;
   // A request pre-loaded into the composer (e.g. from the Deliverables rail),
   // ready for the rep to send — the agent drafts, the human stays in control.
   initialInput?: string;
+  // Inside the Ask Agent drawer the drawer header already names the chat —
+  // drop the duplicate title row down to the slim Clear/powered-by line.
+  embedded?: boolean;
 }) {
   const greeting: Msg = {
     role: "agent",
@@ -120,12 +124,16 @@ export function AccountAgentChat({
     <div className="max-w-[680px]">
       <div className="rounded-xl border border-border-light bg-white shadow-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border-light flex items-center gap-2">
-          <span className="w-7 h-7 rounded-lg bg-blue-primary text-white flex items-center justify-center">
-            <Sparkles size={15} strokeWidth={1.9} />
-          </span>
-          <span className="text-[14px] font-semibold text-text-primary">
-            Ask the agent
-          </span>
+          {!embedded && (
+            <>
+              <span className="w-7 h-7 rounded-lg bg-blue-primary text-white flex items-center justify-center">
+                <Sparkles size={15} strokeWidth={1.9} />
+              </span>
+              <span className="text-[14px] font-semibold text-text-primary">
+                Ask the agent
+              </span>
+            </>
+          )}
           {hasThread && (
             <button
               onClick={clearThread}
@@ -138,7 +146,7 @@ export function AccountAgentChat({
           <span
             className={cn(
               "text-[11px] text-text-tertiary",
-              !hasThread && "ml-auto"
+              !hasThread && !embedded && "ml-auto"
             )}
           >
             Powered by Claude when a key is set

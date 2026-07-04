@@ -31,6 +31,12 @@ interface Analysis {
 // offerings customer-type definitions and proposes customer type / ownership /
 // revenue from the web. The user reviews + approves before it's saved, and once
 // saved the applicable offerings show automatically.
+//
+// Two renders (Anir, Jul 3: no more announcement header pinned to the top):
+//  - "card"   → the Company profile card that lives in the Overview tab
+//               (analyzed: the full profile; not yet: a normal card with the
+//               Analyze button — content in the flow, not a banner)
+//  - "action" → just the button + review modal, for the agent drawer
 export function CustomerAnalyzePanel({
   customerId,
   customerType,
@@ -40,6 +46,7 @@ export function CustomerAnalyzePanel({
   typeOptions,
   applicableOfferings,
   canEdit = true,
+  variant = "card",
 }: {
   customerId: string;
   customerType: string | null;
@@ -49,6 +56,7 @@ export function CustomerAnalyzePanel({
   typeOptions: string[];
   applicableOfferings: { id: string; name: string; type: string }[];
   canEdit?: boolean;
+  variant?: "card" | "action";
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -150,41 +158,170 @@ export function CustomerAnalyzePanel({
   );
 
   // Once qualified, show the full profile + applicable offerings. Before that,
-  // don't lead the page with an empty card — a slim prompt keeps the feature
-  // discoverable without the "nothing here" glance (Suren: "I'm kind of lost").
+  // a normal profile card with the Analyze action — content in the page flow,
+  // never an announcement banner pinned above everything (Anir, Jul 3).
   const showFull = analyzed || !!customerType;
+
+  // Review + approve the proposed analysis — shared by both variants.
+  const reviewModal = (
+    <Modal open={open} onClose={() => setOpen(false)} title="Review the analysis">
+      <div className="flex items-center gap-2 text-[13px] text-blue-primary mb-3">
+        <Sparkles size={15} strokeWidth={1.8} />
+        {meta.source === "web"
+          ? "Researched from the web — edit anything, then approve to save."
+          : "Proposed — edit anything, then approve to save."}
+        {meta.confidence && (
+          <span className="ml-auto text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+            {meta.confidence} confidence
+          </span>
+        )}
+      </div>
+      {rationale && (
+        <p className="text-[13px] text-text-secondary bg-surface rounded-md px-3 py-2 mb-2 leading-relaxed">
+          {rationale}
+        </p>
+      )}
+      {meta.sources && meta.sources.length > 0 && (
+        <p className="text-[11.5px] text-text-tertiary mb-4 truncate">
+          Sources:{" "}
+          {meta.sources.map((s, i) => (
+            <span key={s}>
+              {i > 0 && ", "}
+              <a
+                href={s}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-primary hover:underline"
+              >
+                {(() => {
+                  try {
+                    return new URL(s).hostname.replace(/^www\./, "");
+                  } catch {
+                    return s;
+                  }
+                })()}
+              </a>
+            </span>
+          ))}
+        </p>
+      )}
+      <div className="space-y-3">
+        <div>
+          <label className={labelCls}>Customer type</label>
+          <select
+            className={field}
+            value={pType}
+            aria-label="Customer type"
+            onChange={(e) => setPType(e.target.value)}
+          >
+            {!typeOptions.includes(pType) && pType && (
+              <option value={pType}>{pType}</option>
+            )}
+            {typeOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Ownership</label>
+            <select
+              className={field}
+              value={pOwnership}
+              aria-label="Ownership"
+              onChange={(e) =>
+                setPOwnership(e.target.value as "Public" | "Private")
+              }
+            >
+              <option value="Public">Public</option>
+              <option value="Private">Private</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Revenue</label>
+            <input
+              className={field}
+              value={pRevenue}
+              aria-label="Revenue"
+              onChange={(e) => setPRevenue(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 mt-5">
+        <button
+          onClick={() => setOpen(false)}
+          className="text-[13px] font-semibold text-text-secondary hover:text-text-primary px-3 py-2"
+        >
+          Cancel
+        </button>
+        <Button onClick={approve} loading={saving}>
+          <Check size={15} strokeWidth={2} className="mr-1.5" />
+          Approve &amp; save
+        </Button>
+      </div>
+    </Modal>
+  );
+
+  // Drawer / toolbar variant: just the action + the review modal.
+  if (variant === "action") {
+    return (
+      <>
+        {canEdit && (
+          <button
+            onClick={runAnalysis}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md border border-blue-subtle text-blue-primary bg-blue-light/40 hover:bg-blue-light transition-colors disabled:opacity-60"
+          >
+            <Sparkles size={13} strokeWidth={1.9} />
+            {loading
+              ? "Analyzing…"
+              : showFull
+              ? "Re-analyze the customer"
+              : "Analyze the customer"}
+          </button>
+        )}
+        {reviewModal}
+      </>
+    );
+  }
 
   return (
     <>
       {!showFull ? (
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border-light bg-surface/50 px-4 py-3">
-          <p className="flex items-start gap-2 text-[13px] text-text-secondary">
-            <Sparkles
-              size={15}
-              strokeWidth={1.8}
-              className="text-blue-primary mt-0.5 shrink-0"
-            />
-            <span>
-              <span className="font-semibold text-text-primary">
-                Analyze this customer
-              </span>{" "}
-              to qualify its type, ownership &amp; revenue from the web — and
-              surface the offerings that fit.
-            </span>
-          </p>
-          {canEdit && (
-            <Button
-              variant="secondary"
-              onClick={runAnalysis}
-              loading={loading}
-              className="shrink-0"
-            >
-              Analyze the customer
-            </Button>
-          )}
-        </div>
+        <Card>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <span className="w-9 h-9 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                <Sparkles size={17} strokeWidth={1.8} />
+              </span>
+              <div>
+                <h2 className="text-[15px] font-semibold text-text-primary">
+                  Company profile
+                </h2>
+                <p className="text-[13px] text-text-secondary leading-relaxed mt-0.5">
+                  Analyze this customer to qualify its type, ownership &amp;
+                  revenue from the web — the offerings that fit show up the
+                  moment it&apos;s classified.
+                </p>
+              </div>
+            </div>
+            {canEdit && (
+              <Button
+                variant="secondary"
+                onClick={runAnalysis}
+                loading={loading}
+                className="shrink-0"
+              >
+                Analyze the customer
+              </Button>
+            )}
+          </div>
+        </Card>
       ) : (
-        <Card className="mb-6">
+        <Card>
           <div className="flex items-start justify-between gap-3 mb-4">
             <div>
               <h2 className="text-[15px] font-semibold text-text-primary">
@@ -254,110 +391,7 @@ export function CustomerAnalyzePanel({
         </Card>
       )}
 
-      {/* Review + approve the proposed analysis */}
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Review the analysis"
-      >
-        <div className="flex items-center gap-2 text-[13px] text-blue-primary mb-3">
-          <Sparkles size={15} strokeWidth={1.8} />
-          {meta.source === "web"
-            ? "Researched from the web — edit anything, then approve to save."
-            : "Proposed — edit anything, then approve to save."}
-          {meta.confidence && (
-            <span className="ml-auto text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-              {meta.confidence} confidence
-            </span>
-          )}
-        </div>
-        {rationale && (
-          <p className="text-[13px] text-text-secondary bg-surface rounded-md px-3 py-2 mb-2 leading-relaxed">
-            {rationale}
-          </p>
-        )}
-        {meta.sources && meta.sources.length > 0 && (
-          <p className="text-[11.5px] text-text-tertiary mb-4 truncate">
-            Sources:{" "}
-            {meta.sources.map((s, i) => (
-              <span key={s}>
-                {i > 0 && ", "}
-                <a
-                  href={s}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-primary hover:underline"
-                >
-                  {(() => {
-                    try {
-                      return new URL(s).hostname.replace(/^www\./, "");
-                    } catch {
-                      return s;
-                    }
-                  })()}
-                </a>
-              </span>
-            ))}
-          </p>
-        )}
-        <div className="space-y-3">
-          <div>
-            <label className={labelCls}>Customer type</label>
-            <select
-              className={field}
-              value={pType}
-              aria-label="Customer type"
-              onChange={(e) => setPType(e.target.value)}
-            >
-              {!typeOptions.includes(pType) && pType && (
-                <option value={pType}>{pType}</option>
-              )}
-              {typeOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Ownership</label>
-              <select
-                className={field}
-                value={pOwnership}
-                aria-label="Ownership"
-                onChange={(e) =>
-                  setPOwnership(e.target.value as "Public" | "Private")
-                }
-              >
-                <option value="Public">Public</option>
-                <option value="Private">Private</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Revenue</label>
-              <input
-                className={field}
-                value={pRevenue}
-                aria-label="Revenue"
-                onChange={(e) => setPRevenue(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-5">
-          <button
-            onClick={() => setOpen(false)}
-            className="text-[13px] font-semibold text-text-secondary hover:text-text-primary px-3 py-2"
-          >
-            Cancel
-          </button>
-          <Button onClick={approve} loading={saving}>
-            <Check size={15} strokeWidth={2} className="mr-1.5" />
-            Approve &amp; save
-          </Button>
-        </div>
-      </Modal>
+      {reviewModal}
     </>
   );
 }

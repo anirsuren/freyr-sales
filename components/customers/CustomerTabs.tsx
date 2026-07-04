@@ -27,6 +27,8 @@ import {
   CustomerOfferingsTab,
   type TabOffering,
 } from "@/components/customers/CustomerOfferingsTab";
+import { AskAgentDrawer } from "@/components/customers/AskAgentDrawer";
+import { CustomerAnalyzePanel } from "@/components/customers/CustomerAnalyzePanel";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -63,12 +65,13 @@ import type {
   AgentRun,
 } from "@/lib/types";
 
+// "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
+// it's reachable from every tab without hiding the account (Anir, Jul 3).
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "offerings", label: "Offerings" },
   { key: "contacts", label: "Contacts" },
   { key: "deals", label: "Deals" },
-  { key: "ask", label: "Ask Agent" },
   { key: "sessions", label: "Sessions" },
   { key: "notes", label: "Notes" },
   { key: "activity", label: "Activity" },
@@ -115,17 +118,21 @@ export function CustomerTabs({
 }) {
   const { toast } = useToast();
   const [tab, setTab] = useState("overview");
+  // The Ask Agent drawer — always one click away, over any tab.
+  const [askOpen, setAskOpen] = useState(false);
   // Deep-link support (?tab=offerings etc.) — read after mount via
   // window.location so SSR markup stays identical (same pattern as the intake
-  // prefill; avoids the useSearchParams Suspense requirement).
+  // prefill; avoids the useSearchParams Suspense requirement). ?tab=ask now
+  // opens the drawer, keeping old links working.
   useEffect(() => {
     try {
       const wanted = new URLSearchParams(window.location.search).get("tab");
-      if (wanted && TABS.some((t) => t.key === wanted)) setTab(wanted);
+      if (wanted === "ask") setAskOpen(true);
+      else if (wanted && TABS.some((t) => t.key === wanted)) setTab(wanted);
     } catch {}
   }, []);
-  // A deliverable request handed to the in-page agent to draft (see the
-  // Deliverables rail) — pre-loaded into the Ask Agent composer.
+  // A deliverable request handed to the agent to draft (see the Deliverables
+  // rail) — pre-loaded into the drawer's composer.
   const [askPrefill, setAskPrefill] = useState("");
 
   // editable account fields (#55 owner, #59 competitor, #60 notes/attachments).
@@ -304,6 +311,17 @@ export function CustomerTabs({
     return out.slice(0, 4);
   }, [sessions]);
 
+  // Slim offering list for the Company profile card (id/name/type only).
+  const applicableSlim = useMemo(
+    () =>
+      (offeringsCatalog?.applicable || []).map((o) => ({
+        id: o.id,
+        name: o.name,
+        type: o.category || o.type,
+      })),
+    [offeringsCatalog]
+  );
+
   const shortName = customer.company_name.split(/\s+/)[0];
   // Agent-suggested angles to look into — phrased as prompts to verify, not as
   // confirmed signals. No fabricated dates or claims presented as fact.
@@ -386,6 +404,20 @@ export function CustomerTabs({
                 {customer.enrichment_summary}
               </p>
             </Card>
+
+            {/* Company profile — the analyze flow lives HERE in the page flow
+                now, not in a banner pinned above everything (Anir, Jul 3). */}
+            {offeringsCatalog && (
+              <CustomerAnalyzePanel
+                customerId={customer.id}
+                customerType={customer.customer_type ?? null}
+                ownership={customer.ownership ?? null}
+                revenue={customer.revenue ?? null}
+                analyzed={!!customer.analyzed_at}
+                typeOptions={offeringsCatalog.typeOptions}
+                applicableOfferings={applicableSlim}
+              />
+            )}
 
             <AccountBriefing context={agentContext} />
 
@@ -596,14 +628,6 @@ export function CustomerTabs({
           </div>
         )}
 
-        {tab === "ask" && (
-          <AccountAgentChat
-            context={agentContext}
-            customerId={customer.id}
-            initialInput={askPrefill}
-          />
-        )}
-
         {tab === "sessions" && (
           <Card className="p-0 overflow-hidden">
             <div className="divide-y divide-border-light">
@@ -759,8 +783,127 @@ export function CustomerTabs({
         )}
       </div>
 
-      {/* Deliverables rail */}
+      {/* Right rail — decision-first: the agent entry, the health picture,
+          then the working cards. One glance, no wall of boxes (Anir, Jul 3). */}
       <aside className="space-y-4">
+        {/* The agent is ALWAYS one click away — opens the right-side drawer */}
+        <button
+          onClick={() => {
+            setAskPrefill("");
+            setAskOpen(true);
+          }}
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-primary text-white text-[13.5px] font-semibold px-4 py-2.5 hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+        >
+          <Sparkles size={15} strokeWidth={2} />
+          Ask the agent
+        </button>
+
+        {/* Account snapshot — health ring + trend + why + the glance numbers,
+            one visual card instead of two stacked text boxes. */}
+        <Card>
+          <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
+            Account snapshot
+          </h3>
+          <div className="flex items-center gap-4 mb-3">
+            {(() => {
+              const ringR = 30;
+              const ringC = 2 * Math.PI * ringR;
+              const color = HEALTH_COLOR[health.band].color;
+              return (
+                <svg width="76" height="76" viewBox="0 0 76 76" className="shrink-0">
+                  <circle cx="38" cy="38" r={ringR} fill="none" stroke="#E5E5EA" strokeWidth="7" />
+                  <circle
+                    cx="38" cy="38" r={ringR} fill="none"
+                    stroke={color} strokeWidth="7" strokeLinecap="round"
+                    strokeDasharray={`${ringC * (health.score / 100)} ${ringC}`}
+                    transform="rotate(-90 38 38)"
+                  />
+                  <text x="38" y="43" textAnchor="middle" className="tnum" fontSize="20" fontWeight="700" fill={color}>
+                    {health.score}
+                  </text>
+                </svg>
+              );
+            })()}
+            <div className="min-w-0">
+              <HealthBadge health={health} showScore={false} />
+              <span
+                className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold tnum"
+                style={{
+                  color:
+                    healthSeries.delta > 0
+                      ? "#1A7A35"
+                      : healthSeries.delta < 0
+                      ? "#B02020"
+                      : "#8A8A8E",
+                }}
+              >
+                {healthSeries.delta > 0 ? (
+                  <TrendingUp size={13} strokeWidth={2} />
+                ) : healthSeries.delta < 0 ? (
+                  <TrendingDown size={13} strokeWidth={2} />
+                ) : (
+                  <Minus size={13} strokeWidth={2} />
+                )}
+                {healthSeries.delta > 0 ? "+" : ""}
+                {healthSeries.delta} pts · 4 wk
+              </span>
+              <div className="mt-1.5">
+                <Sparkline
+                  points={healthSeries.points}
+                  color={HEALTH_COLOR[health.band].color}
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
+            Why
+          </p>
+          <ul className="space-y-1">
+            {health.factors.map((f, i) => (
+              <li key={i} className="flex items-center justify-between text-[12px]">
+                <span className="text-text-secondary">{f.label}</span>
+                <span
+                  className="font-semibold tnum"
+                  style={{ color: f.delta > 0 ? "#1A7A35" : "#B02020" }}
+                >
+                  {f.delta > 0 ? "+" : ""}
+                  {f.delta}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <dl className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border-light">
+            <div>
+              <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                Contacts
+              </dt>
+              <dd className="text-[16px] font-bold text-text-primary tnum">
+                {contacts.length}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                Sessions
+              </dt>
+              <dd className="text-[16px] font-bold text-text-primary tnum">
+                {sessions.length}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                Latest
+              </dt>
+              <dd className="mt-0.5">
+                {interactions[0] ? (
+                  <OutcomeBadge outcome={interactions[0].outcome} />
+                ) : (
+                  <span className="text-[13px] text-text-tertiary">—</span>
+                )}
+              </dd>
+            </div>
+          </dl>
+        </Card>
+
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary flex items-center gap-1.5">
@@ -890,7 +1033,10 @@ export function CustomerTabs({
           <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
             Deliverables
           </h3>
-          <div className="space-y-2">
+          <p className="text-[11.5px] text-text-tertiary -mt-2 mb-3">
+            One click — the agent drafts it in the drawer.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
             {DELIVERABLES.map((d) => {
               const Icon = d.icon;
               return (
@@ -898,101 +1044,46 @@ export function CustomerTabs({
                   key={d.label}
                   onClick={() => {
                     setAskPrefill(`${d.ask} ${customer.company_name}`);
-                    setTab("ask");
+                    setAskOpen(true);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-light text-[14px] text-text-primary hover:border-blue-subtle hover:bg-surface transition-colors text-left"
+                  className="flex flex-col items-start gap-1.5 px-2.5 py-2.5 rounded-lg border border-border-light text-[12.5px] font-medium text-text-primary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors text-left"
                 >
-                  <Icon size={18} strokeWidth={1.5} className="text-blue-primary" />
+                  <Icon size={16} strokeWidth={1.6} className="text-blue-primary" />
                   {d.label}
                 </button>
               );
             })}
           </div>
         </Card>
-        <Card>
-          <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-            Account health
-          </h3>
-          <div className="flex items-end justify-between mb-3">
-            <span
-              className="text-[30px] font-bold leading-none tnum"
-              style={{ color: HEALTH_COLOR[health.band].color }}
-            >
-              {health.score}
-            </span>
-            <HealthBadge health={health} showScore={false} />
-          </div>
-          <div className="flex items-center justify-between mb-4">
-            <Sparkline
-              points={healthSeries.points}
-              color={HEALTH_COLOR[health.band].color}
-            />
-            <span
-              className="flex items-center gap-1 text-[12px] font-semibold tnum"
-              style={{
-                color:
-                  healthSeries.delta > 0
-                    ? "#1A7A35"
-                    : healthSeries.delta < 0
-                    ? "#B02020"
-                    : "#8A8A8E",
-              }}
-            >
-              {healthSeries.delta > 0 ? (
-                <TrendingUp size={13} strokeWidth={2} />
-              ) : healthSeries.delta < 0 ? (
-                <TrendingDown size={13} strokeWidth={2} />
-              ) : (
-                <Minus size={13} strokeWidth={2} />
-              )}
-              {healthSeries.delta > 0 ? "+" : ""}
-              {healthSeries.delta} pts · 4 wk
-            </span>
-          </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-            Why
-          </p>
-          <ul className="space-y-1">
-            {health.factors.map((f, i) => (
-              <li key={i} className="flex items-center justify-between text-[12px]">
-                <span className="text-text-secondary">{f.label}</span>
-                <span
-                  className="font-semibold tnum"
-                  style={{ color: f.delta > 0 ? "#1A7A35" : "#B02020" }}
-                >
-                  {f.delta > 0 ? "+" : ""}
-                  {f.delta}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-        <Card>
-          <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-            At a glance
-          </h3>
-          <dl className="space-y-2 text-[13px]">
-            <div className="flex justify-between">
-              <dt className="text-text-secondary">Contacts</dt>
-              <dd className="text-text-primary font-medium tnum">{contacts.length}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-text-secondary">Sessions</dt>
-              <dd className="text-text-primary font-medium tnum">{sessions.length}</dd>
-            </div>
-            <div className="flex justify-between items-center">
-              <dt className="text-text-secondary">Latest</dt>
-              <dd>
-                {interactions[0] ? (
-                  <OutcomeBadge outcome={interactions[0].outcome} />
-                ) : (
-                  <span className="text-text-tertiary">—</span>
-                )}
-              </dd>
-            </div>
-          </dl>
-        </Card>
       </aside>
+
+      {/* The Ask Agent drawer — same chat, reachable from every tab */}
+      <AskAgentDrawer
+        open={askOpen}
+        onClose={() => setAskOpen(false)}
+        company={customer.company_name}
+        actions={
+          offeringsCatalog ? (
+            <CustomerAnalyzePanel
+              variant="action"
+              customerId={customer.id}
+              customerType={customer.customer_type ?? null}
+              ownership={customer.ownership ?? null}
+              revenue={customer.revenue ?? null}
+              analyzed={!!customer.analyzed_at}
+              typeOptions={offeringsCatalog.typeOptions}
+              applicableOfferings={applicableSlim}
+            />
+          ) : undefined
+        }
+      >
+        <AccountAgentChat
+          context={agentContext}
+          customerId={customer.id}
+          initialInput={askPrefill}
+          embedded
+        />
+      </AskAgentDrawer>
 
       {/* New deal modal (#58) */}
       <Modal open={showDeal} onClose={() => setShowDeal(false)} title="New deal">

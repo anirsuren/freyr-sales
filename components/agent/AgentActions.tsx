@@ -116,22 +116,49 @@ export function AgentActions({
         const draftable = DRAFTABLE.includes(a.kind);
         return (
           <Card key={a.id} className={compact ? "p-3" : "p-4"}>
-            <div className="flex items-center gap-3">
-              <span
-                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: m.bg, color: m.color }}
-              >
-                <Icon size={17} strokeWidth={1.8} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-semibold text-text-primary truncate">
-                  {a.title}
-                </p>
-                <p className="text-[12px] text-text-secondary truncate">
-                  {a.rationale}
-                </p>
+            {/* Compact (280px rail): stack text above the buttons and let them
+                wrap — nothing overflows the card (Anir: "this button is
+                literally going out of the screen"). Full width: one row. */}
+            <div className={compact ? "space-y-2.5" : "flex items-center gap-3"}>
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span
+                  className={
+                    compact
+                      ? "w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      : "w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                  }
+                  style={{ background: m.bg, color: m.color }}
+                >
+                  <Icon size={compact ? 15 : 17} strokeWidth={1.8} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={
+                      compact
+                        ? "text-[13px] font-semibold text-text-primary leading-snug"
+                        : "text-[14px] font-semibold text-text-primary truncate"
+                    }
+                  >
+                    {a.title}
+                  </p>
+                  <p
+                    className={
+                      compact
+                        ? "text-[11.5px] text-text-secondary leading-snug line-clamp-2 mt-0.5"
+                        : "text-[12px] text-text-secondary truncate"
+                    }
+                  >
+                    {a.rationale}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center justify-end gap-2 shrink-0">
+              <div
+                className={
+                  compact
+                    ? "flex items-center gap-1.5 flex-wrap"
+                    : "flex items-center justify-end gap-2 shrink-0"
+                }
+              >
               {draftable &&
                 (isDone ? (
                   <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-success">

@@ -12,6 +12,10 @@ import agentIds from "./voiceAgents.json";
 
 export type VoiceCallStatus = "called" | "waiting_for_number" | "no_agent";
 
+// How a finished call ended — filled by ElevenLabs conversation results once
+// the number is live; seeded with sample values so the analytics render now.
+export type VoiceOutcome = "interested" | "follow_up" | "no_answer" | "declined";
+
 export interface VoiceCall {
   id: string;
   contact_id: string;
@@ -23,6 +27,8 @@ export interface VoiceCall {
   agent_id: string | null;
   status: VoiceCallStatus;
   reason?: string;
+  outcome?: VoiceOutcome | null;
+  duration_secs?: number | null;
   created_at: string;
 }
 
@@ -30,9 +36,52 @@ interface VoiceStore {
   queue: VoiceCall[];
 }
 
+// Sample completed calls (Anir, Jul 3: "for the voice agent stuff I want to
+// see all of the statistics — conversations, scores, graphs") — the same
+// seeded contacts as the rest of the app, so campaign cross-links resolve.
+// Runtime calls queue on top with honest statuses; these give the analytics
+// their shape until the phone number connects.
+function seedCalls(): VoiceCall[] {
+  const d = (days: number) =>
+    new Date(Date.now() - days * 86_400_000).toISOString();
+  const call = (
+    id: string,
+    contact: [string, string, string], // id, name, company
+    category: string,
+    offering: string,
+    status: VoiceCallStatus,
+    outcome: VoiceOutcome | null,
+    duration: number | null,
+    days: number
+  ): VoiceCall => ({
+    id,
+    contact_id: contact[0],
+    contact_name: contact[1],
+    company: contact[2],
+    offering_id: null,
+    offering_name: offering,
+    category,
+    agent_id: agentForCategory(category),
+    status,
+    outcome,
+    duration_secs: duration,
+    created_at: d(days),
+  });
+  return [
+    call("vc-seed-01", ["cont-004", "Dr. Lena Vogt", "Helix Biologics"], "Labeling and Artwork", "Labeling and Artwork", "called", "interested", 284, 1),
+    call("vc-seed-02", ["cont-005", "Prithvi Nair", "Solvance Pharma"], "Submissions and Document Operations", "Submissions and Document Operations", "called", "follow_up", 196, 1.2),
+    call("vc-seed-03", ["cont-012", "Dr. Hana Kim", "Orion Vaccines"], "Global Regulatory Intelligence", "Global Regulatory Intelligence", "called", "interested", 233, 2),
+    call("vc-seed-04", ["cont-003", "Marcus Thorne", "Cortexa Biopharma"], "Regulatory Affairs", "Regulatory Affairs", "called", "follow_up", 172, 2.5),
+    call("vc-seed-05", ["cont-010", "Claudia Hofmann", "Meridian Pharmaceuticals"], "Regulatory Information Management", "Regulatory Information Management", "called", "declined", 58, 3),
+    call("vc-seed-06", ["cont-007", "Stefan Bauer", "Aether Medical Devices"], "Global Regulatory Intelligence", "Global Regulatory Intelligence", "called", "no_answer", 0, 3.4),
+    call("vc-seed-07", ["cont-011", "Owen Bradley", "Northwind Biosciences"], "Regulatory Affairs", "Regulatory Affairs", "waiting_for_number", null, null, 0.3),
+    call("vc-seed-08", ["cont-008", "Megan Ruiz", "Solara Consumer Health"], "Labeling and Artwork", "Labeling and Artwork", "waiting_for_number", null, null, 0.5),
+  ];
+}
+
 function store(): VoiceStore {
   const g = globalThis as typeof globalThis & { __freyrVoice?: VoiceStore };
-  if (!g.__freyrVoice) g.__freyrVoice = { queue: [] };
+  if (!g.__freyrVoice) g.__freyrVoice = { queue: seedCalls() };
   return g.__freyrVoice;
 }
 

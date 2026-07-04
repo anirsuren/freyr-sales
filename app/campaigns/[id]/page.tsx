@@ -134,12 +134,18 @@ export default async function CampaignDetailPage({
           <span
             className={cn(
               "text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
-              campaign.status === "queued"
+              campaign.status === "sent"
+                ? "text-success bg-success/10"
+                : campaign.status === "queued"
                 ? "text-warning bg-warning/10"
                 : "text-text-secondary bg-surface border border-border-light"
             )}
           >
-            {campaign.status === "queued" ? "Queued" : "Draft"}
+            {campaign.status === "sent"
+              ? "Sent"
+              : campaign.status === "queued"
+              ? "Queued"
+              : "Draft"}
           </span>
         </div>
         <p className="flex flex-wrap items-center gap-3 text-[13px] text-text-secondary mt-1.5">
@@ -186,8 +192,10 @@ export default async function CampaignDetailPage({
             Delivery
           </h2>
           <p className="text-[12px] text-text-tertiary mb-3">
-            {campaign.status === "queued"
-              ? "Everything is queued — it sends the moment the email channel connects."
+            {campaign.status === "sent"
+              ? "Delivered — every recipient got the blast."
+              : campaign.status === "queued"
+              ? "Queued — the rest sends as the email channel works through it."
               : "Still a draft — queue the blast to line it up."}
           </p>
           <div className="flex items-center gap-6">
@@ -332,12 +340,18 @@ export default async function CampaignDetailPage({
                     <span
                       className={cn(
                         "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
-                        campaign.status === "queued"
+                        campaign.status === "sent"
+                          ? "text-success bg-success/10"
+                          : campaign.status === "queued"
                           ? "text-warning bg-warning/10"
                           : "text-text-secondary bg-surface border border-border-light"
                       )}
                     >
-                      {campaign.status === "queued" ? "Queued" : "Draft"}
+                      {campaign.status === "sent"
+                        ? "Sent"
+                        : campaign.status === "queued"
+                        ? "Queued"
+                        : "Draft"}
                     </span>
                   </div>
                 </li>
@@ -390,17 +404,67 @@ export default async function CampaignDetailPage({
         )}
       </Card>
 
-      {/* Honest engagement frame */}
+      {/* Engagement funnel — sent → opened → replied, with rates */}
       <Card>
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
           <BarChart3 size={16} strokeWidth={1.8} className="text-blue-primary" />
           Engagement
         </h2>
-        <p className="text-[13px] text-text-secondary leading-relaxed">
-          Opens, replies and click-throughs chart here automatically once the
-          email channel (Resend / SMTP) is connected and the blast goes out —
-          real numbers only, nothing simulated.
-        </p>
+        {sent === 0 && campaign.opens === 0 ? (
+          <p className="text-[13px] text-text-secondary leading-relaxed">
+            Opens, replies and click-throughs chart here automatically once the
+            blast starts sending — this fills in as recipients engage.
+          </p>
+        ) : (
+          <>
+            <p className="text-[12px] text-text-tertiary mb-4">
+              How the blast is landing, step by step.
+            </p>
+            <div className="space-y-3 max-w-[560px]">
+              {[
+                { label: "Sent", n: sent, color: "#0071E3", of: total },
+                { label: "Opened", n: campaign.opens, color: "#34C759", of: sent },
+                { label: "Replied", n: campaign.replies, color: "#5E5CE6", of: sent },
+              ].map((row) => (
+                <div key={row.label}>
+                  <div className="flex justify-between text-[12.5px] mb-1">
+                    <span className="text-text-secondary">{row.label}</span>
+                    <span className="text-text-primary font-medium tnum">
+                      {row.n}
+                      {row.of > 0 && (
+                        <span className="text-text-tertiary font-normal">
+                          {" "}
+                          · {Math.round((row.n / Math.max(row.of, 1)) * 100)}%
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-surface overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${total ? (row.n / total) * 100 : 0}%`,
+                        background: row.color,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[12px] text-text-tertiary mt-4">
+              <span className="font-semibold text-text-primary tnum">
+                {sent ? Math.round((campaign.opens / sent) * 100) : 0}%
+              </span>{" "}
+              open rate ·{" "}
+              <span className="font-semibold text-text-primary tnum">
+                {sent ? Math.round((campaign.replies / sent) * 100) : 0}%
+              </span>{" "}
+              reply rate
+              {campaign.replies > 0 &&
+                " — replies land in the owner's inbox, ready for a personal follow-up."}
+            </p>
+          </>
+        )}
       </Card>
     </div>
   );

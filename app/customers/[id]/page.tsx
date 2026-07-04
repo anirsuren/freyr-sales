@@ -7,7 +7,6 @@ import { HealthBadge } from "@/components/ui/HealthBadge";
 import { Avatar } from "@/components/ui/Avatar";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { CustomerTabs } from "@/components/customers/CustomerTabs";
-import { CustomerAnalyzePanel } from "@/components/customers/CustomerAnalyzePanel";
 import { RecordView } from "@/components/RecordView";
 import {
   listCustomerTypes,
@@ -100,11 +99,6 @@ export default async function CustomerDetailPage({
   const inUseRich = allOfferings
     .filter((o) => inUseIds.has(o.id))
     .map(toTabOffering);
-  const applicableOfferings = applicableRich.map((o) => ({
-    id: o.id,
-    name: o.name,
-    type: o.category || o.type,
-  }));
 
   return (
     <div>
@@ -161,16 +155,6 @@ export default async function CustomerDetailPage({
           <ReEnrichButton customerId={customer.id} />
         </div>
       </div>
-
-      <CustomerAnalyzePanel
-        customerId={customer.id}
-        customerType={customer.customer_type ?? null}
-        ownership={customer.ownership ?? null}
-        revenue={customer.revenue ?? null}
-        analyzed={!!customer.analyzed_at}
-        typeOptions={customerTypes.map((t) => t.name)}
-        applicableOfferings={applicableOfferings}
-      />
 
       <CustomerTabs
         customer={customer}

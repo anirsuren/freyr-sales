@@ -273,8 +273,8 @@ export function CustomerOfferingsTab({
         </div>
         <p className="flex items-center gap-1.5 text-[12px] text-text-tertiary mt-3">
           <Sparkles size={13} strokeWidth={1.8} className="text-blue-primary" />
-          Not sure? Use &ldquo;Analyze the customer&rdquo; above to research it
-          from the web.
+          Not sure? &ldquo;Analyze the customer&rdquo; on the Overview tab
+          researches it from the web.
         </p>
       </Card>
     );

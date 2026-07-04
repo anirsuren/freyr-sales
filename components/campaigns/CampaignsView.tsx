@@ -12,6 +12,8 @@ import {
   Package,
   ChevronRight,
   X,
+  MailOpen,
+  Reply,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -333,12 +335,18 @@ export function CampaignsView({
                       <span
                         className={cn(
                           "text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
-                          c.status === "queued"
+                          c.status === "sent"
+                            ? "text-success bg-success/10"
+                            : c.status === "queued"
                             ? "text-warning bg-warning/10"
                             : "text-text-secondary bg-surface border border-border-light"
                         )}
                       >
-                        {c.status === "queued" ? "Queued" : "Draft"}
+                        {c.status === "sent"
+                          ? "Sent"
+                          : c.status === "queued"
+                          ? "Queued"
+                          : "Draft"}
                       </span>
                       <span
                         className={cn(
@@ -380,15 +388,15 @@ export function CampaignsView({
                   </Link>
                 </div>
 
-                {/* progress at a glance — honest: 0 sent until the channel is live */}
+                {/* progress at a glance — plus engagement once the blast lands */}
                 <div className="mt-3">
                   <div className="flex items-center justify-between text-[11.5px] mb-1">
                     <span className="text-text-tertiary">
-                      {c.status === "queued"
+                      {c.status === "sent"
+                        ? `${c.sent_count} of ${total} sent`
+                        : c.status === "queued"
                         ? `${c.sent_count} of ${total} sent${
-                            c.sent_count < total
-                              ? " — sends when the email channel connects"
-                              : ""
+                            c.sent_count < total ? " — the rest is queued" : ""
                           }`
                         : "Draft — not queued yet"}
                     </span>
@@ -398,11 +406,34 @@ export function CampaignsView({
                     <div
                       className={cn(
                         "h-full rounded-full",
-                        c.status === "queued" ? "bg-warning" : "bg-border"
+                        c.status === "sent"
+                          ? "bg-success"
+                          : c.status === "queued"
+                          ? "bg-warning"
+                          : "bg-border"
                       )}
                       style={{ width: `${Math.max(pct, c.status === "queued" ? 4 : 0)}%` }}
                     />
                   </div>
+                  {(c.opens > 0 || c.replies > 0) && (
+                    <p className="flex items-center gap-3 text-[11.5px] text-text-tertiary mt-1.5">
+                      <span className="inline-flex items-center gap-1">
+                        <MailOpen size={12} strokeWidth={1.8} className="text-success" />
+                        <span className="font-medium text-text-secondary tnum">{c.opens}</span>
+                        opened
+                        {c.sent_count > 0 && (
+                          <span className="tnum">
+                            ({Math.round((c.opens / c.sent_count) * 100)}%)
+                          </span>
+                        )}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Reply size={12} strokeWidth={1.8} className="text-blue-primary" />
+                        <span className="font-medium text-text-secondary tnum">{c.replies}</span>
+                        replied
+                      </span>
+                    </p>
+                  )}
                 </div>
 
               </Card>
