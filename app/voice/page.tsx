@@ -105,6 +105,8 @@ export default async function VoicePage() {
       )
     : 0;
   const interestedN = finished.filter((q) => q.outcome === "interested").length;
+  // Who asked for a callback — the analytics card that's also a to-do list.
+  const callbacks = finished.filter((q) => q.outcome === "follow_up");
   // Donut geometry — same pattern as the campaign delivery ring.
   const R = 52;
   const CIRC = 2 * Math.PI * R;
@@ -623,43 +625,78 @@ export default async function VoicePage() {
 
               <Card className="flex flex-col">
                 <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                  Calls by team member
+                  Callbacks to make
                 </h3>
                 <p className="text-[12px] text-text-tertiary mb-3">
-                  Each agent in their color.
+                  They asked to be called back — don&apos;t leave them waiting.
                 </p>
-                <div className="flex-1 flex items-end">
-                  <BarChart
-                    data={VOICE_PERSONAS.map((p) => ({
-                      label: p.name,
-                      value: queue.filter((q) => q.category === p.category).length,
-                      color: p.color,
-                    }))}
-                    height={132}
-                  />
-                </div>
+                {callbacks.length === 0 ? (
+                  <p className="flex-1 flex items-center text-[13px] text-text-secondary">
+                    None owed — every follow-up is handled.
+                  </p>
+                ) : (
+                  <ul className="flex-1 divide-y divide-border-light">
+                    {callbacks.slice(0, 4).map((q) => (
+                      <li key={q.id} className="flex items-center justify-between gap-2 py-2">
+                        <span className="min-w-0">
+                          <Link
+                            href={`/contacts/${q.contact_id}`}
+                            className="block text-[13px] font-semibold text-text-primary hover:text-blue-primary truncate"
+                          >
+                            {q.contact_name}
+                          </Link>
+                          <span className="block text-[11.5px] text-text-tertiary truncate">
+                            {q.company || q.category}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2 py-0.5">
+                          Call back
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Card>
             </div>
 
-            <Card>
-              <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                Calls per day
-              </h3>
-              <p className="text-[12px] text-text-tertiary mb-3">
-                Calling activity over the last two weeks.
-              </p>
-              <LineChart
-                series={[{ label: "Calls", color: VIZ.blue, points: callsPerDay }]}
-                xLabels={dayLabels}
-                height={150}
-              />
-              {!status.phoneConnected && (
-                <p className="text-[11.5px] text-text-tertiary mt-3">
-                  Sample calls shown so you can see the shape — live ElevenLabs
-                  stats take over the moment the numbers connect.
+            {/* Row 2 — two even halves (Anir: side by side, symmetrical) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
+                  Calls by team member
+                </h3>
+                <p className="text-[12px] text-text-tertiary mb-4">
+                  Each agent in their color.
                 </p>
-              )}
-            </Card>
+                <BarChart
+                  data={VOICE_PERSONAS.map((p) => ({
+                    label: p.name,
+                    value: queue.filter((q) => q.category === p.category).length,
+                    color: p.color,
+                  }))}
+                  height={168}
+                />
+              </Card>
+              <Card>
+                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
+                  Calls per day
+                </h3>
+                <p className="text-[12px] text-text-tertiary mb-4">
+                  Calling activity over the last two weeks.
+                </p>
+                <LineChart
+                  series={[{ label: "Calls", color: VIZ.blue, points: callsPerDay }]}
+                  xLabels={dayLabels}
+                  height={150}
+                />
+              </Card>
+            </div>
+            {!status.phoneConnected && (
+              <p className="text-[11.5px] text-text-tertiary">
+                Sample calls shown so you can see the shape — live ElevenLabs
+                stats take over the moment the numbers connect.
+              </p>
+            )}
           </div>
         )}
       </section>
