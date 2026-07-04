@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
+import { BarChart } from "@/components/charts/Charts";
 import { cn } from "@/lib/utils";
 import { formatMoney, CURRENT_REP } from "@/lib/pipeline";
 
@@ -32,10 +33,6 @@ export function RepAnalytics({
   const router = useRouter();
   const [selected, setSelected] = useState(reps[0]?.name || "");
   const active = reps.find((r) => r.name === selected) || reps[0];
-  const maxValue = Math.max(1, ...reps.map((r) => r.openValue));
-  const maxStage = active
-    ? Math.max(1, ...active.stages.map((s) => s.count))
-    : 1;
 
   return (
     <Card>
@@ -99,12 +96,6 @@ export function RepAnalytics({
                     {formatMoney(rep.openValue)} · {rep.deals} deals · {rep.winRate}% win
                   </span>
                 </div>
-                <div className="h-2 rounded-full bg-surface overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-blue-primary"
-                    style={{ width: `${(rep.openValue / maxValue) * 100}%` }}
-                  />
-                </div>
               </div>
             </button>
           ))}
@@ -144,24 +135,13 @@ export function RepAnalytics({
             <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
               Deals by stage
             </p>
-            <div className="space-y-2">
-              {active.stages.map((s) => (
-                <div key={s.stage} className="flex items-center gap-2">
-                  <span className="text-[12px] text-text-secondary w-[96px] truncate shrink-0">
-                    {s.stage}
-                  </span>
-                  <div className="flex-1 h-2.5 rounded-full bg-surface overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-blue-primary"
-                      style={{ width: `${(s.count / maxStage) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-[12px] font-semibold text-text-primary tnum w-5 text-right">
-                    {s.count}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <BarChart
+              data={active.stages.map((st) => ({
+                label: st.stage,
+                value: st.count,
+              }))}
+              height={120}
+            />
           </div>
         )}
       </div>

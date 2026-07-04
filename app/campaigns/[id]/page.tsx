@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EngagementChart } from "@/components/campaigns/EngagementChart";
+import { DonutChart, BarChart, Legend, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { getCampaign } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { listVoiceQueue } from "@/lib/voice";
@@ -96,7 +97,6 @@ export default async function CampaignDetailPage({
   const companyBars = Array.from(byCompany.entries()).sort(
     (a, b) => b[1] - a[1]
   );
-  const maxCompany = Math.max(1, ...companyBars.map(([, n]) => n));
 
   const checks = [
     { label: "Subject", ok: !!campaign.subject.trim() },
@@ -292,21 +292,25 @@ export default async function CampaignDetailPage({
           {companyBars.length === 0 ? (
             <p className="text-[13px] text-text-tertiary">No recipients yet.</p>
           ) : (
-            <div className="space-y-2.5">
-              {companyBars.map(([company, n]) => (
-                <div key={company}>
-                  <div className="flex justify-between text-[12.5px] mb-1">
-                    <span className="text-text-secondary truncate">{company}</span>
-                    <span className="text-text-primary font-medium tnum">{n}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-surface overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-blue-primary"
-                      style={{ width: `${(n / maxCompany) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center gap-6">
+              <DonutChart
+                segments={companyBars.map(([company, n], i) => ({
+                  label: company,
+                  value: n,
+                  color: VIZ_SERIES[i % VIZ_SERIES.length],
+                }))}
+                size={130}
+                thickness={14}
+                centerLabel={String(total)}
+                centerSub="people"
+              />
+              <Legend
+                items={companyBars.map(([company, n], i) => ({
+                  label: company,
+                  color: VIZ_SERIES[i % VIZ_SERIES.length],
+                  value: String(n),
+                }))}
+              />
             </div>
           )}
         </Card>
@@ -455,36 +459,15 @@ export default async function CampaignDetailPage({
             <p className="text-[12px] text-text-tertiary mb-4">
               How the blast is landing, step by step.
             </p>
-            <div className="space-y-3 max-w-[560px]">
-              {[
-                { label: "Sent", n: sent, color: "#0071E3", of: total },
-                { label: "Opened", n: campaign.opens, color: "#34C759", of: sent },
-                { label: "Replied", n: campaign.replies, color: "#5E5CE6", of: sent },
-              ].map((row) => (
-                <div key={row.label}>
-                  <div className="flex justify-between text-[12.5px] mb-1">
-                    <span className="text-text-secondary">{row.label}</span>
-                    <span className="text-text-primary font-medium tnum">
-                      {row.n}
-                      {row.of > 0 && (
-                        <span className="text-text-tertiary font-normal">
-                          {" "}
-                          · {Math.round((row.n / Math.max(row.of, 1)) * 100)}%
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-surface overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${total ? (row.n / total) * 100 : 0}%`,
-                        background: row.color,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div className="max-w-[420px]">
+              <BarChart
+                data={[
+                  { label: "Sent", value: sent, color: VIZ.blue },
+                  { label: "Opened", value: campaign.opens, color: VIZ.green },
+                  { label: "Replied", value: campaign.replies, color: VIZ.indigo },
+                ]}
+                height={150}
+              />
             </div>
             <p className="text-[12px] text-text-tertiary mt-4">
               <span className="font-semibold text-text-primary tnum">

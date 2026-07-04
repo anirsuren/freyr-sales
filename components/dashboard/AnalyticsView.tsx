@@ -1,5 +1,6 @@
 import { Wallet, Briefcase, Target } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { BarChart, DonutChart, Legend, VIZ_SERIES } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
 import { formatMoney } from "@/lib/pipeline";
@@ -65,8 +66,6 @@ export function AnalyticsView({
   totalDeals: number;
   openValue: number;
 }) {
-  const maxStageVal = Math.max(1, ...stages.map((s) => s.value));
-  const maxOutcome = Math.max(1, ...outcomes.map((o) => o.count));
 
   // Real supporting context for the stat cards (derived, not invented): how many
   // deals are still open vs. closed, so the two headline figures read as full,
@@ -145,25 +144,15 @@ export function AnalyticsView({
             Pipeline by Stage
             <InfoHint text="Where your open dollars sit across the steps of your process — which stages are heavy and which are thin." />
           </h2>
-          <div className="space-y-3">
-            {stages.map((s) => (
-              <div key={s.stage}>
-                <div className="flex justify-between text-[13px] mb-1">
-                  <span className="text-text-secondary">{s.stage}</span>
-                  <span className="text-text-primary font-medium tnum">
-                    {formatMoney(s.value)}{" "}
-                    <span className="text-text-tertiary">({s.count})</span>
-                  </span>
-                </div>
-                <div className="h-2.5 rounded-full bg-surface overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-blue-primary"
-                    style={{ width: `${(s.value / maxStageVal) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <BarChart
+            data={stages.map((s, i) => ({
+              label: s.stage,
+              value: s.value,
+              color: VIZ_SERIES[i % VIZ_SERIES.length],
+            }))}
+            height={170}
+            format={(v) => formatMoney(v)}
+          />
         </Card>
 
         {/* Outcome mix */}
@@ -172,26 +161,25 @@ export function AnalyticsView({
             Outcome Mix
             <InfoHint text="What your logged touches led to — meetings booked, interest, no answer, and so on." />
           </h2>
-          <div className="space-y-3">
-            {outcomes.map((o) => (
-              <div key={o.label}>
-                <div className="flex justify-between text-[13px] mb-1">
-                  <span className="text-text-secondary">{o.label}</span>
-                  <span className="text-text-primary font-medium tnum">
-                    {o.count}
-                  </span>
-                </div>
-                <div className="h-2.5 rounded-full bg-surface overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${(o.count / maxOutcome) * 100}%`,
-                      backgroundColor: o.color,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center gap-6">
+            <DonutChart
+              segments={outcomes.map((o) => ({
+                label: o.label,
+                value: o.count,
+                color: o.color,
+              }))}
+              size={140}
+              thickness={15}
+              centerLabel={String(outcomes.reduce((t, o) => t + o.count, 0))}
+              centerSub="touches"
+            />
+            <Legend
+              items={outcomes.map((o) => ({
+                label: o.label,
+                color: o.color,
+                value: String(o.count),
+              }))}
+            />
           </div>
         </Card>
       </div>

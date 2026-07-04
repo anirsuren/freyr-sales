@@ -207,9 +207,11 @@ export function DonutChart({
 export function BarChart({
   data,
   height = 160,
+  format,
 }: {
   data: { label: string; value: number; color?: string }[];
   height?: number;
+  format?: (v: number) => string;
 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
@@ -226,8 +228,8 @@ export function BarChart({
           key={i}
           className="flex-1 flex flex-col items-center justify-end gap-2 h-full"
         >
-          <span className="text-[11px] font-semibold text-text-secondary tnum">
-            {d.value}
+          <span className="text-[11px] font-semibold text-text-secondary tnum whitespace-nowrap">
+            {format ? format(d.value) : d.value}
           </span>
           <div
             className="w-full rounded-t-md transition-all"

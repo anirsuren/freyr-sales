@@ -1,10 +1,9 @@
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { BarChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { ForecastExport } from "@/components/forecast/ForecastExport";
 import { Card } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { Term } from "@/components/ui/Tooltip";
 import { CountUp } from "@/components/ui/CountUp";
 import { CircleCheck, TrendingUp, Target, Flag, type LucideIcon } from "lucide-react";
 import {
@@ -71,7 +70,6 @@ export default async function ForecastPage() {
       pct: Math.round((repWeighted / QUOTA) * 100),
     };
   }).sort((a, b) => b.weighted - a.weighted);
-  const maxRep = Math.max(1, ...byRep.map((r) => r.weighted));
 
   const Stat = ({
     label,
@@ -249,38 +247,22 @@ export default async function ForecastPage() {
             </h2>
             <InfoHint text="Each teammate's realistic (weighted) forecast and how much of the team target it covers." />
           </div>
-          <div className="space-y-4">
-            {byRep.map((r) => (
-              <div key={r.name} className="flex items-center gap-3">
-                <Avatar name={r.name} className="w-8 h-8 text-[12px]" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-3 mb-1">
-                    <span className="text-[13px] font-medium text-text-primary truncate flex items-center gap-1.5">
-                      {r.name}
-                      {r.name === CURRENT_REP && (
-                        <span className="text-[10px] font-bold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-blue-light text-blue-primary">
-                          You
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-[12px] text-text-secondary tnum shrink-0">
-                      {formatMoney(r.weighted)}{" "}
-                      <Term k="wtd" side="bottom" align="right" underline={false} className="underline decoration-dotted decoration-text-tertiary/50 underline-offset-2">
-                        wtd
-                      </Term>{" "}
-                      · {r.pct}% of quota
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-surface overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-blue-primary"
-                      style={{ width: `${(r.weighted / maxRep) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <BarChart
+            data={byRep.map((r, i) => ({
+              label:
+                r.name === CURRENT_REP
+                  ? `${r.name.split(" ")[0]} (you)`
+                  : r.name.split(" ")[0],
+              value: r.weighted,
+              color: VIZ_SERIES[i % VIZ_SERIES.length],
+            }))}
+            height={170}
+            format={(v) => formatMoney(v)}
+          />
+          <p className="text-[12px] text-text-tertiary mt-3">
+            Weighted pipeline per teammate — hover the Pipeline page for the
+            deals behind each bar.
+          </p>
         </Card>
       </div>
     </div>

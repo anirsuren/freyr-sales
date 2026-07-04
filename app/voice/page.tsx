@@ -417,43 +417,6 @@ export default async function VoicePage() {
         </section>
       )}
 
-      {/* Queue by category — where the calling effort is pointed (real data) */}
-      {queue.length > 0 && (
-        <Card>
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">
-            Queue by category
-          </h2>
-          <p className="text-[12px] text-text-tertiary mb-3">
-            Where the calling effort is pointed right now.
-          </p>
-          <div className="space-y-2.5">
-            {(() => {
-              const byCat = new Map<string, number>();
-              for (const q of queue)
-                byCat.set(q.category, (byCat.get(q.category) || 0) + 1);
-              const rows = Array.from(byCat.entries()).sort((a, b) => b[1] - a[1]);
-              const max = Math.max(1, ...rows.map(([, n]) => n));
-              return rows.map(([cat, n]) => (
-                <div key={cat}>
-                  <div className="flex justify-between text-[12.5px] mb-1">
-                    <span className="text-text-secondary truncate">{cat}</span>
-                    <span className="text-text-primary font-medium tnum">
-                      {n} call{n === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-surface overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-blue-primary"
-                      style={{ width: `${(n / max) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ));
-            })()}
-          </div>
-        </Card>
-      )}
-
       {/* Call queue */}
       <section>
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
