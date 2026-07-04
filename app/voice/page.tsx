@@ -18,7 +18,8 @@ import { syncConversations } from "@/lib/voiceSync";
 import { listOfferings } from "@/lib/offerings";
 import { VOICE_PERSONAS, personaFor } from "@/lib/voicePersonas";
 import { LineChart, BarChart, VIZ } from "@/components/charts/Charts";
-import { formatDateTime, cn } from "@/lib/utils";
+import { StatTile } from "@/components/ui/StatTile";
+import { formatDateTime, formatPhone, cn } from "@/lib/utils";
 
 export const metadata = { title: "Voice agents" };
 export const dynamic = "force-dynamic";
@@ -137,30 +138,33 @@ export default async function VoicePage() {
     return `${d.getMonth() + 1}/${d.getDate()}`;
   });
 
+  const lineCount = Object.keys(status.numbers).length;
   const tiles = [
     {
-      label: "Voice agents ready",
+      label: "The calling team",
       value: String(categories.length),
+      sub: "agents ready",
       icon: Bot,
       warn: false,
     },
     {
-      label: "Phone number",
-      value: status.phoneConnected
-        ? status.phoneNumber || "Connected"
-        : "Not connected",
+      label: "Phone lines",
+      value: status.phoneConnected ? String(lineCount || 1) : "Not connected",
+      sub: status.phoneConnected ? "live — one per agent" : undefined,
       icon: status.phoneConnected ? PhoneCall : PhoneOff,
       warn: !status.phoneConnected,
     },
     {
       label: "Calls queued",
       value: String(waiting),
+      sub: "waiting to dial",
       icon: ListChecks,
       warn: false,
     },
     {
       label: "Calls placed",
-      value: String(placed),
+      value: String(placed + realConvos.length),
+      sub: realConvos.length ? "incl. live calls" : "sample calls",
       icon: PhoneCall,
       warn: false,
     },
@@ -175,35 +179,16 @@ export default async function VoicePage() {
 
       {/* At-a-glance numbers */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {tiles.map((t) => {
-          const Icon = t.icon;
-          return (
-            <Card key={t.label} className="h-[124px] flex flex-col">
-              <span
-                className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mb-3",
-                  t.warn
-                    ? "bg-warning/10 text-warning"
-                    : "bg-blue-light text-blue-primary"
-                )}
-              >
-                <Icon size={16} strokeWidth={1.9} />
-              </span>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                {t.label}
-              </span>
-              <span
-                className={cn(
-                  "mt-auto font-bold leading-none tnum",
-                  t.value.length > 4 ? "text-[19px]" : "text-[24px]",
-                  t.warn ? "text-warning" : "text-text-primary"
-                )}
-              >
-                {t.value}
-              </span>
-            </Card>
-          );
-        })}
+        {tiles.map((t) => (
+          <StatTile
+            key={t.label}
+            icon={t.icon}
+            label={t.label}
+            value={t.value}
+            sub={t.sub}
+            warn={t.warn}
+          />
+        ))}
       </section>
 
       {!status.phoneConnected && (
@@ -261,7 +246,7 @@ export default async function VoicePage() {
                     <span className="text-text-tertiary">
                       {line ? (
                         <span className="tnum font-medium text-text-secondary">
-                          {line.number}
+                          {formatPhone(line.number)}
                         </span>
                       ) : (
                         `Knows ${cat?.count || 0} offering${(cat?.count || 0) === 1 ? "" : "s"}`
@@ -278,14 +263,27 @@ export default async function VoicePage() {
         </div>
       </section>
 
-      {/* LIVE conversations — straight from ElevenLabs, transcripts included */}
-      {realConvos.length > 0 && (
+      {/* LIVE conversations — straight from ElevenLabs, transcripts included.
+          Always here when the stack is live, so past calls are never hidden. */}
+      {live && (
         <section>
           <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
             <PhoneCall size={15} strokeWidth={1.9} className="text-success" />
             Live conversations
             <span className="text-text-primary tnum">({realConvos.length})</span>
           </h2>
+          {realConvos.length === 0 && (
+            <Card>
+              <p className="text-[13px] text-text-secondary leading-relaxed">
+                No live calls yet — every conversation lands here the moment it
+                happens, with its transcript one click away. Call any team
+                member&apos;s line (or run the voice agent on contacts with
+                phone numbers) and watch it appear.
+              </p>
+            </Card>
+          )}
+          {realConvos.length > 0 && (
+          <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {[
               { label: "Real calls", value: String(realConvos.length) },
@@ -414,6 +412,8 @@ export default async function VoicePage() {
               </table>
             </div>
           </Card>
+          </>
+          )}
         </section>
       )}
 
@@ -576,74 +576,112 @@ export default async function VoicePage() {
             </p>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            <Card>
-              <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                How calls ended
-              </h3>
-              <p className="text-[12px] text-text-tertiary mb-3">
-                Every finished call, by outcome.
-              </p>
-              <div className="flex items-center gap-6">
-                <svg width="130" height="130" viewBox="0 0 130 130" className="shrink-0">
-                  <circle cx="65" cy="65" r={R} fill="none" stroke="#E5E5EA" strokeWidth="12" />
-                  {donutSegs.map((s) => (
-                    <circle
-                      key={s.outcome}
-                      cx="65" cy="65" r={R} fill="none"
-                      stroke={OUTCOME_META[s.outcome].color}
-                      strokeWidth="12"
-                      strokeLinecap="round"
-                      strokeDasharray={`${CIRC * s.frac} ${CIRC}`}
-                      transform={`rotate(${-90 + s.start * 360} 65 65)`}
-                    />
-                  ))}
-                  <text x="65" y="59" textAnchor="middle" className="tnum" fontSize="24" fontWeight="700" fill="#1D1D1F">
-                    {finished.length}
-                  </text>
-                  <text x="65" y="77" textAnchor="middle" fontSize="10" fill="#8A8A8E">
-                    calls
-                  </text>
-                </svg>
-                <div className="space-y-2 text-[13px]">
-                  {outcomeCounts.map(({ outcome, n: cnt }) => (
-                    <p key={outcome} className="flex items-center gap-2">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ background: OUTCOME_META[outcome].color }}
-                      />
-                      <span className="text-text-secondary">
-                        {OUTCOME_META[outcome].label}
-                      </span>
-                      <span className="font-semibold text-text-primary tnum">{cnt}</span>
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div className="flex items-center justify-between gap-3 mb-1">
-                <h3 className="text-[15px] font-semibold text-text-primary">
-                  Calls per day
+          <div className="space-y-4">
+            {/* One even row — three cards, same height (Anir: symmetry). */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card className="flex flex-col">
+                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
+                  How calls ended
                 </h3>
-                <div className="flex items-center gap-4 text-[12px]">
+                <p className="text-[12px] text-text-tertiary mb-3">
+                  Every finished call, by outcome.
+                </p>
+                <div className="flex-1 flex items-center gap-5">
+                  <svg width="120" height="120" viewBox="0 0 130 130" className="shrink-0">
+                    <circle cx="65" cy="65" r={R} fill="none" stroke="#E5E5EA" strokeWidth="12" />
+                    {donutSegs.map((sg) => (
+                      <circle
+                        key={sg.outcome}
+                        cx="65" cy="65" r={R} fill="none"
+                        stroke={OUTCOME_META[sg.outcome].color}
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray={`${CIRC * sg.frac} ${CIRC}`}
+                        transform={`rotate(${-90 + sg.start * 360} 65 65)`}
+                      />
+                    ))}
+                    <text x="65" y="59" textAnchor="middle" className="tnum" fontSize="24" fontWeight="700" fill="#1D1D1F">
+                      {finished.length}
+                    </text>
+                    <text x="65" y="77" textAnchor="middle" fontSize="10" fill="#8A8A8E">
+                      calls
+                    </text>
+                  </svg>
+                  <div className="space-y-2 text-[13px]">
+                    {outcomeCounts.map(({ outcome, n: cnt }) => (
+                      <p key={outcome} className="flex items-center gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ background: OUTCOME_META[outcome].color }}
+                        />
+                        <span className="text-text-secondary">
+                          {OUTCOME_META[outcome].label}
+                        </span>
+                        <span className="font-semibold text-text-primary tnum">{cnt}</span>
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="flex flex-col">
+                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
+                  Call quality
+                </h3>
+                <p className="text-[12px] text-text-tertiary mb-3">
+                  How the conversations are going.
+                </p>
+                <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-4 content-center">
                   {[
-                    { icon: PhoneCall, label: `${connectRate}% connect`, },
-                    { icon: Timer, label: `${fmtLen(avgLen)} avg` },
-                    { icon: ThumbsUp, label: `${interestedN} interested` },
-                    { icon: Clock, label: `${finished.filter((q) => q.outcome === "follow_up").length} follow-ups` },
-                  ].map((s, i) => {
-                    const Icon = s.icon;
+                    { icon: PhoneCall, label: "Connect rate", value: `${connectRate}%` },
+                    { icon: Timer, label: "Avg length", value: fmtLen(avgLen) },
+                    { icon: ThumbsUp, label: "Interested", value: String(interestedN) },
+                    { icon: Clock, label: "Follow-ups", value: String(finished.filter((q) => q.outcome === "follow_up").length) },
+                  ].map((st) => {
+                    const StIcon = st.icon;
                     return (
-                      <span key={i} className="inline-flex items-center gap-1 text-text-secondary whitespace-nowrap">
-                        <Icon size={13} strokeWidth={1.9} className="text-blue-primary" />
-                        <span className="font-medium tnum">{s.label}</span>
-                      </span>
+                      <div key={st.label} className="flex items-center gap-2.5">
+                        <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                          <StIcon size={15} strokeWidth={1.9} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                            {st.label}
+                          </span>
+                          <span className="block text-[17px] font-bold leading-tight tnum text-text-primary">
+                            {st.value}
+                          </span>
+                        </span>
+                      </div>
                     );
                   })}
                 </div>
-              </div>
+              </Card>
+
+              <Card className="flex flex-col">
+                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
+                  Calls by team member
+                </h3>
+                <p className="text-[12px] text-text-tertiary mb-3">
+                  Each agent in their color.
+                </p>
+                <div className="flex-1 flex items-end">
+                  <BarChart
+                    data={VOICE_PERSONAS.map((p) => ({
+                      label: p.name,
+                      value: queue.filter((q) => q.category === p.category).length,
+                      color: p.color,
+                    }))}
+                    height={132}
+                  />
+                </div>
+              </Card>
+            </div>
+
+            <Card>
+              <h3 className="text-[15px] font-semibold text-text-primary mb-1">
+                Calls per day
+              </h3>
               <p className="text-[12px] text-text-tertiary mb-3">
                 Calling activity over the last two weeks.
               </p>
@@ -652,32 +690,14 @@ export default async function VoicePage() {
                 xLabels={dayLabels}
                 height={150}
               />
+              {!status.phoneConnected && (
+                <p className="text-[11.5px] text-text-tertiary mt-3">
+                  Sample calls shown so you can see the shape — live ElevenLabs
+                  stats take over the moment the numbers connect.
+                </p>
+              )}
             </Card>
           </div>
-        )}
-        {finished.length > 0 && (
-          <Card className="mt-4">
-            <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-              Calls by team member
-            </h3>
-            <p className="text-[12px] text-text-tertiary mb-4">
-              Who's carrying the calling effort — each agent in their color.
-            </p>
-            <BarChart
-              data={VOICE_PERSONAS.map((p) => ({
-                label: p.name,
-                value: queue.filter((q) => q.category === p.category).length,
-                color: p.color,
-              }))}
-              height={150}
-            />
-            {!status.phoneConnected && (
-              <p className="text-[11.5px] text-text-tertiary mt-3">
-                Sample calls shown so you can see the shape — live ElevenLabs
-                stats take over the moment the numbers connect.
-              </p>
-            )}
-          </Card>
         )}
       </section>
     </div>

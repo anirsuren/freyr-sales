@@ -9,12 +9,13 @@ import {
   SearchX,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { voiceStatus, listVoiceQueue } from "@/lib/voice";
 import { listConversations } from "@/lib/elevenlabs";
 import { listOfferings } from "@/lib/offerings";
 import { personaBySlug } from "@/lib/voicePersonas";
-import { formatDateTime, cn } from "@/lib/utils";
+import { formatDateTime, formatPhone, cn } from "@/lib/utils";
 
 export const metadata = { title: "Voice agent" };
 export const dynamic = "force-dynamic";
@@ -158,7 +159,7 @@ export default async function VoiceAgentPage({
               <p className="text-[13px] text-text-tertiary mt-1.5">
                 Their line:{" "}
                 <span className="font-semibold text-text-primary tnum">
-                  {line.number}
+                  {formatPhone(line.number)}
                 </span>{" "}
                 — call it and {persona.name} answers; outbound runs from it too.
               </p>
@@ -169,26 +170,16 @@ export default async function VoiceAgentPage({
 
       {/* Numbers at a glance */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {tiles.map((t) => {
-          const TileIcon = t.icon;
-          return (
-            <Card key={t.label} className="h-[116px] flex flex-col">
-              <span
-                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mb-2 text-white"
-                style={{ background: persona.color }}
-              >
-                <TileIcon size={15} strokeWidth={1.9} />
-              </span>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                {t.label}
-              </span>
-              <span className="mt-auto text-[22px] font-bold leading-none tnum text-text-primary">
-                {t.value}
-              </span>
-              <span className="text-[10.5px] text-text-tertiary mt-1">{t.sub}</span>
-            </Card>
-          );
-        })}
+        {tiles.map((t) => (
+          <StatTile
+            key={t.label}
+            icon={t.icon}
+            label={t.label}
+            value={t.value}
+            sub={t.sub}
+            color={persona.color}
+          />
+        ))}
       </section>
 
       {/* Live conversations with transcripts */}
@@ -202,7 +193,7 @@ export default async function VoiceAgentPage({
               Nothing yet — call{" "}
               {line ? (
                 <span className="font-semibold text-text-primary tnum">
-                  {line.number}
+                  {formatPhone(line.number)}
                 </span>
               ) : (
                 `${persona.name}'s line`

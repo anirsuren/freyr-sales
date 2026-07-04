@@ -4851,7 +4851,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByRole("heading", { name: "Voice agents" })
     ).toBeVisible();
     // real numbers, honest gate
-    await expect(page.getByText("Voice agents ready")).toBeVisible();
+    await expect(page.getByText("The calling team").first()).toBeVisible();
     await expect(page.getByText("Not connected")).toBeVisible();
     await expect(page.getByText(/One step from live/)).toBeVisible();
     // the six category agents, each honest about awaiting the number
@@ -4939,7 +4939,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // line + bar charts (Anir: "I need line charts, bar charts")
     await expect(page.getByText("Calls per day")).toBeVisible();
     await expect(page.getByText("Calls by team member")).toBeVisible();
-    await expect(page.getByText(/% connect/)).toBeVisible();
+    await expect(page.getByText("Connect rate")).toBeVisible();
     // outcome chips land in the queue table too
     await expect(page.getByText("Interested").first()).toBeVisible();
     await expect(page.getByText("Follow-up").first()).toBeVisible();

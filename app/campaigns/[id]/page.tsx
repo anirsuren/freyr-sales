@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
+import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EngagementChart } from "@/components/campaigns/EngagementChart";
 import { getCampaign } from "@/lib/campaigns";
@@ -213,22 +214,9 @@ export default async function CampaignDetailPage({
 
       {/* Stat tiles */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {tiles.map((t) => {
-          const Icon = t.icon;
-          return (
-            <Card key={t.label} className="h-[116px] flex flex-col">
-              <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 mb-2.5">
-                <Icon size={16} strokeWidth={1.9} />
-              </span>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                {t.label}
-              </span>
-              <span className="mt-auto text-[24px] font-bold leading-none tnum text-text-primary">
-                {t.value}
-              </span>
-            </Card>
-          );
-        })}
+        {tiles.map((t) => (
+          <StatTile key={t.label} icon={t.icon} label={t.label} value={t.value} />
+        ))}
       </section>
 
       {/* Visual row: delivery donut + recipients by company */}
