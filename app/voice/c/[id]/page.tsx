@@ -3,6 +3,7 @@ import { ArrowLeft, Bot, PhoneCall, SearchX, Timer, MessageSquareText } from "lu
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getConversation } from "@/lib/elevenlabs";
+import { syncConversations } from "@/lib/voiceSync";
 import { voiceStatus } from "@/lib/voice";
 import { formatDateTime, cn } from "@/lib/utils";
 
@@ -47,6 +48,17 @@ export default async function ConversationPage({
     "Voice agent";
   const duration = convo.metadata?.call_duration_secs || 0;
   const turns = (convo.transcript || []).filter((t) => t.message);
+
+  // Who was on the line — matched by phone, and stored on their account's
+  // timeline (the sync is idempotent, so revisiting never double-logs).
+  const matches = await syncConversations([
+    {
+      conversation_id: convo.conversation_id,
+      agent_id: convo.agent_id,
+      status: convo.status,
+    },
+  ]);
+  const match = matches[convo.conversation_id];
 
   return (
     <div className="max-w-[760px] space-y-6">
@@ -95,7 +107,22 @@ export default async function ConversationPage({
               )}
             </span>
           )}
+          {match && (
+            <Link
+              href={`/contacts/${match.contactId}`}
+              className="inline-flex items-center gap-1 font-medium text-blue-primary hover:underline"
+            >
+              with {match.contactName}
+              {match.company ? ` (${match.company})` : ""}
+            </Link>
+          )}
         </p>
+        {match && convo.status === "done" && (
+          <p className="text-[12px] text-text-tertiary mt-1">
+            Logged to {match.company || "the account"}&apos;s timeline
+            automatically.
+          </p>
+        )}
       </div>
 
       {convo.analysis?.transcript_summary && (

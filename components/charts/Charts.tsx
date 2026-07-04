@@ -246,6 +246,92 @@ export function BarChart({
   );
 }
 
+// Multi-series line chart — same dependency-free SVG approach as AreaChart,
+// for comparing a few series over time (engagement, calls per day, …).
+export function LineChart({
+  series,
+  xLabels,
+  height = 220,
+  className,
+}: {
+  series: { label: string; color: string; points: number[] }[];
+  xLabels?: string[];
+  height?: number;
+  className?: string;
+}) {
+  const w = 600;
+  const h = height;
+  const pad = 8;
+  const n = Math.max(...series.map((s) => s.points.length), 2);
+  const max = Math.max(...series.flatMap((s) => s.points), 1);
+  const x = (i: number) => (i / (n - 1)) * (w - pad * 2) + pad;
+  const y = (v: number) => h - pad - (v / max) * (h - pad * 2);
+  const summary = series
+    .map((s) => `${s.label} peaks at ${Math.max(...s.points, 0)}`)
+    .join(", ");
+  return (
+    <div className={cn("relative w-full", className)}>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        className="w-full block"
+        style={{ height }}
+        role="img"
+        aria-label={`Line chart: ${summary}`}
+      >
+        {/* light horizontal gridlines */}
+        {[0.25, 0.5, 0.75].map((f) => (
+          <line
+            key={f}
+            x1={pad}
+            x2={w - pad}
+            y1={y(max * f)}
+            y2={y(max * f)}
+            stroke="#EEF0F3"
+            strokeWidth="1"
+          />
+        ))}
+        {series.map((s, si) => {
+          const pts = s.points.map((v, i) => [x(i), y(v)] as const);
+          const d = pts
+            .map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`)
+            .join(" ");
+          return (
+            <g key={si}>
+              <path
+                d={d}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="chart-line"
+              />
+              {pts.length > 0 && (
+                <circle
+                  cx={pts[pts.length - 1][0]}
+                  cy={pts[pts.length - 1][1]}
+                  r="3.5"
+                  fill={s.color}
+                />
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {xLabels && xLabels.length > 1 && (
+        <div className="flex justify-between mt-1 px-0.5">
+          {xLabels.map((l, i) => (
+            <span key={i} className="text-[10.5px] text-text-tertiary tnum">
+              {l}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Legend({
   items,
 }: {

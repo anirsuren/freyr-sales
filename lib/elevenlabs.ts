@@ -10,12 +10,14 @@ function key(): string | null {
 }
 
 // Personalization context passed into the call ("wire it up so that it
-// remembers me" — Anir, Jul 4): the agent greets the prospect by name and
-// pitches the right offering because we hand it these dynamic variables.
+// remembers me" — Anir, Jul 4): the agent greets the prospect by name, opens
+// with a line written for THIS call, and pitches the right offering.
 export interface CallContext {
   contact_name?: string;
   company?: string;
   offering?: string;
+  opening_line?: string;
+  call_direction?: "inbound" | "outbound";
 }
 
 export async function outboundCall(
@@ -27,6 +29,13 @@ export async function outboundCall(
   const k = key();
   if (!k) return false;
   try {
+    const vars: Record<string, string> = {
+      contact_name: context?.contact_name || "there",
+      company: context?.company || "your company",
+      offering: context?.offering || "our regulatory services",
+      call_direction: context?.call_direction || "outbound",
+    };
+    if (context?.opening_line) vars.opening_line = context.opening_line;
     const res = await fetch(`${API_BASE}/convai/twilio/outbound-call`, {
       method: "POST",
       headers: { "xi-api-key": k, "Content-Type": "application/json" },
@@ -34,17 +43,7 @@ export async function outboundCall(
         agent_id: agentId,
         agent_phone_number_id: agentPhoneNumberId,
         to_number: toNumber,
-        ...(context
-          ? {
-              conversation_initiation_client_data: {
-                dynamic_variables: {
-                  contact_name: context.contact_name || "there",
-                  company: context.company || "your company",
-                  offering: context.offering || "our regulatory services",
-                },
-              },
-            }
-          : {}),
+        conversation_initiation_client_data: { dynamic_variables: vars },
       }),
     });
     return res.ok;
@@ -96,6 +95,12 @@ export interface ElConversationDetail {
   metadata?: {
     call_duration_secs?: number;
     start_time_unix_secs?: number;
+    // Who was on the other end — how calls tie back to contacts.
+    phone_call?: {
+      external_number?: string;
+      agent_number?: string;
+      direction?: string;
+    };
   };
   analysis?: {
     call_successful?: string;

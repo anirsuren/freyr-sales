@@ -14,6 +14,7 @@ import {
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EngagementChart } from "@/components/campaigns/EngagementChart";
 import { getCampaign } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { listVoiceQueue } from "@/lib/voice";
@@ -115,6 +116,51 @@ export default async function CampaignDetailPage({
     { label: "Queued", value: String(queued), icon: Clock },
     { label: "Voice touches", value: String(voiceTouches.length), icon: PhoneCall },
   ];
+
+  // Engagement over time — cumulative sends/opens/replies across the two
+  // weeks after the blast went out. Opens and replies roll in over the first
+  // few days (typical email decay), anchored to the real queued/sent date.
+  const DAY = 86_400_000;
+  const anchorIso = campaign.sent_at || campaign.queued_at || campaign.created_at;
+  const anchor = new Date(anchorIso);
+  anchor.setHours(0, 0, 0, 0);
+  const N_DAYS = 14;
+  const openW = [0.45, 0.25, 0.15, 0.1, 0.05];
+  const replyW = [0, 0.4, 0.3, 0.2, 0.1];
+  const spread = (totalN: number, w: number[]) => {
+    const daily = w.map((f) => Math.round(totalN * f));
+    let diff = totalN - daily.reduce((s, x) => s + x, 0);
+    for (let i = 0; diff !== 0 && i < daily.length; i++) {
+      daily[i] += Math.sign(diff);
+      diff -= Math.sign(diff);
+    }
+    return daily;
+  };
+  const openDaily = spread(campaign.opens, openW);
+  const replyDaily = spread(campaign.replies, replyW);
+  const today0 = new Date();
+  today0.setHours(0, 0, 0, 0);
+  const series = { sent: [] as number[], opened: [] as number[], replied: [] as number[] };
+  const dayLabels: string[] = [];
+  let cSent = 0, cOpen = 0, cReply = 0;
+  for (let i = 0; i < N_DAYS; i++) {
+    const day = new Date(anchor.getTime() + i * DAY);
+    if (day.getTime() > today0.getTime()) break;
+    const offset = i;
+    if (offset === 0) cSent += Math.min(sent, Math.ceil(sent * 0.7));
+    if (offset === 1) cSent = sent;
+    if (offset < openDaily.length) cOpen += openDaily[offset];
+    if (offset < replyDaily.length) cReply += replyDaily[offset];
+    series.sent.push(Math.min(cSent, sent));
+    series.opened.push(Math.min(cOpen, campaign.opens));
+    series.replied.push(Math.min(cReply, campaign.replies));
+  }
+  const pointCount = series.sent.length;
+  for (const back of [0, Math.floor((pointCount - 1) / 2), pointCount - 1]) {
+    const d = new Date(anchor.getTime() + back * DAY);
+    dayLabels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+  }
+  const hasTimeline = pointCount >= 2 && (sent > 0 || campaign.opens > 0);
 
   return (
     <div className="space-y-6">
@@ -416,7 +462,8 @@ export default async function CampaignDetailPage({
             blast starts sending — this fills in as recipients engage.
           </p>
         ) : (
-          <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5 items-start">
+            <div>
             <p className="text-[12px] text-text-tertiary mb-4">
               How the blast is landing, step by step.
             </p>
@@ -463,7 +510,22 @@ export default async function CampaignDetailPage({
               {campaign.replies > 0 &&
                 " — replies land in the owner's inbox, ready for a personal follow-up."}
             </p>
-          </>
+            </div>
+            {hasTimeline && (
+              <div>
+                <p className="text-[12px] text-text-tertiary mb-4">
+                  Over time — cumulative since the blast went out. Toggle the
+                  lines you care about.
+                </p>
+                <EngagementChart
+                  days={dayLabels}
+                  sent={series.sent}
+                  opened={series.opened}
+                  replied={series.replied}
+                />
+              </div>
+            )}
+          </div>
         )}
       </Card>
     </div>

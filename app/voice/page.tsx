@@ -14,7 +14,10 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { voiceStatus, listVoiceQueue, type VoiceOutcome } from "@/lib/voice";
 import { listConversations } from "@/lib/elevenlabs";
+import { syncConversations } from "@/lib/voiceSync";
 import { listOfferings } from "@/lib/offerings";
+import { VOICE_PERSONAS, personaFor } from "@/lib/voicePersonas";
+import { LineChart, BarChart, VIZ } from "@/components/charts/Charts";
 import { formatDateTime, cn } from "@/lib/utils";
 
 export const metadata = { title: "Voice agents" };
@@ -55,6 +58,9 @@ export default async function VoicePage() {
   const realConvos = live
     ? (await listConversations(50)).filter((c) => categoryByAgent[c.agent_id])
     : [];
+  // Tie calls to contacts by phone + store finished ones on the account
+  // timeline (once). Returns conversation_id -> matched contact.
+  const matches = realConvos.length ? await syncConversations(realConvos) : {};
   const doneConvos = realConvos.filter((c) => c.status === "done");
   const realAvg = doneConvos.length
     ? Math.round(
@@ -107,6 +113,28 @@ export default async function VoicePage() {
     const seg = { outcome, frac, start: acc };
     acc += frac;
     return seg;
+  });
+
+  // Calling activity, day by day (queue + live calls over the last 14 days).
+  const DAY = 86_400_000;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const callsPerDay = Array.from({ length: 14 }, (_, i) => {
+    const dayStart = today.getTime() - (13 - i) * DAY;
+    const inQueue = queue.filter((q) => {
+      const t = new Date(q.created_at).getTime();
+      return t >= dayStart && t < dayStart + DAY;
+    }).length;
+    const inReal = realConvos.filter((c) => {
+      if (!c.start_time_unix_secs) return false;
+      const t = c.start_time_unix_secs * 1000;
+      return t >= dayStart && t < dayStart + DAY;
+    }).length;
+    return inQueue + inReal;
+  });
+  const dayLabels = [13, 9, 5, 0].map((back) => {
+    const d = new Date(today.getTime() - back * DAY);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
   });
 
   const tiles = [
@@ -187,44 +215,66 @@ export default async function VoicePage() {
         </p>
       )}
 
-      {/* The 6 category agents */}
+      {/* The team — six personas, each with their own line. Click one for
+          their conversations, transcripts and stats. */}
       <section>
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
-          Agents — one per offering category ({categories.length})
+          The calling team — one per offering category ({categories.length})
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((c) => (
-            <Card key={c.category} className="p-5">
-              <div className="flex items-start justify-between gap-2">
-                <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                  <Bot size={16} strokeWidth={1.9} />
-                </span>
-                <span
-                  className={cn(
-                    "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
-                    status.phoneConnected
-                      ? "text-success bg-success/10"
-                      : "text-warning bg-warning/10"
-                  )}
-                >
-                  {status.phoneConnected ? "Live" : "Ready — awaiting number"}
-                </span>
-              </div>
-              <p className="text-[14px] font-semibold text-text-primary mt-2.5">
-                {c.category}
-              </p>
-              <p className="text-[12px] text-text-secondary mt-1 leading-relaxed">
-                Knows {c.count} offering{c.count === 1 ? "" : "s"}
-                {c.names.length > 0 && (
-                  <span className="text-text-tertiary">
-                    {" "}
-                    — {c.names.join(", ")}
-                    {c.count > 3 ? "…" : ""}
-                  </span>
-                )}
-              </p>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+          {VOICE_PERSONAS.map((p) => {
+            const cat = categories.find((c) => c.category === p.category);
+            const line = status.numbers[p.category];
+            const Icon = p.icon;
+            return (
+              <Link key={p.slug} href={`/voice/agents/${p.slug}`}>
+                <Card className="p-5 h-full hover:border-blue-subtle hover:-translate-y-0.5 transition-all duration-200 group">
+                  <div className="flex items-start justify-between gap-2">
+                    <span
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white"
+                      style={{ background: p.color }}
+                    >
+                      <Icon size={19} strokeWidth={1.9} />
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
+                        status.phoneConnected
+                          ? "text-success bg-success/10"
+                          : "text-warning bg-warning/10"
+                      )}
+                    >
+                      {status.phoneConnected ? "Live" : "Ready — awaiting number"}
+                    </span>
+                  </div>
+                  <p className="text-[16px] font-semibold text-text-primary mt-3 group-hover:text-blue-primary transition-colors">
+                    {p.name}
+                    <span className="text-[12px] font-medium text-text-tertiary">
+                      {" "}
+                      · {p.category}
+                    </span>
+                  </p>
+                  <p className="text-[12.5px] text-text-secondary mt-1 leading-relaxed">
+                    {p.tagline}
+                  </p>
+                  <p className="flex items-center justify-between text-[12px] mt-3 pt-3 border-t border-border-light">
+                    <span className="text-text-tertiary">
+                      {line ? (
+                        <span className="tnum font-medium text-text-secondary">
+                          {line.number}
+                        </span>
+                      ) : (
+                        `Knows ${cat?.count || 0} offering${(cat?.count || 0) === 1 ? "" : "s"}`
+                      )}
+                    </span>
+                    <span className="font-semibold text-blue-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                      Open →
+                    </span>
+                  </p>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -270,7 +320,7 @@ export default async function VoicePage() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-surface border-b border-border-light">
-                    {["Agent", "Direction", "Status", "Length", "Messages", "Started", ""].map(
+                    {["Agent", "Contact", "Direction", "Status", "Length", "Started", ""].map(
                       (h, i) => (
                         <th
                           key={i}
@@ -283,10 +333,40 @@ export default async function VoicePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light">
-                  {realConvos.map((c) => (
+                  {realConvos.map((c) => {
+                    const persona = personaFor(categoryByAgent[c.agent_id] || "");
+                    return (
                     <tr key={c.conversation_id}>
                       <td className="px-5 py-3.5 text-[13px] font-semibold text-text-primary whitespace-nowrap">
-                        {categoryByAgent[c.agent_id] || c.agent_name || "Agent"}
+                        <span className="inline-flex items-center gap-2">
+                          {persona && (
+                            <span
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ background: persona.color }}
+                            />
+                          )}
+                          {persona
+                            ? `${persona.name} · ${persona.category}`
+                            : c.agent_name || "Agent"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-[13px] whitespace-nowrap">
+                        {matches[c.conversation_id] ? (
+                          <Link
+                            href={`/contacts/${matches[c.conversation_id].contactId}`}
+                            className="font-medium text-text-primary hover:text-blue-primary"
+                          >
+                            {matches[c.conversation_id].contactName}
+                            {matches[c.conversation_id].company && (
+                              <span className="text-text-tertiary font-normal">
+                                {" "}
+                                · {matches[c.conversation_id].company}
+                              </span>
+                            )}
+                          </Link>
+                        ) : (
+                          <span className="text-[12.5px] text-text-tertiary">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary capitalize whitespace-nowrap">
                         {c.direction || "—"}
@@ -312,9 +392,6 @@ export default async function VoicePage() {
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
                         {c.call_duration_secs ? fmtLen(c.call_duration_secs) : "—"}
                       </td>
-                      <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
-                        {c.message_count ?? "—"}
-                      </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap">
                         {c.start_time_unix_secs
                           ? formatDateTime(
@@ -331,7 +408,8 @@ export default async function VoicePage() {
                         </Link>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -410,8 +488,13 @@ export default async function VoicePage() {
                 <tbody className="divide-y divide-border-light">
                   {queue.map((q) => (
                     <tr key={q.id}>
-                      <td className="px-5 py-3.5 text-[13px] font-semibold text-text-primary whitespace-nowrap">
-                        {q.contact_name}
+                      <td className="px-5 py-3.5 text-[13px] font-semibold whitespace-nowrap">
+                        <Link
+                          href={`/contacts/${q.contact_id}`}
+                          className="text-text-primary hover:text-blue-primary"
+                        >
+                          {q.contact_name}
+                        </Link>
                       </td>
                       <td className="px-5 py-3.5 text-[13px] text-text-secondary whitespace-nowrap">
                         {q.company || "—"}
@@ -539,37 +622,62 @@ export default async function VoicePage() {
               </div>
             </Card>
 
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: "Connect rate", value: `${connectRate}%`, icon: PhoneCall, sub: `${connected.length} of ${finished.length} answered` },
-                { label: "Avg call length", value: fmtLen(avgLen), icon: Timer, sub: "across answered calls" },
-                { label: "Interested", value: String(interestedN), icon: ThumbsUp, sub: "want to hear more" },
-                { label: "Follow-ups", value: String(finished.filter((q) => q.outcome === "follow_up").length), icon: Clock, sub: "asked to circle back" },
-              ].map((t) => {
-                const Icon = t.icon;
-                return (
-                  <Card key={t.label} className="h-[124px] flex flex-col">
-                    <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 mb-2">
-                      <Icon size={16} strokeWidth={1.9} />
-                    </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      {t.label}
-                    </span>
-                    <span className="mt-auto text-[22px] font-bold leading-none tnum text-text-primary">
-                      {t.value}
-                    </span>
-                    <span className="text-[11px] text-text-tertiary mt-1">{t.sub}</span>
-                  </Card>
-                );
-              })}
-              {!status.phoneConnected && (
-                <p className="col-span-2 text-[11.5px] text-text-tertiary">
-                  Sample calls shown so you can see the shape — live ElevenLabs
-                  stats take over the moment your number connects.
-                </p>
-              )}
-            </div>
+            <Card>
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <h3 className="text-[15px] font-semibold text-text-primary">
+                  Calls per day
+                </h3>
+                <div className="flex items-center gap-4 text-[12px]">
+                  {[
+                    { icon: PhoneCall, label: `${connectRate}% connect`, },
+                    { icon: Timer, label: `${fmtLen(avgLen)} avg` },
+                    { icon: ThumbsUp, label: `${interestedN} interested` },
+                    { icon: Clock, label: `${finished.filter((q) => q.outcome === "follow_up").length} follow-ups` },
+                  ].map((s, i) => {
+                    const Icon = s.icon;
+                    return (
+                      <span key={i} className="inline-flex items-center gap-1 text-text-secondary whitespace-nowrap">
+                        <Icon size={13} strokeWidth={1.9} className="text-blue-primary" />
+                        <span className="font-medium tnum">{s.label}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+              <p className="text-[12px] text-text-tertiary mb-3">
+                Calling activity over the last two weeks.
+              </p>
+              <LineChart
+                series={[{ label: "Calls", color: VIZ.blue, points: callsPerDay }]}
+                xLabels={dayLabels}
+                height={150}
+              />
+            </Card>
           </div>
+        )}
+        {finished.length > 0 && (
+          <Card className="mt-4">
+            <h3 className="text-[15px] font-semibold text-text-primary mb-1">
+              Calls by team member
+            </h3>
+            <p className="text-[12px] text-text-tertiary mb-4">
+              Who's carrying the calling effort — each agent in their color.
+            </p>
+            <BarChart
+              data={VOICE_PERSONAS.map((p) => ({
+                label: p.name,
+                value: queue.filter((q) => q.category === p.category).length,
+                color: p.color,
+              }))}
+              height={150}
+            />
+            {!status.phoneConnected && (
+              <p className="text-[11.5px] text-text-tertiary mt-3">
+                Sample calls shown so you can see the shape — live ElevenLabs
+                stats take over the moment the numbers connect.
+              </p>
+            )}
+          </Card>
         )}
       </section>
     </div>

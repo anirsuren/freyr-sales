@@ -4926,7 +4926,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       .getByRole("link", { name: /View campaign Freya\.Register Q3 awareness/ })
       .click();
     await expect(page.getByText("Delivery", { exact: true })).toBeVisible();
-    await expect(page.getByText("Opened", { exact: true })).toBeVisible();
+    await expect(page.getByText("Opened", { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/open rate/)).toBeVisible();
     await expect(page.getByText(/reply rate/)).toBeVisible();
   });
@@ -4936,8 +4936,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/voice`);
     await expect(page.getByText("How calls ended")).toBeVisible();
-    await expect(page.getByText("Connect rate")).toBeVisible();
-    await expect(page.getByText("Avg call length")).toBeVisible();
+    // line + bar charts (Anir: "I need line charts, bar charts")
+    await expect(page.getByText("Calls per day")).toBeVisible();
+    await expect(page.getByText("Calls by team member")).toBeVisible();
+    await expect(page.getByText(/% connect/)).toBeVisible();
     // outcome chips land in the queue table too
     await expect(page.getByText("Interested").first()).toBeVisible();
     await expect(page.getByText("Follow-up").first()).toBeVisible();
@@ -4954,5 +4956,49 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // the visual snapshot rail is there with the health ring + glance stats
     await expect(page.getByText("Account snapshot")).toBeVisible();
     await expect(page.getByText("Why")).toBeVisible();
+  });
+  test("334 — voice team: named personas, clickable → their own page (V60)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/voice`);
+    // six visibly distinct team members, by name
+    for (const name of ["Maya", "Arjun", "Nina", "Leo", "Sofia", "Kai"]) {
+      await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
+    }
+    // click Maya → her page: identity, her calls, what she knows
+    await page.getByRole("link", { name: /Maya/ }).first().click();
+    await expect(page).toHaveURL(/\/voice\/agents\/maya/);
+    await expect(
+      page.getByRole("heading", { name: "Maya", exact: true })
+    ).toBeVisible();
+    await expect(page.getByText(/Maya's conversations/)).toBeVisible();
+    await expect(page.getByText(/What Maya knows/)).toBeVisible();
+    // her category queue shows up (seeded Regulatory Affairs calls)
+    await expect(page.getByText("Marcus Thorne").first()).toBeVisible();
+  });
+
+  test("335 — campaign cards are fully clickable (V60)", async ({ page }) => {
+    await page.goto(`${BASE}/campaigns`);
+    // the whole card is the link — no hunting for a View button
+    await page
+      .getByRole("link", { name: /View campaign Freya\.Register Q3 awareness/ })
+      .click();
+    await expect(page).toHaveURL(/\/campaigns\/camp-seed-001/);
+    await expect(
+      page.getByRole("heading", { name: "Freya.Register Q3 awareness" })
+    ).toBeVisible();
+  });
+
+  test("336 — campaign engagement has a line chart with metric toggles (V60)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/campaigns/camp-seed-001`);
+    await expect(page.getByText(/Over time — cumulative/)).toBeVisible();
+    // toggles flip lines on/off
+    const opened = page.getByRole("button", { name: "Opened", exact: true });
+    await expect(opened).toBeVisible();
+    await expect(opened).toHaveAttribute("aria-pressed", "true");
+    await opened.click();
+    await expect(opened).toHaveAttribute("aria-pressed", "false");
   });
 });

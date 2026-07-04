@@ -330,7 +330,16 @@ export function CampaignsView({
             const checks = readyChecks(c);
             const okCount = checks.filter((k) => k.ok).length;
             return (
-              <Card key={c.id} data-testid={`campaign-${c.id}`}>
+              <Link
+                key={c.id}
+                href={`/campaigns/${c.id}`}
+                aria-label={`View campaign ${c.name}`}
+                className="block"
+              >
+                <Card
+                  data-testid={`campaign-${c.id}`}
+                  className="hover:border-blue-subtle hover:-translate-y-0.5 transition-all duration-200 group"
+                >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -383,14 +392,10 @@ export function CampaignsView({
                       <span className="tnum">{formatDate(c.created_at)}</span>
                     </p>
                   </div>
-                  <Link
-                    href={`/campaigns/${c.id}`}
-                    aria-label={`View campaign ${c.name}`}
-                    className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary px-2.5 py-1.5 rounded-md border border-border-light hover:bg-blue-light/50 transition-colors"
-                  >
+                  <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary px-2.5 py-1.5 rounded-md border border-border-light group-hover:bg-blue-light/50 transition-colors">
                     View
                     <ChevronRight size={14} strokeWidth={2} />
-                  </Link>
+                  </span>
                 </div>
 
                 {/* progress at a glance — plus engagement once the blast lands */}
@@ -441,7 +446,8 @@ export function CampaignsView({
                   )}
                 </div>
 
-              </Card>
+                </Card>
+              </Link>
             );
           })}
         </div>

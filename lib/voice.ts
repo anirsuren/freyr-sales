@@ -9,6 +9,16 @@ import { hasElevenLabs } from "./env";
 import type { Contact, Customer } from "./types";
 import type { Offering } from "./offerings";
 import agentIds from "./voiceAgents.json";
+import numberMap from "./voiceNumbers.json";
+
+// Per-persona phone lines: each category agent owns a number (bought on
+// Anir's Twilio, Jul 4) — inbound rings that persona, outbound dials from it.
+type NumberEntry = { persona: string; number: string; phone_number_id: string };
+const NUMBERS = numberMap as Record<string, NumberEntry>;
+
+export function numberForCategory(category: string): NumberEntry | null {
+  return NUMBERS[category] || null;
+}
 
 export type VoiceCallStatus = "called" | "waiting_for_number" | "no_agent";
 
@@ -93,10 +103,13 @@ export function voiceStatus() {
   // In FORCE_MOCK (the test env) the stack genuinely won't dial even with a
   // number configured, so "connected" would be a lie there.
   const mock = process.env.AGENT_FORCE_MOCK === "1";
+  const hasNumbers = Object.keys(NUMBERS).length > 0;
   return {
     wired: hasElevenLabs(),
-    phoneConnected: !mock && !!process.env.ELEVENLABS_PHONE_NUMBER_ID,
+    phoneConnected:
+      !mock && (hasNumbers || !!process.env.ELEVENLABS_PHONE_NUMBER_ID),
     phoneNumber: (!mock && process.env.FREYR_VOICE_NUMBER) || null,
+    numbers: mock ? ({} as Record<string, NumberEntry>) : NUMBERS,
     agents: agentIds as Record<string, string>,
     queued: store().queue.filter((q) => q.status === "waiting_for_number").length,
   };
@@ -115,7 +128,9 @@ export async function placeOrQueueCall(opts: {
 }): Promise<VoiceCall> {
   const { contact, customer, offering, category } = opts;
   const agent_id = agentForCategory(category);
-  const phoneId = process.env.ELEVENLABS_PHONE_NUMBER_ID;
+  // The persona's own line dials out; env id is the legacy fallback.
+  const line = numberForCategory(category);
+  const phoneId = line?.phone_number_id || process.env.ELEVENLABS_PHONE_NUMBER_ID;
   const live =
     hasElevenLabs() && process.env.AGENT_FORCE_MOCK !== "1" && !!phoneId;
 
@@ -138,12 +153,21 @@ export async function placeOrQueueCall(opts: {
   } else if (live && contact.phone) {
     try {
       const { outboundCall } = await import("./elevenlabs");
-      // Pass who we're calling + what to pitch — the agent opens with the
-      // prospect's name and the right offering (dynamic variables).
+      // Pass who we're calling + what to pitch, and hand the persona a
+      // ready-made outbound opener — so it never greets an outbound call
+      // like an inbound one.
+      const firstName = contact.full_name.replace(/^Dr\.\s*/i, "").split(/\s+/)[0];
+      const pitchName = offering?.offering_name || category;
       const ok = await outboundCall(agent_id, phoneId!, contact.phone, {
         contact_name: contact.full_name,
         company: customer?.company_name || undefined,
-        offering: offering?.offering_name || category,
+        offering: pitchName,
+        call_direction: "outbound",
+        opening_line: `Hi ${firstName}, this is ${
+          line?.persona || "the Freyr team"
+        } calling from Freyr Solutions — I'm reaching out about ${pitchName}${
+          customer?.company_name ? ` for ${customer.company_name}` : ""
+        }. Did I catch you at an okay moment?`,
       });
       if (ok) {
         entry.status = "called";
