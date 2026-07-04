@@ -269,7 +269,8 @@ export default async function DashboardPage({
               <ArrowRight size={13} strokeWidth={1.8} />
             </Link>
           </div>
-          <AgentActions actions={agentActions} compact />
+          {/* One horizontal glance, not a stack (Anir: "value of space") */}
+          <AgentActions actions={agentActions} compact grid />
         </Card>
       )}
 

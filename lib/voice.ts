@@ -90,9 +90,13 @@ export function agentForCategory(category: string): string | null {
 }
 
 export function voiceStatus() {
+  // In FORCE_MOCK (the test env) the stack genuinely won't dial even with a
+  // number configured, so "connected" would be a lie there.
+  const mock = process.env.AGENT_FORCE_MOCK === "1";
   return {
     wired: hasElevenLabs(),
-    phoneConnected: !!process.env.ELEVENLABS_PHONE_NUMBER_ID,
+    phoneConnected: !mock && !!process.env.ELEVENLABS_PHONE_NUMBER_ID,
+    phoneNumber: (!mock && process.env.FREYR_VOICE_NUMBER) || null,
     agents: agentIds as Record<string, string>,
     queued: store().queue.filter((q) => q.status === "waiting_for_number").length,
   };
@@ -134,7 +138,13 @@ export async function placeOrQueueCall(opts: {
   } else if (live && contact.phone) {
     try {
       const { outboundCall } = await import("./elevenlabs");
-      const ok = await outboundCall(agent_id, phoneId!, contact.phone);
+      // Pass who we're calling + what to pitch — the agent opens with the
+      // prospect's name and the right offering (dynamic variables).
+      const ok = await outboundCall(agent_id, phoneId!, contact.phone, {
+        contact_name: contact.full_name,
+        company: customer?.company_name || undefined,
+        offering: offering?.offering_name || category,
+      });
       if (ok) {
         entry.status = "called";
       } else {

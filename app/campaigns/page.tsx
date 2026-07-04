@@ -1,5 +1,4 @@
 import { getDb } from "@/lib/db";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { CampaignsView } from "@/components/campaigns/CampaignsView";
 import { listCampaigns } from "@/lib/campaigns";
 import { listOfferings } from "@/lib/offerings";
@@ -20,10 +19,8 @@ export default async function CampaignsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Campaigns"
-        subtitle="One message, many contacts — drafted for you, edited by you, sent to everyone on the list with an email."
-      />
+      {/* CampaignsView renders the PageHeader itself so the New-campaign
+          button sits in line with the title (Anir, Jul 4). */}
       <CampaignsView
         campaigns={listCampaigns()}
         offerings={listOfferings().map((o) => ({

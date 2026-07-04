@@ -8,10 +8,12 @@ import {
   Timer,
   ThumbsUp,
 } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { voiceStatus, listVoiceQueue, type VoiceOutcome } from "@/lib/voice";
+import { listConversations } from "@/lib/elevenlabs";
 import { listOfferings } from "@/lib/offerings";
 import { formatDateTime, cn } from "@/lib/utils";
 
@@ -35,10 +37,30 @@ const fmtLen = (secs: number) =>
 // The analytics run on the seeded sample calls (Anir: "show mock data — I
 // need to see how the graphs would look") and swap to live ElevenLabs stats
 // the moment a phone number connects.
-export default function VoicePage() {
+export default async function VoicePage() {
   const status = voiceStatus();
   const queue = listVoiceQueue();
   const offerings = listOfferings();
+
+  // REAL conversations from ElevenLabs (Anir, Jul 4: "I should be able to see
+  // all the conversations, all the call statistics"). Live key + not mocked →
+  // every actual call (inbound test calls included) lands here with a
+  // transcript link. Mock/test env → skipped entirely.
+  const live = status.wired && process.env.AGENT_FORCE_MOCK !== "1";
+  const realConvos = live ? await listConversations(30) : [];
+  const categoryByAgent = Object.fromEntries(
+    Object.entries(status.agents).map(([c, id]) => [id, c])
+  );
+  const doneConvos = realConvos.filter((c) => c.status === "done");
+  const realAvg = doneConvos.length
+    ? Math.round(
+        doneConvos.reduce((s, c) => s + (c.call_duration_secs || 0), 0) /
+          doneConvos.length
+      )
+    : 0;
+  const realSuccess = doneConvos.filter(
+    (c) => c.call_successful === "success"
+  ).length;
 
   const categories = Object.entries(status.agents).map(([category, agentId]) => {
     const inCategory = offerings.filter(
@@ -92,7 +114,9 @@ export default function VoicePage() {
     },
     {
       label: "Phone number",
-      value: status.phoneConnected ? "Connected" : "Not connected",
+      value: status.phoneConnected
+        ? status.phoneNumber || "Connected"
+        : "Not connected",
       icon: status.phoneConnected ? PhoneCall : PhoneOff,
       warn: !status.phoneConnected,
     },
@@ -199,6 +223,117 @@ export default function VoicePage() {
           ))}
         </div>
       </section>
+
+      {/* LIVE conversations — straight from ElevenLabs, transcripts included */}
+      {realConvos.length > 0 && (
+        <section>
+          <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
+            <PhoneCall size={15} strokeWidth={1.9} className="text-success" />
+            Live conversations
+            <span className="text-text-primary tnum">({realConvos.length})</span>
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            {[
+              { label: "Real calls", value: String(realConvos.length) },
+              { label: "Avg length", value: fmtLen(realAvg) },
+              {
+                label: "Went well",
+                value: doneConvos.length
+                  ? `${Math.round((realSuccess / doneConvos.length) * 100)}%`
+                  : "—",
+              },
+              {
+                label: "In progress",
+                value: String(
+                  realConvos.filter(
+                    (c) => c.status === "in-progress" || c.status === "processing"
+                  ).length
+                ),
+              },
+            ].map((t) => (
+              <Card key={t.label} className="py-4">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  {t.label}
+                </span>
+                <span className="block text-[22px] font-bold leading-none tnum text-text-primary mt-2">
+                  {t.value}
+                </span>
+              </Card>
+            ))}
+          </div>
+          <Card className="p-0 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-surface border-b border-border-light">
+                    {["Agent", "Direction", "Status", "Length", "Messages", "Started", ""].map(
+                      (h, i) => (
+                        <th
+                          key={i}
+                          className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
+                        >
+                          {h}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-light">
+                  {realConvos.map((c) => (
+                    <tr key={c.conversation_id}>
+                      <td className="px-5 py-3.5 text-[13px] font-semibold text-text-primary whitespace-nowrap">
+                        {categoryByAgent[c.agent_id] || c.agent_name || "Agent"}
+                      </td>
+                      <td className="px-5 py-3.5 text-[12.5px] text-text-secondary capitalize whitespace-nowrap">
+                        {c.direction || "—"}
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <span
+                          className={cn(
+                            "inline-flex text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
+                            c.status === "done"
+                              ? "text-success bg-success/10"
+                              : c.status === "failed"
+                              ? "text-error bg-error/10"
+                              : "text-blue-primary bg-blue-light"
+                          )}
+                        >
+                          {c.status === "done"
+                            ? "Finished"
+                            : c.status === "failed"
+                            ? "Failed"
+                            : "In progress"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
+                        {c.call_duration_secs ? fmtLen(c.call_duration_secs) : "—"}
+                      </td>
+                      <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
+                        {c.message_count ?? "—"}
+                      </td>
+                      <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap">
+                        {c.start_time_unix_secs
+                          ? formatDateTime(
+                              new Date(c.start_time_unix_secs * 1000).toISOString()
+                            )
+                          : "—"}
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <Link
+                          href={`/voice/c/${c.conversation_id}`}
+                          className="text-[12px] font-semibold text-blue-primary hover:underline"
+                        >
+                          Transcript →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </section>
+      )}
 
       {/* Queue by category — where the calling effort is pointed (real data) */}
       {queue.length > 0 && (

@@ -30,9 +30,14 @@ const META: Record<AgentActionKind, { icon: typeof Send; bg: string; color: stri
 export function AgentActions({
   actions,
   compact = false,
+  grid = false,
 }: {
   actions: AgentAction[];
   compact?: boolean;
+  // Lay the cards out as one horizontal row (wrapping on small screens)
+  // instead of a stack — the dashboard shows everything in one glance
+  // (Anir, Jul 4: "it should be like a horizontal row… value of space").
+  grid?: boolean;
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -108,7 +113,13 @@ export function AgentActions({
   }
 
   return (
-    <div className="space-y-2.5 stagger">
+    <div
+      className={
+        grid
+          ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 stagger"
+          : "space-y-2.5 stagger"
+      }
+    >
       {actions.map((a) => {
         const m = META[a.kind];
         const Icon = m.icon;

@@ -16,6 +16,7 @@ import {
   Reply,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
@@ -149,32 +150,36 @@ export function CampaignsView({
 
   return (
     <div>
-      <div className="flex justify-end mb-4 -mt-2">
-        <Button
-          onClick={() => {
-            if (composing) {
-              setComposing(false);
-            } else {
-              reset();
-              setComposing(true);
-            }
-          }}
-          variant={composing ? "secondary" : "primary"}
-          className="gap-1.5"
-        >
-          {composing ? (
-            <>
-              <X size={15} strokeWidth={1.9} />
-              Close composer
-            </>
-          ) : (
-            <>
-              <Megaphone size={15} strokeWidth={1.9} />
-              New campaign
-            </>
-          )}
-        </Button>
-      </div>
+      <PageHeader
+        title="Campaigns"
+        subtitle="One message, many contacts — drafted for you, edited by you, sent to everyone on the list with an email."
+        action={
+          <Button
+            onClick={() => {
+              if (composing) {
+                setComposing(false);
+              } else {
+                reset();
+                setComposing(true);
+              }
+            }}
+            variant={composing ? "secondary" : "primary"}
+            className="gap-1.5"
+          >
+            {composing ? (
+              <>
+                <X size={15} strokeWidth={1.9} />
+                Close composer
+              </>
+            ) : (
+              <>
+                <Megaphone size={15} strokeWidth={1.9} />
+                New campaign
+              </>
+            )}
+          </Button>
+        }
+      />
 
       {/* ---------------- inline composer — expands here, never a popup ------ */}
       {composing && (
