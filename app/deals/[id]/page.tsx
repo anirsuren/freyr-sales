@@ -140,16 +140,8 @@ export default async function DealDetailPage({
         </Link>
       </div>
 
-      {/* Pre-call deal briefing (#73) */}
-      <div className="mb-6">
-        <BriefingCard briefing={dealBriefing} label="Pre-call brief" />
-        <p className="text-[12px] text-text-tertiary mt-1.5 px-1">
-          A quick read on this deal from your agent — where it stands and the smartest next move — so
-          you&apos;re prepared before you call or email. The agent never reaches out on its own.
-        </p>
-      </div>
-
-      {/* Stage tracker */}
+      {/* Stage tracker — the deal's identity/visual read leads (Anir's audit);
+          the full pre-call brief follows right below, nothing removed. */}
       <Card className="mb-6">
         <div className="flex items-center gap-1.5 mb-3">
           <h2 className="text-[13px] font-semibold text-text-primary">Deal stage</h2>
@@ -194,6 +186,15 @@ export default async function DealDetailPage({
           })}
         </div>
       </Card>
+
+      {/* Pre-call deal briefing (#73) — after the visual identity read */}
+      <div className="mb-6">
+        <BriefingCard briefing={dealBriefing} label="Pre-call brief" />
+        <p className="text-[12px] text-text-tertiary mt-1.5 px-1">
+          A quick read on this deal from your agent — where it stands and the smartest next move — so
+          you&apos;re prepared before you call or email. The agent never reaches out on its own.
+        </p>
+      </div>
 
       {/* Key facts */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

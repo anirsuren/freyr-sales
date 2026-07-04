@@ -11,6 +11,7 @@ import {
   XCircle,
   SearchX,
   ArrowLeft,
+  Sparkles,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -185,9 +186,17 @@ export default async function ContactDetailPage({
         </div>
       </div>
 
-      {/* Pre-call contact briefing (#74) */}
-      <div className="mb-8">
-        <BriefingCard briefing={contactBriefing} label="Pre-call brief" />
+      {/* One-line next move (Anir's audit: identity first, no text wall up
+          top). The FULL pre-call brief stays — it moved below the working
+          area, right where a rep preps before dialing. */}
+      <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-blue-subtle bg-blue-light/40 px-4 py-2.5">
+        <span className="w-6 h-6 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
+          <Sparkles size={14} strokeWidth={1.9} />
+        </span>
+        <p className="text-[13px] text-text-primary min-w-0 truncate">
+          <span className="font-semibold">Next move:</span>{" "}
+          {contactSuggestion.title}
+        </p>
       </div>
 
       {/* Stat row: last contacted / next step / buying style */}
@@ -361,6 +370,12 @@ export default async function ContactDetailPage({
           </Card>
 
         </div>
+      </div>
+
+      {/* Full pre-call brief — everything the agent knows, right before the
+          rep preps the call (moved down from the top; nothing removed). */}
+      <div className="mt-8">
+        <BriefingCard briefing={contactBriefing} label="Pre-call brief" />
       </div>
 
       {/* Pitch sessions */}

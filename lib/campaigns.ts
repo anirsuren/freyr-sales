@@ -16,6 +16,9 @@ export interface Campaign {
   body: string;
   recipient_contact_ids: string[];
   status: CampaignStatus;
+  // Actual deliveries — stays 0 until the email channel is connected, so the
+  // progress bar on the card is always honest.
+  sent_count: number;
   queued_at: string | null;
   created_at: string;
 }
@@ -58,6 +61,7 @@ export function createCampaign(data: {
     body: data.body,
     recipient_contact_ids: data.recipient_contact_ids,
     status: "draft",
+    sent_count: 0,
     queued_at: null,
     created_at: new Date().toISOString(),
   };

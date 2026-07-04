@@ -8,8 +8,6 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Modal } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { cn } from "@/lib/utils";
@@ -39,7 +37,6 @@ export function ContactsBrowser({
   const [sort, setSort] = useState("name");
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [voiceOpen, setVoiceOpen] = useState(false);
   const [voiceCategory, setVoiceCategory] = useState(voiceCategories[0] || "");
   const [voiceBusy, setVoiceBusy] = useState(false);
 
@@ -62,7 +59,6 @@ export function ContactsBrowser({
             ? `Dialing ${data.called} of ${data.queued} now — the rest are queued.`
             : `Queued ${data.queued} call${data.queued === 1 ? "" : "s"} — they dial as soon as a phone number is connected.`
         );
-        setVoiceOpen(false);
         setSelected(new Set());
         setSelectMode(false);
       } else {
@@ -176,87 +172,86 @@ export function ContactsBrowser({
         </div>
       </div>
 
-      {/* Bulk action bar */}
-      {selectMode && selected.size > 0 && (
-        <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light">
-          <span className="text-[13px] font-semibold text-blue-primary tnum">
-            {selected.size} selected
-          </span>
-          <div className="flex items-center gap-2 ml-auto">
-            {voiceCategories.length > 0 && (
+      {/* Bulk action bar — shows the moment Select is on, with SELECT ALL and
+          the voice-agent run INLINE (Suren: "select a bunch of contacts, then
+          for every offering category there's a voice agent you select and
+          run") — no popup blocking the list. */}
+      {selectMode && (
+        <div className="mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[13px] font-semibold text-blue-primary tnum">
+              {selected.size} selected
+            </span>
+            <button
+              onClick={() =>
+                setSelected(
+                  selected.size === view.length
+                    ? new Set()
+                    : new Set(view.map((r) => r.id))
+                )
+              }
+              className="text-[13px] font-semibold text-blue-primary hover:underline"
+            >
+              {selected.size === view.length
+                ? "Clear all"
+                : `Select all (${view.length})`}
+            </button>
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
+              {voiceCategories.length > 0 && (
+                <>
+                  <select
+                    aria-label="Voice agent category"
+                    value={voiceCategory}
+                    onChange={(e) => setVoiceCategory(e.target.value)}
+                    className="text-[12.5px] font-medium bg-white border border-border-light rounded-md px-2.5 py-1.5 outline-none focus:border-blue-primary max-w-[280px]"
+                  >
+                    {voiceCategories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={runVoiceAgent}
+                    disabled={voiceBusy || selected.size === 0}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md border border-blue-primary text-blue-primary hover:bg-white transition-colors disabled:opacity-50"
+                  >
+                    <PhoneCall size={15} strokeWidth={1.8} />
+                    {voiceBusy
+                      ? "Queuing…"
+                      : `Run voice agent${selected.size ? ` (${selected.size})` : ""}`}
+                  </button>
+                </>
+              )}
               <button
-                onClick={() => setVoiceOpen(true)}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md border border-blue-primary text-blue-primary hover:bg-white transition-colors"
+                onClick={exportSelected}
+                disabled={selected.size === 0}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50"
               >
-                <PhoneCall size={15} strokeWidth={1.8} />
-                Run voice agent
+                <Download size={15} strokeWidth={1.8} />
+                Export selected
               </button>
-            )}
-            <button
-              onClick={exportSelected}
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
-            >
-              <Download size={15} strokeWidth={1.8} />
-              Export selected
-            </button>
-            <button
-              onClick={() => setSelected(new Set())}
-              aria-label="Clear selection"
-              className="text-text-tertiary hover:text-text-primary"
-            >
-              <X size={16} strokeWidth={1.8} />
-            </button>
+              <button
+                onClick={() => {
+                  setSelected(new Set());
+                  setSelectMode(false);
+                }}
+                aria-label="Done selecting"
+                className="text-text-tertiary hover:text-text-primary"
+              >
+                <X size={16} strokeWidth={1.8} />
+              </button>
+            </div>
           </div>
+          {voiceCategories.length > 0 && (
+            <p className="text-[11.5px] text-text-secondary mt-1.5">
+              The {voiceCategory} agent calls each selected contact about that
+              category&apos;s offerings — calls queue until a phone number is
+              connected, nothing dials silently.
+            </p>
+          )}
         </div>
       )}
-
-      {/* Bulk voice-agent run (Suren, Jul 3) */}
-      <Modal
-        open={voiceOpen}
-        onClose={() => setVoiceOpen(false)}
-        title={`Run a voice agent — ${selected.size} contact${selected.size === 1 ? "" : "s"}`}
-      >
-        <div className="space-y-3">
-          <p className="text-[13px] text-text-secondary leading-relaxed">
-            Each offering category has its own AI voice agent that knows the
-            category&apos;s offerings and the Freyr context. Pick which one
-            works this list.
-          </p>
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
-              Offering category
-            </label>
-            <select
-              aria-label="Voice agent category"
-              value={voiceCategory}
-              onChange={(e) => setVoiceCategory(e.target.value)}
-              className="w-full rounded-md border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:shadow-input-focus"
-            >
-              {voiceCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <p className="text-[12px] text-warning bg-warning/10 rounded-md px-3 py-2">
-            Calls queue until a phone number is connected — nothing dials
-            silently, and one-by-one beats bulk cold-calling for compliance.
-          </p>
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setVoiceOpen(false)}
-              className="text-[13px] font-semibold text-text-secondary hover:text-text-primary px-3 py-2"
-            >
-              Cancel
-            </button>
-            <Button onClick={runVoiceAgent} loading={voiceBusy}>
-              <PhoneCall size={14} strokeWidth={1.9} className="mr-1.5" />
-              Queue the calls
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {view.length > 0 && (
         <p className="text-[13px] text-text-secondary mb-4 tnum">

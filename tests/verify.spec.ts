@@ -4820,4 +4820,69 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(list.queue.length).toBeGreaterThanOrEqual(2);
     expect(list.queue[0].category).toBe("Global Regulatory Intelligence");
   });
+
+  // --- Anir's rep-lens audit (Jul 3): select-all + inline voice run (no
+  // popup), the voice command center, and campaign progress at a glance. ---
+
+  test("327 — contacts: Select all + run the voice agent inline (V57)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/contacts`);
+    await page.getByRole("button", { name: "Select", exact: true }).click();
+    // the bulk bar appears immediately with Select all — no one-by-one clicking
+    await page.getByRole("button", { name: /Select all \(11\)/ }).click();
+    await expect(page.getByText("11 selected")).toBeVisible();
+    // category + run live INLINE in the bar (no modal)
+    await page
+      .getByLabel("Voice agent category")
+      .selectOption("Labeling and Artwork");
+    await page.getByRole("button", { name: /Run voice agent \(11\)/ }).click();
+    await expect(page.getByText(/Queued 11 calls/)).toBeVisible();
+  });
+
+  test("328 — the voice command center shows agents, queue and honest status (V57)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/voice`);
+    await expect(
+      page.getByRole("heading", { name: "Voice agents" })
+    ).toBeVisible();
+    // real numbers, honest gate
+    await expect(page.getByText("Voice agents ready")).toBeVisible();
+    await expect(page.getByText("Not connected")).toBeVisible();
+    await expect(page.getByText(/One step from live/)).toBeVisible();
+    // the six category agents, each honest about awaiting the number
+    await expect(
+      page.getByText("Ready — awaiting number").first()
+    ).toBeVisible();
+    await expect(
+      page.getByText("Freya Fusion Platform and Agents").first()
+    ).toBeVisible();
+    // queue section renders (entries from earlier tests, or the empty state)
+    await expect(
+      page.getByText(/No calls queued yet|Waiting for number/).first()
+    ).toBeVisible();
+  });
+
+  test("329 — campaign cards link to a visual detail page (V58)", async ({
+    page,
+  }) => {
+    // QA Blast (queued, 1 recipient) exists from test 325.
+    await page.goto(`${BASE}/campaigns`);
+    await expect(page.getByText(/0 of 1 sent/).first()).toBeVisible();
+    await expect(page.getByText(/Ready \d\/4/).first()).toBeVisible();
+    // View → the campaign's own page: charts, recipients, voice touches
+    await page.getByRole("link", { name: /View campaign QA Blast/ }).click();
+    await expect(page).toHaveURL(/\/campaigns\/camp-/);
+    await expect(page.getByRole("heading", { name: "QA Blast" })).toBeVisible();
+    await expect(page.getByText("Delivery", { exact: true })).toBeVisible();
+    await expect(page.getByText("Recipients by company")).toBeVisible();
+    await expect(page.getByText("Dr. Lena Vogt").first()).toBeVisible();
+    await expect(page.getByText(/Voice touches/).first()).toBeVisible();
+    // creation is still an inline composer, not a popup
+    await page.goto(`${BASE}/campaigns`);
+    await page.getByRole("button", { name: /New campaign/ }).click();
+    await expect(page.getByLabel("Campaign name")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
 });

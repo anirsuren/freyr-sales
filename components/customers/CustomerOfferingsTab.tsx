@@ -281,27 +281,42 @@ export function CustomerOfferingsTab({
   }
 
   // ---------------------------------------------------------- classified view
+  const adoptionPct = applicable.length
+    ? Math.round((inUse.length / applicable.length) * 100)
+    : 0;
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-[13px] text-text-secondary">
-          <span className="font-semibold text-text-primary tnum">
-            {applicable.length}
-          </span>{" "}
-          {applicable.length === 1 ? "offering applies" : "offerings apply"} to{" "}
-          <span className="font-semibold text-text-primary">
-            {customerType}
-          </span>
-          {inUse.length > 0 && (
-            <>
-              {" "}
-              · already using{" "}
-              <span className="font-semibold text-text-primary tnum">
-                {inUse.length}
-              </span>
-            </>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] text-text-secondary">
+            <span className="font-semibold text-text-primary tnum">
+              {applicable.length}
+            </span>{" "}
+            {applicable.length === 1 ? "offering applies" : "offerings apply"} to{" "}
+            <span className="font-semibold text-text-primary">
+              {customerType}
+            </span>
+            {inUse.length > 0 && (
+              <>
+                {" "}
+                · already using{" "}
+                <span className="font-semibold text-text-primary tnum">
+                  {inUse.length}
+                </span>{" "}
+                <span className="text-text-tertiary tnum">({adoptionPct}%)</span>
+              </>
+            )}
+          </p>
+          {/* adoption at a glance — green = using, the rest is whitespace to sell */}
+          {applicable.length > 0 && (
+            <div className="h-1.5 rounded-full bg-surface overflow-hidden mt-1.5 max-w-[420px]">
+              <div
+                className="h-full rounded-full bg-success"
+                style={{ width: `${Math.max(adoptionPct, inUse.length > 0 ? 3 : 0)}%` }}
+              />
+            </div>
           )}
-        </p>
+        </div>
         <label className="flex items-center gap-2 text-[12px] text-text-tertiary">
           Customer type
           <select

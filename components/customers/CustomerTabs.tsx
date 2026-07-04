@@ -347,7 +347,8 @@ export function CustomerTabs({
 
         {tab === "overview" && (
           <div className="space-y-6">
-            <AccountBriefing context={agentContext} />
+            {/* Identity FIRST (Anir's audit): who this account IS leads the
+                page; the agent's read follows right after — kept, not cut. */}
             <Card>
               <h3 className="text-[15px] font-semibold text-text-primary mb-3">
                 About this account
@@ -385,6 +386,8 @@ export function CustomerTabs({
                 {customer.enrichment_summary}
               </p>
             </Card>
+
+            <AccountBriefing context={agentContext} />
 
             {contacts.length > 0 && (
               <div>

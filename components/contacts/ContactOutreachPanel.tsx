@@ -12,10 +12,10 @@ import {
   Check,
   PhoneCall,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 
 // One ranked offering row, serialized by the contact page.
@@ -38,11 +38,14 @@ type Draft = {
   limit?: number;
 };
 
-// Suren's Jul 3 asks, on the contact page: (1) the offerings applicable to
-// this PERSON — inherited from their customer, with their role keywords
-// matched against each offering; (2) on-demand LinkedIn/email drafts pitching
-// a selected offering (copy-out, never auto-sent); (3) an AI voice call per
-// offering — wired now, dials once a phone number is connected (Twilio last).
+type Mode = "linkedin" | "email" | "voice";
+
+// Suren's Jul 3 asks on the contact page: (1) the offerings applicable to this
+// PERSON (inherited from their customer, role-keyword matched); (2) on-demand
+// LinkedIn/email drafts pitching a selected offering (copy-out, never
+// auto-sent); (3) an AI voice call per offering. The composer expands INLINE —
+// no popups blocking the page (Anir's audit) — and everything stays honest
+// about what's live vs. queued.
 export function ContactOutreachPanel({
   contactId,
   customerId,
@@ -62,41 +65,34 @@ export function ContactOutreachPanel({
 }) {
   const { toast } = useToast();
 
-  // ---- composer state
-  const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState<"linkedin" | "email">("linkedin");
+  const [mode, setMode] = useState<Mode | null>(null);
   const [offeringId, setOfferingId] = useState(offerings[0]?.id || "");
   const [extra, setExtra] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [message, setMessage] = useState("");
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  // ---- voice state
-  const [voiceOpen, setVoiceOpen] = useState(false);
-  const [voiceOfferingId, setVoiceOfferingId] = useState(offerings[0]?.id || "");
   const [queuing, setQueuing] = useState(false);
 
   const strong = useMemo(() => offerings.filter((o) => o.score >= 2), [offerings]);
   const selected = offerings.find((o) => o.id === offeringId) || null;
-  const voiceSelected = offerings.find((o) => o.id === voiceOfferingId) || null;
 
-  function openComposer(kindWanted: "linkedin" | "email", withOffering?: string) {
-    setKind(kindWanted);
+  function open(next: Mode, withOffering?: string) {
+    setMode(next);
     if (withOffering) setOfferingId(withOffering);
+    else if (!offeringId && strong[0]) setOfferingId(strong[0].id);
     setDraft(null);
     setMessage("");
-    setOpen(true);
   }
 
   async function generate() {
-    if (!offeringId) return;
+    if (!offeringId || mode === "voice" || !mode) return;
     setGenerating(true);
     try {
       const res = await fetch(`/api/contacts/${contactId}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, offeringId, extra }),
+        body: JSON.stringify({ kind: mode, offeringId, extra }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -128,13 +124,13 @@ export function ContactOutreachPanel({
   }
 
   async function queueCall() {
-    if (!voiceOfferingId) return;
+    if (!offeringId) return;
     setQueuing(true);
     try {
       const res = await fetch(`/api/voice/call`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactId, offeringId: voiceOfferingId }),
+        body: JSON.stringify({ contactId, offeringId }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -143,7 +139,7 @@ export function ContactOutreachPanel({
             ? "Calling now — the voice agent is dialing."
             : "Queued — the agent will dial as soon as a phone number is connected."
         );
-        setVoiceOpen(false);
+        setMode(null);
       } else {
         toast(data.error || "Couldn't queue the call.", "error");
       }
@@ -156,6 +152,9 @@ export function ContactOutreachPanel({
 
   const overLimit =
     draft?.kind === "linkedin" && draft.limit ? message.length > draft.limit : false;
+
+  const headerBtn =
+    "inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border transition-colors";
 
   return (
     <Card className="mt-8" data-testid="contact-outreach">
@@ -173,34 +172,190 @@ export function ContactOutreachPanel({
         </div>
         {offerings.length > 0 && (
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="secondary"
-              className="text-[13px] font-medium px-3 py-2 gap-1.5"
-              onClick={() => openComposer("linkedin", strong[0]?.id)}
+            <button
+              onClick={() => (mode === "linkedin" ? setMode(null) : open("linkedin"))}
+              aria-pressed={mode === "linkedin"}
+              className={`${headerBtn} ${
+                mode === "linkedin"
+                  ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
+                  : "border-border text-text-primary bg-white hover:bg-surface"
+              }`}
             >
               <MessageSquareText size={14} strokeWidth={1.8} />
               LinkedIn message
-            </Button>
-            <Button
-              variant="secondary"
-              className="text-[13px] font-medium px-3 py-2 gap-1.5"
-              onClick={() => openComposer("email", strong[0]?.id)}
+            </button>
+            <button
+              onClick={() => (mode === "email" ? setMode(null) : open("email"))}
+              aria-pressed={mode === "email"}
+              className={`${headerBtn} ${
+                mode === "email"
+                  ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
+                  : "border-border text-text-primary bg-white hover:bg-surface"
+              }`}
             >
               <Mail size={14} strokeWidth={1.8} />
               Email message
-            </Button>
-            <Button
-              variant="secondary"
-              className="text-[13px] font-medium px-3 py-2 gap-1.5"
-              onClick={() => setVoiceOpen(true)}
+            </button>
+            <button
+              onClick={() => (mode === "voice" ? setMode(null) : open("voice"))}
+              aria-pressed={mode === "voice"}
+              className={`${headerBtn} ${
+                mode === "voice"
+                  ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
+                  : "border-border text-text-primary bg-white hover:bg-surface"
+              }`}
             >
               <PhoneCall size={14} strokeWidth={1.8} />
               AI voice call
-            </Button>
+            </button>
           </div>
         )}
       </div>
 
+      {/* ---------------- inline composer — expands here, never a popup ------ */}
+      {mode && (
+        <div className="mb-4 rounded-xl border border-border-light bg-surface/50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[14px] font-semibold text-text-primary">
+              {mode === "voice" ? `Call ${firstName}` : `Message ${firstName}`}
+            </h3>
+            <button
+              onClick={() => setMode(null)}
+              aria-label="Close composer"
+              className="text-text-tertiary hover:text-text-primary transition-colors"
+            >
+              <X size={16} strokeWidth={1.7} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
+                Offering to pitch
+              </label>
+              <select
+                aria-label="Offering to pitch"
+                value={offeringId}
+                onChange={(e) => {
+                  setOfferingId(e.target.value);
+                  setDraft(null);
+                  setMessage("");
+                }}
+                className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13.5px] text-text-primary focus:outline-none focus:shadow-input-focus"
+              >
+                {offerings.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                    {o.score >= 2 ? " — strong match" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {mode !== "voice" && (
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
+                  Anything to work in? (optional)
+                </label>
+                <input
+                  value={extra}
+                  onChange={(e) => setExtra(e.target.value)}
+                  placeholder="e.g. met at DIA · focus the EU angle"
+                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus"
+                />
+              </div>
+            )}
+          </div>
+
+          {mode === "voice" ? (
+            <div className="mt-3 space-y-3">
+              <p className="text-[12.5px] text-text-secondary">
+                The{" "}
+                <span className="font-semibold text-text-primary">
+                  {selected?.category || selected?.type || "offering"}
+                </span>{" "}
+                voice agent calls {firstName} about this offering — it knows the
+                category, the description and the Freyr context.
+              </p>
+              <p
+                className={`text-[12px] rounded-md px-3 py-2 ${
+                  voiceWired
+                    ? "text-warning bg-warning/10"
+                    : "text-text-secondary bg-white border border-border-light"
+                }`}
+              >
+                {voiceWired
+                  ? "Agents are wired — no phone number is connected yet, so the call queues until one is."
+                  : "Voice agents aren't configured in this environment yet."}
+              </p>
+              <div className="flex justify-end">
+                <Button onClick={queueCall} loading={queuing}>
+                  <PhoneCall size={14} strokeWidth={1.9} className="mr-1.5" />
+                  Queue the call
+                </Button>
+              </div>
+            </div>
+          ) : !draft ? (
+            <Button onClick={generate} loading={generating} className="w-full mt-3">
+              <Sparkles size={15} strokeWidth={1.9} className="mr-1.5" />
+              Generate {mode === "linkedin" ? "LinkedIn note" : "email"}
+            </Button>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {draft.kind === "email" && draft.subject && (
+                <p className="text-[13px] text-text-primary bg-white border border-border-light rounded-md px-3 py-2">
+                  <span className="font-semibold text-text-tertiary">Subject: </span>
+                  {draft.subject}
+                </p>
+              )}
+              <textarea
+                aria-label="Generated message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={draft.kind === "linkedin" ? 4 : 10}
+                className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13.5px] leading-relaxed text-text-primary focus:outline-none focus:shadow-input-focus resize-y"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p
+                  className={`text-[11.5px] tnum ${
+                    overLimit ? "text-error font-semibold" : "text-text-tertiary"
+                  }`}
+                >
+                  {draft.kind === "linkedin" && draft.limit
+                    ? `${message.length}/${draft.limit} characters${
+                        overLimit ? " — over LinkedIn's note limit" : ""
+                      }`
+                    : `${message.split(/\s+/).filter(Boolean).length} words`}
+                  {" · "}
+                  {draft.source === "claude" ? "AI-personalized" : "template"}
+                  {" · "}
+                  Nothing sends from here — copy it and send it yourself.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={generate}
+                    loading={generating}
+                    className="text-[13px] px-3 py-2 gap-1.5"
+                  >
+                    <RefreshCw size={13} strokeWidth={1.8} />
+                    Regenerate
+                  </Button>
+                  <Button onClick={copy} className="text-[13px] px-3 py-2 gap-1.5">
+                    {copied ? (
+                      <Check size={14} strokeWidth={2.2} />
+                    ) : (
+                      <Copy size={14} strokeWidth={1.8} />
+                    )}
+                    {copied ? "Copied" : "Copy message"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ------------------------------------------------ offerings list ---- */}
       {offerings.length === 0 ? (
         !classified && customerId ? (
           <Link
@@ -252,7 +407,7 @@ export function ContactOutreachPanel({
                 </p>
               </div>
               <button
-                onClick={() => openComposer("linkedin", o.id)}
+                onClick={() => open("linkedin", o.id)}
                 className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary px-2.5 py-1.5 rounded-md border border-border-light hover:bg-blue-light/50 transition-colors"
               >
                 Message
@@ -273,206 +428,6 @@ export function ContactOutreachPanel({
           )}
         </div>
       )}
-
-      {/* ------------------------------------------------ message composer */}
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        title={`Message ${firstName}`}
-        size="wide"
-      >
-        <div className="space-y-3">
-          <div className="flex gap-1.5" role="tablist" aria-label="Message type">
-            {(
-              [
-                { k: "linkedin" as const, label: "LinkedIn", icon: MessageSquareText },
-                { k: "email" as const, label: "Email", icon: Mail },
-              ]
-            ).map(({ k, label, icon: Icon }) => (
-              <button
-                key={k}
-                role="tab"
-                aria-selected={kind === k}
-                onClick={() => {
-                  setKind(k);
-                  setDraft(null);
-                  setMessage("");
-                }}
-                className={`inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md border transition-colors ${
-                  kind === k
-                    ? "border-blue-primary bg-blue-light text-blue-primary"
-                    : "border-border-light text-text-secondary hover:bg-surface"
-                }`}
-              >
-                <Icon size={14} strokeWidth={1.8} />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
-              Offering to pitch
-            </label>
-            <select
-              aria-label="Offering to pitch"
-              value={offeringId}
-              onChange={(e) => {
-                setOfferingId(e.target.value);
-                setDraft(null);
-                setMessage("");
-              }}
-              className="w-full rounded-md border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:shadow-input-focus"
-            >
-              {offerings.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                  {o.score >= 2 ? " — strong match" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
-              Anything to work in? (optional)
-            </label>
-            <input
-              value={extra}
-              onChange={(e) => setExtra(e.target.value)}
-              placeholder="e.g. met at DIA · focus the EU angle"
-              className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus"
-            />
-          </div>
-
-          {!draft ? (
-            <Button onClick={generate} loading={generating} className="w-full">
-              <Sparkles size={15} strokeWidth={1.9} className="mr-1.5" />
-              Generate {kind === "linkedin" ? "LinkedIn note" : "email"}
-            </Button>
-          ) : (
-            <>
-              {draft.kind === "email" && draft.subject && (
-                <p className="text-[13px] text-text-primary bg-surface rounded-md px-3 py-2">
-                  <span className="font-semibold text-text-tertiary">
-                    Subject:{" "}
-                  </span>
-                  {draft.subject}
-                </p>
-              )}
-              <textarea
-                aria-label="Generated message"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={draft.kind === "linkedin" ? 5 : 12}
-                className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13.5px] leading-relaxed text-text-primary focus:outline-none focus:shadow-input-focus resize-y"
-              />
-              <div className="flex items-center justify-between gap-2">
-                <p
-                  className={`text-[11.5px] tnum ${
-                    overLimit ? "text-error font-semibold" : "text-text-tertiary"
-                  }`}
-                >
-                  {draft.kind === "linkedin" && draft.limit
-                    ? `${message.length}/${draft.limit} characters${
-                        overLimit ? " — over LinkedIn's note limit" : ""
-                      }`
-                    : `${message.split(/\s+/).filter(Boolean).length} words`}
-                  {" · "}
-                  {draft.source === "claude" ? "AI-personalized" : "template"}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={generate}
-                    loading={generating}
-                    className="text-[13px] px-3 py-2 gap-1.5"
-                  >
-                    <RefreshCw size={13} strokeWidth={1.8} />
-                    Regenerate
-                  </Button>
-                  <Button onClick={copy} className="text-[13px] px-3 py-2 gap-1.5">
-                    {copied ? (
-                      <Check size={14} strokeWidth={2.2} />
-                    ) : (
-                      <Copy size={14} strokeWidth={1.8} />
-                    )}
-                    {copied ? "Copied" : "Copy message"}
-                  </Button>
-                </div>
-              </div>
-              <p className="text-[11.5px] text-text-tertiary">
-                Nothing sends from here — copy it, then send it yourself from
-                LinkedIn or your inbox.
-              </p>
-            </>
-          )}
-        </div>
-      </Modal>
-
-      {/* ------------------------------------------------ voice call modal */}
-      <Modal
-        open={voiceOpen}
-        onClose={() => setVoiceOpen(false)}
-        title={`AI voice call — ${firstName}`}
-      >
-        <div className="space-y-3">
-          <p className="text-[13px] text-text-secondary leading-relaxed">
-            The voice agent calls about ONE offering and knows its category,
-            description and Freyr context. You pick, it dials.
-          </p>
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
-              Offering to talk about
-            </label>
-            <select
-              aria-label="Voice call offering"
-              value={voiceOfferingId}
-              onChange={(e) => setVoiceOfferingId(e.target.value)}
-              className="w-full rounded-md border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:shadow-input-focus"
-            >
-              {offerings.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                  {o.score >= 2 ? " — strong match" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          {voiceSelected && (
-            <p className="text-[12px] text-text-secondary bg-surface rounded-md px-3 py-2">
-              Uses the{" "}
-              <span className="font-semibold">
-                {voiceSelected.category || voiceSelected.type}
-              </span>{" "}
-              voice agent.
-            </p>
-          )}
-          <div
-            className={`text-[12px] rounded-md px-3 py-2 ${
-              voiceWired
-                ? "text-warning bg-warning/10"
-                : "text-text-secondary bg-surface"
-            }`}
-          >
-            {voiceWired
-              ? "Agents are wired — no phone number is connected yet, so calls queue until one is."
-              : "Voice agents aren't configured in this environment yet."}
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setVoiceOpen(false)}
-              className="text-[13px] font-semibold text-text-secondary hover:text-text-primary px-3 py-2"
-            >
-              Cancel
-            </button>
-            <Button onClick={queueCall} loading={queuing}>
-              <PhoneCall size={14} strokeWidth={1.9} className="mr-1.5" />
-              Queue the call
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </Card>
   );
 }
