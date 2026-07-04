@@ -46,11 +46,15 @@ export default async function VoicePage() {
   // all the conversations, all the call statistics"). Live key + not mocked →
   // every actual call (inbound test calls included) lands here with a
   // transcript link. Mock/test env → skipped entirely.
-  const live = status.wired && process.env.AGENT_FORCE_MOCK !== "1";
-  const realConvos = live ? await listConversations(30) : [];
   const categoryByAgent = Object.fromEntries(
     Object.entries(status.agents).map(([c, id]) => [id, c])
   );
+  const live = status.wired && process.env.AGENT_FORCE_MOCK !== "1";
+  // The ElevenLabs workspace hosts OTHER businesses' agents too — show only
+  // calls handled by Freyr's six category agents.
+  const realConvos = live
+    ? (await listConversations(50)).filter((c) => categoryByAgent[c.agent_id])
+    : [];
   const doneConvos = realConvos.filter((c) => c.status === "done");
   const realAvg = doneConvos.length
     ? Math.round(
