@@ -5023,4 +5023,41 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Review", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("In review").first()).toBeVisible();
   });
+  test("338 — saves survive navigating away and back (V61)", async ({
+    page,
+  }) => {
+    // The exact class of bug Anir hit: mutate → client-nav elsewhere → return.
+    // staleTimes=0 means the return trip must show LIVE data, never a cache.
+    await page.goto(`${BASE}/customers/cust-006`);
+
+    // owner
+    await page.getByLabel("Account owner").selectOption("Priya Nair");
+    // competitor
+    await page.getByRole("button", { name: "Edit competitor" }).click();
+    await page.getByRole("textbox", { name: "Competitor" }).fill("Veeva QA");
+    await page.getByRole("button", { name: "Save competitor" }).click();
+    // note
+    await page.getByRole("tab", { name: "Notes" }).click();
+    await page
+      .getByPlaceholder(/Log a call summary/)
+      .fill("Persistence check note — must survive navigation.");
+    await page.getByRole("button", { name: "Add note" }).click();
+    // composer clears on save → the only match left is the rendered note
+    await expect(page.getByPlaceholder(/Log a call summary/)).toHaveValue("");
+    await expect(
+      page.getByText("Persistence check note — must survive navigation.").first()
+    ).toBeVisible();
+
+    // leave via client-side nav, then come back
+    await page.getByRole("link", { name: "Dashboard" }).click();
+    await page.waitForURL(/dashboard/);
+    await page.goto(`${BASE}/customers/cust-006`);
+
+    await expect(page.getByLabel("Account owner")).toHaveValue("Priya Nair");
+    await expect(page.getByText("Veeva QA").first()).toBeVisible();
+    await page.getByRole("tab", { name: "Notes" }).click();
+    await expect(
+      page.getByText("Persistence check note — must survive navigation.").first()
+    ).toBeVisible();
+  });
 });
