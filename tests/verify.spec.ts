@@ -5001,4 +5001,26 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await opened.click();
     await expect(opened).toHaveAttribute("aria-pressed", "false");
   });
+  test("337 — submitting for review shows up on the Sessions list (V61)", async ({
+    page,
+  }) => {
+    // fresh duplicate → the gate explains itself in draft state
+    await page.goto(`${BASE}/sessions/sess-001`);
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Duplicate session" }).click();
+    await page.waitForURL(/\/sessions\/(?!sess-001)[\w-]+/);
+    await expect(
+      page.getByText(/submit this pitch for review/)
+    ).toBeVisible();
+    // submit → state + explainer flip
+    await page.getByRole("button", { name: "Submit for review" }).click();
+    await expect(
+      page.getByText(/Waiting on compliance sign-off/)
+    ).toBeVisible();
+    // …and the Sessions LIST now shows it (Anir: "it doesn't even say
+    // anything on the main Sessions page")
+    await page.goto(`${BASE}/sessions`);
+    await expect(page.getByText("Review", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("In review").first()).toBeVisible();
+  });
 });

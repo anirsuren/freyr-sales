@@ -124,6 +124,7 @@ export default async function SessionPage({
           accountBrief={accountBrief}
           objections={objections}
           initialReviewStatus={session.review_status || "draft"}
+          initialReviewNote={session.review_note || null}
           recipientEmail={contact?.email || ""}
           recipientName={contact?.full_name || ""}
           companyName={customer?.company_name || ""}

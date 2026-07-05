@@ -29,19 +29,7 @@ import type {
   ReviewStatus,
 } from "@/lib/types";
 
-const REVIEW_META: Record<
-  ReviewStatus,
-  { label: string; bg: string; color: string }
-> = {
-  draft: { label: "Draft", bg: "#F3F4F6", color: "#6E6E73" },
-  in_review: { label: "In review", bg: "rgba(255,159,10,0.14)", color: "#7A4A00" },
-  approved: { label: "Approved", bg: "rgba(52,199,89,0.14)", color: "#1A7A35" },
-  changes_requested: {
-    label: "Changes requested",
-    bg: "rgba(255,59,48,0.12)",
-    color: "#B02020",
-  },
-};
+import { REVIEW_META } from "@/lib/review";
 
 const CRM_TARGETS = [
   { key: "hubspot", label: "HubSpot" },
@@ -148,6 +136,7 @@ export function PitchWorkspace({
   accountBrief,
   objections,
   initialReviewStatus,
+  initialReviewNote,
   recipientEmail,
   recipientName,
   companyName,
@@ -161,6 +150,7 @@ export function PitchWorkspace({
   accountBrief?: AccountBrief;
   objections?: { q: string; a: string }[];
   initialReviewStatus?: ReviewStatus;
+  initialReviewNote?: string | null;
   recipientEmail?: string;
   recipientName?: string;
   companyName?: string;
@@ -179,6 +169,9 @@ export function PitchWorkspace({
   const [pushing, setPushing] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<ReviewStatus>(
     initialReviewStatus || "draft"
+  );
+  const [reviewNote, setReviewNote] = useState<string | null>(
+    initialReviewNote || null
   );
   const [reviewing, setReviewing] = useState(false);
 
@@ -349,9 +342,10 @@ export function PitchWorkspace({
       const data = await res.json();
       if (data.ok && data.session) {
         setReviewStatus(data.session.review_status);
+        setReviewNote(data.session.review_note || null);
         toast(
           action === "submit"
-            ? "Submitted for compliance review"
+            ? "Submitted — the Sessions list now shows In review; approve or send back from here"
             : action === "approve"
             ? "Pitch approved — cleared to send"
             : "Sent back for changes"
@@ -506,7 +500,9 @@ export function PitchWorkspace({
                 disabled={reviewing}
                 className="px-3 py-2 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
               >
-                Submit for review
+                {reviewStatus === "changes_requested"
+                  ? "Resubmit for review"
+                  : "Submit for review"}
               </button>
             ) : null}
             <span className="w-px h-6 bg-border-light mx-1" />
@@ -600,6 +596,13 @@ export function PitchWorkspace({
             </div>
           </div>
         </div>
+        {/* What the compliance gate means, in the state you're in right now */}
+        <p className="mt-3 text-[12.5px] text-text-secondary leading-relaxed max-w-[720px]">
+          {REVIEW_META[reviewStatus].explain}
+          {reviewStatus === "changes_requested" && reviewNote && (
+            <span className="text-text-primary"> Reviewer note: &ldquo;{reviewNote}&rdquo;</span>
+          )}
+        </p>
       </div>
 
       {/* Tabs */}

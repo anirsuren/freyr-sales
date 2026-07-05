@@ -35,6 +35,7 @@ export default async function SessionsPage() {
       title: ct?.job_title || "",
       service: svc[0]?.service_name || "—",
       outcome: latestOutcome[s.contact_id] || null,
+      review: s.review_status || "draft",
       date: s.created_at,
     };
   });

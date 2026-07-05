@@ -11,6 +11,8 @@ import { OutcomeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CalendarClock } from "lucide-react";
 import { OUTCOME_META, formatDate, cn } from "@/lib/utils";
+import { REVIEW_META } from "@/lib/review";
+import type { ReviewStatus } from "@/lib/types";
 import { toCSV, downloadCSV } from "@/lib/csv";
 
 export interface SessionRow {
@@ -20,6 +22,7 @@ export interface SessionRow {
   title: string;
   service: string;
   outcome: string | null;
+  review: ReviewStatus;
   date: string;
 }
 
@@ -60,12 +63,13 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
 
   function exportCsv() {
     const csv = toCSV(
-      ["Customer", "Contact", "Recommended Service", "Outcome", "Date"],
+      ["Customer", "Contact", "Recommended Service", "Outcome", "Review", "Date"],
       view.map((r) => [
         r.company,
         r.contact,
         r.service,
         r.outcome ? OUTCOME_META[r.outcome]?.label || r.outcome : "",
+        REVIEW_META[r.review].label,
         formatDate(r.date),
       ])
     );
@@ -151,7 +155,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-surface border-b border-border-light">
-                  {["Customer", "Contact", "Recommended Service", "Outcome", "Date"].map((h) => (
+                  {["Customer", "Contact", "Recommended Service", "Outcome", "Review", "Date"].map((h) => (
                     <th key={h} className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       {h}
                     </th>
@@ -178,6 +182,17 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                     </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">{r.service}</td>
                     <td className="px-5 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "—"}</td>
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <span
+                        className="text-[10.5px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
+                        style={{
+                          background: REVIEW_META[r.review].bg,
+                          color: REVIEW_META[r.review].color,
+                        }}
+                      >
+                        {REVIEW_META[r.review].label}
+                      </span>
+                    </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDate(r.date)}</td>
                     <td className="px-5 py-4 text-right">
                       <Link href={`/sessions/${r.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open session">
