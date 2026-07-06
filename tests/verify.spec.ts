@@ -5060,4 +5060,40 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText("Persistence check note — must survive navigation.").first()
     ).toBeVisible();
   });
+
+  test("339 — an in-use offering can capture revenue lines (V62)", async ({
+    page,
+  }) => {
+    // Helix (cust-004) is classified with offerings already in use.
+    await page.goto(`${BASE}/customers/cust-004`);
+    await page.getByRole("tab", { name: "Offerings" }).click();
+    // seeded revenue shows on the in-use card
+    await expect(page.getByText(/Revenue/).first()).toBeVisible();
+    await expect(page.getByText("License").first()).toBeVisible();
+    // add a new revenue line inline (no popup)
+    await page.getByRole("button", { name: "Add revenue" }).first().click();
+    await page.getByLabel("Revenue type").selectOption("project");
+    await page.getByLabel("Revenue amount").fill("125000");
+    await page.getByLabel("Revenue description").fill("QA implementation project");
+    await page.getByRole("button", { name: "Save revenue" }).click();
+    await expect(page.getByText("QA implementation project").first()).toBeVisible();
+    // survives a reload (persisted)
+    await page.reload();
+    await page.getByRole("tab", { name: "Offerings" }).click();
+    await expect(page.getByText("QA implementation project").first()).toBeVisible();
+  });
+
+  test("340 — offering Reports tab rolls revenue up across customers (V62)", async ({
+    page,
+  }) => {
+    // Freya.Register (of-001) is used by Helix + Meridian in the seed.
+    await page.goto(`${BASE}/offerings/of-001?tab=reports`);
+    await expect(page.getByText("Revenue by customer")).toBeVisible();
+    await expect(page.getByText("Customers", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Total revenue")).toBeVisible();
+    await expect(page.getByText("Licensed users")).toBeVisible();
+    // both customers appear in the detail table
+    await expect(page.getByText("Helix Biologics").first()).toBeVisible();
+    await expect(page.getByText("Meridian Pharmaceuticals").first()).toBeVisible();
+  });
 });

@@ -16,6 +16,10 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { formatMoney } from "@/lib/pipeline";
+import { REVENUE_TYPES, REVENUE_TYPE_META } from "@/lib/revenue";
+import type { OfferingUsage, OfferingRevenueLine, RevenueType } from "@/lib/types";
+import { DollarSign, Plus, Trash2 } from "lucide-react";
 
 // One offering, serialized for this tab by the server page (materials carry a
 // pre-computed plain-English kind label so we don't pull lib/offerings into the
@@ -36,30 +40,267 @@ export type TabOffering = {
 // here on the customer page — show every applicable offering with its
 // description and sales materials, split into what they're ALREADY using vs.
 // what's left to sell. The rep never has to go to the offerings page.
+// Revenue lines for one in-use offering — list, total, and an inline add form
+// (no popup). Captures exactly the fields Suren dictated: revenue type, amount,
+// number of licenses (for license revenue), start/end dates, and a note.
+function RevenueSection({
+  lines,
+  onSave,
+}: {
+  lines: OfferingRevenueLine[];
+  onSave: (lines: OfferingRevenueLine[]) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [rType, setRType] = useState<RevenueType>("annual");
+  const [amount, setAmount] = useState("");
+  const [licenses, setLicenses] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [desc, setDesc] = useState("");
+
+  const total = lines.reduce((s, l) => s + (l.amount || 0), 0);
+  const num = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^0-9.]/g, "")) || 0));
+  const inp =
+    "rounded-md border border-border bg-white px-2.5 py-1.5 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
+
+  function reset() {
+    setRType("annual");
+    setAmount("");
+    setLicenses("");
+    setStart("");
+    setEnd("");
+    setDesc("");
+    setAdding(false);
+  }
+
+  function add() {
+    const amt = num(amount);
+    const lic = rType === "license" ? num(licenses) : 0;
+    if (amt === 0 && lic === 0) return;
+    const line: OfferingRevenueLine = {
+      id: `rev-${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`,
+      revenue_type: rType,
+      amount: amt,
+      num_licenses: rType === "license" ? lic : null,
+      start_date: start || null,
+      end_date: end || null,
+      description: desc.trim() || null,
+    };
+    onSave([...lines, line]);
+    reset();
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border-light">
+      <div className="flex items-center justify-between mb-2">
+        <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+          <DollarSign size={13} strokeWidth={2} className="text-success" />
+          Revenue{" "}
+          {total > 0 && (
+            <span className="text-success tnum normal-case">
+              · {formatMoney(total)}/yr on file
+            </span>
+          )}
+        </p>
+        {!adding && (
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+          >
+            <Plus size={13} strokeWidth={2.2} />
+            Add revenue
+          </button>
+        )}
+      </div>
+
+      {lines.length > 0 && (
+        <ul className="space-y-1.5 mb-2">
+          {lines.map((l) => (
+            <li
+              key={l.id}
+              className="flex items-start justify-between gap-2 text-[12.5px] bg-surface/70 rounded-md px-2.5 py-1.5"
+            >
+              <span className="min-w-0">
+                <span className="font-semibold text-text-primary tnum">
+                  {formatMoney(l.amount)}
+                </span>{" "}
+                <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded px-1.5 py-0.5">
+                  {REVENUE_TYPE_META[l.revenue_type].short}
+                </span>
+                {l.revenue_type === "license" && l.num_licenses ? (
+                  <span className="text-text-secondary"> · {l.num_licenses} licenses</span>
+                ) : null}
+                {(l.start_date || l.end_date) && (
+                  <span className="text-text-tertiary tnum">
+                    {" "}
+                    · {l.start_date || "—"} → {l.end_date || "—"}
+                  </span>
+                )}
+                {l.description && (
+                  <span className="block text-[12px] text-text-secondary mt-0.5">
+                    {l.description}
+                  </span>
+                )}
+              </span>
+              <button
+                onClick={() => onSave(lines.filter((x) => x.id !== l.id))}
+                aria-label="Remove revenue line"
+                className="shrink-0 text-text-tertiary hover:text-error transition-colors mt-0.5"
+              >
+                <Trash2 size={14} strokeWidth={1.8} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {adding && (
+        <div className="bg-surface/60 rounded-lg p-3 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              Revenue type
+              <select
+                aria-label="Revenue type"
+                value={rType}
+                onChange={(e) => setRType(e.target.value as RevenueType)}
+                className={inp}
+              >
+                {REVENUE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {REVENUE_TYPE_META[t].label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              {rType === "project" ? "Project revenue ($)" : "Revenue ($)"}
+              <input
+                aria-label="Revenue amount"
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="250000"
+                className={`${inp} tnum`}
+              />
+            </label>
+          </div>
+          {rType === "license" && (
+            <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              Number of licenses
+              <input
+                aria-label="Number of licenses"
+                inputMode="numeric"
+                value={licenses}
+                onChange={(e) => setLicenses(e.target.value)}
+                placeholder="60"
+                className={`${inp} tnum`}
+              />
+            </label>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              Start date
+              <input
+                aria-label="Start date"
+                type="date"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+                className={inp}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              End date
+              <input
+                aria-label="End date"
+                type="date"
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+                className={inp}
+              />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+            Description (optional)
+            <input
+              aria-label="Revenue description"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="e.g. implementation project"
+              className={inp}
+            />
+          </label>
+          <div className="flex justify-end gap-2 pt-0.5">
+            <button
+              onClick={reset}
+              className="text-[12px] font-semibold text-text-secondary hover:text-text-primary px-3 py-1.5"
+            >
+              Cancel
+            </button>
+            <Button onClick={add} className="px-3 py-1.5 text-[12px]">
+              Save revenue
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CustomerOfferingsTab({
   customerId,
   customerType,
   typeOptions,
   applicable,
   inUse,
+  usage = [],
 }: {
   customerId: string;
   customerType: string | null;
   typeOptions: string[];
   applicable: TabOffering[];
   inUse: TabOffering[];
+  // Commercial detail per in-use offering (Suren, Jul 5).
+  usage?: OfferingUsage[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [pickedType, setPickedType] = useState("");
   const [savingType, setSavingType] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Local copy of the revenue lines so add/remove feels instant.
+  const [usageState, setUsageState] = useState<OfferingUsage[]>(usage);
 
   const inUseIds = useMemo(() => new Set(inUse.map((o) => o.id)), [inUse]);
   const toPitch = useMemo(
     () => applicable.filter((o) => !inUseIds.has(o.id)),
     [applicable, inUseIds]
   );
+
+  const linesForOffering = (id: string) =>
+    usageState.find((u) => u.offering_id === id)?.revenue_lines || [];
+
+  // Replace the revenue lines for one offering, persist the whole map.
+  async function saveLines(offeringId: string, lines: OfferingRevenueLine[]) {
+    const next = usageState.filter((u) => u.offering_id !== offeringId);
+    if (lines.length) next.push({ offering_id: offeringId, revenue_lines: lines });
+    setUsageState(next);
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ offering_usage: next }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast("Revenue saved.");
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't save the revenue.", "error");
+      }
+    } catch {
+      toast("Couldn't save the revenue.", "error");
+    }
+  }
 
   async function saveType(type: string) {
     if (!type) return;
@@ -188,6 +429,15 @@ export function CustomerOfferingsTab({
           No description yet — it comes from the offering&apos;s sales
           materials.
         </p>
+      )}
+
+      {/* Revenue on this offering — only for the ones they're actually using
+          (Suren, Jul 5: revenue type / amount / licenses / dates / notes). */}
+      {using && (
+        <RevenueSection
+          lines={linesForOffering(o.id)}
+          onSave={(lines) => saveLines(o.id, lines)}
+        />
       )}
 
       <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-border-light">

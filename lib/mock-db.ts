@@ -197,17 +197,32 @@ function seed(): MockStore {
     own?: string;
     rev?: string;
     inUse?: string[];
+    // Commercial detail per in-use offering (Suren's Jul 5 dictation) — seeds
+    // the revenue lines + the offering Reports tab (revenue across customers).
+    usage?: import("./types").OfferingUsage[];
   };
 
   const specs: Spec[] = [
     { id: "003", company: "Cortexa Biopharma", size: "mid", industry: "Biotechnology", geo: "United States (Boston, MA)", csum: "Clinical-stage neuro biotech, ~300 staff, two Phase 2 CNS assets, first EMA filing planned.", contact: "Marcus Thorne", title: "Head of CMC", role: "Quality Assurance", csumc: "15 yrs CMC across biologics; owns dossier technical writing.", service: "NDA/MAA CMC Writing", score: 9, outcome: "interested", days: 6, note: "Keen on CTD/CMC support for the EMA filing.", follow: 5, review: "in_review" },
-    { id: "004", company: "Helix Biologics", size: "large", industry: "Pharmaceutical", geo: "United Kingdom (Cambridge)", csum: "Top-20 pharma, global biologics portfolio, simultaneous FDA/EMA/PMDA programs.", contact: "Dr. Lena Vogt", title: "SVP Global Regulatory", role: "Executive", csumc: "Former EMA assessor; runs a 60-person global RA org.", service: "Global Labeling Strategy", score: 8, outcome: "meeting_booked", days: 3, note: "Booked exec briefing for next Thursday.", follow: 7, ctype: "Pharmaceutical - Large", own: "Public", rev: "$8.2B", inUse: ["of-001", "of-023"] },
+    { id: "004", company: "Helix Biologics", size: "large", industry: "Pharmaceutical", geo: "United Kingdom (Cambridge)", csum: "Top-20 pharma, global biologics portfolio, simultaneous FDA/EMA/PMDA programs.", contact: "Dr. Lena Vogt", title: "SVP Global Regulatory", role: "Executive", csumc: "Former EMA assessor; runs a 60-person global RA org.", service: "Global Labeling Strategy", score: 8, outcome: "meeting_booked", days: 3, note: "Booked exec briefing for next Thursday.", follow: 7, ctype: "Pharmaceutical - Large", own: "Public", rev: "$8.2B", inUse: ["of-001", "of-023"], usage: [
+      { offering_id: "of-001", revenue_lines: [
+        { id: "rev-h1", revenue_type: "license", amount: 480000, num_licenses: 60, start_date: "2026-01-01", end_date: "2026-12-31", description: "Freya.Register seats across the global RA org." },
+        { id: "rev-h2", revenue_type: "project", amount: 220000, num_licenses: null, start_date: "2026-02-01", end_date: "2026-08-31", description: "Registration data migration & implementation project." },
+      ] },
+      { offering_id: "of-023", revenue_lines: [
+        { id: "rev-h3", revenue_type: "annual_service", amount: 150000, num_licenses: null, start_date: "2026-01-01", end_date: "2026-12-31", description: "On-demand regulatory intelligence retainer." },
+      ] },
+    ] },
     { id: "005", company: "Solvance Pharma", size: "large", industry: "Pharmaceutical", geo: "United States (San Diego, CA)", csum: "Commercial-stage; expanding rare-disease pipeline into EU and Japan.", contact: "Prithvi Nair", title: "Director, Regulatory Ops", role: "Regulatory Affairs", csumc: "Owns submission operations and publishing tooling.", service: "Regulatory Submission Services", score: 9, outcome: "in_progress", days: 17, note: "Reviewing our eCTD throughput benchmarks.", follow: 4 },
     { id: "006", company: "NovaGene Therapeutics", size: "mid", industry: "Biotechnology", geo: "United States (Princeton, NJ)", csum: "Gene-therapy biotech, first BLA in 18 months, lean RA team.", contact: "Dana Whitfield", title: "VP Regulatory Affairs", role: "Regulatory Affairs", csumc: "Built RA from scratch; needs scalable submission capacity.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "interested", days: 19, note: "Wants IND-to-BLA roadmap.", follow: 6 },
     { id: "007", company: "Aether Medical Devices", size: "mid", industry: "Medical Device", geo: "Germany (Munich)", csum: "Class III cardiovascular devices, navigating EU MDR transition.", contact: "Stefan Bauer", title: "Head of Regulatory", role: "Regulatory Affairs", csumc: "MDR specialist under technical-documentation deadline pressure.", service: "Regulatory Intelligence", score: 7, outcome: "no_response", days: 22 },
     { id: "008", company: "Solara Consumer Health", size: "small", industry: "Consumer Health", geo: "United States (Chicago, IL)", csum: "OTC and supplements brand expanding into EU and Canada.", contact: "Megan Ruiz", title: "Compliance Manager", role: "Compliance", csumc: "Owns OTC labeling and ingredient compliance.", service: "Labeling and Artwork Management", score: 7, outcome: "in_progress", days: 5, note: "Multi-market labeling pain across 6 SKUs.", follow: 3 },
     { id: "009", company: "Quantum Oncology", size: "mid", industry: "Biotechnology", geo: "United States (South SF, CA)", csum: "Precision-oncology biotech, ADC platform, two pivotal trials.", contact: "Dr. Arun Pillai", title: "Chief Medical Officer", role: "Medical Affairs", csumc: "Physician-scientist; cares about trial regulatory de-risking.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "meeting_booked", days: 2, note: "Exec sponsor engaged; aligning on scope.", follow: 8, review: "approved" },
-    { id: "010", company: "Meridian Pharmaceuticals", size: "large", industry: "Pharmaceutical", geo: "Switzerland (Basel)", csum: "Global generics + specialty; high-volume ANDA/MAA submissions.", contact: "Claudia Hofmann", title: "Global Head, Reg Submissions", role: "Executive", csumc: "Runs a high-throughput global submissions factory.", service: "Regulatory Submission Services", score: 9, outcome: "not_interested", days: 18, note: "Has incumbent vendor mid-contract.", },
+    { id: "010", company: "Meridian Pharmaceuticals", size: "large", industry: "Pharmaceutical", geo: "Switzerland (Basel)", csum: "Global generics + specialty; high-volume ANDA/MAA submissions.", contact: "Claudia Hofmann", title: "Global Head, Reg Submissions", role: "Executive", csumc: "Runs a high-throughput global submissions factory.", service: "Regulatory Submission Services", score: 9, outcome: "not_interested", days: 18, note: "Has incumbent vendor mid-contract.", inUse: ["of-001"], usage: [
+      { offering_id: "of-001", revenue_lines: [
+        { id: "rev-m1", revenue_type: "license", amount: 260000, num_licenses: 32, start_date: "2026-03-01", end_date: "2027-02-28", description: "Freya.Register licenses for the submissions team." },
+      ] },
+    ] },
     { id: "011", company: "Northwind Biosciences", size: "small", industry: "Biotechnology", geo: "Canada (Toronto)", csum: "Seed-stage biotech, pre-IND, first-time FDA filer.", contact: "Owen Bradley", title: "Co-founder & COO", role: "Executive", csumc: "Wears many hats; needs end-to-end regulatory hand-holding.", service: "Clinical Trial Regulatory Support", score: 7, outcome: null, days: 1 },
     { id: "012", company: "Orion Vaccines", size: "mid", industry: "Biotechnology", geo: "United States (Rockville, MD)", csum: "Vaccine developer, pandemic-preparedness portfolio, EUA experience.", contact: "Dr. Hana Kim", title: "VP Regulatory Strategy", role: "Regulatory Affairs", csumc: "Led multiple EUAs; values speed and agency relationships.", service: "Regulatory Intelligence", score: 8, outcome: "interested", days: 16, note: "Wants global guidance monitoring.", follow: 5 },
   ];
@@ -234,7 +249,10 @@ function seed(): MockStore {
             analyzed_at: iso(s.days),
             offerings_in_use: s.inUse || [],
           }
+        : s.inUse
+        ? { offerings_in_use: s.inUse }
         : {}),
+      ...(s.usage ? { offering_usage: s.usage } : {}),
     });
     contacts.push({
       id: ctid,

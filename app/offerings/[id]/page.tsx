@@ -21,7 +21,11 @@ import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { RecordView } from "@/components/RecordView";
 import { DuplicateButton } from "@/components/offerings/DuplicateButton";
+import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { isAdmin } from "@/lib/role";
+import { getDb } from "@/lib/db";
+import { reportForOffering } from "@/lib/revenue";
+import { cn } from "@/lib/utils";
 import {
   getOffering,
   hydrateOffering,
@@ -59,12 +63,19 @@ const CT_FAMILIES = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
 export default async function OfferingDetailPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: { tab?: string };
 }) {
   const raw = getOffering(params.id);
   if (!raw) notFound();
   const o = hydrateOffering(raw);
+
+  // Reports tab (Suren, Jul 5): revenue for THIS offering cumulated across
+  // every customer using it — the offering owner's view.
+  const tab = searchParams?.tab === "reports" ? "reports" : "overview";
+  const report = reportForOffering(await getDb().customers.list(), o.id);
 
   // Sibling offerings of the same type — Suren's catalog is variant-heavy, so a
   // quick way to compare the family (e.g. the Freya Register stack) is useful.
@@ -204,6 +215,45 @@ export default async function OfferingDetailPage({
           {o.future_availability}
         </p>
       )}
+
+      {/* Overview | Reports (Suren's "I need a reports tab in offering") */}
+      <div
+        role="tablist"
+        aria-label="Offering sections"
+        className="flex gap-8 border-b border-border-light mt-6 mb-2"
+      >
+        {[
+          { key: "overview", label: "Overview", href: `/offerings/${o.id}` },
+          {
+            key: "reports",
+            label:
+              report.customerCount > 0
+                ? `Reports (${report.customerCount})`
+                : "Reports",
+            href: `/offerings/${o.id}?tab=reports`,
+          },
+        ].map((t) => (
+          <Link
+            key={t.key}
+            href={t.href}
+            role="tab"
+            aria-selected={tab === t.key}
+            className={cn(
+              "pb-3 -mb-px border-b-2 text-[14px] transition-colors",
+              tab === t.key
+                ? "border-blue-primary text-blue-primary font-semibold"
+                : "border-transparent text-text-secondary hover:text-text-primary font-medium"
+            )}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+
+      {tab === "reports" ? (
+        <OfferingReports report={report} offeringName={o.offering_name} />
+      ) : (
+        <>
 
       {/* Offering category — its plain-English description + the offering owner
           (Suren's Jun 27 grouping). The category is a first-class object: this
@@ -409,6 +459,8 @@ export default async function OfferingDetailPage({
             ))}
           </div>
         </Card>
+      )}
+        </>
       )}
     </div>
   );

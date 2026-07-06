@@ -49,6 +49,36 @@ export async function PATCH(
     patch.offerings_in_use = body.offerings_in_use.filter(
       (x: unknown): x is string => typeof x === "string"
     );
+  // Commercial detail per in-use offering (Suren's Jul 5 dictation): revenue
+  // lines keyed by offering. Sanitized so bad input can't corrupt the store.
+  if (Array.isArray(body.offering_usage)) {
+    const RT = ["annual", "project", "annual_service", "license"];
+    patch.offering_usage = body.offering_usage
+      .map((u: any) => ({
+        offering_id: String(u?.offering_id || ""),
+        revenue_lines: Array.isArray(u?.revenue_lines)
+          ? u.revenue_lines
+              .map((l: any) => ({
+                id: String(l?.id || uid("rev")),
+                revenue_type: RT.includes(l?.revenue_type)
+                  ? l.revenue_type
+                  : "annual",
+                amount: Math.max(0, Math.round(Number(l?.amount) || 0)),
+                num_licenses:
+                  l?.num_licenses != null
+                    ? Math.max(0, Math.round(Number(l.num_licenses) || 0))
+                    : null,
+                start_date: l?.start_date ? String(l.start_date) : null,
+                end_date: l?.end_date ? String(l.end_date) : null,
+                description: l?.description
+                  ? String(l.description).slice(0, 400)
+                  : null,
+              }))
+              .filter((l: any) => l.amount > 0 || l.num_licenses)
+          : [],
+      }))
+      .filter((u: any) => u.offering_id && u.revenue_lines.length > 0);
+  }
 
   if (body.addNote && String(body.addNote.body || "").trim()) {
     const note: AccountNote = {

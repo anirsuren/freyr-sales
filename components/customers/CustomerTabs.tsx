@@ -509,6 +509,7 @@ export function CustomerTabs({
             typeOptions={offeringsCatalog.typeOptions}
             applicable={offeringsCatalog.applicable}
             inUse={offeringsCatalog.inUse}
+            usage={customer.offering_usage || []}
           />
         )}
 
@@ -872,28 +873,32 @@ export function CustomerTabs({
               </li>
             ))}
           </ul>
-          <dl className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border-light">
-            <div>
-              <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                Contacts
-              </dt>
-              <dd className="text-[16px] font-bold text-text-primary tnum">
-                {contacts.length}
-              </dd>
+          <dl className="mt-3 pt-3 border-t border-border-light">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                  Contacts
+                </dt>
+                <dd className="text-[16px] font-bold text-text-primary tnum">
+                  {contacts.length}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                  Sessions
+                </dt>
+                <dd className="text-[16px] font-bold text-text-primary tnum">
+                  {sessions.length}
+                </dd>
+              </div>
             </div>
-            <div>
-              <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                Sessions
-              </dt>
-              <dd className="text-[16px] font-bold text-text-primary tnum">
-                {sessions.length}
-              </dd>
-            </div>
-            <div className="min-w-0">
+            {/* Latest gets a full row — outcome chips ("MEETING BOOKED") are
+                too wide for a third-column and were bleeding off the card. */}
+            <div className="flex items-center justify-between gap-2 mt-2.5">
               <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                 Latest
               </dt>
-              <dd className="mt-0.5">
+              <dd className="min-w-0">
                 {interactions[0] ? (
                   <OutcomeBadge outcome={interactions[0].outcome} />
                 ) : (

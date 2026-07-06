@@ -62,6 +62,30 @@ export interface Customer {
   // the customer's Offerings tab splits the applicable list into "already
   // using" vs. the opportunities left to sell.
   offerings_in_use?: string[] | null;
+  // Commercial detail per in-use offering (Suren's Jul 5 dictation): for each
+  // offering they're using, one or more revenue lines — how we make money on
+  // it (annual / project / service / license), the amount, dates, licenses.
+  // Feeds the offering's "Reports" tab (revenue cumulated across customers).
+  offering_usage?: OfferingUsage[] | null;
+}
+
+// How Freyr earns on an in-use offering (Suren: "revenue type — annual,
+// project, annual service, or annual license revenue").
+export type RevenueType = "annual" | "project" | "annual_service" | "license";
+
+export interface OfferingRevenueLine {
+  id: string;
+  revenue_type: RevenueType;
+  amount: number; // annual/project/service revenue $, or the license revenue $
+  num_licenses?: number | null; // only for license revenue
+  start_date: string | null; // yyyy-mm-dd
+  end_date: string | null;
+  description?: string | null; // e.g. "implementation project for them"
+}
+
+export interface OfferingUsage {
+  offering_id: string;
+  revenue_lines: OfferingRevenueLine[];
 }
 
 export interface Contact {
