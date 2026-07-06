@@ -13,6 +13,7 @@ import {
   Plus,
   Activity,
   ChartColumnBig,
+  FileBarChart,
   Rss,
   ListChecks,
   Zap,
@@ -50,6 +51,7 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/voice", label: "Voice agents", icon: PhoneCall },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/analytics", label: "Analytics", icon: ChartColumnBig },
+  { href: "/reports", label: "Reports", icon: FileBarChart },
   { href: "/activity", label: "Activity", icon: Rss },
 ];
 

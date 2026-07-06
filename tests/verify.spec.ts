@@ -5096,4 +5096,27 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Helix Biologics").first()).toBeVisible();
     await expect(page.getByText("Meridian Pharmaceuticals").first()).toBeVisible();
   });
+
+  test("341 — the Reports page rolls revenue up across the portfolio (V63)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/reports`);
+    await expect(
+      page.getByRole("heading", { name: "Reports", exact: true })
+    ).toBeVisible();
+    // headline tiles + charts from the seeded revenue
+    await expect(page.getByText("Offering revenue").first()).toBeVisible();
+    await expect(page.getByText("Licensed users").first()).toBeVisible();
+    await expect(page.getByText("Revenue by offering")).toBeVisible();
+    await expect(page.getByText("Revenue by category")).toBeVisible();
+    await expect(page.getByText("Revenue by type")).toBeVisible();
+    // the per-offering table names Freya.Register (used by 2 customers)
+    await expect(page.getByText("Freya.Register").first()).toBeVisible();
+    // renewals section with the seeded contracts
+    await expect(page.getByText(/Renewals/)).toBeVisible();
+    // reachable from the sidebar
+    await page.goto(`${BASE}/dashboard`);
+    await page.getByRole("link", { name: "Reports" }).first().click();
+    await expect(page).toHaveURL(/\/reports/);
+  });
 });

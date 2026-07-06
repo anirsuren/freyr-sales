@@ -96,3 +96,153 @@ export function reportForOffering(
     lineCount: rows.reduce((s, r) => s + r.lines.length, 0),
   };
 }
+
+// ---------------------------------------------------------------- portfolio
+// The executive / offering-owner report (Suren, Jul 5: "how many licenses,
+// how many customers have bought licenses, how much revenue, is there any
+// progress currently going on") — everything cumulated across ALL offerings
+// and ALL customers, from the per-customer revenue lines they entered.
+
+export interface OfferingRevenueRow {
+  offering_id: string;
+  name: string;
+  category: string;
+  customers: number;
+  revenue: number;
+  licenses: number;
+  lines: number;
+}
+
+export interface RenewalRow {
+  customer_id: string;
+  customer: string;
+  offering_id: string;
+  offering: string;
+  revenue_type: RevenueType;
+  amount: number;
+  end_date: string;
+  daysLeft: number;
+}
+
+export interface PortfolioReport {
+  totalRevenue: number;
+  totalLicenses: number;
+  customerCount: number; // distinct customers using ≥1 offering
+  offeringCount: number; // distinct offerings with revenue
+  lineCount: number;
+  activeCount: number; // revenue lines currently active (start ≤ today ≤ end)
+  byOffering: OfferingRevenueRow[];
+  byCategory: { label: string; value: number }[];
+  byType: { type: RevenueType; label: string; revenue: number; count: number }[];
+  renewals: RenewalRow[]; // lines with an end date, soonest first
+}
+
+type MiniOffering = {
+  id: string;
+  offering_name: string;
+  offering_category: string;
+};
+
+export function portfolioReport(
+  customers: Pick<
+    Customer,
+    "id" | "company_name" | "offering_usage" | "offerings_in_use"
+  >[],
+  offerings: MiniOffering[],
+  now: Date = new Date()
+): PortfolioReport {
+  const offById = new Map(offerings.map((o) => [o.id, o]));
+  const byOffering = new Map<string, OfferingRevenueRow>();
+  const byCategory = new Map<string, number>();
+  const byType = new Map<RevenueType, { revenue: number; count: number }>();
+  const renewals: RenewalRow[] = [];
+  const usingCustomers = new Set<string>();
+  let totalRevenue = 0;
+  let totalLicenses = 0;
+  let lineCount = 0;
+  let activeCount = 0;
+  const today = now.getTime();
+
+  for (const c of customers) {
+    let customerUses = (c.offerings_in_use || []).length > 0;
+    for (const u of c.offering_usage || []) {
+      const off = offById.get(u.offering_id);
+      const name = off?.offering_name || u.offering_id;
+      const category = off?.offering_category || "Uncategorized";
+      const rev = sumLines(u.revenue_lines);
+      const lic = sumLicenses(u.revenue_lines);
+      if (u.revenue_lines.length > 0) customerUses = true;
+
+      const row =
+        byOffering.get(u.offering_id) ||
+        ({
+          offering_id: u.offering_id,
+          name,
+          category,
+          customers: 0,
+          revenue: 0,
+          licenses: 0,
+          lines: 0,
+        } as OfferingRevenueRow);
+      row.customers += 1;
+      row.revenue += rev;
+      row.licenses += lic;
+      row.lines += u.revenue_lines.length;
+      byOffering.set(u.offering_id, row);
+
+      byCategory.set(category, (byCategory.get(category) || 0) + rev);
+      totalRevenue += rev;
+      totalLicenses += lic;
+      lineCount += u.revenue_lines.length;
+
+      for (const l of u.revenue_lines) {
+        const t = byType.get(l.revenue_type) || { revenue: 0, count: 0 };
+        t.revenue += l.amount || 0;
+        t.count += 1;
+        byType.set(l.revenue_type, t);
+        const start = l.start_date ? Date.parse(l.start_date) : NaN;
+        const end = l.end_date ? Date.parse(l.end_date) : NaN;
+        if (
+          (isNaN(start) || start <= today) &&
+          (isNaN(end) || end >= today)
+        )
+          activeCount += 1;
+        if (!isNaN(end)) {
+          renewals.push({
+            customer_id: c.id,
+            customer: c.company_name,
+            offering_id: u.offering_id,
+            offering: name,
+            revenue_type: l.revenue_type,
+            amount: l.amount || 0,
+            end_date: l.end_date as string,
+            daysLeft: Math.round((end - today) / 86_400_000),
+          });
+        }
+      }
+    }
+    if (customerUses) usingCustomers.add(c.id);
+  }
+
+  return {
+    totalRevenue,
+    totalLicenses,
+    customerCount: usingCustomers.size,
+    offeringCount: byOffering.size,
+    lineCount,
+    activeCount,
+    byOffering: Array.from(byOffering.values()).sort(
+      (a, b) => b.revenue - a.revenue
+    ),
+    byCategory: Array.from(byCategory.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value),
+    byType: REVENUE_TYPES.map((type) => ({
+      type,
+      label: REVENUE_TYPE_META[type].label,
+      revenue: byType.get(type)?.revenue || 0,
+      count: byType.get(type)?.count || 0,
+    })).filter((t) => t.count > 0),
+    renewals: renewals.sort((a, b) => a.daysLeft - b.daysLeft),
+  };
+}
