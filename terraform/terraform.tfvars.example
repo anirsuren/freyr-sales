@@ -1,0 +1,3 @@
+next_public_supabase_url      = "https://YOUR-PROJECT.supabase.co"
+next_public_supabase_anon_key = "eyJ...your-anon-key..."
+email_from                    = "sales@yourdomain.com"
