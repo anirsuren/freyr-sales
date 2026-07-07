@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+npm-debug.log
+Dockerfile
+.dockerignore
+terraform
+docs
+tests
+playwright.config.ts
+**/*.md
+.env*
+.vercel
+.gstack
+.superpowers

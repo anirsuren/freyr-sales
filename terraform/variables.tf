@@ -1,5 +1,5 @@
 variable "region" { default = "us-east-1" }
-variable "aws_profile" { default = "276654751635_Infra_Engineer" }
+variable "aws_profile" { default = "602367507820_Infra_Engineer" }
 variable "environment" { default = "production" }
 
 variable "vpc_cidr" { default = "10.42.0.0/16" }

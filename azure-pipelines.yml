@@ -1,13 +1,16 @@
-# CI/CD for freyr-sales → AWS ECS Fargate.
-# Prereqs (one-time, in Azure DevOps — see docs/aws-migration plan Task 12):
+# CI/CD for freyr-sales → AWS ECS Fargate (account 602367507820, us-east-1).
+# Prereqs (one-time, in the Azure DevOps project "Freyr-Sales"):
 #   1. AWS Toolkit for Azure DevOps extension installed in the FreyrDevOps org.
-#   2. An AWS service connection valid for the TARGET account (276654751635) — see awsCredentials below.
-#   3. Variable group "freyr-sales-ci" with: AWS_REGION, ECR_REGISTRY, ECR_REPO,
-#      ECS_CLUSTER, ECS_SERVICE, TASK_FAMILY, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY.
+#   2. An AWS service connection in THIS project whose credentials target account
+#      602367507820 — set its name in awsCredentials below.
+#   3. Variable group "freyr-sales-ci" with: AWS_REGION=us-east-1,
+#      ECR_REGISTRY=602367507820.dkr.ecr.us-east-1.amazonaws.com, ECR_REPO=freyr-sales,
+#      ECS_CLUSTER=freyr-sales-cluster, ECS_SERVICE=freyr-sales-svc, TASK_FAMILY=freyr-sales,
+#      NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY.
 trigger:
   branches:
     include:
-      - freyrsales
+      - main
 
 pool:
   vmImage: ubuntu-latest
@@ -19,9 +22,9 @@ steps:
   - task: AWSShellScript@1
     displayName: Build, push, and deploy
     inputs:
-      # NOTE: must be an ADO AWS service connection whose credentials target account 276654751635.
-      # 'oneRIMS-Dev' was originally set up for account 338736353119 — confirm/replace it for the new account.
-      awsCredentials: 'oneRIMS-Dev'
+      # NOTE: must be an AWS service connection defined in the "Freyr-Sales" ADO project
+      # whose credentials target account 602367507820. Replace the name below once created.
+      awsCredentials: 'freyr-sales-aws'
       regionName: '$(AWS_REGION)'
       scriptType: 'inline'
       inlineScript: |
