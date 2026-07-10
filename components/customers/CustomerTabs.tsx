@@ -48,6 +48,7 @@ import {
   ownerFor,
   STAGES,
   STAGE_PROBABILITY,
+  REPS,
 } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries, HEALTH_COLOR } from "@/lib/health";
 import { HealthBadge } from "@/components/ui/HealthBadge";
@@ -172,6 +173,12 @@ export function CustomerTabs({
     name: "",
     stage: "Prospect",
     value: "",
+    offering: "",
+    contact: "",
+    owner: customer.owner || "Suren Dheen",
+    close_date: "",
+    next_step: "",
+    notes: "",
   });
   const sessionDeals = useMemo(
     () => buildDeals(sessions, [customer], contacts, interactions),
@@ -265,9 +272,25 @@ export function CustomerTabs({
         name,
         stage: dealForm.stage,
         value: Math.round(Number(dealForm.value.replace(/[^0-9.]/g, ""))) || 200000,
+        offering: dealForm.offering,
+        contact: dealForm.contact,
+        owner: dealForm.owner,
+        close_date: dealForm.close_date,
+        next_step: dealForm.next_step,
+        notes: dealForm.notes,
       },
     });
-    setDealForm({ name: "", stage: "Prospect", value: "" });
+    setDealForm({
+      name: "",
+      stage: "Prospect",
+      value: "",
+      offering: "",
+      contact: "",
+      owner: customer.owner || "Suren Dheen",
+      close_date: "",
+      next_step: "",
+      notes: "",
+    });
     setBusy(false);
     setShowDeal(false);
     toast(`Added deal “${name}”`);
@@ -494,18 +517,33 @@ export function CustomerTabs({
             )}
 
             <div>
-              <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
+              <h3 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
                 Value Propositions
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-full bg-blue-light text-blue-primary px-2 py-0.5 normal-case tracking-normal">
+                  <Sparkles size={11} strokeWidth={2} />
+                  AI generated
+                </span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {valueProps.map((vp, i) => (
+                {valueProps.map((vp, i) => {
+                  const match = Math.round((vp.relevance_score || 0) * 10);
+                  const matchClass =
+                    match >= 70
+                      ? "text-success bg-success/10"
+                      : match >= 50
+                      ? "text-blue-primary bg-blue-light"
+                      : "text-warning bg-warning/10";
+                  return (
                   <Card key={i}>
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[14px] font-semibold text-text-primary">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-[14px] font-semibold text-text-primary leading-snug">
                         {vp.service_name}
                       </span>
-                      <span className="text-blue-primary font-bold text-[12px] tnum">
-                        {Math.round((vp.relevance_score || 0) * 10)}%
+                      <span
+                        className={`shrink-0 inline-flex items-center text-[11px] font-semibold rounded-full px-2 py-0.5 tnum ${matchClass}`}
+                        title="How well this service fits this account, matched from your knowledge base"
+                      >
+                        {match}% match
                       </span>
                     </div>
                     <p className="text-[13px] text-text-secondary leading-relaxed mb-3">
@@ -513,10 +551,11 @@ export function CustomerTabs({
                     </p>
                     <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
                       <Pin size={12} strokeWidth={1.5} />
-                      Source: Freyr knowledge base · matched
+                      Matched from your Freyr knowledge base
                     </div>
                   </Card>
-                ))}
+                  );
+                })}
                 {valueProps.length === 0 && (
                   <p className="text-[13px] text-text-secondary">
                     No matched services yet — generate a session.
@@ -526,8 +565,12 @@ export function CustomerTabs({
             </div>
 
             <div>
-              <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1">
+              <h3 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1">
                 Angles to research
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-full bg-blue-light text-blue-primary px-2 py-0.5 normal-case tracking-normal">
+                  <Sparkles size={11} strokeWidth={2} />
+                  AI generated
+                </span>
               </h3>
               <p className="text-[12px] text-text-tertiary mb-3">
                 Agent-suggested things worth checking before you reach out — verify before you rely on them.
@@ -1200,60 +1243,170 @@ export function CustomerTabs({
         </Card>
       </aside>
 
-      {/* New deal modal (#58) */}
-      <Modal open={showDeal} onClose={() => setShowDeal(false)} title="New deal">
-        <div className="space-y-3">
-          <div>
-            <label className="block text-[12px] font-medium text-text-secondary mb-1">
-              Deal name
-            </label>
-            <input
-              autoFocus
-              value={dealForm.name}
-              onChange={(e) => setDealForm({ ...dealForm, name: e.target.value })}
-              placeholder="e.g. EU MDR remediation — 2026"
-              className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[12px] font-medium text-text-secondary mb-1">
-                Stage
-              </label>
-              <select
-                value={dealForm.stage}
-                onChange={(e) => setDealForm({ ...dealForm, stage: e.target.value })}
-                className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-              >
-                {STAGES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+      {/* New deal modal (#58) — full deal detail, not just name/stage/value */}
+      <Modal
+        open={showDeal}
+        onClose={() => setShowDeal(false)}
+        title="New deal"
+        size="wide"
+      >
+        {(() => {
+          const fld =
+            "w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary";
+          const lbl =
+            "block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1";
+          const set = (k: string, v: string) =>
+            setDealForm({ ...dealForm, [k]: v });
+          const stageProb =
+            (STAGE_PROBABILITY as Record<string, number>)[dealForm.stage] ?? 0;
+          const weighted = Math.round(
+            (Number(dealForm.value.replace(/[^0-9.]/g, "")) || 0) * stageProb
+          );
+          return (
+            <div className="space-y-3.5">
+              <div>
+                <label className={lbl}>Deal name</label>
+                <input
+                  autoFocus
+                  value={dealForm.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  placeholder="e.g. EU MDR remediation — 2026"
+                  className={fld}
+                />
+              </div>
+              <div>
+                <label className={lbl}>Offering</label>
+                <select
+                  value={dealForm.offering}
+                  onChange={(e) => set("offering", e.target.value)}
+                  className={fld}
+                >
+                  <option value="">Select an offering…</option>
+                  {applicableSlim.map((o) => (
+                    <option key={o.id} value={o.name}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Stage</label>
+                  <select
+                    value={dealForm.stage}
+                    onChange={(e) => set("stage", e.target.value)}
+                    className={fld}
+                  >
+                    {STAGES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={lbl}>Value ($)</label>
+                  <input
+                    inputMode="numeric"
+                    value={dealForm.value}
+                    onChange={(e) => set("value", e.target.value)}
+                    placeholder="350000"
+                    className={`${fld} tnum`}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Primary contact</label>
+                  <select
+                    value={dealForm.contact}
+                    onChange={(e) => set("contact", e.target.value)}
+                    className={fld}
+                  >
+                    <option value="">Select a contact…</option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.full_name}>
+                        {c.full_name}
+                        {c.job_title ? ` · ${c.job_title}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={lbl}>Expected close</label>
+                  <input
+                    type="date"
+                    value={dealForm.close_date}
+                    onChange={(e) => set("close_date", e.target.value)}
+                    className={fld}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={lbl}>Owner</label>
+                <select
+                  value={dealForm.owner}
+                  onChange={(e) => set("owner", e.target.value)}
+                  className={fld}
+                >
+                  {REPS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={lbl}>Next step</label>
+                <input
+                  value={dealForm.next_step}
+                  onChange={(e) => set("next_step", e.target.value)}
+                  placeholder="e.g. Send the technical proposal by Friday"
+                  className={fld}
+                />
+              </div>
+              <div>
+                <label className={lbl}>Notes</label>
+                <textarea
+                  value={dealForm.notes}
+                  onChange={(e) => set("notes", e.target.value)}
+                  rows={3}
+                  placeholder="Context, decision criteria, competition…"
+                  className={`${fld} resize-y leading-relaxed`}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <span className="text-[12px] text-text-tertiary">
+                  {Math.round(stageProb * 100)}% win chance
+                  {weighted > 0 && (
+                    <>
+                      {" · "}weighted{" "}
+                      <span className="font-semibold text-text-secondary tnum">
+                        {formatMoney(weighted)}
+                      </span>
+                    </>
+                  )}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowDeal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={addDeal}
+                    loading={busy}
+                    disabled={!dealForm.name.trim()}
+                  >
+                    Add deal
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-[12px] font-medium text-text-secondary mb-1">
-                Value ($)
-              </label>
-              <input
-                inputMode="numeric"
-                value={dealForm.value}
-                onChange={(e) => setDealForm({ ...dealForm, value: e.target.value })}
-                placeholder="350000"
-                className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary tnum"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-5">
-          <Button variant="secondary" onClick={() => setShowDeal(false)}>
-            Cancel
-          </Button>
-          <Button onClick={addDeal} loading={busy} disabled={!dealForm.name.trim()}>
-            Add deal
-          </Button>
-        </div>
+          );
+        })()}
       </Modal>
     </div>
   );

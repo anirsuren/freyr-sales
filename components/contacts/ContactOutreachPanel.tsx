@@ -159,16 +159,24 @@ export function ContactOutreachPanel({
   return (
     <Card className="mt-8" data-testid="contact-outreach">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-        <div>
-          <h2 className="flex items-center gap-2 text-[17px] font-semibold text-text-primary">
-            <Package size={18} strokeWidth={1.75} className="text-blue-primary" />
-            Offerings for {firstName}
-          </h2>
-          <p className="text-[12.5px] text-text-secondary mt-0.5">
-            {classified
-              ? `Inherited from ${companyName} — the ones matching ${firstName}'s role are flagged.`
-              : `Once ${companyName} is classified, every offering that applies shows here — flagged for ${firstName}'s role.`}
-          </p>
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="w-10 h-10 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+            <Package size={20} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-[17px] font-semibold text-text-primary flex-wrap">
+              Offerings for {firstName}
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-full bg-blue-light text-blue-primary px-2 py-0.5">
+                <Sparkles size={11} strokeWidth={2} />
+                AI matched
+              </span>
+            </h2>
+            <p className="text-[12.5px] text-text-secondary mt-0.5">
+              {classified
+                ? `Inherited from ${companyName} — the ones matching ${firstName}'s role are flagged.`
+                : `Once ${companyName} is classified, every offering that applies shows here — flagged for ${firstName}'s role.`}
+            </p>
+          </div>
         </div>
         {offerings.length > 0 && (
           <div className="flex items-center gap-2 shrink-0">
@@ -358,14 +366,23 @@ export function ContactOutreachPanel({
       {/* ------------------------------------------------ offerings list ---- */}
       {offerings.length === 0 ? (
         !classified && customerId ? (
-          <Link
-            href={`/customers/${customerId}?tab=offerings`}
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-primary px-3.5 py-2 rounded-md border border-border-light hover:bg-blue-light/50 transition-colors"
-          >
-            <Sparkles size={14} strokeWidth={1.9} />
-            Classify {companyName} now
-            <ChevronRight size={14} strokeWidth={2} />
-          </Link>
+          <div className="flex flex-col items-center text-center rounded-xl border border-dashed border-border-light bg-surface/40 px-4 py-7">
+            <span className="w-11 h-11 rounded-2xl bg-blue-light text-blue-primary flex items-center justify-center mb-3">
+              <Package size={22} strokeWidth={1.8} />
+            </span>
+            <p className="text-[13.5px] text-text-secondary max-w-[360px] leading-relaxed">
+              Classify {companyName} and every offering that fits {firstName}&apos;s
+              role shows up here — ready to pitch.
+            </p>
+            <Link
+              href={`/customers/${customerId}?tab=offerings`}
+              className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-white bg-blue-primary px-4 py-2 rounded-lg hover:bg-blue-hover transition-colors active:scale-[0.97]"
+            >
+              <Sparkles size={14} strokeWidth={1.9} />
+              Classify {companyName} now
+              <ChevronRight size={14} strokeWidth={2} />
+            </Link>
+          </div>
         ) : (
           <p className="text-[13px] text-text-tertiary">
             No offerings are mapped to this customer type yet.

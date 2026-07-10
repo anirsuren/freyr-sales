@@ -444,6 +444,18 @@ select:focus-visible,
   .chart-tip { animation: none; }
 }
 
+/* Hover popover entrance — quick fade + tiny lift. */
+@keyframes hoverCardIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.hovercard-in {
+  animation: hoverCardIn 0.13s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hovercard-in { animation: none; }
+}
+
 /* Hide scrollbars on tab chips while keeping scroll */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

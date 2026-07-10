@@ -32,6 +32,14 @@ export interface AccountDeal {
   stage: string;
   value: number;
   created_at: string;
+  // Richer deal detail (Suren: "this is an enterprise app… this is all you
+  // have for a new deal?"). All optional so existing deals still validate.
+  offering?: string | null;
+  contact?: string | null;
+  owner?: string | null;
+  close_date?: string | null;
+  next_step?: string | null;
+  notes?: string | null;
 }
 
 export interface Customer {

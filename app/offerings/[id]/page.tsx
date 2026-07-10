@@ -128,11 +128,38 @@ export default async function OfferingDetailPage({
     if (n.includes("korea")) return { bg: "rgba(15,158,142,0.12)", color: "#0F9E8E" };
     return { bg: "rgba(142,152,168,0.14)", color: "#5B6472" };
   };
+  // Country flag per market (Suren: "put some flags here").
+  const marketFlag = (name: string): string => {
+    const n = name.toLowerCase();
+    if (n.includes("usa") || n.includes("united states") || n === "us") return "🇺🇸";
+    if (n.includes("europe") || n.includes("eu")) return "🇪🇺";
+    if (n.includes("japan")) return "🇯🇵";
+    if (n.includes("china")) return "🇨🇳";
+    if (n.includes("korea")) return "🇰🇷";
+    if (n.includes("canada")) return "🇨🇦";
+    if (n.includes("united kingdom") || n.includes("uk") || n.includes("britain")) return "🇬🇧";
+    if (n.includes("india")) return "🇮🇳";
+    if (n.includes("brazil")) return "🇧🇷";
+    if (n.includes("australia")) return "🇦🇺";
+    if (n.includes("switzerland")) return "🇨🇭";
+    if (n.includes("germany")) return "🇩🇪";
+    return "🌐";
+  };
+  // Two colour dimensions on Target segments (Suren): the FAMILY (blue / rose /
+  // violet) and the SIZE (slate / amber / green) — distinct hues so they never
+  // clash when shown together.
+  const familyStyle = (fam: string): string => {
+    const f = fam.toLowerCase();
+    if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED"; // violet
+    if (f.includes("biologic")) return "#E11D48"; // rose
+    if (f.includes("pharma")) return "#0071E3"; // blue
+    return "#8E98A8";
+  };
   const sizeStyle = (size: string): { bg: string; color: string } => {
     const s = size.toLowerCase();
-    if (s.includes("small")) return { bg: "rgba(52,199,89,0.14)", color: "#1A7A35" };
-    if (s.includes("large")) return { bg: "rgba(124,58,237,0.12)", color: "#6D28D9" };
-    return { bg: "rgba(255,159,10,0.16)", color: "#8A5300" }; // mid / default
+    if (s.includes("small")) return { bg: "rgba(100,116,139,0.14)", color: "#475569" }; // slate
+    if (s.includes("large")) return { bg: "rgba(5,150,105,0.14)", color: "#047857" }; // emerald
+    return { bg: "rgba(217,119,6,0.15)", color: "#B45309" }; // mid — amber
   };
 
   // Commercials bars (revenue by customer) for the inline summary.
@@ -557,9 +584,17 @@ export default async function OfferingDetailPage({
                 <div className="space-y-3">
                   {CT_FAMILIES.map((fam) => {
                     const types = o.customerTypes.filter((c) => c.family === fam);
+                    const famColor = familyStyle(fam);
                     return (
                       <div key={fam}>
-                        <p className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
+                        <p
+                          className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.04em] mb-2"
+                          style={{ color: famColor }}
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full"
+                            style={{ background: famColor }}
+                          />
                           {fam}
                         </p>
                         {types.length === 0 ? (
@@ -567,7 +602,8 @@ export default async function OfferingDetailPage({
                             Not applicable
                           </span>
                         ) : (
-                          <div className="flex flex-wrap gap-1.5">
+                          // Stacked, not side-by-side (Suren).
+                          <div className="flex flex-col items-start gap-1.5">
                             {types.map((c) => (
                               <Tooltip
                                 key={c.id}
@@ -581,8 +617,12 @@ export default async function OfferingDetailPage({
                                     background: sizeStyle(c.size).bg,
                                     color: sizeStyle(c.size).color,
                                   }}
-                                  className="inline-block text-[12px] font-semibold rounded-md px-2 py-1 transition-opacity hover:opacity-80"
+                                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
                                 >
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full"
+                                    style={{ background: sizeStyle(c.size).color }}
+                                  />
                                   {c.size}
                                 </Link>
                               </Tooltip>
@@ -618,8 +658,9 @@ export default async function OfferingDetailPage({
                         key={m.id}
                         href={`/offerings?market=${m.id}`}
                         style={{ background: st.bg, color: st.color }}
-                        className="inline-block text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
+                        className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
                       >
+                        <span className="text-[13px] leading-none">{marketFlag(m.name)}</span>
                         {m.name}
                       </Link>
                     );

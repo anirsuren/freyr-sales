@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Sparkles,
+  MapPin,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -197,33 +198,59 @@ export default async function ContactDetailPage({
         </p>
       </div>
 
-      {/* Stat row: last contacted / next step / buying style */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <Card>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary flex items-center gap-1.5">
-            <Clock size={13} strokeWidth={1.5} /> Last contacted
-          </p>
-          <p className="text-[15px] text-text-primary mt-1.5 tnum">
-            {lastContacted ? formatDate(lastContacted) : "No contact yet"}
-          </p>
-        </Card>
-        <Card>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary flex items-center gap-1.5">
-            <CalendarClock size={13} strokeWidth={1.5} /> Next step
-          </p>
-          <p className="text-[15px] text-text-primary mt-1.5 tnum">
-            {nextStep ? formatDate(nextStep) : "Not scheduled"}
-          </p>
-        </Card>
-        <Card>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary flex items-center gap-1.5">
-            <Brain size={13} strokeWidth={1.5} /> Buying style
-          </p>
-          <p className="text-[15px] text-text-primary mt-1.5">
-            <span className="font-semibold">{persona.code}</span> · {persona.label.split(" — ")[0]}
-          </p>
-        </Card>
-      </div>
+      {/* Where things stand — a small timeline: last contacted → today → next
+          step (Suren: "I want a whole timeline… where we are right now"). */}
+      <Card className="mb-8">
+        <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            Where things stand
+          </h3>
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-medium rounded-full bg-blue-light text-blue-primary px-2.5 py-1">
+            <Brain size={13} strokeWidth={1.9} />
+            Buying style: {persona.code} · {persona.label.split(" — ")[0]}
+          </span>
+        </div>
+        <div className="flex items-start">
+          {/* Last contacted */}
+          <div className="flex flex-col items-center text-center flex-1 min-w-0">
+            <span className="w-9 h-9 rounded-full bg-surface border border-border-light text-text-secondary flex items-center justify-center">
+              <Clock size={16} strokeWidth={1.8} />
+            </span>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-2">
+              Last contacted
+            </p>
+            <p className="text-[13px] font-medium text-text-primary mt-0.5 tnum">
+              {lastContacted ? formatDate(lastContacted) : "No contact yet"}
+            </p>
+          </div>
+          <div className="flex-1 h-0.5 bg-border-light mt-[17px] min-w-[16px]" />
+          {/* Today — you are here */}
+          <div className="flex flex-col items-center text-center flex-1 min-w-0">
+            <span className="w-9 h-9 rounded-full bg-blue-primary text-white flex items-center justify-center ring-4 ring-blue-light">
+              <MapPin size={16} strokeWidth={2} />
+            </span>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-blue-primary mt-2">
+              You are here
+            </p>
+            <p className="text-[13px] font-semibold text-blue-primary mt-0.5">
+              Today
+            </p>
+          </div>
+          <div className="flex-1 h-0.5 bg-border-light mt-[17px] min-w-[16px]" />
+          {/* Next step */}
+          <div className="flex flex-col items-center text-center flex-1 min-w-0">
+            <span className="w-9 h-9 rounded-full bg-white border-2 border-dashed border-blue-subtle text-blue-primary flex items-center justify-center">
+              <CalendarClock size={16} strokeWidth={1.8} />
+            </span>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-2">
+              Next step
+            </p>
+            <p className="text-[13px] font-medium text-text-primary mt-0.5 tnum">
+              {nextStep ? formatDate(nextStep) : "Not scheduled"}
+            </p>
+          </div>
+        </div>
+      </Card>
 
       {/* Offerings for this person + on-demand outreach (Suren, Jul 3) — his
           first-level requirement on a contact, so it LEADS the working area;

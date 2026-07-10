@@ -109,13 +109,21 @@ export async function PATCH(
   }
 
   if (body.addDeal && String(body.addDeal.name || "").trim()) {
+    const d = body.addDeal;
+    const str = (v: unknown, max = 200) =>
+      v ? String(v).trim().slice(0, max) || null : null;
     const deal: AccountDeal = {
       id: uid("deal"),
-      name: String(body.addDeal.name).trim().slice(0, 160),
-      stage: String(body.addDeal.stage || "Prospect"),
-      value:
-        Math.max(0, Math.round(Number(body.addDeal.value))) || 200000,
+      name: String(d.name).trim().slice(0, 160),
+      stage: String(d.stage || "Prospect"),
+      value: Math.max(0, Math.round(Number(d.value))) || 200000,
       created_at: new Date().toISOString(),
+      offering: str(d.offering),
+      contact: str(d.contact),
+      owner: str(d.owner),
+      close_date: str(d.close_date, 40),
+      next_step: str(d.next_step, 300),
+      notes: str(d.notes, 1000),
     };
     patch.account_deals = [deal, ...(customer.account_deals || [])];
   }

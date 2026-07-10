@@ -67,16 +67,27 @@ export function ContactAgentCard({
 
   return (
     <Card className="bg-blue-light/40 border-blue-subtle">
-      <h2 className="text-[17px] font-semibold text-text-primary mb-1 flex items-center gap-2">
-        <Sparkles size={18} strokeWidth={1.8} className="text-blue-primary" />
-        Agent recommends
-      </h2>
-      <p className="text-[14px] font-semibold text-text-primary mt-2">
-        {suggestion.title}
-      </p>
-      <p className="text-[13px] text-text-secondary leading-relaxed mt-1 mb-3">
-        {suggestion.rationale}
-      </p>
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className="w-9 h-9 rounded-xl bg-blue-primary text-white flex items-center justify-center shrink-0">
+          <Sparkles size={17} strokeWidth={1.9} />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold text-text-primary leading-tight">
+            Agent recommends
+          </h2>
+          <p className="text-[11px] font-medium text-blue-primary/80 uppercase tracking-[0.04em]">
+            Your next best move
+          </p>
+        </div>
+      </div>
+      <div className="rounded-xl bg-white/70 border border-blue-subtle/60 p-3.5 mb-3">
+        <p className="text-[14px] font-semibold text-text-primary">
+          {suggestion.title}
+        </p>
+        <p className="text-[13px] text-text-secondary leading-relaxed mt-1">
+          {suggestion.rationale}
+        </p>
+      </div>
       {done && draft ? (
         <button
           onClick={() => setViewing(true)}

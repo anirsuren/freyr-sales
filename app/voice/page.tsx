@@ -21,7 +21,8 @@ import { listConversations } from "@/lib/elevenlabs";
 import { syncConversations } from "@/lib/voiceSync";
 import { listOfferings } from "@/lib/offerings";
 import { VOICE_PERSONAS, personaFor } from "@/lib/voicePersonas";
-import { LineChart, BarChart, DonutChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { LineChart, BarChart, DonutChart, Sparkline, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -235,13 +236,84 @@ export default async function VoicePage() {
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
           The calling team — one per offering category ({categories.length})
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+        {/* No `stagger` here — its residual transform traps the hover popover's
+            z-index behind the row below it (Suren's blurb must float on top). */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {VOICE_PERSONAS.map((p) => {
             const cat = categories.find((c) => c.category === p.category);
             const line = status.numbers[p.category];
             const Icon = p.icon;
+            // Per-persona performance for the hover blurb (Suren: "hover → a
+            // little blurb… performance for the voice agents, charts/graphs").
+            const pcalls = finished.filter((q) => q.category === p.category);
+            const pConn = pcalls.filter((q) => (q.duration_secs || 0) > 0);
+            const pInterested = pcalls.filter((q) => q.outcome === "interested").length;
+            const pAvg = pConn.length
+              ? Math.round(pConn.reduce((s, q) => s + (q.duration_secs || 0), 0) / pConn.length)
+              : 0;
+            const pConnRate = pcalls.length
+              ? Math.round((pConn.length / pcalls.length) * 100)
+              : 0;
+            const pPerDay = Array.from({ length: 14 }, (_, i) => {
+              const dayStart = today.getTime() - (13 - i) * DAY;
+              return pcalls.filter((q) => {
+                const t = new Date(q.created_at).getTime();
+                return t >= dayStart && t < dayStart + DAY;
+              }).length;
+            });
+            const perfBlurb = (
+              <div>
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span
+                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-white"
+                    style={{ background: p.color }}
+                  >
+                    <Icon size={17} strokeWidth={1.9} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[13.5px] font-semibold text-text-primary leading-tight">
+                      {p.name}
+                    </p>
+                    <p className="text-[11.5px] text-text-tertiary truncate">
+                      {p.category}
+                    </p>
+                  </div>
+                </div>
+                {pcalls.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mb-3">
+                      {[
+                        { label: "Calls", value: String(pcalls.length) },
+                        { label: "Connect rate", value: `${pConnRate}%` },
+                        { label: "Interested", value: String(pInterested) },
+                        { label: "Avg length", value: fmtLen(pAvg) },
+                      ].map((st) => (
+                        <div key={st.label}>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                            {st.label}
+                          </p>
+                          <p className="text-[16px] font-bold tnum text-text-primary leading-tight">
+                            {st.value}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
+                      Calls · last 2 weeks
+                    </p>
+                    <Sparkline points={pPerDay} color={p.color} height={34} />
+                  </>
+                ) : (
+                  <p className="text-[12.5px] text-text-secondary">
+                    No calls yet — {p.name} is ready. Knows {cat?.count || 0}{" "}
+                    offering{(cat?.count || 0) === 1 ? "" : "s"}.
+                  </p>
+                )}
+              </div>
+            );
             return (
-              <Link key={p.slug} href={`/voice/agents/${p.slug}`}>
+              <HoverCard key={p.slug} content={perfBlurb} width={280}>
+              <Link href={`/voice/agents/${p.slug}`} className="block h-full">
                 <Card className="p-5 h-full hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-card transition-all duration-150 group active:scale-[0.98] active:shadow-none active:translate-y-0">
                   <div className="flex items-start justify-between gap-2">
                     <span
@@ -287,6 +359,7 @@ export default async function VoicePage() {
                   </p>
                 </Card>
               </Link>
+              </HoverCard>
             );
           })}
         </div>

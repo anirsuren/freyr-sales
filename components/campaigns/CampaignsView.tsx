@@ -16,6 +16,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { DonutChart, VIZ } from "@/components/charts/Charts";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
@@ -77,6 +78,10 @@ export function CampaignsView({
   const { toast } = useToast();
 
   const emailable = useMemo(() => contacts.filter((c) => c.email), [contacts]);
+  const contactById = useMemo(
+    () => Object.fromEntries(contacts.map((c) => [c.id, c])),
+    [contacts]
+  );
 
   // inline composer state
   const [composing, setComposing] = useState(false);
@@ -359,6 +364,12 @@ export function CampaignsView({
         <div className="space-y-3 stagger">
           {campaigns.map((c) => {
             const total = c.recipient_contact_ids.length;
+            const recips = c.recipient_contact_ids
+              .map((id) => contactById[id])
+              .filter(Boolean) as MiniContact[];
+            const recipCompanies = Array.from(
+              new Set(recips.map((r) => r.company).filter(Boolean))
+            );
             const pct = total ? Math.round((c.sent_count / total) * 100) : 0;
             const openRate = c.sent_count ? Math.round((c.opens / c.sent_count) * 100) : 0;
             const replyRate = c.sent_count ? Math.round((c.replies / c.sent_count) * 100) : 0;
@@ -437,6 +448,36 @@ export function CampaignsView({
                       </span>
                       <span className="tnum">{formatDate(c.created_at)}</span>
                     </p>
+
+                    {/* Who this goes to — fills the middle with the actual
+                        recipients (Suren: "so much empty space, fill it"). */}
+                    {recips.length > 0 && (
+                      <div className="mt-3.5 flex items-center gap-2.5 min-w-0">
+                        <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary shrink-0">
+                          Going to
+                        </span>
+                        <div className="flex items-center -space-x-2 shrink-0">
+                          {recips.slice(0, 5).map((r) => (
+                            <Avatar
+                              key={r.id}
+                              name={r.name}
+                              className="w-7 h-7 text-[10px] ring-2 ring-white"
+                            />
+                          ))}
+                          {total > 5 && (
+                            <span className="w-7 h-7 rounded-full bg-surface border border-border-light text-[10px] font-semibold text-text-secondary flex items-center justify-center ring-2 ring-white tnum">
+                              +{total - 5}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[12px] text-text-secondary truncate min-w-0">
+                          {recipCompanies.slice(0, 2).join(", ")}
+                          {recipCompanies.length > 2
+                            ? ` & ${recipCompanies.length - 2} more`
+                            : ""}
+                        </span>
+                      </div>
+                    )}
 
                     {/* completion — a small, slim indicator (Suren: "shrink the
                         size of that progress bar"), not a big edge-to-edge bar */}

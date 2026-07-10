@@ -16,8 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { REPS } from "@/lib/pipeline";
-import { HealthBadge } from "@/components/ui/HealthBadge";
-import type { AccountHealth } from "@/lib/health";
+import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import type { Customer } from "@/lib/types";
 
 type EnrichedCustomer = Customer & {
@@ -39,15 +38,32 @@ const COL_HINTS: Record<string, string> = {
   "Last Session": "The last time you ran a pitch or logged activity with this account.",
 };
 
-const SIGNAL: Record<string, { label: string; bars: number }> = {
-  large: { label: "High", bars: 3 },
-  mid: { label: "Medium", bars: 2 },
-  small: { label: "Low", bars: 1 },
+const SIGNAL: Record<string, { label: string; bars: number; color: string }> = {
+  large: { label: "High", bars: 3, color: "#34C759" }, // green
+  mid: { label: "Medium", bars: 2, color: "#0071E3" }, // blue
+  small: { label: "Low", bars: 1, color: "#FF9F0A" }, // amber
 };
+
+// Color-code industries so the table scans at a glance (Suren).
+const INDUSTRY_STYLE: Record<string, { bg: string; color: string }> = {
+  Biotechnology: { bg: "rgba(25,195,177,0.14)", color: "#0E7C70" },
+  Pharmaceutical: { bg: "rgba(0,113,227,0.10)", color: "#0040A0" },
+  "Consumer Health": { bg: "rgba(224,51,142,0.12)", color: "#A31E68" },
+  "Medical Device": { bg: "rgba(255,159,10,0.16)", color: "#8A5A00" },
+};
+function industryStyle(ind: string | null) {
+  return (
+    (ind && INDUSTRY_STYLE[ind]) || {
+      bg: "rgba(142,152,168,0.14)",
+      color: "#59616E",
+    }
+  );
+}
 
 function Signal({ tier }: { tier: string | null }) {
   const s = tier ? SIGNAL[tier] : null;
   const bars = s?.bars ?? 0;
+  const color = s?.color || "#0071E3";
   const sizeLabel = tier ? SIZE_TIER_LABEL[tier] || tier : null;
   const label = s
     ? `${s.label} opportunity — based on company size (${sizeLabel}). Bigger accounts tend to mean bigger potential deals.`
@@ -59,17 +75,51 @@ function Signal({ tier }: { tier: string | null }) {
           {[1, 2, 3].map((b) => (
             <span
               key={b}
-              className={cn(
-                "w-1 rounded-sm",
-                b <= bars ? "bg-blue-primary" : "bg-border-light"
-              )}
-              style={{ height: `${b * 4 + 2}px` }}
+              className="w-1 rounded-sm"
+              style={{
+                height: `${b * 4 + 2}px`,
+                background: b <= bars ? color : "#E5E5EA",
+              }}
             />
           ))}
         </span>
-        <span className="text-[13px] text-text-secondary">{s?.label || "—"}</span>
+        <span
+          className="text-[13px] font-semibold"
+          style={{ color: s ? color : "#8A8A8E" }}
+        >
+          {s?.label || "—"}
+        </span>
       </span>
     </Tooltip>
+  );
+}
+
+// Health as a bar (Suren: "the health should be like a bar") — coloured by band.
+function HealthBar({ health }: { health: AccountHealth }) {
+  const c = HEALTH_COLOR[health.band];
+  return (
+    <div className="w-[124px]">
+      <div className="flex items-center justify-between mb-1">
+        <span
+          className="text-[10.5px] font-bold uppercase tracking-[0.03em]"
+          style={{ color: c.color }}
+        >
+          {health.label}
+        </span>
+        <span className="text-[11px] tnum text-text-tertiary">
+          {health.score}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${Math.max(health.score, 4)}%`,
+            background: c.color,
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -469,9 +519,39 @@ export function CustomersBrowser({
                       </Link>
                     </td>
                     <td className="px-5 py-4"><Signal tier={c.size_tier} /></td>
-                    <td className="px-5 py-4"><HealthBadge health={c.health} /></td>
-                    <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">{c.industry || "—"}</td>
-                    <td className="px-5 py-4 text-[13px] text-text-secondary tnum">{c.contact_count}</td>
+                    <td className="px-5 py-4"><HealthBar health={c.health} /></td>
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      {c.industry ? (
+                        <span
+                          className="inline-flex items-center text-[12px] font-medium rounded-full px-2.5 py-0.5"
+                          style={industryStyle(c.industry)}
+                        >
+                          {c.industry}
+                        </span>
+                      ) : (
+                        <span className="text-[13px] text-text-tertiary">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      {c.contacts_preview.length > 0 ? (
+                        <div className="flex items-center -space-x-2">
+                          {c.contacts_preview.slice(0, 3).map((ct) => (
+                            <Avatar
+                              key={ct.id}
+                              name={ct.name}
+                              className="w-7 h-7 text-[10px] ring-2 ring-white"
+                            />
+                          ))}
+                          {c.contact_count > 3 && (
+                            <span className="w-7 h-7 rounded-full bg-surface border border-border-light text-[10px] font-semibold text-text-secondary flex items-center justify-center ring-2 ring-white tnum">
+                              +{c.contact_count - 3}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[13px] text-text-tertiary">—</span>
+                      )}
+                    </td>
                     <td className="px-5 py-4">{c.last_outcome ? <OutcomeBadge outcome={c.last_outcome} /> : "—"}</td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">
                       {c.last_session_date ? formatDate(c.last_session_date) : "—"}

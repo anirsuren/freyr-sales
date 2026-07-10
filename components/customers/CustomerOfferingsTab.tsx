@@ -44,6 +44,21 @@ function compactMoney(n: number): string {
   return `$${n}`;
 }
 
+// Colour-code each customer segment by its family so the picker reads at a
+// glance (Suren: "the colors need to be color-coded"). Bio Pharmaceutical is
+// checked before Pharmaceutical since it contains that word.
+function segmentColor(type: string): string {
+  const t = type.toLowerCase();
+  // Family colours (match the offering page): Pharma = blue, Biologics = rose,
+  // Bio Pharmaceutical = violet (Suren: "pharmaceutical blue, biologics red…").
+  if (t.includes("bio pharma") || t.includes("biopharma")) return "#7C3AED"; // violet
+  if (t.includes("biologic")) return "#E11D48"; // rose
+  if (t.includes("pharma")) return "#0071E3"; // blue
+  if (t.includes("device")) return "#D97706"; // amber
+  if (t.includes("consumer")) return "#0F9E8E"; // teal
+  return "#8E98A8"; // slate
+}
+
 // One offering, serialized for this tab by the server page (materials carry a
 // pre-computed plain-English kind label so we don't pull lib/offerings into the
 // client bundle).
@@ -565,35 +580,37 @@ export function CustomerOfferingsTab({
       className="p-4 flex flex-col h-full"
       data-testid={`cust-offering-${o.id}`}
     >
-      <div className="flex items-start gap-2.5 min-w-0">
-        <OfferingIcon name={o.name} className="w-10 h-10 rounded-lg shrink-0" />
+      <div className="flex items-start gap-3 min-w-0">
+        <OfferingIcon name={o.name} className="w-11 h-11 rounded-xl shrink-0" />
         <div className="min-w-0 flex-1">
           <Link
             href={`/offerings/${o.id}`}
             title={o.name}
-            className="text-[14px] font-semibold text-text-primary leading-snug hover:text-blue-primary line-clamp-2 break-words"
+            className="text-[14.5px] font-semibold text-text-primary leading-snug hover:text-blue-primary line-clamp-2"
           >
             {o.name}
           </Link>
-          {o.availability && (
-            <span
-              className={`inline-block mt-1 text-[10.5px] font-medium rounded px-1.5 py-0.5 ${
-                /current|now|available/i.test(o.availability)
-                  ? "text-success bg-success/10"
-                  : "text-warning bg-warning/10"
-              }`}
-            >
-              {o.availability}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+            {o.availability && (
+              <span
+                className={`text-[10.5px] font-medium rounded px-1.5 py-0.5 ${
+                  /current|now|available/i.test(o.availability)
+                    ? "text-success bg-success/10"
+                    : "text-warning bg-warning/10"
+                }`}
+              >
+                {o.availability}
+              </span>
+            )}
+            {(o.category || o.type) && (
+              <span className="text-[11.5px] text-text-tertiary truncate">
+                {[o.category, o.type].filter(Boolean).join(" · ")}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {(o.category || o.type) && (
-        <p className="text-[11.5px] text-text-tertiary mt-2 line-clamp-1">
-          {[o.category, o.type].filter(Boolean).join(" · ")}
-        </p>
-      )}
       {o.description && (
         <p className="text-[12.5px] text-text-secondary leading-relaxed line-clamp-3 mt-1.5">
           {o.description}
@@ -646,9 +663,12 @@ export function CustomerOfferingsTab({
               key={t}
               onClick={() => saveType(t)}
               disabled={savingType}
-              className="flex items-center gap-2.5 rounded-xl border border-border-light bg-white px-3.5 py-3 text-[13px] font-medium text-text-primary hover:border-blue-primary hover:bg-blue-light/40 hover:shadow-[0_2px_10px_rgba(0,113,227,0.10)] transition-all disabled:opacity-50 text-left"
+              className="flex items-center gap-2.5 rounded-xl border border-border-light bg-white px-3.5 py-3 text-[13px] font-medium text-text-primary hover:border-blue-primary hover:bg-blue-light/40 hover:shadow-[0_2px_10px_rgba(0,113,227,0.10)] transition-all disabled:opacity-50 text-left active:scale-[0.98]"
             >
-              <span className="w-2 h-2 rounded-full bg-blue-primary shrink-0" />
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ background: segmentColor(t) }}
+              />
               <span className="min-w-0 truncate">{t}</span>
             </button>
           ))}
@@ -760,7 +780,7 @@ export function CustomerOfferingsTab({
             to have.
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-stretch stagger">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch stagger">
             {toPitch.map((o) => (
               <PitchCard key={o.id} o={o} />
             ))}
