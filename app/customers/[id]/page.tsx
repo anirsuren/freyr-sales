@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
 import { HealthBadge } from "@/components/ui/HealthBadge";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { CustomerTabs } from "@/components/customers/CustomerTabs";
 import { RecordView } from "@/components/RecordView";
@@ -110,9 +111,9 @@ export default async function CustomerDetailPage({
       />
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
-          <Avatar
+          <CompanyLogo
             name={customer.company_name}
-            className="w-12 h-12 text-[16px] rounded-xl"
+            className="w-12 h-12 text-[16px]"
           />
           <div>
             <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">

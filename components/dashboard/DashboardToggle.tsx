@@ -12,7 +12,7 @@ export function DashboardToggle({
   actions,
 }: {
   title: string;
-  date: string;
+  date?: string;
   overview: React.ReactNode;
   analytics: React.ReactNode;
   actions?: React.ReactNode;
@@ -26,10 +26,12 @@ export function DashboardToggle({
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
             {title}
           </h1>
-          <p className="text-[14px] text-text-secondary flex items-center gap-1.5 mt-1">
-            <Calendar size={16} strokeWidth={1.5} />
-            {date}
-          </p>
+          {date && (
+            <p className="text-[14px] text-text-secondary flex items-center gap-1.5 mt-1">
+              <Calendar size={16} strokeWidth={1.5} />
+              {date}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start">
           {actions}

@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -142,6 +142,7 @@ export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
           {SEQUENCES.map((s) => (
             <button
               key={s.id}
+              type="button"
               onClick={() => setActiveId(s.id)}
               aria-pressed={activeId === s.id}
               className={cn(
@@ -177,8 +178,14 @@ export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
           ))}
         </div>
 
-        {/* selected cadence detail */}
-        <div className="space-y-6">
+        {/* Selected cadence detail. On desktop it scrolls INSIDE its own pane
+            (capped height) so switching between a 7-step and a 3-step sequence
+            never changes the page height — which was clamp-scrolling the whole
+            page up (Suren: "clicking a sequence keeps scrolling me to the top"). */}
+        <div
+          key={activeId}
+          className="tab-panel space-y-6 lg:min-h-0 lg:h-[calc(100vh_-_11rem)] lg:overflow-y-auto lg:pr-1"
+        >
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <Zap size={18} strokeWidth={1.8} className="text-blue-primary" />
@@ -251,23 +258,30 @@ export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
                   const step = active.steps[Math.min(e.stepIndex, active.steps.length - 1)];
                   const pct = Math.round(((e.stepIndex + 1) / active.steps.length) * 100);
                   const atEnd = e.stepIndex >= active.steps.length - 1;
-                  return (
-                    <Card key={e.enrollmentId || e.customerId} className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={e.company} className="w-9 h-9 text-[12px] rounded-lg shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <Link
-                            href={`/customers/${e.customerId}`}
-                            className="text-[14px] font-semibold text-text-primary truncate hover:text-blue-primary block"
-                          >
-                            {e.company}
-                          </Link>
-                          <p className="text-[12px] text-text-secondary truncate">
-                            Step {e.stepIndex + 1} of {active.steps.length} · {step.label}
-                          </p>
-                        </div>
-                        {e.managed && e.enrollmentId ? (
-                          atEnd ? (
+                  const bar = (
+                    <div className="h-1.5 rounded-full bg-surface overflow-hidden mt-3">
+                      <div className="h-full rounded-full bg-blue-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                  );
+                  // Managed enrollments carry an Advance/Completed control, so the
+                  // card can't be one big link — keep the name link + the button.
+                  if (e.managed && e.enrollmentId) {
+                    return (
+                      <Card key={e.enrollmentId || e.customerId} className="p-4">
+                        <div className="flex items-center gap-3">
+                          <CompanyLogo name={e.company} className="w-9 h-9 text-[12px] shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <Link
+                              href={`/customers/${e.customerId}`}
+                              className="text-[14px] font-semibold text-text-primary truncate hover:text-blue-primary block"
+                            >
+                              {e.company}
+                            </Link>
+                            <p className="text-[12px] text-text-secondary truncate">
+                              Step {e.stepIndex + 1} of {active.steps.length} · {step.label}
+                            </p>
+                          </div>
+                          {atEnd ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success shrink-0">
                               <CheckCircle2 size={14} strokeWidth={2} /> Completed
                             </span>
@@ -286,21 +300,41 @@ export function SequencesView({ enrollments }: { enrollments: Enrollment[] }) {
                               <Play size={12} strokeWidth={2} />
                               {busy === e.enrollmentId ? "…" : "Advance"}
                             </button>
-                          )
-                        ) : (
-                          <Link
-                            href={`/customers/${e.customerId}`}
-                            aria-label={`Open ${e.company}`}
-                            className="shrink-0"
-                          >
-                            <ChevronRight size={16} strokeWidth={1.5} className="text-text-tertiary hover:text-blue-primary" />
-                          </Link>
-                        )}
-                      </div>
-                      <div className="h-1.5 rounded-full bg-surface overflow-hidden mt-3">
-                        <div className="h-full rounded-full bg-blue-primary" style={{ width: `${pct}%` }} />
-                      </div>
-                    </Card>
+                          )}
+                        </div>
+                        {bar}
+                      </Card>
+                    );
+                  }
+                  // Otherwise the WHOLE card opens the account — a real drill-in, not
+                  // a chevron that only works if you hit it dead-on.
+                  return (
+                    <Link
+                      key={e.enrollmentId || e.customerId}
+                      href={`/customers/${e.customerId}`}
+                      aria-label={`Open ${e.company}`}
+                      className="block group"
+                    >
+                      <Card className="p-4 relative transition-all duration-200 hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-card">
+                        <div className="flex items-center gap-3">
+                          <CompanyLogo name={e.company} className="w-9 h-9 text-[12px] shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <span className="block text-[14px] font-semibold text-text-primary truncate group-hover:text-blue-primary">
+                              {e.company}
+                            </span>
+                            <p className="text-[12px] text-text-secondary truncate">
+                              Step {e.stepIndex + 1} of {active.steps.length} · {step.label}
+                            </p>
+                          </div>
+                          <ChevronRight
+                            size={16}
+                            strokeWidth={1.5}
+                            className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform shrink-0"
+                          />
+                        </div>
+                        {bar}
+                      </Card>
+                    </Link>
                   );
                 })}
               </div>

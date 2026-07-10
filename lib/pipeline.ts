@@ -36,6 +36,23 @@ export const STAGE_PROBABILITY: Record<Stage, number> = {
   "Closed Lost": 0,
 };
 
+// One palette for stages everywhere (leaderboard bars, donuts, value charts).
+export const STAGE_COLOR: Record<Stage, string> = {
+  Prospect: "#8E98A8",
+  Engaged: "#36A8F5",
+  Qualified: "#5E5CE6",
+  "Meeting Booked": "#34C759",
+  "Closed Lost": "#FF3B30",
+};
+
+// The advancing (still-open) stages, in funnel order.
+export const OPEN_STAGES: Stage[] = [
+  "Prospect",
+  "Engaged",
+  "Qualified",
+  "Meeting Booked",
+];
+
 export function dealValue(tier: string | null, seed?: string): number {
   const base =
     tier === "large" ? 800000 : tier === "mid" ? 350000 : tier === "small" ? 120000 : 200000;

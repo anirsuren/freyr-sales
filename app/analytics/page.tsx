@@ -10,6 +10,9 @@ import {
   buildDeals,
   pipelineGrowthSeries,
   STAGES,
+  OPEN_STAGES,
+  STAGE_COLOR,
+  STAGE_PROBABILITY,
   REPS,
   formatMoney,
 } from "@/lib/pipeline";
@@ -55,23 +58,38 @@ export default async function AnalyticsPage({
   const fullDeals = buildDeals(allSessions, customers, contacts, allInteractions);
   const trendSeries = pipelineGrowthSeries(fullDeals, Date.now());
 
-  // per-rep breakdown (V3 #6) — grouped by deal owner
+  // per-rep breakdown (V3 #6) — grouped by deal owner. Richer now so the
+  // leaderboard shows real stats + a pipeline-composition graph per rep without
+  // a click (Suren: "I should see the graphs without needing to click").
   const reps: RepStat[] = REPS.map((name) => {
     const rd = deals.filter((d) => d.owner === name);
-    const worked = rd.filter((d) => d.stage !== "Prospect").length;
-    const won = rd.filter(
+    const open = rd.filter((d) => d.stage !== "Closed Lost");
+    const openValue = open.reduce((s, d) => s + d.value, 0);
+    const weighted = open.reduce(
+      (s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0),
+      0
+    );
+    const qualifiedPlus = rd.filter(
       (d) => d.stage === "Qualified" || d.stage === "Meeting Booked"
     ).length;
+    const meetings = rd.filter((d) => d.stage === "Meeting Booked").length;
     return {
       name,
       deals: rd.length,
-      openValue: rd
-        .filter((d) => d.stage !== "Closed Lost")
-        .reduce((s, d) => s + d.value, 0),
-      winRate: worked ? Math.round((won / worked) * 100) : 0,
-      stages: STAGES.map((stage) => ({
+      openCount: open.length,
+      openValue,
+      weighted: Math.round(weighted),
+      avgDeal: open.length ? Math.round(openValue / open.length) : 0,
+      qualifiedPlus,
+      meetings,
+      // Value composition across the OPEN funnel stages, for the stacked bar.
+      stageValues: OPEN_STAGES.map((stage) => ({
         stage,
-        count: rd.filter((d) => d.stage === stage).length,
+        color: STAGE_COLOR[stage],
+        count: open.filter((d) => d.stage === stage).length,
+        value: open
+          .filter((d) => d.stage === stage)
+          .reduce((s, d) => s + d.value, 0),
       })),
     };
   }).sort((a, b) => b.openValue - a.openValue);
@@ -126,6 +144,7 @@ export default async function AnalyticsPage({
           color={VIZ.blue}
           goal={3.0}
           goalLabel="Quota $3.0M"
+          format="millions"
         />
       </Card>
 

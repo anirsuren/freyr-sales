@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
-import { BarChart } from "@/components/charts/Charts";
 import { cn } from "@/lib/utils";
 import { formatMoney, CURRENT_REP } from "@/lib/pipeline";
 
 export type RepStat = {
   name: string;
   deals: number;
+  openCount: number;
   openValue: number;
-  winRate: number;
-  stages: { stage: string; count: number }[];
+  weighted: number;
+  avgDeal: number;
+  qualifiedPlus: number;
+  meetings: number;
+  stageValues: { stage: string; color: string; count: number; value: number }[];
 };
 
 const RANGES = [
@@ -23,6 +27,9 @@ const RANGES = [
   { k: "all", l: "All" },
 ];
 
+const slugify = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
 export function RepAnalytics({
   reps,
   range,
@@ -31,15 +38,19 @@ export function RepAnalytics({
   range: string;
 }) {
   const router = useRouter();
-  const [selected, setSelected] = useState(reps[0]?.name || "");
-  const active = reps.find((r) => r.name === selected) || reps[0];
 
   return (
     <Card>
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <h2 className="text-[17px] font-semibold text-text-primary">
-          Rep performance
-        </h2>
+        <div>
+          <h2 className="text-[17px] font-semibold text-text-primary">
+            Rep performance
+          </h2>
+          <p className="text-[12.5px] text-text-tertiary mt-0.5">
+            Open pipeline, weighted value and stage mix per teammate — ranked by
+            pipeline. Click a rep for the full breakdown.
+          </p>
+        </div>
         <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-border-light">
           {RANGES.map((r) => (
             <button
@@ -58,32 +69,29 @@ export function RepAnalytics({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-        {/* leaderboard — click to drill in */}
-        <div className="space-y-3 stagger">
-          {reps.map((rep, i) => (
-            <button
-              key={rep.name}
-              onClick={() => setSelected(rep.name)}
-              aria-pressed={selected === rep.name}
-              className={cn(
-                "w-full flex items-center gap-4 rounded-lg p-2 -mx-2 text-left transition-colors",
-                selected === rep.name ? "bg-blue-light" : "hover:bg-surface"
-              )}
-            >
-              <span className="w-5 text-[13px] font-bold text-text-tertiary tnum text-center">
-                {i + 1}
-              </span>
-              <Avatar name={rep.name} className="w-9 h-9 text-[13px]" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-3 mb-1">
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span
-                      className={cn(
-                        "text-[14px] font-medium truncate",
-                        selected === rep.name ? "text-blue-primary" : "text-text-primary"
-                      )}
-                    >
+      {reps.length === 0 ? (
+        <p className="text-[13px] text-text-secondary py-4">
+          No rep activity in this period.
+        </p>
+      ) : (
+        <div className="space-y-2 stagger">
+          {reps.map((rep, i) => {
+            const total = rep.openValue || 1;
+            return (
+              <Link
+                key={rep.name}
+                href={`/analytics/reps/${slugify(rep.name)}`}
+                className="group flex items-center gap-4 rounded-xl p-4 border border-transparent hover:border-blue-subtle hover:bg-surface transition-colors"
+              >
+                <span className="w-5 text-[15px] font-bold text-text-tertiary tnum text-center shrink-0">
+                  {i + 1}
+                </span>
+                <Avatar name={rep.name} className="w-11 h-11 text-[14px] shrink-0" />
+
+                {/* Middle — identity + the composition graph, at a glance */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[14.5px] font-semibold text-text-primary truncate group-hover:text-blue-primary">
                       {rep.name}
                     </span>
                     {rep.name === CURRENT_REP && (
@@ -91,60 +99,67 @@ export function RepAnalytics({
                         You
                       </span>
                     )}
-                  </span>
-                  <span className="text-[13px] text-text-secondary tnum shrink-0">
-                    {formatMoney(rep.openValue)} · {rep.deals} deals · {rep.winRate}% win
-                  </span>
-                </div>
-              </div>
-            </button>
-          ))}
-          {reps.length === 0 && (
-            <p className="text-[13px] text-text-secondary">
-              No rep activity in this period.
-            </p>
-          )}
-        </div>
+                  </div>
+                  <p className="text-[12px] text-text-tertiary tnum mt-0.5">
+                    {rep.openCount} open deal{rep.openCount === 1 ? "" : "s"} ·{" "}
+                    {formatMoney(rep.weighted)} weighted · {formatMoney(rep.avgDeal)} avg
+                  </p>
 
-        {/* drill-down for the selected rep */}
-        {active && (
-          <div className="rounded-xl border border-border-light p-4">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Avatar name={active.name} className="w-10 h-10 text-[14px]" />
-              <div>
-                <p className="text-[14px] font-semibold text-text-primary">{active.name}</p>
-                <p className="text-[12px] text-text-secondary">Selected rep</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {[
-                { label: "Open", value: formatMoney(active.openValue) },
-                { label: "Deals", value: String(active.deals) },
-                { label: "Win", value: `${active.winRate}%` },
-              ].map((s) => (
-                <div key={s.label} className="bg-surface rounded-lg p-2.5 text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                    {s.label}
+                  {/* Stacked pipeline-by-stage bar (value) */}
+                  <div className="mt-2 h-2.5 rounded-full bg-surface overflow-hidden flex max-w-[440px]">
+                    {rep.stageValues
+                      .filter((s) => s.value > 0)
+                      .map((s) => (
+                        <div
+                          key={s.stage}
+                          style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
+                          title={`${s.stage}: ${formatMoney(s.value)} (${s.count})`}
+                        />
+                      ))}
+                  </div>
+                  {/* Legend — the stages behind the bar */}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                    {rep.stageValues.map((s) => (
+                      <span
+                        key={s.stage}
+                        className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary"
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ background: s.color }}
+                        />
+                        {s.stage}
+                        <span className="font-semibold text-text-secondary tnum">
+                          {s.count}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right — the headline numbers */}
+                <div className="text-right shrink-0 hidden sm:block">
+                  <p className="text-[19px] font-bold text-text-primary tnum leading-none">
+                    {formatMoney(rep.openValue)}
                   </p>
-                  <p className="text-[16px] font-bold text-text-primary tnum mt-0.5">
-                    {s.value}
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
+                    open pipeline
+                  </p>
+                  <p className="text-[11.5px] text-text-tertiary tnum mt-1.5">
+                    {rep.qualifiedPlus} qualified+ · {rep.meetings} meeting
+                    {rep.meetings === 1 ? "" : "s"}
                   </p>
                 </div>
-              ))}
-            </div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
-              Deals by stage
-            </p>
-            <BarChart
-              data={active.stages.map((st) => ({
-                label: st.stage,
-                value: st.count,
-              }))}
-              height={120}
-            />
-          </div>
-        )}
-      </div>
+                <ChevronRight
+                  size={17}
+                  strokeWidth={2}
+                  className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform shrink-0"
+                />
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }

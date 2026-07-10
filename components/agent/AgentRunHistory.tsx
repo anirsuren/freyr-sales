@@ -227,10 +227,10 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
                     ))}
                   </ol>
 
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Link
                       href={`/agent/runs/${run.id}`}
-                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-text-secondary hover:bg-surface transition-colors"
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-text-secondary hover:bg-surface transition-colors"
                     >
                       <Maximize2 size={13} strokeWidth={2} />
                       Open run
@@ -239,7 +239,7 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
                       <button
                         onClick={() => replay(run)}
                         disabled={replaying === run.id}
-                        className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-blue-primary hover:bg-blue-light transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-blue-primary hover:bg-blue-light transition-colors disabled:opacity-50"
                       >
                         <RotateCw
                           size={13}
@@ -255,7 +255,7 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
                         <button
                           onClick={() => undo(run)}
                           disabled={undoing === run.id}
-                          className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
                         >
                           <Undo2 size={13} strokeWidth={2} />
                           {undoing === run.id ? "Undoing…" : "Undo"}

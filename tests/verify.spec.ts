@@ -127,6 +127,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("09 — engagement rail logs an interaction", async ({ page }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
+    // Logging is opt-in now — expand the collapsed panel first
+    await page.getByRole("button", { name: "Log an interaction" }).click();
     // Disposition dropdown (the select containing the outcome options) + Log Interaction
     const select = page.locator('select:has(option[value="interested"])').first();
     await expect(select).toBeVisible();
@@ -1137,14 +1139,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("96 — account detail shows agent section (V7)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-002`);
-    await expect(page.getByRole("button", { name: "Run a play" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Let the agent work" })).toBeVisible();
   });
 
   test("97 — agent run with compliance gate → approve → complete (V7)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Run a play" }).click();
+    await page.getByRole("button", { name: "Let the agent work" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     // the run advances and pauses at the compliance gate
     const approve = page.getByRole("button", { name: "Approve & send" });
@@ -1260,7 +1262,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText("Agent — next best action for this deal")
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Run a play/ }).first()
+      page.getByRole("button", { name: /Let the agent work/ }).first()
     ).toBeVisible();
   });
 
@@ -1687,7 +1689,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Run a play" }).click();
+    await page.getByRole("button", { name: "Let the agent work" }).click();
     await expect(
       page.getByText("Drafted email — edit before it sends")
     ).toBeVisible({ timeout: 8000 });
@@ -1700,7 +1702,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Run a play" }).click();
+    await page.getByRole("button", { name: "Let the agent work" }).click();
     const subj = page.getByLabel("Draft subject");
     await expect(subj).toBeVisible({ timeout: 8000 });
     await subj.fill("Edited subject ABC123");
@@ -1729,7 +1731,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("139 — rewrite gives the rep a different draft (V9)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Run a play" }).click();
+    await page.getByRole("button", { name: "Let the agent work" }).click();
     const subj = page.getByLabel("Draft subject");
     await expect(subj).toBeVisible({ timeout: 8000 });
     const first = await subj.inputValue();
@@ -1771,7 +1773,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Run a play" }).click();
+    await page.getByRole("button", { name: "Let the agent work" }).click();
     const bodyEl = page.getByLabel("Draft body");
     await expect(bodyEl).toBeVisible({ timeout: 8000 });
     await page.getByRole("button", { name: /^formal$/i }).click();
@@ -1883,7 +1885,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("150 — save + insert a snippet in the play (V9)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Run a play" }).click();
+    await page.getByRole("button", { name: "Let the agent work" }).click();
     const bodyEl = page.getByLabel("Draft body");
     await expect(bodyEl).toBeVisible({ timeout: 8000 });
     // save the current draft to the library

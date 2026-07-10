@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Users, DollarSign, KeyRound, ReceiptText } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
-import { BarChart, VIZ_SERIES } from "@/components/charts/Charts";
+import { DonutChart, Legend, VIZ_SERIES } from "@/components/charts/Charts";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { formatMoney } from "@/lib/pipeline";
+import { formatDate } from "@/lib/utils";
 import { REVENUE_TYPE_META, type OfferingReport } from "@/lib/revenue";
 
 // The offering owner's report (Suren, Jul 5): for THIS offering, everything
@@ -33,10 +35,10 @@ export function OfferingReports({
     );
   }
 
-  const bars = report.customers
+  const segments = report.customers
     .filter((c) => c.revenue > 0)
     .map((c, i) => ({
-      label: c.name.split(/\s+/)[0],
+      label: c.name,
       value: c.revenue,
       color: VIZ_SERIES[i % VIZ_SERIES.length],
     }));
@@ -70,7 +72,7 @@ export function OfferingReports({
         />
       </section>
 
-      {bars.length > 0 && (
+      {segments.length > 0 && (
         <Card>
           <h2 className="text-[15px] font-semibold text-text-primary mb-1">
             Revenue by customer
@@ -78,12 +80,27 @@ export function OfferingReports({
           <p className="text-[12px] text-text-tertiary mb-4">
             Where this offering&apos;s revenue comes from.
           </p>
-          <BarChart data={bars} height={180} format={(v) => formatMoney(v)} />
+          <div className="flex items-center gap-6 flex-wrap">
+            <DonutChart
+              segments={segments}
+              size={150}
+              thickness={16}
+              centerLabel={formatMoney(report.totalRevenue)}
+              centerSub="total"
+            />
+            <Legend
+              items={segments.map((s) => ({
+                label: s.label,
+                color: s.color,
+                value: formatMoney(s.value),
+              }))}
+            />
+          </div>
         </Card>
       )}
 
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 pt-5 pb-3">
+        <div className="px-5 pt-4 pb-2.5">
           <h2 className="text-[15px] font-semibold text-text-primary">
             Revenue detail
           </h2>
@@ -94,12 +111,12 @@ export function OfferingReports({
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-surface border-y border-border-light">
+              <tr className="bg-surface border-b border-border-light">
                 {["Customer", "Type", "Revenue", "Licenses", "Term", "Notes"].map(
                   (h) => (
                     <th
                       key={h}
-                      className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
+                      className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
                     >
                       {h}
                     </th>
@@ -115,12 +132,17 @@ export function OfferingReports({
                       {i === 0 ? (
                         <Link
                           href={`/customers/${c.id}?tab=offerings`}
-                          className="font-semibold text-text-primary hover:text-blue-primary"
+                          className="inline-flex items-center gap-2.5 font-semibold text-text-primary hover:text-blue-primary"
                         >
+                          <CompanyLogo name={c.name} className="w-7 h-7 text-[10px]" />
                           {c.name}
                         </Link>
                       ) : (
-                        <span className="text-text-tertiary">↳</span>
+                        // Continuation line for the same customer — muted, indented,
+                        // no cryptic arrow (Anir, Jul 8: "what is this enter icon?").
+                        <span className="inline-flex items-center gap-2.5 pl-[38px] text-text-tertiary">
+                          {c.name}
+                        </span>
                       )}
                     </td>
                     <td className="px-5 py-3 whitespace-nowrap">
@@ -144,7 +166,7 @@ export function OfferingReports({
                     </td>
                     <td className="px-5 py-3 text-[12.5px] text-text-tertiary tnum whitespace-nowrap">
                       {l && (l.start_date || l.end_date)
-                        ? `${l.start_date || "—"} → ${l.end_date || "—"}`
+                        ? `${formatDate(l.start_date)} → ${formatDate(l.end_date)}`
                         : "—"}
                     </td>
                     <td className="px-5 py-3 text-[12.5px] text-text-secondary max-w-[240px] truncate">

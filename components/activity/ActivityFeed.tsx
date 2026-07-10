@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Search, MessageSquareText, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
-import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { cn, formatDate, OUTCOME_META } from "@/lib/utils";
+import { cn, formatDateTime, OUTCOME_META } from "@/lib/utils";
 
 export type ActivityItem = {
   id: string;
@@ -163,17 +163,17 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
               <div className="space-y-2.5 stagger">
                 {g.items.map((it) => (
                   <Link key={it.id} href={`/customers/${it.customerId}`}>
-                    <Card className="p-4 hover:border-blue-subtle transition-colors group">
+                    <Card className="p-4 group transition-all hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-card">
                       <div className="flex items-start gap-3">
-                        <Avatar name={it.company} className="w-9 h-9 text-[12px] rounded-lg shrink-0" />
+                        <CompanyLogo name={it.company} className="w-9 h-9 text-[12px] shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[14px] font-semibold text-text-primary">
                               {it.company}
                             </span>
                             <OutcomeBadge outcome={it.outcome} />
-                            <span className="text-[12px] text-text-tertiary tnum ml-auto">
-                              {formatDate(it.created_at)}
+                            <span className="text-[12px] text-text-tertiary tnum ml-auto whitespace-nowrap">
+                              {formatDateTime(it.created_at)}
                             </span>
                           </div>
                           <p className="text-[12px] text-text-secondary mt-0.5">

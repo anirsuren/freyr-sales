@@ -3,7 +3,7 @@ import { ClipboardCheck, CalendarClock, ArrowRight, CheckCircle2, AlertTriangle,
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AgentActions } from "@/components/agent/AgentActions";
 import { nextBestActions, focusActions } from "@/lib/agent";
@@ -134,7 +134,7 @@ export default async function TasksPage() {
                 {reviewTasks.map((t) => (
                   <Link key={t.id} href={`/sessions/${t.id}`} className="block">
                     <Card className="p-4 hover:border-blue-subtle transition-colors group flex items-center gap-3">
-                      <Avatar name={t.company} className="w-9 h-9 text-[12px] rounded-lg shrink-0" />
+                      <CompanyLogo name={t.company} className="w-9 h-9 text-[12px] shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[14px] font-semibold text-text-primary truncate">
                           {t.company}
@@ -184,7 +184,7 @@ export default async function TasksPage() {
                   return (
                   <Link key={t.id} href={`/customers/${t.customerId}`} className="block">
                     <Card className="p-4 hover:border-blue-subtle transition-colors group flex items-center gap-3">
-                      <Avatar name={t.company} className="w-9 h-9 text-[12px] rounded-lg shrink-0" />
+                      <CompanyLogo name={t.company} className="w-9 h-9 text-[12px] shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[14px] font-semibold text-text-primary truncate">
                           {t.company}

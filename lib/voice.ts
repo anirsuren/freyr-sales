@@ -31,6 +31,7 @@ export interface VoiceCall {
   contact_id: string;
   contact_name: string;
   company: string;
+  phone?: string | null;
   offering_id: string | null;
   offering_name: string; // or the category for bulk runs
   category: string;
@@ -51,9 +52,29 @@ interface VoiceStore {
 // seeded contacts as the rest of the app, so campaign cross-links resolve.
 // Runtime calls queue on top with honest statuses; these give the analytics
 // their shape until the phone number connects.
+// Stable, real-looking line per contact so every seeded call shows a number
+// (Suren: "how do these contacts not have phone numbers?").
+function seedPhone(seed: string): string {
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const area = 201 + (h % 799);
+  const mid = 200 + ((h >> 4) % 800);
+  const last = h % 10000;
+  return `+1 (${area}) ${String(mid).padStart(3, "0")}-${String(last).padStart(4, "0")}`;
+}
+
 function seedCalls(): VoiceCall[] {
-  const d = (days: number) =>
-    new Date(Date.now() - days * 86_400_000).toISOString();
+  // Date from `days` ago, but with a believable business-hours time-of-day
+  // seeded off the call id — otherwise every whole-day-ago call renders at the
+  // exact same clock time (they all subtract 24h from "now"), which reads as
+  // fake in the queue. Deterministic, so it's stable across reloads.
+  const d = (days: number, seedStr: string) => {
+    let h = 0;
+    for (const ch of seedStr) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const dt = new Date(Date.now() - days * 86_400_000);
+    dt.setHours(9 + (h % 9), (((h ^ (h >>> 13)) >>> 0) % 60), 0, 0); // 9am–5pm
+    return dt.toISOString();
+  };
   const call = (
     id: string,
     contact: [string, string, string], // id, name, company
@@ -68,6 +89,7 @@ function seedCalls(): VoiceCall[] {
     contact_id: contact[0],
     contact_name: contact[1],
     company: contact[2],
+    phone: seedPhone(contact[1]),
     offering_id: null,
     offering_name: offering,
     category,
@@ -75,18 +97,73 @@ function seedCalls(): VoiceCall[] {
     status,
     outcome,
     duration_secs: duration,
-    created_at: d(days),
+    created_at: d(days, id),
   });
-  return [
+  const explicit: VoiceCall[] = [
     call("vc-seed-01", ["cont-004", "Dr. Lena Vogt", "Helix Biologics"], "Labeling and Artwork", "Labeling and Artwork", "called", "interested", 284, 1),
     call("vc-seed-02", ["cont-005", "Prithvi Nair", "Solvance Pharma"], "Submissions and Document Operations", "Submissions and Document Operations", "called", "follow_up", 196, 1.2),
     call("vc-seed-03", ["cont-012", "Dr. Hana Kim", "Orion Vaccines"], "Global Regulatory Intelligence", "Global Regulatory Intelligence", "called", "interested", 233, 2),
     call("vc-seed-04", ["cont-003", "Marcus Thorne", "Cortexa Biopharma"], "Regulatory Affairs", "Regulatory Affairs", "called", "follow_up", 172, 2.5),
     call("vc-seed-05", ["cont-010", "Claudia Hofmann", "Meridian Pharmaceuticals"], "Regulatory Information Management", "Regulatory Information Management", "called", "declined", 58, 3),
     call("vc-seed-06", ["cont-007", "Stefan Bauer", "Aether Medical Devices"], "Global Regulatory Intelligence", "Global Regulatory Intelligence", "called", "no_answer", 0, 3.4),
-    call("vc-seed-07", ["cont-011", "Owen Bradley", "Northwind Biosciences"], "Regulatory Affairs", "Regulatory Affairs", "waiting_for_number", null, null, 0.3),
-    call("vc-seed-08", ["cont-008", "Megan Ruiz", "Solara Consumer Health"], "Labeling and Artwork", "Labeling and Artwork", "waiting_for_number", null, null, 0.5),
+    call("vc-seed-07", ["cont-011", "Owen Bradley", "Northwind Biosciences"], "Regulatory Affairs", "Regulatory Affairs", "called", "follow_up", 148, 0.3),
+    call("vc-seed-08", ["cont-008", "Megan Ruiz", "Solara Consumer Health"], "Labeling and Artwork", "Labeling and Artwork", "called", "interested", 205, 0.5),
+    // A few contacts have a real call HISTORY so their voice profile shows more
+    // than one conversation (Suren: "all the conversations they've had… graphs").
+    call("vc-seed-09", ["cont-004", "Dr. Lena Vogt", "Helix Biologics"], "Labeling and Artwork", "Freya.Label", "called", "follow_up", 198, 6),
+    call("vc-seed-10", ["cont-004", "Dr. Lena Vogt", "Helix Biologics"], "Labeling and Artwork", "Artwork Management", "called", "no_answer", 0, 11),
+    call("vc-seed-11", ["cont-011", "Owen Bradley", "Northwind Biosciences"], "Regulatory Affairs", "Regulatory Affairs", "called", "interested", 220, 4),
+    call("vc-seed-12", ["cont-003", "Marcus Thorne", "Cortexa Biopharma"], "Regulatory Affairs", "Regulatory Affairs", "called", "interested", 205, 7),
   ];
+
+  // Fuller history so EVERY persona's analytics read real, not sparse (Suren:
+  // "add more calls and stuff… all the data should be full even if fake" —
+  // Sofia's page showed a single call). Deterministic generator: each of the
+  // six category agents gets a month of varied calls (mixed outcomes, realistic
+  // durations, spread across ~30 days), stable across reloads.
+  const POOL: [string, string, string][] = [
+    ["cont-004", "Dr. Lena Vogt", "Helix Biologics"],
+    ["cont-005", "Prithvi Nair", "Solvance Pharma"],
+    ["cont-012", "Dr. Hana Kim", "Orion Vaccines"],
+    ["cont-003", "Marcus Thorne", "Cortexa Biopharma"],
+    ["cont-010", "Claudia Hofmann", "Meridian Pharmaceuticals"],
+    ["cont-007", "Stefan Bauer", "Aether Medical Devices"],
+    ["cont-011", "Owen Bradley", "Northwind Biosciences"],
+    ["cont-008", "Megan Ruiz", "Solara Consumer Health"],
+    ["cont-001", "Dr. Priya Mehta", "BioNex Therapeutics"],
+  ];
+  const CATS = Object.keys(agentIds);
+  const PATTERN: VoiceOutcome[] = [
+    "interested", "follow_up", "no_answer", "interested", "declined",
+    "follow_up", "interested", "no_answer", "follow_up", "interested",
+    "declined", "interested",
+  ];
+  const hash = (s: string) => {
+    let h = 0;
+    for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return h;
+  };
+  const durFor = (o: VoiceOutcome, h: number): number | null => {
+    if (o === "no_answer") return 0;
+    if (o === "declined") return 35 + (h % 55);
+    if (o === "follow_up") return 120 + (h % 120);
+    return 180 + (h % 140); // interested
+  };
+  const generated: VoiceCall[] = [];
+  CATS.forEach((cat, ci) => {
+    const n = 9 + (ci % 3); // 9–11 calls per agent
+    for (let i = 0; i < n; i++) {
+      const contact = POOL[(ci * 4 + i * 3) % POOL.length];
+      const outcome = PATTERN[(ci + i) % PATTERN.length];
+      const id = `vc-h-${ci}-${i}`;
+      const h = hash(id + cat);
+      const days = 2 + ((ci * 5 + i * 6 + (h % 6)) % 27) + (h % 10) / 10;
+      generated.push(
+        call(id, contact, cat, cat, "called", outcome, durFor(outcome, h), days)
+      );
+    }
+  });
+  return [...explicit, ...generated];
 }
 
 function store(): VoiceStore {
@@ -139,6 +216,7 @@ export async function placeOrQueueCall(opts: {
     contact_id: contact.id,
     contact_name: contact.full_name,
     company: customer?.company_name || "",
+    phone: contact.phone || null,
     offering_id: offering?.id || null,
     offering_name: offering?.offering_name || category,
     category,
@@ -191,4 +269,102 @@ export async function placeOrQueueCall(opts: {
 
 export function listVoiceQueue(): VoiceCall[] {
   return store().queue;
+}
+
+export function findQueueCall(id: string): VoiceCall | null {
+  return store().queue.find((c) => c.id === id) || null;
+}
+
+export interface MockTurn {
+  role: "agent" | "user";
+  message: string;
+}
+
+// A believable transcript for a seeded call, so clicking any call opens the
+// actual conversation (Suren: "if I click on a conversation, it should open up
+// the conversation"). Real ElevenLabs calls use their own transcript; this only
+// backs the sample calls until live dialing is on.
+export function mockCallTranscript(
+  call: VoiceCall,
+  personaName: string
+): { summary: string; turns: MockTurn[] } {
+  const first =
+    call.contact_name.replace(/^Dr\.\s*/i, "").split(/\s+/)[0] || "there";
+  const what = call.offering_name || call.category;
+  const opener: MockTurn = {
+    role: "agent",
+    message: `Hi ${first}, this is ${personaName} from Freyr Solutions — I'm reaching out about ${what}${
+      call.company ? ` for ${call.company}` : ""
+    }. Did I catch you at an okay moment?`,
+  };
+  const value: MockTurn = {
+    role: "agent",
+    message: `In short, we take the routine regulatory load off your team so they can focus on strategy — former FDA and EMA reviewers, 5,000+ submissions delivered. Where does ${what.toLowerCase()} sit on your priority list right now?`,
+  };
+
+  if (call.outcome === "no_answer") {
+    return {
+      summary: `No answer — reached voicemail. ${personaName} left a short message introducing ${what} and asked ${first} to call back.`,
+      turns: [
+        opener,
+        {
+          role: "agent",
+          message: `Hi ${first}, ${personaName} from Freyr Solutions — sorry to miss you. I'll follow up by email about ${what}, and you can reach me on this line any time. Thanks!`,
+        },
+      ],
+    };
+  }
+
+  if (call.outcome === "declined") {
+    return {
+      summary: `Not a fit right now — ${first} already has a vendor for ${what} and asked us not to follow up this quarter. Polite close, door left open.`,
+      turns: [
+        opener,
+        { role: "user", message: `Hi — honestly this isn't a great time, we already have a partner for that.` },
+        value,
+        { role: "user", message: `Appreciate it, but we're set for now. Maybe revisit next year.` },
+        {
+          role: "agent",
+          message: `Completely understand, ${first}. I'll close this out and check back down the line. Thanks for the couple of minutes.`,
+        },
+      ],
+    };
+  }
+
+  if (call.outcome === "follow_up") {
+    return {
+      summary: `Interested but timing-dependent — ${first} asked ${personaName} to send details on ${what} and follow up after their internal review. A callback is owed.`,
+      turns: [
+        opener,
+        { role: "user", message: `Sure, I've got a minute. What's this about exactly?` },
+        value,
+        { role: "user", message: `That's relevant — we're scoping this for next quarter. Can you send something over and circle back?` },
+        {
+          role: "agent",
+          message: `Absolutely. I'll email a short overview of ${what} today and follow up next week. Who else should I include?`,
+        },
+        { role: "user", message: `Just me for now, thanks.` },
+      ],
+    };
+  }
+
+  // interested (default)
+  return {
+    summary: `Strong interest — ${first} wants a 20-minute working session on ${what}. ${personaName} to send times. Warm, moving to a meeting.`,
+    turns: [
+      opener,
+      { role: "user", message: `Yeah, good timing actually — we've been feeling this.` },
+      value,
+      { role: "user", message: `It's high. We're stretched thin heading into a filing. What would working together look like?` },
+      {
+        role: "agent",
+        message: `We'd start with a short scoping call to map your timeline, then plug in where you need capacity on ${what}. Want me to send a couple of times this week?`,
+      },
+      { role: "user", message: `Yes, please do. Mornings work best.` },
+      {
+        role: "agent",
+        message: `Perfect — I'll send two morning slots and a short brief. Thanks ${first}, talk soon.`,
+      },
+    ],
+  };
 }

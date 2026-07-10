@@ -34,7 +34,15 @@ const NEW_ITEMS = [
   { icon: Package, label: "Offering", sub: "Add to the offering repository", href: "/offerings/new" },
 ];
 
-export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
+export function TopBar({
+  onMenuClick,
+  onAgentToggle,
+  agentActive,
+}: {
+  onMenuClick?: () => void;
+  onAgentToggle?: () => void;
+  agentActive?: boolean;
+} = {}) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
@@ -106,7 +114,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
       >
         <Menu size={20} strokeWidth={1.7} />
       </button>
-      <div className="flex-1 max-w-xl min-w-0">
+      <div className="relative flex-1 max-w-xl min-w-0">
         <button
           onClick={() => setPaletteOpen(true)}
           className="w-full flex items-center gap-2 bg-surface border border-border-light rounded-full pl-10 pr-2.5 py-2 text-[14px] text-text-tertiary hover:bg-white hover:border-blue-subtle hover:shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all relative"
@@ -117,6 +125,12 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
             ⌘K
           </kbd>
         </button>
+        {/* Anchored dropdown — opens right under the search bar, no dark modal */}
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          anchored
+        />
       </div>
 
       <div className="flex items-center gap-1.5">
@@ -164,6 +178,21 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
             </>
           )}
         </div>
+        {onAgentToggle && (
+          <button
+            aria-label="Ask your agent"
+            title="Your agent"
+            onClick={onAgentToggle}
+            className={cn(
+              "w-9 h-9 flex items-center justify-center rounded-full transition-colors",
+              agentActive
+                ? "bg-blue-light text-blue-primary"
+                : "text-text-secondary hover:bg-surface"
+            )}
+          >
+            <Sparkles size={19} strokeWidth={1.7} />
+          </button>
+        )}
         <div className="relative">
           <button
             aria-label="Notifications"
@@ -336,8 +365,6 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
           )}
         </div>
       </div>
-
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="Keyboard shortcuts">
         <ul className="divide-y divide-border-light">

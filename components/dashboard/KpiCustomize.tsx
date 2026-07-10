@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SlidersHorizontal, Check } from "lucide-react";
+import { SlidersHorizontal, Check, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The KPI "Customize" + "vs range" controls, lifted OUT of the KPI section into
@@ -62,14 +62,16 @@ export function KpiCustomize({
         <button
           onClick={toggleCompare}
           aria-pressed={compareOn}
+          title={`Show each card's change vs the ${rangeLabel}`}
           className={cn(
-            "text-[13px] font-medium px-3 py-2 rounded-md border transition-colors whitespace-nowrap",
+            "inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border transition-colors whitespace-nowrap",
             compareOn
               ? "border-blue-primary bg-blue-light text-blue-primary"
               : "border-border text-text-secondary hover:bg-surface"
           )}
         >
-          vs {rangeLabel}
+          <TrendingUp size={14} strokeWidth={1.9} />
+          Change
         </button>
       )}
       <div className="relative">

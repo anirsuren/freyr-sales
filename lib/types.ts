@@ -199,6 +199,9 @@ export interface AgentRun {
   // Timeline entries this run created, so an auto-handled run can be undone (V9).
   interaction_ids?: string[];
   reverted?: boolean;
+  // The actual draft the agent produced (email/plan) so "Draft it for me" shows
+  // real, readable output and the run page can display it — not just a log line.
+  draft?: { title: string; body: string } | null;
 }
 
 // Per-account agent chat (V9 #45) — the "Ask the agent" thread, persisted so the

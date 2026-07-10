@@ -13,6 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -370,12 +371,15 @@ export function CustomerAnalyzePanel({
                 href={`/offerings/${o.id}`}
                 className="group flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
               >
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-medium text-text-primary truncate group-hover:text-blue-primary">
-                    {o.name}
-                  </span>
-                  <span className="block text-[11px] text-text-tertiary truncate">
-                    {o.type}
+                <span className="flex items-center gap-2.5 min-w-0">
+                  <OfferingIcon name={o.name} className="w-8 h-8 shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium text-text-primary truncate group-hover:text-blue-primary">
+                      {o.name}
+                    </span>
+                    <span className="block text-[11px] text-text-tertiary truncate">
+                      {o.type}
+                    </span>
                   </span>
                 </span>
                 <ChevronRight

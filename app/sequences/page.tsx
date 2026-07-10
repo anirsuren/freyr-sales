@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { HowItWorks } from "@/components/ui/HowItWorks";
 import { buildDeals, ROTTING_DAYS } from "@/lib/pipeline";
 import {
   SequencesView,
@@ -81,15 +82,22 @@ export default async function SequencesPage() {
       <PageHeader
         title="Sequences"
         subtitle="A sequence is a step-by-step outreach plan — emails and calls spaced over days — and which accounts are working through it."
+        action={
+          <HowItWorks title="How sequences work">
+            <p>
+              The agent preps each step for you — it drafts the emails and sets
+              reminders for the calls — then you review, approve, and send.
+            </p>
+            <p>
+              <span className="font-semibold text-text-primary">
+                It never emails or dials on its own.
+              </span>{" "}
+              Every message goes out from you, only to contacts who&apos;ve agreed
+              to hear from you — so you stay in control and compliant.
+            </p>
+          </HowItWorks>
+        }
       />
-      <div className="rounded-xl border border-border-light bg-surface/60 px-4 py-3 mb-6 text-[13px] text-text-secondary leading-relaxed">
-        <span className="font-semibold text-text-primary">How this works:</span> the agent
-        preps each step for you — it drafts the emails and sets reminders for the calls — then you
-        review, approve, and send.{" "}
-        <span className="font-semibold text-text-primary">It never emails or dials on its own.</span>{" "}
-        Every message goes out from you, only to contacts who&apos;ve agreed to hear from you, so you
-        stay in control and compliant.
-      </div>
       <SequenceAgentBanner
         candidateCount={candidateCount}
         dueCount={dueCount}

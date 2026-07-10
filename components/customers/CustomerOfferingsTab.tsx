@@ -15,11 +15,34 @@ import {
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
+import { DonutChart } from "@/components/charts/Charts";
+import { VIZ } from "@/components/charts/palette";
 import { formatMoney } from "@/lib/pipeline";
+import { formatDate } from "@/lib/utils";
 import { REVENUE_TYPES, REVENUE_TYPE_META } from "@/lib/revenue";
 import type { OfferingUsage, OfferingRevenueLine, RevenueType } from "@/lib/types";
 import { DollarSign, Plus, Trash2 } from "lucide-react";
+
+// One colour per revenue type — shared by the donut and its legend so the
+// "already using" revenue reads as a real chart, not a plain list (Suren:
+// "I'm expecting some sort of chart… a better distinction").
+const REV_COLOR: Record<RevenueType, string> = {
+  annual: VIZ.blue,
+  annual_service: VIZ.teal,
+  project: VIZ.indigo,
+  license: VIZ.amber,
+};
+
+// Short money for the donut centre / hero ($250K, $1.2M) — the itemised lines
+// still show the exact figure.
+function compactMoney(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000) return `$${Math.round(n / 1000)}K`;
+  return `$${n}`;
+}
 
 // One offering, serialized for this tab by the server page (materials carry a
 // pre-computed plain-English kind label so we don't pull lib/offerings into the
@@ -59,6 +82,15 @@ function RevenueSection({
   const [desc, setDesc] = useState("");
 
   const total = lines.reduce((s, l) => s + (l.amount || 0), 0);
+  // Revenue split by type — feeds the donut + its one-column legend.
+  const byType = REVENUE_TYPES.map((t) => ({
+    type: t,
+    label: REVENUE_TYPE_META[t].short,
+    color: REV_COLOR[t],
+    value: lines
+      .filter((l) => l.revenue_type === t)
+      .reduce((s, l) => s + (l.amount || 0), 0),
+  })).filter((x) => x.value > 0);
   const num = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^0-9.]/g, "")) || 0));
   const inp =
     "rounded-md border border-border bg-white px-2.5 py-1.5 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
@@ -92,15 +124,10 @@ function RevenueSection({
 
   return (
     <div className="mt-3 pt-3 border-t border-border-light">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2.5">
         <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
           <DollarSign size={13} strokeWidth={2} className="text-success" />
-          Revenue{" "}
-          {total > 0 && (
-            <span className="text-success tnum normal-case">
-              · {formatMoney(total)}/yr on file
-            </span>
-          )}
+          Revenue on this offering
         </p>
         {!adding && (
           <button
@@ -112,6 +139,48 @@ function RevenueSection({
           </button>
         )}
       </div>
+
+      {/* Chart, not a bare list (Suren: "expecting some sort of chart… a better
+          distinction"): a donut of the revenue split with a one-column legend,
+          the total called out in the centre. */}
+      {total > 0 && (
+        <div className="flex items-center gap-4 rounded-xl border border-success/25 bg-success/[0.05] px-4 py-3 mb-2.5">
+          <DonutChart
+            size={104}
+            thickness={13}
+            segments={byType.map((b) => ({
+              label: b.label,
+              value: b.value,
+              color: b.color,
+            }))}
+            centerLabel={compactMoney(total)}
+            centerSub="on file"
+          />
+          <ul className="min-w-0 flex-1 space-y-1.5">
+            {byType.map((b) => (
+              <li
+                key={b.type}
+                className="flex items-center justify-between gap-2 text-[12.5px]"
+              >
+                <span className="flex items-center gap-1.5 min-w-0 text-text-secondary">
+                  <span
+                    className="w-2.5 h-2.5 rounded-sm shrink-0"
+                    style={{ background: b.color }}
+                  />
+                  <span className="truncate">{b.label}</span>
+                </span>
+                <span className="shrink-0 tnum font-semibold text-text-primary">
+                  {formatMoney(b.value)}
+                  <span className="text-text-tertiary font-normal">
+                    {" · "}
+                    {Math.round((b.value / total) * 100)}%
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {lines.length > 0 && (
         <ul className="space-y-1.5 mb-2">
@@ -133,7 +202,7 @@ function RevenueSection({
                 {(l.start_date || l.end_date) && (
                   <span className="text-text-tertiary tnum">
                     {" "}
-                    · {l.start_date || "—"} → {l.end_date || "—"}
+                    · {formatDate(l.start_date)} → {formatDate(l.end_date)}
                   </span>
                 )}
                 {l.description && (
@@ -365,7 +434,9 @@ export function CustomerOfferingsTab({
   }) => (
     <Card className="p-5" data-testid={`cust-offering-${o.id}`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="flex items-start gap-3 min-w-0">
+          <OfferingIcon name={o.name} className="w-9 h-9 rounded-lg shrink-0" />
+          <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Link
               href={`/offerings/${o.id}`}
@@ -396,13 +467,14 @@ export function CustomerOfferingsTab({
               {[o.category, o.type].filter(Boolean).join(" · ")}
             </p>
           )}
+          </div>
         </div>
         <button
           onClick={() => toggleInUse(o.id, !using)}
           disabled={busyId === o.id}
           className={`shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-md border transition-colors disabled:opacity-50 ${
             using
-              ? "border-border-light text-text-secondary hover:bg-surface"
+              ? "border-error/30 text-error hover:bg-error/10"
               : "border-border-light text-success hover:bg-success/10"
           }`}
         >
@@ -420,14 +492,9 @@ export function CustomerOfferingsTab({
         </button>
       </div>
 
-      {o.description ? (
-        <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line line-clamp-4 mt-2.5">
+      {o.description && (
+        <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line line-clamp-3 mt-2.5 pl-12">
           {o.description}
-        </p>
-      ) : (
-        <p className="text-[13px] text-text-tertiary italic mt-2.5">
-          No description yet — it comes from the offering&apos;s sales
-          materials.
         </p>
       )}
 
@@ -440,8 +507,11 @@ export function CustomerOfferingsTab({
         />
       )}
 
+      {(using || o.materials.length > 0 || o.poc) && (
       <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-border-light">
         <div className="min-w-0 flex-1">
+          {(using || o.materials.length > 0) && (
+          <>
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
             Sales materials ({o.materials.length})
           </p>
@@ -468,6 +538,8 @@ export function CustomerOfferingsTab({
               ))}
             </div>
           )}
+          </>
+          )}
         </div>
         {o.poc && (
           <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-text-secondary">
@@ -480,53 +552,113 @@ export function CustomerOfferingsTab({
           </span>
         )}
       </div>
+      )}
+    </Card>
+  );
+
+  // Compact tile for the "opportunities to pitch" grid — four to a row, every
+  // card the SAME height (Suren: "rows of four… four distinct cards, all the
+  // same length"). Content flexes; the action button is pinned to the bottom
+  // so uneven descriptions never make the cards ragged.
+  const PitchCard = ({ o }: { o: TabOffering }) => (
+    <Card
+      className="p-4 flex flex-col h-full"
+      data-testid={`cust-offering-${o.id}`}
+    >
+      <div className="flex items-start gap-2.5 min-w-0">
+        <OfferingIcon name={o.name} className="w-10 h-10 rounded-lg shrink-0" />
+        <div className="min-w-0 flex-1">
+          <Link
+            href={`/offerings/${o.id}`}
+            title={o.name}
+            className="text-[14px] font-semibold text-text-primary leading-snug hover:text-blue-primary line-clamp-2 break-words"
+          >
+            {o.name}
+          </Link>
+          {o.availability && (
+            <span
+              className={`inline-block mt-1 text-[10.5px] font-medium rounded px-1.5 py-0.5 ${
+                /current|now|available/i.test(o.availability)
+                  ? "text-success bg-success/10"
+                  : "text-warning bg-warning/10"
+              }`}
+            >
+              {o.availability}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {(o.category || o.type) && (
+        <p className="text-[11.5px] text-text-tertiary mt-2 line-clamp-1">
+          {[o.category, o.type].filter(Boolean).join(" · ")}
+        </p>
+      )}
+      {o.description && (
+        <p className="text-[12.5px] text-text-secondary leading-relaxed line-clamp-3 mt-1.5">
+          {o.description}
+        </p>
+      )}
+      {o.poc && (
+        <p className="flex items-center gap-1 text-[11.5px] text-text-secondary mt-2">
+          <UserRound
+            size={12}
+            strokeWidth={1.8}
+            className="text-text-tertiary shrink-0"
+          />
+          <span className="truncate">POC: {o.poc}</span>
+        </p>
+      )}
+
+      <div className="mt-auto pt-3">
+        <button
+          onClick={() => toggleInUse(o.id, true)}
+          disabled={busyId === o.id}
+          className="w-full inline-flex items-center justify-center gap-1.5 text-[12px] font-semibold px-2.5 py-2 rounded-md border border-border-light text-success hover:bg-success/10 transition-colors disabled:opacity-50"
+        >
+          <CheckCircle2 size={13} strokeWidth={2} />
+          {busyId === o.id ? "…" : "Mark as already using"}
+        </button>
+      </div>
     </Card>
   );
 
   // -------------------------------------------------------- unclassified view
   if (!customerType) {
     return (
-      <Card className="max-w-[560px]">
-        <div className="flex items-center gap-2 mb-1">
-          <Layers size={18} strokeWidth={1.8} className="text-blue-primary" />
-          <h2 className="text-[16px] font-semibold text-text-primary">
-            What type of customer is this?
-          </h2>
-        </div>
-        <p className="text-[13px] text-text-secondary leading-relaxed mb-4">
-          Pick from the customer-type master list — the same one your offerings
-          are mapped to. Once classified, every offering that applies to this
-          customer shows up right here, with its description and sales
-          materials.
+      // Centered empty-state with the customer types as one-click tiles — fills
+      // the space instead of a lone dropdown in the corner (Suren: "so ugly").
+      <div className="max-w-[760px] mx-auto text-center py-10 px-4">
+        <span className="inline-flex w-14 h-14 rounded-2xl bg-blue-light text-blue-primary items-center justify-center mb-4">
+          <Layers size={26} strokeWidth={1.8} />
+        </span>
+        <h2 className="text-[20px] font-bold text-text-primary">
+          What type of customer is this?
+        </h2>
+        <p className="text-[13.5px] text-text-secondary leading-relaxed max-w-[520px] mx-auto mt-2 mb-6">
+          Pick the segment — the same master list your offerings are mapped to.
+          The moment you classify it, every offering that applies shows up here
+          with its description and sales materials.
         </p>
-        <div className="flex gap-2">
-          <select
-            aria-label="Customer type"
-            value={pickedType}
-            onChange={(e) => setPickedType(e.target.value)}
-            className="flex-1 rounded-md border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:shadow-input-focus"
-          >
-            <option value="">Choose a customer type…</option>
-            {typeOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          <Button
-            onClick={() => saveType(pickedType)}
-            loading={savingType}
-            disabled={!pickedType}
-          >
-            Save
-          </Button>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-left">
+          {typeOptions.map((t) => (
+            <button
+              key={t}
+              onClick={() => saveType(t)}
+              disabled={savingType}
+              className="flex items-center gap-2.5 rounded-xl border border-border-light bg-white px-3.5 py-3 text-[13px] font-medium text-text-primary hover:border-blue-primary hover:bg-blue-light/40 hover:shadow-[0_2px_10px_rgba(0,113,227,0.10)] transition-all disabled:opacity-50 text-left"
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-primary shrink-0" />
+              <span className="min-w-0 truncate">{t}</span>
+            </button>
+          ))}
         </div>
-        <p className="flex items-center gap-1.5 text-[12px] text-text-tertiary mt-3">
+        <p className="flex items-center justify-center gap-1.5 text-[12px] text-text-tertiary mt-6">
           <Sparkles size={13} strokeWidth={1.8} className="text-blue-primary" />
           Not sure? &ldquo;Analyze the customer&rdquo; on the Overview tab
           researches it from the web.
         </p>
-      </Card>
+      </div>
     );
   }
 
@@ -567,10 +699,13 @@ export function CustomerOfferingsTab({
             </div>
           )}
         </div>
-        <label className="flex items-center gap-2 text-[12px] text-text-tertiary">
-          Customer type
+        <label className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+          <span className="inline-flex items-center gap-1">
+            Segment
+            <InfoHint text="This account's segment — its industry and company size (e.g. Biologics, mid-size). It decides which of your offerings apply, shown below. Change it if the account was classified wrong." />
+          </span>
           <select
-            aria-label="Change customer type"
+            aria-label="Change customer segment"
             value={customerType}
             onChange={(e) => saveType(e.target.value)}
             disabled={savingType}
@@ -625,9 +760,9 @@ export function CustomerOfferingsTab({
             to have.
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-stretch stagger">
             {toPitch.map((o) => (
-              <OfferingCard key={o.id} o={o} using={false} />
+              <PitchCard key={o.id} o={o} />
             ))}
           </div>
         )}

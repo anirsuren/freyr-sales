@@ -36,7 +36,7 @@ export function HealthBadge({
       >
         <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
         {health.label}
-        {showScore && <span className="opacity-70">{health.score}</span>}
+        {showScore && <span className="opacity-70">{health.score}/100</span>}
       </span>
     </Tooltip>
   );

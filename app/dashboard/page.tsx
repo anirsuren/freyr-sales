@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OutcomeBadge } from "@/components/ui/Badge";
-import { AgentActions } from "@/components/agent/AgentActions";
+import { AgentRecommendCarousel } from "@/components/agent/AgentRecommendCarousel";
 import { nextBestActions, focusActions } from "@/lib/agent";
 import { DashboardToggle } from "@/components/dashboard/DashboardToggle";
 import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
@@ -42,18 +43,10 @@ import type { RecommendedService } from "@/lib/types";
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
+// Real company logo (falls back to a branded mark) — used in the agent
+// recommends row and the Recent Sessions table.
 function CompanyChip({ name }: { name: string }) {
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-  return (
-    <span className="w-8 h-8 rounded-md bg-blue-light text-blue-primary flex items-center justify-center font-bold text-[12px] shrink-0">
-      {initials}
-    </span>
-  );
+  return <CompanyLogo name={name} className="w-8 h-8 text-[11px] shrink-0" />;
 }
 
 const RANGE_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
@@ -216,7 +209,7 @@ export default async function DashboardPage({
   const kpis = [
     { key: "pipeline", label: "Active Pipeline", value: formatMoney(cur.pipeline), cur: cur.pipeline, prev: prev?.pipeline ?? null, unit: "money" as const, href: "/pipeline" },
     { key: "leads", label: "Active Leads", value: String(cur.leads), cur: cur.leads, prev: prev?.leads ?? null, unit: "count" as const, href: "/customers" },
-    { key: "winRate", label: "Win Rate", value: `${cur.winRate}%`, cur: cur.winRate, prev: prev?.winRate ?? null, unit: "pct" as const, href: "/analytics" },
+    { key: "winRate", label: "Qualified rate", value: `${cur.winRate}%`, cur: cur.winRate, prev: prev?.winRate ?? null, unit: "pct" as const, href: "/analytics" },
     { key: "sessions", label: "Pitch Sessions", value: String(cur.sessions), cur: cur.sessions, prev: prev?.sessions ?? null, unit: "count" as const, href: "/sessions" },
   ];
 
@@ -261,16 +254,19 @@ export default async function DashboardPage({
               <Sparkles size={17} strokeWidth={1.8} className="text-blue-primary" />
               Your agent recommends
             </h2>
+            {/* Go to the full queue of these recommendations, not the chat
+                (Anir, Jul 8: "Open Agent just takes me to the main chat"). */}
             <Link
-              href="/agent"
+              href="/tasks"
               className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
             >
-              Open Agent
+              See all ({agentActions.length})
               <ArrowRight size={13} strokeWidth={1.8} />
             </Link>
           </div>
-          {/* One horizontal glance, not a stack (Anir: "value of space") */}
-          <AgentActions actions={agentActions} compact grid />
+          {/* One rich recommendation at a time, paged left/right, with an
+              "Up next" queue — no cramped stack (Anir, Jul 7). */}
+          <AgentRecommendCarousel actions={agentActions} />
         </Card>
       )}
 
@@ -340,6 +336,7 @@ export default async function DashboardPage({
             color={VIZ.blue}
             goal={3.0}
             goalLabel="Quota $3.0M"
+            format="millions"
           />
         </Card>
         <Card className="lg:col-span-4 flex flex-col items-center justify-center">
@@ -470,7 +467,7 @@ export default async function DashboardPage({
       {/* Recent sessions table */}
       <section>
         <Card className="p-0 overflow-hidden">
-          <div className="p-5 border-b border-border-light flex justify-between items-center gap-3">
+          <div className="px-5 py-3.5 border-b border-border-light flex justify-between items-center gap-3">
             <h2 className="text-[17px] font-semibold text-text-primary">
               Recent Sessions
             </h2>
@@ -487,7 +484,7 @@ export default async function DashboardPage({
               <thead>
                 <tr className="bg-surface border-b border-border-light">
                   {["Customer", "Primary Contact", "Recommended Service", "Status", "Last Session"].map((h) => (
-                    <th key={h} className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
+                    <th key={h} className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -552,11 +549,6 @@ export default async function DashboardPage({
   return (
     <DashboardToggle
       title="Good morning, Suren"
-      date={new Date().toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })}
       overview={overview}
       analytics={analytics}
       actions={

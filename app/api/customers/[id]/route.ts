@@ -49,6 +49,14 @@ export async function PATCH(
     patch.offerings_in_use = body.offerings_in_use.filter(
       (x: unknown): x is string => typeof x === "string"
     );
+  // Add a single offering to the in-use list from the offering page ("Add to a
+  // customer") without wiping the rest — appends + dedupes.
+  if (typeof body.addOfferingInUse === "string" && body.addOfferingInUse) {
+    const current = customer.offerings_in_use || [];
+    patch.offerings_in_use = current.includes(body.addOfferingInUse)
+      ? current
+      : [...current, body.addOfferingInUse];
+  }
   // Commercial detail per in-use offering (Suren's Jul 5 dictation): revenue
   // lines keyed by offering. Sanitized so bad input can't corrupt the store.
   if (Array.isArray(body.offering_usage)) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Search,
   LayoutDashboard,
@@ -25,6 +25,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 
 const NAV: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -71,15 +74,21 @@ type Item = {
   sublabel?: string;
   badge?: string;
   rightLabel?: string;
+  // For record hits we render the real logo/photo/offering-icon, not a glyph.
+  recordType?: string;
+  recordName?: string;
   run: () => void;
 };
 
 export function CommandPalette({
   open,
   onClose,
+  anchored = false,
 }: {
   open: boolean;
   onClose: () => void;
+  // anchored = render as a dropdown under the top-bar search (no dark modal)
+  anchored?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -91,6 +100,16 @@ export function CommandPalette({
   useEffect(() => {
     if (!open) setQ("");
   }, [open]);
+
+  // Close on navigation — clicking a sidebar nav item (a "new tab") or a result
+  // should dismiss the search, but the sidebar sits above the click-away layer
+  // so it never fired (Suren: "when I click a new tab or outside, it should
+  // close — it's not"). Closing on pathname change covers every navigation.
+  const pathname = usePathname();
+  useEffect(() => {
+    onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   useEffect(() => {
     if (!q.trim()) {
@@ -214,6 +233,8 @@ export function CommandPalette({
           label: r.label,
           sublabel: r.sublabel,
           rightLabel: r.type,
+          recordType: r.type,
+          recordName: r.label,
           run: () => go(r.href),
         })
       );
@@ -264,15 +285,16 @@ export function CommandPalette({
 
   let renderedSection = "";
 
-  return (
+  const box = (
     <div
-      className="fixed inset-0 z-[90] flex items-start justify-center pt-[12vh] bg-black/20"
-      onClick={onClose}
+      className={cn(
+        "bg-white overflow-hidden",
+        anchored
+          ? "absolute left-0 top-0 z-50 w-full min-w-[420px] rounded-2xl border border-border-light shadow-[0_16px_48px_rgba(0,0,0,0.16)]"
+          : "w-full max-w-[560px] mx-4 rounded-xl border border-border-light shadow-card"
+      )}
+      onClick={(e) => e.stopPropagation()}
     >
-      <div
-        className="w-full max-w-[560px] mx-4 bg-white rounded-xl border border-border-light shadow-card overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-center gap-2 px-4 border-b border-border-light">
           <Search size={18} strokeWidth={1.5} className="text-text-tertiary" />
           <input
@@ -280,7 +302,7 @@ export function CommandPalette({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search, set a goal, or run a play…"
-            className="flex-1 h-12 bg-transparent outline-none text-[15px] text-text-primary placeholder:text-text-tertiary"
+            className="flex-1 h-12 bg-transparent outline-none focus:shadow-none focus-visible:shadow-none text-[15px] text-text-primary placeholder:text-text-tertiary"
           />
           <span className="text-[11px] text-text-tertiary border border-border-light rounded px-1.5 py-0.5">
             ESC
@@ -310,14 +332,31 @@ export function CommandPalette({
                     selected ? "bg-surface" : "hover:bg-surface"
                   )}
                 >
-                  <Icon
-                    size={18}
-                    strokeWidth={1.6}
-                    className={cn(
-                      "shrink-0",
-                      it.section === "Agent" ? "text-blue-primary" : "text-text-secondary"
-                    )}
-                  />
+                  {it.recordType === "Customer" ? (
+                    <CompanyLogo
+                      name={it.recordName || it.label}
+                      className="w-6 h-6 text-[9px] shrink-0"
+                    />
+                  ) : it.recordType === "Contact" ? (
+                    <Avatar
+                      name={it.recordName || it.label}
+                      className="w-6 h-6 text-[9px] shrink-0"
+                    />
+                  ) : it.recordType === "Offering" ? (
+                    <OfferingIcon
+                      name={it.recordName || it.label}
+                      className="w-6 h-6 shrink-0"
+                    />
+                  ) : (
+                    <Icon
+                      size={18}
+                      strokeWidth={1.6}
+                      className={cn(
+                        "shrink-0",
+                        it.section === "Agent" ? "text-blue-primary" : "text-text-secondary"
+                      )}
+                    />
+                  )}
                   <span className="flex-1 min-w-0">
                     <span className="block text-[14px] text-text-primary truncate">
                       {isBusy ? "Working…" : it.label}
@@ -359,6 +398,22 @@ export function CommandPalette({
           </button>
         )}
       </div>
+  );
+
+  // Anchored: a dropdown under the top-bar search with a light click-away —
+  // no dark full-screen modal (Suren: "fix the search bar"). Falls back to the
+  // centered dialog for any non-anchored caller (e.g. ⌘K from a page).
+  return anchored ? (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      {box}
+    </>
+  ) : (
+    <div
+      className="fixed inset-0 z-[90] flex items-start justify-center pt-[12vh] bg-black/20"
+      onClick={onClose}
+    >
+      {box}
     </div>
   );
 }

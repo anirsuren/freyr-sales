@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Tabs } from "@/components/ui/Tabs";
 import { cn } from "@/lib/utils";
 import type { PitchEmail, PitchCallScript } from "@/lib/types";
 
@@ -99,8 +98,28 @@ export function PitchPanel({
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-4">
-        <Tabs tabs={TABS} active={active} onChange={setActive} />
+      <div
+        role="tablist"
+        aria-label="Pitch formats"
+        className="inline-flex items-center gap-1 rounded-xl bg-surface p-1"
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={active === t.key}
+            onClick={() => setActive(t.key)}
+            className={cn(
+              "px-3.5 py-1.5 rounded-lg text-[13px] transition-all whitespace-nowrap",
+              active === t.key
+                ? "bg-white text-blue-primary font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                : "text-text-secondary hover:text-text-primary font-medium"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* 5-min script */}
@@ -123,9 +142,12 @@ export function PitchPanel({
       {/* Email */}
       {active === "email" && (
         <div className="pt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[13px] text-text-tertiary">
-              Subject lines — click to select
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Subject line
+              <span className="ml-1.5 font-normal normal-case tracking-normal">
+                — pick the one to send
+              </span>
             </span>
             <CopyButton
               getText={() =>
@@ -133,22 +155,44 @@ export function PitchPanel({
               }
             />
           </div>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {email.subject_lines?.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedSubject(s)}
-                className={cn(
-                  "text-[13px] px-3 py-1.5 rounded-md border transition-colors text-left",
-                  selectedSubject === s
-                    ? "border-blue-primary bg-blue-light text-blue-primary"
-                    : "border-border text-text-secondary hover:bg-surface"
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+          {email.subject_lines && email.subject_lines.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {email.subject_lines.map((s, i) => {
+                const on = selectedSubject === s;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSelectedSubject(s)}
+                    aria-pressed={on}
+                    className={cn(
+                      "w-full flex items-center gap-3 text-left rounded-lg border px-3.5 py-2.5 transition-all duration-150",
+                      on
+                        ? "border-blue-primary bg-blue-light/60 shadow-[0_1px_2px_rgba(0,113,227,0.12)]"
+                        : "border-border-light hover:border-blue-subtle hover:bg-surface"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                        on ? "border-blue-primary" : "border-border"
+                      )}
+                    >
+                      {on && <span className="w-2 h-2 rounded-full bg-blue-primary" />}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[13.5px] leading-snug",
+                        on ? "text-blue-primary font-semibold" : "text-text-secondary"
+                      )}
+                    >
+                      {s}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <textarea
             className={textareaClass}
             value={emailBody}

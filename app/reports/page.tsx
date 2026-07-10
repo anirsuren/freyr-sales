@@ -14,9 +14,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatTile } from "@/components/ui/StatTile";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { ReportsExport } from "@/components/reports/ReportsExport";
 import {
-  BarChart,
   DonutChart,
   Legend,
   VIZ,
@@ -25,7 +26,7 @@ import {
 import { listOfferings } from "@/lib/offerings";
 import { portfolioReport, REVENUE_TYPE_META } from "@/lib/revenue";
 import { buildDeals, formatMoney, STAGE_PROBABILITY } from "@/lib/pipeline";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
@@ -74,7 +75,7 @@ export default async function ReportsPage() {
     .filter((o) => o.revenue > 0)
     .slice(0, 8)
     .map((o, i) => ({
-      label: o.name.replace(/^Freya[.\s]?/, "").split(/\s|\(/)[0],
+      label: o.name,
       value: o.revenue,
       color: VIZ_SERIES[i % VIZ_SERIES.length],
     }));
@@ -96,7 +97,7 @@ export default async function ReportsPage() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 stagger">
       <PageHeader
         title="Reports"
         subtitle="Revenue across every offering — how much we make, how many licenses and customers, and what's in flight. All from the revenue logged on each account."
@@ -111,7 +112,7 @@ export default async function ReportsPage() {
         />
       ) : (
         <>
-          <section className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+          <section className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {tiles.map((t) => (
               <StatTile
                 key={t.label}
@@ -123,19 +124,6 @@ export default async function ReportsPage() {
             ))}
           </section>
 
-          {/* Revenue by offering — the money makers */}
-          {offeringBars.length > 0 && (
-            <Card>
-              <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
-                <TrendingUp size={16} strokeWidth={1.9} className="text-blue-primary" />
-                Revenue by offering
-              </h2>
-              <p className="text-[12px] text-text-tertiary mb-4">
-                Which offerings bring in the most, across all customers.
-              </p>
-              <BarChart data={offeringBars} height={190} format={(v) => formatMoney(v)} />
-            </Card>
-          )}
 
           {/* Two donuts side by side — by category and by revenue type */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -191,7 +179,7 @@ export default async function ReportsPage() {
 
           {/* Per-offering revenue detail */}
           <Card className="p-0 overflow-hidden">
-            <div className="px-5 pt-5 pb-3">
+            <div className="px-5 pt-4 pb-2.5">
               <h2 className="text-[15px] font-semibold text-text-primary">
                 Every offering, by revenue
               </h2>
@@ -202,17 +190,25 @@ export default async function ReportsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="bg-surface border-y border-border-light">
-                    {["Offering", "Category", "Customers", "Revenue", "Licenses", "Contracts"].map(
-                      (h) => (
-                        <th
-                          key={h}
-                          className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
-                        >
-                          {h}
-                        </th>
-                      )
-                    )}
+                  <tr className="bg-surface border-b border-border-light">
+                    {[
+                      { h: "Offering" },
+                      { h: "Category" },
+                      { h: "Customers", num: true },
+                      { h: "Revenue", num: true },
+                      { h: "Licenses", num: true },
+                      { h: "Contracts", num: true },
+                    ].map(({ h, num }) => (
+                      <th
+                        key={h}
+                        className={cn(
+                          "px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap",
+                          num && "text-right w-[1%]"
+                        )}
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light">
@@ -221,22 +217,23 @@ export default async function ReportsPage() {
                       <td className="px-5 py-3 text-[13px] font-semibold whitespace-nowrap">
                         <Link
                           href={`/offerings/${o.offering_id}?tab=reports`}
-                          className="text-text-primary hover:text-blue-primary"
+                          className="inline-flex items-center gap-2.5 text-text-primary hover:text-blue-primary"
                         >
+                          <OfferingIcon name={o.name} className="w-7 h-7" />
                           {o.name}
                         </Link>
                       </td>
                       <td className="px-5 py-3 text-[12.5px] text-text-secondary whitespace-nowrap">
                         {o.category}
                       </td>
-                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum">{o.customers}</td>
-                      <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap">
+                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">{o.customers}</td>
+                      <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap text-right">
                         {formatMoney(o.revenue)}
                       </td>
-                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum">
+                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">
                         {o.licenses || "—"}
                       </td>
-                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum">{o.lines}</td>
+                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">{o.lines}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -246,7 +243,7 @@ export default async function ReportsPage() {
 
           {/* Renewals — the licenses/contracts and when they end */}
           <Card className="p-0 overflow-hidden">
-            <div className="px-5 pt-5 pb-3 flex items-center gap-2">
+            <div className="px-5 pt-4 pb-2.5 flex items-center gap-2">
               <CalendarClock size={16} strokeWidth={1.9} className="text-blue-primary" />
               <div>
                 <h2 className="text-[15px] font-semibold text-text-primary">
@@ -266,11 +263,22 @@ export default async function ReportsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="bg-surface border-y border-border-light">
-                      {["Customer", "Offering", "Type", "Revenue", "Ends", "Status"].map((h) => (
+                    <tr className="bg-surface border-b border-border-light">
+                      {[
+                        { h: "Customer" },
+                        { h: "Offering" },
+                        { h: "Type", shrink: true },
+                        { h: "Revenue", num: true },
+                        { h: "Ends", num: true },
+                        { h: "Status", shrink: true },
+                      ].map(({ h, num, shrink }) => (
                         <th
                           key={h}
-                          className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
+                          className={cn(
+                            "px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap",
+                            num && "text-right w-[1%]",
+                            shrink && "w-[1%]"
+                          )}
                         >
                           {h}
                         </th>
@@ -280,13 +288,16 @@ export default async function ReportsPage() {
                   <tbody className="divide-y divide-border-light">
                     {report.renewals.map((r, i) => (
                       <tr key={`${r.customer_id}-${r.offering_id}-${i}`}>
-                        <td className="px-5 py-3 text-[13px] whitespace-nowrap">
-                          <Link
-                            href={`/customers/${r.customer_id}?tab=offerings`}
-                            className="font-semibold text-text-primary hover:text-blue-primary"
-                          >
-                            {r.customer}
-                          </Link>
+                        <td className="px-5 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2.5">
+                            <CompanyLogo name={r.customer} className="w-7 h-7 text-[10px]" />
+                            <Link
+                              href={`/customers/${r.customer_id}?tab=offerings`}
+                              className="text-[13px] font-semibold text-text-primary hover:text-blue-primary"
+                            >
+                              {r.customer}
+                            </Link>
+                          </div>
                         </td>
                         <td className="px-5 py-3 text-[12.5px] text-text-secondary whitespace-nowrap">
                           {r.offering}
@@ -296,11 +307,11 @@ export default async function ReportsPage() {
                             {REVENUE_TYPE_META[r.revenue_type].short}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap">
+                        <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap text-right">
                           {formatMoney(r.amount)}
                         </td>
-                        <td className="px-5 py-3 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
-                          {r.end_date}
+                        <td className="px-5 py-3 text-[12.5px] text-text-secondary tnum whitespace-nowrap text-right">
+                          {formatDate(r.end_date)}
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap">
                           <span

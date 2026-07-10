@@ -21,6 +21,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SizeBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
 import { Tooltip, Term } from "@/components/ui/Tooltip";
 import { stageKey } from "@/lib/glossary";
@@ -578,7 +579,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 <span className="text-[10px] font-bold text-error">over limit</span>
               )}
             </div>
-            <div className="p-2 space-y-2 min-h-[120px]">
+            <div className="p-2.5 space-y-3 min-h-[120px]">
               {items.map((d) => {
                 const isManual = d.sessionId.startsWith("manual-");
                 const isSel = selected.has(d.sessionId);
@@ -592,15 +593,20 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                     setOver(null);
                   }}
                   className={cn(
-                    "group bg-white border rounded-lg p-3 shadow-card transition-colors",
+                    // Stronger shadow + crisper border so each white card clearly
+                    // lifts off the column and stacked cards are easy to tell apart
+                    // (Suren). Hover lifts it further.
+                    "group bg-white border rounded-lg p-3 transition-all shadow-[0_1px_2px_rgba(16,24,40,0.05),0_4px_10px_rgba(16,24,40,0.07)] hover:shadow-[0_10px_24px_rgba(16,24,40,0.13)] hover:-translate-y-0.5",
                     selectMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
-                    isSel ? "border-blue-primary ring-1 ring-blue-primary" : "border-border-light hover:border-blue-subtle",
+                    isSel
+                      ? "border-blue-primary ring-1 ring-blue-primary"
+                      : "border-border hover:border-blue-subtle",
                     dragId === d.sessionId ? "opacity-50" : ""
                   )}
                   onClick={() => selectMode && toggleSelect(d.sessionId)}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       {selectMode && (
                         <button
                           aria-label="Select deal"
@@ -608,7 +614,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                             e.stopPropagation();
                             toggleSelect(d.sessionId);
                           }}
-                          className="shrink-0 mt-0.5 text-blue-primary"
+                          className="shrink-0 text-blue-primary"
                         >
                           {isSel ? (
                             <CheckSquare size={16} strokeWidth={1.8} />
@@ -617,6 +623,10 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                           )}
                         </button>
                       )}
+                      <CompanyLogo
+                        name={d.company}
+                        className="w-7 h-7 text-[10px] shrink-0"
+                      />
                       {isManual ? (
                         <span className="text-[14px] font-semibold text-text-primary leading-tight truncate">
                           {d.company}
@@ -638,10 +648,31 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                       />
                     )}
                   </div>
-                  <p className="text-[12px] text-text-secondary mt-0.5 truncate">
-                    {d.contactName} · {d.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1.5">
+                  {d.contactName && d.contactName !== "—" ? (
+                    <div className="flex items-center gap-2 mt-2.5 min-w-0">
+                      <Avatar
+                        name={d.contactName}
+                        className="w-7 h-7 text-[10px] shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold text-text-primary truncate leading-tight">
+                          {d.contactName}
+                        </p>
+                        {d.title && (
+                          <p className="text-[11.5px] text-text-secondary truncate leading-tight mt-0.5">
+                            {d.title}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    d.title && (
+                      <p className="text-[12px] text-text-secondary mt-2 truncate">
+                        {d.title}
+                      </p>
+                    )
+                  )}
+                  <div className="flex items-center gap-2 mt-2.5">
                     <p className="text-[12px] text-text-tertiary truncate flex-1">
                       {d.service}
                     </p>
@@ -656,14 +687,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                     )}
                   </div>
                   <div className="flex items-center justify-between mt-3">
-                    <span className="flex items-center gap-1.5">
-                      <SizeBadge tier={d.sizeTier} />
-                      <Avatar
-                        name={d.owner}
-                        className="w-5 h-5 text-[9px]"
-                        tooltip={`Owner: ${d.owner} — the rep responsible for this deal`}
-                      />
-                    </span>
+                    <SizeBadge tier={d.sizeTier} />
                     {editingId === d.sessionId ? (
                       <span className="flex items-center gap-1">
                         <input

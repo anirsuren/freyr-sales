@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { BarChart, DonutChart, Legend, VIZ_SERIES } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
-import { formatMoney } from "@/lib/pipeline";
+import { formatMoney, STAGE_COLOR } from "@/lib/pipeline";
 
 interface StageStat {
   stage: string;
@@ -22,7 +22,7 @@ function Donut({ pct }: { pct: number }) {
   const off = c - (pct / 100) * c;
   return (
     <svg width="130" height="130" viewBox="0 0 130 130">
-      <circle cx="65" cy="65" r={r} fill="none" stroke="#E5E5EA" strokeWidth="12" />
+      <circle cx="65" cy="65" r={r} fill="none" className="stroke-[var(--border-light)]" strokeWidth="12" />
       <circle
         cx="65"
         cy="65"
@@ -42,10 +42,9 @@ function Donut({ pct }: { pct: number }) {
         y="65"
         textAnchor="middle"
         dominantBaseline="central"
-        className="tnum"
+        className="tnum fill-current text-text-primary"
         fontSize="26"
         fontWeight="700"
-        fill="#1D1D1F"
       >
         {pct}%
       </text>
@@ -126,8 +125,8 @@ export function AnalyticsView({
               <Target size={16} strokeWidth={1.9} />
             </span>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
-              Win Rate
-              <InfoHint text="Of the deals you've actively worked (past the first-contact step), the share that reached Qualified or further — a quick read on how often effort turns into progress." />
+              Qualified rate
+              <InfoHint text="Of the deals you've actively worked (past the first-contact step), the share that reached Qualified or further — a quick read on how often effort turns into progress. (Not a closed-won rate — this pipeline tracks up to Meeting Booked.)" />
             </p>
             <p className="text-[13px] text-text-tertiary mt-1 max-w-[140px]">
               Qualified or further, of all worked deals
@@ -151,7 +150,7 @@ export function AnalyticsView({
               color: VIZ_SERIES[i % VIZ_SERIES.length],
             }))}
             height={170}
-            format={(v) => formatMoney(v)}
+            format="money"
           />
         </Card>
 
@@ -191,23 +190,41 @@ export function AnalyticsView({
           <InfoHint text="How many open deals have reached each step. A real funnel narrows as deals convert — a sharp drop between two steps is where deals stall. Closed-lost deals aren't counted here." />
         </h2>
         <div className="space-y-2">
-          {funnel.map((s) => (
-            <div key={s.stage} className="flex items-center gap-3">
-              <span className="w-28 shrink-0 text-[13px] text-text-secondary text-right">
-                {s.stage}
-              </span>
-              <div className="flex-1 flex items-center">
-                <div
-                  className="h-9 rounded-md bg-blue-primary/90 flex items-center justify-end pr-3 text-white text-[13px] font-semibold tnum"
-                  style={{
-                    width: `${Math.max(8, (s.count / maxFunnel) * 100)}%`,
-                  }}
-                >
-                  {s.count}
+          {funnel.map((s, i) => {
+            const prev = i > 0 ? funnel[i - 1] : null;
+            const conv =
+              prev && prev.count > 0
+                ? Math.round((s.count / prev.count) * 100)
+                : null;
+            const color =
+              STAGE_COLOR[s.stage as keyof typeof STAGE_COLOR] || "#0071E3";
+            return (
+              <div key={s.stage} className="flex items-center gap-3">
+                <span className="w-28 shrink-0 text-[13px] text-text-secondary text-right">
+                  {s.stage}
+                </span>
+                <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="h-9 rounded-md flex items-center justify-end pr-3 text-white text-[13px] font-semibold tnum shrink-0"
+                    style={{
+                      width: `${Math.max(8, (s.count / maxFunnel) * 100)}%`,
+                      background: color,
+                    }}
+                  >
+                    {s.count}
+                  </div>
+                  {conv !== null && (
+                    <span
+                      className="text-[12px] text-text-tertiary tnum truncate"
+                      title={`${conv}% of deals that reached ${prev!.stage} moved on to ${s.stage}`}
+                    >
+                      {conv}% of {prev!.stage}
+                    </span>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </div>

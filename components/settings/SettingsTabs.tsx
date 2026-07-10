@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserPlus, KeyRound, Check, CreditCard, Download, ShieldCheck, Lock } from "lucide-react";
+import { UserPlus, Check, ShieldCheck, Lock, Mail, CalendarDays, MessageSquare, Building2, Link2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
-import { TelegramCard } from "@/components/settings/TelegramCard";
-import { CrmSyncCard } from "@/components/settings/CrmSyncCard";
 import { ThemeSetting } from "@/components/settings/ThemeSetting";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -18,10 +16,20 @@ const TABS = [
   { key: "profile", label: "Profile" },
   { key: "team", label: "Team" },
   { key: "notifications", label: "Notifications" },
-  { key: "billing", label: "Billing" },
   { key: "integrations", label: "Integrations" },
   { key: "access", label: "Access" },
 ];
+
+// Client-facing connectors — tools a rep's org already uses (Anir, Jul 8:
+// "integrations shouldn't be client-facing keys — put what THEY would connect").
+// Internal service keys (Anthropic/Apify/Telegram) live in .env, not here.
+const CONNECTORS = [
+  { key: "email", name: "Email", icon: Mail, desc: "Send pitches and sequences from your own inbox — Gmail or Outlook." },
+  { key: "calendar", name: "Calendar", icon: CalendarDays, desc: "Booked meetings land straight on your Google or Outlook calendar." },
+  { key: "crm", name: "CRM", icon: Building2, desc: "Two-way sync of accounts, contacts and deals with Salesforce or HubSpot." },
+  { key: "chat", name: "Slack / Teams", icon: MessageSquare, desc: "Deal alerts and your daily digest, right in your team channel." },
+  { key: "linkedin", name: "LinkedIn", icon: Link2, desc: "Enrich contacts and send connection notes without leaving Freyr." },
+] as const;
 
 const ROLES = ["Admin", "Manager", "Rep"];
 const SSO_PROVIDERS = ["Okta", "Google Workspace", "Azure AD", "SAML 2.0"];
@@ -30,7 +38,6 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
   { cap: "Generate & send pitches", admin: true, manager: true, rep: true },
   { cap: "Approve pitches for send", admin: true, manager: true, rep: false },
   { cap: "Invite teammates", admin: true, manager: true, rep: false },
-  { cap: "Manage billing & plan", admin: true, manager: false, rep: false },
   { cap: "Configure SSO & security", admin: true, manager: false, rep: false },
 ];
 
@@ -62,11 +69,15 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 type Member = { name: string; email: string; role: string; you?: boolean };
+// The real sales team — mirrors REPS in lib/pipeline.ts (the reps who own deals
+// across Forecast/Analytics). Was accidentally seeded with customer CONTACTS
+// (Dana Whitfield @ NovaGene, Owen Bradley @ Northwind), which read as if our
+// prospects were on staff.
 const DEFAULT_TEAM: Member[] = [
   { name: "Suren Dheen", email: "suren.dheen@freyrsolutions.com", role: "Admin", you: true },
   { name: "Mark Miller", email: "mark.miller@freyrsolutions.com", role: "Manager" },
-  { name: "Dana Whitfield", email: "dana@freyrsolutions.com", role: "Rep" },
-  { name: "Owen Bradley", email: "owen@freyrsolutions.com", role: "Rep" },
+  { name: "Priya Nair", email: "priya.nair@freyrsolutions.com", role: "Rep" },
+  { name: "Diego Alvarez", email: "diego.alvarez@freyrsolutions.com", role: "Rep" },
 ];
 
 const NOTIFS = [
@@ -129,6 +140,16 @@ export function SettingsTabs({
     enforce: false,
     twoFactor: true,
   });
+  const [connectors, setConnectors] = useState<Record<string, boolean>>({});
+
+  function toggleConnector(key: string, name: string) {
+    const next = { ...connectors, [key]: !connectors[key] };
+    setConnectors(next);
+    try {
+      localStorage.setItem("freyr_connectors", JSON.stringify(next));
+    } catch {}
+    toast(next[key] ? `Connected ${name}` : `Disconnected ${name}`);
+  }
 
   // hydrate from localStorage
   useEffect(() => {
@@ -145,6 +166,8 @@ export function SettingsTabs({
       if (r) setRole(r);
       const s = localStorage.getItem("freyr_sso");
       if (s) setSso((v) => ({ ...v, ...JSON.parse(s) }));
+      const cn = localStorage.getItem("freyr_connectors");
+      if (cn) setConnectors(JSON.parse(cn));
     } catch {}
   }, []);
 
@@ -217,7 +240,7 @@ export function SettingsTabs({
   };
 
   return (
-    <div className="max-w-[820px]">
+    <div className="max-w-[1100px]">
       <div
         role="tablist"
         aria-label="Settings sections"
@@ -345,131 +368,6 @@ export function SettingsTabs({
         </Card>
       )}
 
-      {tab === "billing" && (
-        <div className="space-y-6">
-          <Card>
-            <h2 className="text-[15px] font-semibold text-text-primary mb-1 flex items-center gap-2">
-              <CreditCard size={18} strokeWidth={1.75} className="text-blue-primary" />
-              Plan
-            </h2>
-            <p className="text-[13px] text-text-secondary mb-4">
-              You&apos;re on the{" "}
-              <span className="font-semibold text-text-primary">{plan}</span> plan.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {PLANS.map((p) => {
-                const current = p.key === plan;
-                return (
-                  <div
-                    key={p.key}
-                    className={cn(
-                      "rounded-xl border p-4 flex flex-col",
-                      current
-                        ? "border-blue-primary bg-blue-light/40 ring-1 ring-blue-primary"
-                        : "border-border-light"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[14px] font-semibold text-text-primary">
-                        {p.key}
-                      </span>
-                      {current && (
-                        <span className="text-[10px] font-bold text-blue-primary">
-                          CURRENT
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[20px] font-bold text-text-primary tnum mt-1">
-                      {p.price}
-                      <span className="text-[12px] font-medium text-text-tertiary">
-                        {p.per}
-                      </span>
-                    </p>
-                    <p className="text-[12px] text-text-secondary mt-1 flex-1">
-                      {p.blurb}
-                    </p>
-                    <Button
-                      variant={current ? "secondary" : "primary"}
-                      disabled={current || !canBilling}
-                      onClick={() => selectPlan(p.key)}
-                      className="mt-3 w-full py-2 text-[13px]"
-                    >
-                      {current ? "Current plan" : `Switch to ${p.key}`}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="text-[15px] font-semibold text-text-primary mb-4">
-              This month&apos;s usage
-            </h2>
-            <div className="space-y-4">
-              {USAGE.map((u) => {
-                const pct = Math.min(100, Math.round((u.used / u.total) * 100));
-                return (
-                  <div key={u.label}>
-                    <div className="flex items-center justify-between text-[13px] mb-1">
-                      <span className="text-text-secondary">{u.label}</span>
-                      <span className="text-text-primary font-medium tnum">
-                        {u.used} / {u.total}
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-surface overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-blue-primary"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-
-          <Card className="p-0 overflow-hidden">
-            <h2 className="text-[15px] font-semibold text-text-primary px-5 pt-5 pb-3">
-              Invoices
-            </h2>
-            <ul className="divide-y divide-border-light">
-              {INVOICES.map((inv) => (
-                <li
-                  key={inv.id}
-                  className="flex items-center justify-between gap-3 px-5 py-3"
-                >
-                  <div>
-                    <p className="text-[14px] font-medium text-text-primary tnum">
-                      {inv.id}
-                    </p>
-                    <p className="text-[12px] text-text-tertiary">{inv.date}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[14px] font-semibold text-text-primary tnum">
-                      {inv.amount}
-                    </span>
-                    <Badge
-                      label="Paid"
-                      bg="rgba(52,199,89,0.12)"
-                      color="#1A7A35"
-                      className="!normal-case tracking-normal"
-                    />
-                    <button
-                      onClick={() => toast(`Downloading ${inv.id}…`)}
-                      aria-label={`Download ${inv.id}`}
-                      className="text-text-tertiary hover:text-blue-primary transition-colors"
-                    >
-                      <Download size={16} strokeWidth={1.6} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
-      )}
-
       {tab === "access" && (
         <div className="space-y-6">
           <Card>
@@ -500,12 +398,12 @@ export function SettingsTabs({
           </Card>
 
           <Card className="p-0 overflow-hidden">
-            <h2 className="text-[15px] font-semibold text-text-primary px-5 pt-5 pb-3">
+            <h2 className="text-[15px] font-semibold text-text-primary px-5 pt-4 pb-2.5">
               Role permissions
             </h2>
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-surface border-y border-border-light">
+                <tr className="bg-surface border-b border-border-light">
                   <th className="px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
                     Capability
                   </th>
@@ -620,43 +518,49 @@ export function SettingsTabs({
       )}
 
       {tab === "integrations" && (
-        <div className="space-y-6">
-          <Card>
-            <h2 className="text-[15px] font-semibold text-text-primary mb-4 flex items-center gap-2">
-              <KeyRound size={18} strokeWidth={1.75} className="text-blue-primary" />
-              API Keys & Integrations
-            </h2>
-            <ul className="divide-y divide-border-light">
-              {Object.entries(services).map(([key, ok]) => (
-                <li key={key} className="flex items-center justify-between gap-3 py-3">
-                  <div>
-                    <p className="text-[14px] text-text-primary">{SERVICE_LABELS[key] || key}</p>
-                    <p className="text-[12px] text-text-tertiary font-mono">
-                      {ok ? "••••••••••••  ·  stored in .env.local" : "Not configured"}
-                    </p>
-                  </div>
-                  <span
-                    className="inline-flex items-center gap-2 text-[13px] font-medium shrink-0"
-                    style={{ color: ok ? "#1A7A35" : "#7A4A00" }}
-                  >
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ok ? "#34C759" : "#FF9F0A" }} />
-                    {ok ? (
-                      <>
-                        <Check size={14} strokeWidth={2} /> Connected
-                      </>
-                    ) : (
-                      "Add key to activate"
-                    )}
+        <div className="space-y-4">
+          <p className="text-[13px] text-text-secondary max-w-[640px]">
+            Connect the tools your team already uses. Freyr works alongside them —
+            you stay in control of what syncs, and nothing goes out without your
+            approval.
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {CONNECTORS.map((c) => {
+              const on = !!connectors[c.key];
+              const Icon = c.icon;
+              return (
+                <Card key={c.key} className="flex items-start gap-3.5">
+                  <span className="w-11 h-11 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                    <Icon size={19} strokeWidth={1.8} />
                   </span>
-                </li>
-              ))}
-            </ul>
-            <p className="text-[12px] text-text-tertiary mt-4 leading-relaxed">
-              Keys are stored server-side in <code className="bg-surface px-1 rounded">.env.local</code> and never exposed to the browser. Add a key there and the matching service activates automatically.
-            </p>
-          </Card>
-          <CrmSyncCard counts={crmCounts} />
-          <TelegramCard />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[14px] font-semibold text-text-primary">{c.name}</p>
+                      {on && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success">
+                          <Check size={12} strokeWidth={2.6} /> Connected
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12.5px] text-text-secondary leading-snug mt-0.5">
+                      {c.desc}
+                    </p>
+                    <button
+                      onClick={() => toggleConnector(c.key, c.name)}
+                      className={cn(
+                        "mt-3 text-[13px] font-semibold px-3.5 py-2 rounded-md border transition-colors",
+                        on
+                          ? "border-border text-text-secondary hover:bg-surface"
+                          : "border-blue-primary bg-blue-primary text-white hover:bg-blue-hover"
+                      )}
+                    >
+                      {on ? "Disconnect" : `Connect ${c.name}`}
+                    </button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

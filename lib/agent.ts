@@ -6,6 +6,7 @@ import {
   ROTTING_DAYS,
   ownerFor,
   CURRENT_REP,
+  formatMoney,
   type Deal,
 } from "./pipeline";
 import { accountHealth } from "./health";
@@ -36,6 +37,11 @@ export interface AgentAction {
   customerId: string;
   // Set on approve/send actions so the inbox can act on the pitch inline (#65).
   sessionId?: string;
+  // Display extras for the rich recommendation carousel (Anir, Jul 7: "each
+  // task should have a lot more information"): the account this concerns and a
+  // few at-a-glance facts (health, open value, days quiet, due date…).
+  company?: string;
+  facts?: string[];
 }
 
 // Kinds the agent can draft/prepare in one click (vs. human-gated approve/send).
@@ -503,6 +509,112 @@ export function actRunSteps(verb: string, company: string): AgentRunStep[] {
   ];
 }
 
+// The ACTUAL draft the agent hands back when you press "Draft it for me" — a
+// real, readable email or plan grounded in this account's data, explicitly a
+// first draft for the rep to edit. Nothing goes out; it's saved to the timeline
+// and added to Tasks for review. (Suren: "when I press Draft it for me it should
+// show me the draft… it should be a full enterprise-level platform.")
+export function buildActDraft(
+  kind: AgentActionKind,
+  customer: {
+    company_name: string;
+    industry?: string | null;
+    geography?: string | null;
+    enrichment_summary?: string | null;
+  },
+  contact: { full_name?: string | null; job_title?: string | null } | null,
+  dueLabel: string,
+  rep = "Suren Dheen"
+): { title: string; body: string } {
+  const company = customer.company_name;
+  const industry = customer.industry || null;
+  const fullName = contact?.full_name || "";
+  const first =
+    fullName.replace(/^(Dr\.?|Mr\.?|Ms\.?|Mrs\.?|Prof\.?)\s+/i, "").split(" ")[0] ||
+    "there";
+  const context =
+    (customer.enrichment_summary || "").split(/(?<=[.])\s/)[0] ||
+    `${company}${industry ? ` (${industry})` : ""} is evaluating regulatory support.`;
+
+  if (kind === "stabilize") {
+    return {
+      title: `Recovery plan — ${company}`,
+      body: [
+        `RECOVERY PLAN · ${company}`,
+        ``,
+        `Signal: engagement has cooled and the account is trending at-risk. A focused, human plan to stabilize it — the agent will draft each touch for your approval, nothing sends on its own.`,
+        ``,
+        `1. Reconnect this week`,
+        `   • Send ${first} a short, value-first note — no ask, just a relevant insight.`,
+        ``,
+        `2. Widen the relationship`,
+        `   • Add a second stakeholder beyond ${fullName || "the primary contact"} so the deal isn't single-threaded.`,
+        ``,
+        `3. Re-set a concrete next step`,
+        `   • Propose a specific working session with a date — not an open-ended "let's catch up."`,
+        ``,
+        `4. Bring value`,
+        `   • Share one piece of ${industry || "regulatory"} guidance or a relevant customer result.`,
+        ``,
+        `Owner: you · First touch queued for review by ${dueLabel}.`,
+      ].join("\n"),
+    };
+  }
+
+  if (kind === "reengage") {
+    return {
+      title: `Re-engagement email — ${company}`,
+      body: [
+        `Subject: A quick, relevant note for ${company}`,
+        ``,
+        `Hi ${first},`,
+        ``,
+        `It's been a little while, so rather than a generic "checking in," I wanted to resurface something useful.`,
+        ``,
+        `Given where ${company}${industry ? ` sits in ${industry}` : ""} is right now, two things worth a look:`,
+        `• Recent regulatory guidance shifts that can move submission timelines in your space.`,
+        `• How teams like yours are cutting review cycles with Freyr's platform.`,
+        ``,
+        `If either is relevant, I'd value 20 minutes to share what we're seeing. If the timing's off, tell me when to circle back and I'll respect it.`,
+        ``,
+        `Best,`,
+        `${rep}`,
+        `Freyr Solutions`,
+        ``,
+        `— First draft from your live account data. Edit before you send; I'll check back by ${dueLabel}.`,
+      ].join("\n"),
+    };
+  }
+
+  // followup (default)
+  return {
+    title: `Follow-up email — ${company}`,
+    body: [
+      `Subject: Following up — next steps for ${company}`,
+      ``,
+      `Hi ${first},`,
+      ``,
+      `Thanks again for your time. A quick recap and one concrete next step so this keeps moving.`,
+      ``,
+      `Where things stand`,
+      `• ${context}`,
+      `• You flagged timeline as the priority — that's where we can help most.`,
+      ``,
+      `Proposed next step`,
+      `• A 30-minute working session to map your submission timeline to our team's capacity.`,
+      `• I'll send two time options for next week.`,
+      ``,
+      `I'll check back by ${dueLabel}. Reply here and I'll get it on the calendar.`,
+      ``,
+      `Best,`,
+      `${rep}`,
+      `Freyr Solutions`,
+      ``,
+      `— First draft from your live account data. Edit before you send.`,
+    ].join("\n"),
+  };
+}
+
 export function playRunSteps(company: string): AgentRunStep[] {
   return [
     {
@@ -871,11 +983,16 @@ export function buildRunSeries(
 
   if (window === "quarter") {
     const week = 7 * 86400000;
+    // 9 weekly buckets, not 13: 13 bars overflowed the chart card (each bar has a
+    // min width), so the vertical BarChart's justify-center clipped BOTH ends —
+    // hiding the most-recent week, which is exactly where the runs are. 9 fit,
+    // so recent activity stays visible.
+    const WEEKS = 9;
     const labels: string[] = [];
-    const counts = Array(13).fill(0);
+    const counts = Array(WEEKS).fill(0);
     const starts: number[] = [];
     const now = Date.now();
-    for (let i = 12; i >= 0; i--) {
+    for (let i = WEEKS - 1; i >= 0; i--) {
       const start = now - (i + 1) * week + 1;
       starts.push(start);
       const d = new Date(start);
@@ -883,7 +1000,7 @@ export function buildRunSeries(
     }
     for (const r of valid) {
       const t = new Date(r.created_at).getTime();
-      for (let k = 0; k < 13; k++) {
+      for (let k = 0; k < WEEKS; k++) {
         if (t >= starts[k] && t < starts[k] + week) {
           counts[k]++;
           break;
@@ -974,6 +1091,14 @@ export function nextBestActions(input: {
       .filter((i) => /email sent/i.test(i.notes || ""))
       .map((i) => i.customer_id)
   );
+  // Open pipeline value per account — a fact worth surfacing on each card.
+  const openByCust: Record<string, number> = {};
+  for (const d of deals) {
+    if (d.stage !== "Closed Lost")
+      openByCust[d.customerId] = (openByCust[d.customerId] || 0) + d.value;
+  }
+  const openFact = (cid: string): string[] =>
+    openByCust[cid] ? [`${formatMoney(openByCust[cid])} open`] : [];
   const out: AgentAction[] = [];
 
   // approvals + ready-to-send (the compliance loop)
@@ -984,11 +1109,14 @@ export function nextBestActions(input: {
         id: `approve-${s.id}`,
         kind: "approve",
         title: `Approve the pitch for ${co}`,
-        rationale: "Awaiting compliance sign-off before it can be sent.",
+        rationale:
+          "The pitch is written and waiting on your compliance sign-off — approve it and it can go out, or send it back with a note.",
         href: `/sessions/${s.id}`,
         cta: "Review",
         customerId: s.customer_id,
         sessionId: s.id,
+        company: co,
+        facts: ["In compliance review", ...openFact(s.customer_id)],
       });
     } else if (
       s.review_status === "approved" &&
@@ -998,11 +1126,14 @@ export function nextBestActions(input: {
         id: `send-${s.id}`,
         kind: "send",
         title: `Send the approved pitch to ${co}`,
-        rationale: "Cleared by compliance — ready to go out.",
+        rationale:
+          "Compliance cleared this pitch — it's ready to go out. Open it to review the final copy and send.",
         href: `/sessions/${s.id}`,
         cta: "Open",
         customerId: s.customer_id,
         sessionId: s.id,
+        company: co,
+        facts: ["Cleared to send", ...openFact(s.customer_id)],
       });
     }
   }
@@ -1014,10 +1145,14 @@ export function nextBestActions(input: {
         id: `reengage-${d.sessionId}`,
         kind: "reengage",
         title: `Re-engage ${d.company}`,
-        rationale: `No activity in ${d.staleDays} days — the deal is going cold.`,
+        rationale: `No activity in ${d.staleDays} days on a ${formatMoney(
+          d.value
+        )} deal sitting at "${d.stage}" — it's going cold. Draft a value nudge to bring it back.`,
         href: `/deals/${d.sessionId}`,
         cta: "Open deal",
         customerId: d.customerId,
+        company: d.company,
+        facts: [`Quiet ${d.staleDays} days`, `${formatMoney(d.value)} deal`, d.stage],
       });
     }
   }
@@ -1036,10 +1171,18 @@ export function nextBestActions(input: {
         id: `stabilize-${c.id}`,
         kind: "stabilize",
         title: `Stabilize ${c.company_name}`,
-        rationale: h.factors[0]?.label || "Account health is at risk.",
+        rationale: `${c.company_name}'s health has slipped to ${h.score}/100${
+          h.factors[0]?.label ? ` — ${h.factors[0].label.toLowerCase()}` : ""
+        }. Step in with a stabilizing touch before the relationship cools.`,
         href: `/customers/${c.id}`,
         cta: "View",
         customerId: c.id,
+        company: c.company_name,
+        facts: [
+          `Health ${h.score}/100 · at risk`,
+          ...openFact(c.id),
+          ...(h.factors[0]?.label ? [h.factors[0].label] : []),
+        ],
       });
     }
   }
@@ -1048,16 +1191,17 @@ export function nextBestActions(input: {
   for (const i of interactions) {
     if (i.follow_up_date) {
       const co = custById[i.customer_id]?.company_name || "this account";
+      const due = new Date(i.follow_up_date).toLocaleDateString();
       out.push({
         id: `followup-${i.id}`,
         kind: "followup",
         title: `Follow up with ${co}`,
-        rationale: `Follow-up scheduled for ${new Date(
-          i.follow_up_date
-        ).toLocaleDateString()}.`,
+        rationale: `You set a follow-up with ${co} for ${due}. Draft the recap with a concrete next step so it doesn't slip.`,
         href: "/tasks",
         cta: "Tasks",
         customerId: i.customer_id,
+        company: co,
+        facts: [`Due ${due}`, ...openFact(i.customer_id)],
       });
     }
   }

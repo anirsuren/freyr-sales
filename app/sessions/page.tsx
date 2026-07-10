@@ -1,5 +1,4 @@
 import { getDb } from "@/lib/db";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SessionsBrowser, type SessionRow } from "@/components/sessions/SessionsBrowser";
 import type { RecommendedService } from "@/lib/types";
 
@@ -42,10 +41,6 @@ export default async function SessionsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Sessions"
-        subtitle={`${rows.length} pitch sessions across your book.`}
-      />
       <SessionsBrowser rows={rows} />
     </div>
   );

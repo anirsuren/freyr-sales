@@ -25,6 +25,7 @@ import {
 import { getRole } from "@/lib/role";
 import { RoleSwitcher } from "@/components/offerings/RoleSwitcher";
 import { ImportExcel } from "@/components/offerings/ImportExcel";
+import { OfferingsManageMenu } from "@/components/offerings/OfferingsManageMenu";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offerings" };
@@ -44,40 +45,51 @@ function Stat({
   href?: string;
   icon?: LucideIcon;
 }) {
+  // Four DISTINCT cards, but compact — icon on the left, big number + label
+  // beside it — so they're short (not tall boxes) without being crammed into
+  // one divided strip (Suren: "why did you combine these, it looks like shit").
   const body = (
     <>
       {Icon && (
-        <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 mb-3 transition-colors group-hover:bg-blue-primary group-hover:text-white">
-          <Icon size={16} strokeWidth={1.9} />
+        <span className="w-11 h-11 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0 transition-colors group-hover:bg-blue-primary group-hover:text-white">
+          <Icon size={20} strokeWidth={1.9} />
         </span>
       )}
-      <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-        {label}
-      </p>
-      <p className="text-[24px] font-bold text-text-primary leading-none mt-1.5 tnum">
-        <CountUp value={value} unit="count" />
-      </p>
-      {sub &&
-        (subHref ? (
-          <Link
-            href={subHref}
-            className="inline-block text-[11px] font-medium text-blue-primary hover:underline mt-1"
-          >
-            {sub} →
-          </Link>
-        ) : (
-          <p className="text-[11px] text-text-tertiary mt-1">{sub}</p>
-        ))}
+      <div className="min-w-0">
+        <p className="flex items-baseline gap-1.5 flex-wrap">
+          <span className="text-[26px] font-bold text-text-primary leading-none tnum tracking-[-0.01em]">
+            <CountUp value={value} unit="count" />
+          </span>
+          {sub && subHref ? (
+            <Link
+              href={subHref}
+              className="text-[11px] font-semibold text-warning hover:underline leading-none relative z-10"
+            >
+              {sub} →
+            </Link>
+          ) : sub ? (
+            <span className="text-[11px] text-text-tertiary leading-none">
+              {sub}
+            </span>
+          ) : null}
+        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mt-1.5 truncate">
+          {label}
+        </p>
+      </div>
     </>
   );
+  const base = "p-4 h-full flex items-center gap-3.5 transition-all duration-150";
   return href ? (
-    <Link href={href} className="block group">
-      <Card className="p-4 h-full transition-all duration-200 hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+    <Link href={href} className="block group h-full">
+      <Card
+        className={`${base} hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-card active:scale-[0.98] active:shadow-none active:translate-y-0`}
+      >
         {body}
       </Card>
     </Link>
   ) : (
-    <Card className="p-4 h-full">{body}</Card>
+    <Card className={`${base} group hover:border-blue-subtle`}>{body}</Card>
   );
 }
 
@@ -106,24 +118,7 @@ export default function OfferingsPage() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <RoleSwitcher current={role} />
-            <Link
-              href="/offerings/offering-categories"
-              className="inline-flex items-center justify-center text-[14px] font-semibold rounded-md px-4 py-2.5 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
-            >
-              Offering categories
-            </Link>
-            <Link
-              href="/offerings/offering-types"
-              className="inline-flex items-center justify-center text-[14px] font-semibold rounded-md px-4 py-2.5 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
-            >
-              Offering types
-            </Link>
-            <Link
-              href="/offerings/customer-types"
-              className="inline-flex items-center justify-center text-[14px] font-semibold rounded-md px-4 py-2.5 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
-            >
-              Customer types
-            </Link>
+            <OfferingsManageMenu />
             {admin && <ImportExcel />}
             {admin && (
               <Link
@@ -137,7 +132,7 @@ export default function OfferingsPage() {
         }
       />
 
-      {/* Repository at a glance */}
+      {/* Repository at a glance — four distinct, compact cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Stat
           label="Offerings"

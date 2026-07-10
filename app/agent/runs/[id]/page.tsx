@@ -15,6 +15,7 @@ import {
   Hash,
   Undo2,
   ScrollText,
+  FileText,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -89,7 +90,7 @@ export default async function AgentRunDetailPage({
     : [];
 
   return (
-    <div className="max-w-[760px] space-y-6">
+    <div className="space-y-6">
       <div>
         <Link
           href="/agent"
@@ -221,6 +222,28 @@ export default async function AgentRunDetailPage({
           )}
         </Card>
       </div>
+
+      {/* The draft the agent produced — the actual, readable output (#agent). */}
+      {run.draft && (
+        <div>
+          <h2 className="text-[15px] font-semibold text-text-primary mb-1 flex items-center gap-2">
+            <FileText size={16} strokeWidth={1.8} className="text-blue-primary" />
+            The draft
+          </h2>
+          <p className="text-[12px] text-text-secondary mb-3">
+            A first draft from this account&apos;s live data — edit before you
+            send. Nothing was sent.
+          </p>
+          <Card>
+            <p className="text-[14px] font-semibold text-text-primary mb-2">
+              {run.draft.title}
+            </p>
+            <pre className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-text-primary bg-surface border border-border-light rounded-xl p-4 font-sans">
+              {run.draft.body}
+            </pre>
+          </Card>
+        </div>
+      )}
 
       {/* What it logged — the durable timeline entries this run wrote (#52) */}
       {interactionCount > 0 && (

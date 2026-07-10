@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { ToastProvider } from "@/components/ui/Toast";
+import { AgentDock } from "@/components/agent/AgentDock";
+
+const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
 
 // Wraps every page with the persistent sidebar + top bar, except /login.
 // Session-detail pages render full-bleed (3-pane); everything else gets a
@@ -12,6 +15,30 @@ import { ToastProvider } from "@/components/ui/Toast";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Always-on assistant dock (Anir, Jul 8). Open state is per-session; "hidden"
+  // (bubble dismissed) persists, and the top-bar spark button brings it back.
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [agentHidden, setAgentHidden] = useState(false);
+  useEffect(() => {
+    try {
+      setAgentHidden(localStorage.getItem(AGENT_HIDDEN_KEY) === "1");
+    } catch {}
+  }, []);
+  function toggleAgent() {
+    setAgentHidden(false);
+    try {
+      localStorage.removeItem(AGENT_HIDDEN_KEY);
+    } catch {}
+    setAgentOpen((o) => !o);
+  }
+  function hideAgent() {
+    setAgentOpen(false);
+    setAgentHidden(true);
+    try {
+      localStorage.setItem(AGENT_HIDDEN_KEY, "1");
+    } catch {}
+  }
 
   // close the mobile drawer on route change
   useEffect(() => {
@@ -50,12 +77,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onMobileClose={() => setMobileNavOpen(false)}
         />
         <div className="flex-1 min-w-0 flex flex-col h-screen">
-          <TopBar onMenuClick={() => setMobileNavOpen(true)} />
+          <TopBar
+            onMenuClick={() => setMobileNavOpen(true)}
+            onAgentToggle={toggleAgent}
+            agentActive={agentOpen && !agentHidden}
+          />
           {fullBleed ? (
+            // key=pathname re-mounts so full-bleed pages (session detail, agent,
+            // recordings) also fade in on navigation (Suren: "no animation when
+            // I click on a session"). Opacity-only — safe for fixed descendants.
             <main
+              key={pathname}
               id="main-content"
               tabIndex={-1}
-              className="flex-1 min-w-0 overflow-hidden"
+              className="flex-1 min-w-0 overflow-hidden page-in"
             >
               {children}
             </main>
@@ -65,11 +100,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               tabIndex={-1}
               className="flex-1 min-w-0 overflow-y-auto"
             >
-              <div className="p-8">{children}</div>
+              {/* key=pathname re-mounts on navigation so every page fades/rises
+                  in — one place fixes "no animation when I click X" everywhere
+                  (Suren, repeatedly). Full-bleed pages animate separately. */}
+              <div key={pathname} className="p-8 page-in">{children}</div>
             </main>
           )}
         </div>
       </div>
+      <AgentDock
+        open={agentOpen}
+        onOpenChange={setAgentOpen}
+        hidden={agentHidden}
+        onHide={hideAgent}
+        pathname={pathname}
+      />
     </ToastProvider>
   );
 }

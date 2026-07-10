@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Download, Search } from "lucide-react";
+import { Download, Search, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CalendarClock } from "lucide-react";
@@ -78,48 +79,59 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-        <div className="relative sm:max-w-[320px] w-full">
-          <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search sessions…"
-            className="pl-9"
-          />
+      {/* Title + filters (incl. a compact search) on one row — no standalone
+          search bar eating a whole row (Suren). */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+        <div className="min-w-0">
+          <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
+            Sessions
+          </h1>
+          <p className="text-[14px] text-text-secondary mt-0.5">
+            {rows.length} pitch session{rows.length === 1 ? "" : "s"} across your book.
+          </p>
         </div>
-        <select
-          value={outcome}
-          onChange={(e) => setOutcome(e.target.value)}
-          className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-        >
-          <option value="all">All outcomes</option>
-          {outcomes.map((o) => (
-            <option key={o} value={o}>
-              {OUTCOME_META[o]?.label || o}
-            </option>
-          ))}
-        </select>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-        >
-          {SORTS.map((s) => (
-            <option key={s.key} value={s.key}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={exportCsv}
-          className="sm:ml-auto flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-        >
-          <Download size={16} strokeWidth={1.5} />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="relative w-[190px]">
+            <Search size={15} strokeWidth={1.6} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search sessions…"
+              className="w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
+            />
+          </div>
+          <select
+            value={outcome}
+            onChange={(e) => setOutcome(e.target.value)}
+            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
+          >
+            <option value="all">All outcomes</option>
+            {outcomes.map((o) => (
+              <option key={o} value={o}>
+                {OUTCOME_META[o]?.label || o}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
+          >
+            {SORTS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={exportCsv}
+            className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+          >
+            <Download size={16} strokeWidth={1.5} />
+            Export CSV
+          </button>
+        </div>
       </div>
-
       {view.length > 0 && (
         <p className="text-[13px] text-text-secondary mb-4 tnum">
           Showing <span className="font-semibold text-text-primary">{view.length}</span> of{" "}
@@ -156,7 +168,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
               <thead>
                 <tr className="bg-surface border-b border-border-light">
                   {["Customer", "Contact", "Recommended Service", "Outcome", "Review", "Date"].map((h) => (
-                    <th key={h} className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
+                    <th key={h} className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -168,17 +180,22 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                   <tr
                     key={r.id}
                     onClick={() => router.push(`/sessions/${r.id}`)}
-                    className="hover:bg-surface transition-colors group cursor-pointer"
+                    className="hover:bg-surface active:bg-blue-light/50 transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <Avatar name={r.company} className="w-8 h-8 text-[12px] rounded-md" />
+                        <CompanyLogo name={r.company} className="w-8 h-8 text-[11px]" />
                         <span className="text-[13px] font-semibold text-text-primary">{r.company}</span>
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="text-[13px] text-text-primary">{r.contact}</div>
-                      <div className="text-[11px] text-text-tertiary">{r.title}</div>
+                      <div className="flex items-center gap-2.5">
+                        <Avatar name={r.contact} className="w-7 h-7 text-[10px]" />
+                        <div>
+                          <div className="text-[13px] font-semibold text-text-primary">{r.contact}</div>
+                          <div className="text-[11px] text-text-tertiary">{r.title}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">{r.service}</td>
                     <td className="px-5 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "—"}</td>
@@ -195,9 +212,11 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                     </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDate(r.date)}</td>
                     <td className="px-5 py-4 text-right">
-                      <Link href={`/sessions/${r.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open session">
-                        <ArrowRight size={16} strokeWidth={1.5} />
-                      </Link>
+                      <ArrowRight
+                        size={16}
+                        strokeWidth={1.5}
+                        className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform"
+                      />
                     </td>
                   </tr>
                 ))}

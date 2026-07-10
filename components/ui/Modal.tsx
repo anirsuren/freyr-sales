@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button } from "./Button";
 
@@ -18,6 +19,13 @@ export function Modal({
   // "wide" for content-heavy dialogs (editors, recipient pickers) — 640px.
   size?: "default" | "wide";
 }) {
+  // Portal to <body> so the fixed overlay always covers the whole viewport —
+  // if a parent has a CSS transform (e.g. a tab animation), a non-portaled
+  // fixed element gets trapped inside it and only dims part of the screen
+  // (Suren: "the fade/opacity is only getting restricted to that").
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -27,8 +35,8 @@ export function Modal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
-  return (
+  if (!open || !mounted) return null;
+  return createPortal(
     <div
       className="fixed inset-0 z-[95] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 backdrop-in"
       onClick={onClose}
@@ -54,7 +62,8 @@ export function Modal({
         </div>
         <div className="p-5 overflow-y-auto">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

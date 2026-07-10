@@ -10,10 +10,13 @@ import {
   X,
   SearchX,
   BarChart3,
+  Activity,
+  Building2,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
+import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EngagementChart } from "@/components/campaigns/EngagementChart";
 import { DonutChart, BarChart, Legend, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
@@ -82,6 +85,20 @@ export default async function CampaignDetailPage({
   const sent = Math.min(campaign.sent_count, total);
   const queued = campaign.status === "queued" ? total - sent : 0;
   const offering = campaign.offering_id ? getOffering(campaign.offering_id) : null;
+  const openRate = sent ? Math.round((campaign.opens / sent) * 100) : 0;
+  const replyRate = sent ? Math.round((campaign.replies / sent) * 100) : 0;
+
+  // Show the message the way it actually goes out — personalized — instead of a
+  // raw {{first_name}} merge tag, which reads as unfinished to a non-technical
+  // eye. Previews with the first recipient's name; every recipient gets theirs.
+  const previewFirst =
+    recipients[0]?.name.replace(/^(Dr|Mr|Ms|Mrs|Prof)\.?\s+/i, "").split(/\s+/)[0] ||
+    "there";
+  const personalize = (t: string) =>
+    t.replace(/\{\{\s*first[_ ]?name\s*\}\}/gi, previewFirst);
+  const hasMergeTag = /\{\{\s*first[_ ]?name\s*\}\}/i.test(
+    `${campaign.subject} ${campaign.body}`
+  );
 
   // Voice touches — real cross-link: queued/placed calls for these recipients.
   const recipientIds = new Set(campaign.recipient_contact_ids);
@@ -115,7 +132,7 @@ export default async function CampaignDetailPage({
     { label: "Recipients", value: String(total), icon: Users },
     { label: "Sent", value: String(sent), icon: Send },
     { label: "Queued", value: String(queued), icon: Clock },
-    { label: "Voice touches", value: String(voiceTouches.length), icon: PhoneCall },
+    { label: "AI calls", value: String(voiceTouches.length), icon: PhoneCall },
   ];
 
   // Engagement over time — cumulative sends/opens/replies across the two
@@ -219,62 +236,47 @@ export default async function CampaignDetailPage({
         ))}
       </section>
 
-      {/* Visual row: delivery donut + recipients by company */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <Card>
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">
+      {/* Visual row: delivery + engagement snapshot + recipients by company */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        <Card className="flex flex-col">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
+            <Send size={16} strokeWidth={1.9} className="text-blue-primary" />
             Delivery
           </h2>
           <p className="text-[12px] text-text-tertiary mb-3">
             {campaign.status === "sent"
               ? "Delivered — every recipient got the blast."
               : campaign.status === "queued"
-              ? "Queued — the rest sends as the email channel works through it."
+              ? "Queued — the rest sends as the channel works through it."
               : "Still a draft — queue the blast to line it up."}
           </p>
-          <div className="flex items-center gap-6">
-            <svg width="130" height="130" viewBox="0 0 130 130" className="shrink-0">
-              <circle cx="65" cy="65" r={r} fill="none" stroke="#E5E5EA" strokeWidth="12" />
-              {queuedFrac > 0 && (
-                <circle
-                  cx="65" cy="65" r={r} fill="none" stroke="#FF9F0A" strokeWidth="12"
-                  strokeLinecap="round"
-                  strokeDasharray={`${C * queuedFrac} ${C}`}
-                  transform="rotate(-90 65 65)"
-                  className="donut-arc"
-                  style={{ ["--donut-c" as string]: C }}
-                />
-              )}
-              {sentFrac > 0 && (
-                <circle
-                  cx="65" cy="65" r={r} fill="none" stroke="#34C759" strokeWidth="12"
-                  strokeLinecap="round"
-                  strokeDasharray={`${C * sentFrac} ${C}`}
-                  transform={`rotate(${-90 + queuedFrac * 360} 65 65)`}
-                />
-              )}
-              <text x="65" y="59" textAnchor="middle" className="tnum" fontSize="24" fontWeight="700" fill="#1D1D1F">
-                {total ? Math.round(sentFrac * 100) : 0}%
-              </text>
-              <text x="65" y="77" textAnchor="middle" fontSize="10" fill="#8A8A8E">
-                sent
-              </text>
-            </svg>
+          <div className="flex-1 flex items-center gap-5">
+            <DonutChart
+              segments={[
+                { label: "Sent", value: sent, color: VIZ.green },
+                { label: "Queued", value: queued, color: VIZ.amber },
+                { label: "Not queued", value: Math.max(0, total - sent - queued), color: "#E5E5EA" },
+              ]}
+              size={128}
+              thickness={14}
+              centerLabel={`${total ? Math.round(sentFrac * 100) : 0}%`}
+              centerSub="sent"
+            />
             <div className="space-y-2 text-[13px]">
               <p className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-success" />
                 <span className="text-text-secondary">Sent</span>
-                <span className="font-semibold text-text-primary tnum">{sent}</span>
+                <span className="font-semibold text-text-primary tnum ml-auto">{sent}</span>
               </p>
               <p className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-warning" />
                 <span className="text-text-secondary">Queued</span>
-                <span className="font-semibold text-text-primary tnum">{queued}</span>
+                <span className="font-semibold text-text-primary tnum ml-auto">{queued}</span>
               </p>
               <p className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-border" />
                 <span className="text-text-secondary">Not queued</span>
-                <span className="font-semibold text-text-primary tnum">
+                <span className="font-semibold text-text-primary tnum ml-auto">
                   {total - sent - queued}
                 </span>
               </p>
@@ -282,8 +284,45 @@ export default async function CampaignDetailPage({
           </div>
         </Card>
 
-        <Card>
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">
+        {/* Engagement snapshot — the quick read between the two rings */}
+        <Card className="flex flex-col">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
+            <Activity size={16} strokeWidth={1.9} className="text-blue-primary" />
+            Engagement
+          </h2>
+          <p className="text-[12px] text-text-tertiary mb-3">
+            How recipients are responding.
+          </p>
+          {sent > 0 ? (
+            <div className="flex-1 flex flex-col justify-center gap-5">
+              <div>
+                <p className="text-[30px] font-bold tnum text-text-primary leading-none">
+                  {openRate}%
+                </p>
+                <p className="text-[12px] text-text-tertiary mt-1.5">
+                  open rate · <span className="tnum">{campaign.opens}</span> of{" "}
+                  <span className="tnum">{sent}</span> opened
+                </p>
+              </div>
+              <div>
+                <p className="text-[30px] font-bold tnum text-text-primary leading-none">
+                  {replyRate}%
+                </p>
+                <p className="text-[12px] text-text-tertiary mt-1.5">
+                  reply rate · <span className="tnum">{campaign.replies}</span> replied
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="flex-1 flex items-center text-[13px] text-text-secondary leading-relaxed">
+              No engagement yet — send the blast and opens &amp; replies show up here.
+            </p>
+          )}
+        </Card>
+
+        <Card className="flex flex-col">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
+            <Building2 size={16} strokeWidth={1.9} className="text-blue-primary" />
             Recipients by company
           </h2>
           <p className="text-[12px] text-text-tertiary mb-3">
@@ -292,25 +331,32 @@ export default async function CampaignDetailPage({
           {companyBars.length === 0 ? (
             <p className="text-[13px] text-text-tertiary">No recipients yet.</p>
           ) : (
-            <div className="flex items-center gap-6">
+            <div className="flex-1 flex items-center gap-5">
               <DonutChart
                 segments={companyBars.map(([company, n], i) => ({
                   label: company,
                   value: n,
                   color: VIZ_SERIES[i % VIZ_SERIES.length],
                 }))}
-                size={130}
+                size={128}
                 thickness={14}
                 centerLabel={String(total)}
                 centerSub="people"
               />
-              <Legend
-                items={companyBars.map(([company, n], i) => ({
-                  label: company,
-                  color: VIZ_SERIES[i % VIZ_SERIES.length],
-                  value: String(n),
-                }))}
-              />
+              <div className="flex flex-col gap-1.5 min-w-0">
+                {companyBars.map(([company, n], i) => (
+                  <span key={company} className="flex items-center gap-2 text-[12.5px]">
+                    <span
+                      className="w-2.5 h-2.5 rounded-sm shrink-0"
+                      style={{ background: VIZ_SERIES[i % VIZ_SERIES.length] }}
+                    />
+                    <span className="text-text-secondary truncate max-w-[150px]">
+                      {company}
+                    </span>
+                    <span className="text-text-primary font-medium tnum ml-auto">{n}</span>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </Card>
@@ -324,11 +370,16 @@ export default async function CampaignDetailPage({
           </h2>
           <p className="text-[13px] text-text-primary bg-surface rounded-md px-3 py-2 mb-2.5">
             <span className="font-semibold text-text-tertiary">Subject: </span>
-            {campaign.subject}
+            {personalize(campaign.subject)}
           </p>
           <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line max-h-[300px] overflow-y-auto">
-            {campaign.body}
+            {personalize(campaign.body)}
           </p>
+          {hasMergeTag && (
+            <p className="text-[11px] text-text-tertiary mt-2">
+              Shown with {previewFirst}&apos;s name — each recipient gets their own.
+            </p>
+          )}
           <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border-light">
             {checks.map((k) => (
               <span
@@ -357,22 +408,25 @@ export default async function CampaignDetailPage({
             <ul className="divide-y divide-border-light max-h-[380px] overflow-y-auto">
               {recipients.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-2 py-2.5">
-                  <div className="min-w-0">
-                    <Link
-                      href={`/contacts/${p.id}`}
-                      className="text-[13.5px] font-medium text-text-primary hover:text-blue-primary truncate block"
-                    >
-                      {p.name}
-                    </Link>
-                    <p className="text-[11.5px] text-text-tertiary truncate">
-                      {p.company} · {p.email}
-                    </p>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Avatar name={p.name} className="w-8 h-8 text-[11px] shrink-0" />
+                    <div className="min-w-0">
+                      <Link
+                        href={`/contacts/${p.id}`}
+                        className="text-[13.5px] font-medium text-text-primary hover:text-blue-primary truncate block"
+                      >
+                        {p.name}
+                      </Link>
+                      <p className="text-[11.5px] text-text-tertiary truncate">
+                        {p.company} · {p.email}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {voiceByContact.has(p.id) && (
                       <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2 py-0.5">
                         <PhoneCall size={10} strokeWidth={2.2} />
-                        Voice
+                        Called
                       </span>
                     )}
                     <span
@@ -399,14 +453,14 @@ export default async function CampaignDetailPage({
         </Card>
       </section>
 
-      {/* Voice touches — the calls linked to this campaign's people */}
+      {/* AI calls linked to this campaign's people */}
       <Card>
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
           <PhoneCall size={16} strokeWidth={1.8} className="text-blue-primary" />
-          Voice touches ({voiceTouches.length})
+          AI calls ({voiceTouches.length})
         </h2>
         <p className="text-[12px] text-text-tertiary mb-3">
-          AI calls queued or placed for people on this campaign.
+          Calls our AI agent placed to people on this campaign.
         </p>
         {voiceTouches.length === 0 ? (
           <p className="text-[13px] text-text-secondary">
@@ -417,9 +471,12 @@ export default async function CampaignDetailPage({
           <ul className="divide-y divide-border-light">
             {voiceTouches.map((q) => (
               <li key={q.id} className="flex items-center justify-between gap-2 py-2.5 text-[13px]">
-                <span className="min-w-0 truncate">
-                  <span className="font-medium text-text-primary">{q.contact_name}</span>
-                  <span className="text-text-tertiary"> · {q.offering_name}</span>
+                <span className="flex items-center gap-2.5 min-w-0">
+                  <Avatar name={q.contact_name} className="w-7 h-7 text-[10px] shrink-0" />
+                  <span className="min-w-0 truncate">
+                    <span className="font-medium text-text-primary">{q.contact_name}</span>
+                    <span className="text-text-tertiary"> · {q.offering_name}</span>
+                  </span>
                 </span>
                 <span className="flex items-center gap-3 shrink-0">
                   <span
@@ -454,36 +511,37 @@ export default async function CampaignDetailPage({
             blast starts sending — this fills in as recipients engage.
           </p>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5 items-start">
-            <div>
-            <p className="text-[12px] text-text-tertiary mb-4">
-              How the blast is landing, step by step.
-            </p>
-            <div className="max-w-[420px]">
-              <BarChart
-                data={[
-                  { label: "Sent", value: sent, color: VIZ.blue },
-                  { label: "Opened", value: campaign.opens, color: VIZ.green },
-                  { label: "Replied", value: campaign.replies, color: VIZ.indigo },
-                ]}
-                height={150}
-              />
-            </div>
-            <p className="text-[12px] text-text-tertiary mt-4">
-              <span className="font-semibold text-text-primary tnum">
-                {sent ? Math.round((campaign.opens / sent) * 100) : 0}%
-              </span>{" "}
-              open rate ·{" "}
-              <span className="font-semibold text-text-primary tnum">
-                {sent ? Math.round((campaign.replies / sent) * 100) : 0}%
-              </span>{" "}
-              reply rate
-              {campaign.replies > 0 &&
-                " — replies land in the owner's inbox, ready for a personal follow-up."}
-            </p>
+          <div
+            className={cn(
+              "grid gap-x-8 gap-y-5 items-stretch",
+              hasTimeline ? "lg:grid-cols-2" : "grid-cols-1"
+            )}
+          >
+            <div className="flex flex-col justify-between">
+              <p className="text-[12px] text-text-tertiary mb-4">
+                How the blast is landing, step by step.
+              </p>
+              <div className="max-w-[440px]">
+                <BarChart
+                  data={[
+                    { label: "Sent", value: sent, color: VIZ.blue },
+                    { label: "Opened", value: campaign.opens, color: VIZ.green },
+                    { label: "Replied", value: campaign.replies, color: VIZ.indigo },
+                  ]}
+                  height={180}
+                />
+              </div>
+              <p className="text-[12px] text-text-tertiary mt-4">
+                <span className="font-semibold text-text-primary tnum">{openRate}%</span>{" "}
+                open rate ·{" "}
+                <span className="font-semibold text-text-primary tnum">{replyRate}%</span>{" "}
+                reply rate
+                {campaign.replies > 0 &&
+                  " — replies land in the owner's inbox, ready for a personal follow-up."}
+              </p>
             </div>
             {hasTimeline && (
-              <div>
+              <div className="flex flex-col justify-between">
                 <p className="text-[12px] text-text-tertiary mb-4">
                   Over time — cumulative since the blast went out. Toggle the
                   lines you care about.

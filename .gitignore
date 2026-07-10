@@ -43,3 +43,6 @@ next-env.d.ts
 # transcripts of Freyr internal calls — not app code, keep off GitHub)
 teams-video*/
 TEAMS-VIDEO*-REVIEW.md
+
+# Internal design references (Kendo AI teardown screenshots — ~15MB, keep out of the public repo; ANALYSIS.md is fine to keep local)
+references/kendo-ai/*.png

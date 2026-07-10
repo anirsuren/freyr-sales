@@ -11,6 +11,7 @@ import {
   XCircle,
   SearchX,
   ArrowLeft,
+  ArrowRight,
   Sparkles,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
@@ -18,6 +19,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { ContactSessions } from "@/components/sessions/ContactSessions";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { ContactAgentCard } from "@/components/agent/ContactAgentCard";
@@ -135,9 +138,12 @@ export default async function ContactDetailPage({
         <div className="flex items-center gap-4">
           <Avatar name={contact.full_name} className="w-12 h-12 text-[16px]" />
           <div>
-            <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
-              {contact.full_name}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
+                {contact.full_name}
+              </h1>
+              <LinkedInLink url={contact.linkedin_url} size={18} />
+            </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {contact.role_bucket && (
                 <Badge
@@ -150,9 +156,11 @@ export default async function ContactDetailPage({
               {customer && (
                 <Link
                   href={`/customers/${customer.id}`}
-                  className="text-[13px] text-blue-primary hover:underline"
+                  className="group inline-flex items-center gap-1.5 text-[13px] text-blue-primary hover:underline"
                 >
-                  {customer.company_name} →
+                  <CompanyLogo name={customer.company_name} className="w-4 h-4 text-[7px] shrink-0" />
+                  {customer.company_name}
+                  <ArrowRight size={13} strokeWidth={1.8} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               )}
             </div>
@@ -173,16 +181,6 @@ export default async function ContactDetailPage({
           >
             <Phone size={16} strokeWidth={1.5} /> Call
           </a>
-          {contact.linkedin_url && (
-            <a
-              href={contact.linkedin_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-primary text-white text-[13px] font-medium hover:bg-blue-hover transition-colors"
-            >
-              <ExternalLink size={16} strokeWidth={1.5} /> LinkedIn
-            </a>
-          )}
         </div>
       </div>
 
@@ -245,7 +243,15 @@ export default async function ContactDetailPage({
             pair up so neither column ends in a void. */}
         <div className="space-y-8">
         <Card>
-          <h2 className="text-[17px] font-semibold text-text-primary mb-3">
+          <h2 className="flex items-center gap-2 text-[17px] font-semibold text-text-primary mb-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/linkedin.webp"
+              alt="LinkedIn"
+              width={20}
+              height={20}
+              className="rounded-[4px] shrink-0"
+            />
             LinkedIn Profile
           </h2>
           {about && (
@@ -297,13 +303,18 @@ export default async function ContactDetailPage({
         </Card>
 
           <Card>
-            <h2 className="text-[17px] font-semibold text-text-primary mb-3 flex items-center gap-2">
+            <h2 className="text-[17px] font-semibold text-text-primary mb-1 flex items-center gap-2">
               <Users size={18} strokeWidth={1.75} className="text-blue-primary" />
-              Multi-thread map
+              Who else you know here
             </h2>
+            <p className="text-[12.5px] text-text-tertiary mb-3 leading-relaxed">
+              The other people you know at {customer?.company_name || "this account"}. Deals stall when
+              they hang on one person — the more contacts you&apos;re talking to, the safer it is. Click anyone to open them.
+            </p>
             {siblings.length === 0 ? (
               <p className="text-[13px] text-text-secondary">
-                No other contacts mapped at {customer?.company_name || "this account"} yet — worth widening the thread.
+                {contact.full_name.split(" ")[0]} is your only contact at {customer?.company_name || "this account"} right
+                now — that&apos;s risky. Find a second person (a peer or their manager) so the deal doesn&apos;t rest on one relationship.
               </p>
             ) : (
               <ul className="space-y-2">

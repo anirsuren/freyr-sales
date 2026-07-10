@@ -61,11 +61,20 @@ const NAV_ITEMS = ALL_NAV_ITEMS.filter((i) => isReleased(i.href));
 
 const COLLAPSE_KEY = "freyr.sidebar.collapsed";
 
+// Every page must light up a sidebar section so you always know where you are
+// (Suren, Jul 9: "every page should show up in the sidebar"). Detail routes
+// that have no nav item of their own map to their parent section here.
+const ROUTE_PARENT: { prefix: string; nav: string }[] = [
+  { prefix: "/deals", nav: "/pipeline" }, // deals live under Pipeline
+  { prefix: "/intake", nav: "/sessions" }, // starting a session
+];
+
 function isActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === "/" || pathname === "/dashboard";
-  // exact match so /agent doesn't also light up on /agent/inbox
-  if (href === "/agent") return pathname === "/agent";
-  return pathname === href || pathname.startsWith(href + "/");
+  if (pathname === href || pathname.startsWith(href + "/")) return true;
+  // Orphan detail pages → highlight their parent nav item.
+  const parent = ROUTE_PARENT.find((r) => pathname.startsWith(r.prefix));
+  return parent ? parent.nav === href : false;
 }
 
 export function Sidebar({
@@ -233,20 +242,22 @@ export function Sidebar({
           <Settings size={20} strokeWidth={1.5} className="shrink-0" />
           {!collapsed && "Settings"}
         </Link>
-        <div
+        <Link
+          href="/settings?tab=profile"
+          title={collapsed ? "Suren Dheen — profile" : undefined}
           className={cn(
-            "flex items-center gap-3 py-2",
+            "flex items-center gap-3 py-2 rounded-md transition-colors hover:bg-surface",
             collapsed ? "justify-center px-0" : "px-3"
           )}
         >
           <Avatar name="Suren Dheen" className="w-8 h-8 text-[12px] shrink-0" />
           {!collapsed && (
-            <div className="leading-tight">
-              <p className="text-[13px] text-text-primary font-medium">Suren Dheen</p>
+            <div className="leading-tight min-w-0">
+              <p className="text-[13px] text-text-primary font-medium truncate">Suren Dheen</p>
               <p className="text-[11px] text-text-tertiary">Senior Sales Rep</p>
             </div>
           )}
-        </div>
+        </Link>
       </div>
     </aside>
   );

@@ -73,7 +73,7 @@ function seed(): MockStore {
       full_name: "Dr. Priya Mehta",
       email: "p.mehta@bionextherapeutics.com",
       linkedin_url: "https://linkedin.com/in/drpriyamehta",
-      phone: null,
+      phone: "+1 (617) 424-9903",
       job_title: "VP Regulatory Affairs",
       role_bucket: "Regulatory Affairs",
       career_summary:
@@ -132,6 +132,19 @@ function seed(): MockStore {
   const iso = (daysAgo: number) =>
     new Date(NOW - daysAgo * 86400000).toISOString();
 
+  // Same day, but a believable business-hours time-of-day derived from a seed —
+  // so the Activity feed doesn't show every single event logged at 8:00 AM
+  // (which reads as fake). Deterministic, so it's stable across reloads.
+  const isoAt = (daysAgo: number, seedStr: string) => {
+    let h = 0;
+    for (const ch of seedStr) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const hour = 13 + (h % 8); // 13–20 UTC ≈ 9am–4pm ET, spread across the day
+    const minute = (((h ^ (h >>> 13)) >>> 0) % 60); // xorshift so minutes spread
+    const d = new Date(NOW - daysAgo * 86400000);
+    d.setUTCHours(hour, minute, 0, 0);
+    return d.toISOString();
+  };
+
   const pitchSessions: PitchSession[] = [
     {
       id: "sess-001",
@@ -162,7 +175,7 @@ function seed(): MockStore {
       // stays in the future as the demo date drifts) — not months overdue.
       follow_up_date: iso(-21).slice(0, 10),
       logged_by: "Suren Dheen",
-      created_at: iso(5),
+      created_at: isoAt(5, "int-001"),
     },
   ];
 
@@ -172,6 +185,18 @@ function seed(): MockStore {
   // "novagenetherapeu.com" / "northwindbioscie.com", which read as fake.
   const slug = (s: string) =>
     s.toLowerCase().replace(/[^a-z]+/g, "");
+
+  // Deterministic US phone from a seed so every contact has a real-looking
+  // number (Suren: "how do these contacts not have phone numbers?"). Stable
+  // across reloads, and never generates a 555/000 area code.
+  const mockPhone = (seedStr: string) => {
+    let h = 0;
+    for (const ch of seedStr) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const area = 201 + (h % 799);
+    const mid = 200 + ((h >> 4) % 800);
+    const last = h % 10000;
+    return `+1 (${area}) ${String(mid).padStart(3, "0")}-${String(last).padStart(4, "0")}`;
+  };
 
   type Spec = {
     id: string;
@@ -260,7 +285,7 @@ function seed(): MockStore {
       full_name: s.contact,
       email: `${slug(s.contact)}@${slug(s.company)}.com`,
       linkedin_url: `https://linkedin.com/in/${slug(s.contact)}`,
-      phone: null,
+      phone: mockPhone(ctid),
       job_title: s.title,
       role_bucket: s.role,
       career_summary: s.csumc,
@@ -316,7 +341,7 @@ function seed(): MockStore {
         notes: s.note || null,
         follow_up_date: s.follow ? iso(-s.follow) : null,
         logged_by: "Suren Dheen",
-        created_at: iso(Math.max(0, s.days - 1)),
+        created_at: isoAt(Math.max(0, s.days - 1), `int-${s.id}`),
       });
     }
   }

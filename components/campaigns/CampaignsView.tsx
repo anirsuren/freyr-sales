@@ -12,12 +12,11 @@ import {
   Package,
   ChevronRight,
   X,
-  MailOpen,
-  Reply,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { DonutChart, VIZ } from "@/components/charts/Charts";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate, cn } from "@/lib/utils";
@@ -25,6 +24,40 @@ import type { Campaign } from "@/lib/campaigns";
 
 type MiniOffering = { id: string; name: string };
 type MiniContact = { id: string; name: string; email: string; company: string };
+
+// One compact gauge for a campaign card — a small donut with the % in the
+// middle, a label, and a count underneath. Three of these (Delivery, Open rate,
+// Reply rate) give the three data points Suren asked for.
+function Gauge({
+  pct,
+  label,
+  sub,
+  segments,
+}: {
+  pct: number;
+  label: string;
+  sub: string;
+  segments: { label: string; value: number; color: string }[];
+}) {
+  const live = segments.filter((s) => s.value > 0);
+  const finalSegs = live.length ? live : [{ label: "empty", value: 1, color: "#EEF0F3" }];
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="relative" style={{ width: 64, height: 64 }}>
+        <DonutChart segments={finalSegs} size={64} thickness={8} />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[14px] font-bold tnum text-text-primary leading-none">
+            {pct}%
+          </span>
+        </div>
+      </div>
+      <span className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary leading-none">
+        {label}
+      </span>
+      <span className="text-[10px] tnum text-text-tertiary leading-none">{sub}</span>
+    </div>
+  );
+}
 
 // Campaigns (Suren, Jul 3 + Anir's rep-lens audit): everything a rep needs at
 // a GLANCE on the card — progress bar, ready checks, recipients — expandable in
@@ -323,12 +356,24 @@ export function CampaignsView({
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 stagger">
           {campaigns.map((c) => {
             const total = c.recipient_contact_ids.length;
             const pct = total ? Math.round((c.sent_count / total) * 100) : 0;
+            const openRate = c.sent_count ? Math.round((c.opens / c.sent_count) * 100) : 0;
+            const replyRate = c.sent_count ? Math.round((c.replies / c.sent_count) * 100) : 0;
             const checks = readyChecks(c);
             const okCount = checks.filter((k) => k.ok).length;
+            // Delivery breakdown ring — richer than the plain bar: how many
+            // actually went out vs. still queued vs. not yet queued at all.
+            const queued =
+              c.status === "queued" ? Math.max(total - c.sent_count, 0) : 0;
+            const notQueued = Math.max(total - c.sent_count - queued, 0);
+            const deliverySegments = [
+              { label: "Sent", value: c.sent_count, color: VIZ.green },
+              { label: "Queued", value: queued, color: VIZ.amber },
+              { label: "Not queued", value: notQueued, color: "#E5E5EA" },
+            ].filter((s) => s.value > 0);
             return (
               <Link
                 key={c.id}
@@ -338,10 +383,11 @@ export function CampaignsView({
               >
                 <Card
                   data-testid={`campaign-${c.id}`}
-                  className="hover:border-blue-subtle hover:-translate-y-0.5 transition-all duration-200 group"
+                  className="cursor-pointer group transition-all duration-150 hover:border-blue-primary hover:-translate-y-0.5 hover:shadow-[0_0_0_3px_rgba(0,113,227,0.10),0_12px_30px_rgba(0,113,227,0.12)] active:translate-y-0 active:scale-[0.98] active:shadow-none"
                 >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
+                <div className="flex items-stretch gap-6">
+                  {/* LEFT — identity + completion, filling the column */}
+                  <div className="min-w-0 flex-1 flex flex-col">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-[15px] font-semibold text-text-primary">
                         {c.name}
@@ -391,59 +437,78 @@ export function CampaignsView({
                       </span>
                       <span className="tnum">{formatDate(c.created_at)}</span>
                     </p>
-                  </div>
-                  <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary px-2.5 py-1.5 rounded-md border border-border-light group-hover:bg-blue-light/50 transition-colors">
-                    View
-                    <ChevronRight size={14} strokeWidth={2} />
-                  </span>
-                </div>
 
-                {/* progress at a glance — plus engagement once the blast lands */}
-                <div className="mt-3">
-                  <div className="flex items-center justify-between text-[11.5px] mb-1">
-                    <span className="text-text-tertiary">
-                      {c.status === "sent"
-                        ? `${c.sent_count} of ${total} sent`
-                        : c.status === "queued"
-                        ? `${c.sent_count} of ${total} sent${
-                            c.sent_count < total ? " — the rest is queued" : ""
-                          }`
-                        : "Draft — not queued yet"}
-                    </span>
-                    <span className="text-text-tertiary tnum">{pct}%</span>
+                    {/* completion — a small, slim indicator (Suren: "shrink the
+                        size of that progress bar"), not a big edge-to-edge bar */}
+                    <div className="mt-auto pt-4 max-w-[300px]">
+                      <div className="flex items-center justify-between text-[11.5px] mb-1">
+                        <span className="text-text-tertiary">
+                          {c.status === "sent"
+                            ? `${c.sent_count} of ${total} sent`
+                            : c.status === "queued"
+                            ? `${c.sent_count} of ${total} sent${
+                                c.sent_count < total ? " — rest queued" : ""
+                              }`
+                            : "Draft — not queued yet"}
+                        </span>
+                        <span className="tnum font-semibold text-text-secondary">
+                          {pct}%
+                        </span>
+                      </div>
+                      <div className="h-1 rounded-full bg-surface overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            c.status === "sent"
+                              ? "bg-success"
+                              : c.status === "queued"
+                              ? "bg-warning"
+                              : "bg-border"
+                          )}
+                          style={{
+                            width: `${Math.max(pct, c.status === "queued" ? 4 : 0)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-surface overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        c.status === "sent"
-                          ? "bg-success"
-                          : c.status === "queued"
-                          ? "bg-warning"
-                          : "bg-border"
-                      )}
-                      style={{ width: `${Math.max(pct, c.status === "queued" ? 4 : 0)}%` }}
+
+                  {/* RIGHT — analytics panel, divided from the identity so the
+                      space reads as intentional (no floating gap) */}
+                  <div className="shrink-0 flex items-center gap-6 pl-6 border-l border-border-light">
+                    {/* Three data points, three matching gauges (Suren: "I want
+                        three data points… another gauge graph"). */}
+                    <Gauge
+                      label="Delivery"
+                      pct={pct}
+                      sub={`${c.sent_count}/${total} sent`}
+                      segments={deliverySegments}
+                    />
+                    <Gauge
+                      label="Open rate"
+                      pct={c.sent_count > 0 ? openRate : 0}
+                      sub={c.sent_count > 0 ? `${c.opens} opened` : "—"}
+                      segments={[
+                        { label: "Opened", value: c.opens, color: VIZ.teal },
+                        { label: "Unopened", value: Math.max(c.sent_count - c.opens, 0), color: "#EEF0F3" },
+                      ]}
+                    />
+                    <Gauge
+                      label="Reply rate"
+                      pct={c.sent_count > 0 ? replyRate : 0}
+                      sub={c.sent_count > 0 ? `${c.replies} replied` : "—"}
+                      segments={[
+                        { label: "Replied", value: c.replies, color: VIZ.indigo },
+                        { label: "No reply", value: Math.max(c.sent_count - c.replies, 0), color: "#EEF0F3" },
+                      ]}
+                    />
+
+                    <ChevronRight
+                      size={18}
+                      strokeWidth={2}
+                      className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform"
                     />
                   </div>
-                  {(c.opens > 0 || c.replies > 0) && (
-                    <p className="flex items-center gap-3 text-[11.5px] text-text-tertiary mt-1.5">
-                      <span className="inline-flex items-center gap-1">
-                        <MailOpen size={12} strokeWidth={1.8} className="text-success" />
-                        <span className="font-medium text-text-secondary tnum">{c.opens}</span>
-                        opened
-                        {c.sent_count > 0 && (
-                          <span className="tnum">
-                            ({Math.round((c.opens / c.sent_count) * 100)}%)
-                          </span>
-                        )}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Reply size={12} strokeWidth={1.8} className="text-blue-primary" />
-                        <span className="font-medium text-text-secondary tnum">{c.replies}</span>
-                        replied
-                      </span>
-                    </p>
-                  )}
                 </div>
 
                 </Card>

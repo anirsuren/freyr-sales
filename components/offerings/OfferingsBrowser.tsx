@@ -24,6 +24,7 @@ import {
   Table2,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type {
   CustomerType,
@@ -316,20 +317,23 @@ export function OfferingsBrowser({
         style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
       >
         <Card
-          className={`h-full w-full p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle group-focus-visible:-translate-y-1 group-focus-visible:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-focus-visible:border-blue-subtle ${
+          className={`h-full w-full p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle group-focus-visible:-translate-y-1 group-focus-visible:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-focus-visible:border-blue-subtle group-active:scale-[0.98] group-active:translate-y-0 group-active:shadow-none ${
             mapped ? "" : "bg-surface/40"
           }`}
         >
           {/* Offering name is the primary element (Suren's live-meeting ask —
               the customer-type families move down so they don't compete). */}
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="text-[16px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
-              {o.offering_name}
-            </h3>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <OfferingIcon name={o.offering_name} className="w-9 h-9 shrink-0" />
+              <h3 className="text-[16px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
+                {o.offering_name}
+              </h3>
+            </div>
             <ChevronRight
               size={16}
               strokeWidth={1.6}
-              className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 group-focus-visible:text-blue-primary group-focus-visible:translate-x-0.5 transition-transform shrink-0 mt-0.5"
+              className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 group-focus-visible:text-blue-primary group-focus-visible:translate-x-0.5 transition-transform shrink-0"
             />
           </div>
           {o.offering_description && (
@@ -656,15 +660,18 @@ export function OfferingsBrowser({
         // Excel so the whole catalog is scannable in rows.
         <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px] border-collapse">
+            {/* table-fixed + explicit widths so all six columns fit the card —
+                auto layout let "Availability" grab all the slack and shoved the
+                last two columns off-screen behind a horizontal scroll. */}
+            <table className="w-full min-w-[860px] table-fixed text-[13px] border-collapse">
               <thead>
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="px-4 py-2.5">Offering</th>
-                  <th className="px-4 py-2.5">Category</th>
-                  <th className="px-4 py-2.5">Type</th>
-                  <th className="px-4 py-2.5">Availability</th>
-                  <th className="px-4 py-2.5">Who it&apos;s for</th>
-                  <th className="px-4 py-2.5">Materials</th>
+                  <th className="px-4 py-2.5 w-[23%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[19%]">Category</th>
+                  <th className="px-4 py-2.5 w-[16%]">Type</th>
+                  <th className="px-4 py-2.5 w-[15%]">Availability</th>
+                  <th className="px-4 py-2.5 w-[17%]">Who it&apos;s for</th>
+                  <th className="px-4 py-2.5 w-[10%]">Materials</th>
                 </tr>
               </thead>
               <tbody>
@@ -700,7 +707,7 @@ export function OfferingsBrowser({
                       <td className="px-4 py-3 text-text-secondary">
                         {o.offering_type || "—"}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary whitespace-nowrap">
+                      <td className="px-4 py-3 text-text-secondary">
                         {o.current_availability || "—"}
                         {o.future_availability && (
                           <span className="block text-[11px] text-text-tertiary">

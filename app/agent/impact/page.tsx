@@ -107,7 +107,7 @@ export default async function AgentImpactPage({
   ];
 
   return (
-    <div className="max-w-[860px] space-y-6">
+    <div className="space-y-6">
       <div>
         <Link
           href="/agent"
@@ -194,7 +194,7 @@ export default async function AgentImpactPage({
           <Card>
             <p className="text-[13px] text-text-secondary">
               The agent hasn&apos;t worked any specific account in the last 90
-              days. Run a play or let autopilot work the queue to build impact.
+              days. Let the agent work the queue or let autopilot run to build impact.
             </p>
           </Card>
         ) : (

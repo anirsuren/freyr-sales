@@ -7,6 +7,10 @@ import {
   Clock,
   Timer,
   ThumbsUp,
+  CalendarCheck,
+  Phone,
+  PhoneIncoming,
+  PhoneMissed,
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -17,8 +21,11 @@ import { listConversations } from "@/lib/elevenlabs";
 import { syncConversations } from "@/lib/voiceSync";
 import { listOfferings } from "@/lib/offerings";
 import { VOICE_PERSONAS, personaFor } from "@/lib/voicePersonas";
-import { LineChart, BarChart, VIZ } from "@/components/charts/Charts";
+import { LineChart, BarChart, DonutChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { StatTile } from "@/components/ui/StatTile";
+import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { getDb } from "@/lib/db";
 import { formatDateTime, formatPhone, cn } from "@/lib/utils";
 
 export const metadata = { title: "Voice agents" };
@@ -45,6 +52,11 @@ export default async function VoicePage() {
   const status = voiceStatus();
   const queue = listVoiceQueue();
   const offerings = listOfferings();
+  // Contacts → phone + photo for the call rows (Suren: "how do these contacts
+  // not have phone numbers?" + "I need profile pictures here").
+  const contactById = new Map(
+    (await getDb().contacts.list()).map((c) => [c.id, c])
+  );
 
   // REAL conversations from ElevenLabs (Anir, Jul 4: "I should be able to see
   // all the conversations, all the call statistics"). Live key + not mocked →
@@ -105,6 +117,16 @@ export default async function VoicePage() {
       )
     : 0;
   const interestedN = finished.filter((q) => q.outcome === "interested").length;
+  // Calls grouped by offering category — the second donut in "How calls ended".
+  const catCounts = Object.entries(
+    finished.reduce((m, q) => {
+      const k = q.category || "Other";
+      m[k] = (m[k] || 0) + 1;
+      return m;
+    }, {} as Record<string, number>)
+  )
+    .map(([category, n]) => ({ category, n }))
+    .sort((a, b) => b.n - a.n);
   // Who asked for a callback — the analytics card that's also a to-do list.
   const callbacks = finished.filter((q) => q.outcome === "follow_up");
   // Donut geometry — same pattern as the campaign delivery ring.
@@ -138,6 +160,11 @@ export default async function VoicePage() {
   const dayLabels = [13, 9, 5, 0].map((back) => {
     const d = new Date(today.getTime() - back * DAY);
     return `${d.getMonth() + 1}/${d.getDate()}`;
+  });
+  // One readable label per data point so the hover tooltip names the exact day.
+  const dayPointLabels = callsPerDay.map((_, i) => {
+    const d = new Date(today.getTime() - (13 - i) * DAY);
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   });
 
   const lineCount = Object.keys(status.numbers).length;
@@ -179,7 +206,7 @@ export default async function VoicePage() {
         subtitle="One AI caller per offering category — queue calls from any contact or the Contacts list, and watch them here."
       />
 
-      {/* At-a-glance numbers */}
+      {/* At-a-glance numbers — separate cards, same as Forecast/Pipeline */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {tiles.map((t) => (
           <StatTile
@@ -215,7 +242,7 @@ export default async function VoicePage() {
             const Icon = p.icon;
             return (
               <Link key={p.slug} href={`/voice/agents/${p.slug}`}>
-                <Card className="p-5 h-full hover:border-blue-subtle hover:-translate-y-0.5 transition-all duration-200 group">
+                <Card className="p-5 h-full hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-card transition-all duration-150 group active:scale-[0.98] active:shadow-none active:translate-y-0">
                   <div className="flex items-start justify-between gap-2">
                     <span
                       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white"
@@ -324,7 +351,7 @@ export default async function VoicePage() {
                       (h, i) => (
                         <th
                           key={i}
-                          className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
+                          className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
                         >
                           {h}
                         </th>
@@ -434,15 +461,17 @@ export default async function VoicePage() {
           </Card>
         ) : (
           <Card className="p-0 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Cap to ~10 rows and scroll inside — 72 rows shouldn't push the
+                whole page down (Suren). Sticky header stays put while you scroll. */}
+            <div className="overflow-auto max-h-[600px]">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="bg-surface border-b border-border-light">
+                  <tr className="border-b border-border-light">
                     {["Contact", "Company", "About", "Status", "Outcome", "Length", "Queued"].map(
                       (h) => (
                         <th
                           key={h}
-                          className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
+                          className="sticky top-0 z-10 bg-surface px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap"
                         >
                           {h}
                         </th>
@@ -451,14 +480,26 @@ export default async function VoicePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light">
-                  {queue.map((q) => (
-                    <tr key={q.id}>
-                      <td className="px-5 py-3.5 text-[13px] font-semibold whitespace-nowrap">
-                        <Link
-                          href={`/contacts/${q.contact_id}`}
-                          className="text-text-primary hover:text-blue-primary"
-                        >
-                          {q.contact_name}
+                  {queue.map((q) => {
+                    const phone = q.phone || contactById.get(q.contact_id)?.phone;
+                    // Clicking a contact opens their voice profile (who they are
+                    // + every call + graphs), not straight into one transcript.
+                    const href = `/voice/contact/${q.contact_id}`;
+                    return (
+                    <tr key={q.id} className="hover:bg-surface transition-colors">
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <Link href={href} className="flex items-center gap-2.5 group">
+                          <Avatar name={q.contact_name} className="w-8 h-8 text-[11px] shrink-0" />
+                          <span className="min-w-0">
+                            <span className="block text-[13px] font-semibold text-text-primary group-hover:text-blue-primary truncate">
+                              {q.contact_name}
+                            </span>
+                            {phone && (
+                              <span className="block text-[11.5px] text-text-tertiary tnum">
+                                {formatPhone(phone)}
+                              </span>
+                            )}
+                          </span>
                         </Link>
                       </td>
                       <td className="px-5 py-3.5 text-[13px] text-text-secondary whitespace-nowrap">
@@ -517,7 +558,8 @@ export default async function VoicePage() {
                         {formatDateTime(q.created_at)}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -546,45 +588,87 @@ export default async function VoicePage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <Card className="flex flex-col">
                 <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                  How calls ended
+                  Call breakdown
                 </h3>
                 <p className="text-[12px] text-text-tertiary mb-3">
-                  Every finished call, by outcome.
+                  How calls ended, and what they were about. Hover for details.
                 </p>
-                <div className="flex-1 flex items-center gap-5">
-                  <svg width="120" height="120" viewBox="0 0 130 130" className="shrink-0">
-                    <circle cx="65" cy="65" r={R} fill="none" stroke="#E5E5EA" strokeWidth="12" />
-                    {donutSegs.map((sg) => (
-                      <circle
-                        key={sg.outcome}
-                        cx="65" cy="65" r={R} fill="none"
-                        stroke={OUTCOME_META[sg.outcome].color}
-                        strokeWidth="12"
-                        strokeLinecap="round"
-                        strokeDasharray={`${CIRC * sg.frac} ${CIRC}`}
-                        transform={`rotate(${-90 + sg.start * 360} 65 65)`}
-                      />
-                    ))}
-                    <text x="65" y="59" textAnchor="middle" className="tnum" fontSize="24" fontWeight="700" fill="#1D1D1F">
-                      {finished.length}
-                    </text>
-                    <text x="65" y="77" textAnchor="middle" fontSize="10" fill="#8A8A8E">
-                      calls
-                    </text>
-                  </svg>
-                  <div className="space-y-2 text-[13px]">
-                    {outcomeCounts.map(({ outcome, n: cnt }) => (
-                      <p key={outcome} className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ background: OUTCOME_META[outcome].color }}
-                        />
-                        <span className="text-text-secondary">
-                          {OUTCOME_META[outcome].label}
-                        </span>
-                        <span className="font-semibold text-text-primary tnum">{cnt}</span>
-                      </p>
-                    ))}
+                <div className="flex-1 grid grid-cols-2 gap-4 content-center">
+                  <div className="flex flex-col items-center">
+                    <DonutChart
+                      segments={outcomeCounts.map((o) => ({
+                        label: OUTCOME_META[o.outcome].label,
+                        value: o.n,
+                        color: OUTCOME_META[o.outcome].color,
+                      }))}
+                      size={124}
+                      thickness={14}
+                      centerLabel={String(finished.length)}
+                      centerSub="calls"
+                    />
+                    <p className="mt-2.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                      By outcome
+                    </p>
+                    <ul className="mt-3 w-full space-y-1.5">
+                      {outcomeCounts
+                        .filter((o) => o.n > 0)
+                        .map((o) => (
+                          <li
+                            key={o.outcome}
+                            className="flex items-center justify-between gap-2 text-[12px]"
+                          >
+                            <span className="flex items-center gap-1.5 min-w-0 text-text-secondary">
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ background: OUTCOME_META[o.outcome].color }}
+                              />
+                              <span className="truncate">
+                                {OUTCOME_META[o.outcome].label}
+                              </span>
+                            </span>
+                            <span className="tnum font-semibold text-text-primary shrink-0">
+                              {o.n}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <DonutChart
+                      segments={catCounts.map((c, i) => ({
+                        label: c.category,
+                        value: c.n,
+                        color: VIZ_SERIES[i % VIZ_SERIES.length],
+                      }))}
+                      size={124}
+                      thickness={14}
+                      centerLabel={String(catCounts.length)}
+                      centerSub="topics"
+                    />
+                    <p className="mt-2.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                      By category
+                    </p>
+                    <ul className="mt-3 w-full space-y-1.5">
+                      {catCounts.map((c, i) => (
+                        <li
+                          key={c.category}
+                          className="flex items-center justify-between gap-2 text-[12px]"
+                        >
+                          <span className="flex items-center gap-1.5 min-w-0 text-text-secondary">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ background: VIZ_SERIES[i % VIZ_SERIES.length] }}
+                            />
+                            <span className="truncate" title={c.category}>
+                              {c.category}
+                            </span>
+                          </span>
+                          <span className="tnum font-semibold text-text-primary shrink-0">
+                            {c.n}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               </Card>
@@ -596,24 +680,28 @@ export default async function VoicePage() {
                 <p className="text-[12px] text-text-tertiary mb-3">
                   How the conversations are going.
                 </p>
-                <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-4 content-center">
+                <div className="flex-1 grid grid-cols-2 gap-x-5 content-between py-1">
                   {[
+                    { icon: Phone, label: "Total calls", value: String(finished.length) },
+                    { icon: PhoneIncoming, label: "Connected", value: String(connected.length) },
                     { icon: PhoneCall, label: "Connect rate", value: `${connectRate}%` },
                     { icon: Timer, label: "Avg length", value: fmtLen(avgLen) },
                     { icon: ThumbsUp, label: "Interested", value: String(interestedN) },
                     { icon: Clock, label: "Follow-ups", value: String(finished.filter((q) => q.outcome === "follow_up").length) },
+                    { icon: PhoneMissed, label: "No answer", value: String(finished.filter((q) => q.outcome === "no_answer").length) },
+                    { icon: PhoneOff, label: "Declined", value: String(finished.filter((q) => q.outcome === "declined").length) },
                   ].map((st) => {
                     const StIcon = st.icon;
                     return (
-                      <div key={st.label} className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                          <StIcon size={15} strokeWidth={1.9} />
+                      <div key={st.label} className="flex items-center gap-3 py-2.5">
+                        <span className="w-9 h-9 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                          <StIcon size={16} strokeWidth={1.9} />
                         </span>
                         <span className="min-w-0">
                           <span className="block text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                             {st.label}
                           </span>
-                          <span className="block text-[17px] font-bold leading-tight tnum text-text-primary">
+                          <span className="block text-[19px] font-bold leading-tight tnum text-text-primary">
                             {st.value}
                           </span>
                         </span>
@@ -635,23 +723,29 @@ export default async function VoicePage() {
                     None owed — every follow-up is handled.
                   </p>
                 ) : (
-                  <ul className="flex-1 divide-y divide-border-light">
-                    {callbacks.slice(0, 4).map((q) => (
-                      <li key={q.id} className="flex items-center justify-between gap-2 py-2">
-                        <span className="min-w-0">
+                  <ul className="flex-1 divide-y divide-border-light max-h-[300px] overflow-y-auto -mr-2 pr-2">
+                    {callbacks.map((q) => (
+                      <li key={q.id} className="flex items-center gap-3 py-2.5">
+                        <Avatar name={q.contact_name} className="w-9 h-9 text-[12px] shrink-0" />
+                        <span className="min-w-0 flex-1">
                           <Link
                             href={`/contacts/${q.contact_id}`}
                             className="block text-[13px] font-semibold text-text-primary hover:text-blue-primary truncate"
                           >
                             {q.contact_name}
                           </Link>
-                          <span className="block text-[11.5px] text-text-tertiary truncate">
-                            {q.company || q.category}
+                          <span className="flex items-center gap-1.5 text-[11.5px] text-text-tertiary min-w-0">
+                            <CompanyLogo name={q.company || "?"} className="w-3.5 h-3.5 text-[7px] shrink-0" />
+                            <span className="truncate">{q.company || q.category}</span>
+                            {q.phone && <span className="shrink-0 tnum">· {q.phone}</span>}
                           </span>
                         </span>
-                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2 py-0.5">
+                        <a
+                          href={q.phone ? `tel:${q.phone}` : undefined}
+                          className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2.5 py-1 hover:bg-blue-primary hover:text-white transition-colors"
+                        >
                           Call back
-                        </span>
+                        </a>
                       </li>
                     ))}
                   </ul>
@@ -687,6 +781,8 @@ export default async function VoicePage() {
                 <LineChart
                   series={[{ label: "Calls", color: VIZ.blue, points: callsPerDay }]}
                   xLabels={dayLabels}
+                  pointLabels={dayPointLabels}
+                  unit="calls"
                   height={150}
                 />
               </Card>

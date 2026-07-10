@@ -25,6 +25,7 @@ export function buildNotifications(input: {
 }): AppNotification[] {
   const { sessions, customers, contacts, interactions } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
+  const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
   const out: AppNotification[] = [];
 
   // Pitches awaiting compliance review
@@ -87,14 +88,30 @@ export function buildNotifications(input: {
         now.getDate()
       ).getTime();
       const overdue = dueDay < todayDay;
+      // Useful copy for a rep (Anir: the old "scheduled for [date]" told them
+      // nothing): who, how late, and what the last outcome was — one tap to the
+      // account to act on it.
+      const dayMs = 86_400_000;
+      const contactName = contactById[i.contact_id]?.full_name || "";
+      const outcomeLabel = i.outcome ? OUTCOME_META[i.outcome]?.label || "" : "";
+      let when: string;
+      if (overdue) {
+        const n = Math.max(1, Math.round((todayDay - dueDay) / dayMs));
+        when = `${n} day${n === 1 ? "" : "s"} overdue`;
+      } else if (dueDay === todayDay) {
+        when = "due today";
+      } else {
+        const n = Math.round((dueDay - todayDay) / dayMs);
+        when = `due in ${n} day${n === 1 ? "" : "s"}`;
+      }
       out.push({
         id: `followup-${i.id}`,
         type: "followup",
         title: overdue ? "Follow-up overdue" : "Follow-up due",
-        body: `${company} — ${
-          overdue ? "was due" : "scheduled for"
-        } ${due.toLocaleDateString()}.`,
-        href: "/tasks",
+        body: `${company}${contactName ? ` · ${contactName}` : ""} — ${when}${
+          outcomeLabel ? `, last: ${outcomeLabel}` : ""
+        }.`,
+        href: `/customers/${i.customer_id}`,
         ts: i.follow_up_date,
       });
     }

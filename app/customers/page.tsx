@@ -1,5 +1,4 @@
 import { getDb } from "@/lib/db";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { CustomersBrowser } from "@/components/customers/CustomersBrowser";
 import { buildDeals } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
@@ -23,6 +22,7 @@ export default async function CustomersPage() {
       return {
         ...c,
         contact_count: contacts.length,
+        contacts_preview: contacts.map((ct) => ({ id: ct.id, name: ct.full_name })),
         last_outcome: interactions[0]?.outcome || null,
         last_session_date: sessions[0]?.created_at || null,
         health: accountHealth({
@@ -36,10 +36,6 @@ export default async function CustomersPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Customers"
-        subtitle="Every company in your pipeline."
-      />
       <CustomersBrowser customers={enriched} />
     </div>
   );

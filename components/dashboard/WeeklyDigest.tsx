@@ -45,7 +45,7 @@ export function WeeklyDigest({
         body: JSON.stringify({ text }),
       });
       const data = await res.json();
-      if (data.ok) toast(`Digest sent via ${data.channel}`);
+      if (data.ok) toast(`Summary sent via ${data.channel}`);
       else if (data.skipped) toast(data.message || "No delivery channel configured");
       else toast(data.error || "Could not send digest");
     } catch {
@@ -61,7 +61,7 @@ export function WeeklyDigest({
     try {
       localStorage.setItem("freyr.digest.weekly", v ? "1" : "0");
     } catch {}
-    toast(v ? "Subscribed — weekly digest every Monday 8am" : "Weekly digest off");
+    toast(v ? "Subscribed — weekly summary every Monday 8am" : "Weekly summary off");
   }
 
   return (
@@ -71,10 +71,10 @@ export function WeeklyDigest({
         className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
       >
         <Mail size={15} strokeWidth={1.8} />
-        Digest
+        Email me a summary
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Weekly digest">
+      <Modal open={open} onClose={() => setOpen(false)} title="Email a summary">
         <p className="text-[13px] text-text-secondary mb-3">
           A snapshot of this dashboard, delivered to{" "}
           <span className="font-medium text-text-primary">{recipient}</span>.

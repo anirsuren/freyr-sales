@@ -11,6 +11,7 @@ import { SizeBadge, OutcomeBadge } from "@/components/ui/Badge";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
 import { toCSV, downloadCSV } from "@/lib/csv";
@@ -21,6 +22,7 @@ import type { Customer } from "@/lib/types";
 
 type EnrichedCustomer = Customer & {
   contact_count: number;
+  contacts_preview: { id: string; name: string }[];
   last_outcome: string | null;
   last_session_date: string | null;
   health: AccountHealth;
@@ -236,17 +238,30 @@ export function CustomersBrowser({
 
   return (
     <div>
-      <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-6">
-        <div className="relative lg:max-w-[300px] w-full">
-          <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <Input
-            placeholder="Search customers…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-9"
-          />
+      {/* Title + filters (incl. a compact search) on one row — no standalone
+          search bar eating a whole row (Suren). */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+        <div className="min-w-0">
+          <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
+            Customers
+          </h1>
+          <p className="text-[14px] text-text-secondary mt-0.5">
+            Every company in your pipeline.
+          </p>
         </div>
-        <div className="flex items-center gap-2 lg:ml-auto">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* Compact search sits inline with the filters — no dedicated row
+              hogging space (Suren: the top-bar search already covers global
+              search; this just filters the grid). */}
+          <div className="relative w-[190px]">
+            <Search size={15} strokeWidth={1.6} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <input
+              placeholder="Search customers…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
+            />
+          </div>
           <select
             aria-label="Filter by health"
             value={healthFilter}
@@ -310,7 +325,6 @@ export function CustomersBrowser({
           </button>
         </div>
       </div>
-
       {/* Bulk action bar */}
       {selectMode && selected.size > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light flex-wrap">
@@ -402,6 +416,7 @@ export function CustomersBrowser({
               key={c.id}
               customer={c}
               contactCount={c.contact_count}
+              contacts={c.contacts_preview}
               lastOutcome={c.last_outcome}
               lastSessionDate={c.last_session_date}
               health={c.health}
@@ -416,7 +431,7 @@ export function CustomersBrowser({
                 <tr className="bg-surface border-b border-border-light">
                   {selectMode && <th className="pl-5 py-3 w-8" />}
                   {["Company", "Opportunity", "Health", "Industry", "Contacts", "Last Outcome", "Last Session"].map((h) => (
-                    <th key={h} className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
+                    <th key={h} className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       <span className="inline-flex items-center gap-1">
                         {h}
                         {COL_HINTS[h] && <InfoHint text={COL_HINTS[h]} />}
@@ -449,7 +464,7 @@ export function CustomersBrowser({
                     )}
                     <td className="px-5 py-4">
                       <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
-                        <Avatar name={c.company_name} className="w-8 h-8 text-[12px] rounded-md" />
+                        <CompanyLogo name={c.company_name} className="w-8 h-8 text-[11px]" />
                         <span className="text-[13px] font-semibold text-text-primary">{c.company_name}</span>
                       </Link>
                     </td>

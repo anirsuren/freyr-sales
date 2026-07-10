@@ -199,7 +199,7 @@ export function AgentRunPanel({
         className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
       >
         <Sparkles size={13} strokeWidth={1.9} />
-        Run a play
+        Let the agent work
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title={`Agent play · ${company}`}>

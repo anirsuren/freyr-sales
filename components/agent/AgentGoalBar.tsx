@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   Sparkles,
   ArrowUp,
+  Loader2,
   HeartPulse,
   Flame,
   CalendarClock,
@@ -229,7 +230,11 @@ export function AgentGoalBar() {
               : "bg-border-light text-text-tertiary"
           )}
         >
-          <ArrowUp size={16} strokeWidth={2.2} />
+          {busy ? (
+            <Loader2 size={16} strokeWidth={2.2} className="animate-spin" />
+          ) : (
+            <ArrowUp size={16} strokeWidth={2.2} />
+          )}
         </button>
       </div>
       <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mt-4 mb-2">
@@ -260,6 +265,13 @@ export function AgentGoalBar() {
           );
         })}
       </div>
+
+      {busy && !plan && (
+        <div className="mt-4 flex items-center gap-2 text-[13px] text-text-secondary">
+          <Loader2 size={15} strokeWidth={2} className="animate-spin text-blue-primary" />
+          Drafting your plan…
+        </div>
+      )}
 
       {plan && (
         <div className="mt-4 rounded-xl border border-border-light bg-surface p-3.5">

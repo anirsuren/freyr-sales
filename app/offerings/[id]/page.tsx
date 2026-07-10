@@ -16,15 +16,28 @@ import {
   BookOpen,
   Quote,
   Layers,
+  Building2,
+  AlignLeft,
+  BarChart3,
+  FolderOpen,
+  Globe,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { SectionCard } from "@/components/ui/SectionCard";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { Avatar } from "@/components/ui/Avatar";
 import { RecordView } from "@/components/RecordView";
 import { DuplicateButton } from "@/components/offerings/DuplicateButton";
 import { OfferingReports } from "@/components/offerings/OfferingReports";
+import { OfferingActions } from "@/components/offerings/OfferingActions";
+import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
+import { DonutChart, Legend, VIZ_SERIES } from "@/components/charts/Charts";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { isAdmin } from "@/lib/role";
 import { getDb } from "@/lib/db";
 import { reportForOffering } from "@/lib/revenue";
+import { formatMoney } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
 import {
   getOffering,
@@ -72,10 +85,13 @@ export default async function OfferingDetailPage({
   if (!raw) notFound();
   const o = hydrateOffering(raw);
 
-  // Reports tab (Suren, Jul 5): revenue for THIS offering cumulated across
-  // every customer using it — the offering owner's view.
   const tab = searchParams?.tab === "reports" ? "reports" : "overview";
-  const report = reportForOffering(await getDb().customers.list(), o.id);
+  const allCustomers = await getDb().customers.list();
+  const report = reportForOffering(allCustomers, o.id);
+  const customerPickList = allCustomers.map((c) => ({
+    id: c.id,
+    name: c.company_name,
+  }));
 
   // Sibling offerings of the same type — Suren's catalog is variant-heavy, so a
   // quick way to compare the family (e.g. the Freya Register stack) is useful.
@@ -85,14 +101,48 @@ export default async function OfferingDetailPage({
       )
     : [];
 
-  // At-a-glance mapping status, mirroring the list cards so an incomplete
-  // offering is obvious the moment you open it (feeds Suren's "still to map"
-  // worklist).
   const isMapped =
-    o.customerTypes.length > 0 ||
-    o.markets.length > 0 ||
-    o.materials.length > 0;
+    o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
   const admin = isAdmin();
+
+  // The internal person accountable for this offering — the category owner if
+  // set, else the delivery POC. Only render the owner card when one is real.
+  const ownerName = o.offeringCategory?.owner || o.poc || "";
+  const ownerRole = o.offeringCategory?.owner
+    ? `${o.offeringCategory.name} owner`
+    : o.poc
+    ? "Delivery contact"
+    : "";
+
+  // Each market + size band reads as its own color so they scan at a glance
+  // (Anir: "USA, Europe, Japan, China, Korea each a different color; same for
+  // small, mid, large"). Keyed loosely so labels like "United States" match.
+  const marketStyle = (name: string): { bg: string; color: string } => {
+    const n = name.toLowerCase();
+    if (n.includes("usa") || n.includes("united states") || n.includes("us"))
+      return { bg: "rgba(0,113,227,0.10)", color: "#0071E3" };
+    if (n.includes("europe") || n.includes("eu"))
+      return { bg: "rgba(94,92,230,0.12)", color: "#5E5CE6" };
+    if (n.includes("japan")) return { bg: "rgba(219,39,119,0.10)", color: "#C81E67" };
+    if (n.includes("china")) return { bg: "rgba(255,59,48,0.10)", color: "#C0362C" };
+    if (n.includes("korea")) return { bg: "rgba(15,158,142,0.12)", color: "#0F9E8E" };
+    return { bg: "rgba(142,152,168,0.14)", color: "#5B6472" };
+  };
+  const sizeStyle = (size: string): { bg: string; color: string } => {
+    const s = size.toLowerCase();
+    if (s.includes("small")) return { bg: "rgba(52,199,89,0.14)", color: "#1A7A35" };
+    if (s.includes("large")) return { bg: "rgba(124,58,237,0.12)", color: "#6D28D9" };
+    return { bg: "rgba(255,159,10,0.16)", color: "#8A5300" }; // mid / default
+  };
+
+  // Commercials bars (revenue by customer) for the inline summary.
+  const commercialsBars = report.customers
+    .filter((c) => c.revenue > 0)
+    .map((c, i) => ({
+      label: c.name,
+      value: c.revenue,
+      color: VIZ_SERIES[i % VIZ_SERIES.length],
+    }));
 
   return (
     <div>
@@ -109,118 +159,109 @@ export default async function OfferingDetailPage({
         <ArrowLeft size={15} strokeWidth={1.8} /> All offerings
       </Link>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      {/* Header: identity on the left, primary actions on the right */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+          <h1 className="flex items-center gap-3 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
+            <OfferingIcon name={o.offering_name} className="w-11 h-11 shrink-0" />
+            {o.offering_name}
+          </h1>
+          {/* All tags on one line (Anir: single line to save space) */}
+          <div className="flex flex-wrap items-center gap-2 mt-2.5">
             {o.offering_category && (
               <Link
                 href={`/offerings?cat=${o.offeringCategory?.id ?? ""}`}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-secondary bg-surface border border-border-light rounded-md px-2 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-blue-primary bg-blue-light rounded-full px-2.5 py-1 hover:bg-blue-subtle/60 transition-colors"
               >
-                <Layers size={11} strokeWidth={2} />
+                <Layers size={12} strokeWidth={1.9} />
                 {o.offering_category}
               </Link>
             )}
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary bg-blue-light rounded-md px-2 py-1">
-              <Sparkles size={11} strokeWidth={2} />
-              {o.offering_type || "Offering"}
-            </span>
+            {o.offering_type && (
+              <span className="inline-flex items-center gap-1 text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-2.5 py-1">
+                {o.offering_type}
+              </span>
+            )}
+            {o.current_availability && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 text-[12px] font-medium rounded-full px-2.5 py-1",
+                  /current|now|available/i.test(o.current_availability)
+                    ? "text-success bg-success/10"
+                    : "text-warning bg-warning/10"
+                )}
+              >
+                <span
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full",
+                    /current|now|available/i.test(o.current_availability)
+                      ? "bg-success"
+                      : "bg-warning"
+                  )}
+                />
+                {o.current_availability}
+              </span>
+            )}
+            {o.future_availability && o.future_availability.length <= 40 && (
+              <span className="text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-2.5 py-1">
+                {o.future_availability}
+              </span>
+            )}
             {!isMapped && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary bg-surface border border-border-light rounded-md px-2 py-1">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-tertiary bg-surface border border-border-light rounded-full px-2.5 py-1">
                 <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
                 Awaiting details
               </span>
             )}
           </div>
-          <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-text-primary">
-            {o.offering_name}
-          </h1>
-          {o.offering_description ? (
-            <p className="text-[14px] text-text-secondary mt-2 max-w-[680px] leading-relaxed whitespace-pre-line">
-              {o.offering_description}
-            </p>
-          ) : o.offeringType?.description ? (
-            // Until the per-offering description is written from sales materials,
-            // show the offering type's description for context (Suren's sheet).
-            // Label it so it reads as the type's shared description, not this
-            // offering's own — otherwise the generic text looks offering-specific.
-            <div className="mt-2 max-w-[680px]">
-              <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-text-tertiary mb-1">
-                About {o.offering_type}
-              </p>
-              <p className="text-[14px] text-text-secondary leading-relaxed">
-                {o.offeringType.description}
-              </p>
-            </div>
-          ) : null}
         </div>
-        {admin && (
-        <div className="shrink-0 flex items-center gap-2">
-          <DuplicateButton
-            offering={{
-              offering_type: o.offering_type,
-              offering_category: o.offering_category,
-              offering_name: o.offering_name,
-              offering_description: o.offering_description,
-              current_availability: o.current_availability,
-              future_availability: o.future_availability,
-              poc: o.poc,
-              customer_type_ids: raw.customer_type_ids,
-              market_ids: raw.market_ids,
-              materials: raw.materials.map((m) => ({
-                kind: m.kind,
-                label: m.label,
-                url: m.url,
-              })),
-            }}
-          />
-          <Link
-            href={`/offerings/${o.id}/edit`}
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-4 py-2 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
-          >
-            <Pencil size={14} strokeWidth={1.8} /> Edit offering
-          </Link>
-        </div>
-        )}
-      </div>
 
-      {/* Availability + comments */}
-      <div className="flex flex-wrap gap-2 mt-4">
-        {o.current_availability && (
-          <span
-            className={`text-[12px] font-medium rounded-md px-2.5 py-1 ${
-              /current|now|available/i.test(o.current_availability)
-                ? "text-success bg-success/10"
-                : "text-warning bg-warning/10"
-            }`}
-          >
-            {o.current_availability}
-          </span>
-        )}
-        {o.future_availability && o.future_availability.length <= 40 && (
-          <span className="text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2.5 py-1">
-            {o.future_availability}
-          </span>
-        )}
-        {o.poc && (
-          <span className="inline-flex items-center gap-1 text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2.5 py-1">
-            <UserRound size={12} strokeWidth={1.8} className="text-text-tertiary" />
-            POC: {o.poc}
-          </span>
-        )}
+        {/* All actions on one line (Anir: single line to save space) —
+            OfferingActions keeps its two + the admin buttons as `extra`. */}
+        <div className="shrink-0">
+          <OfferingActions
+            offeringId={o.id}
+            offeringName={o.offering_name}
+            customers={customerPickList}
+            extra={
+              admin ? (
+                <>
+                  <DuplicateButton
+                    offering={{
+                      offering_type: o.offering_type,
+                      offering_category: o.offering_category,
+                      offering_name: o.offering_name,
+                      offering_description: o.offering_description,
+                      current_availability: o.current_availability,
+                      future_availability: o.future_availability,
+                      poc: o.poc,
+                      customer_type_ids: raw.customer_type_ids,
+                      market_ids: raw.market_ids,
+                      materials: raw.materials.map((m) => ({
+                        kind: m.kind,
+                        label: m.label,
+                        url: m.url,
+                      })),
+                    }}
+                  />
+                  <Link
+                    href={`/offerings/${o.id}/edit`}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-medium rounded-md px-3 py-2 bg-white border border-border-light text-text-primary hover:bg-surface hover:border-blue-subtle transition-colors"
+                  >
+                    <Pencil size={14} strokeWidth={1.8} /> Edit offering
+                  </Link>
+                </>
+              ) : null
+            }
+          />
+        </div>
       </div>
-      {o.future_availability && o.future_availability.length > 40 && (
-        <p className="text-[12px] text-text-secondary mt-2 max-w-[680px] leading-relaxed">
-          <span className="font-medium text-text-tertiary">Availability — </span>
-          {o.future_availability}
-        </p>
-      )}
 
       {/* Overview | Reports (Suren's "I need a reports tab in offering") */}
       <div
         role="tablist"
         aria-label="Offering sections"
-        className="flex gap-8 border-b border-border-light mt-6 mb-2"
+        className="flex gap-8 border-b border-border-light mt-6"
       >
         {[
           { key: "overview", label: "Overview", href: `/offerings/${o.id}` },
@@ -253,214 +294,364 @@ export default async function OfferingDetailPage({
       {tab === "reports" ? (
         <OfferingReports report={report} offeringName={o.offering_name} />
       ) : (
-        <>
-
-      {/* Offering category — its plain-English description + the offering owner
-          (Suren's Jun 27 grouping). The category is a first-class object: this
-          links out to everything in the same category. */}
-      {o.offeringCategory &&
-        (o.offeringCategory.description || o.offeringCategory.owner) && (
-          <Card className="mt-5">
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                <Layers size={13} strokeWidth={2} className="text-blue-primary" />
-                {o.offeringCategory.name}
-              </h2>
-              <Link
-                href={`/offerings?cat=${o.offeringCategory.id}`}
-                className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline shrink-0"
-              >
-                See all in this category
-                <ChevronRight size={13} strokeWidth={2} />
-              </Link>
-            </div>
-            {o.offeringCategory.description && (
-              <p className="text-[13.5px] text-text-secondary leading-relaxed max-w-[680px] mt-2">
-                {o.offeringCategory.description}
-              </p>
-            )}
-            {o.offeringCategory.owner && (
-              <p className="inline-flex items-center gap-1.5 text-[12.5px] text-text-secondary mt-3">
-                <UserRound size={13} strokeWidth={1.8} className="text-text-tertiary" />
-                Offering owner: {o.offeringCategory.owner}
-              </p>
-            )}
-          </Card>
-        )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
-        {/* Customer types */}
-        <Card>
-          <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-            Applicable customer types ({o.customerTypes.length})
-          </h2>
-          {o.customerTypes.length === 0 ? (
-            admin ? (
-              <Link
-                href={`/offerings/${o.id}/edit`}
-                className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-              >
-                <Plus size={13} strokeWidth={2} /> Add customer types
-              </Link>
-            ) : (
-              <p className="text-[13px] text-text-tertiary">Not specified yet</p>
-            )
-          ) : (
-            <div className="space-y-3">
-              {CT_FAMILIES.map((fam) => {
-                const types = o.customerTypes.filter((c) => c.family === fam);
-                if (types.length === 0) return null;
-                return (
-                  <div key={fam}>
-                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
-                      {fam}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {types.map((c) => (
-                        <Tooltip
-                          key={c.id}
-                          label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
-                          side="top"
-                          align="left"
-                        >
-                          <Link
-                            href={`/offerings?type=${c.id}`}
-                            className="inline-block text-[12px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2 py-1 transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                          >
-                            {c.size}
-                          </Link>
-                        </Tooltip>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-
-        {/* Markets */}
-        <Card>
-          <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-            Applicable markets ({o.markets.length})
-          </h2>
-          {o.markets.length === 0 ? (
-            admin ? (
-              <Link
-                href={`/offerings/${o.id}/edit`}
-                className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-              >
-                <Plus size={13} strokeWidth={2} /> Add markets
-              </Link>
-            ) : (
-              <p className="text-[13px] text-text-tertiary">Not specified yet</p>
-            )
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {o.markets.map((m) => (
-                <Link
-                  key={m.id}
-                  href={`/offerings?market=${m.id}`}
-                  className="inline-block text-[12px] font-medium text-text-primary bg-surface border border-border-light rounded-md px-2 py-1 transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                >
-                  {m.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Sales materials */}
-      <Card className="mt-4">
-        <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-          Sales materials ({o.materials.length})
-        </h2>
-        {o.materials.length === 0 ? (
-          admin ? (
-            <Link
-              href={`/offerings/${o.id}/edit`}
-              className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
+          {/* ---------------------------------------------------- MAIN column */}
+          <div className="space-y-5">
+            {/* Summary / About — labelled "About {type}" when the offering has
+                no description of its own (falls back to the type's). */}
+            <SectionCard
+              title={o.offering_description ? "Summary" : o.offeringType?.description ? `About ${o.offering_type}` : "Summary"}
+              icon={AlignLeft}
             >
-              <Plus size={13} strokeWidth={2} /> Add videos, presentations, white
-              papers or pricing
-            </Link>
-          ) : (
-            <p className="text-[13px] text-text-tertiary">No materials yet</p>
-          )
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {KIND_ORDER.flatMap((kind) =>
-              o.materials
-                .filter((m) => m.kind === kind)
-                .map((m) => {
-                  const Icon = MATERIAL_ICON[kind];
-                  return (
-                    <a
-                      key={m.id}
-                      href={m.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center gap-3 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+              {o.offering_description ? (
+                <CollapsibleDescription text={o.offering_description} />
+              ) : o.offeringType?.description ? (
+                <CollapsibleDescription text={o.offeringType.description} />
+              ) : (
+                <p className="text-[13px] text-text-tertiary">
+                  No description yet — it comes from this offering&apos;s sales
+                  materials.
+                </p>
+              )}
+              {o.future_availability && o.future_availability.length > 40 && (
+                <p className="text-[12.5px] text-text-secondary leading-relaxed mt-3 pt-3 border-t border-border-light">
+                  <span className="font-medium text-text-tertiary">
+                    Availability —{" "}
+                  </span>
+                  {o.future_availability}
+                </p>
+              )}
+            </SectionCard>
+
+            {/* Commercials — inline summary, deep dive on the Reports tab */}
+            <SectionCard
+              title="Commercials"
+              icon={BarChart3}
+              action={
+                report.customerCount > 0 ? (
+                  <Link
+                    href={`/offerings/${o.id}?tab=reports`}
+                    className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+                  >
+                    View full report
+                    <ChevronRight size={13} strokeWidth={2} />
+                  </Link>
+                ) : null
+              }
+            >
+              {report.customerCount === 0 ? (
+                <p className="text-[13px] text-text-tertiary">
+                  No revenue logged yet — add it on a customer&apos;s Offerings
+                  tab and it rolls up here.
+                </p>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+                  <dl className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
+                    <div>
+                      <dd className="text-[24px] font-bold leading-none tnum text-text-primary">
+                        {formatMoney(report.totalRevenue)}
+                      </dd>
+                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
+                        Revenue
+                      </dt>
+                    </div>
+                    <div>
+                      <dd className="text-[24px] font-bold leading-none tnum text-text-primary">
+                        {report.totalLicenses}
+                      </dd>
+                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
+                        Users
+                      </dt>
+                    </div>
+                    <div>
+                      <dd className="text-[24px] font-bold leading-none tnum text-text-primary">
+                        {report.customerCount}
+                      </dd>
+                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
+                        Customers
+                      </dt>
+                    </div>
+                    <div>
+                      <dd className="text-[24px] font-bold leading-none tnum text-text-primary">
+                        {report.lineCount}
+                      </dd>
+                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
+                        Contracts
+                      </dt>
+                    </div>
+                  </dl>
+                  {commercialsBars.length > 0 && (
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <DonutChart
+                        segments={commercialsBars}
+                        size={116}
+                        thickness={13}
+                        centerLabel={formatMoney(report.totalRevenue)}
+                        centerSub="total"
+                      />
+                      <Legend
+                        items={commercialsBars.map((b) => ({
+                          label: b.label,
+                          color: b.color,
+                          value: formatMoney(b.value),
+                        }))}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Sales materials */}
+            <SectionCard title={`Sales materials (${o.materials.length})`} icon={FolderOpen}>
+              {o.materials.length === 0 ? (
+                admin ? (
+                  <Link
+                    href={`/offerings/${o.id}/edit`}
+                    className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+                  >
+                    <Plus size={13} strokeWidth={2} /> Add videos, presentations,
+                    white papers or pricing
+                  </Link>
+                ) : (
+                  <p className="text-[13px] text-text-tertiary">No materials yet</p>
+                )
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {KIND_ORDER.flatMap((kind) =>
+                    o.materials
+                      .filter((m) => m.kind === kind)
+                      .map((m) => {
+                        const Icon = MATERIAL_ICON[kind];
+                        return (
+                          <a
+                            key={m.id}
+                            href={m.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex items-center gap-3 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+                          >
+                            <span className="w-9 h-9 rounded-md bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                              <Icon size={16} strokeWidth={1.8} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
+                                {m.label}
+                              </span>
+                              <span className="block text-[11px] text-text-tertiary">
+                                {MATERIAL_META[kind].label}
+                              </span>
+                            </span>
+                            <ExternalLink
+                              size={14}
+                              strokeWidth={1.7}
+                              className="text-text-tertiary group-hover:text-blue-primary shrink-0"
+                            />
+                          </a>
+                        );
+                      })
+                  )}
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Cross-sell — related offerings in the same family */}
+            {related.length > 0 && (
+              <SectionCard
+                title={`Cross-sell — more in ${o.offering_type} (${related.length})`}
+                icon={Layers}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {related.map((r) => (
+                    <Link
+                      key={r.id}
+                      href={`/offerings/${r.id}`}
+                      className="group flex items-center justify-between gap-2 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
                     >
-                      <span className="w-9 h-9 rounded-md bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                        <Icon size={16} strokeWidth={1.8} />
-                      </span>
-                      <span className="min-w-0 flex-1">
+                      <span className="min-w-0">
                         <span className="block text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
-                          {m.label}
+                          {r.offering_name}
                         </span>
-                        <span className="block text-[11px] text-text-tertiary">
-                          {MATERIAL_META[kind].label}
-                        </span>
+                        {r.current_availability && (
+                          <span className="block text-[11px] text-text-tertiary">
+                            {r.current_availability}
+                          </span>
+                        )}
                       </span>
-                      <ExternalLink
-                        size={14}
-                        strokeWidth={1.7}
+                      <ChevronRight
+                        size={16}
+                        strokeWidth={1.6}
                         className="text-text-tertiary group-hover:text-blue-primary shrink-0"
                       />
-                    </a>
-                  );
-                })
+                    </Link>
+                  ))}
+                </div>
+              </SectionCard>
             )}
           </div>
-        )}
-      </Card>
 
-      {/* Related offerings (same type) */}
-      {related.length > 0 && (
-        <Card className="mt-4">
-          <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-            More in {o.offering_type} ({related.length})
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {related.map((r) => (
-              <Link
-                key={r.id}
-                href={`/offerings/${r.id}`}
-                className="group flex items-center justify-between gap-2 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+          {/* ---------------------------------------------------- SIDE rail */}
+          <div className="space-y-5">
+            {/* Internal owner — only when a real person is on file */}
+            {ownerName && (
+              <SectionCard title="Internal owner" icon={UserRound}>
+                <div className="flex items-center gap-3">
+                  <Avatar name={ownerName} className="w-10 h-10 text-[14px]" />
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold text-text-primary truncate">
+                      {ownerName}
+                    </p>
+                    <p className="text-[12.5px] text-text-secondary truncate">
+                      {ownerRole}
+                    </p>
+                  </div>
+                </div>
+              </SectionCard>
+            )}
+
+            {/* Category — its plain-English description + the family link */}
+            {o.offeringCategory && (
+              <SectionCard title="Category" icon={Layers}>
+                <p className="text-[13.5px] font-semibold text-text-primary">
+                  {o.offeringCategory.name}
+                </p>
+                {o.offeringCategory.description && (
+                  <p className="text-[13px] text-text-secondary leading-relaxed mt-1.5">
+                    {o.offeringCategory.description}
+                  </p>
+                )}
+                {o.offeringCategory.owner && (
+                  <p className="inline-flex items-center gap-1.5 text-[12.5px] text-text-secondary mt-2.5">
+                    <UserRound
+                      size={13}
+                      strokeWidth={1.8}
+                      className="text-text-tertiary"
+                    />
+                    Offering owner: {o.offeringCategory.owner}
+                  </p>
+                )}
+                <Link
+                  href={`/offerings?cat=${o.offeringCategory.id}`}
+                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline mt-3"
+                >
+                  See all in this category
+                  <ChevronRight size={13} strokeWidth={2} />
+                </Link>
+              </SectionCard>
+            )}
+
+            {/* Target segments — customer types grouped by family */}
+            <SectionCard title="Target segments" icon={Building2}>
+              {o.customerTypes.length === 0 ? (
+                admin ? (
+                  <Link
+                    href={`/offerings/${o.id}/edit`}
+                    className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+                  >
+                    <Plus size={13} strokeWidth={2} /> Add customer types
+                  </Link>
+                ) : (
+                  <p className="text-[13px] text-text-tertiary">Not specified yet</p>
+                )
+              ) : (
+                <div className="space-y-3">
+                  {CT_FAMILIES.map((fam) => {
+                    const types = o.customerTypes.filter((c) => c.family === fam);
+                    return (
+                      <div key={fam}>
+                        <p className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
+                          {fam}
+                        </p>
+                        {types.length === 0 ? (
+                          <span className="text-[12px] text-text-tertiary">
+                            Not applicable
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {types.map((c) => (
+                              <Tooltip
+                                key={c.id}
+                                label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
+                                side="top"
+                                align="left"
+                              >
+                                <Link
+                                  href={`/offerings?type=${c.id}`}
+                                  style={{
+                                    background: sizeStyle(c.size).bg,
+                                    color: sizeStyle(c.size).color,
+                                  }}
+                                  className="inline-block text-[12px] font-semibold rounded-md px-2 py-1 transition-opacity hover:opacity-80"
+                                >
+                                  {c.size}
+                                </Link>
+                              </Tooltip>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Markets */}
+            <SectionCard title={`Markets (${o.markets.length})`} icon={Globe}>
+              {o.markets.length === 0 ? (
+                admin ? (
+                  <Link
+                    href={`/offerings/${o.id}/edit`}
+                    className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
+                  >
+                    <Plus size={13} strokeWidth={2} /> Add markets
+                  </Link>
+                ) : (
+                  <p className="text-[13px] text-text-tertiary">Not specified yet</p>
+                )
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {o.markets.map((m) => {
+                    const st = marketStyle(m.name);
+                    return (
+                      <Link
+                        key={m.id}
+                        href={`/offerings?market=${m.id}`}
+                        style={{ background: st.bg, color: st.color }}
+                        className="inline-block text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
+                      >
+                        {m.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Current customers — who already uses it (from the revenue book) */}
+            {report.customers.length > 0 && (
+              <SectionCard
+                title={`Current customers (${report.customers.length})`}
+                icon={Building2}
               >
-                <span className="min-w-0">
-                  <span className="block text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
-                    {r.offering_name}
-                  </span>
-                  {r.current_availability && (
-                    <span className="block text-[11px] text-text-tertiary">
-                      {r.current_availability}
-                    </span>
-                  )}
-                </span>
-                <ChevronRight
-                  size={16}
-                  strokeWidth={1.6}
-                  className="text-text-tertiary group-hover:text-blue-primary shrink-0"
-                />
-              </Link>
-            ))}
+                <div className="space-y-2.5">
+                  {report.customers.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/customers/${c.id}?tab=offerings`}
+                      className="group flex items-center gap-2.5"
+                    >
+                      <CompanyLogo name={c.name} className="w-7 h-7 text-[10px] shrink-0" />
+                      <span className="text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
+                        {c.name}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
           </div>
-        </Card>
-      )}
-        </>
+        </div>
       )}
     </div>
   );

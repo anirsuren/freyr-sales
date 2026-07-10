@@ -9,6 +9,7 @@ import {
   Pin,
   Newspaper,
   FileText,
+  CalendarClock,
   BarChart3,
   Presentation,
   ClipboardList,
@@ -19,6 +20,8 @@ import {
   Check,
   Pencil,
   Users,
+  Mail,
+  Phone,
   Briefcase,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -27,12 +30,15 @@ import {
   CustomerOfferingsTab,
   type TabOffering,
 } from "@/components/customers/CustomerOfferingsTab";
-import { AskAgentDrawer } from "@/components/customers/AskAgentDrawer";
 import { CustomerAnalyzePanel } from "@/components/customers/CustomerAnalyzePanel";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
+import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
+import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { InfoHint } from "@/components/ui/InfoHint";
+import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
@@ -50,7 +56,6 @@ import { nextBestActions, weeklyOutcomeSummary } from "@/lib/agent";
 import { AgentActions } from "@/components/agent/AgentActions";
 import { AgentRunPanel } from "@/components/agent/AgentRunPanel";
 import { AgentRunHistory } from "@/components/agent/AgentRunHistory";
-import { AccountAgentChat } from "@/components/agent/AccountAgentChat";
 import { AccountBriefing } from "@/components/agent/AccountBriefing";
 import { TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
 import type {
@@ -117,24 +122,29 @@ export function CustomerTabs({
   };
 }) {
   const { toast } = useToast();
-  const [tab, setTab] = useState("overview");
-  // The Ask Agent drawer — always one click away, over any tab.
-  const [askOpen, setAskOpen] = useState(false);
+  const [tab, setTabState] = useState("overview");
+  // Persist the active tab in the URL (?tab=) so it's always clear which tab
+  // you're on AND browser-back from a deal/session returns to the SAME tab, not
+  // Overview (Suren, Jul 8). replaceState keeps tab-switches out of history.
+  const setTab = (key: string) => {
+    setTabState(key);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", key);
+      window.history.replaceState(null, "", url.toString());
+    } catch {}
+  };
   // Deep-link support (?tab=offerings etc.) — read after mount via
   // window.location so SSR markup stays identical (same pattern as the intake
   // prefill; avoids the useSearchParams Suspense requirement). ?tab=ask now
-  // opens the drawer, keeping old links working.
+  // opens the always-on agent dock, keeping old links working.
   useEffect(() => {
     try {
       const wanted = new URLSearchParams(window.location.search).get("tab");
-      if (wanted === "ask") setAskOpen(true);
+      if (wanted === "ask") window.dispatchEvent(new CustomEvent("freyr:ask-agent"));
       else if (wanted && TABS.some((t) => t.key === wanted)) setTab(wanted);
     } catch {}
   }, []);
-  // A deliverable request handed to the agent to draft (see the Deliverables
-  // rail) — pre-loaded into the drawer's composer.
-  const [askPrefill, setAskPrefill] = useState("");
-
   // editable account fields (#55 owner, #59 competitor, #60 notes/attachments).
   // Default to the deterministic rep the pipeline + report already attribute this
   // account to (ownerFor), so it never reads a bare "Unassigned" — every account
@@ -145,6 +155,7 @@ export function CustomerTabs({
   const [compDraft, setCompDraft] = useState(customer.competitor || "");
   const [notes, setNotes] = useState<AccountNote[]>(customer.notes_log || []);
   const [noteDraft, setNoteDraft] = useState("");
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [atts, setAtts] = useState<AccountAttachment[]>(
     customer.attachments || []
   );
@@ -363,6 +374,8 @@ export function CustomerTabs({
           ))}
         </div>
 
+        {/* Keyed on `tab` so the panel re-mounts and animates on every switch. */}
+        <div key={tab} className="tab-panel">
         {tab === "overview" && (
           <div className="space-y-6">
             {/* Identity FIRST (Anir's audit): who this account IS leads the
@@ -428,19 +441,53 @@ export function CustomerTabs({
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {contacts.slice(0, 4).map((c) => (
-                    <Link key={c.id} href={`/contacts/${c.id}`}>
-                      <Card className="p-3 hover:border-blue-subtle transition-colors flex items-center gap-3">
-                        <Avatar name={c.full_name} className="w-9 h-9 text-[13px]" />
-                        <div className="min-w-0">
-                          <p className="text-[14px] font-semibold text-text-primary truncate">
-                            {c.full_name}
+                    // Stretched-link card: whole card → contact; email / phone /
+                    // LinkedIn stay their own links (no nested anchors). Now shows
+                    // the real contact details Suren asked for (Jul 8).
+                    <Card key={c.id} className="relative p-3.5 hover:border-blue-subtle transition-colors">
+                      <div className="flex items-start gap-3">
+                        <Avatar name={c.full_name} className="w-10 h-10 text-[13px] shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="flex items-center gap-1.5 text-[14px] font-semibold text-text-primary">
+                            <Link
+                              href={`/contacts/${c.id}`}
+                              aria-label={`View ${c.full_name}`}
+                              className="min-w-0 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary"
+                            >
+                              <span className="block truncate">{c.full_name}</span>
+                            </Link>
+                            <span className="relative z-10 shrink-0">
+                              <LinkedInLink url={c.linkedin_url} size={14} />
+                            </span>
                           </p>
                           <p className="text-[12px] text-text-secondary truncate">
                             {c.job_title}
                           </p>
+                          {(c.email || c.phone) && (
+                            <div className="mt-2 flex flex-col gap-1">
+                              {c.email && (
+                                <a
+                                  href={`mailto:${c.email}`}
+                                  className="relative z-10 flex items-center gap-1.5 text-[12px] text-text-tertiary hover:text-blue-primary w-fit max-w-full"
+                                >
+                                  <Mail size={12.5} strokeWidth={1.6} className="shrink-0" />
+                                  <span className="truncate">{c.email}</span>
+                                </a>
+                              )}
+                              {c.phone && (
+                                <a
+                                  href={`tel:${c.phone}`}
+                                  className="relative z-10 flex items-center gap-1.5 text-[12px] text-text-tertiary hover:text-blue-primary w-fit"
+                                >
+                                  <Phone size={12.5} strokeWidth={1.6} className="shrink-0" />
+                                  <span className="tnum">{c.phone}</span>
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      </Card>
-                    </Link>
+                      </div>
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -516,24 +563,42 @@ export function CustomerTabs({
         {tab === "contacts" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {contacts.map((c) => (
-              <Link key={c.id} href={`/contacts/${c.id}`}>
-                <Card className="hover:border-blue-subtle transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={c.full_name} className="w-10 h-10 text-[14px]" />
-                    <div className="min-w-0">
-                      <p className="text-[15px] font-semibold text-text-primary truncate">
-                        {c.full_name}
-                      </p>
-                      <p className="text-[13px] text-text-secondary truncate">{c.job_title}</p>
-                    </div>
+              // Stretched-link card: the name link's ::after covers the whole
+              // card (whole-card click → contact), while the LinkedIn icon stays
+              // its own link — no nested anchors. Mirrors the main Contacts cards.
+              <Card key={c.id} className="relative hover:border-blue-subtle transition-colors">
+                <div className="flex items-center gap-3">
+                  <Avatar name={c.full_name} className="w-10 h-10 text-[14px]" />
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
+                      <Link
+                        href={`/contacts/${c.id}`}
+                        aria-label={`View ${c.full_name}`}
+                        className="min-w-0 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary"
+                      >
+                        <span className="block truncate">{c.full_name}</span>
+                      </Link>
+                      <span className="relative z-10 shrink-0">
+                        <LinkedInLink url={c.linkedin_url} size={14} />
+                      </span>
+                    </p>
+                    <p className="text-[13px] text-text-secondary truncate">{c.job_title}</p>
                   </div>
-                  {c.role_bucket && (
-                    <div className="mt-3">
-                      <Badge label={c.role_bucket} bg="rgba(0,113,227,0.10)" color="#0040A0" className="!normal-case tracking-normal" />
-                    </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  {c.role_bucket ? (
+                    <Badge label={c.role_bucket} bg="rgba(0,113,227,0.10)" color="#0040A0" className="!normal-case tracking-normal shrink-0" />
+                  ) : (
+                    <span />
                   )}
-                </Card>
-              </Link>
+                  {c.email && (
+                    <span className="flex items-center gap-1.5 min-w-0 text-[12px] text-text-tertiary">
+                      <Mail size={12} strokeWidth={1.6} className="shrink-0" />
+                      <span className="truncate">{c.email}</span>
+                    </span>
+                  )}
+                </div>
+              </Card>
             ))}
             {contacts.length === 0 && (
               <EmptyState
@@ -634,21 +699,58 @@ export function CustomerTabs({
             <div className="divide-y divide-border-light">
               {sessions.map((s) => {
                 const svc = (s.recommended_services || []) as RecommendedService[];
+                // What actually happened on this session + where it stands in
+                // review — so the row reads like the main Sessions table, not just
+                // a title + date.
+                const outcome = interactions.find(
+                  (i) => i.pitch_session_id === s.id
+                )?.outcome;
+                const review = s.review_status
+                  ? REVIEW_META[s.review_status]
+                  : null;
+                const sessContact = contacts.find((c) => c.id === s.contact_id);
                 return (
                   <Link
                     key={s.id}
                     href={`/sessions/${s.id}`}
-                    className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-surface transition-colors"
+                    className="flex items-center gap-3.5 px-5 py-4 hover:bg-surface transition-colors group"
                   >
-                    <div>
-                      <p className="text-[14px] font-medium text-text-primary">
+                    <span className="w-10 h-10 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                      <CalendarClock size={19} strokeWidth={1.8} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[14px] font-semibold text-text-primary truncate">
                         {svc[0]?.service_name || "Pitch session"}
                       </p>
-                      <p className="text-[12px] text-text-tertiary tnum">
+                      <p className="text-[12px] text-text-tertiary">
                         {formatDate(s.created_at)}
+                        {svc.length > 1 && (
+                          <span> · {svc.length} offerings pitched</span>
+                        )}
+                        {sessContact && <span> · for {sessContact.full_name}</span>}
                       </p>
                     </div>
-                    <ArrowRight size={16} className="text-text-tertiary" strokeWidth={1.5} />
+                    <div className="flex items-center gap-2 shrink-0">
+                      {outcome && <OutcomeBadge outcome={outcome} />}
+                      {review && (
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
+                          style={{ background: review.bg, color: review.color }}
+                        >
+                          {review.label}
+                        </span>
+                      )}
+                      {!outcome && !review && (
+                        <span className="text-[11px] font-semibold text-text-secondary bg-surface border border-border-light rounded-full px-2.5 py-1">
+                          Pitch ready
+                        </span>
+                      )}
+                      <ArrowRight
+                        size={16}
+                        className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform"
+                        strokeWidth={1.5}
+                      />
+                    </div>
                   </Link>
                 );
               })}
@@ -665,53 +767,104 @@ export function CustomerTabs({
 
         {tab === "notes" && (
           <div className="space-y-6">
-            <Card>
-              <h3 className="text-[15px] font-semibold text-text-primary mb-3">
-                Add a note
-              </h3>
+            {/* Header + single "Add note" button. The composer is a popup now
+                (Suren, Jul 8) — no always-open textarea box cluttering the tab. */}
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[15px] font-semibold text-text-primary">
+                  Notes
+                </h3>
+                <p className="text-[12px] text-text-tertiary mt-0.5">
+                  Call summaries, next steps, and internal context.
+                </p>
+              </div>
+              <Button
+                onClick={() => setNoteModalOpen(true)}
+                className="px-3.5 py-2 text-[13px] shrink-0"
+              >
+                <Plus size={15} strokeWidth={2.2} />
+                Add note
+              </Button>
+            </div>
+
+            {notes.length === 0 ? (
+              <Card className="py-10 flex flex-col items-center text-center">
+                <span className="w-11 h-11 rounded-full bg-blue-light flex items-center justify-center mb-3">
+                  <FileText size={20} strokeWidth={1.7} className="text-blue-primary" />
+                </span>
+                <p className="text-[14px] font-semibold text-text-primary">
+                  No notes yet
+                </p>
+                <p className="text-[13px] text-text-secondary mt-1 mb-4 max-w-xs">
+                  Jot down a call summary, a next step, or anything the team should
+                  know about this account.
+                </p>
+                <Button
+                  onClick={() => setNoteModalOpen(true)}
+                  variant="secondary"
+                  className="px-3.5 py-2 text-[13px]"
+                >
+                  <Plus size={15} strokeWidth={2.2} />
+                  Add the first note
+                </Button>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {notes.map((n) => (
+                  <Card key={n.id} className="p-4">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Avatar name={n.author} className="w-6 h-6 text-[11px]" />
+                      <span className="text-[13px] font-semibold text-text-primary">
+                        {n.author}
+                      </span>
+                      <span className="text-[12px] text-text-tertiary tnum">
+                        · {formatDate(n.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-[14px] text-text-secondary leading-relaxed whitespace-pre-wrap">
+                      {n.body}
+                    </p>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Add-note popup */}
+            <Modal
+              open={noteModalOpen}
+              onClose={() => setNoteModalOpen(false)}
+              title="Add a note"
+            >
               <textarea
                 value={noteDraft}
                 onChange={(e) => setNoteDraft(e.target.value)}
                 placeholder="Log a call summary, next step, or internal context…"
-                rows={3}
-                className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[14px] outline-none focus:border-blue-primary resize-y"
+                rows={5}
+                autoFocus
+                className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-blue-primary resize-y"
               />
-              <div className="flex justify-end mt-3">
+              <div className="flex justify-end gap-2 mt-4">
                 <Button
-                  onClick={addNote}
+                  variant="secondary"
+                  onClick={() => setNoteModalOpen(false)}
+                  className="px-4 py-2 text-[13px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    await addNote();
+                    setNoteModalOpen(false);
+                  }}
                   loading={busy}
                   disabled={!noteDraft.trim()}
                   className="px-4 py-2 text-[13px]"
                 >
                   <Plus size={15} strokeWidth={2.2} />
-                  Add note
+                  Save note
                 </Button>
               </div>
-            </Card>
-
-            <div className="space-y-3">
-              {notes.length === 0 && (
-                <p className="text-[13px] text-text-secondary">
-                  No notes yet. Add the first one above.
-                </p>
-              )}
-              {notes.map((n) => (
-                <Card key={n.id} className="p-4">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <Avatar name={n.author} className="w-6 h-6 text-[11px]" />
-                    <span className="text-[13px] font-semibold text-text-primary">
-                      {n.author}
-                    </span>
-                    <span className="text-[12px] text-text-tertiary tnum">
-                      · {formatDate(n.created_at)}
-                    </span>
-                  </div>
-                  <p className="text-[14px] text-text-secondary leading-relaxed whitespace-pre-wrap">
-                    {n.body}
-                  </p>
-                </Card>
-              ))}
-            </div>
+            </Modal>
 
             <Card>
               <h3 className="text-[15px] font-semibold text-text-primary mb-1">
@@ -782,22 +935,15 @@ export function CustomerTabs({
         {tab === "activity" && (
           <InteractionTimeline interactions={interactions} />
         )}
+        </div>
       </div>
 
       {/* Right rail — decision-first: the agent entry, the health picture,
           then the working cards. One glance, no wall of boxes (Anir, Jul 3). */}
       <aside className="space-y-4">
-        {/* The agent is ALWAYS one click away — opens the right-side drawer */}
-        <button
-          onClick={() => {
-            setAskPrefill("");
-            setAskOpen(true);
-          }}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-primary text-white text-[13.5px] font-semibold px-4 py-2.5 hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-        >
-          <Sparkles size={15} strokeWidth={2} />
-          Ask the agent
-        </button>
+        {/* No standalone "Ask the agent" button — the always-on dock (bottom
+            right, by the notification bell) is the single agent entry now
+            (Anir, Jul 8). Draft-it-for-me actions still open the drawer. */}
 
         {/* Account snapshot — health ring + trend + why + the glance numbers,
             one visual card instead of two stacked text boxes. */}
@@ -968,28 +1114,17 @@ export function CustomerTabs({
               <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
                 Owner
               </label>
-              <div className="flex items-center gap-2">
-                {owner && (
-                  <Avatar name={owner} className="w-7 h-7 text-[11px] shrink-0" />
-                )}
-                <select
-                  aria-label="Account owner"
-                  value={owner}
-                  onChange={(e) => assignOwner(e.target.value)}
-                  className="flex-1 bg-surface border border-border rounded-md px-2.5 py-1.5 text-[13px] outline-none focus:border-blue-primary"
-                >
-                  <option value="">Unassigned</option>
-                  {TEAM.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <PeopleSelect
+                value={owner}
+                options={TEAM}
+                onChange={assignOwner}
+                placeholder="Unassigned"
+              />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
+              <label className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
                 Competitor / incumbent
+                <InfoHint text="Who this account currently uses for this work, or who you're up against to win it (their existing vendor or a rival you're displacing). Knowing the incumbent shapes how you pitch." />
               </label>
               {editingComp ? (
                 <div className="flex items-center gap-1.5">
@@ -1039,7 +1174,7 @@ export function CustomerTabs({
             Deliverables
           </h3>
           <p className="text-[11.5px] text-text-tertiary -mt-2 mb-3">
-            One click — the agent drafts it in the drawer.
+            One click — the agent drafts it right in your chat.
           </p>
           <div className="grid grid-cols-2 gap-2">
             {DELIVERABLES.map((d) => {
@@ -1047,10 +1182,13 @@ export function CustomerTabs({
               return (
                 <button
                   key={d.label}
-                  onClick={() => {
-                    setAskPrefill(`${d.ask} ${customer.company_name}`);
-                    setAskOpen(true);
-                  }}
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("freyr:ask-agent", {
+                        detail: { prompt: `${d.ask} ${customer.company_name}` },
+                      })
+                    )
+                  }
                   className="flex flex-col items-start gap-1.5 px-2.5 py-2.5 rounded-lg border border-border-light text-[12.5px] font-medium text-text-primary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors text-left"
                 >
                   <Icon size={16} strokeWidth={1.6} className="text-blue-primary" />
@@ -1061,34 +1199,6 @@ export function CustomerTabs({
           </div>
         </Card>
       </aside>
-
-      {/* The Ask Agent drawer — same chat, reachable from every tab */}
-      <AskAgentDrawer
-        open={askOpen}
-        onClose={() => setAskOpen(false)}
-        company={customer.company_name}
-        actions={
-          offeringsCatalog ? (
-            <CustomerAnalyzePanel
-              variant="action"
-              customerId={customer.id}
-              customerType={customer.customer_type ?? null}
-              ownership={customer.ownership ?? null}
-              revenue={customer.revenue ?? null}
-              analyzed={!!customer.analyzed_at}
-              typeOptions={offeringsCatalog.typeOptions}
-              applicableOfferings={applicableSlim}
-            />
-          ) : undefined
-        }
-      >
-        <AccountAgentChat
-          context={agentContext}
-          customerId={customer.id}
-          initialInput={askPrefill}
-          embedded
-        />
-      </AskAgentDrawer>
 
       {/* New deal modal (#58) */}
       <Modal open={showDeal} onClose={() => setShowDeal(false)} title="New deal">
