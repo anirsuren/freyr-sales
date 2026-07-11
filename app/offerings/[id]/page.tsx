@@ -408,7 +408,7 @@ export default async function OfferingDetailPage({
                     </p>
                     {licenseBars.length > 0 && (
                       <div className="mt-3 flex-1 flex items-end">
-                        <BarChart data={licenseBars} height={72} format="number" />
+                        <BarChart data={licenseBars} height={72} format="number" unit="seats" />
                       </div>
                     )}
                   </div>

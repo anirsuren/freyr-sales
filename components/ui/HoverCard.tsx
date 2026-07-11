@@ -1,13 +1,16 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 // A hover popover that STAYS OPEN while the cursor is over the popover itself
-// (Suren: "when I hover onto the pop-up it shouldn't disappear"). Two things make
-// that work: the popover is interactive (no pointer-events-none) and it owns the
-// gap between it and the trigger as PADDING (not a dead margin), plus a small
-// close delay so crossing that gap never dismisses it.
+// (Suren: "when I hover onto the pop-up it shouldn't disappear"), and that can
+// NEVER be clipped: the popover renders in a body portal at a fixed position,
+// so `overflow-hidden` ancestors (table cards, grids) can't cut it off — the
+// exact bug the team-roster popup hit ("Engaged" clipped to "d"). Same cure as
+// the chart tooltips (#146). A small close delay + the popover's own hover
+// handlers keep it open while the cursor crosses the gap.
 export function HoverCard({
   children,
   content,
@@ -21,47 +24,78 @@ export function HoverCard({
   width?: number;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{
+    left: number;
+    top?: number;
+    bottom?: number;
+  } | null>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function place() {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // Center on the trigger, clamped inside the viewport.
+    const left = Math.max(8, Math.min(vw - width - 8, r.left + r.width / 2 - width / 2));
+    // Honor the requested side, but flip when there's clearly no room.
+    const below = vh - r.bottom;
+    const above = r.top;
+    const wantBottom = side === "bottom" ? below >= 260 || below >= above : below > above && above < 260;
+    if (wantBottom) setPos({ left, top: r.bottom });
+    else setPos({ left, bottom: vh - r.top });
+  }
 
   function show() {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     if (showTimer.current) clearTimeout(showTimer.current);
-    showTimer.current = setTimeout(() => setOpen(true), 120);
+    showTimer.current = setTimeout(place, 120);
   }
   function scheduleHide() {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setOpen(false), 110);
+    hideTimer.current = setTimeout(() => setPos(null), 110);
   }
 
   return (
     <div
-      // Elevate the whole wrapper while open so the popover paints above the next
-      // card (an un-z-indexed subtree stacks in DOM order).
-      className={cn("relative", open ? "z-50" : "z-0", className)}
+      ref={triggerRef}
+      className={cn("relative", className)}
       onMouseEnter={show}
       onMouseLeave={scheduleHide}
     >
       {children}
-      {open && (
-        <div
-          className={cn(
-            // pt/pb (not mt/mb) so the gap to the trigger is inside this
-            // hoverable element — the cursor never crosses a dead margin.
-            "absolute left-1/2 -translate-x-1/2 z-50",
-            side === "bottom" ? "top-full pt-2" : "bottom-full pb-2"
-          )}
-          style={{ width }}
-          onMouseEnter={show}
-          onMouseLeave={scheduleHide}
-        >
-          <div className="hovercard-in rounded-xl border border-border-light bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18)] p-4">
-            {content}
-          </div>
-        </div>
-      )}
+      {pos != null &&
+        createPortal(
+          <div
+            className="fixed z-[9999]"
+            style={{
+              left: pos.left,
+              top: pos.top,
+              bottom: pos.bottom,
+              width,
+              // Never taller than the space it opened into — scroll inside.
+              maxHeight:
+                pos.top != null
+                  ? `calc(100vh - ${pos.top + 12}px)`
+                  : `calc(100vh - ${pos.bottom! + 12}px)`,
+            }}
+            onMouseEnter={show}
+            onMouseLeave={scheduleHide}
+          >
+            {/* pt/pb (not mt/mb) so the gap to the trigger is inside this
+                hoverable element — the cursor never crosses a dead margin. */}
+            <div className={cn("h-full", pos.top != null ? "pt-2" : "pb-2")}>
+              <div className="hovercard-in max-h-full overflow-y-auto rounded-xl border border-border-light bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18)] p-4">
+                {content}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

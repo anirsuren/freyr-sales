@@ -331,7 +331,7 @@ function seed(): MockStore {
       additional_context: s.note || null,
       review_status: s.review,
       reviewed_at: s.review === "approved" ? iso(s.days) : null,
-      created_at: iso(s.days),
+      created_at: isoAt(s.days, s.id),
     });
     if (s.outcome) {
       interactions.push({

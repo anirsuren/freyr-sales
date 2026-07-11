@@ -324,7 +324,11 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           pop-up like the grid") — the rep's mix + headline stats. */}
                       <HoverCard
                         side="bottom"
-                        width={300}
+                        // Wide two-column popup — 300px clipped the legend's
+                        // share bars (Suren: "the bars are bleeding"). Left =
+                        // the mix + headline stats, right = the deals + whether
+                        // they're actually working them (activity trend).
+                        width={620}
                         content={
                           <div>
                             <div className="flex items-center gap-2.5 mb-2.5">
@@ -349,44 +353,59 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             <div className="h-1.5 rounded-full bg-surface overflow-hidden mb-3">
                               <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, background: ac }} />
                             </div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">
-                              Pipeline mix by stage
-                            </p>
-                            <div className="mb-3">
-                              <StageDonut rep={r} size={72} />
-                            </div>
-                            <TripleStat rep={r} />
-                            {topOpenDeals(r).length > 0 && (
-                              <div className="mt-2.5 pt-2.5 border-t border-border-light">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
-                                  Top open deals
+                            <div className="grid grid-cols-2 gap-5">
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">
+                                  Pipeline mix by stage
                                 </p>
-                                <div className="space-y-1.5">
-                                  {topOpenDeals(r).map((d, i) => (
-                                    <div
-                                      key={`${d.company}-${d.contact}-${i}`}
-                                      className="flex items-center gap-2 text-[12px]"
-                                    >
-                                      <CompanyLogo
-                                        name={d.company}
-                                        className="w-[18px] h-[18px] text-[7px] shrink-0"
-                                      />
-                                      <span className="min-w-0 flex-1 leading-tight">
-                                        <span className="block truncate font-medium text-text-primary">
-                                          {d.company}
-                                        </span>
-                                        <span className="block truncate text-[10.5px] text-text-tertiary">
-                                          {d.contact}
-                                        </span>
-                                      </span>
-                                      <span className="tnum text-text-secondary shrink-0">
-                                        {formatMoney(d.value)}
-                                      </span>
-                                    </div>
-                                  ))}
+                                <div className="mb-3">
+                                  <StageDonut rep={r} size={72} />
                                 </div>
+                                <TripleStat rep={r} />
                               </div>
-                            )}
+                              <div className="border-l border-border-light pl-5">
+                                {topOpenDeals(r).length > 0 && (
+                                  <div className="mb-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
+                                      Top open deals
+                                    </p>
+                                    <div className="space-y-1.5">
+                                      {topOpenDeals(r).map((d, i) => (
+                                        <div
+                                          key={`${d.company}-${d.contact}-${i}`}
+                                          className="flex items-center gap-2 text-[12px]"
+                                        >
+                                          <CompanyLogo
+                                            name={d.company}
+                                            className="w-[18px] h-[18px] text-[7px] shrink-0"
+                                          />
+                                          <span className="min-w-0 flex-1 leading-tight">
+                                            <span className="block truncate font-medium text-text-primary">
+                                              {d.company}
+                                            </span>
+                                            <span className="block truncate text-[10.5px] text-text-tertiary">
+                                              {d.contact}
+                                            </span>
+                                          </span>
+                                          <span className="tnum text-text-secondary shrink-0">
+                                            {formatMoney(d.value)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                                    Activity · last 10 weeks
+                                  </p>
+                                  <span className="text-[10.5px] text-text-tertiary tnum">
+                                    {r.trend.reduce((s, x) => s + x, 0)} touches
+                                  </span>
+                                </div>
+                                <Sparkline points={r.trend} height={34} unit="touches" />
+                              </div>
+                            </div>
                             <p className="mt-2.5 pt-2.5 border-t border-border-light text-[11.5px] text-blue-primary font-medium">
                               View full breakdown →
                             </p>

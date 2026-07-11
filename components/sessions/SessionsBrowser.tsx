@@ -12,7 +12,7 @@ import { OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CalendarClock, ArrowDownWideNarrow } from "lucide-react";
-import { OUTCOME_META, formatDate, cn } from "@/lib/utils";
+import { OUTCOME_META, formatDate, formatDateTime, cn } from "@/lib/utils";
 import { REVIEW_META } from "@/lib/review";
 import type { ReviewStatus } from "@/lib/types";
 import { toCSV, downloadCSV } from "@/lib/csv";
@@ -72,7 +72,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
         r.service,
         r.outcome ? OUTCOME_META[r.outcome]?.label || r.outcome : "",
         REVIEW_META[r.review].label,
-        formatDate(r.date),
+        formatDateTime(r.date),
       ])
     );
     downloadCSV("freyr-sessions.csv", csv);
@@ -215,7 +215,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                         );
                       })()}
                     </td>
-                    <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDate(r.date)}</td>
+                    <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDateTime(r.date)}</td>
                     <td className="px-5 py-4 text-right">
                       <ArrowRight
                         size={16}

@@ -321,32 +321,38 @@ export function CustomerAnalyzePanel({
   return (
     <>
       {!showFull ? (
-        // Just a button + a one-line caption + an info popover — no banner
-        // (Suren: "it should just be a button, and an information thing you can
-        // click for what it does"). The caption tells a new rep what it does.
-        <div>
-          <div className="flex items-center gap-2">
+        // Un-analyzed: the same "Company profile" card as the analyzed state,
+        // just with the Analyze action where Re-analyze would be — so it reads
+        // as content in the flow, not a stray floating button (Suren).
+        <Card>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
+                Company profile
+                {canEdit && analyzeInfo}
+              </h2>
+              <p className="text-[12.5px] text-text-secondary mt-0.5 leading-relaxed">
+                Not analyzed yet — analyze to qualify its type, ownership and
+                revenue from the web, and the offerings that fit show
+                automatically.
+              </p>
+            </div>
             {canEdit ? (
               <button
                 onClick={runAnalysis}
                 disabled={loading}
-                className="inline-flex items-center gap-2 text-[13.5px] font-semibold px-4 py-2.5 rounded-lg bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-60 shadow-[0_1px_2px_rgba(0,113,227,0.22)] active:scale-[0.98]"
+                className="shrink-0 inline-flex items-center gap-2 text-[13px] font-semibold px-3.5 py-2 rounded-lg bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-60 shadow-[0_1px_2px_rgba(0,113,227,0.22)] active:scale-[0.98]"
               >
                 <Sparkles size={15} strokeWidth={1.9} />
                 {loading ? "Analyzing…" : "Analyze the customer"}
               </button>
             ) : (
-              <span className="text-[13px] text-text-tertiary">Not analyzed yet</span>
+              <span className="shrink-0 text-[13px] text-text-tertiary">
+                Not analyzed yet
+              </span>
             )}
-            {canEdit && analyzeInfo}
           </div>
-          {canEdit && (
-            <p className="text-[12.5px] text-text-secondary mt-2 leading-relaxed max-w-[520px]">
-              Analyze to qualify its type, ownership and revenue from the web —
-              then the offerings that fit show automatically.
-            </p>
-          )}
-        </div>
+        </Card>
       ) : (
         <Card>
           <div className="flex items-start justify-between gap-3 mb-4">

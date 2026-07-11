@@ -363,6 +363,8 @@ export default async function VoicePage() {
                             segments={pOutcomes}
                             size={82}
                             thickness={11}
+                            centerLabel={String(pOutcomes.reduce((s, o) => s + o.value, 0))}
+                            centerSub="calls"
                           />
                           <DonutLegend items={pOutcomes} />
                         </div>
@@ -945,6 +947,7 @@ export default async function VoicePage() {
                       })),
                   }))}
                   height={168}
+                  unit="calls"
                 />
               </Card>
               <Card>

@@ -577,6 +577,7 @@ export default async function CampaignDetailPage({
                     { label: "Replied", value: campaign.replies, color: VIZ.indigo, tip: recipientTip },
                   ]}
                   height={180}
+                  unit="emails"
                 />
               </div>
               <p className="text-[12px] text-text-tertiary mt-4">

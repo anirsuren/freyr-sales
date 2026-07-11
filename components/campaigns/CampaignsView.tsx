@@ -631,6 +631,7 @@ export function CampaignsView({
                               )}
                               height={88}
                               format="number"
+                              unit="emails"
                             />
                           </div>
                         );

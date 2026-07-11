@@ -120,7 +120,7 @@ export type TipItem = {
 function TipBreakdown({ items }: { items?: TipItem[] }) {
   if (!items || items.length === 0) return null;
   return (
-    <div className="mt-2 space-y-1.5 border-t border-white/15 pt-2 text-left">
+    <div className="mt-2 space-y-1.5 border-t border-border-light pt-2 text-left">
       {items.slice(0, 5).map((t, j) => (
         <div key={j} className="flex items-center gap-2 text-[11px]">
           {t.logo ? (
@@ -129,18 +129,18 @@ function TipBreakdown({ items }: { items?: TipItem[] }) {
             <Avatar name={t.avatar} className="w-[18px] h-[18px] text-[7px] shrink-0" />
           ) : null}
           <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate font-medium text-white">{t.name}</span>
+            <span className="block truncate font-medium text-text-primary">{t.name}</span>
             {t.sub && (
-              <span className="block truncate text-[10px] text-white/60">{t.sub}</span>
+              <span className="block truncate text-[10px] text-text-tertiary">{t.sub}</span>
             )}
           </span>
           {t.value != null && (
-            <span className="tnum text-white/80 shrink-0 self-center">{t.value}</span>
+            <span className="tnum text-text-secondary shrink-0 self-center">{t.value}</span>
           )}
         </div>
       ))}
       {items.length > 5 && (
-        <div className="text-[10.5px] text-white/50">+{items.length - 5} more</div>
+        <div className="text-[10.5px] text-text-tertiary">+{items.length - 5} more</div>
       )}
     </div>
   );
@@ -158,6 +158,7 @@ export function AreaChart({
   format,
   unit,
   pointTips,
+  yMax,
 }: {
   data: number[];
   color?: string;
@@ -173,6 +174,10 @@ export function AreaChart({
   unit?: string;
   // The who/which behind each plotted point, same index as `data`.
   pointTips?: TipItem[][];
+  // Fixed scale ceiling for bounded metrics (e.g. a /100 health score). Without
+  // it the chart auto-scales to the data's max, so a flat 30/100 renders pinned
+  // to the top — reading like a perfect score instead of an at-risk one.
+  yMax?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
@@ -181,7 +186,7 @@ export function AreaChart({
   const pad = 6;
   // Big enough to carry axes + always-visible dots (vs. a tiny inline sparkline).
   const showAxes = height >= 140;
-  const max = Math.max(...data, goal ?? 0, 1);
+  const max = Math.max(...data, goal ?? 0, yMax ?? 0, 1);
   const min = Math.min(...data, 0);
   const range = max - min || 1;
   const n = data.length;
@@ -308,6 +313,7 @@ export function AreaChart({
           </span>
           <span className="pointer-events-none absolute left-1.5 bottom-1 text-[10px] tnum text-text-tertiary bg-white/70 rounded px-1">
             {fmt(format, Math.round(min))}
+            {unit ? ` ${unit}` : ""}
           </span>
           {xLabels && xLabels.length > 0 && (
             <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-between px-1 text-[10px] text-text-tertiary tnum">
@@ -445,10 +451,13 @@ export function DonutChart({
                 }}
                 style={{
                   cursor: "pointer",
+                  // One continuous sweep: each slice draws for exactly its share
+                  // of the ring and starts the moment the previous slice ends —
+                  // a fixed per-slice duration left gaps mid-animation (Suren:
+                  // "why is this pie chart glitchy?").
                   transition: reduce
                     ? "stroke-width 120ms"
-                    : "stroke-dasharray 0.75s cubic-bezier(0.22, 1, 0.36, 1), stroke-width 120ms",
-                  transitionDelay: reduce ? undefined : `${(offset / c) * 0.55}s`,
+                    : `stroke-dasharray ${((len / c) * 0.7).toFixed(3)}s linear ${((offset / c) * 0.7).toFixed(3)}s, stroke-width 120ms`,
                 }}
               />
             );
@@ -503,6 +512,7 @@ export function BarChart({
   height = 160,
   format,
   activeIndex = null,
+  unit,
 }: {
   data: {
     label: string;
@@ -518,6 +528,9 @@ export function BarChart({
   // its index so that bar stays lit + ringed while the rest dim (Suren: "when I
   // highlight one, show that its bar is highlighted").
   activeIndex?: number | null;
+  // Unit appended to each bar's at-rest value label so a bare "12" reads as
+  // "12 calls" without hovering (Suren: "all graphs need units").
+  unit?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
@@ -559,6 +572,7 @@ export function BarChart({
           {/* Value on top — its own fixed row so tall bars never clip it */}
           <span className="text-[11px] font-semibold text-text-secondary tnum whitespace-nowrap shrink-0 mb-1">
             {fmt(format, d.value)}
+            {unit ? ` ${unit}` : ""}
           </span>
           {/* Bar grows inside this flex-1 area, so the label below always fits */}
           <div className="flex-1 w-full min-h-0 flex items-end justify-center">
@@ -691,6 +705,27 @@ export function LineChart({
           );
         })}
       </svg>
+      {/* Y-axis scale at rest — max (top) + zero baseline, with the unit, so
+          the chart reads without hovering (Suren: "all graphs need units").
+          Only on charts tall enough that the labels don't sit ON the lines —
+          on compact card charts they collided with the data. */}
+      {h >= 120 && (
+        <>
+          <span className="pointer-events-none absolute left-1.5 top-1 text-[10px] font-semibold tnum text-text-tertiary bg-white/70 rounded px-1">
+            {fmt(format, max)}
+            {unit ? ` ${unit}` : ""}
+          </span>
+          <span
+            // Pinned in the SVG's pixel space — the in-flow x-labels below make
+            // the container taller than the chart, so `bottom-1` would miss the
+            // baseline.
+            className="pointer-events-none absolute left-1.5 text-[10px] tnum text-text-tertiary bg-white/70 rounded px-1"
+            style={{ top: h - 8, transform: "translateY(-100%)" }}
+          >
+            0{unit ? ` ${unit}` : ""}
+          </span>
+        </>
+      )}
       {series.map((s, si) => {
         const i = hi ?? s.points.length - 1;
         const v = s.points[i];

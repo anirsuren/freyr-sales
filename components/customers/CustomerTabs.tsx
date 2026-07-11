@@ -566,6 +566,7 @@ export function CustomerTabs({
                     color={HEALTH_COLOR[health.band].color}
                     format="number"
                     unit="pts"
+                    yMax={100}
                     pointTips={healthPointTips}
                     className="w-full"
                   />
@@ -890,6 +891,7 @@ export function CustomerTabs({
                           color={HEALTH_COLOR[health.band].color}
                           format="number"
                           unit="pts"
+                          yMax={100}
                           pointTips={healthPointTips}
                           className="w-full"
                         />
@@ -1057,6 +1059,9 @@ export function CustomerTabs({
                   icon={Briefcase}
                   title="No deals yet"
                   description="Add a deal or generate a session to start building pipeline for this account."
+                  // spans the 2-col deals grid so it centers on the page,
+                  // not inside the first column
+                  className="sm:col-span-2"
                 />
               )}
             </div>

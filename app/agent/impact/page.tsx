@@ -170,7 +170,7 @@ export default async function AgentImpactPage({
               No agent runs in this window yet.
             </p>
           ) : (
-            <BarChart data={seriesData} height={160} />
+            <BarChart data={seriesData} height={160} unit="runs" />
           )}
         </Card>
       </div>

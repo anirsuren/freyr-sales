@@ -74,6 +74,7 @@ export function EngagementChart({
           xLabels={days}
           pointTips={pointTips}
           height={170}
+          unit="emails"
         />
       )}
     </div>

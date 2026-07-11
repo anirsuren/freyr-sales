@@ -17,7 +17,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { SizeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton } from "@/components/ui/BackButton";
-import { DonutChart, DonutLegend, BarChart, AreaChart, VIZ } from "@/components/charts/Charts";
+import { DonutChart, DonutLegend, BarChart, AreaChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import {
   buildDeals,
   buildRepStats,
@@ -206,10 +206,11 @@ export default async function RepPage({
   const topAccounts = Array.from(byAccount.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(([company, value]) => ({
+    .map(([company, value], i) => ({
       label: company,
       value,
-      color: VIZ.blue,
+      // Each account its own colour (Suren: "why is it all blue?").
+      color: VIZ_SERIES[i % VIZ_SERIES.length],
       tip: myDeals
         .filter((d) => d.company === company && d.stage !== "Closed Lost")
         .map((d) => ({
@@ -218,6 +219,27 @@ export default async function RepPage({
           sub: d.stage,
           value: formatMoney(d.value),
         })),
+    }));
+
+  // Going quiet — the rep's open deals ranked by days since the last touch,
+  // coloured by stage. The agent-lens partner to "biggest accounts": the left
+  // chart says where the money is, this one says what needs a touch TODAY.
+  const goingQuiet = [...myDeals]
+    .filter((d) => d.stage !== "Closed Lost")
+    .sort((a, b) => b.staleDays - a.staleDays)
+    .slice(0, 5)
+    .map((d) => ({
+      label: d.company,
+      value: d.staleDays,
+      color: STAGE_COLOR[d.stage] || VIZ.blue,
+      tip: [
+        {
+          avatar: d.contactName,
+          name: d.contactName,
+          sub: `${d.stage} · ${formatMoney(d.value)}`,
+          value: ago(d.staleDays),
+        },
+      ],
     }));
 
   const sortedDeals = [...myDeals].sort((a, b) => b.value - a.value);
@@ -355,12 +377,25 @@ export default async function RepPage({
         </Card>
       </section>
 
-      {/* Biggest accounts — real reps only */}
+      {/* Biggest accounts + what's going cold — two agent questions side by
+          side: where's the money, and what needs a touch today (Suren: "if you
+          were a Freyr sales agent, what would you need to see?"). */}
       {topAccounts.length > 0 && (
         <Card>
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">Biggest accounts</h2>
-          <p className="text-[12px] text-text-tertiary mb-4">Where the open value is concentrated.</p>
-          <BarChart data={topAccounts} height={170} format="money" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
+            <div>
+              <h2 className="text-[15px] font-semibold text-text-primary mb-1">Biggest accounts</h2>
+              <p className="text-[12px] text-text-tertiary mb-4">Where the open value is concentrated.</p>
+              <BarChart data={topAccounts} height={150} format="money" />
+            </div>
+            <div className="lg:border-l lg:border-border-light lg:pl-10">
+              <h2 className="text-[15px] font-semibold text-text-primary mb-1">Going quiet</h2>
+              <p className="text-[12px] text-text-tertiary mb-4">
+                Days since the last touch — tallest bar needs a call first. Colored by stage.
+              </p>
+              <BarChart data={goingQuiet} height={150} unit="days" />
+            </div>
+          </div>
         </Card>
       )}
 
