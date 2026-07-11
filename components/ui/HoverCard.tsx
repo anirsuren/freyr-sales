@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +54,23 @@ export function HoverCard({
     if (showTimer.current) clearTimeout(showTimer.current);
     showTimer.current = setTimeout(place, 120);
   }
+
+  // The popup is position:fixed (portal), so page scroll would leave it
+  // stranded mid-viewport while its row moves away (Suren: "when I scroll, it
+  // should scroll with it"). While open, re-anchor to the trigger on every
+  // scroll/resize — capture phase catches nested scroll containers too.
+  const open = pos != null;
+  useEffect(() => {
+    if (!open) return;
+    const sync = () => place();
+    window.addEventListener("scroll", sync, { capture: true, passive: true });
+    window.addEventListener("resize", sync);
+    return () => {
+      window.removeEventListener("scroll", sync, { capture: true });
+      window.removeEventListener("resize", sync);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   function scheduleHide() {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
