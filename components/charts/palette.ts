@@ -10,7 +10,9 @@ export const VIZ = {
   indigo: "#5E5CE6",
   green: "#34C759",
   amber: "#FF9F0A",
-  slate: "#8E98A8",
+  // Was a gray (#8E98A8) — Suren: never gray in a graph. Now a real violet.
+  slate: "#A855F7",
+  rose: "#F43F5E",
 };
 export const VIZ_SERIES = [
   VIZ.blue,

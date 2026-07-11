@@ -10,6 +10,7 @@ import {
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { AgentRecommendCarousel } from "@/components/agent/AgentRecommendCarousel";
 import { nextBestActions, focusActions } from "@/lib/agent";
@@ -22,10 +23,11 @@ import {
   VIZ,
   VIZ_SERIES,
 } from "@/components/charts/Charts";
-import { formatDate, OUTCOME_META } from "@/lib/utils";
+import { formatDate, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import {
   buildDeals,
   pipelineGrowthSeries,
+  pipelineGrowthPointDeals,
   STAGES,
   STAGE_PROBABILITY,
   formatMoney,
@@ -66,10 +68,12 @@ export default async function DashboardPage({
       db.agentPrefs.get(),
     ]);
 
+  // Default to a bounded window (30d) so the vs-previous-period change shows on
+  // every card out of the box (Suren: "always show me the % change").
   const range =
     searchParams?.range && (RANGE_DAYS[searchParams.range] || searchParams.range === "all")
       ? searchParams.range
-      : "all";
+      : "30d";
   const days = RANGE_DAYS[range];
   const cutoff = days ? Date.now() - days * 86400000 : 0;
   const inRange = (ts: string) =>
@@ -177,9 +181,42 @@ export default async function DashboardPage({
     .map(([k, count]) => ({
       label: OUTCOME_META[k]?.label || k,
       count,
-      color: OUTCOME_META[k]?.color || "#8E8E93",
+      color: OUTCOME_CHART_COLOR[k] || "#AF9BF5",
     }))
     .sort((a, b) => b.count - a.count);
+
+  // WHO is behind each stage/outcome — so the Analytics-tab charts (Pipeline by
+  // Stage, Outcome Mix, Funnel, Weighted Forecast, Avg Deal Size) reveal the
+  // actual deals/contacts on hover, not empty tips (Suren: "every graph shows
+  // who"). Mirrors app/analytics/page.tsx's shape exactly.
+  const stageDeals: Record<
+    string,
+    { company: string; contact: string; value: number; customerId: string }[]
+  > = {};
+  for (const st of STAGES) stageDeals[st] = [];
+  for (const d of deals) {
+    (stageDeals[d.stage] ||= []).push({
+      company: d.company,
+      contact: d.contactName,
+      value: d.value,
+      customerId: d.customerId,
+    });
+  }
+  for (const st of STAGES) stageDeals[st].sort((a, b) => b.value - a.value);
+  const outcomeContacts: Record<
+    string,
+    { name: string; company: string; contactId: string }[]
+  > = {};
+  for (const i of allInteractions) {
+    const label = OUTCOME_META[i.outcome]?.label || i.outcome;
+    const ct = contactById[i.contact_id];
+    const co = customerById[i.customer_id];
+    (outcomeContacts[label] ||= []).push({
+      name: ct?.full_name || "Unknown",
+      company: co?.company_name || "—",
+      contactId: i.contact_id,
+    });
+  }
 
   // period-over-period metrics
   const metricsFor = (sw: typeof sessions, iw: typeof allInteractions) => {
@@ -201,16 +238,20 @@ export default async function DashboardPage({
       leads,
       winRate: wk ? Math.round((wn / wk) * 100) : 0,
       sessions: sw.length,
+      openDeals: dd.filter((d) => d.stage !== "Closed Lost").length,
+      worked: wk,
+      meetings: dd.filter((d) => d.stage === "Meeting Booked").length,
     };
   };
   const cur = metricsFor(sessions, allInteractions);
   const prev = days ? metricsFor(priorSessions, priorInteractions) : null;
+  const plural = (n: number) => (n === 1 ? "" : "s");
 
   const kpis = [
-    { key: "pipeline", label: "Active Pipeline", value: formatMoney(cur.pipeline), cur: cur.pipeline, prev: prev?.pipeline ?? null, unit: "money" as const, href: "/pipeline" },
-    { key: "leads", label: "Active Leads", value: String(cur.leads), cur: cur.leads, prev: prev?.leads ?? null, unit: "count" as const, href: "/customers" },
-    { key: "winRate", label: "Qualified rate", value: `${cur.winRate}%`, cur: cur.winRate, prev: prev?.winRate ?? null, unit: "pct" as const, href: "/analytics" },
-    { key: "sessions", label: "Pitch Sessions", value: String(cur.sessions), cur: cur.sessions, prev: prev?.sessions ?? null, unit: "count" as const, href: "/sessions" },
+    { key: "pipeline", label: "Active Pipeline", value: formatMoney(cur.pipeline), cur: cur.pipeline, prev: prev?.pipeline ?? null, unit: "money" as const, href: "/pipeline", sub: `Across ${cur.openDeals} open deal${plural(cur.openDeals)}` },
+    { key: "leads", label: "Active Leads", value: String(cur.leads), cur: cur.leads, prev: prev?.leads ?? null, unit: "count" as const, href: "/customers", sub: `of ${customers.length} account${plural(customers.length)} warming` },
+    { key: "winRate", label: "Qualified rate", value: `${cur.winRate}%`, cur: cur.winRate, prev: prev?.winRate ?? null, unit: "pct" as const, href: "/analytics", sub: `of ${cur.worked} worked deal${plural(cur.worked)}` },
+    { key: "sessions", label: "Pitch Sessions", value: String(cur.sessions), cur: cur.sessions, prev: prev?.sessions ?? null, unit: "count" as const, href: "/sessions", sub: `${cur.meetings} meeting${plural(cur.meetings)} booked` },
   ];
 
   // Health-driven "Needs Attention" (V5 #4) — real at-risk accounts
@@ -223,6 +264,16 @@ export default async function DashboardPage({
 
   // Real cumulative pipeline-growth curve (in $M) from actual deal-creation dates.
   const trendSeries = pipelineGrowthSeries(healthDeals, Date.now());
+  // The deals behind each point of that curve, so a hover shows which deals
+  // built the pipeline up to there (Suren: every graph shows who).
+  const trendPointTips = pipelineGrowthPointDeals(healthDeals).map((bucket) =>
+    bucket.map((d) => ({
+      logo: d.company,
+      name: d.company,
+      sub: d.contact,
+      value: formatMoney(d.value),
+    }))
+  );
   const atRisk = customers
     .map((cust) => ({
       id: cust.id,
@@ -337,6 +388,7 @@ export default async function DashboardPage({
             goal={3.0}
             goalLabel="Quota $3.0M"
             format="millions"
+            pointTips={trendPointTips}
           />
         </Card>
         <Card className="lg:col-span-4 flex flex-col items-center justify-center">
@@ -350,6 +402,15 @@ export default async function DashboardPage({
                 label: s.stage,
                 value: s.count,
                 color: VIZ_SERIES[i % VIZ_SERIES.length],
+                // Which deals sit in this stage (Suren: every graph shows who).
+                tip: deals
+                  .filter((d) => d.stage === s.stage)
+                  .map((d) => ({
+                    logo: d.company,
+                    name: d.company,
+                    sub: d.contactName,
+                    value: formatMoney(d.value),
+                  })),
               }))}
             centerLabel={String(deals.length)}
             centerSub="deals"
@@ -434,10 +495,18 @@ export default async function DashboardPage({
                         <Link
                           key={a.id}
                           href={`/customers/${a.customerId}`}
-                          className="relative flex gap-4 items-start group"
+                          className="relative flex gap-3.5 items-start group"
                         >
-                          <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 border-2 border-white ${positive ? "bg-blue-light text-blue-primary" : "bg-surface text-text-tertiary"}`}>
-                            <Icon size={13} strokeWidth={1.75} />
+                          {/* The person's headshot leads (Suren: "why are there no
+                              profile pictures here?"), with a small outcome dot. */}
+                          <span className="relative shrink-0 z-10">
+                            <Avatar
+                              name={a.contact || a.company}
+                              className="w-9 h-9 text-[12px] border-2 border-white"
+                            />
+                            <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border-2 border-white ${positive ? "bg-blue-primary text-white" : "bg-surface text-text-tertiary"}`}>
+                              <Icon size={9} strokeWidth={2.2} />
+                            </span>
                           </span>
                           <div className="space-y-1 pt-0.5 min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -543,6 +612,8 @@ export default async function DashboardPage({
       winRate={winRate}
       totalDeals={deals.length}
       openValue={openValue}
+      stageDeals={stageDeals}
+      outcomeContacts={outcomeContacts}
     />
   );
 

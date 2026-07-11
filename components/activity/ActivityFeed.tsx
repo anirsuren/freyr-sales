@@ -6,6 +6,7 @@ import { Search, MessageSquareText, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn, formatDateTime, OUTCOME_META } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ export type ActivityItem = {
   company: string;
   contactName: string;
   customerId: string;
+  actor?: string | null;
 };
 
 // Notes once carried a leading emoji (🔔/📝) as a makeshift icon; we now render a
@@ -31,6 +33,7 @@ function cleanNote(note: string): string {
 export function ActivityFeed({ items }: { items: ActivityItem[] }) {
   const [outcome, setOutcome] = useState("all");
   const [q, setQ] = useState("");
+  const [actor, setActor] = useState("all");
 
   // outcomes present in the data, in a stable order
   const outcomes = useMemo(() => {
@@ -39,17 +42,28 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
     return seen;
   }, [items]);
 
+  // Distinct people behind the activity — the supervisor lens ("show me just
+  // Priya's calls"). Suren #77.
+  const actors = useMemo(() => {
+    const seen: string[] = [];
+    for (const it of items)
+      if (it.actor && !seen.includes(it.actor)) seen.push(it.actor);
+    return seen.sort();
+  }, [items]);
+
   const filtered = useMemo(
     () =>
       items.filter(
         (it) =>
           (outcome === "all" || it.outcome === outcome) &&
+          (actor === "all" || it.actor === actor) &&
           (!q ||
             it.company.toLowerCase().includes(q.toLowerCase()) ||
             it.contactName.toLowerCase().includes(q.toLowerCase()) ||
+            (it.actor || "").toLowerCase().includes(q.toLowerCase()) ||
             (it.notes || "").toLowerCase().includes(q.toLowerCase()))
       ),
-    [items, outcome, q]
+    [items, outcome, actor, q]
   );
 
   // Group newest-first into time buckets so a long feed reads at a glance —
@@ -128,6 +142,21 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
             </button>
           ))}
         </div>
+        {actors.length > 1 && (
+          <select
+            value={actor}
+            onChange={(e) => setActor(e.target.value)}
+            aria-label="Filter by who logged it"
+            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary text-text-secondary"
+          >
+            <option value="all">Everyone</option>
+            {actors.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        )}
         <span className="lg:ml-auto text-[13px] text-text-secondary tnum">
           {filtered.length} {filtered.length === 1 ? "event" : "events"}
         </span>
@@ -176,8 +205,20 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                               {formatDateTime(it.created_at)}
                             </span>
                           </div>
-                          <p className="text-[12px] text-text-secondary mt-0.5">
+                          <p className="flex items-center gap-1.5 text-[12px] text-text-secondary mt-0.5">
                             {it.contactName}
+                            {it.actor && (
+                              <>
+                                <span className="text-text-tertiary/60">·</span>
+                                <span className="inline-flex items-center gap-1 text-text-tertiary">
+                                  <Avatar
+                                    name={it.actor}
+                                    className="w-4 h-4 text-[7px] shrink-0"
+                                  />
+                                  {it.actor}
+                                </span>
+                              </>
+                            )}
                           </p>
                           {it.notes && (
                             <p className="flex items-start gap-1.5 text-[13px] text-text-secondary leading-relaxed mt-1.5">

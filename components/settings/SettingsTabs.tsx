@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeSetting } from "@/components/settings/ThemeSetting";
+import { CrmSyncCard } from "@/components/settings/CrmSyncCard";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ const TABS = [
   { key: "team", label: "Team" },
   { key: "notifications", label: "Notifications" },
   { key: "integrations", label: "Integrations" },
+  { key: "billing", label: "Billing" },
   { key: "access", label: "Access" },
 ];
 
@@ -344,7 +346,23 @@ export function SettingsTabs({
                       <p className="text-[12px] text-text-tertiary">{m.email}</p>
                     </div>
                   </div>
-                  <Badge label={m.role} bg={roleColor[m.role]?.bg} color={roleColor[m.role]?.color} className="!normal-case tracking-normal" />
+                  <div className="flex items-center gap-2.5">
+                    {/* Deep-link straight into a Microsoft Teams chat with this
+                        teammate (Suren #91) — one click from the roster to a DM. */}
+                    {!m.you && (
+                      <a
+                        href={`https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(m.email)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Message ${m.name.split(" ")[0]} on Teams`}
+                        className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:text-blue-primary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+                      >
+                        <MessageSquare size={13} strokeWidth={1.9} />
+                        Message
+                      </a>
+                    )}
+                    <Badge label={m.role} bg={roleColor[m.role]?.bg} color={roleColor[m.role]?.color} className="!normal-case tracking-normal" />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -561,6 +579,143 @@ export function SettingsTabs({
               );
             })}
           </div>
+
+          {/* Two-way CRM mirror — real counts from the app's own book */}
+          <CrmSyncCard counts={crmCounts} />
+
+          {/* System services — the engines Freyr runs on. View-only status;
+              keys are managed by your admin via secure environment config. */}
+          <Card>
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldCheck size={18} strokeWidth={1.75} className="text-blue-primary" />
+              <h2 className="text-[15px] font-semibold text-text-primary">System services</h2>
+            </div>
+            <p className="text-[12.5px] text-text-secondary mb-4 max-w-[640px]">
+              The engines Freyr runs on. These are configured with secure keys by
+              your admin — nothing to connect here, just what&apos;s live.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {Object.entries(SERVICE_LABELS).map(([key, label]) => {
+                const on = !!services[key];
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between gap-3 bg-surface rounded-lg px-3.5 py-2.5"
+                  >
+                    <span className="text-[13px] text-text-primary min-w-0 truncate">{label}</span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-[11.5px] font-semibold shrink-0 px-2 py-0.5 rounded-full",
+                        on ? "text-success bg-success/10" : "text-text-tertiary bg-black/5"
+                      )}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: on ? "#34C759" : "#C7C7CC" }}
+                      />
+                      {on ? "Live" : "Not configured"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {tab === "billing" && (
+        <div className="space-y-4">
+          <Card>
+            <h2 className="text-[15px] font-semibold text-text-primary mb-1">
+              This month&apos;s usage
+            </h2>
+            <p className="text-[12.5px] text-text-secondary mb-4">
+              Where you stand against your plan&apos;s limits this billing cycle.
+            </p>
+            <div className="space-y-3.5">
+              {USAGE.map((u) => {
+                const pct = Math.min(100, Math.round((u.used / u.total) * 100));
+                return (
+                  <div key={u.label}>
+                    <div className="flex items-center justify-between text-[12.5px] mb-1">
+                      <span className="text-text-secondary">{u.label}</span>
+                      <span className="font-semibold text-text-primary tnum">
+                        {u.used.toLocaleString()} / {u.total.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-surface overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full",
+                          pct >= 90 ? "bg-danger" : pct >= 70 ? "bg-warning" : "bg-blue-primary"
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-[15px] font-semibold text-text-primary mb-1">Plan</h2>
+            <p className="text-[12.5px] text-text-secondary mb-4">
+              You&apos;re on the <span className="font-semibold text-text-primary">{plan}</span> plan.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {PLANS.map((p) => {
+                const current = p.key === plan;
+                return (
+                  <div
+                    key={p.key}
+                    className={cn(
+                      "rounded-xl border p-4 flex flex-col",
+                      current ? "border-blue-primary bg-blue-light/40" : "border-border"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-[14px] font-semibold text-text-primary">{p.key}</p>
+                      {current && (
+                        <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-blue-primary">
+                          Current
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-[18px] font-bold text-text-primary tnum">
+                      {p.price}
+                      <span className="text-[12px] font-medium text-text-tertiary">{p.per}</span>
+                    </p>
+                    <p className="mt-1 text-[11.5px] text-text-secondary leading-snug flex-1">{p.blurb}</p>
+                    {!current && (
+                      <button
+                        onClick={() => selectPlan(p.key)}
+                        className="mt-3 text-[13px] font-semibold px-3 py-2 rounded-md border border-blue-primary text-blue-primary hover:bg-blue-light transition-colors"
+                      >
+                        Switch to {p.key}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-[15px] font-semibold text-text-primary mb-3">Invoices</h2>
+            <div className="divide-y divide-border-light">
+              {INVOICES.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between py-2.5 text-[13px]">
+                  <span className="font-medium text-text-primary tnum">{inv.id}</span>
+                  <span className="text-text-tertiary">{inv.date}</span>
+                  <span className="font-semibold text-text-primary tnum">{inv.amount}</span>
+                  <button className="text-[12.5px] font-semibold text-blue-primary hover:underline">
+                    Download
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
       )}
     </div>

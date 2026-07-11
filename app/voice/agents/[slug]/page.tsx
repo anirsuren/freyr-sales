@@ -16,7 +16,7 @@ import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { DonutChart, LineChart, Sparkline, VIZ } from "@/components/charts/Charts";
+import { DonutChart, LineChart, Sparkline, VIZ, type TipItem } from "@/components/charts/Charts";
 import { voiceStatus, listVoiceQueue, type VoiceOutcome } from "@/lib/voice";
 import { listConversations } from "@/lib/elevenlabs";
 import { listOfferings } from "@/lib/offerings";
@@ -101,6 +101,15 @@ export default async function VoiceAgentPage({
     label: OUTCOME_META[o].label,
     value: finishedCalls.filter((q) => q.outcome === o).length,
     color: OUTCOME_META[o].color,
+    // Hover a slice → who those calls were with (photo + company).
+    tip: finishedCalls
+      .filter((q) => q.outcome === o)
+      .map((q) => ({
+        avatar: q.contact_name,
+        name: q.contact_name,
+        sub: q.company,
+        value: OUTCOME_META[o].label,
+      })),
   })).filter((s) => s.value > 0);
   const connectedCalls = finishedCalls.filter((q) => q.outcome !== "no_answer");
   const connectRate = finishedCalls.length
@@ -139,6 +148,29 @@ export default async function VoiceAgentPage({
     const d = new Date(midnight.getTime() - (13 - i) * DAY);
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   });
+  // Who was called each day — the people behind each plotted point (sample
+  // queue calls + any live conversations on this agent's line).
+  const perDayTips = Array.from({ length: 14 }, (_, i) => {
+    const dayStart = midnight.getTime() - (13 - i) * DAY;
+    const qTips = called
+      .filter((c) => {
+        const t = new Date(c.created_at).getTime();
+        return t >= dayStart && t < dayStart + DAY;
+      })
+      .map((c) => ({ avatar: c.contact_name, name: c.contact_name, sub: c.company }));
+    const rTips = convos
+      .filter((c) => {
+        if (!c.start_time_unix_secs) return false;
+        const t = c.start_time_unix_secs * 1000;
+        return t >= dayStart && t < dayStart + DAY;
+      })
+      .map((c) => ({
+        avatar: persona.name,
+        name: persona.name,
+        sub: c.direction === "inbound" ? "Inbound call" : "Outbound call",
+      }));
+    return [...qTips, ...rTips];
+  });
   // Talk time per placed call — WHO was on each call (avatar), not a bare name.
   const talk = called
     .filter((q) => q.duration_secs)
@@ -158,6 +190,10 @@ export default async function VoiceAgentPage({
   const lenPts = chrono.filter((c) => c.duration_secs);
   const lenSeries = lenPts.map((c) => c.duration_secs || 0);
   const lenLabels = lenPts.map((c) => formatDate(c.created_at).replace(/,.*$/, ""));
+  // Each length point is one answered call — show who it was with.
+  const lenTips = lenPts.map((c) => [
+    { avatar: c.contact_name, name: c.contact_name, sub: c.company },
+  ]);
   const wellSeries = chrono.map((_, i) => {
     const up = chrono.slice(0, i + 1);
     const ok = up.filter(
@@ -166,6 +202,15 @@ export default async function VoiceAgentPage({
     return Math.round((ok / up.length) * 100);
   });
   const wellLabels = chrono.map((c) => formatDate(c.created_at).replace(/,.*$/, ""));
+  // Each went-well point is a call — name the person + how it landed.
+  const wellTips = chrono.map((c) => [
+    {
+      avatar: c.contact_name,
+      name: c.contact_name,
+      sub: c.company,
+      value: c.outcome ? OUTCOME_META[c.outcome].label : undefined,
+    },
+  ]);
   const hasAnalytics = finishedCalls.length > 0;
 
   const avgLenVal = fmtLen(
@@ -197,6 +242,7 @@ export default async function VoiceAgentPage({
     spark?: number[];
     sparkLabels?: string[];
     sparkFmt?: "number" | "duration" | "percent";
+    sparkTips?: TipItem[][];
   }[] = [
     {
       label: "Conversations",
@@ -206,6 +252,7 @@ export default async function VoiceAgentPage({
       spark: perDay,
       sparkLabels: perDayLabels,
       sparkFmt: "number",
+      sparkTips: perDayTips,
     },
     {
       label: "Avg length",
@@ -215,6 +262,7 @@ export default async function VoiceAgentPage({
       spark: lenSeries.length > 1 ? lenSeries : undefined,
       sparkLabels: lenLabels,
       sparkFmt: "duration",
+      sparkTips: lenSeries.length > 1 ? lenTips : undefined,
     },
     {
       label: "Went well",
@@ -224,6 +272,7 @@ export default async function VoiceAgentPage({
       spark: wellSeries.length > 1 ? wellSeries : undefined,
       sparkLabels: wellLabels,
       sparkFmt: "percent",
+      sparkTips: wellSeries.length > 1 ? wellTips : undefined,
     },
     {
       label: "In the queue",
@@ -318,6 +367,7 @@ export default async function VoiceAgentPage({
                     height={36}
                     format={t.sparkFmt}
                     xLabels={t.sparkLabels}
+                    pointTips={t.sparkTips}
                   />
                 ) : (
                   <div className="h-9 flex items-end text-[11px] text-text-tertiary">
@@ -463,6 +513,7 @@ export default async function VoiceAgentPage({
               series={[{ label: "Calls", color: persona.color, points: perDay }]}
               xLabels={dayLabels}
               pointLabels={perDayLabels}
+              pointTips={perDayTips}
               unit="calls"
               height={150}
             />

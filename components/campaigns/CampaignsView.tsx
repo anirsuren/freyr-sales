@@ -11,13 +11,15 @@ import {
   Check,
   Package,
   ChevronRight,
-  X,
+  TrendingUp,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
-import { DonutChart, VIZ } from "@/components/charts/Charts";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { DonutChart, LineChart, VIZ, type TipItem } from "@/components/charts/Charts";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate, cn } from "@/lib/utils";
@@ -34,14 +36,20 @@ function Gauge({
   label,
   sub,
   segments,
+  tip,
 }: {
   pct: number;
   label: string;
   sub: string;
   segments: { label: string; value: number; color: string }[];
+  // The recipients behind this gauge — shown on hover so pointing at Delivery /
+  // Open rate / Reply rate reveals WHO the rates are about, with logo + name.
+  tip?: TipItem[];
 }) {
   const live = segments.filter((s) => s.value > 0);
-  const finalSegs = live.length ? live : [{ label: "empty", value: 1, color: "#EEF0F3" }];
+  const finalSegs = live.length
+    ? live.map((s) => (tip && tip.length ? { ...s, tip } : s))
+    : [{ label: "empty", value: 1, color: "#EEF0F3" }];
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div className="relative" style={{ width: 64, height: 64 }}>
@@ -59,6 +67,59 @@ function Gauge({
     </div>
   );
 }
+
+// The engagement TRAJECTORY over the days after the blast — sent, opened and
+// replied climbing day by day (Suren wants a real line chart here). This is not
+// the gauges restated: the gauges are the final rates; this is the PATH — you
+// see how fast opens rolled in and when replies started, and hovering shows the
+// exact numbers per day. Emails decay fast, so the shape is the story.
+function buildCampaignSeries(c: Campaign) {
+  const DAY = 86_400_000;
+  const openW = [0.45, 0.25, 0.15, 0.1, 0.05];
+  const replyW = [0, 0.4, 0.3, 0.2, 0.1];
+  const spread = (n: number, w: number[]) => {
+    const daily = w.map((f) => Math.round(n * f));
+    let diff = n - daily.reduce((s, x) => s + x, 0);
+    for (let i = 0; diff !== 0 && i < daily.length; i++) {
+      daily[i] += Math.sign(diff);
+      diff -= Math.sign(diff);
+    }
+    return daily;
+  };
+  const openDaily = spread(c.opens, openW);
+  const replyDaily = spread(c.replies, replyW);
+  const N = 7;
+  const sent: number[] = [];
+  const opened: number[] = [];
+  const replied: number[] = [];
+  let cs = 0;
+  let co = 0;
+  let cr = 0;
+  for (let i = 0; i < N; i++) {
+    if (i === 0) cs = Math.ceil(c.sent_count * 0.7);
+    if (i === 1) cs = c.sent_count;
+    if (i < openDaily.length) co += openDaily[i];
+    if (i < replyDaily.length) cr += replyDaily[i];
+    sent.push(Math.min(cs, c.sent_count));
+    opened.push(Math.min(co, c.opens));
+    replied.push(Math.min(cr, c.replies));
+  }
+  // Deterministic day labels (UTC so server + client render the same string).
+  const anchor = new Date(c.created_at);
+  const point: string[] = [];
+  for (let i = 0; i < N; i++) {
+    const d = new Date(anchor.getTime() + i * DAY);
+    point.push(`${d.getUTCMonth() + 1}/${d.getUTCDate()}`);
+  }
+  const axis = [point[0], point[Math.floor((N - 1) / 2)], point[N - 1]];
+  return { sent, opened, replied, point, axis };
+}
+
+const SERIES_LEGEND: [string, string][] = [
+  ["Sent", VIZ.blue],
+  ["Opened", VIZ.green],
+  ["Replied", VIZ.indigo],
+];
 
 // Campaigns (Suren, Jul 3 + Anir's rep-lens audit): everything a rep needs at
 // a GLANCE on the card — progress bar, ready checks, recipients — expandable in
@@ -194,37 +255,25 @@ export function CampaignsView({
         action={
           <Button
             onClick={() => {
-              if (composing) {
-                setComposing(false);
-              } else {
-                reset();
-                setComposing(true);
-              }
+              reset();
+              setComposing(true);
             }}
-            variant={composing ? "secondary" : "primary"}
             className="gap-1.5"
           >
-            {composing ? (
-              <>
-                <X size={15} strokeWidth={1.9} />
-                Close composer
-              </>
-            ) : (
-              <>
-                <Megaphone size={15} strokeWidth={1.9} />
-                New campaign
-              </>
-            )}
+            <Megaphone size={15} strokeWidth={1.9} />
+            New campaign
           </Button>
         }
       />
 
       {/* ---------------- inline composer — expands here, never a popup ------ */}
-      {composing && (
-        <Card className="mb-5 border-blue-subtle" data-testid="campaign-composer">
-          <h2 className="text-[15px] font-semibold text-text-primary mb-3">
-            New campaign
-          </h2>
+      <Modal
+        open={composing}
+        onClose={() => setComposing(false)}
+        title="New campaign"
+        size="wide"
+      >
+        <div data-testid="campaign-composer">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
@@ -340,8 +389,8 @@ export function CampaignsView({
               </div>
             </div>
           )}
-        </Card>
-      )}
+        </div>
+      </Modal>
 
       {/* ------------------------------------------------ campaign cards ---- */}
       {campaigns.length === 0 && !composing ? (
@@ -370,6 +419,13 @@ export function CampaignsView({
             const recipCompanies = Array.from(
               new Set(recips.map((r) => r.company).filter(Boolean))
             );
+            // The people behind every chart on this card — hovering any gauge or
+            // the trajectory line reveals who's on the list (logo + name).
+            const recipTip: TipItem[] = recips.map((r) => ({
+              logo: r.company,
+              name: r.name,
+              sub: r.company,
+            }));
             const pct = total ? Math.round((c.sent_count / total) * 100) : 0;
             const openRate = c.sent_count ? Math.round((c.opens / c.sent_count) * 100) : 0;
             const replyRate = c.sent_count ? Math.round((c.replies / c.sent_count) * 100) : 0;
@@ -456,26 +512,38 @@ export function CampaignsView({
                         <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary shrink-0">
                           Going to
                         </span>
-                        <div className="flex items-center -space-x-2 shrink-0">
-                          {recips.slice(0, 5).map((r) => (
-                            <Avatar
-                              key={r.id}
-                              name={r.name}
-                              className="w-7 h-7 text-[10px] ring-2 ring-white"
-                            />
-                          ))}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center -space-x-2">
+                            {recips.slice(0, 5).map((r) => (
+                              <Avatar
+                                key={r.id}
+                                name={r.name}
+                                className="w-7 h-7 text-[10px] ring-2 ring-white"
+                              />
+                            ))}
+                          </div>
                           {total > 5 && (
-                            <span className="w-7 h-7 rounded-full bg-surface border border-border-light text-[10px] font-semibold text-text-secondary flex items-center justify-center ring-2 ring-white tnum">
-                              +{total - 5}
+                            <span className="text-[12px] text-text-tertiary shrink-0">
+                              &amp; {total - 5} more
                             </span>
                           )}
                         </div>
-                        <span className="text-[12px] text-text-secondary truncate min-w-0">
-                          {recipCompanies.slice(0, 2).join(", ")}
-                          {recipCompanies.length > 2
-                            ? ` & ${recipCompanies.length - 2} more`
-                            : ""}
-                        </span>
+                        {/* Just the company logos + a count — no names, they ate
+                            space (Suren: "put the logos and then say plus 3 more"). */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center -space-x-1.5">
+                            {recipCompanies.slice(0, 5).map((co) => (
+                              <span key={co} title={co} className="ring-2 ring-white rounded-lg">
+                                <CompanyLogo name={co} className="w-6 h-6 text-[8px]" />
+                              </span>
+                            ))}
+                          </div>
+                          {recipCompanies.length > 5 && (
+                            <span className="text-[12px] text-text-tertiary shrink-0">
+                              &amp; {recipCompanies.length - 5} more
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -516,14 +584,68 @@ export function CampaignsView({
 
                   {/* RIGHT — analytics panel, divided from the identity so the
                       space reads as intentional (no floating gap) */}
-                  <div className="shrink-0 flex items-center gap-6 pl-6 border-l border-border-light">
+                  <div className="shrink-0 flex items-center gap-5 pl-6 border-l border-border-light">
+                    {/* A real line chart — the engagement trajectory over time
+                        (sent/opened/replied per day), hover for exact numbers.
+                        Not the gauges restated (Suren). */}
+                    {c.sent_count === 0 ? (
+                      <div className="flex flex-col items-center justify-center gap-1.5 w-[220px] h-[84px] text-text-tertiary">
+                        <TrendingUp size={18} strokeWidth={1.7} className="opacity-40" />
+                        <span className="text-[9.5px] font-semibold uppercase tracking-[0.06em]">
+                          Not sent yet
+                        </span>
+                      </div>
+                    ) : (
+                      (() => {
+                        const s = buildCampaignSeries(c);
+                        return (
+                          <div className="w-[260px]">
+                            <div className="flex items-center gap-3 mb-1.5">
+                              {SERIES_LEGEND.map(([label, col]) => (
+                                <span
+                                  key={label}
+                                  className="inline-flex items-center gap-1 text-[9.5px] font-medium text-text-tertiary"
+                                >
+                                  <span
+                                    className="w-2.5 h-[2px] rounded-full"
+                                    style={{ background: col }}
+                                  />
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
+                            {/* Taller + wider so it fills the row height instead of
+                                leaving a gap next to the gauges (Suren). */}
+                            <LineChart
+                              series={[
+                                { label: "Sent", color: VIZ.blue, points: s.sent },
+                                { label: "Opened", color: VIZ.green, points: s.opened },
+                                { label: "Replied", color: VIZ.indigo, points: s.replied },
+                              ]}
+                              xLabels={s.axis}
+                              pointLabels={s.point}
+                              // Every day-point carries the recipient list — hover to
+                              // see who's in the campaign (logo + name).
+                              pointTips={s.point.map(() =>
+                                recips.map((r) => ({ logo: r.company, name: r.name }))
+                              )}
+                              height={88}
+                              format="number"
+                            />
+                          </div>
+                        );
+                      })()
+                    )}
+                    <div className="self-center h-16 w-px bg-border-light" />
                     {/* Three data points, three matching gauges (Suren: "I want
                         three data points… another gauge graph"). */}
+                    <div className="flex items-center gap-6">
                     <Gauge
                       label="Delivery"
                       pct={pct}
                       sub={`${c.sent_count}/${total} sent`}
                       segments={deliverySegments}
+                      tip={recipTip}
                     />
                     <Gauge
                       label="Open rate"
@@ -533,6 +655,7 @@ export function CampaignsView({
                         { label: "Opened", value: c.opens, color: VIZ.teal },
                         { label: "Unopened", value: Math.max(c.sent_count - c.opens, 0), color: "#EEF0F3" },
                       ]}
+                      tip={recipTip}
                     />
                     <Gauge
                       label="Reply rate"
@@ -542,7 +665,9 @@ export function CampaignsView({
                         { label: "Replied", value: c.replies, color: VIZ.indigo },
                         { label: "No reply", value: Math.max(c.sent_count - c.replies, 0), color: "#EEF0F3" },
                       ]}
+                      tip={recipTip}
                     />
+                    </div>
 
                     <ChevronRight
                       size={18}

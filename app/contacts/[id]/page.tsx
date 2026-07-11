@@ -14,6 +14,13 @@ import {
   ArrowRight,
   Sparkles,
   MapPin,
+  Target,
+  FileText,
+  ShieldCheck,
+  Award,
+  FlaskConical,
+  Tag,
+  type LucideIcon,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -37,6 +44,33 @@ import { hasElevenLabs } from "@/lib/env";
 
 export const metadata = { title: "Contact" };
 export const dynamic = "force-dynamic";
+
+// Color-code + icon a skill by its domain (Suren's standing rule: categories
+// like this always get a color and an icon). Keyword-matched so it's robust to
+// wording ("Regulatory Strategy", "Reg Affairs", "Submissions Ops", …).
+const SKILL_STYLES: { test: RegExp; bg: string; color: string; icon: LucideIcon }[] = [
+  { test: /complian|audit|gxp|gvp|inspection/i, bg: "rgba(225,29,72,0.10)", color: "#BE123C", icon: ShieldCheck },
+  { test: /submiss|document|dossier|publish|ectd/i, bg: "rgba(124,58,237,0.10)", color: "#6D28D9", icon: FileText },
+  { test: /quality|qa\b|cmc|manufactur|gmp/i, bg: "rgba(217,119,6,0.12)", color: "#B45309", icon: Award },
+  { test: /clinical|medical|scientif|pharmacovig|safety|drug/i, bg: "rgba(5,150,105,0.12)", color: "#047857", icon: FlaskConical },
+  { test: /label|artwork|packag/i, bg: "rgba(15,157,140,0.12)", color: "#0F766E", icon: Tag },
+  { test: /regulat|strategy|affairs|intellig|policy/i, bg: "rgba(0,113,227,0.10)", color: "#0040A0", icon: Target },
+];
+function skillStyle(skill: string): { bg: string; color: string; icon: LucideIcon } {
+  const hit = SKILL_STYLES.find((s) => s.test.test(skill));
+  return hit ?? { bg: "rgba(100,116,139,0.12)", color: "#475569", icon: Sparkles };
+}
+
+// Human "3 days ago" / "in 5 days" for the where-things-stand timeline.
+function relDaysLabel(dateStr: string | null, mode: "past" | "future"): string | null {
+  if (!dateStr) return null;
+  const days = Math.round(
+    Math.abs(Date.now() - new Date(dateStr).getTime()) / 86400000
+  );
+  if (days === 0) return "today";
+  const unit = `${days} day${days === 1 ? "" : "s"}`;
+  return mode === "past" ? `${unit} ago` : `in ${unit}`;
+}
 
 export default async function ContactDetailPage({
   params,
@@ -213,41 +247,70 @@ export default async function ContactDetailPage({
         <div className="flex items-start">
           {/* Last contacted */}
           <div className="flex flex-col items-center text-center flex-1 min-w-0">
-            <span className="w-9 h-9 rounded-full bg-surface border border-border-light text-text-secondary flex items-center justify-center">
-              <Clock size={16} strokeWidth={1.8} />
+            <span className="w-10 h-10 rounded-full bg-surface border border-border-light text-text-secondary flex items-center justify-center">
+              <Clock size={17} strokeWidth={1.8} />
             </span>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-2.5">
               Last contacted
             </p>
-            <p className="text-[13px] font-medium text-text-primary mt-0.5 tnum">
+            <p className="text-[13px] font-semibold text-text-primary mt-0.5 tnum">
               {lastContacted ? formatDate(lastContacted) : "No contact yet"}
             </p>
+            {lastContacted && (
+              <p className="text-[11px] text-text-tertiary mt-0.5">
+                {relDaysLabel(lastContacted, "past")}
+              </p>
+            )}
           </div>
-          <div className="flex-1 h-0.5 bg-border-light mt-[17px] min-w-[16px]" />
-          {/* Today — you are here */}
+
+          {/* Past segment — solid, it already happened */}
+          <div className="flex-1 mt-[19px] min-w-[24px] h-[3px] rounded-full bg-gradient-to-r from-border to-blue-primary" />
+
+          {/* Today — you are here, with a live pulsing beacon */}
           <div className="flex flex-col items-center text-center flex-1 min-w-0">
-            <span className="w-9 h-9 rounded-full bg-blue-primary text-white flex items-center justify-center ring-4 ring-blue-light">
-              <MapPin size={16} strokeWidth={2} />
+            <span className="relative flex items-center justify-center w-10 h-10">
+              {/* blinking beacon */}
+              <span className="absolute inline-flex h-full w-full rounded-full bg-blue-primary/40 animate-ping" />
+              <span className="absolute inline-flex h-full w-full rounded-full bg-blue-primary/15" />
+              <span className="relative w-10 h-10 rounded-full bg-blue-primary text-white flex items-center justify-center shadow-[0_4px_12px_rgba(0,113,227,0.45)]">
+                <MapPin size={17} strokeWidth={2} />
+              </span>
             </span>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-blue-primary mt-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-blue-primary mt-2.5 inline-flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-primary animate-pulse" />
               You are here
             </p>
-            <p className="text-[13px] font-semibold text-blue-primary mt-0.5">
-              Today
+            <p className="text-[13px] font-bold text-blue-primary mt-0.5">Today</p>
+            <p className="text-[11px] text-blue-primary/70 mt-0.5 tnum">
+              {formatDate(new Date().toISOString())}
             </p>
           </div>
-          <div className="flex-1 h-0.5 bg-border-light mt-[17px] min-w-[16px]" />
+
+          {/* Future segment — dashed, it hasn't happened yet */}
+          <div className="flex-1 mt-[19px] min-w-[24px] h-0 border-t-2 border-dashed border-blue-subtle" />
+
           {/* Next step */}
           <div className="flex flex-col items-center text-center flex-1 min-w-0">
-            <span className="w-9 h-9 rounded-full bg-white border-2 border-dashed border-blue-subtle text-blue-primary flex items-center justify-center">
-              <CalendarClock size={16} strokeWidth={1.8} />
+            <span
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                nextStep
+                  ? "bg-white border-2 border-dashed border-blue-subtle text-blue-primary"
+                  : "bg-surface border border-border-light text-text-tertiary"
+              }`}
+            >
+              <CalendarClock size={17} strokeWidth={1.8} />
             </span>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-2.5">
               Next step
             </p>
-            <p className="text-[13px] font-medium text-text-primary mt-0.5 tnum">
+            <p className="text-[13px] font-semibold text-text-primary mt-0.5 tnum">
               {nextStep ? formatDate(nextStep) : "Not scheduled"}
             </p>
+            {nextStep && (
+              <p className="text-[11px] text-text-tertiary mt-0.5">
+                {relDaysLabel(nextStep, "future")}
+              </p>
+            )}
           </div>
         </div>
       </Card>
@@ -316,14 +379,20 @@ export default async function ContactDetailPage({
                 Skills
               </h3>
               <div className="flex flex-wrap gap-2">
-                {skills.map((s, i) => (
-                  <span
-                    key={i}
-                    className="text-[12px] px-2.5 py-1 rounded-md bg-surface text-text-secondary border border-border-light"
-                  >
-                    {s}
-                  </span>
-                ))}
+                {skills.map((s, i) => {
+                  const st = skillStyle(s);
+                  const SIcon = st.icon;
+                  return (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-md"
+                      style={{ background: st.bg, color: st.color }}
+                    >
+                      <SIcon size={12} strokeWidth={2} />
+                      {s}
+                    </span>
+                  );
+                })}
               </div>
             </>
           )}
@@ -340,7 +409,7 @@ export default async function ContactDetailPage({
             </p>
             {siblings.length === 0 ? (
               <p className="text-[13px] text-text-secondary">
-                {contact.full_name.split(" ")[0]} is your only contact at {customer?.company_name || "this account"} right
+                {contact.full_name.replace(/^(Dr|Mr|Ms|Mrs|Prof)\.?\s+/i, "").split(/\s+/)[0]} is your only contact at {customer?.company_name || "this account"} right
                 now — that&apos;s risky. Find a second person (a peer or their manager) so the deal doesn&apos;t rest on one relationship.
               </p>
             ) : (

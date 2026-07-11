@@ -26,6 +26,7 @@ import { getRole } from "@/lib/role";
 import { RoleSwitcher } from "@/components/offerings/RoleSwitcher";
 import { ImportExcel } from "@/components/offerings/ImportExcel";
 import { OfferingsManageMenu } from "@/components/offerings/OfferingsManageMenu";
+import { NewOfferingButton } from "@/components/offerings/NewOfferingButton";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offerings" };
@@ -121,12 +122,14 @@ export default function OfferingsPage() {
             <OfferingsManageMenu />
             {admin && <ImportExcel />}
             {admin && (
-              <Link
-                href="/offerings/new"
-                className="inline-flex items-center justify-center text-[14px] font-semibold rounded-md px-5 py-2.5 bg-blue-primary text-white hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-              >
-                + New offering
-              </Link>
+              <NewOfferingButton
+                customerTypes={customerTypes}
+                markets={markets}
+                existingTypes={Array.from(
+                  new Set(offeringTypes.map((t) => t.name))
+                )}
+                offeringCategories={offeringCategories}
+              />
             )}
           </div>
         }

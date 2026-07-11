@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LineChart, VIZ } from "@/components/charts/Charts";
+import { LineChart, VIZ, type TipItem } from "@/components/charts/Charts";
 import { cn } from "@/lib/utils";
 
 // Engagement over time with metric toggles (Anir, Jul 4: "line graphs…
@@ -18,11 +18,15 @@ export function EngagementChart({
   sent,
   opened,
   replied,
+  pointTips,
 }: {
   days: string[]; // x labels (subset shown)
   sent: number[];
   opened: number[];
   replied: number[];
+  // The who behind each day-point (shared across series) — recipients with a
+  // company logo + name, so hovering a day shows who's on the blast.
+  pointTips?: TipItem[][];
 }) {
   const [on, setOn] = useState<Record<string, boolean>>({
     sent: true,
@@ -68,6 +72,7 @@ export function EngagementChart({
             points: data[s.key],
           }))}
           xLabels={days}
+          pointTips={pointTips}
           height={170}
         />
       )}

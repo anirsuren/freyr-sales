@@ -17,6 +17,11 @@ export interface AccountNote {
   author: string;
   body: string;
   created_at: string;
+  // Log a real interaction, not just free text (Suren): call / email / meeting /
+  // note, plus an optional next step and follow-up date.
+  kind?: "call" | "email" | "meeting" | "note" | null;
+  next_step?: string | null;
+  follow_up_date?: string | null;
 }
 
 export interface AccountAttachment {

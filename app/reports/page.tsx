@@ -83,6 +83,10 @@ export default async function ReportsPage() {
     label: c.label,
     value: c.value,
     color: VIZ_SERIES[i % VIZ_SERIES.length],
+    // Which offerings make up this category's revenue (Suren: every graph → who).
+    tip: report.byOffering
+      .filter((o) => o.category === c.label && o.revenue > 0)
+      .map((o) => ({ name: o.name, value: formatMoney(o.revenue) })),
   }));
   const TYPE_COLOR: Record<string, string> = {
     annual: VIZ.blue,
@@ -94,6 +98,15 @@ export default async function ReportsPage() {
     label: t.label,
     value: t.revenue,
     color: TYPE_COLOR[t.type] || VIZ.slate,
+    // Which contracts make up this revenue type — branded with the customer's
+    // logo so each slice reads as a real row (Suren: "add the logo").
+    tip: report.renewals
+      .filter((r) => r.revenue_type === t.type)
+      .map((r) => ({
+        logo: r.customer,
+        name: `${r.customer} · ${r.offering}`,
+        value: formatMoney(r.amount),
+      })),
   }));
 
   return (
@@ -163,8 +176,8 @@ export default async function ReportsPage() {
                   segments={typeSegments}
                   size={150}
                   thickness={16}
-                  centerLabel={String(report.lineCount)}
-                  centerSub="contracts"
+                  centerLabel={formatMoney(report.totalRevenue)}
+                  centerSub="total"
                 />
                 <Legend
                   items={report.byType.map((t) => ({

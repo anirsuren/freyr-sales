@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SearchX, Search, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles } from "lucide-react";
+import { SearchX, Search, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownWideNarrow, Rows3 } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge, OutcomeBadge } from "@/components/ui/Badge";
@@ -17,6 +18,7 @@ import { cn, formatDate, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { REPS } from "@/lib/pipeline";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
+import { HoverCard } from "@/components/ui/HoverCard";
 import type { Customer } from "@/lib/types";
 
 type EnrichedCustomer = Customer & {
@@ -135,7 +137,23 @@ export function CustomersBrowser({
   const [sort, setSort] = useState("recent");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [page, setPage] = useState(1);
-  const PER_PAGE = 8;
+  // How many rows per page — user's choice, remembered (Suren: "let me decide how
+  // many to show per page, on every page"). Defaults to 12 (6 rows in the 2-col
+  // grid) instead of a cramped 8.
+  const [perPage, setPerPage] = useState(12);
+  useEffect(() => {
+    const v = Number(localStorage.getItem("freyr.customers.perPage"));
+    if (v && [8, 12, 24, 48].includes(v)) setPerPage(v);
+  }, []);
+  function changePerPage(v: string) {
+    const n = Number(v);
+    setPerPage(n);
+    setPage(1);
+    try {
+      localStorage.setItem("freyr.customers.perPage", String(n));
+    } catch {}
+  }
+  const PER_PAGE = perPage;
 
   // bulk actions (V4 #7)
   const [selectMode, setSelectMode] = useState(false);
@@ -312,31 +330,43 @@ export function CustomersBrowser({
               className="w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
             />
           </div>
-          <select
-            aria-label="Filter by health"
+          <ColorSelect
             value={healthFilter}
-            onChange={(e) => setHealthFilter(e.target.value)}
-            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-          >
-            <option value="all">All health</option>
-            <option value="healthy">Healthy</option>
-            <option value="watch">Watch</option>
-            <option value="at_risk">At risk</option>
-          </select>
-          <select
+            onChange={setHealthFilter}
+            minWidth={140}
+            options={[
+              { value: "all", label: "All health" },
+              { value: "healthy", label: "Healthy", color: HEALTH_COLOR.healthy.color },
+              { value: "watch", label: "Watch", color: HEALTH_COLOR.watch.color },
+              { value: "at_risk", label: "At risk", color: HEALTH_COLOR.at_risk.color },
+            ]}
+          />
+          <ColorSelect
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-          >
-            <option value="recent">Newest</option>
-            <option value="company">Company A–Z</option>
-            <option value="size">Opportunity</option>
-            <option value="health">Health (at-risk first)</option>
-          </select>
+            onChange={setSort}
+            minWidth={185}
+            options={[
+              { value: "recent", label: "Newest" },
+              { value: "company", label: "Company A–Z" },
+              { value: "size", label: "Opportunity" },
+              { value: "health", label: "Health (at-risk first)" },
+            ].map<ColorOption>((o) => ({ ...o, icon: ArrowDownWideNarrow }))}
+          />
+          <ColorSelect
+            value={String(perPage)}
+            onChange={changePerPage}
+            minWidth={120}
+            options={[8, 12, 24, 48].map<ColorOption>((n) => ({
+              value: String(n),
+              label: `${n} / page`,
+              icon: Rows3,
+            }))}
+          />
           <div className="flex border border-border rounded-md overflow-hidden">
             <button
               onClick={() => setView("grid")}
               aria-label="Grid view"
+              title="Grid view"
               className={cn("p-2 transition-colors", view === "grid" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
             >
               <LayoutGrid size={16} strokeWidth={1.5} />
@@ -344,6 +374,7 @@ export function CustomersBrowser({
             <button
               onClick={() => setView("table")}
               aria-label="Table view"
+              title="Table view"
               className={cn("p-2 border-l border-border transition-colors", view === "table" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
             >
               <Table2 size={16} strokeWidth={1.5} />
@@ -513,10 +544,60 @@ export function CustomersBrowser({
                       </td>
                     )}
                     <td className="px-5 py-4">
-                      <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
-                        <CompanyLogo name={c.company_name} className="w-8 h-8 text-[11px]" />
-                        <span className="text-[13px] font-semibold text-text-primary">{c.company_name}</span>
-                      </Link>
+                      <HoverCard
+                        side="bottom"
+                        width={280}
+                        content={
+                          <div>
+                            <div className="flex items-center gap-2.5 mb-2.5">
+                              <CompanyLogo name={c.company_name} className="w-9 h-9 text-[11px]" />
+                              <div className="min-w-0">
+                                <p className="text-[13.5px] font-semibold text-text-primary truncate">
+                                  {c.company_name}
+                                </p>
+                                <p className="text-[11.5px] text-text-tertiary truncate">
+                                  {[c.industry, c.geography].filter(Boolean).join(" · ") || "—"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mb-2.5">
+                              <HealthBar health={c.health} />
+                            </div>
+                            <div className="space-y-1 text-[12.5px]">
+                              <div className="flex justify-between gap-3">
+                                <span className="text-text-tertiary">Opportunity</span>
+                                <span className="font-medium text-text-primary">
+                                  {c.size_tier ? SIGNAL[c.size_tier]?.label ?? "—" : "—"}
+                                </span>
+                              </div>
+                              <div className="flex justify-between gap-3">
+                                <span className="text-text-tertiary">Contacts</span>
+                                <span className="font-medium text-text-primary tnum">{c.contact_count}</span>
+                              </div>
+                              <div className="flex justify-between gap-3">
+                                <span className="text-text-tertiary">Last touch</span>
+                                <span className="font-medium text-text-primary">
+                                  {c.last_outcome ? c.last_outcome.replace(/_/g, " ") : "none"}
+                                </span>
+                              </div>
+                              {c.owner && (
+                                <div className="flex justify-between gap-3">
+                                  <span className="text-text-tertiary">Owner</span>
+                                  <span className="font-medium text-text-primary truncate">{c.owner}</span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="mt-2.5 pt-2.5 border-t border-border-light text-[11.5px] text-blue-primary font-medium">
+                              Open account →
+                            </p>
+                          </div>
+                        }
+                      >
+                        <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
+                          <CompanyLogo name={c.company_name} className="w-8 h-8 text-[11px]" />
+                          <span className="text-[13px] font-semibold text-text-primary">{c.company_name}</span>
+                        </Link>
+                      </HoverCard>
                     </td>
                     <td className="px-5 py-4"><Signal tier={c.size_tier} /></td>
                     <td className="px-5 py-4"><HealthBar health={c.health} /></td>

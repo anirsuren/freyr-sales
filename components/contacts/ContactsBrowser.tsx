@@ -2,17 +2,20 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List } from "lucide-react";
+import { Search, Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownWideNarrow } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Badge } from "@/components/ui/Badge";
+import { Badge, OutcomeBadge } from "@/components/ui/Badge";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
+import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
+import { DonutChart, DonutLegend, Sparkline, VIZ, type TipItem } from "@/components/charts/Charts";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { toCSV, downloadCSV } from "@/lib/csv";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 export interface ContactRow {
   id: string;
@@ -22,7 +25,38 @@ export interface ContactRow {
   companyId?: string | null;
   role: string;
   email: string;
+  phone?: string | null;
   linkedin?: string | null;
+  // Engagement signal for the card's scale-up hover.
+  touches?: number;
+  lastOutcome?: string | null;
+  lastTouch?: string | null;
+  offerings?: number;
+  outcomeMix?: { label: string; value: number; color: string; tip?: TipItem[] }[];
+  trend?: number[];
+  // The touches behind each weekly point of `trend`, for the sparkline hover.
+  trendTips?: TipItem[][];
+}
+
+function tel(phone: string) {
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
+// Color-code the role pill by function so a rep scans the room by color, not by
+// reading every label (Suren: "color-code everything"). Keyed on a keyword in
+// the role bucket so it's resilient to naming ("Regulatory Affairs",
+// "Reg Ops", etc.). Each entry is a soft tinted bg + a saturated text color.
+const ROLE_STYLES: { test: RegExp; bg: string; color: string }[] = [
+  { test: /exec|c-?level|ceo|coo|cfo|founder|chief/i, bg: "rgba(124,58,237,0.10)", color: "#6D28D9" }, // violet — leadership
+  { test: /regulatory|reg\b|ra\b/i, bg: "rgba(0,113,227,0.10)", color: "#0040A0" }, // blue — regulatory
+  { test: /medical|clinical|scientific/i, bg: "rgba(5,150,105,0.12)", color: "#047857" }, // emerald — medical
+  { test: /quality|qa|cmc|manufactur/i, bg: "rgba(217,119,6,0.12)", color: "#B45309" }, // amber — quality
+  { test: /complian|legal|audit/i, bg: "rgba(225,29,72,0.10)", color: "#BE123C" }, // rose — compliance
+  { test: /commercial|market|sales|business/i, bg: "rgba(2,132,199,0.12)", color: "#0369A1" }, // sky — commercial
+];
+function roleStyle(role: string): { bg: string; color: string } {
+  const hit = ROLE_STYLES.find((s) => s.test.test(role));
+  return hit ?? { bg: "rgba(100,116,139,0.12)", color: "#475569" }; // slate default
 }
 
 export function ContactsBrowser({
@@ -147,26 +181,28 @@ export function ContactsBrowser({
               className="w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
             />
           </div>
-          <select
+          <ColorSelect
             value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-          >
-            <option value="all">All roles</option>
-            {roles.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setRole}
+            minWidth={150}
+            options={[
+              { value: "all", label: "All roles" },
+              ...roles.map<ColorOption>((r) => ({
+                value: r,
+                label: r,
+                color: roleStyle(r).color,
+              })),
+            ]}
+          />
+          <ColorSelect
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-          >
-            <option value="name">Name A–Z</option>
-            <option value="company">Company A–Z</option>
-          </select>
+            onChange={setSort}
+            minWidth={150}
+            options={[
+              { value: "name", label: "Name A–Z", icon: ArrowDownWideNarrow },
+              { value: "company", label: "Company A–Z", icon: ArrowDownWideNarrow },
+            ]}
+          />
           {/* Grid ↔ list view (Suren: "we need a grid view on this or whatever
               the other view is"). */}
           <div className="inline-flex items-center rounded-md border border-border overflow-hidden">
@@ -369,8 +405,8 @@ export function ContactsBrowser({
                   {c.role && (
                     <Badge
                       label={c.role}
-                      bg="rgba(0,113,227,0.10)"
-                      color="#0040A0"
+                      bg={roleStyle(c.role).bg}
+                      color={roleStyle(c.role).color}
                       className="!normal-case tracking-normal shrink-0 hidden md:inline-flex"
                     />
                   )}
@@ -403,99 +439,212 @@ export function ContactsBrowser({
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger">
           {view.map((c) => {
             const isSel = selected.has(c.id);
-            return (
-              <Card
-                key={c.id}
-                onClick={selectMode ? () => toggleSel(c.id) : undefined}
-                onKeyDown={
-                  selectMode
-                    ? (e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          toggleSel(c.id);
-                        }
-                      }
-                    : undefined
-                }
-                role={selectMode ? "button" : undefined}
-                tabIndex={selectMode ? 0 : undefined}
-                aria-pressed={selectMode ? isSel : undefined}
-                aria-label={selectMode ? `Select ${c.name}` : undefined}
-                className={cn(
-                  "relative transition-all duration-150 h-full",
-                  selectMode ? "cursor-pointer" : "",
-                  isSel
-                    ? "border-blue-primary ring-1 ring-blue-primary"
-                    : "hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-card active:scale-[0.98] active:shadow-none active:translate-y-0"
-                )}
-              >
-                <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    {selectMode && (
-                      <span className="text-blue-primary shrink-0">
-                        {isSel ? (
-                          <CheckSquare size={18} strokeWidth={1.8} />
-                        ) : (
-                          <Square size={18} strokeWidth={1.8} className="text-text-tertiary" />
-                        )}
+
+            // The identity block is shared between select mode and browse mode —
+            // avatar, name, title, company, role, and contact details.
+            const identity = (
+              <>
+                <div className="flex items-center gap-3 mb-3">
+                  {selectMode && (
+                    <span className="text-blue-primary shrink-0">
+                      {isSel ? (
+                        <CheckSquare size={18} strokeWidth={1.8} />
+                      ) : (
+                        <Square size={18} strokeWidth={1.8} className="text-text-tertiary" />
+                      )}
+                    </span>
+                  )}
+                  <Avatar name={c.name} className="w-10 h-10 text-[14px]" />
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
+                      {/* Stretched-link pattern: the name link's ::after overlay
+                          covers the whole card, so clicking anywhere opens the
+                          contact — while the LinkedIn icon (lifted above it) stays
+                          its own separate link. No nested anchors. */}
+                      {selectMode ? (
+                        <span className="truncate">{c.name}</span>
+                      ) : (
+                        <Link
+                          href={`/contacts/${c.id}`}
+                          aria-label={`View ${c.name}`}
+                          className="min-w-0 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary focus-visible:ring-offset-1 group-hover:text-blue-primary transition-colors"
+                        >
+                          <span className="block truncate">{c.name}</span>
+                        </Link>
+                      )}
+                      <span className="relative z-10 shrink-0">
+                        <LinkedInLink url={c.linkedin} size={14} />
                       </span>
-                    )}
-                    <Avatar name={c.name} className="w-10 h-10 text-[14px]" />
-                    <div className="min-w-0">
-                      <p className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
-                        {/* Stretched-link pattern: the name link's ::after overlay
-                            covers the whole card, so clicking anywhere opens the
-                            contact — while the LinkedIn icon (lifted above it) stays
-                            its own separate link. No nested anchors. */}
-                        {selectMode ? (
-                          <span className="truncate">{c.name}</span>
-                        ) : (
-                          <Link
-                            href={`/contacts/${c.id}`}
-                            aria-label={`View ${c.name}`}
-                            className="min-w-0 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary focus-visible:ring-offset-1"
-                          >
-                            <span className="block truncate">{c.name}</span>
-                          </Link>
-                        )}
-                        <span className="relative z-10 shrink-0">
-                          <LinkedInLink url={c.linkedin} size={14} />
-                        </span>
-                      </p>
-                      <p className="text-[13px] text-text-secondary truncate">{c.title}</p>
-                    </div>
+                    </p>
+                    <p className="text-[13px] text-text-secondary truncate">{c.title}</p>
                   </div>
-                  <div className="flex items-center justify-between gap-2">
-                    {c.companyId ? (
-                      // Lifted above the card's stretched link so it opens the
-                      // COMPANY, not the contact (Suren: "click on the company here").
-                      <Link
-                        href={`/customers/${c.companyId}`}
-                        className="relative z-10 flex items-center gap-2 min-w-0 group/co"
-                      >
-                        <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
-                        <span className="text-[13px] text-text-secondary truncate group-hover/co:text-blue-primary transition-colors">
-                          {c.company}
-                        </span>
-                      </Link>
-                    ) : (
-                      <span className="flex items-center gap-2 min-w-0">
-                        <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
-                        <span className="text-[13px] text-text-secondary truncate">{c.company}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  {c.companyId ? (
+                    // Lifted above the card's stretched link so it opens the
+                    // COMPANY, not the contact (Suren: "click on the company here").
+                    <Link
+                      href={`/customers/${c.companyId}`}
+                      className="relative z-10 flex items-center gap-2 min-w-0 group/co"
+                    >
+                      <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
+                      <span className="text-[13px] text-text-secondary truncate group-hover/co:text-blue-primary transition-colors">
+                        {c.company}
                       </span>
-                    )}
-                    {c.role && (
-                      <Badge label={c.role} bg="rgba(0,113,227,0.10)" color="#0040A0" className="!normal-case tracking-normal shrink-0" />
-                    )}
-                  </div>
-                  {c.email && (
-                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border-light text-[12px] text-text-tertiary">
-                      <Mail size={12} strokeWidth={1.6} className="shrink-0" />
-                      <span className="truncate">{c.email}</span>
-                    </div>
+                    </Link>
+                  ) : (
+                    <span className="flex items-center gap-2 min-w-0">
+                      <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
+                      <span className="text-[13px] text-text-secondary truncate">{c.company}</span>
+                    </span>
+                  )}
+                  {c.role && (
+                    <Badge label={c.role} bg={roleStyle(c.role).bg} color={roleStyle(c.role).color} className="!normal-case tracking-normal shrink-0" />
                   )}
                 </div>
-              </Card>
+                {(c.email || c.phone) && (
+                  <div className="mt-2 pt-2 border-t border-border-light space-y-1">
+                    {c.email && (
+                      <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+                        <Mail size={12} strokeWidth={1.6} className="shrink-0" />
+                        <span className="truncate">{c.email}</span>
+                      </div>
+                    )}
+                    {c.phone && (
+                      <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary tnum">
+                        <PhoneCall size={12} strokeWidth={1.6} className="shrink-0" />
+                        <span className="truncate">{c.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+
+            if (selectMode) {
+              return (
+                <Card
+                  key={c.id}
+                  onClick={() => toggleSel(c.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleSel(c.id);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSel}
+                  aria-label={`Select ${c.name}`}
+                  className={cn(
+                    "relative transition-all duration-150 h-full cursor-pointer",
+                    isSel
+                      ? "border-blue-primary ring-1 ring-blue-primary"
+                      : "hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-card active:scale-[0.98] active:shadow-none active:translate-y-0"
+                  )}
+                >
+                  <div>{identity}</div>
+                </Card>
+              );
+            }
+
+            // Browse mode: the voice-station scale-up hover (Suren: "do that for
+            // the customers and the contacts too"). Resting card is unchanged; on
+            // hover it pops out and reveals engagement + one-tap Email/Call.
+            const touches = c.touches ?? 0;
+            return (
+              <HoverExpandCard
+                key={c.id}
+                className="h-full"
+                summary={identity}
+                extra={
+                  <>
+                    {/* Charts like the voice-agent reveal (Suren): how this
+                        contact's touches landed + the weekly touch trend. */}
+                    {c.outcomeMix && c.outcomeMix.length > 0 && (
+                      <div className="mb-3.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">
+                          How touches landed
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <DonutChart
+                            segments={c.outcomeMix}
+                            size={78}
+                            thickness={10}
+                            centerLabel={String(touches)}
+                            centerSub="touches"
+                          />
+                          <DonutLegend items={c.outcomeMix} />
+                        </div>
+                      </div>
+                    )}
+                    {c.trend && c.trend.some((v) => v > 0) && (
+                      <div className="mb-3.5">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                            Activity · last 8 weeks
+                          </p>
+                        </div>
+                        <Sparkline
+                          points={c.trend}
+                          color={VIZ.blue}
+                          height={34}
+                          unit="touches"
+                          pointTips={c.trendTips}
+                          xLabels={c.trend.map((_, i) =>
+                            i === c.trend!.length - 1 ? "this week" : `${c.trend!.length - 1 - i}w ago`
+                          )}
+                        />
+                      </div>
+                    )}
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">
+                      Engagement
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { l: "Touches", v: String(touches) },
+                        { l: "Offerings", v: String(c.offerings ?? 0) },
+                        { l: "Last spoke", v: c.lastTouch ? formatDate(c.lastTouch) : "—" },
+                      ].map((s) => (
+                        <div key={s.l} className="rounded-lg bg-surface px-2.5 py-2">
+                          <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                            {s.l}
+                          </p>
+                          <p className="text-[13px] font-semibold text-text-primary tnum truncate mt-0.5">
+                            {s.v}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    {c.lastOutcome && (
+                      <div className="mt-2.5 flex items-center justify-between gap-2">
+                        <span className="text-[11.5px] text-text-tertiary">Latest outcome</span>
+                        <OutcomeBadge outcome={c.lastOutcome} />
+                      </div>
+                    )}
+                    <div className="mt-3 flex items-center gap-2">
+                      {c.email && (
+                        <a
+                          href={`mailto:${c.email}`}
+                          className="relative z-10 inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+                        >
+                          <Mail size={13} strokeWidth={1.9} />
+                          Email
+                        </a>
+                      )}
+                      {c.phone && (
+                        <a
+                          href={tel(c.phone)}
+                          className="relative z-10 inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+                        >
+                          <PhoneCall size={13} strokeWidth={1.9} />
+                          Call
+                        </a>
+                      )}
+                    </div>
+                  </>
+                }
+              />
             );
           })}
         </div>

@@ -105,6 +105,21 @@ export const OUTCOME_META: Record<
   },
 };
 
+// Bright, saturated fills for OUTCOME donut/pie segments. OUTCOME_META.color is
+// deliberately DARK (it's badge *text* on a light chip, needs contrast) — reusing
+// it as a chart fill looked dim + muddy (Suren: "why is that pie chart so dim…
+// don't use that brown for In Progress, use yellow, and a lighter version of every
+// colour"). Chart fills get their own vivid palette.
+export const OUTCOME_CHART_COLOR: Record<string, string> = {
+  interested: "#34C759", // bright green
+  meeting_booked: "#0A84FF", // bright blue
+  in_progress: "#FFCC00", // yellow (was an ugly brown)
+  not_interested: "#FF453A", // bright red
+  no_response: "#AF9BF5", // soft violet (never gray)
+  ai_call_completed: "#0A84FF",
+  ai_call_failed: "#FF453A",
+};
+
 export const SIZE_TIER_LABEL: Record<string, string> = {
   small: "Small",
   mid: "Mid-size",

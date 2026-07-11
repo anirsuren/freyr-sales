@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchX, ArrowLeft } from "lucide-react";
 import { IntelligenceRail } from "@/components/sessions/IntelligenceRail";
 import { PitchWorkspace } from "@/components/sessions/PitchWorkspace";
+import { EngagementRail } from "@/components/sessions/EngagementRail";
 import { RecordView } from "@/components/RecordView";
 import { SIZE_TIER_LABEL } from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
@@ -129,6 +130,15 @@ export default async function SessionPage({
           companyName={customer?.company_name || ""}
         />
       </div>
+
+      {/* Right rail — log a real call/meeting outcome against this session. Opt-in
+          (collapsed) so it never clutters the pitch, but always one click away. */}
+      <EngagementRail
+        sessionId={session.id}
+        customerId={session.customer_id}
+        contactId={session.contact_id}
+        initialInteractions={interactions}
+      />
     </div>
   );
 }

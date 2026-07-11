@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/Input";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OutcomeBadge } from "@/components/ui/Badge";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, ArrowDownWideNarrow } from "lucide-react";
 import { OUTCOME_META, formatDate, cn } from "@/lib/utils";
 import { REVIEW_META } from "@/lib/review";
 import type { ReviewStatus } from "@/lib/types";
@@ -100,29 +101,29 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
               className="w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
             />
           </div>
-          <select
+          <ColorSelect
             value={outcome}
-            onChange={(e) => setOutcome(e.target.value)}
-            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-          >
-            <option value="all">All outcomes</option>
-            {outcomes.map((o) => (
-              <option key={o} value={o}>
-                {OUTCOME_META[o]?.label || o}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setOutcome}
+            minWidth={155}
+            options={[
+              { value: "all", label: "All outcomes" },
+              ...outcomes.map<ColorOption>((o) => ({
+                value: o,
+                label: OUTCOME_META[o]?.label || o,
+                color: OUTCOME_META[o]?.color,
+              })),
+            ]}
+          />
+          <ColorSelect
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-          >
-            {SORTS.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+            onChange={setSort}
+            minWidth={150}
+            options={SORTS.map<ColorOption>((s) => ({
+              value: s.key,
+              label: s.label,
+              icon: ArrowDownWideNarrow,
+            }))}
+          />
           <button
             onClick={exportCsv}
             className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
@@ -200,15 +201,19 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                     <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">{r.service}</td>
                     <td className="px-5 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "—"}</td>
                     <td className="px-5 py-4 whitespace-nowrap">
-                      <span
-                        className="text-[10.5px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
-                        style={{
-                          background: REVIEW_META[r.review].bg,
-                          color: REVIEW_META[r.review].color,
-                        }}
-                      >
-                        {REVIEW_META[r.review].label}
-                      </span>
+                      {(() => {
+                        const rm = REVIEW_META[r.review];
+                        const RIcon = rm.icon;
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
+                            style={{ background: rm.bg, color: rm.color }}
+                          >
+                            <RIcon size={11} strokeWidth={2.4} />
+                            {rm.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDate(r.date)}</td>
                     <td className="px-5 py-4 text-right">

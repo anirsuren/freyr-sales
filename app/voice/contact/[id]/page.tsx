@@ -19,6 +19,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { SizeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { BackButton } from "@/components/ui/BackButton";
 import { DonutChart, BarChart, VIZ } from "@/components/charts/Charts";
 import { getDb } from "@/lib/db";
 import { listVoiceQueue, mockCallTranscript, type VoiceOutcome } from "@/lib/voice";
@@ -93,6 +94,17 @@ export default async function VoiceContactPage({
     label: OUTCOME_META[o].label,
     value: finished.filter((c) => c.outcome === o).length,
     color: OUTCOME_META[o].color,
+    // Hover a slice → which calls landed there (offering + date).
+    tip: finished
+      .filter((c) => c.outcome === o)
+      .map((c) => ({
+        name: c.offering_name || "Call",
+        sub: new Date(c.created_at).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        value: OUTCOME_META[o].label,
+      })),
   })).filter((s) => s.value > 0);
   // Oldest → newest so the talk-time bars read left-to-right in time.
   const talkBars = [...calls]
@@ -102,6 +114,14 @@ export default async function VoiceContactPage({
       label: formatDate(c.created_at).replace(/,.*$/, ""),
       value: c.duration_secs || 0,
       color: VIZ.blue,
+      // Each bar is one call — name what it was about, how it landed, how long.
+      tip: [
+        {
+          name: c.offering_name || "Call",
+          sub: c.outcome ? OUTCOME_META[c.outcome].label : undefined,
+          value: fmtLen(c.duration_secs || 0),
+        },
+      ],
     }));
 
   const firstName =
@@ -119,13 +139,9 @@ export default async function VoiceContactPage({
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/voice"
-        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors"
-      >
-        <ArrowLeft size={15} strokeWidth={1.8} />
-        Voice agents
-      </Link>
+      {/* router.back() returns to the agent page you drilled in from, not the
+          main list (Suren: full back-arrow audit on voice). */}
+      <BackButton fallback="/voice" label="Back" />
 
       {/* Who they are */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

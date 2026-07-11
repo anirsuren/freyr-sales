@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { GLOSSARY } from "@/lib/glossary";
 import { CountUp } from "@/components/ui/CountUp";
-import { KPI_STORE, KPI_COMPARE, KPI_EVENT } from "./KpiCustomize";
+import { KPI_STORE, KPI_EVENT } from "./KpiCustomize";
 
 // A soft icon per metric gives each card identity + visual weight (premium feel
 // vs. a hollow label+number). Keyed by the KPI key from the dashboard.
@@ -35,6 +35,7 @@ export type KpiItem = {
   prev: number | null;
   unit: "money" | "count" | "pct";
   href: string;
+  sub?: string;
 };
 
 function deltaLabel(item: KpiItem): { text: string; dir: "up" | "down" } | null {
@@ -62,15 +63,12 @@ export function DashboardKpis({
   // Read-only mirror of the customize state — the controls now live in the header
   // (KpiCustomize); we sync from localStorage on mount + whenever it broadcasts.
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [compareOn, setCompareOn] = useState(true);
 
   useEffect(() => {
     const sync = () => {
       try {
         const raw = localStorage.getItem(KPI_STORE);
         setHidden(raw ? new Set(JSON.parse(raw)) : new Set());
-        const c = localStorage.getItem(KPI_COMPARE);
-        setCompareOn(c == null ? true : c === "1");
       } catch {}
     };
     sync();
@@ -79,7 +77,9 @@ export function DashboardKpis({
   }, []);
 
   const shown = kpis.filter((k) => !hidden.has(k.key));
-  const showDelta = comparable && compareOn;
+  // Always show the change vs the previous period (Suren: dropped the "Change"
+  // toggle — the delta is information a sales lead always wants, not a mode).
+  const showDelta = comparable;
 
   return (
     <section>
@@ -89,13 +89,15 @@ export function DashboardKpis({
           const Icon = KPI_ICON[k.key] || BarChart3;
           return (
             <Link key={k.key} href={k.href} className="block">
-              <Card className="h-[136px] flex flex-col justify-between hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-200 group">
+              <Card className="h-[150px] flex flex-col justify-between hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-200 group">
                 <div className="flex items-start justify-between">
                   <span className="w-9 h-9 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0 transition-colors group-hover:bg-blue-primary group-hover:text-white">
                     <Icon size={18} strokeWidth={1.9} />
                   </span>
                   {d && (
                     <span
+                      data-testid="kpi-delta"
+                      title={`${d.text} vs the previous period`}
                       className="inline-flex items-center gap-1 text-[12px] font-semibold tnum px-1.5 py-0.5 rounded-md"
                       style={{
                         color: d.dir === "down" ? "#B02020" : "#1A7A35",
@@ -127,6 +129,11 @@ export function DashboardKpis({
                   <p className="text-[28px] font-bold text-text-primary leading-none tnum mt-1.5">
                     <CountUp value={k.cur} unit={k.unit} />
                   </p>
+                  {k.sub && (
+                    <p className="text-[12px] text-text-tertiary mt-1.5 truncate">
+                      {k.sub}
+                    </p>
+                  )}
                 </div>
               </Card>
             </Link>

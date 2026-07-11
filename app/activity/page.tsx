@@ -24,6 +24,9 @@ export default async function ActivityPage() {
     company: custById[i.customer_id]?.company_name || "—",
     contactName: contactById[i.contact_id]?.full_name || "—",
     customerId: i.customer_id,
+    // Who logged it — the supervisor lens (Suren #77): every event shows the
+    // rep or agent behind it.
+    actor: i.logged_by || null,
   }));
 
   return (

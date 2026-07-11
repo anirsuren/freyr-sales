@@ -23,6 +23,7 @@ import {
   Mail,
   Phone,
   Briefcase,
+  Package,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -31,6 +32,8 @@ import {
   type TabOffering,
 } from "@/components/customers/CustomerOfferingsTab";
 import { CustomerAnalyzePanel } from "@/components/customers/CustomerAnalyzePanel";
+import { AskAgentDrawer } from "@/components/customers/AskAgentDrawer";
+import { AccountAgentChat } from "@/components/agent/AccountAgentChat";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
@@ -41,13 +44,15 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { useToast } from "@/components/ui/Toast";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { AreaChart, DonutChart, DonutLegend, type TipItem } from "@/components/charts/Charts";
 import {
   buildDeals,
   formatMoney,
   ownerFor,
   STAGES,
   STAGE_PROBABILITY,
+  STAGE_COLOR,
   REPS,
 } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries, HEALTH_COLOR } from "@/lib/health";
@@ -75,6 +80,7 @@ import type {
 // it's reachable from every tab without hiding the account (Anir, Jul 3).
 const TABS = [
   { key: "overview", label: "Overview" },
+  { key: "analytics", label: "Analytics" },
   { key: "offerings", label: "Offerings" },
   { key: "contacts", label: "Contacts" },
   { key: "deals", label: "Deals" },
@@ -82,6 +88,22 @@ const TABS = [
   { key: "notes", label: "Notes" },
   { key: "activity", label: "Activity" },
 ];
+
+const NOTE_KINDS = [
+  { key: "call" as const, label: "Call", icon: Phone },
+  { key: "email" as const, label: "Email", icon: Mail },
+  { key: "meeting" as const, label: "Meeting", icon: Users },
+  { key: "note" as const, label: "Note", icon: FileText },
+];
+const NOTE_KIND_META: Record<
+  string,
+  { label: string; icon: typeof Phone; color: string }
+> = {
+  call: { label: "Call", icon: Phone, color: "#0071E3" },
+  email: { label: "Email", icon: Mail, color: "#19C3B1" },
+  meeting: { label: "Meeting", icon: Users, color: "#7C3AED" },
+  note: { label: "Note", icon: FileText, color: "#8E98A8" },
+};
 
 const STAGE_TONE: Record<string, string> = {
   Prospect: "bg-surface text-text-secondary border-border-light",
@@ -156,6 +178,9 @@ export function CustomerTabs({
   const [compDraft, setCompDraft] = useState(customer.competitor || "");
   const [notes, setNotes] = useState<AccountNote[]>(customer.notes_log || []);
   const [noteDraft, setNoteDraft] = useState("");
+  const [noteKind, setNoteKind] = useState<"call" | "email" | "meeting" | "note">("note");
+  const [noteNext, setNoteNext] = useState("");
+  const [noteFollow, setNoteFollow] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [atts, setAtts] = useState<AccountAttachment[]>(
     customer.attachments || []
@@ -163,6 +188,7 @@ export function CustomerTabs({
   const [attName, setAttName] = useState("");
   const [attUrl, setAttUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
 
   // multiple deals per account (#58)
   const [accountDeals, setAccountDeals] = useState<AccountDeal[]>(
@@ -206,6 +232,68 @@ export function CustomerTabs({
       }),
     [interactions, sessionDeals, contacts.length]
   );
+  // Per-touch tooltip row: who we spoke to (their headshot), the account, and
+  // how the touch landed — so hovering any chart reveals the real interactions
+  // behind the number, not just a metric (Suren: "show me who's behind it").
+  const contactNameById = useMemo(
+    () => new Map(contacts.map((c) => [c.id, c.full_name])),
+    [contacts]
+  );
+  const touchTip = (i: Interaction, withDate: boolean): TipItem => {
+    const name = contactNameById.get(i.contact_id);
+    return {
+      avatar: name,
+      name: name || customer.company_name,
+      sub: OUTCOME_META[i.outcome]?.label || i.outcome,
+      ...(withDate ? { value: formatDate(i.created_at) } : {}),
+    };
+  };
+  // This account's touches by outcome — a quick read for a rep of how the
+  // relationship has actually landed (Suren: "what would I need to see here?").
+  // Each segment carries the actual touches behind it for the hover tooltip.
+  const outcomeMix = useMemo(() => {
+    const counts = new Map<string, number>();
+    const tips = new Map<string, TipItem[]>();
+    for (const i of interactions) {
+      counts.set(i.outcome, (counts.get(i.outcome) || 0) + 1);
+      const name = contactNameById.get(i.contact_id);
+      const item: TipItem = {
+        avatar: name,
+        name: name || customer.company_name,
+        sub: customer.company_name,
+        value: OUTCOME_META[i.outcome]?.label || i.outcome,
+      };
+      const arr = tips.get(i.outcome);
+      if (arr) arr.push(item);
+      else tips.set(i.outcome, [item]);
+    }
+    return Array.from(counts.entries())
+      .map(([k, v]) => ({
+        label: OUTCOME_META[k]?.label || k,
+        value: v,
+        color: OUTCOME_CHART_COLOR[k] || "#AF9BF5",
+        tip: tips.get(k) || [],
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [interactions, contactNameById, customer.company_name]);
+  // Weekly touch buckets aligned to the health series' weeks — each plotted
+  // point tips the touches logged that week (Suren: chart hovers must show the
+  // actual entities behind the point).
+  const healthPointTips: TipItem[][] = (() => {
+    const now = Date.now();
+    const weeks = healthSeries.points.length;
+    const WK = 7 * 86400000;
+    return Array.from({ length: weeks }, (_, k) => {
+      const end = now - (weeks - 1 - k) * WK;
+      const start = end - WK;
+      return interactions
+        .filter((i) => {
+          const t = new Date(i.created_at).getTime();
+          return t > start && t <= end;
+        })
+        .map((i) => touchTip(i, false));
+    });
+  })();
   const agentActions = useMemo(
     () =>
       nextBestActions({
@@ -314,10 +402,20 @@ export function CustomerTabs({
     const body = noteDraft.trim();
     if (!body) return;
     setBusy(true);
-    await patchCustomer({ addNote: { body } });
+    await patchCustomer({
+      addNote: {
+        body,
+        kind: noteKind,
+        next_step: noteNext.trim() || null,
+        follow_up_date: noteFollow || null,
+      },
+    });
     setNoteDraft("");
+    setNoteKind("note");
+    setNoteNext("");
+    setNoteFollow("");
     setBusy(false);
-    toast("Note added");
+    toast(noteKind === "note" ? "Note added" : "Interaction logged");
   }
 
   async function addAttachment() {
@@ -440,6 +538,64 @@ export function CustomerTabs({
                 {customer.enrichment_summary}
               </p>
             </Card>
+
+            {/* Account analytics — what a rep needs to read the relationship at a
+                glance (Suren: "imagine I was a sales agent looking at this
+                customer — what would I need to see?"): how health is trending and
+                how our touches have actually landed. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="flex flex-col">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    Relationship health
+                  </h3>
+                  <span
+                    className="text-[12px] font-semibold tnum"
+                    style={{ color: HEALTH_COLOR[health.band].color }}
+                  >
+                    {health.score}/100 · {health.label}
+                  </span>
+                </div>
+                <p className="text-[12px] text-text-tertiary mb-4">
+                  How this account&apos;s health has moved over the last 5 weeks.
+                </p>
+                <div className="flex-1 flex items-end min-h-[150px]">
+                  <AreaChart
+                    data={healthSeries.points}
+                    height={150}
+                    color={HEALTH_COLOR[health.band].color}
+                    format="number"
+                    unit="pts"
+                    pointTips={healthPointTips}
+                    className="w-full"
+                  />
+                </div>
+              </Card>
+              <Card className="flex flex-col">
+                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
+                  How touches have landed
+                </h3>
+                <p className="text-[12px] text-text-tertiary mb-4">
+                  Every logged touch with {customer.company_name}, by outcome.
+                </p>
+                {outcomeMix.length > 0 ? (
+                  <div className="flex-1 flex items-center gap-5">
+                    <DonutChart
+                      segments={outcomeMix}
+                      size={140}
+                      thickness={15}
+                      centerLabel={String(interactions.length)}
+                      centerSub="touches"
+                    />
+                    <DonutLegend items={outcomeMix} />
+                  </div>
+                ) : (
+                  <p className="flex-1 flex items-center text-[13px] text-text-tertiary">
+                    No touches logged with this account yet.
+                  </p>
+                )}
+              </Card>
+            </div>
 
             {/* Company profile — the analyze flow lives HERE in the page flow
                 now, not in a banner pinned above everything (Anir, Jul 3). */}
@@ -589,6 +745,176 @@ export function CustomerTabs({
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Dedicated analytics tab — the key metrics for THIS account as charts
+            (Suren: "a separate analytics tab, look at all our graphs and show the
+            key metrics"). */}
+        {tab === "analytics" && (
+          <div className="space-y-6">
+            {(() => {
+              // Keep the WHO/WHICH on each deal (company + contact) so the
+              // stage donut can tip the actual deals behind a slice — they were
+              // computed then thrown away before (Suren: wire the entities).
+              const acctDeals = [
+                ...sessionDeals.map((d) => ({
+                  stage: d.stage,
+                  value: d.value,
+                  company: d.company,
+                  contactName: d.contactName,
+                })),
+                ...accountDeals.map((d) => ({
+                  stage: d.stage,
+                  value: d.value,
+                  company: customer.company_name,
+                  contactName: d.contact || "",
+                })),
+              ];
+              const dealsByStage = STAGES.map((stage) => {
+                const ds = acctDeals.filter((d) => d.stage === stage);
+                return {
+                  label: stage,
+                  value: ds.reduce((s, d) => s + d.value, 0),
+                  count: ds.length,
+                  color: STAGE_COLOR[stage as keyof typeof STAGE_COLOR] || "#0071E3",
+                  tip: ds.map(
+                    (d): TipItem => ({
+                      logo: d.company,
+                      name: d.company,
+                      sub: d.contactName,
+                      value: formatMoney(d.value),
+                    })
+                  ),
+                };
+              }).filter((s) => s.count > 0);
+              const totalOpen = acctDeals.reduce((s, d) => s + d.value, 0);
+              const WEEK = 7 * 86400000;
+              const nowMs = Date.now();
+              const activity = Array.from({ length: 12 }, (_, w) => {
+                const start = nowMs - (11 - w) * WEEK;
+                return interactions.filter((i) => {
+                  const t = new Date(i.created_at).getTime();
+                  return t >= start && t < start + WEEK;
+                }).length;
+              });
+              // Same 12 weekly buckets, but carrying the touches behind each
+              // point for the Activity chart's hover.
+              const activityTips: TipItem[][] = Array.from({ length: 12 }, (_, w) => {
+                const start = nowMs - (11 - w) * WEEK;
+                return interactions
+                  .filter((i) => {
+                    const t = new Date(i.created_at).getTime();
+                    return t >= start && t < start + WEEK;
+                  })
+                  .map((i) => touchTip(i, true));
+              });
+              const kpis = [
+                { label: "Open pipeline", value: formatMoney(totalOpen) },
+                { label: "Open deals", value: String(acctDeals.length) },
+                { label: "Health", value: `${health.score}/100`, color: HEALTH_COLOR[health.band].color },
+                { label: "Touches", value: String(interactions.length) },
+              ];
+              const H3 = ({ children }: { children: React.ReactNode }) => (
+                <h3 className="text-[15px] font-semibold text-text-primary mb-4">{children}</h3>
+              );
+              return (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {kpis.map((k) => (
+                      <Card key={k.label} className="h-[100px] flex flex-col justify-between">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                          {k.label}
+                        </p>
+                        <p
+                          className="text-[24px] font-bold tnum leading-none"
+                          style={k.color ? { color: k.color } : undefined}
+                        >
+                          {k.value}
+                        </p>
+                      </Card>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                    <Card className="flex flex-col">
+                      <H3>Pipeline by stage</H3>
+                      {dealsByStage.length > 0 ? (
+                        <div className="flex-1 flex items-center gap-5">
+                          <DonutChart
+                            segments={dealsByStage.map((s) => ({ label: s.label, value: s.value, color: s.color, tip: s.tip }))}
+                            size={150}
+                            thickness={16}
+                            centerLabel={formatMoney(totalOpen)}
+                            centerSub="open"
+                          />
+                          <DonutLegend
+                            items={dealsByStage.map((s) => ({ label: s.label, value: s.value, color: s.color }))}
+                            format="money"
+                          />
+                        </div>
+                      ) : (
+                        <p className="flex-1 flex items-center text-[13px] text-text-tertiary">
+                          No open deals on this account yet.
+                        </p>
+                      )}
+                    </Card>
+                    <Card className="flex flex-col">
+                      <H3>How touches have landed</H3>
+                      {outcomeMix.length > 0 ? (
+                        <div className="flex-1 flex items-center gap-5">
+                          <DonutChart
+                            segments={outcomeMix}
+                            size={150}
+                            thickness={16}
+                            centerLabel={String(interactions.length)}
+                            centerSub="touches"
+                          />
+                          <DonutLegend items={outcomeMix} />
+                        </div>
+                      ) : (
+                        <p className="flex-1 flex items-center text-[13px] text-text-tertiary">
+                          No touches logged yet.
+                        </p>
+                      )}
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                    <Card className="flex flex-col">
+                      <H3>Relationship health · last 5 weeks</H3>
+                      <div className="flex-1 flex items-end min-h-[160px]">
+                        <AreaChart
+                          data={healthSeries.points}
+                          height={160}
+                          color={HEALTH_COLOR[health.band].color}
+                          format="number"
+                          unit="pts"
+                          pointTips={healthPointTips}
+                          className="w-full"
+                        />
+                      </div>
+                    </Card>
+                    <Card className="flex flex-col">
+                      <H3>Activity · last 12 weeks</H3>
+                      <div className="flex-1 flex items-end min-h-[160px]">
+                        <AreaChart
+                          data={activity}
+                          height={160}
+                          format="number"
+                          unit="touches"
+                          pointTips={activityTips}
+                          xLabels={activity.map((_, i) =>
+                            i === activity.length - 1 ? "now" : `${activity.length - 1 - i}w`
+                          )}
+                          className="w-full"
+                        />
+                      </div>
+                    </Card>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -756,43 +1082,90 @@ export function CustomerTabs({
                   <Link
                     key={s.id}
                     href={`/sessions/${s.id}`}
-                    className="flex items-center gap-3.5 px-5 py-4 hover:bg-surface transition-colors group"
+                    className="group block px-5 py-4 hover:bg-surface transition-colors"
                   >
-                    <span className="w-10 h-10 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                      <CalendarClock size={19} strokeWidth={1.8} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-semibold text-text-primary truncate">
-                        {svc[0]?.service_name || "Pitch session"}
-                      </p>
-                      <p className="text-[12px] text-text-tertiary">
-                        {formatDate(s.created_at)}
-                        {svc.length > 1 && (
-                          <span> · {svc.length} offerings pitched</span>
+                    <div className="flex items-center gap-4">
+                      {/* Who the pitch is for — their headshot leads, so the row
+                          reads like a real person, not a blank strip. */}
+                      {sessContact ? (
+                        <Avatar
+                          name={sessContact.full_name}
+                          className="w-12 h-12 text-[15px] shrink-0"
+                        />
+                      ) : (
+                        <span className="w-12 h-12 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                          <CalendarClock size={22} strokeWidth={1.7} />
+                        </span>
+                      )}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-[15px] font-semibold text-text-primary">
+                            {svc[0]?.service_name || "Pitch session"}
+                          </p>
+                          {outcome ? (
+                            <OutcomeBadge outcome={outcome} />
+                          ) : review ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.04em] px-2 py-0.5 rounded-full"
+                              style={{ background: review.bg, color: review.color }}
+                            >
+                              <review.icon size={10} strokeWidth={2.4} />
+                              {review.label}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.04em] text-success bg-success/10 px-2 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                              Ready to send
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[12.5px] text-text-tertiary mt-0.5">
+                          {sessContact ? (
+                            <>
+                              Pitched to{" "}
+                              <span className="font-medium text-text-secondary">
+                                {sessContact.full_name}
+                              </span>
+                              {sessContact.job_title ? ` · ${sessContact.job_title}` : ""}
+                            </>
+                          ) : (
+                            "Pitch session"
+                          )}
+                          {" · "}
+                          {formatDate(s.created_at)}
+                        </p>
+                        {/* The offerings this pitch covers — fills the middle with
+                            real content instead of dead space. */}
+                        {svc.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            {svc.slice(0, 3).map((sv, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2 py-0.5"
+                              >
+                                <Package size={11} strokeWidth={1.9} className="text-text-tertiary" />
+                                {sv.service_name}
+                              </span>
+                            ))}
+                            {svc.length > 3 && (
+                              <span className="text-[11.5px] text-text-tertiary font-medium">
+                                +{svc.length - 3} more
+                              </span>
+                            )}
+                          </div>
                         )}
-                        {sessContact && <span> · for {sessContact.full_name}</span>}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {outcome && <OutcomeBadge outcome={outcome} />}
-                      {review && (
-                        <span
-                          className="text-[10px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
-                          style={{ background: review.bg, color: review.color }}
-                        >
-                          {review.label}
-                        </span>
-                      )}
-                      {!outcome && !review && (
-                        <span className="text-[11px] font-semibold text-text-secondary bg-surface border border-border-light rounded-full px-2.5 py-1">
-                          Pitch ready
-                        </span>
-                      )}
-                      <ArrowRight
-                        size={16}
-                        className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform"
-                        strokeWidth={1.5}
-                      />
+                      </div>
+
+                      {/* The action — a real blue CTA, not a dead grey chip. */}
+                      <span className="hidden sm:inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-lg bg-blue-primary text-white shadow-[0_1px_2px_rgba(0,113,227,0.20)] group-hover:bg-blue-hover group-hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)] transition-all shrink-0">
+                        Open pitch
+                        <ArrowRight
+                          size={15}
+                          strokeWidth={2}
+                          className="group-hover:translate-x-0.5 transition-transform"
+                        />
+                      </span>
                     </div>
                   </Link>
                 );
@@ -853,9 +1226,21 @@ export function CustomerTabs({
               </Card>
             ) : (
               <div className="space-y-3">
-                {notes.map((n) => (
+                {notes.map((n) => {
+                  const meta = NOTE_KIND_META[n.kind || "note"];
+                  const KIcon = meta.icon;
+                  return (
                   <Card key={n.id} className="p-4">
-                    <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      {n.kind && n.kind !== "note" && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5"
+                          style={{ background: `${meta.color}1A`, color: meta.color }}
+                        >
+                          <KIcon size={11} strokeWidth={2.2} />
+                          {meta.label}
+                        </span>
+                      )}
                       <Avatar name={n.author} className="w-6 h-6 text-[11px]" />
                       <span className="text-[13px] font-semibold text-text-primary">
                         {n.author}
@@ -867,26 +1252,109 @@ export function CustomerTabs({
                     <p className="text-[14px] text-text-secondary leading-relaxed whitespace-pre-wrap">
                       {n.body}
                     </p>
+                    {(n.next_step || n.follow_up_date) && (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2.5 pt-2.5 border-t border-border-light text-[12.5px]">
+                        {n.next_step && (
+                          <span className="inline-flex items-center gap-1.5 text-text-secondary">
+                            <ArrowRight size={13} strokeWidth={2} className="text-blue-primary" />
+                            <span className="font-medium text-text-primary">Next:</span>{" "}
+                            {n.next_step}
+                          </span>
+                        )}
+                        {n.follow_up_date && (
+                          <span className="inline-flex items-center gap-1.5 text-text-tertiary tnum">
+                            <CalendarClock size={13} strokeWidth={1.8} />
+                            Follow-up {formatDate(n.follow_up_date)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
 
-            {/* Add-note popup */}
+            {/* Add-note popup — log a real interaction (#96) */}
             <Modal
               open={noteModalOpen}
               onClose={() => setNoteModalOpen(false)}
-              title="Add a note"
+              title="Log an interaction"
             >
-              <textarea
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder="Log a call summary, next step, or internal context…"
-                rows={5}
-                autoFocus
-                className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-blue-primary resize-y"
-              />
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="space-y-3.5">
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
+                    Type
+                  </label>
+                  <div className="inline-flex rounded-lg bg-surface p-1 flex-wrap gap-1">
+                    {NOTE_KINDS.map((k) => {
+                      const KIcon = k.icon;
+                      const on = noteKind === k.key;
+                      return (
+                        <button
+                          key={k.key}
+                          onClick={() => setNoteKind(k.key)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-1.5 rounded-md transition-colors",
+                            on
+                              ? "bg-white text-blue-primary font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                              : "text-text-secondary hover:text-text-primary"
+                          )}
+                        >
+                          <KIcon size={14} strokeWidth={1.9} />
+                          {k.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
+                    {noteKind === "note" ? "Note" : "What happened"}
+                  </label>
+                  <textarea
+                    value={noteDraft}
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                    placeholder={
+                      noteKind === "call"
+                        ? "Summary of the call…"
+                        : noteKind === "email"
+                        ? "What you sent / their reply…"
+                        : noteKind === "meeting"
+                        ? "Meeting notes and decisions…"
+                        : "Internal context…"
+                    }
+                    rows={4}
+                    autoFocus
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-[14px] outline-none focus:border-blue-primary resize-y"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
+                      Next step
+                    </label>
+                    <input
+                      value={noteNext}
+                      onChange={(e) => setNoteNext(e.target.value)}
+                      placeholder="e.g. Send the proposal"
+                      className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1.5">
+                      Follow-up date
+                    </label>
+                    <input
+                      type="date"
+                      value={noteFollow}
+                      onChange={(e) => setNoteFollow(e.target.value)}
+                      className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-5">
                 <Button
                   variant="secondary"
                   onClick={() => setNoteModalOpen(false)}
@@ -904,7 +1372,7 @@ export function CustomerTabs({
                   className="px-4 py-2 text-[13px]"
                 >
                   <Plus size={15} strokeWidth={2.2} />
-                  Save note
+                  {noteKind === "note" ? "Save note" : "Log it"}
                 </Button>
               </div>
             </Modal>
@@ -984,9 +1452,26 @@ export function CustomerTabs({
       {/* Right rail — decision-first: the agent entry, the health picture,
           then the working cards. One glance, no wall of boxes (Anir, Jul 3). */}
       <aside className="space-y-4">
-        {/* No standalone "Ask the agent" button — the always-on dock (bottom
-            right, by the notification bell) is the single agent entry now
-            (Anir, Jul 8). Draft-it-for-me actions still open the drawer. */}
+        {/* Per-account agent entry — opens the account-scoped drawer (chat +
+            quick actions) over the page, reachable from any tab. The global
+            dock stays for cross-app asks; this one is pre-loaded with THIS
+            account's context (Anir). */}
+        <button
+          onClick={() => setAskOpen(true)}
+          className="w-full flex items-center gap-2.5 rounded-xl border border-blue-subtle bg-blue-light/50 hover:bg-blue-light px-4 py-3 text-left transition-colors active:scale-[0.99]"
+        >
+          <span className="w-9 h-9 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
+            <Sparkles size={17} strokeWidth={1.9} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[13.5px] font-semibold text-text-primary">
+              Ask the agent
+            </span>
+            <span className="block text-[11.5px] text-text-secondary truncate">
+              Health, next steps, deals — about {customer.company_name}
+            </span>
+          </span>
+        </button>
 
         {/* Account snapshot — health ring + trend + why + the glance numbers,
             one visual card instead of two stacked text boxes. */}
@@ -1162,6 +1647,7 @@ export function CustomerTabs({
                 options={TEAM}
                 onChange={assignOwner}
                 placeholder="Unassigned"
+                ariaLabel="Account owner"
               />
             </div>
             <div>
@@ -1408,6 +1894,30 @@ export function CustomerTabs({
           );
         })()}
       </Modal>
+
+      {/* Account-scoped agent drawer — chat pre-loaded with this account's
+          context, plus quick actions (Analyze) pinned under the header. */}
+      <AskAgentDrawer
+        open={askOpen}
+        onClose={() => setAskOpen(false)}
+        company={customer.company_name}
+        actions={
+          offeringsCatalog ? (
+            <CustomerAnalyzePanel
+              variant="action"
+              customerId={customer.id}
+              customerType={customer.customer_type ?? null}
+              ownership={customer.ownership ?? null}
+              revenue={customer.revenue ?? null}
+              analyzed={!!customer.analyzed_at}
+              typeOptions={offeringsCatalog.typeOptions}
+              applicableOfferings={applicableSlim}
+            />
+          ) : undefined
+        }
+      >
+        <AccountAgentChat context={agentContext} customerId={customer.id} embedded />
+      </AskAgentDrawer>
     </div>
   );
 }

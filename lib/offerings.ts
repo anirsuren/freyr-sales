@@ -54,7 +54,9 @@ export type MaterialKind =
   | "pricing"
   | "competition"
   | "case_study"
-  | "reference";
+  | "reference"
+  | "one_pager"
+  | "datasheet";
 
 export interface OfferingMaterial {
   id: string;
@@ -93,6 +95,8 @@ export const MATERIAL_META: Record<
   competition: { label: "Competition", plural: "Competition" },
   case_study: { label: "Case study", plural: "Case studies" },
   reference: { label: "Customer reference", plural: "Customer references" },
+  one_pager: { label: "One-pager", plural: "One-pagers" },
+  datasheet: { label: "Datasheet", plural: "Datasheets" },
 };
 
 // ---------------------------------------------------------------------------

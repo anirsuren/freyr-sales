@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { History, GraduationCap } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { SIZE_TIER_LABEL } from "@/lib/utils";
 import type { Customer, Contact, RecommendedService } from "@/lib/types";
@@ -45,7 +46,7 @@ export function IntelligenceRail({
               {customer.company_name}
             </Link>
           </div>
-          <Avatar
+          <CompanyLogo
             name={customer.company_name}
             className="w-10 h-10 text-[13px] rounded-lg"
           />

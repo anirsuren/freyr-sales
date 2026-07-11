@@ -28,6 +28,23 @@ const PHOTOS: Record<string, string> = {
   "mark miller": "/avatars/mark-miller.png",
   "priya nair": "/avatars/priya-nair.png",
   "diego alvarez": "/avatars/diego-alvarez.png",
+  // Full sales floor (the SALES_TEAM roster) — generated headshots.
+  "viktor petrov": "/avatars/viktor-petrov.png",
+  "grace liu": "/avatars/grace-liu.png",
+  "daniel foster": "/avatars/daniel-foster.png",
+  "aisha khan": "/avatars/aisha-khan.png",
+  "elena rossi": "/avatars/elena-rossi.png",
+  "marcus chen": "/avatars/marcus-chen.png",
+  "sofia almeida": "/avatars/sofia-almeida.png",
+  "james o'brien": "/avatars/james-obrien.png",
+  "tomas becker": "/avatars/tomas-becker.png",
+  "nina kowalski": "/avatars/nina-kowalski.png",
+  "rajesh patel": "/avatars/rajesh-patel.png",
+  "yuki tanaka": "/avatars/yuki-tanaka.png",
+  "omar haddad": "/avatars/omar-haddad.png",
+  "clara mendez": "/avatars/clara-mendez.png",
+  "hannah schmidt": "/avatars/hannah-schmidt.png",
+  "leo santos": "/avatars/leo-santos.png",
 };
 
 function photoFor(name: string): string | null {

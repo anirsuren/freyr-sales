@@ -1,8 +1,59 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { Sparkles, ArrowUp, X, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
+
+type Entity = { name: string; id: string; kind: "company" | "contact" };
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Turn a plain-text string into nodes where any known company/person name
+// becomes an inline entity pill (logo/headshot + link). Matched longest-first so
+// "Cortexa Biopharma" wins over "Cortexa". Case-insensitive, word-bounded.
+function injectEntities(text: string, entities: Entity[], keyBase: string): ReactNode[] {
+  if (!entities.length || !text) return [text];
+  const re = new RegExp(
+    `\\b(${entities.map((e) => escapeRe(e.name)).join("|")})\\b`,
+    "gi"
+  );
+  const out: ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const hit = entities.find(
+      (e) => e.name.toLowerCase() === m![1].toLowerCase()
+    );
+    if (hit) {
+      out.push(
+        <Link
+          key={`${keyBase}-e${k++}`}
+          href={hit.kind === "company" ? `/customers/${hit.id}` : `/contacts/${hit.id}`}
+          className="inline-flex items-center gap-1 align-middle rounded-full bg-blue-light/70 border border-blue-subtle/60 pl-1 pr-2 py-0.5 mx-0.5 font-semibold text-blue-primary no-underline hover:bg-blue-light hover:border-blue-subtle transition-colors"
+        >
+          {hit.kind === "company" ? (
+            <CompanyLogo name={hit.name} className="w-4 h-4 text-[7px] shrink-0" />
+          ) : (
+            <Avatar name={hit.name} className="w-4 h-4 text-[7px] shrink-0" />
+          )}
+          {m[1]}
+        </Link>
+      );
+    } else {
+      out.push(m[1]);
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
 
 // The always-on assistant (Anir, Jul 8). A bubble bottom-right on every page;
 // click to open a chat that knows what page/record you're looking at. Hide it
@@ -54,7 +105,7 @@ function suggestionsFor(label: string): string[] {
 
 // Minimal, safe markdown: **bold**, `code`, and line breaks. Content is our own
 // agent's reply, but we still build React nodes (no dangerouslySetInnerHTML).
-function renderRich(text: string): ReactNode {
+function renderRich(text: string, entities: Entity[] = []): ReactNode {
   return text.split("\n").map((line, li) => {
     const nodes: ReactNode[] = [];
     // **bold**, *italic*, `code` — match bold before italic so ** wins over *.
@@ -62,8 +113,9 @@ function renderRich(text: string): ReactNode {
     let last = 0;
     let m: RegExpExecArray | null;
     let k = 0;
+    const plain = (s: string, kb: string) => nodes.push(...injectEntities(s, entities, kb));
     while ((m = re.exec(line))) {
-      if (m.index > last) nodes.push(line.slice(last, m.index));
+      if (m.index > last) plain(line.slice(last, m.index), `${li}-${k}`);
       if (m[2] != null) nodes.push(<strong key={k++}>{m[2]}</strong>);
       else if (m[3] != null) nodes.push(<em key={k++}>{m[3]}</em>);
       else if (m[4] != null)
@@ -74,7 +126,7 @@ function renderRich(text: string): ReactNode {
         );
       last = m.index + m[0].length;
     }
-    if (last < line.length) nodes.push(line.slice(last));
+    if (last < line.length) plain(line.slice(last), `${li}-end`);
     return (
       <span key={li} className="block min-h-[2px]">
         {nodes}
@@ -136,8 +188,37 @@ export function AgentDock({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  const [entities, setEntities] = useState<Entity[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load the name→id index once so the assistant's answers can render company
+  // logos and headshots inline (Suren, #92). Longest names first so multi-word
+  // company names match before any single-word contained token.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/agent/entities")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        const list: Entity[] = [
+          ...(d.companies || []).map((c: { name: string; id: string }) => ({
+            ...c,
+            kind: "company" as const,
+          })),
+          ...(d.contacts || []).map((c: { name: string; id: string }) => ({
+            ...c,
+            kind: "contact" as const,
+          })),
+        ].filter((e) => e.name && e.name.length > 2);
+        list.sort((a, b) => b.name.length - a.name.length);
+        setEntities(list);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Anything in the app can open THIS chat (instead of a second panel) by firing
   // `freyr:ask-agent` — optionally with a prompt to send. Deliverables and the
@@ -263,7 +344,7 @@ export function AgentDock({
             className="flex-1 overflow-y-auto px-4 py-4 space-y-2.5 h-[400px] max-h-[58vh]"
           >
             <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-surface text-text-primary px-3.5 py-2.5 text-[13px] leading-relaxed">
-              {renderRich(greeting)}
+              {renderRich(greeting, entities)}
             </div>
             {msgs.map((m, i) => (
               <div
@@ -275,7 +356,7 @@ export function AgentDock({
                     : "rounded-2xl rounded-br-md bg-blue-primary text-white ml-auto"
                 )}
               >
-                {m.role === "agent" ? renderRich(m.text) : m.text}
+                {m.role === "agent" ? renderRich(m.text, entities) : m.text}
               </div>
             ))}
             {busy && (

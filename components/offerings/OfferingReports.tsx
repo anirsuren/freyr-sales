@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Users, DollarSign, KeyRound, ReceiptText } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
-import { DonutChart, Legend, VIZ_SERIES } from "@/components/charts/Charts";
+import { DonutChart, Legend, VIZ_SERIES, type TipItem } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { formatMoney } from "@/lib/pipeline";
 import { formatDate } from "@/lib/utils";
@@ -41,6 +41,16 @@ export function OfferingReports({
       label: c.name,
       value: c.revenue,
       color: VIZ_SERIES[i % VIZ_SERIES.length],
+      // The customer behind this slice — logo, revenue, and seats — so hovering
+      // the donut shows who the revenue comes from (mirrors the offering page).
+      tip: [
+        {
+          logo: c.name,
+          name: c.name,
+          value: formatMoney(c.revenue),
+          sub: `${c.licenses} seats`,
+        },
+      ] as TipItem[],
     }));
 
   return (

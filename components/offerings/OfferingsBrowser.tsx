@@ -25,7 +25,23 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { ColorSelect } from "@/components/ui/ColorSelect";
+import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
+
+// Distinct palette so each category / type gets its own colour dot in the
+// dropdowns (Suren: "color code all the dropdowns").
+const FILTER_PALETTE = [
+  "#0071E3", "#E11D48", "#7C3AED", "#059669", "#B45309",
+  "#0F766E", "#DB2777", "#0369A1", "#EA580C", "#4F46E5",
+];
+const familyColor = (fam: string): string => {
+  const f = (fam || "").toLowerCase();
+  if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED";
+  if (f.includes("biologic")) return "#E11D48";
+  if (f.includes("pharma")) return "#0071E3";
+  return "#8E98A8";
+};
 import type {
   CustomerType,
   Market,
@@ -150,6 +166,14 @@ export function OfferingsBrowser({
 
   const isMapped = (o: HydratedOffering) =>
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
+
+  // Category → colour, keyed the SAME way as the category dropdown (palette
+  // indexed by position) so a category reads the same colour on its filter chip
+  // and on every card icon (Suren's chip rule: category = colour + icon).
+  const categoryColorByName: Record<string, string> = {};
+  offeringCategories.forEach((c, i) => {
+    categoryColorByName[c.name] = FILTER_PALETTE[i % FILTER_PALETTE.length];
+  });
 
   // Offering type / category are strings on each offering; map the selected id
   // → its name.
@@ -342,28 +366,11 @@ export function OfferingsBrowser({
             </p>
           )}
 
-          {(o.current_availability || o.future_availability) && (
+          {o.current_availability && (
             <div className="flex flex-wrap gap-1.5">
-              {o.current_availability &&
-                (/current|now|available/i.test(o.current_availability) ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/10 rounded-md px-2 py-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                    {o.current_availability}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/10 rounded-md px-2 py-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-warning" />
-                    {o.current_availability}
-                  </span>
-                ))}
-              {/* Availability comments — neutral, it's a note not a date. Long
-                  market-coverage notes are omitted here (they show on the detail
-                  page); only short version/timing tags render as a tile chip. */}
-              {o.future_availability && o.future_availability.length <= 40 && (
-                <span className="inline-flex items-center text-[11px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2 py-0.5">
-                  {o.future_availability}
-                </span>
-              )}
+              {/* The clean timing status only — market-coverage / version notes
+                  (future_availability) are free-form and live on the detail page. */}
+              <AvailabilityPill value={o.current_availability} size="sm" />
             </div>
           )}
 
@@ -372,10 +379,17 @@ export function OfferingsBrowser({
                 the tile). The primary qualifier above the offering type. */}
             {o.offering_category && (
               <p className="flex items-center gap-1 text-[11px] font-medium text-text-secondary">
+                {/* Category is the primary qualifier — its leading icon carries
+                    the family colour so it's recognisable at a glance (Suren's
+                    chip rule: category = colour + icon, never flat gray). */}
                 <Layers
                   size={11}
                   strokeWidth={2}
-                  className="text-text-tertiary shrink-0"
+                  className="shrink-0"
+                  style={{
+                    color:
+                      categoryColorByName[o.offering_category] || "#8E98A8",
+                  }}
                 />
                 {o.offering_category}
               </p>
@@ -493,45 +507,48 @@ export function OfferingsBrowser({
             className={`${inputCls} w-full pl-9 pr-3`}
           />
         </div>
-        <select
+        <ColorSelect
           value={ctId}
-          onChange={(e) => setCtId(e.target.value)}
-          aria-label="Filter by customer type"
-          className={inputCls}
-        >
-          <option value="">All customer types</option>
-          {customerTypes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={setCtId}
+          minWidth={186}
+          ariaLabel="Filter by customer type"
+          options={[
+            { value: "", label: "All customer types" },
+            ...customerTypes.map((c) => ({
+              value: c.id,
+              label: c.name,
+              color: familyColor((c as { family?: string }).family || c.name),
+            })),
+          ]}
+        />
+        <ColorSelect
           value={catId}
-          onChange={(e) => setCatId(e.target.value)}
-          aria-label="Filter by offering category"
-          className={inputCls}
-        >
-          <option value="">All categories</option>
-          {offeringCategories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={setCatId}
+          minWidth={186}
+          ariaLabel="Filter by offering category"
+          options={[
+            { value: "", label: "All categories" },
+            ...offeringCategories.map((c, i) => ({
+              value: c.id,
+              label: c.name,
+              color: FILTER_PALETTE[i % FILTER_PALETTE.length],
+            })),
+          ]}
+        />
+        <ColorSelect
           value={otId}
-          onChange={(e) => setOtId(e.target.value)}
-          aria-label="Filter by offering type"
-          className={inputCls}
-        >
-          <option value="">All offering types</option>
-          {offeringTypes.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+          onChange={setOtId}
+          minWidth={186}
+          ariaLabel="Filter by offering type"
+          options={[
+            { value: "", label: "All offering types" },
+            ...offeringTypes.map((t, i) => ({
+              value: t.id,
+              label: t.name,
+              color: FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length],
+            })),
+          ]}
+        />
         {status && (
           <span className="h-10 inline-flex items-center gap-1.5 px-3 rounded-lg bg-blue-light text-[12.5px] font-semibold text-blue-primary">
             {status === "unmapped" ? "Awaiting details" : "Fully detailed"}
@@ -708,11 +725,10 @@ export function OfferingsBrowser({
                         {o.offering_type || "—"}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {o.current_availability || "—"}
-                        {o.future_availability && (
-                          <span className="block text-[11px] text-text-tertiary">
-                            {o.future_availability}
-                          </span>
+                        {o.current_availability ? (
+                          <AvailabilityPill value={o.current_availability} size="sm" />
+                        ) : (
+                          "—"
                         )}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">

@@ -13,7 +13,10 @@ import {
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { BackButton } from "@/components/ui/BackButton";
+import { CallAnalytics } from "@/components/voice/CallAnalytics";
 import { getConversation } from "@/lib/elevenlabs";
 import { syncConversations } from "@/lib/voiceSync";
 import {
@@ -51,6 +54,8 @@ type CallVM = {
   personaColor?: string;
   contactName?: string;
   contactId?: string;
+  contactTitle?: string;
+  linkedin?: string | null;
   company?: string;
   phone?: string;
   outcome?: VoiceOutcome;
@@ -79,6 +84,9 @@ export default async function ConversationPage({
       },
     ]);
     const match = matches[convo.conversation_id];
+    const convoContact = match?.contactId
+      ? await getDb().contacts.get(match.contactId).catch(() => null)
+      : null;
     vm = {
       title: `${category} call`,
       status:
@@ -99,6 +107,8 @@ export default async function ConversationPage({
       personaColor: persona?.color,
       contactName: match?.contactName,
       contactId: match?.contactId,
+      contactTitle: convoContact?.job_title || undefined,
+      linkedin: convoContact?.linkedin_url || null,
       company: match?.company,
       offering: category,
     };
@@ -120,6 +130,8 @@ export default async function ConversationPage({
         personaColor: persona?.color,
         contactName: call.contact_name,
         contactId: call.contact_id,
+        contactTitle: contact?.job_title || undefined,
+        linkedin: contact?.linkedin_url || null,
         company: call.company,
         phone: call.phone || contact?.phone || undefined,
         outcome: call.outcome || undefined,
@@ -149,6 +161,12 @@ export default async function ConversationPage({
   }
 
   const outcome = vm.outcome ? OUTCOME_META[vm.outcome] : null;
+  // Readable speaker labels for the transcript — the agent persona vs. the
+  // contact's first name (Suren: "improve the transcript").
+  const agentLabel = vm.personaName || "Voice agent";
+  const contactFirst = (vm.contactName || "Contact")
+    .replace(/^Dr\.\s*/i, "")
+    .split(/\s+/)[0];
 
   const detailRows = [
     { icon: Timer, label: "Duration", value: fmtLen(vm.duration) },
@@ -161,19 +179,15 @@ export default async function ConversationPage({
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/voice"
-        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors"
-      >
-        <ArrowLeft size={15} strokeWidth={1.8} />
-        Voice agents
-      </Link>
+      {/* router.back() so it returns to wherever you came from — the agent's page
+          (Maya) when you drilled in from there, not always the main list (Suren). */}
+      <BackButton fallback="/voice" label="Back" />
 
       {/* Two columns so the width is actually used — transcript + a details rail */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
         {/* Transcript */}
         <Card>
-          <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center justify-between gap-3 mb-1">
             <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               Transcript
             </h2>
@@ -190,12 +204,27 @@ export default async function ConversationPage({
               </span>
             )}
           </div>
+          {/* Speaker legend — names the two voices so the bubbles read like a
+              real call recording, not anonymous left/right blobs. */}
+          <div className="flex items-center gap-4 mb-4 text-[11.5px] text-text-tertiary">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ background: vm.personaColor || "#0071E3" }}
+              />
+              {agentLabel} <span className="text-text-tertiary/70">· AI agent</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-primary" />
+              {contactFirst}
+            </span>
+          </div>
           {vm.turns.length === 0 ? (
             <p className="text-[13px] text-text-secondary">
               No words captured yet — transcripts appear a moment after the call ends.
             </p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {vm.turns.map((t, i) => (
                 <div
                   key={i}
@@ -216,25 +245,33 @@ export default async function ConversationPage({
                       <PhoneCall size={13} strokeWidth={1.9} />
                     )}
                   </span>
-                  <div
-                    className={cn(
-                      "max-w-[80%] rounded-xl px-3.5 py-2.5",
-                      t.role === "agent" ? "bg-surface text-text-primary" : "bg-blue-primary text-white"
-                    )}
-                  >
-                    <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap">
-                      {t.message}
+                  <div className={cn("max-w-[80%] min-w-0", t.role === "agent" ? "" : "text-right")}>
+                    {/* Speaker name + timestamp on one line above the bubble */}
+                    <p
+                      className={cn(
+                        "flex items-baseline gap-2 mb-1 text-[11.5px]",
+                        t.role === "agent" ? "" : "flex-row-reverse"
+                      )}
+                    >
+                      <span className="font-semibold text-text-primary">
+                        {t.role === "agent" ? agentLabel : contactFirst}
+                      </span>
+                      {typeof t.time === "number" && (
+                        <span className="text-text-tertiary tnum">{fmtLen(t.time)}</span>
+                      )}
                     </p>
-                    {typeof t.time === "number" && (
-                      <p
-                        className={cn(
-                          "text-[10.5px] mt-1 tnum",
-                          t.role === "agent" ? "text-text-tertiary" : "text-white/70"
-                        )}
-                      >
-                        {fmtLen(t.time)}
+                    <div
+                      className={cn(
+                        "inline-block rounded-xl px-3.5 py-2.5 text-left",
+                        t.role === "agent"
+                          ? "bg-surface text-text-primary"
+                          : "bg-blue-primary text-white"
+                      )}
+                    >
+                      <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap">
+                        {t.message}
                       </p>
-                    )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -249,9 +286,17 @@ export default async function ConversationPage({
             <div className="flex items-center gap-3">
               {vm.contactName && <Avatar name={vm.contactName} className="w-12 h-12 text-[15px]" />}
               <div className="min-w-0">
-                <p className="text-[15px] font-semibold text-text-primary truncate">
-                  {vm.contactName || vm.title}
+                <p className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
+                  <span className="truncate">{vm.contactName || vm.title}</span>
+                  {vm.linkedin && (
+                    <span className="shrink-0">
+                      <LinkedInLink url={vm.linkedin} size={14} />
+                    </span>
+                  )}
                 </p>
+                {vm.contactTitle && (
+                  <p className="text-[12px] text-text-tertiary truncate">{vm.contactTitle}</p>
+                )}
                 {vm.company && (
                   <p className="text-[12.5px] text-text-secondary truncate flex items-center gap-1.5">
                     <CompanyLogo name={vm.company} className="w-4 h-4 text-[7px]" />
@@ -346,6 +391,18 @@ export default async function ConversationPage({
           )}
         </div>
       </div>
+
+      {/* In-depth call analysis below the transcript (Suren): sentiment arc +
+          heat-map, talk ratio, objections, and a timeline. */}
+      {vm.turns.length > 0 && (
+        <CallAnalytics
+          turns={vm.turns}
+          outcome={vm.outcome ?? null}
+          agentLabel={agentLabel}
+          contactFirst={contactFirst}
+          personaColor={vm.personaColor || undefined}
+        />
+      )}
     </div>
   );
 }

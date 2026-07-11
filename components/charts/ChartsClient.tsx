@@ -5,9 +5,56 @@
 // prop accepts a serializable kind ("money" | "duration" | "percent" | …) so
 // SERVER components can use it (a function can't cross the client boundary), or
 // a function for client callers.
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 import { VIZ, VIZ_SERIES } from "./palette";
+
+// A tooltip rendered into <body> via a portal so it can NEVER be clipped by a
+// card's overflow or painted over by a neighbouring container — the recurring
+// "the pop-up gets covered / cut off on every graph" bug (Suren). It's fixed to
+// the viewport at the cursor, clamped to stay fully on screen.
+function PortalTip({
+  anchor,
+  wide,
+  children,
+}: {
+  anchor: { x: number; y: number } | null;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  if (!ready || !anchor) return null;
+  const width = wide ? 260 : 210;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const left = Math.max(8, Math.min(vw - width - 8, anchor.x - width / 2));
+  // Prefer above the cursor; flip below if too close to the top.
+  const above = anchor.y > 150;
+  return createPortal(
+    <div
+      className="fixed z-[9999] pointer-events-none"
+      style={{
+        left,
+        top: above ? anchor.y - 16 : anchor.y + 18,
+        width,
+        transform: above ? "translateY(-100%)" : undefined,
+        maxHeight: Math.max(160, (above ? anchor.y : vh - anchor.y) - 24),
+      }}
+    >
+      <div
+        className="chart-tip text-left overflow-hidden"
+        style={{ whiteSpace: "normal", width: "100%" }}
+      >
+        {children}
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 export type Fmt =
   | "money"
@@ -41,20 +88,60 @@ function fmt(f: Fmt | undefined, v: number): string {
   }
 }
 
+// Thin wrapper kept so existing call sites read the same — now portals to body.
 function Tip({
-  leftPct,
+  anchor,
   children,
+  wide,
 }: {
-  leftPct: number;
+  anchor: { x: number; y: number } | null;
   children: React.ReactNode;
+  wide?: boolean;
 }) {
-  const clamped = Math.max(6, Math.min(94, leftPct));
   return (
-    <div
-      className="pointer-events-none absolute -top-1 z-20 -translate-x-1/2 -translate-y-full"
-      style={{ left: `${clamped}%` }}
-    >
-      <div className="chart-tip">{children}</div>
+    <PortalTip anchor={anchor} wide={wide}>
+      {children}
+    </PortalTip>
+  );
+}
+
+// One data point's breakdown — the WHO/WHICH behind a bar, slice, or plot point.
+// A row can carry a logo/headshot, a name, a secondary line, and a value, so the
+// tooltip reads like a mini record a rep can act on — not just a bare name
+// (Suren: "add the logo, give me more info, I'm a sales agent").
+export type TipItem = {
+  name: string;
+  value?: string;
+  sub?: string; // secondary line — contact, stage, region…
+  logo?: string; // company name → CompanyLogo
+  avatar?: string; // person name → headshot
+};
+
+function TipBreakdown({ items }: { items?: TipItem[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-1.5 border-t border-white/15 pt-2 text-left">
+      {items.slice(0, 5).map((t, j) => (
+        <div key={j} className="flex items-center gap-2 text-[11px]">
+          {t.logo ? (
+            <CompanyLogo name={t.logo} className="w-[18px] h-[18px] text-[7px] shrink-0" />
+          ) : t.avatar ? (
+            <Avatar name={t.avatar} className="w-[18px] h-[18px] text-[7px] shrink-0" />
+          ) : null}
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block truncate font-medium text-white">{t.name}</span>
+            {t.sub && (
+              <span className="block truncate text-[10px] text-white/60">{t.sub}</span>
+            )}
+          </span>
+          {t.value != null && (
+            <span className="tnum text-white/80 shrink-0 self-center">{t.value}</span>
+          )}
+        </div>
+      ))}
+      {items.length > 5 && (
+        <div className="text-[10.5px] text-white/50">+{items.length - 5} more</div>
+      )}
     </div>
   );
 }
@@ -69,6 +156,8 @@ export function AreaChart({
   goalLabel,
   xLabels,
   format,
+  unit,
+  pointTips,
 }: {
   data: number[];
   color?: string;
@@ -79,11 +168,19 @@ export function AreaChart({
   goalLabel?: string;
   xLabels?: string[];
   format?: Fmt;
+  // Short unit shown after axis values ("deals", "calls") so the chart reads
+  // without hovering (Suren: "there are no units, I can't see anything").
+  unit?: string;
+  // The who/which behind each plotted point, same index as `data`.
+  pointTips?: TipItem[][];
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const w = 600;
   const h = height;
   const pad = 6;
+  // Big enough to carry axes + always-visible dots (vs. a tiny inline sparkline).
+  const showAxes = height >= 140;
   const max = Math.max(...data, goal ?? 0, 1);
   const min = Math.min(...data, 0);
   const range = max - min || 1;
@@ -106,6 +203,7 @@ export function AreaChart({
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
     setHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
+    setMouse({ x: e.clientX, y: e.clientY });
   }
 
   return (
@@ -113,7 +211,10 @@ export function AreaChart({
       className={cn("relative w-full", className)}
       style={{ height }}
       onMouseMove={onMove}
-      onMouseLeave={() => setHover(null)}
+      onMouseLeave={() => {
+        setHover(null);
+        setMouse(null);
+      }}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -131,6 +232,22 @@ export function AreaChart({
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
+        {showAxes &&
+          [0, 0.5, 1].map((f) => {
+            const gy = pad + f * (h - pad * 2);
+            return (
+              <line
+                key={f}
+                x1={pad}
+                y1={gy}
+                x2={w - pad}
+                y2={gy}
+                stroke="var(--border-light)"
+                strokeWidth="1"
+                opacity="0.7"
+              />
+            );
+          })}
         <path d={area} fill={`url(#${id})`} className="chart-area" />
         <path
           d={line}
@@ -165,6 +282,42 @@ export function AreaChart({
           />
         )}
       </svg>
+      {/* Always-visible dots so the series reads as data points, not just a bare
+          line you have to hover to understand (Suren). */}
+      {showAxes &&
+        pts.map((p, i) => (
+          <span
+            key={i}
+            className="pointer-events-none absolute w-2 h-2 rounded-full ring-2 ring-white transition-opacity"
+            style={{
+              left: `${(p[0] / w) * 100}%`,
+              top: `${(p[1] / h) * 100}%`,
+              background: color,
+              transform: "translate(-50%,-50%)",
+              opacity: hover === null || hover === i ? 1 : 0.45,
+            }}
+          />
+        ))}
+      {/* Y-axis scale — max (top) + baseline, with the unit, so the chart has
+          numbers you can read at a glance. */}
+      {showAxes && (
+        <>
+          <span className="pointer-events-none absolute left-1.5 top-1 text-[10px] font-semibold tnum text-text-tertiary bg-white/70 rounded px-1">
+            {fmt(format, max)}
+            {unit ? ` ${unit}` : ""}
+          </span>
+          <span className="pointer-events-none absolute left-1.5 bottom-1 text-[10px] tnum text-text-tertiary bg-white/70 rounded px-1">
+            {fmt(format, Math.round(min))}
+          </span>
+          {xLabels && xLabels.length > 0 && (
+            <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-between px-1 text-[10px] text-text-tertiary tnum">
+              <span>{xLabels[0]}</span>
+              {xLabels.length > 2 && <span>{xLabels[Math.floor((n - 1) / 2)]}</span>}
+              <span>{xLabels[n - 1]}</span>
+            </div>
+          )}
+        </>
+      )}
       <span
         className="pointer-events-none absolute w-2.5 h-2.5 rounded-full ring-2 ring-white"
         style={{
@@ -175,9 +328,12 @@ export function AreaChart({
         }}
       />
       {hover != null && (
-        <Tip leftPct={(px(hi) / w) * 100}>
-          {xLabels?.[hi] ? `${xLabels[hi]} · ` : ""}
-          {fmt(format, data[hi])}
+        <Tip anchor={mouse} wide={!!pointTips?.[hi]?.length}>
+          <div className="whitespace-nowrap font-semibold">
+            {xLabels?.[hi] ? `${xLabels[hi]} · ` : ""}
+            {fmt(format, data[hi])}
+          </div>
+          <TipBreakdown items={pointTips?.[hi]} />
         </Tip>
       )}
       {goalY != null && goalLabel && (
@@ -203,15 +359,42 @@ export function DonutChart({
   centerLabel,
   centerSub,
   format,
+  noTip = false,
 }: {
-  segments: { label: string; value: number; color: string }[];
+  segments: {
+    label: string;
+    value: number;
+    color: string;
+    tip?: TipItem[];
+  }[];
   size?: number;
   thickness?: number;
   centerLabel?: string;
   centerSub?: string;
   format?: Fmt;
+  // Suppress the segment hover tooltip — for cramped popovers where a legend
+  // beside the donut already shows the breakdown, so the tip would only clip and
+  // duplicate (Suren: "the pop-up is getting cut off / a bare '1' looks atrocious").
+  noTip?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
+  // Circumference draw-in: each arc starts at length 0 and grows to its share,
+  // staggered by its start position so the ring sweeps around on load (Suren).
+  const [drawn, setDrawn] = useState(false);
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    const r =
+      typeof window !== "undefined" &&
+      !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (r) {
+      setReduce(true);
+      setDrawn(true);
+      return;
+    }
+    const t = setTimeout(() => setDrawn(true), 40);
+    return () => clearTimeout(t);
+  }, []);
   const total = segments.reduce((s, x) => s + x.value, 0) || 1;
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
@@ -248,11 +431,25 @@ export function DonutChart({
                 fill="none"
                 stroke={s.color}
                 strokeWidth={hover === i ? thickness + 3 : thickness}
-                strokeDasharray={`${len} ${c - len}`}
+                strokeDasharray={drawn ? `${len} ${c - len}` : `0 ${c}`}
                 strokeDashoffset={-offset}
-                onMouseEnter={() => setHover(i)}
-                onMouseLeave={() => setHover(null)}
-                style={{ cursor: "pointer", transition: "stroke-width 120ms" }}
+                strokeLinecap="butt"
+                onMouseEnter={(e) => {
+                  setHover(i);
+                  setMouse({ x: e.clientX, y: e.clientY });
+                }}
+                onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
+                onMouseLeave={() => {
+                  setHover(null);
+                  setMouse(null);
+                }}
+                style={{
+                  cursor: "pointer",
+                  transition: reduce
+                    ? "stroke-width 120ms"
+                    : "stroke-dasharray 0.75s cubic-bezier(0.22, 1, 0.36, 1), stroke-width 120ms",
+                  transitionDelay: reduce ? undefined : `${(offset / c) * 0.55}s`,
+                }}
               />
             );
             offset += len;
@@ -284,9 +481,9 @@ export function DonutChart({
           </text>
         )}
       </svg>
-      {hover != null && segments[hover] && (
-        <div className="pointer-events-none absolute inset-x-0 -top-2 flex justify-center -translate-y-full z-20">
-          <div className="chart-tip">
+      {!noTip && hover != null && segments[hover] && (
+        <PortalTip anchor={mouse} wide={!!segments[hover].tip?.length}>
+          <div className="whitespace-nowrap font-semibold">
             <span
               className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
               style={{ background: segments[hover].color }}
@@ -294,7 +491,8 @@ export function DonutChart({
             {segments[hover].label}: {fmt(format, segments[hover].value)} ·{" "}
             {Math.round((segments[hover].value / total) * 100)}%
           </div>
-        </div>
+          <TipBreakdown items={segments[hover].tip} />
+        </PortalTip>
       )}
     </div>
   );
@@ -304,13 +502,28 @@ export function BarChart({
   data,
   height = 160,
   format,
+  activeIndex = null,
 }: {
-  data: { label: string; value: number; color?: string }[];
+  data: {
+    label: string;
+    value: number;
+    color?: string;
+    // Optional breakdown shown in the hover tooltip so it ADDS information
+    // (who's in this bar) instead of just restating the label + total.
+    tip?: TipItem[];
+  }[];
   height?: number;
   format?: Fmt;
+  // When a caller has a "selected" bar (e.g. a stage drill-down is open), pass
+  // its index so that bar stays lit + ringed while the rest dim (Suren: "when I
+  // highlight one, show that its bar is highlighted").
+  activeIndex?: number | null;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const max = Math.max(...data.map((d) => d.value), 1);
+  // Hover wins over the externally-selected bar; otherwise the selected bar lit.
+  const lit = hover ?? activeIndex;
   return (
     <div
       className="relative flex items-end justify-start gap-6"
@@ -324,14 +537,24 @@ export function BarChart({
         <div
           key={i}
           className="relative flex-1 flex flex-col items-center h-full min-w-[44px]"
-          onMouseEnter={() => setHover(i)}
-          onMouseLeave={() => setHover(null)}
+          onMouseEnter={(e) => {
+            setHover(i);
+            setMouse({ x: e.clientX, y: e.clientY });
+          }}
+          onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
+          onMouseLeave={() => {
+            setHover(null);
+            setMouse(null);
+          }}
         >
-          {/* Hover breakdown — a small tooltip, not a big popup (Suren). */}
+          {/* Hover breakdown — portaled so it's never clipped by the card. */}
           {hover === i && (
-            <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-20 chart-tip">
-              {d.label} · {fmt(format, d.value)}
-            </div>
+            <PortalTip anchor={mouse} wide={!!(d.tip && d.tip.length)}>
+              <div className="font-semibold whitespace-nowrap">
+                {d.label} · {fmt(format, d.value)}
+              </div>
+              <TipBreakdown items={d.tip} />
+            </PortalTip>
           )}
           {/* Value on top — its own fixed row so tall bars never clip it */}
           <span className="text-[11px] font-semibold text-text-secondary tnum whitespace-nowrap shrink-0 mb-1">
@@ -340,16 +563,23 @@ export function BarChart({
           {/* Bar grows inside this flex-1 area, so the label below always fits */}
           <div className="flex-1 w-full min-h-0 flex items-end justify-center">
             <div
-              className="w-full max-w-[120px] rounded-t-md transition-[opacity,filter]"
+              className="chart-bar w-full max-w-[120px] rounded-t-md transition-[opacity,filter,box-shadow,transform]"
               style={{
                 height: `${(d.value / max) * 100}%`,
                 minHeight: 4,
+                animationDelay: `${i * 45}ms`,
                 background: d.color || VIZ.blue,
-                opacity: hover === null || hover === i ? 1 : 0.55,
+                opacity: lit === null || lit === i ? 1 : 0.4,
+                transform: activeIndex === i && hover === null ? "scaleY(1.02)" : undefined,
+                transformOrigin: "bottom",
+                boxShadow:
+                  activeIndex === i
+                    ? `0 0 0 2px #fff, 0 0 0 4px ${d.color || VIZ.blue}`
+                    : undefined,
               }}
             />
           </div>
-          <span className="text-[11px] text-text-tertiary truncate w-full text-center shrink-0 mt-1.5">
+          <span className="text-[11px] text-text-tertiary w-full text-center shrink-0 mt-1.5 leading-tight break-words">
             {d.label}
           </span>
         </div>
@@ -366,6 +596,7 @@ export function LineChart({
   height = 220,
   className,
   format,
+  pointTips,
 }: {
   series: { label: string; color: string; points: number[] }[];
   // Sparse labels shown along the x-axis (a handful, evenly spread).
@@ -379,8 +610,11 @@ export function LineChart({
   height?: number;
   className?: string;
   format?: Fmt;
+  // The who/which behind each x-point (shared across series).
+  pointTips?: TipItem[][];
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const w = 600;
   const h = height;
   const pad = 8;
@@ -398,13 +632,14 @@ export function LineChart({
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
     setHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
+    setMouse({ x: e.clientX, y: e.clientY });
   }
 
   return (
     <div
       className={cn("relative w-full", className)}
       onMouseMove={onMove}
-      onMouseLeave={() => setHover(null)}
+      onMouseLeave={() => { setHover(null); setMouse(null); }}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -480,7 +715,7 @@ export function LineChart({
         (() => {
           const tipLabel = pointLabels?.[hi] ?? xLabels?.[hi];
           return (
-            <Tip leftPct={xPct(hi)}>
+            <Tip anchor={mouse} wide={!!pointTips?.[hi]?.length}>
               {series.length === 1 ? (
                 <span className="flex flex-col items-center gap-0.5 text-center">
                   {tipLabel && (
@@ -512,6 +747,7 @@ export function LineChart({
                   ))}
                 </span>
               )}
+              <TipBreakdown items={pointTips?.[hi]} />
             </Tip>
           );
         })()}
@@ -534,14 +770,21 @@ export function Sparkline({
   height = 34,
   format,
   xLabels,
+  unit,
+  pointTips,
 }: {
   points: number[];
   color?: string;
   height?: number;
   format?: Fmt;
   xLabels?: string[];
+  // A unit appended to the hovered value so a bare "7" reads as "7 touches"
+  // (Suren: "7, what the fuck? What date was this?").
+  unit?: string;
+  pointTips?: TipItem[][];
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const w = 120;
   const h = height;
   const pad = 3;
@@ -560,6 +803,7 @@ export function Sparkline({
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
     setHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
+    setMouse({ x: e.clientX, y: e.clientY });
   }
 
   return (
@@ -567,7 +811,7 @@ export function Sparkline({
       className="relative w-full"
       style={{ height }}
       onMouseMove={onMove}
-      onMouseLeave={() => setHover(null)}
+      onMouseLeave={() => { setHover(null); setMouse(null); }}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -583,6 +827,7 @@ export function Sparkline({
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="chart-line"
         />
       </svg>
       <span
@@ -595,11 +840,63 @@ export function Sparkline({
         }}
       />
       {hover != null && (
-        <Tip leftPct={(x(hi) / w) * 100}>
-          {xLabels?.[hi] ? `${xLabels[hi]} · ` : ""}
-          {fmt(format, points[hi] ?? 0)}
+        <Tip anchor={mouse} wide={!!pointTips?.[hi]?.length}>
+          <div className="whitespace-nowrap font-semibold">
+            {fmt(format, points[hi] ?? 0)}
+            {unit ? ` ${unit}` : ""}
+            {xLabels?.[hi] ? ` · ${xLabels[hi]}` : ""}
+          </div>
+          <TipBreakdown items={pointTips?.[hi]} />
         </Tip>
       )}
+    </div>
+  );
+}
+
+// A donut/pie side legend where the count sits RIGHT AFTER the label (Suren:
+// "don't do this stupid thing where the numbers are so far from the tags"), with
+// the share % and a subtle proportion bar filling the space that freed up on the
+// right — so the width reads as information, not a dead gap.
+export function DonutLegend({
+  items,
+  total,
+  format,
+  className,
+}: {
+  items: { label: string; color: string; value: number }[];
+  total?: number;
+  format?: Fmt;
+  className?: string;
+}) {
+  const sum = (total ?? items.reduce((s, x) => s + x.value, 0)) || 1;
+  return (
+    <div className={cn("flex-1 min-w-0 space-y-2.5", className)}>
+      {items.map((it) => {
+        const pct = Math.round((it.value / sum) * 100);
+        return (
+          <div key={it.label} className="flex items-center gap-2 text-[12.5px]">
+            <span
+              className="w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ background: it.color }}
+            />
+            {/* Never truncate the label — a "Prosp…" tag is useless (Suren).
+                The share bar (flex-1) yields space instead. */}
+            <span className="text-text-secondary whitespace-nowrap shrink-0">{it.label}</span>
+            <span className="font-semibold text-text-primary tnum shrink-0">
+              {format ? fmt(format, it.value) : it.value}
+            </span>
+            <span className="text-text-tertiary tnum text-[11px] shrink-0">
+              {pct}%
+            </span>
+            <span className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden ml-1 min-w-[12px]">
+              <span
+                className="block h-full rounded-full transition-all"
+                style={{ width: `${Math.max(pct, 3)}%`, background: it.color }}
+              />
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -10,4 +10,6 @@ export {
   LineChart,
   Sparkline,
   Legend,
+  DonutLegend,
 } from "./ChartsClient";
+export type { TipItem } from "./ChartsClient";

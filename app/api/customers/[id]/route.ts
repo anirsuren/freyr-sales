@@ -89,13 +89,36 @@ export async function PATCH(
   }
 
   if (body.addNote && String(body.addNote.body || "").trim()) {
+    const n = body.addNote;
+    const KINDS = ["call", "email", "meeting", "note"];
     const note: AccountNote = {
       id: uid("note"),
-      author: String(body.addNote.author || "Suren Dheen"),
-      body: String(body.addNote.body).trim().slice(0, 2000),
+      author: String(n.author || "Suren Dheen"),
+      body: String(n.body).trim().slice(0, 2000),
       created_at: new Date().toISOString(),
+      kind: KINDS.includes(n.kind) ? n.kind : "note",
+      next_step: n.next_step ? String(n.next_step).trim().slice(0, 300) || null : null,
+      follow_up_date: n.follow_up_date ? String(n.follow_up_date).slice(0, 40) : null,
     };
     patch.notes_log = [note, ...(customer.notes_log || [])];
+
+    // A logged call/email/meeting is a real interaction — record it so it shows
+    // on the timeline and (with a follow-up) lands in Tasks (Suren, #96).
+    if (note.kind !== "note") {
+      const contacts = await db.contacts.list(params.id);
+      const contactId = contacts[0]?.id;
+      if (contactId) {
+        const verb = note.kind === "call" ? "Call" : note.kind === "email" ? "Email" : "Meeting";
+        await db.interactions.create({
+          customer_id: params.id,
+          contact_id: contactId,
+          outcome: "in_progress",
+          notes: `${verb} logged: ${note.body}${note.next_step ? ` · Next: ${note.next_step}` : ""}`,
+          follow_up_date: note.follow_up_date,
+          logged_by: note.author,
+        });
+      }
+    }
   }
 
   if (body.addAttachment && String(body.addAttachment.name || "").trim()) {

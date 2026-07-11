@@ -21,8 +21,11 @@ import {
   BarChart3,
   FolderOpen,
   Globe,
+  File,
+  Table2,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
@@ -31,9 +34,10 @@ import { DuplicateButton } from "@/components/offerings/DuplicateButton";
 import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { OfferingActions } from "@/components/offerings/OfferingActions";
 import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
-import { DonutChart, Legend, VIZ_SERIES } from "@/components/charts/Charts";
+import { DonutChart, BarChart, VIZ_SERIES } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import { isAdmin } from "@/lib/role";
 import { getDb } from "@/lib/db";
 import { reportForOffering } from "@/lib/revenue";
@@ -62,6 +66,8 @@ const MATERIAL_ICON: Record<MaterialKind, typeof Video> = {
   competition: Swords,
   case_study: BookOpen,
   reference: Quote,
+  one_pager: File,
+  datasheet: Table2,
 };
 const KIND_ORDER: MaterialKind[] = [
   "video",
@@ -71,6 +77,8 @@ const KIND_ORDER: MaterialKind[] = [
   "case_study",
   "reference",
   "competition",
+  "one_pager",
+  "datasheet",
 ];
 const CT_FAMILIES = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
@@ -157,7 +165,7 @@ export default async function OfferingDetailPage({
   };
   const sizeStyle = (size: string): { bg: string; color: string } => {
     const s = size.toLowerCase();
-    if (s.includes("small")) return { bg: "rgba(100,116,139,0.14)", color: "#475569" }; // slate
+    if (s.includes("small")) return { bg: "rgba(2,132,199,0.12)", color: "#0369A1" }; // sky
     if (s.includes("large")) return { bg: "rgba(5,150,105,0.14)", color: "#047857" }; // emerald
     return { bg: "rgba(217,119,6,0.15)", color: "#B45309" }; // mid — amber
   };
@@ -169,6 +177,15 @@ export default async function OfferingDetailPage({
       label: c.name,
       value: c.revenue,
       color: VIZ_SERIES[i % VIZ_SERIES.length],
+      tip: [{ logo: c.name, name: c.name, value: formatMoney(c.revenue) }],
+    }));
+  const licenseBars = report.customers
+    .filter((c) => c.licenses > 0)
+    .map((c, i) => ({
+      label: c.name,
+      value: c.licenses,
+      color: VIZ_SERIES[i % VIZ_SERIES.length],
+      tip: [{ logo: c.name, name: c.name, value: `${c.licenses} seats` }],
     }));
 
   return (
@@ -209,31 +226,7 @@ export default async function OfferingDetailPage({
                 {o.offering_type}
               </span>
             )}
-            {o.current_availability && (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 text-[12px] font-medium rounded-full px-2.5 py-1",
-                  /current|now|available/i.test(o.current_availability)
-                    ? "text-success bg-success/10"
-                    : "text-warning bg-warning/10"
-                )}
-              >
-                <span
-                  className={cn(
-                    "w-1.5 h-1.5 rounded-full",
-                    /current|now|available/i.test(o.current_availability)
-                      ? "bg-success"
-                      : "bg-warning"
-                  )}
-                />
-                {o.current_availability}
-              </span>
-            )}
-            {o.future_availability && o.future_availability.length <= 40 && (
-              <span className="text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-2.5 py-1">
-                {o.future_availability}
-              </span>
-            )}
+            <AvailabilityPill value={o.current_availability} />
             {!isMapped && (
               <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-tertiary bg-surface border border-border-light rounded-full px-2.5 py-1">
                 <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
@@ -340,7 +333,7 @@ export default async function OfferingDetailPage({
                   materials.
                 </p>
               )}
-              {o.future_availability && o.future_availability.length > 40 && (
+              {o.future_availability && (
                 <p className="text-[12.5px] text-text-secondary leading-relaxed mt-3 pt-3 border-t border-border-light">
                   <span className="font-medium text-text-tertiary">
                     Availability —{" "}
@@ -372,59 +365,87 @@ export default async function OfferingDetailPage({
                   tab and it rolls up here.
                 </p>
               ) : (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-                  <dl className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-                    <div>
-                      <dd className="text-[24px] font-bold leading-none tnum text-text-primary">
-                        {formatMoney(report.totalRevenue)}
-                      </dd>
-                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
-                        Revenue
-                      </dt>
-                    </div>
-                    <div>
-                      <dd className="text-[24px] font-bold leading-none tnum text-text-primary">
-                        {report.totalLicenses}
-                      </dd>
-                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
-                        Users
-                      </dt>
-                    </div>
-                    <div>
-                      <dd className="text-[24px] font-bold leading-none tnum text-text-primary">
-                        {report.customerCount}
-                      </dd>
-                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
-                        Customers
-                      </dt>
-                    </div>
-                    <div>
-                      <dd className="text-[24px] font-bold leading-none tnum text-text-primary">
-                        {report.lineCount}
-                      </dd>
-                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mt-1">
-                        Contracts
-                      </dt>
-                    </div>
-                  </dl>
-                  {commercialsBars.length > 0 && (
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Card 1 — Revenue: donut is the ONLY place the total shows
+                      (no repeated stat), legend stacked one-per-row to save
+                      space (Suren). */}
+                  <div className="rounded-xl border border-border-light p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
+                      Revenue
+                    </p>
+                    <div className="flex items-center gap-3">
                       <DonutChart
                         segments={commercialsBars}
-                        size={116}
-                        thickness={13}
+                        size={96}
+                        thickness={12}
                         centerLabel={formatMoney(report.totalRevenue)}
                         centerSub="total"
                       />
-                      <Legend
-                        items={commercialsBars.map((b) => ({
-                          label: b.label,
-                          color: b.color,
-                          value: formatMoney(b.value),
-                        }))}
-                      />
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        {commercialsBars.map((b) => (
+                          <div key={b.label} className="flex items-center gap-1.5 text-[12px]">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: b.color }} />
+                            <span className="truncate text-text-secondary">{b.label}</span>
+                            <span className="ml-auto font-semibold text-text-primary tnum">
+                              {formatMoney(b.value)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Card 2 — Licensed seats + a per-customer bar (the extra graph). */}
+                  <div className="rounded-xl border border-border-light p-4 flex flex-col">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Licensed seats
+                    </p>
+                    <p className="text-[26px] font-bold text-text-primary tnum leading-none mt-1">
+                      {report.totalLicenses}
+                    </p>
+                    <p className="text-[12px] text-text-tertiary mt-1">
+                      across {report.customerCount} customer{report.customerCount === 1 ? "" : "s"}
+                    </p>
+                    {licenseBars.length > 0 && (
+                      <div className="mt-3 flex-1 flex items-end">
+                        <BarChart data={licenseBars} height={72} format="number" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card 3 — Contracts + derived economics (no repeated numbers). */}
+                  <div className="rounded-xl border border-border-light p-4 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                        Contracts
+                      </p>
+                      <p className="text-[26px] font-bold text-text-primary tnum leading-none mt-1">
+                        {report.lineCount}
+                      </p>
+                      <p className="text-[12px] text-text-tertiary mt-1">
+                        revenue lines across {report.customerCount} customer
+                        {report.customerCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="rounded-lg bg-surface px-2.5 py-2">
+                        <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                          Avg / customer
+                        </p>
+                        <p className="text-[14px] font-bold text-text-primary tnum leading-none mt-0.5">
+                          {formatMoney(Math.round(report.totalRevenue / Math.max(report.customerCount, 1)))}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-surface px-2.5 py-2">
+                        <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                          Avg / seat
+                        </p>
+                        <p className="text-[14px] font-bold text-text-primary tnum leading-none mt-0.5">
+                          {report.totalLicenses ? formatMoney(Math.round(report.totalRevenue / report.totalLicenses)) : "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </SectionCard>
@@ -433,13 +454,7 @@ export default async function OfferingDetailPage({
             <SectionCard title={`Sales materials (${o.materials.length})`} icon={FolderOpen}>
               {o.materials.length === 0 ? (
                 admin ? (
-                  <Link
-                    href={`/offerings/${o.id}/edit`}
-                    className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-                  >
-                    <Plus size={13} strokeWidth={2} /> Add videos, presentations,
-                    white papers or pricing
-                  </Link>
+                  <AddMaterialButton offeringId={o.id} materials={o.materials} />
                 ) : (
                   <p className="text-[13px] text-text-tertiary">No materials yet</p>
                 )
@@ -480,6 +495,11 @@ export default async function OfferingDetailPage({
                   )}
                 </div>
               )}
+              {admin && o.materials.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border-light">
+                  <AddMaterialButton offeringId={o.id} materials={o.materials} />
+                </div>
+              )}
             </SectionCard>
 
             {/* Cross-sell — related offerings in the same family */}
@@ -493,15 +513,16 @@ export default async function OfferingDetailPage({
                     <Link
                       key={r.id}
                       href={`/offerings/${r.id}`}
-                      className="group flex items-center justify-between gap-2 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+                      className="group flex items-center gap-3 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
                     >
-                      <span className="min-w-0">
+                      <OfferingIcon name={r.offering_name} className="w-9 h-9 shrink-0" />
+                      <span className="min-w-0 flex-1">
                         <span className="block text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
                           {r.offering_name}
                         </span>
                         {r.current_availability && (
-                          <span className="block text-[11px] text-text-tertiary">
-                            {r.current_availability}
+                          <span className="mt-1 inline-flex">
+                            <AvailabilityPill value={r.current_availability} size="sm" />
                           </span>
                         )}
                       </span>
@@ -581,54 +602,51 @@ export default async function OfferingDetailPage({
                   <p className="text-[13px] text-text-tertiary">Not specified yet</p>
                 )
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {CT_FAMILIES.map((fam) => {
                     const types = o.customerTypes.filter((c) => c.family === fam);
+                    if (types.length === 0) return null; // hide families that don't apply
                     const famColor = familyStyle(fam);
                     return (
-                      <div key={fam}>
+                      // Each family is its own tidy block with a colour accent, and
+                      // the sizes sit side-by-side — not a tall left-aligned stack
+                      // (Suren: "I don't like how they're all stacked on the left").
+                      <div
+                        key={fam}
+                        className="rounded-xl border border-border-light bg-surface/30 p-3"
+                        style={{ borderLeft: `3px solid ${famColor}` }}
+                      >
                         <p
-                          className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.04em] mb-2"
+                          className="text-[11px] font-semibold uppercase tracking-[0.05em] mb-2"
                           style={{ color: famColor }}
                         >
-                          <span
-                            className="w-2 h-2 rounded-full"
-                            style={{ background: famColor }}
-                          />
                           {fam}
                         </p>
-                        {types.length === 0 ? (
-                          <span className="text-[12px] text-text-tertiary">
-                            Not applicable
-                          </span>
-                        ) : (
-                          // Stacked, not side-by-side (Suren).
-                          <div className="flex flex-col items-start gap-1.5">
-                            {types.map((c) => (
-                              <Tooltip
-                                key={c.id}
-                                label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
-                                side="top"
-                                align="left"
+                        <div className="flex flex-wrap gap-1.5">
+                          {types.map((c) => (
+                            <Tooltip
+                              key={c.id}
+                              label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
+                              side="top"
+                              align="left"
+                            >
+                              <Link
+                                href={`/offerings?type=${c.id}`}
+                                style={{
+                                  background: sizeStyle(c.size).bg,
+                                  color: sizeStyle(c.size).color,
+                                }}
+                                className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
                               >
-                                <Link
-                                  href={`/offerings?type=${c.id}`}
-                                  style={{
-                                    background: sizeStyle(c.size).bg,
-                                    color: sizeStyle(c.size).color,
-                                  }}
-                                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
-                                >
-                                  <span
-                                    className="w-1.5 h-1.5 rounded-full"
-                                    style={{ background: sizeStyle(c.size).color }}
-                                  />
-                                  {c.size}
-                                </Link>
-                              </Tooltip>
-                            ))}
-                          </div>
-                        )}
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ background: sizeStyle(c.size).color }}
+                                />
+                                {c.size}
+                              </Link>
+                            </Tooltip>
+                          ))}
+                        </div>
                       </div>
                     );
                   })}
@@ -660,7 +678,7 @@ export default async function OfferingDetailPage({
                         style={{ background: st.bg, color: st.color }}
                         className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
                       >
-                        <span className="text-[13px] leading-none">{marketFlag(m.name)}</span>
+                        <span aria-hidden="true" className="text-[13px] leading-none">{marketFlag(m.name)}</span>
                         {m.name}
                       </Link>
                     );

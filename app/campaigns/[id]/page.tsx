@@ -12,6 +12,7 @@ import {
   BarChart3,
   Activity,
   Building2,
+  ArrowRight,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
@@ -19,7 +20,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EngagementChart } from "@/components/campaigns/EngagementChart";
-import { DonutChart, BarChart, Legend, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { DonutChart, BarChart, Legend, VIZ, VIZ_SERIES, type TipItem } from "@/components/charts/Charts";
 import { getCampaign } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { listVoiceQueue } from "@/lib/voice";
@@ -115,6 +116,15 @@ export default async function CampaignDetailPage({
     (a, b) => b[1] - a[1]
   );
 
+  // Who's behind every chart on this page — recipients carry a company logo,
+  // name and role so hovering a slice/bar reveals the actual people, not just a
+  // number (Suren: "add the logo, give me more info, I'm a sales agent").
+  const recipientTip: TipItem[] = recipients.map((p) => ({
+    logo: p.company,
+    name: p.name,
+    sub: p.title || p.company,
+  }));
+
   const checks = [
     { label: "Subject", ok: !!campaign.subject.trim() },
     { label: "Message", ok: campaign.body.trim().length >= 40 },
@@ -179,6 +189,11 @@ export default async function CampaignDetailPage({
     dayLabels.push(`${d.getMonth() + 1}/${d.getDate()}`);
   }
   const hasTimeline = pointCount >= 2 && (sent > 0 || campaign.opens > 0);
+  // One recipient list per timeline point — hover any day to see who's on the
+  // blast (logo + name). Attribution is synthetic; the audience is the point.
+  const timelineTips: TipItem[][] = series.sent.map(() =>
+    recipients.map((p) => ({ logo: p.company, name: p.name }))
+  );
 
   return (
     <div className="space-y-6">
@@ -253,9 +268,9 @@ export default async function CampaignDetailPage({
           <div className="flex-1 flex items-center gap-5">
             <DonutChart
               segments={[
-                { label: "Sent", value: sent, color: VIZ.green },
-                { label: "Queued", value: queued, color: VIZ.amber },
-                { label: "Not queued", value: Math.max(0, total - sent - queued), color: "#E5E5EA" },
+                { label: "Sent", value: sent, color: VIZ.green, tip: recipientTip },
+                { label: "Queued", value: queued, color: VIZ.amber, tip: recipientTip },
+                { label: "Not queued", value: Math.max(0, total - sent - queued), color: "#E5E5EA", tip: recipientTip },
               ]}
               size={128}
               thickness={14}
@@ -337,6 +352,11 @@ export default async function CampaignDetailPage({
                   label: company,
                   value: n,
                   color: VIZ_SERIES[i % VIZ_SERIES.length],
+                  // This slice IS a company — the tip names its people (headshot
+                  // + role) so hovering shows exactly who at that company got it.
+                  tip: recipients
+                    .filter((p) => p.company === company)
+                    .map((p) => ({ avatar: p.name, name: p.name, sub: p.title })),
                 }))}
                 size={128}
                 thickness={14}
@@ -468,33 +488,61 @@ export default async function CampaignDetailPage({
             these recipients on the Contacts page and run a category&apos;s agent.
           </p>
         ) : (
-          <ul className="divide-y divide-border-light">
-            {voiceTouches.map((q) => (
-              <li key={q.id} className="flex items-center justify-between gap-2 py-2.5 text-[13px]">
-                <span className="flex items-center gap-2.5 min-w-0">
-                  <Avatar name={q.contact_name} className="w-7 h-7 text-[10px] shrink-0" />
-                  <span className="min-w-0 truncate">
-                    <span className="font-medium text-text-primary">{q.contact_name}</span>
-                    <span className="text-text-tertiary"> · {q.offering_name}</span>
+          <ul className="divide-y divide-border-light max-h-[520px] overflow-y-auto pr-1 -mr-1">
+            {voiceTouches.map((q) => {
+              // Each placed call links straight to its transcript + analysis
+              // (Suren #86). Rows lift + the arrow slides on hover so it clearly
+              // reads as clickable.
+              const called = q.status === "called";
+              const row = (
+                <>
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <Avatar name={q.contact_name} className="w-7 h-7 text-[10px] shrink-0" />
+                    <span className="min-w-0 truncate">
+                      <span className="font-medium text-text-primary">{q.contact_name}</span>
+                      <span className="text-text-tertiary"> · {q.offering_name}</span>
+                    </span>
                   </span>
-                </span>
-                <span className="flex items-center gap-3 shrink-0">
-                  <span
-                    className={cn(
-                      "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
-                      q.status === "called"
-                        ? "text-success bg-success/10"
-                        : "text-warning bg-warning/10"
+                  <span className="flex items-center gap-3 shrink-0">
+                    <span
+                      className={cn(
+                        "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
+                        called ? "text-success bg-success/10" : "text-warning bg-warning/10"
+                      )}
+                    >
+                      {called ? "Called" : "Waiting for number"}
+                    </span>
+                    <span className="text-[11.5px] text-text-tertiary tnum">
+                      {formatDateTime(q.created_at)}
+                    </span>
+                    {called && (
+                      <ArrowRight
+                        size={15}
+                        strokeWidth={1.8}
+                        className="text-text-tertiary group-hover/call:text-blue-primary group-hover/call:translate-x-0.5 transition-transform"
+                      />
                     )}
+                  </span>
+                </>
+              );
+              return called ? (
+                <li key={q.id}>
+                  <Link
+                    href={`/voice/c/${q.id}`}
+                    className="group/call flex items-center justify-between gap-2 py-2.5 px-2 -mx-2 rounded-lg text-[13px] hover:bg-surface transition-colors"
                   >
-                    {q.status === "called" ? "Called" : "Waiting for number"}
-                  </span>
-                  <span className="text-[11.5px] text-text-tertiary tnum">
-                    {formatDateTime(q.created_at)}
-                  </span>
-                </span>
-              </li>
-            ))}
+                    {row}
+                  </Link>
+                </li>
+              ) : (
+                <li
+                  key={q.id}
+                  className="flex items-center justify-between gap-2 py-2.5 text-[13px]"
+                >
+                  {row}
+                </li>
+              );
+            })}
           </ul>
         )}
       </Card>
@@ -524,9 +572,9 @@ export default async function CampaignDetailPage({
               <div className="max-w-[440px]">
                 <BarChart
                   data={[
-                    { label: "Sent", value: sent, color: VIZ.blue },
-                    { label: "Opened", value: campaign.opens, color: VIZ.green },
-                    { label: "Replied", value: campaign.replies, color: VIZ.indigo },
+                    { label: "Sent", value: sent, color: VIZ.blue, tip: recipientTip },
+                    { label: "Opened", value: campaign.opens, color: VIZ.green, tip: recipientTip },
+                    { label: "Replied", value: campaign.replies, color: VIZ.indigo, tip: recipientTip },
                   ]}
                   height={180}
                 />
@@ -551,6 +599,7 @@ export default async function CampaignDetailPage({
                   sent={series.sent}
                   opened={series.opened}
                   replied={series.replied}
+                  pointTips={timelineTips}
                 />
               </div>
             )}

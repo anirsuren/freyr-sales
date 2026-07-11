@@ -1,3 +1,5 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { MOCK_PITCHES, MOCK_MATCHING_OUTPUT, MOCK_FREYR_KB } from "./claude";
 import { buildAccountPitch } from "./pitch";
@@ -446,7 +448,49 @@ function seed(): MockStore {
   };
 }
 
-const store: MockStore = globalThis.__FREYR_MOCK_STORE__ ?? seed();
+// ---------------------------------------------------------------------------
+// Durable persistence (Suren: "everything has to save — it can't vanish").
+// The store is written to a JSON file so edits survive a server restart, not
+// just page reloads. It lives under node_modules/.cache so Next's file watcher
+// doesn't treat it as a source change (which would loop the dev server), and
+// it's DISABLED under the test flag so the Playwright suite always sees a fresh
+// seed. Bump SCHEMA_VERSION whenever the seed shape changes to auto-reseed.
+const SCHEMA_VERSION = 1;
+const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
+const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
+
+function loadOrSeed(): MockStore {
+  if (PERSIST) {
+    try {
+      if (existsSync(STORE_FILE)) {
+        const parsed = JSON.parse(readFileSync(STORE_FILE, "utf8"));
+        if (parsed && parsed.__v === SCHEMA_VERSION && parsed.store) {
+          return parsed.store as MockStore;
+        }
+      }
+    } catch {
+      /* corrupt or unreadable — fall through to a fresh seed */
+    }
+  }
+  return seed();
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function persist() {
+  if (!PERSIST) return;
+  // Debounce so a burst of writes coalesces into one file write.
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try {
+      mkdirSync(dirname(STORE_FILE), { recursive: true });
+      writeFileSync(STORE_FILE, JSON.stringify({ __v: SCHEMA_VERSION, store }));
+    } catch {
+      /* best-effort; never crash a request because we couldn't persist */
+    }
+  }, 120);
+}
+
+const store: MockStore = globalThis.__FREYR_MOCK_STORE__ ?? loadOrSeed();
 if (!globalThis.__FREYR_MOCK_STORE__) {
   globalThis.__FREYR_MOCK_STORE__ = store;
 }
@@ -475,6 +519,7 @@ export const mockDb = {
         last_enriched_at: new Date().toISOString(),
       };
       store.customers.push(record);
+      persist();
       return record;
     },
     update: async (id: string, data: Partial<Customer>) => {
@@ -485,6 +530,7 @@ export const mockDb = {
         ...data,
         last_enriched_at: new Date().toISOString(),
       };
+      persist();
       return store.customers[idx];
     },
   },
@@ -501,12 +547,14 @@ export const mockDb = {
         last_enriched_at: new Date().toISOString(),
       };
       store.contacts.push(record);
+      persist();
       return record;
     },
     update: async (id: string, data: Partial<Contact>) => {
       const idx = store.contacts.findIndex((c) => c.id === id);
       if (idx === -1) return null;
       store.contacts[idx] = { ...store.contacts[idx], ...data };
+      persist();
       return store.contacts[idx];
     },
   },
@@ -532,12 +580,14 @@ export const mockDb = {
         created_at: new Date().toISOString(),
       };
       store.pitchSessions.push(record);
+      persist();
       return record;
     },
     update: async (id: string, data: Partial<PitchSession>) => {
       const idx = store.pitchSessions.findIndex((s) => s.id === id);
       if (idx === -1) return null;
       store.pitchSessions[idx] = { ...store.pitchSessions[idx], ...data };
+      persist();
       return store.pitchSessions[idx];
     },
   },
@@ -561,6 +611,7 @@ export const mockDb = {
         created_at: new Date().toISOString(),
       };
       store.interactions.push(record);
+      persist();
       return record;
     },
     remove: async (id: string) => {
@@ -604,6 +655,7 @@ export const mockDb = {
         created_at: new Date().toISOString(),
       };
       store.sequenceEnrollments.push(record);
+      persist();
       return record;
     },
     update: async (id: string, data: Partial<SequenceEnrollment>) => {
@@ -613,6 +665,7 @@ export const mockDb = {
         ...store.sequenceEnrollments[idx],
         ...data,
       };
+      persist();
       return store.sequenceEnrollments[idx];
     },
     remove: async (id: string) => {
@@ -631,6 +684,7 @@ export const mockDb = {
         ...data,
         updated_at: new Date().toISOString(),
       };
+      persist();
       return store.agentPrefs;
     },
   },

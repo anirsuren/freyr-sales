@@ -38,7 +38,8 @@ export const STAGE_PROBABILITY: Record<Stage, number> = {
 
 // One palette for stages everywhere (leaderboard bars, donuts, value charts).
 export const STAGE_COLOR: Record<Stage, string> = {
-  Prospect: "#8E98A8",
+  // No gray anywhere in a graph (Suren) — Prospect gets a real teal.
+  Prospect: "#14B8A6",
   Engaged: "#36A8F5",
   Qualified: "#5E5CE6",
   "Meeting Booked": "#34C759",
@@ -93,6 +94,137 @@ export interface Deal {
 // stable derived rep so "My deals / Team" filtering always has data.
 export const REPS = ["Suren Dheen", "Mark Miller", "Priya Nair", "Diego Alvarez"];
 export const CURRENT_REP = "Suren Dheen";
+
+// The full sales floor (Suren: "put like 20 reps, it has to look full"). The
+// first four are the real, deal-owning reps; the rest fill out the org so the
+// team charts read like a real enterprise sales team rather than a demo of four.
+export const SALES_TEAM = [
+  "Suren Dheen",
+  "Diego Alvarez",
+  "Priya Nair",
+  "Mark Miller",
+  "Elena Rossi",
+  "Marcus Chen",
+  "Sofia Almeida",
+  "James O'Brien",
+  "Aisha Khan",
+  "Tomas Becker",
+  "Nina Kowalski",
+  "Rajesh Patel",
+  "Grace Liu",
+  "Daniel Foster",
+  "Yuki Tanaka",
+  "Omar Haddad",
+  "Clara Mendez",
+  "Viktor Petrov",
+  "Hannah Schmidt",
+  "Leo Santos",
+];
+
+// Stable hash of a name → deterministic pseudo-random, so a rep's synthetic
+// figures never change between renders (no Math.random in a server component).
+function hashName(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h;
+}
+
+// A teammate's realistic quarter forecast. Reps who own real deals use those;
+// everyone else gets a deterministic mock spread ($95K–$610K weighted) so the
+// team charts and each rep's page are full and believable.
+export function repForecast(name: string): { open: number; weighted: number; deals: number } {
+  const h = hashName(name);
+  // Unsigned shifts (>>>) — the hash can exceed 2^31, and a signed >> would make
+  // the modulo negative, producing negative "deals" and a garbage avg (Suren
+  // saw "-5 total owned").
+  const weighted = 95000 + (h % 52) * 10000; // 95K … 605K, in 10K steps
+  const winish = 0.28 + ((h >>> 6) % 22) / 100; // 0.28 … 0.49 realistic weight ratio
+  const open = Math.round(weighted / winish);
+  const deals = 3 + ((h >>> 11) % 9); // 3 … 11 open deals
+  return { open, weighted, deals };
+}
+
+export type RepStat = {
+  name: string;
+  deals: number;
+  openCount: number;
+  openValue: number;
+  weighted: number;
+  avgDeal: number;
+  qualifiedPlus: number;
+  meetings: number;
+  stageValues: { stage: string; color: string; count: number; value: number }[];
+};
+
+// Per-rep leaderboard stats — the four real deal-owners use their actual deals;
+// the rest of the roster gets a deterministic synthetic spread. Shared by the
+// Analytics leaderboard AND the Team page so the numbers can never disagree.
+export function buildRepStats(deals: Deal[]): RepStat[] {
+  return SALES_TEAM.map((name): RepStat => {
+    const rd = deals.filter((d) => d.owner === name);
+    const open = rd.filter((d) => d.stage !== "Closed Lost");
+    if (rd.length > 0) {
+      const openValue = open.reduce((s, d) => s + d.value, 0);
+      const weighted = open.reduce(
+        (s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0),
+        0
+      );
+      return {
+        name,
+        deals: rd.length,
+        openCount: open.length,
+        openValue,
+        weighted: Math.round(weighted),
+        avgDeal: open.length ? Math.round(openValue / open.length) : 0,
+        qualifiedPlus: rd.filter(
+          (d) => d.stage === "Qualified" || d.stage === "Meeting Booked"
+        ).length,
+        meetings: rd.filter((d) => d.stage === "Meeting Booked").length,
+        stageValues: OPEN_STAGES.map((stage) => ({
+          stage,
+          color: STAGE_COLOR[stage],
+          count: open.filter((d) => d.stage === stage).length,
+          value: open
+            .filter((d) => d.stage === stage)
+            .reduce((s, d) => s + d.value, 0),
+        })),
+      };
+    }
+    const synth = repForecast(name);
+    const baseW = [0.34, 0.28, 0.23, 0.15];
+    const offset = name.charCodeAt(0) % OPEN_STAGES.length;
+    const stageValues = OPEN_STAGES.map((stage, i) => {
+      const frac = baseW[(i + offset) % baseW.length] ?? 0.2;
+      return {
+        stage,
+        color: STAGE_COLOR[stage],
+        value: Math.round(synth.open * frac),
+        count: Math.max(1, Math.round(synth.deals * frac)),
+      };
+    });
+    // Open deals = the true sum of the composition graph; total owned = open +
+    // a deterministic count of closed deals so owned is always ≥ open.
+    const openCount = stageValues.reduce((a, s) => a + s.count, 0);
+    const closedOwned = 1 + (name.charCodeAt(name.length - 1) % 4);
+    const qualifiedPlus = stageValues
+      .filter((s) => s.stage === "Qualified" || s.stage === "Meeting Booked")
+      .reduce((a, s) => a + s.count, 0);
+    return {
+      name,
+      deals: openCount + closedOwned,
+      openCount,
+      openValue: synth.open,
+      weighted: synth.weighted,
+      avgDeal: Math.round(synth.open / Math.max(openCount, 1)),
+      qualifiedPlus,
+      meetings: stageValues.find((s) => s.stage === "Meeting Booked")?.count ?? 0,
+      stageValues,
+    };
+  }).sort((a, b) => b.openValue - a.openValue);
+}
 
 export function ownerFor(customer: Customer | undefined): string {
   if (customer?.owner) return customer.owner;
@@ -201,4 +333,41 @@ export function pipelineGrowthSeries(
     series.push(Math.round((val / 1e6) * 100) / 100);
   }
   return series;
+}
+
+// The WHO behind each point of `pipelineGrowthSeries` — the open deals that came
+// in during each step of the curve, aligned index-for-index with that series so
+// a hover on any point shows the actual deals that built the pipeline up to
+// there (Suren: "every graph has to tell me who"). Uses the identical
+// order-spaced sampling as the series, so bucket i sits under series point i.
+export function pipelineGrowthPointDeals(
+  deals: Deal[],
+  points = 12
+): { company: string; contact: string; value: number }[][] {
+  const open = deals
+    .filter((d) => d.stage !== "Closed Lost")
+    .map((d) => ({ t: new Date(d.createdAt).getTime(), d }))
+    .filter((x) => !Number.isNaN(x.t))
+    .sort((a, b) => a.t - b.t)
+    .map((x) => x.d);
+  const buckets: { company: string; contact: string; value: number }[][] =
+    Array.from({ length: points }, () => []);
+  if (open.length === 0) return buckets;
+  // `cum` in pipelineGrowthSeries has open.length + 1 entries, so lastIdx =
+  // open.length — mirror it exactly so the point math lines up.
+  const lastIdx = open.length;
+  let prev = 0;
+  for (let i = 0; i < points; i++) {
+    const idx = lastIdx * (i / (points - 1));
+    const hi = Math.round(idx);
+    for (let k = prev; k < hi && k < open.length; k++) {
+      buckets[i].push({
+        company: open[k].company,
+        contact: open[k].contactName,
+        value: open[k].value,
+      });
+    }
+    prev = Math.max(prev, hi);
+  }
+  return buckets;
 }

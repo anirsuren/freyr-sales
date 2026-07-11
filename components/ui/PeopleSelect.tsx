@@ -16,6 +16,7 @@ export function PeopleSelect({
   placeholder = "Unassigned",
   allowUnassigned = true,
   className,
+  ariaLabel,
 }: {
   value: string;
   options: string[];
@@ -23,6 +24,7 @@ export function PeopleSelect({
   placeholder?: string;
   allowUnassigned?: boolean;
   className?: string;
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -52,6 +54,7 @@ export function PeopleSelect({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={ariaLabel}
         className="w-full flex items-center gap-2 bg-white border border-border-light rounded-lg pl-1.5 pr-2 py-1.5 text-[13px] text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-colors"
       >
         {value ? (

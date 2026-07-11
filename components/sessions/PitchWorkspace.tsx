@@ -474,15 +474,19 @@ export function PitchWorkspace({
           </h1>
           <div className="flex items-center flex-wrap gap-2 mt-4">
             {/* Compliance approval (#7) */}
-            <span
-              className="text-[11px] font-bold uppercase tracking-[0.04em] px-2.5 py-1 rounded"
-              style={{
-                background: REVIEW_META[reviewStatus].bg,
-                color: REVIEW_META[reviewStatus].color,
-              }}
-            >
-              {REVIEW_META[reviewStatus].label}
-            </span>
+            {(() => {
+              const rm = REVIEW_META[reviewStatus];
+              const RIcon = rm.icon;
+              return (
+                <span
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.04em] px-2.5 py-1 rounded"
+                  style={{ background: rm.bg, color: rm.color }}
+                >
+                  <RIcon size={12} strokeWidth={2.4} />
+                  {rm.label}
+                </span>
+              );
+            })()}
             <span className="w-px h-6 bg-border-light mx-0.5" />
             {/* The one action that moves this pitch forward is the blue
                 primary — everything gated stays clearly secondary so the row
@@ -639,62 +643,59 @@ export function PitchWorkspace({
         </p>
       </div>
 
-      {/* Format switcher (segmented) + content actions on one clean row —
-          no underline "scroll strip", no floating buttons over the card. */}
-      <div className="px-8 pt-4 pb-1 flex items-center justify-between gap-4 flex-wrap">
-        <div
-          role="tablist"
-          aria-label="Pitch formats"
-          className="inline-flex items-center gap-1 rounded-xl bg-surface p-1"
-        >
-          {TABS.map((t) => (
+      {/* Tabs + actions live INSIDE the scroll area, above the content, so they
+          scroll together instead of staying locked at the top (Suren: "when I
+          scroll, the copy button should scroll with it, not lock in"). */}
+      <div className="flex-1 overflow-y-auto p-8">
+        <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
+          <div
+            role="tablist"
+            aria-label="Pitch formats"
+            className="inline-flex items-center gap-1 rounded-xl bg-surface p-1"
+          >
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={active === t.key}
+                onClick={() => setActive(t.key)}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-lg text-[13px] transition-all whitespace-nowrap",
+                  active === t.key
+                    ? "bg-white text-blue-primary font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                    : "text-text-secondary hover:text-text-primary font-medium"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Compact icon utilities — download + copy. */}
+          <div className="flex items-center gap-1">
             <button
-              key={t.key}
-              role="tab"
-              aria-selected={active === t.key}
-              onClick={() => setActive(t.key)}
+              onClick={exportTab}
+              title="Download as a text file"
+              aria-label="Export as text file"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface hover:text-text-primary transition-colors active:scale-[0.94]"
+            >
+              <Download size={16} strokeWidth={1.7} />
+            </button>
+            <button
+              onClick={copy}
+              title="Copy to clipboard"
+              aria-label="Copy to clipboard"
               className={cn(
-                "px-3.5 py-1.5 rounded-lg text-[13px] transition-all whitespace-nowrap",
-                active === t.key
-                  ? "bg-white text-blue-primary font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
-                  : "text-text-secondary hover:text-text-primary font-medium"
+                "w-8 h-8 flex items-center justify-center rounded-lg transition-colors active:scale-[0.94]",
+                copied
+                  ? "text-success bg-success/10"
+                  : "text-text-secondary hover:bg-surface hover:text-text-primary"
               )}
             >
-              {t.label}
+              {copied ? <Check size={16} strokeWidth={2.1} /> : <Copy size={16} strokeWidth={1.7} />}
             </button>
-          ))}
+          </div>
         </div>
-
-        {/* Just the two lightweight utilities up here — compact icon buttons so
-            they don't crowd the row (Suren: "reduce space, just make the copy
-            button"). Save lives at the bottom-right of the editor now. */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={exportTab}
-            title="Download as a text file"
-            aria-label="Export as text file"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface hover:text-text-primary transition-colors active:scale-[0.94]"
-          >
-            <Download size={16} strokeWidth={1.7} />
-          </button>
-          <button
-            onClick={copy}
-            title="Copy to clipboard"
-            aria-label="Copy to clipboard"
-            className={cn(
-              "w-8 h-8 flex items-center justify-center rounded-lg transition-colors active:scale-[0.94]",
-              copied
-                ? "text-success bg-success/10"
-                : "text-text-secondary hover:bg-surface hover:text-text-primary"
-            )}
-          >
-            {copied ? <Check size={16} strokeWidth={2.1} /> : <Copy size={16} strokeWidth={1.7} />}
-          </button>
-        </div>
-      </div>
-
-      {/* Content — each format rendered as a finished document, not a raw box */}
-      <div className="flex-1 overflow-y-auto p-8">
         <div className="mx-auto max-w-3xl bg-white border border-border-light rounded-2xl shadow-card overflow-hidden page-in">
           {/* Document header: names the format + read time */}
           <div className="flex items-center justify-between gap-3 px-6 py-3.5 border-b border-border-light bg-surface/40">

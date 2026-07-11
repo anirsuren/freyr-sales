@@ -117,9 +117,13 @@ export function TopBar({
       <div className="relative flex-1 max-w-xl min-w-0">
         <button
           onClick={() => setPaletteOpen(true)}
-          className="w-full flex items-center gap-2 bg-surface border border-border-light rounded-full pl-10 pr-2.5 py-2 text-[14px] text-text-tertiary hover:bg-white hover:border-blue-subtle hover:shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all relative"
+          className="group w-full flex items-center gap-2 bg-surface border border-border-light rounded-full pl-10 pr-2.5 py-2 text-[14px] text-text-tertiary hover:bg-white hover:border-blue-subtle hover:shadow-[0_4px_16px_rgba(0,113,227,0.10)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/40 focus-visible:border-blue-subtle active:scale-[0.99] transition-all duration-200 relative"
         >
-          <Search size={18} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0" />
+          <Search
+            size={18}
+            strokeWidth={1.5}
+            className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0 transition-all duration-200 group-hover:text-blue-primary group-hover:scale-110 group-focus-visible:text-blue-primary"
+          />
           <span className="truncate">Search offerings, companies, contacts, or jump to a page…</span>
           <kbd className="ml-auto shrink-0 inline-flex items-center text-[11px] font-medium text-text-secondary bg-white border border-border-light rounded-md px-1.5 py-0.5 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
             ⌘K

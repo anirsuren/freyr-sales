@@ -11,11 +11,13 @@ import {
   Layers,
   ChevronRight,
   Check,
+  Info,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { useToast } from "@/components/ui/Toast";
 
 interface Analysis {
@@ -289,38 +291,62 @@ export function CustomerAnalyzePanel({
     );
   }
 
+  // The "what analysis does" popover — shown on the (i) next to the button, so
+  // the prompt is a button + info, not a banner taking a whole card (Suren).
+  const analyzeInfo = (
+    <HoverCard
+      side="bottom"
+      width={340}
+      content={
+        <div>
+          <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary mb-1.5">
+            <Sparkles size={14} strokeWidth={1.9} className="text-blue-primary" />
+            You haven&apos;t analyzed this customer yet
+          </p>
+          <p className="text-[12.5px] text-text-secondary leading-relaxed">
+            Press Analyze to run a full enrichment pass — it pulls this company&apos;s
+            customer type, ownership, revenue, and the offerings that fit, from the
+            open web (Perplexity, LinkedIn, Firecrawl, and more). You review and
+            approve everything before it saves.
+          </p>
+        </div>
+      }
+    >
+      <span className="w-6 h-6 rounded-full flex items-center justify-center text-text-tertiary hover:text-blue-primary hover:bg-blue-light/50 transition-colors cursor-help">
+        <Info size={15} strokeWidth={1.9} />
+      </span>
+    </HoverCard>
+  );
+
   return (
     <>
       {!showFull ? (
-        <Card>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3 min-w-0">
-              <span className="w-9 h-9 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                <Sparkles size={17} strokeWidth={1.8} />
-              </span>
-              <div>
-                <h2 className="text-[15px] font-semibold text-text-primary">
-                  Company profile
-                </h2>
-                <p className="text-[13px] text-text-secondary leading-relaxed mt-0.5">
-                  Analyze this customer to qualify its type, ownership &amp;
-                  revenue from the web — the offerings that fit show up the
-                  moment it&apos;s classified.
-                </p>
-              </div>
-            </div>
-            {canEdit && (
-              <Button
-                variant="secondary"
+        // Just a button + a one-line caption + an info popover — no banner
+        // (Suren: "it should just be a button, and an information thing you can
+        // click for what it does"). The caption tells a new rep what it does.
+        <div>
+          <div className="flex items-center gap-2">
+            {canEdit ? (
+              <button
                 onClick={runAnalysis}
-                loading={loading}
-                className="shrink-0"
+                disabled={loading}
+                className="inline-flex items-center gap-2 text-[13.5px] font-semibold px-4 py-2.5 rounded-lg bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-60 shadow-[0_1px_2px_rgba(0,113,227,0.22)] active:scale-[0.98]"
               >
-                Analyze the customer
-              </Button>
+                <Sparkles size={15} strokeWidth={1.9} />
+                {loading ? "Analyzing…" : "Analyze the customer"}
+              </button>
+            ) : (
+              <span className="text-[13px] text-text-tertiary">Not analyzed yet</span>
             )}
+            {canEdit && analyzeInfo}
           </div>
-        </Card>
+          {canEdit && (
+            <p className="text-[12.5px] text-text-secondary mt-2 leading-relaxed max-w-[520px]">
+              Analyze to qualify its type, ownership and revenue from the web —
+              then the offerings that fit show automatically.
+            </p>
+          )}
+        </div>
       ) : (
         <Card>
           <div className="flex items-start justify-between gap-3 mb-4">

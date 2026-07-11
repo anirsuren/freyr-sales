@@ -21,8 +21,9 @@ import { listConversations } from "@/lib/elevenlabs";
 import { syncConversations } from "@/lib/voiceSync";
 import { listOfferings } from "@/lib/offerings";
 import { VOICE_PERSONAS, personaFor } from "@/lib/voicePersonas";
-import { LineChart, BarChart, DonutChart, Sparkline, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { LineChart, BarChart, DonutChart, DonutLegend, Sparkline, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -103,6 +104,8 @@ export default async function VoicePage() {
 
   // Analytics over finished calls — outcomes, connect rate, talk time.
   const finished = queue.filter((q) => q.status === "called" && q.outcome);
+  const callerName = (q: (typeof finished)[number]) =>
+    contactById.get(q.contact_id)?.full_name || q.phone || "Unknown caller";
   const outcomeCounts = OUTCOME_ORDER.map((o) => ({
     outcome: o,
     n: finished.filter((q) => q.outcome === o).length,
@@ -166,6 +169,29 @@ export default async function VoicePage() {
   const dayPointLabels = callsPerDay.map((_, i) => {
     const d = new Date(today.getTime() - (13 - i) * DAY);
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  });
+  // Who was called each day — the actual people behind each plotted point
+  // (queue calls + live conversations matched to a contact).
+  const callsPerDayTips = Array.from({ length: 14 }, (_, i) => {
+    const dayStart = today.getTime() - (13 - i) * DAY;
+    const qTips = queue
+      .filter((q) => {
+        const t = new Date(q.created_at).getTime();
+        return t >= dayStart && t < dayStart + DAY;
+      })
+      .map((q) => ({ avatar: q.contact_name, name: q.contact_name, sub: q.company }));
+    const rTips = realConvos
+      .filter((c) => {
+        if (!c.start_time_unix_secs) return false;
+        const t = c.start_time_unix_secs * 1000;
+        return t >= dayStart && t < dayStart + DAY;
+      })
+      .map((c) => {
+        const m = matches[c.conversation_id];
+        const who = m?.contactName || c.agent_name || "Live call";
+        return { avatar: who, name: who, sub: m?.company };
+      });
+    return [...qTips, ...rTips];
   });
 
   const lineCount = Object.keys(status.numbers).length;
@@ -254,31 +280,57 @@ export default async function VoicePage() {
             const pConnRate = pcalls.length
               ? Math.round((pConn.length / pcalls.length) * 100)
               : 0;
-            const pPerDay = Array.from({ length: 14 }, (_, i) => {
+            const callName = (q: (typeof pcalls)[number]) =>
+              contactById.get(q.contact_id)?.full_name || q.phone || "Unknown caller";
+            const pDayCalls = Array.from({ length: 14 }, (_, i) => {
               const dayStart = today.getTime() - (13 - i) * DAY;
               return pcalls.filter((q) => {
                 const t = new Date(q.created_at).getTime();
                 return t >= dayStart && t < dayStart + DAY;
-              }).length;
+              });
             });
-            const perfBlurb = (
+            const pPerDay = pDayCalls.map((c) => c.length);
+            // Who was called each day + what happened (Suren: every graph shows
+            // the people and the outcome behind the number).
+            const pPerDayTips = pDayCalls.map((c) =>
+              c.map((q) => ({
+                avatar: callName(q),
+                name: callName(q),
+                sub: q.company,
+                value: q.outcome ? OUTCOME_META[q.outcome].label : q.offering_name,
+              }))
+            );
+            // Outcome mix for a second graph in the hover (Suren: "make it bigger,
+            // I need more graphs there — not just calls").
+            const OUT_COLORS: Record<string, string> = {
+              interested: "#34C759",
+              follow_up: "#0071E3",
+              no_answer: "#FF9F0A",
+              declined: "#FF3B30",
+            };
+            const OUT_LABELS: Record<string, string> = {
+              interested: "Interested",
+              follow_up: "Follow-up",
+              no_answer: "No answer",
+              declined: "Declined",
+            };
+            const pOutcomes = ["interested", "follow_up", "no_answer", "declined"]
+              .map((k) => ({
+                label: OUT_LABELS[k],
+                value: pcalls.filter((q) => q.outcome === k).length,
+                color: OUT_COLORS[k],
+                tip: pcalls
+                  .filter((q) => q.outcome === k)
+                  .map((q) => ({
+                    avatar: callName(q),
+                    name: callName(q),
+                    sub: q.company,
+                    value: OUT_LABELS[k],
+                  })),
+              }))
+              .filter((s) => s.value > 0);
+            const perfStats = (
               <div>
-                <div className="flex items-center gap-2.5 mb-3">
-                  <span
-                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-white"
-                    style={{ background: p.color }}
-                  >
-                    <Icon size={17} strokeWidth={1.9} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[13.5px] font-semibold text-text-primary leading-tight">
-                      {p.name}
-                    </p>
-                    <p className="text-[11.5px] text-text-tertiary truncate">
-                      {p.category}
-                    </p>
-                  </div>
-                </div>
                 {pcalls.length > 0 ? (
                   <>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mb-3">
@@ -298,10 +350,28 @@ export default async function VoicePage() {
                         </div>
                       ))}
                     </div>
+                    {pOutcomes.length > 0 && (
+                      <div className="mb-3 pt-3 border-t border-border-light">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">
+                          How calls landed
+                        </p>
+                        <div className="flex items-center gap-3">
+                          {/* Hover a slice → the exact people behind that
+                              outcome (photo + company), portaled so it can't be
+                              clipped. The legend still carries the totals. */}
+                          <DonutChart
+                            segments={pOutcomes}
+                            size={82}
+                            thickness={11}
+                          />
+                          <DonutLegend items={pOutcomes} />
+                        </div>
+                      </div>
+                    )}
                     <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
                       Calls · last 2 weeks
                     </p>
-                    <Sparkline points={pPerDay} color={p.color} height={34} />
+                    <Sparkline points={pPerDay} color={p.color} height={40} pointTips={pPerDayTips} />
                   </>
                 ) : (
                   <p className="text-[12.5px] text-text-secondary">
@@ -312,54 +382,57 @@ export default async function VoicePage() {
               </div>
             );
             return (
-              <HoverCard key={p.slug} content={perfBlurb} width={280}>
-              <Link href={`/voice/agents/${p.slug}`} className="block h-full">
-                <Card className="p-5 h-full hover:border-blue-subtle hover:-translate-y-0.5 hover:shadow-card transition-all duration-150 group active:scale-[0.98] active:shadow-none active:translate-y-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <span
-                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white"
-                      style={{ background: p.color }}
-                    >
-                      <Icon size={19} strokeWidth={1.9} />
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
-                        status.phoneConnected
-                          ? "text-success bg-success/10"
-                          : "text-warning bg-warning/10"
-                      )}
-                    >
-                      {status.phoneConnected ? "Live" : "Ready — awaiting number"}
-                    </span>
-                  </div>
-                  <p className="text-[16px] font-semibold text-text-primary mt-3 group-hover:text-blue-primary transition-colors">
-                    {p.name}
-                    <span className="text-[12px] font-medium text-text-tertiary">
-                      {" "}
-                      · {p.category}
-                    </span>
-                  </p>
-                  <p className="text-[12.5px] text-text-secondary mt-1 leading-relaxed">
-                    {p.tagline}
-                  </p>
-                  <p className="flex items-center justify-between text-[12px] mt-3 pt-3 border-t border-border-light">
-                    <span className="text-text-tertiary">
-                      {line ? (
-                        <span className="tnum font-medium text-text-secondary">
-                          {formatPhone(line.number)}
-                        </span>
-                      ) : (
-                        `Knows ${cat?.count || 0} offering${(cat?.count || 0) === 1 ? "" : "s"}`
-                      )}
-                    </span>
-                    <span className="font-semibold text-blue-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                      Open →
-                    </span>
-                  </p>
-                </Card>
-              </Link>
-              </HoverCard>
+              <HoverExpandCard
+                key={p.slug}
+                href={`/voice/agents/${p.slug}`}
+                summary={
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <span
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white"
+                        style={{ background: p.color }}
+                      >
+                        <Icon size={19} strokeWidth={1.9} />
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
+                          status.phoneConnected
+                            ? "text-success bg-success/10"
+                            : "text-warning bg-warning/10"
+                        )}
+                      >
+                        {status.phoneConnected ? "Live" : "Ready — awaiting number"}
+                      </span>
+                    </div>
+                    <p className="text-[16px] font-semibold text-text-primary mt-3 group-hover:text-blue-primary transition-colors">
+                      {p.name}
+                      <span className="text-[12px] font-medium text-text-tertiary">
+                        {" "}
+                        · {p.category}
+                      </span>
+                    </p>
+                    <p className="text-[12.5px] text-text-secondary mt-1 leading-relaxed">
+                      {p.tagline}
+                    </p>
+                    <p className="flex items-center justify-between text-[12px] mt-3 pt-3 border-t border-border-light">
+                      <span className="text-text-tertiary">
+                        {line ? (
+                          <span className="tnum font-medium text-text-secondary">
+                            {formatPhone(line.number)}
+                          </span>
+                        ) : (
+                          `Knows ${cat?.count || 0} offering${(cat?.count || 0) === 1 ? "" : "s"}`
+                        )}
+                      </span>
+                      <span className="font-semibold text-blue-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                        Hover for stats
+                      </span>
+                    </p>
+                  </>
+                }
+                extra={perfStats}
+              />
             );
           })}
         </div>
@@ -553,7 +626,13 @@ export default async function VoicePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light">
-                  {queue.map((q) => {
+                  {[...queue]
+                    .sort(
+                      (a, b) =>
+                        new Date(b.created_at).getTime() -
+                        new Date(a.created_at).getTime()
+                    )
+                    .map((q) => {
                     const phone = q.phone || contactById.get(q.contact_id)?.phone;
                     // Clicking a contact opens their voice profile (who they are
                     // + every call + graphs), not straight into one transcript.
@@ -673,6 +752,14 @@ export default async function VoicePage() {
                         label: OUTCOME_META[o.outcome].label,
                         value: o.n,
                         color: OUTCOME_META[o.outcome].color,
+                        tip: finished
+                          .filter((q) => q.outcome === o.outcome)
+                          .map((q) => ({
+                            avatar: callerName(q),
+                            name: callerName(q),
+                            sub: q.company,
+                            value: OUTCOME_META[o.outcome].label,
+                          })),
                       }))}
                       size={124}
                       thickness={14}
@@ -712,6 +799,14 @@ export default async function VoicePage() {
                         label: c.category,
                         value: c.n,
                         color: VIZ_SERIES[i % VIZ_SERIES.length],
+                        tip: finished
+                          .filter((q) => q.category === c.category)
+                          .map((q) => ({
+                            avatar: callerName(q),
+                            name: callerName(q),
+                            sub: q.company,
+                            value: q.outcome ? OUTCOME_META[q.outcome].label : undefined,
+                          })),
                       }))}
                       size={124}
                       thickness={14}
@@ -840,6 +935,14 @@ export default async function VoicePage() {
                     label: p.name,
                     value: queue.filter((q) => q.category === p.category).length,
                     color: p.color,
+                    tip: queue
+                      .filter((q) => q.category === p.category)
+                      .map((q) => ({
+                        avatar: q.contact_name,
+                        name: q.contact_name,
+                        sub: q.company,
+                        value: q.outcome ? OUTCOME_META[q.outcome].label : undefined,
+                      })),
                   }))}
                   height={168}
                 />
@@ -855,6 +958,7 @@ export default async function VoicePage() {
                   series={[{ label: "Calls", color: VIZ.blue, points: callsPerDay }]}
                   xLabels={dayLabels}
                   pointLabels={dayPointLabels}
+                  pointTips={callsPerDayTips}
                   unit="calls"
                   height={150}
                 />

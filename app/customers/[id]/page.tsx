@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Plus, SearchX, ArrowLeft } from "lucide-react";
+import { FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
@@ -7,6 +7,7 @@ import { HealthBadge } from "@/components/ui/HealthBadge";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
+import { NewSessionButton } from "@/components/sessions/NewSessionButton";
 import { CustomerTabs } from "@/components/customers/CustomerTabs";
 import { RecordView } from "@/components/RecordView";
 import {
@@ -129,10 +130,12 @@ export default async function CustomerDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Start a pitch session for THIS account in one click — prefills the
-              intake with the company + primary contact (streamlines sales). */}
-          <Link
-            href={`/intake?company=${encodeURIComponent(customer.company_name)}${
+          {/* Start a pitch session for THIS account — the button first explains
+              what a session is (Suren #89), then prefills the intake with the
+              company + primary contact. */}
+          <NewSessionButton
+            company={customer.company_name}
+            intakeHref={`/intake?company=${encodeURIComponent(customer.company_name)}${
               contacts[0]
                 ? `&contact=${encodeURIComponent(contacts[0].full_name)}`
                 : ""
@@ -141,11 +144,7 @@ export default async function CustomerDetailPage({
                 ? `&website=${encodeURIComponent(customer.website_url)}`
                 : ""
             }`}
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-          >
-            <Plus size={15} strokeWidth={2} />
-            New session
-          </Link>
+          />
           <Link
             href={`/customers/${customer.id}/report`}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"

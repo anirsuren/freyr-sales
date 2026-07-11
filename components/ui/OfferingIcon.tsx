@@ -33,7 +33,7 @@ const GRADIENTS: [string, string][] = [
   ["#059669", "#34D399"], // emerald
   ["#D97706", "#F5A623"], // amber
   ["#DB2777", "#F472B6"], // pink
-  ["#475569", "#94A3B8"], // slate
+  ["#DC2626", "#F87171"], // red — never gray (Suren: kill the gray icons)
   ["#C026D3", "#E879F9"], // fuchsia
 ];
 

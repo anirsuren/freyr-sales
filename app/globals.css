@@ -376,12 +376,56 @@ select:focus-visible,
 .chart-area {
   animation: chartFade 1.3s ease both;
 }
+/* Bars grow up from the baseline on mount. */
+@keyframes chartBarGrow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.chart-bar {
+  transform-origin: bottom;
+  animation: chartBarGrow 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Donuts sweep + settle in on mount. */
+@keyframes chartDonutIn {
+  from {
+    opacity: 0;
+    transform: rotate(-14deg) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+.chart-donut {
+  transform-origin: center;
+  animation: chartDonutIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Horizontal bars / meters fill in from the left on mount. */
+@keyframes chartGrowX {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.chart-grow-x {
+  transform-origin: left;
+  animation: chartGrowX 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
   .chart-line {
     stroke-dasharray: none;
     animation: none;
   }
-  .chart-area {
+  .chart-area,
+  .chart-bar,
+  .chart-donut,
+  .chart-grow-x {
     animation: none;
   }
 }
