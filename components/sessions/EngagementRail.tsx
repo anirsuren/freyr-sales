@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Send, Sparkles, Plus, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { OUTCOME_META, formatDate, cn } from "@/lib/utils";
+import { OUTCOME_META, formatDateTime, cn } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
 
 const DISPOSITIONS = [
@@ -175,7 +175,7 @@ export function EngagementRail({
               <div key={it.id} className="relative">
                 <span className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-text-tertiary ring-4 ring-white" />
                 <p className="text-[11px] uppercase tracking-[0.04em] text-text-tertiary tnum">
-                  {formatDate(it.created_at)}
+                  {formatDateTime(it.created_at)}
                 </p>
                 <p className="text-[14px] font-medium text-text-primary">
                   {m?.label || it.outcome}

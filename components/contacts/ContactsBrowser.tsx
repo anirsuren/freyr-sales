@@ -15,7 +15,7 @@ import { DonutChart, DonutLegend, Sparkline, VIZ, type TipItem } from "@/compone
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { toCSV, downloadCSV } from "@/lib/csv";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
 export interface ContactRow {
   id: string;
@@ -604,7 +604,7 @@ export function ContactsBrowser({
                       {[
                         { l: "Touches", v: String(touches) },
                         { l: "Offerings", v: String(c.offerings ?? 0) },
-                        { l: "Last spoke", v: c.lastTouch ? formatDate(c.lastTouch) : "—" },
+                        { l: "Last spoke", v: c.lastTouch ? formatDateTime(c.lastTouch) : "—" },
                       ].map((s) => (
                         <div key={s.l} className="rounded-lg bg-surface px-2.5 py-2">
                           <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">

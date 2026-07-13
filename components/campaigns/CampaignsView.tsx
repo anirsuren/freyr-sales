@@ -22,7 +22,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { DonutChart, LineChart, VIZ, type TipItem } from "@/components/charts/Charts";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import { formatDate, cn } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import type { Campaign } from "@/lib/campaigns";
 
 type MiniOffering = { id: string; name: string };
@@ -502,7 +502,7 @@ export function CampaignsView({
                         <Users size={12} strokeWidth={1.8} />
                         {total} recipient{total === 1 ? "" : "s"}
                       </span>
-                      <span className="tnum">{formatDate(c.created_at)}</span>
+                      <span className="tnum">{formatDateTime(c.created_at)}</span>
                     </p>
 
                     {/* Who this goes to — fills the middle with the actual

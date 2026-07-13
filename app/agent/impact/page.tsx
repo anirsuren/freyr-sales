@@ -22,7 +22,7 @@ import {
   type ImpactWindow,
 } from "@/lib/agent";
 import { buildDeals, formatMoney } from "@/lib/pipeline";
-import { formatDate, cn } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Agent Impact" };
 export const dynamic = "force-dynamic";
@@ -225,7 +225,7 @@ export default async function AgentImpactPage({
                         </span>
                         <span className="block text-[12px] text-text-secondary">
                           {parts.join(" · ") || "activity logged"} · last{" "}
-                          {formatDate(r.lastAt)}
+                          {formatDateTime(r.lastAt)}
                         </span>
                       </span>
                       <span className="text-right shrink-0">

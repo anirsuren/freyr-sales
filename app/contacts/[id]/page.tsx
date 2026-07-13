@@ -36,7 +36,7 @@ import { BriefingCard } from "@/components/agent/BriefingCard";
 import { personaFor } from "@/lib/persona";
 import { suggestForContact, buildContactBriefing } from "@/lib/agent";
 import { RecordView } from "@/components/RecordView";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { ContactOutreachPanel } from "@/components/contacts/ContactOutreachPanel";
 import { rankOfferingsForContact } from "@/lib/outreach";
 import { listCustomerTypes, listOfferings } from "@/lib/offerings";
@@ -153,7 +153,7 @@ export default async function ContactDetailPage({
     company: customer?.company_name || "this account",
     buyingStyle: persona.label,
     engageTip: persona.engage[0],
-    lastContacted: lastContacted ? formatDate(lastContacted) : null,
+    lastContacted: lastContacted ? formatDateTime(lastContacted) : null,
     nextStep: nextStep ? formatDate(nextStep) : null,
     siblingCount: siblings.length,
     everContacted: interactions.length > 0,
@@ -254,7 +254,7 @@ export default async function ContactDetailPage({
               Last contacted
             </p>
             <p className="text-[13px] font-semibold text-text-primary mt-0.5 tnum">
-              {lastContacted ? formatDate(lastContacted) : "No contact yet"}
+              {lastContacted ? formatDateTime(lastContacted) : "No contact yet"}
             </p>
             {lastContacted && (
               <p className="text-[11px] text-text-tertiary mt-0.5">

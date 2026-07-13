@@ -24,7 +24,7 @@ import { DonutChart, BarChart, Legend, VIZ, VIZ_SERIES, type TipItem } from "@/c
 import { getCampaign } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { listVoiceQueue } from "@/lib/voice";
-import { formatDate, formatDateTime, cn } from "@/lib/utils";
+import { formatDateTime, cn } from "@/lib/utils";
 
 export const metadata = { title: "Campaign" };
 export const dynamic = "force-dynamic";
@@ -237,9 +237,9 @@ export default async function CampaignDetailPage({
               {offering.offering_name}
             </Link>
           )}
-          <span className="tnum">Created {formatDate(campaign.created_at)}</span>
+          <span className="tnum">Created {formatDateTime(campaign.created_at)}</span>
           {campaign.queued_at && (
-            <span className="tnum">Queued {formatDate(campaign.queued_at)}</span>
+            <span className="tnum">Queued {formatDateTime(campaign.queued_at)}</span>
           )}
         </p>
       </div>

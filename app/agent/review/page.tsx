@@ -18,7 +18,7 @@ import { buildWeeklyReview, buildActivityByAccount } from "@/lib/agent";
 import { narrateReview } from "@/lib/claude";
 import { buildDeals, formatMoney } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
-import { formatDate } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Weekly Review" };
 export const dynamic = "force-dynamic";
@@ -222,7 +222,7 @@ export default async function WeeklyReviewPage() {
                     {c.title}
                   </span>
                   <span className="text-[12px] text-text-tertiary tnum shrink-0">
-                    {formatDate(c.created_at)}
+                    {formatDateTime(c.created_at)}
                   </span>
                 </li>
               ))}

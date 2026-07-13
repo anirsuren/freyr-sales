@@ -20,7 +20,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import type { AgentRun, AgentStepStatus } from "@/lib/types";
 
 const KIND_ICON = { act: Bot, play: Play, autopilot: Zap, plan: ListChecks } as const;
@@ -196,7 +196,7 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
                   {run.reverted ? "reverted" : run.outcome}
                 </span>
                 <span className="text-[12px] text-text-tertiary tnum shrink-0 hidden sm:inline">
-                  {formatDate(run.created_at)}
+                  {formatDateTime(run.created_at)}
                 </span>
                 <ChevronRight
                   size={16}

@@ -14,12 +14,13 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useToast } from "@/components/ui/Toast";
-import { cn, formatDate, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
+import { cn, SIZE_TIER_LABEL, OUTCOME_META, formatDateTime } from "@/lib/utils";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { REPS } from "@/lib/pipeline";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { HoverCard } from "@/components/ui/HoverCard";
 import type { Customer } from "@/lib/types";
+import type { TipItem } from "@/components/charts/Charts";
 
 type EnrichedCustomer = Customer & {
   contact_count: number;
@@ -27,6 +28,13 @@ type EnrichedCustomer = Customer & {
   last_outcome: string | null;
   last_session_date: string | null;
   health: AccountHealth;
+  // Hover-reveal charts: pipeline mix (or touch outcomes when no open deals)
+  // + the 5-week health trend — each slice/point carries the deals/touches
+  // behind it.
+  stage_mix?: { label: string; value: number; color: string; tip: TipItem[] }[];
+  outcome_mix?: { label: string; value: number; color: string; tip: TipItem[] }[];
+  health_trend?: number[];
+  trend_tips?: TipItem[][];
 };
 
 // Plain-English explanations for the table columns a rep might not recognize.
@@ -230,7 +238,7 @@ export function CustomersBrowser({
         c.health ? `${c.health.label} (${c.health.score}/100)` : "",
         c.contact_count,
         c.last_outcome ? OUTCOME_META[c.last_outcome]?.label || c.last_outcome : "",
-        c.last_session_date ? formatDate(c.last_session_date) : "",
+        c.last_session_date ? formatDateTime(c.last_session_date) : "",
       ])
     );
   }
@@ -501,6 +509,10 @@ export function CustomersBrowser({
               lastOutcome={c.last_outcome}
               lastSessionDate={c.last_session_date}
               health={c.health}
+              stageMix={c.stage_mix}
+              outcomeMix={c.outcome_mix}
+              healthTrend={c.health_trend}
+              trendTips={c.trend_tips}
             />
           ))}
         </div>
@@ -635,7 +647,7 @@ export function CustomersBrowser({
                     </td>
                     <td className="px-5 py-4">{c.last_outcome ? <OutcomeBadge outcome={c.last_outcome} /> : "—"}</td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">
-                      {c.last_session_date ? formatDate(c.last_session_date) : "—"}
+                      {c.last_session_date ? formatDateTime(c.last_session_date) : "—"}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Link href={`/customers/${c.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">

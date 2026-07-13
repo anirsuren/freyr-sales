@@ -44,7 +44,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { useToast } from "@/components/ui/Toast";
-import { cn, formatDate, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import { AreaChart, DonutChart, DonutLegend, type TipItem } from "@/components/charts/Charts";
 import {
   buildDeals,
@@ -245,7 +245,7 @@ export function CustomerTabs({
       avatar: name,
       name: name || customer.company_name,
       sub: OUTCOME_META[i.outcome]?.label || i.outcome,
-      ...(withDate ? { value: formatDate(i.created_at) } : {}),
+      ...(withDate ? { value: formatDateTime(i.created_at) } : {}),
     };
   };
   // This account's touches by outcome — a quick read for a rep of how the
@@ -314,7 +314,7 @@ export function CustomerTabs({
       contactCount: contacts.length,
       topContact: contacts[0]?.full_name,
       lastActivity: interactions[0]
-        ? formatDate(interactions[0].created_at)
+        ? formatDateTime(interactions[0].created_at)
         : undefined,
       topAction: agentActions[0]?.title,
       competitor: customer.competitor,
@@ -1050,7 +1050,7 @@ export function CustomerTabs({
                     {d.name}
                   </p>
                   <p className="text-[12px] text-text-tertiary mt-0.5">
-                    Added {formatDate(d.created_at)}
+                    Added {formatDateTime(d.created_at)}
                   </p>
                 </Card>
               ))}
@@ -1138,7 +1138,7 @@ export function CustomerTabs({
                             "Pitch session"
                           )}
                           {" · "}
-                          {formatDate(s.created_at)}
+                          {formatDateTime(s.created_at)}
                         </p>
                         {/* The offerings this pitch covers — fills the middle with
                             real content instead of dead space. */}
@@ -1251,7 +1251,7 @@ export function CustomerTabs({
                         {n.author}
                       </span>
                       <span className="text-[12px] text-text-tertiary tnum">
-                        · {formatDate(n.created_at)}
+                        · {formatDateTime(n.created_at)}
                       </span>
                     </div>
                     <p className="text-[14px] text-text-secondary leading-relaxed whitespace-pre-wrap">
@@ -1438,7 +1438,7 @@ export function CustomerTabs({
                         <span className="text-text-primary truncate">{a.name}</span>
                       )}
                       <span className="ml-auto text-[12px] text-text-tertiary tnum shrink-0">
-                        {formatDate(a.created_at)}
+                        {formatDateTime(a.created_at)}
                       </span>
                     </li>
                   ))}

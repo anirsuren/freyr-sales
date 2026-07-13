@@ -12,7 +12,7 @@ import { AgentActions } from "@/components/agent/AgentActions";
 import { AgentRunPanel } from "@/components/agent/AgentRunPanel";
 import { BriefingCard } from "@/components/agent/BriefingCard";
 import { nextBestActions, buildDealBriefing } from "@/lib/agent";
-import { formatDate, cn } from "@/lib/utils";
+import { formatDate, cn, formatDateTime } from "@/lib/utils";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DonutChart, BarChart, VIZ } from "@/components/charts/Charts";
@@ -186,7 +186,7 @@ export default async function DealDetailPage({
                     </span>
                   </Tooltip>
                   <span className="text-[10px] text-text-tertiary tnum h-3.5">
-                    {date && i <= stageIdx ? formatDate(date) : ""}
+                    {date && i <= stageIdx ? formatDateTime(date) : ""}
                   </span>
                 </div>
                 {i < STAGES.length - 1 && (
@@ -314,11 +314,11 @@ export default async function DealDetailPage({
           <div className="flex items-center gap-2 mt-2">
             {rotting ? (
               <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-error">
-                <Flame size={14} strokeWidth={1.75} /> {lastActivityAt ? formatDate(lastActivityAt) : "No activity"} · {staleDays}d quiet
+                <Flame size={14} strokeWidth={1.75} /> {lastActivityAt ? formatDateTime(lastActivityAt) : "No activity"} · {staleDays}d quiet
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-[13px] text-text-secondary">
-                <Clock size={14} strokeWidth={1.5} /> {lastActivityAt ? formatDate(lastActivityAt) : "No activity yet"}
+                <Clock size={14} strokeWidth={1.5} /> {lastActivityAt ? formatDateTime(lastActivityAt) : "No activity yet"}
               </span>
             )}
           </div>

@@ -25,7 +25,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { EMAIL_TEMPLATES, fillTemplate } from "@/lib/email-templates";
-import { cn, formatDate, timeAgo } from "@/lib/utils";
+import { cn, formatDateTime, timeAgo } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -647,11 +647,14 @@ export function PitchWorkspace({
           scroll together instead of staying locked at the top (Suren: "when I
           scroll, the copy button should scroll with it, not lock in"). */}
       <div className="flex-1 overflow-y-auto p-8">
-        <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
+        {/* One row, always: tabs left, utilities right. No wrap — on a narrow
+            pane the tablist scrolls sideways instead of dumping the icons onto
+            their own line (Suren: "put it on the same row as the 5 things"). */}
+        <div className="mb-5 flex items-center justify-between gap-3">
           <div
             role="tablist"
             aria-label="Pitch formats"
-            className="inline-flex items-center gap-1 rounded-xl bg-surface p-1"
+            className="inline-flex items-center gap-1 rounded-xl bg-surface p-1 min-w-0 overflow-x-auto"
           >
             {TABS.map((t) => (
               <button
@@ -672,7 +675,7 @@ export function PitchWorkspace({
           </div>
 
           {/* Compact icon utilities — download + copy. */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={exportTab}
               title="Download as a text file"
@@ -934,7 +937,7 @@ export function PitchWorkspace({
                     )}
                   </p>
                   <p className="text-[12px] text-text-tertiary tnum">
-                    {formatDate(v.created_at)}
+                    {formatDateTime(v.created_at)}
                   </p>
                 </div>
                 {i === 0 ? (

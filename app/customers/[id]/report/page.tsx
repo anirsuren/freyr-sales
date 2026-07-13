@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import { ReportToolbar } from "@/components/customers/ReportToolbar";
 import { buildDeals, formatMoney, ownerFor } from "@/lib/pipeline";
-import { formatDate, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
+import { formatDate, SIZE_TIER_LABEL, OUTCOME_META, formatDateTime } from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
 
 export const metadata = { title: "Account report" };
@@ -193,7 +193,7 @@ export default async function AccountReportPage({
                     {i.notes ? ` — ${i.notes}` : ""}
                   </span>
                   <span className="text-[12px] text-text-tertiary tnum shrink-0">
-                    {formatDate(i.created_at)}
+                    {formatDateTime(i.created_at)}
                   </span>
                 </li>
               ))}

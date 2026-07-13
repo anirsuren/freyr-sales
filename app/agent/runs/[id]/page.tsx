@@ -22,8 +22,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { RunDetailActions } from "@/components/agent/RunDetailActions";
-import { cn } from "@/lib/utils";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import type { AgentRun, AgentStepStatus, Interaction } from "@/lib/types";
 
 export const metadata = { title: "Agent run" };
@@ -288,7 +287,7 @@ export default async function AgentRunDetailPage({
                         )}
                       </div>
                       <span className="text-[12px] text-text-tertiary shrink-0">
-                        {formatDate(it.created_at)}
+                        {formatDateTime(it.created_at)}
                       </span>
                     </div>
                     {it.notes && (

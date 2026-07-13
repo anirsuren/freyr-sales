@@ -4,9 +4,17 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { SizeBadge, OutcomeBadge, Badge } from "@/components/ui/Badge";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
-import { formatDate } from "@/lib/utils";
+import {
+  DonutChart,
+  DonutLegend,
+  Sparkline,
+  type TipItem,
+} from "@/components/charts/Charts";
+import { formatDateTime } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
+
+type MixSlice = { label: string; value: number; color: string; tip: TipItem[] };
 
 const SIZE_OPP: Record<string, string> = {
   large: "High",
@@ -21,6 +29,10 @@ export function CustomerCard({
   lastOutcome,
   lastSessionDate,
   health,
+  stageMix,
+  outcomeMix,
+  healthTrend,
+  trendTips,
 }: {
   customer: Customer;
   contactCount: number;
@@ -28,7 +40,18 @@ export function CustomerCard({
   lastOutcome?: string | null;
   lastSessionDate?: string | null;
   health?: AccountHealth;
+  stageMix?: MixSlice[];
+  outcomeMix?: MixSlice[];
+  healthTrend?: number[];
+  trendTips?: TipItem[][];
 }) {
+  // The hover pie: pipeline mix when there's open money, else how the logged
+  // touches landed — a rep's first two questions about an account.
+  const hasPipeline = !!stageMix && stageMix.length > 0;
+  const mix: MixSlice[] = hasPipeline ? stageMix! : outcomeMix ?? [];
+  const mixCount = hasPipeline
+    ? mix.reduce((s, m) => s + m.tip.length, 0)
+    : mix.reduce((s, m) => s + m.value, 0);
   const opp = customer.size_tier ? SIZE_OPP[customer.size_tier] ?? "—" : "—";
   const offeringsCount = customer.offerings_in_use?.length ?? 0;
   const facts: { label: string; value: string }[] = [
@@ -113,7 +136,7 @@ export function CustomerCard({
               <span>No contacts yet</span>
             )}
             {lastSessionDate && (
-              <span className="shrink-0">Last session {formatDate(lastSessionDate)}</span>
+              <span className="shrink-0">Last session {formatDateTime(lastSessionDate)}</span>
             )}
           </div>
           {/* Health as a bar (Suren: "same progress bar as the row view, on the
@@ -158,6 +181,65 @@ export function CustomerCard({
       }
       extra={
         <>
+          {/* Pie — where the money sits (or how touches landed when there's
+              no open pipeline yet). Slices carry the actual deals/touches. */}
+          {mix.length > 0 && (
+            <div className="mb-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">
+                {hasPipeline ? "Pipeline by stage" : "How touches landed"}
+              </p>
+              <div className="flex items-center gap-3">
+                <DonutChart
+                  segments={mix}
+                  size={76}
+                  thickness={10}
+                  format={hasPipeline ? "money" : "number"}
+                  centerLabel={String(mixCount)}
+                  centerSub={
+                    hasPipeline
+                      ? mixCount === 1
+                        ? "deal"
+                        : "deals"
+                      : mixCount === 1
+                      ? "touch"
+                      : "touches"
+                  }
+                />
+                <div className="flex-1 min-w-0">
+                  <DonutLegend items={mix} format={hasPipeline ? "money" : "number"} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Line — is this relationship warming or cooling. Points carry the
+              touches logged that week. */}
+          {healthTrend && healthTrend.length > 1 && (
+            <div className="mb-3.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                  Health · last 5 weeks
+                </p>
+                <span
+                  className="text-[10.5px] tnum font-semibold"
+                  style={{
+                    color: health ? HEALTH_COLOR[health.band].color : undefined,
+                  }}
+                >
+                  {healthTrend[healthTrend.length - 1] - healthTrend[0] >= 0 ? "+" : ""}
+                  {healthTrend[healthTrend.length - 1] - healthTrend[0]} pts
+                </span>
+              </div>
+              <Sparkline
+                points={healthTrend}
+                color={health ? HEALTH_COLOR[health.band].color : undefined}
+                height={40}
+                unit=" pts"
+                pointTips={trendTips}
+              />
+            </div>
+          )}
+
           {health && health.factors.length > 0 && (
             <div className="mb-3.5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">

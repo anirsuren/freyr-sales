@@ -23,7 +23,7 @@ import {
   VIZ,
   VIZ_SERIES,
 } from "@/components/charts/Charts";
-import { formatDate, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { OUTCOME_META, OUTCOME_CHART_COLOR, formatDateTime } from "@/lib/utils";
 import {
   buildDeals,
   pipelineGrowthSeries,
@@ -129,7 +129,7 @@ export default async function DashboardPage({
       company: customerById[i.customer_id]?.company_name || "—",
       contact: contactById[i.contact_id]?.full_name || "—",
       outcome: i.outcome,
-      when: formatDate(i.created_at),
+      when: formatDateTime(i.created_at),
       customerId: i.customer_id,
     }));
 
@@ -170,7 +170,7 @@ export default async function DashboardPage({
       contact: ct?.full_name || "—",
       service: svc[0]?.service_name || "—",
       outcome: oc ? OUTCOME_META[oc]?.label || oc : "",
-      date: formatDate(s.created_at),
+      date: formatDateTime(s.created_at),
     };
   });
 
@@ -587,7 +587,7 @@ export default async function DashboardPage({
                         {outcome ? <OutcomeBadge outcome={outcome} /> : "—"}
                       </td>
                       <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">
-                        {formatDate(s.created_at)}
+                        {formatDateTime(s.created_at)}
                       </td>
                       <td className="px-5 py-4 text-right">
                         <Link href={`/sessions/${s.id}`} className="inline-flex p-1 rounded text-text-tertiary group-hover:text-blue-primary hover:bg-surface transition-colors" aria-label="Open session">
