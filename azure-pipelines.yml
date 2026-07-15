@@ -10,7 +10,9 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  nodeVersion: '20.x'
+  - group: freyr-sales-ci
+  - name: nodeVersion
+    value: '20.x'
 
 stages:
   - stage: Verify
@@ -35,18 +37,71 @@ stages:
           - script: npm run test:smoke
             displayName: Smoke tests
 
-  - stage: Container
+  - stage: Deploy
     dependsOn: Verify
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
-      - job: BuildImage
+      - job: BuildAndDeploy
         steps:
-          - task: Docker@2
-            displayName: Build and push immutable image
+          - task: AWSShellScript@1
+            displayName: Build, push, and deploy to AWS ECS
             inputs:
-              containerRegistry: $(AWS_ECR_DOCKER_SERVICE_CONNECTION)
-              repository: freyr-sales
-              command: buildAndPush
-              Dockerfile: Dockerfile
-              tags: |
-                $(Build.SourceVersion)
+              awsCredentials: freyr-sales-aws
+              regionName: $(AWS_REGION)
+              scriptType: inline
+              inlineScript: |
+                set -euo pipefail
+
+                TAG=$(echo "$(Build.SourceVersion)" | cut -c1-7)
+                IMAGE="$(ECR_REGISTRY)/$(ECR_REPO)"
+
+                aws ecr get-login-password --region "$(AWS_REGION)" \
+                  | docker login --username AWS --password-stdin "$(ECR_REGISTRY)"
+
+                docker build --platform linux/amd64 \
+                  --build-arg NEXT_PUBLIC_SUPABASE_URL="$(NEXT_PUBLIC_SUPABASE_URL)" \
+                  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$(NEXT_PUBLIC_SUPABASE_ANON_KEY)" \
+                  -t "$IMAGE:$TAG" -t "$IMAGE:latest" .
+                docker push "$IMAGE:$TAG"
+                docker push "$IMAGE:latest"
+
+                TD=$(aws ecs describe-task-definition \
+                  --task-definition "$(TASK_FAMILY)" \
+                  --query taskDefinition \
+                  --output json)
+
+                echo "$TD" | jq --arg IMG "$IMAGE:$TAG" '
+                  def set_env($name; $value):
+                    .containerDefinitions[0].environment = (
+                      ((.containerDefinitions[0].environment // [])
+                        | map(select(.name != $name)))
+                      + [{name: $name, value: $value}]
+                    );
+                  .containerDefinitions[0].image = $IMG
+                  | set_env("DEFAULT_DATA_MODE"; "mock")
+                  | set_env("DATA_MODE_LOCKED"; "0")
+                  | del(
+                      .taskDefinitionArn,
+                      .revision,
+                      .status,
+                      .requiresAttributes,
+                      .compatibilities,
+                      .registeredAt,
+                      .registeredBy
+                    )
+                ' > taskdef.json
+
+                REV=$(aws ecs register-task-definition \
+                  --cli-input-json file://taskdef.json \
+                  --query taskDefinition.revision \
+                  --output text)
+
+                aws ecs update-service \
+                  --cluster "$(ECS_CLUSTER)" \
+                  --service "$(ECS_SERVICE)" \
+                  --task-definition "$(TASK_FAMILY):$REV" \
+                  --force-new-deployment
+
+                aws ecs wait services-stable \
+                  --cluster "$(ECS_CLUSTER)" \
+                  --services "$(ECS_SERVICE)"
