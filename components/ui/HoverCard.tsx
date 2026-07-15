@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { useHoverPreference } from "@/lib/hoverPreferences";
 
 // A hover popover that STAYS OPEN while the cursor is over the popover itself
 // (Suren: "when I hover onto the pop-up it shouldn't disappear"), and that can
@@ -17,12 +18,16 @@ export function HoverCard({
   side = "bottom",
   width = 300,
   className,
+  delayMs: delayOverride,
 }: {
   children: React.ReactNode;
   content: React.ReactNode;
   side?: "bottom" | "top";
   width?: number;
   className?: string;
+  // Charts pass 0 because inspecting data is always intentional. Contextual
+  // previews omit this and continue to respect the user's hover preference.
+  delayMs?: number;
 }) {
   const [pos, setPos] = useState<{
     left: number;
@@ -32,6 +37,9 @@ export function HoverCard({
   const triggerRef = useRef<HTMLDivElement>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { enabled, delayMs } = useHoverPreference();
+  const hoverEnabled = delayOverride != null || enabled;
+  const revealDelay = delayOverride ?? delayMs;
 
   function place() {
     const el = triggerRef.current;
@@ -50,9 +58,10 @@ export function HoverCard({
   }
 
   function show() {
+    if (!hoverEnabled) return;
     if (hideTimer.current) clearTimeout(hideTimer.current);
     if (showTimer.current) clearTimeout(showTimer.current);
-    showTimer.current = setTimeout(place, 120);
+    showTimer.current = setTimeout(place, revealDelay);
   }
 
   // The popup is position:fixed (portal), so page scroll would leave it
@@ -60,6 +69,11 @@ export function HoverCard({
   // should scroll with it"). While open, re-anchor to the trigger on every
   // scroll/resize — capture phase catches nested scroll containers too.
   const open = pos != null;
+  useEffect(() => {
+    if (hoverEnabled) return;
+    if (showTimer.current) clearTimeout(showTimer.current);
+    setPos(null);
+  }, [hoverEnabled]);
   useEffect(() => {
     if (!open) return;
     const sync = () => place();
@@ -77,17 +91,26 @@ export function HoverCard({
     hideTimer.current = setTimeout(() => setPos(null), 110);
   }
 
+  function onBlur(event: React.FocusEvent<HTMLDivElement>) {
+    const next = event.relatedTarget;
+    if (next instanceof Node && event.currentTarget.contains(next)) return;
+    scheduleHide();
+  }
+
   return (
     <div
       ref={triggerRef}
       className={cn("relative", className)}
       onMouseEnter={show}
       onMouseLeave={scheduleHide}
+      onFocusCapture={show}
+      onBlurCapture={onBlur}
     >
       {children}
       {pos != null &&
         createPortal(
           <div
+            role="tooltip"
             className="fixed z-[9999]"
             style={{
               left: pos.left,

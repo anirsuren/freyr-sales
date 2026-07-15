@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingForm } from "@/components/offerings/OfferingForm";
-import { isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
 import { ViewOnlyNotice } from "@/components/offerings/ViewOnlyNotice";
 import {
   listCustomerTypes,
@@ -26,8 +26,8 @@ function distinctTypes() {
 export const dynamic = "force-dynamic";
 export const metadata = { title: "New offering" };
 
-export default function NewOfferingPage() {
-  if (!isAdmin()) return <ViewOnlyNotice />;
+export default async function NewOfferingPage() {
+  if (!(await canManageOfferings())) return <ViewOnlyNotice />;
   return (
     <div>
       <Link

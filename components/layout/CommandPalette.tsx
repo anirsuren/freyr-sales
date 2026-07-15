@@ -20,7 +20,6 @@ import {
   Inbox,
   Rocket,
   Zap,
-  ArrowRight,
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,11 +83,13 @@ export function CommandPalette({
   open,
   onClose,
   anchored = false,
+  offeringsOnly = false,
 }: {
   open: boolean;
   onClose: () => void;
   // anchored = render as a dropdown under the top-bar search (no dark modal)
   anchored?: boolean;
+  offeringsOnly?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -121,7 +122,10 @@ export function CommandPalette({
       try {
         const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
         const data = await r.json();
-        if (!cancelled) setResults(data.results || []);
+        if (!cancelled) {
+          const next = data.results || [];
+          setResults(offeringsOnly ? next.filter((result: Result) => result.type === "Offering") : next);
+        }
       } catch {
         if (!cancelled) setResults([]);
       }
@@ -130,7 +134,7 @@ export function CommandPalette({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [q]);
+  }, [offeringsOnly, q]);
 
   const go = useCallback(
     (href: string) => {
@@ -182,25 +186,27 @@ export function CommandPalette({
 
   const navMatches = useMemo(
     () =>
-      q.trim()
+      (q.trim()
         ? NAV.filter((n) => n.label.toLowerCase().includes(q.toLowerCase()))
-        : NAV,
-    [q]
+        : NAV
+      ).filter((n) => !offeringsOnly || n.href.startsWith("/offerings")),
+    [offeringsOnly, q]
   );
 
   const agentMatches = useMemo(
     () =>
-      q.trim()
+      (q.trim()
         ? AGENT_CMDS.filter((c) => c.label.toLowerCase().includes(q.toLowerCase()))
-        : AGENT_CMDS,
-    [q]
+        : AGENT_CMDS
+      ).filter(() => !offeringsOnly),
+    [offeringsOnly, q]
   );
 
   // Flat, ordered list of everything selectable — powers both render + keyboard nav.
   const items = useMemo<Item[]>(() => {
     const list: Item[] = [];
     const query = q.trim();
-    if (query) {
+    if (query && !offeringsOnly) {
       list.push({
         key: "goal",
         section: "Agent",
@@ -249,7 +255,7 @@ export function CommandPalette({
       });
     }
     return list;
-  }, [q, agentMatches, navMatches, results, go, setGoal, runCmd]);
+  }, [q, offeringsOnly, agentMatches, navMatches, results, go, setGoal, runCmd]);
 
   // keep selection in range whenever the list changes
   useEffect(() => {
@@ -301,7 +307,7 @@ export function CommandPalette({
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search, set a goal, or run a play…"
+            placeholder={offeringsOnly ? "Search offerings…" : "Search, set a goal, or run a play…"}
             className="flex-1 h-12 bg-transparent outline-none focus:shadow-none focus-visible:shadow-none text-[15px] text-text-primary placeholder:text-text-tertiary"
           />
           <span className="text-[11px] text-text-tertiary border border-border-light rounded px-1.5 py-0.5">

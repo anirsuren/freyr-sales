@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Freyr Sales Intelligence
 
-## Getting Started
+Internal sales-enablement workspace for Freyr Solutions. It combines an
+offerings repository, account/contact intelligence, matched pitch generation,
+human-reviewed agent actions, pipeline, campaigns, and voice workflows.
 
-First, run the development server:
+## Workspace modes
+
+- **Mock mode (default):** the complete seeded showcase. External provider keys
+  are never consumed in this mode.
+- **Clean mode:** no sample companies, offerings, campaigns, calls, recordings,
+  teammates, analytics, or knowledge-base content. Users can follow onboarding
+  and create their own records. Until PostgreSQL is configured, clean-mode data
+  is process-local and must not be treated as durable.
+
+Switch modes in **Settings → Workspace**. There is intentionally no billing UI.
+
+New team members start at `/onboarding`. The setup hub walks them through the
+workspace mode, profile, offering repository, customer/contact import, first
+human-approved pitch, and Entra-managed team access. `/import` accepts the
+approved offering workbook and an accounts/contacts CSV template.
+
+## Local development
 
 ```bash
+cp .env.example .env.local
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Quality commands:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run typecheck
+npm run lint
+npm run build
+npm run test:smoke
+npm run test:e2e
+npm audit --omit=dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Production deployment
 
-## Learn More
+The agreed topology is Azure DevOps for internal source control/CI and AWS for
+runtime. The app builds as a non-root standalone container via `Dockerfile`.
+Deployment handoff and the ECS task template are in [`deploy/`](deploy/README.md).
 
-To learn more about Next.js, take a look at the following resources:
+Before production, Freyr infrastructure must provide:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- HTTPS/ACM and the approved `freyrapps.com` hostname.
+- ALB OIDC authentication against Freyr Microsoft Entra ID.
+- Private ECS networking and AWS Secrets Manager.
+- A durable PostgreSQL database with both SQL migrations applied.
+- Approved Azure DevOps repository access and ECR service connection.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Never send API keys in Teams/chat or commit `.env.local`.
+Production fails closed when identity headers are absent and defaults to Clean
+mode in the ECS task template. Mock mode must be enabled deliberately for demos.

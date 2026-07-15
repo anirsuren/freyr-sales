@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "fs/promises";
 
-// App runs on :3001 here (:3000 was occupied by another project).
-const BASE = "http://localhost:3001";
+const PORT = Number(process.env.PORT || 3001);
+const BASE = `http://127.0.0.1:${PORT}`;
 
 test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("01 — root redirects to dashboard", async ({ page }) => {
@@ -16,7 +16,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       if (msg.type() === "error") errors.push(msg.text());
     });
     await page.goto(`${BASE}/dashboard`);
-    await expect(page.locator("text=Active Leads")).toBeVisible();
+    await expect(page.getByText("Pipeline vs quota")).toBeVisible();
     await expect(page.locator("table tbody tr").first()).toBeVisible();
     await expect(page.locator("text=New Session")).toBeVisible();
     await page.reload();
@@ -325,13 +325,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator("text=Cortexa Biopharma").first()).toBeVisible();
   });
 
-  test("24 — dashboard analytics toggle shows charts", async ({ page }) => {
+  test("24 — dashboard links to the full analytics workspace", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
-    await page.getByRole("button", { name: /analytics/i }).click();
+    await page.getByRole("link", { name: "Analytics", exact: true }).click();
     await expect(page.locator("text=Conversion Funnel")).toBeVisible();
     await expect(page.locator("text=Pipeline by Stage")).toBeVisible();
-    await page.getByRole("button", { name: /overview/i }).click();
-    await expect(page.locator("text=Active Leads")).toBeVisible();
   });
 
   test("25 — global search API returns records", async ({ request }) => {
@@ -542,9 +540,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(
       page.getByRole("menu", { name: "Customize KPIs" })
     ).toBeVisible();
-    // "Win Rate" is now the honest "Active Leads" KPI (no fake win-rate — the
-    // stages have no Closed-Won). Any shown KPI toggles off/on.
-    const item = page.getByRole("menuitemcheckbox", { name: "Active Leads" });
+    const item = page.getByRole("menuitemcheckbox", { name: "Pipeline created" });
     await expect(item).toHaveAttribute("aria-checked", "true");
     await item.click();
     await expect(item).toHaveAttribute("aria-checked", "false");
@@ -552,7 +548,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("45 — dashboard: weekly digest preview modal", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
-    // "Digest" is now the plain-English "Email me a summary" (#80).
+    await page.getByRole("button", { name: "More dashboard actions" }).click();
     await page.getByRole("button", { name: "Email me a summary" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByText(/every Monday/)).toBeVisible();
@@ -594,7 +590,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // (Suren's per-page control) so pagination engages.
     await page.getByRole("button", { name: /12 \/ page/ }).click();
     await page.getByRole("option", { name: "8 / page", exact: true }).click();
-    const next = page.getByRole("button", { name: "Next" });
+    const next = page.getByRole("button", { name: "Next", exact: true });
     await expect(next).toBeVisible();
     await next.click();
     await expect(page.getByText(/Page 2 of/)).toBeVisible();
@@ -712,17 +708,15 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(teamBtn).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("59 — pipeline: deal limit + column reorder", async ({ page }) => {
+  test("59 — pipeline: deal limits + fixed stage order", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
     const limit = page.getByLabel("Deal limit for Prospect");
     await expect(limit).toBeVisible();
     await limit.fill("3");
     await expect(limit).toHaveValue("3");
-    // Prospect starts first (move-left disabled); moving right enables it
-    const left = page.getByRole("button", { name: "Move Prospect left" });
-    await expect(left).toBeDisabled();
-    await page.getByRole("button", { name: "Move Prospect right" }).click();
-    await expect(left).toBeEnabled();
+    await expect(page.getByRole("button", { name: /Move Prospect/ })).toHaveCount(0);
+    await expect(page.locator('[draggable="true"]')).toHaveCount(0);
+    await expect(page.getByText("Drop deals here")).toHaveCount(0);
   });
 
   test("60 — sidebar collapse persists across reload", async ({ page }) => {
@@ -757,13 +751,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Employee count")).toBeVisible();
   });
 
-  test("63 — settings: billing plan + usage + invoices", async ({ page }) => {
+  test("63 — settings has no fabricated billing surface", async ({ page }) => {
     await page.goto(`${BASE}/settings`);
-    await page.locator("main").getByRole("tab", { name: "Billing", exact: true }).click();
-    await expect(page.getByText("This month's usage")).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /Switch to Enterprise/ })
-    ).toBeVisible();
+    await expect(page.locator("main").getByRole("tab", { name: "Billing", exact: true })).toHaveCount(0);
   });
 
   test("64 — dark mode toggle themes the app and persists", async ({ page }) => {
@@ -822,9 +812,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(
       page.locator('input[placeholder*="Search activity" i]')
     ).toBeVisible();
-    await expect(page.getByText(/\d+ events?/)).toBeVisible();
+    await expect(page.getByText(/\d+ interactions?/).first()).toBeVisible();
     // an outcome filter chip toggles
-    const all = page.getByRole("button", { name: "All", exact: true });
+    const all = page.getByRole("button", { name: "All outcomes", exact: true });
     await expect(all).toBeVisible();
     await all.click();
   });
@@ -864,8 +854,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("69 — tasks inbox renders", async ({ page }) => {
     await page.goto(`${BASE}/tasks`);
     await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
-    await expect(page.getByText("Awaiting compliance review")).toBeVisible();
-    await expect(page.getByText("Upcoming follow-ups")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Work queue" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Search tasks" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Reviews/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Follow-ups/ })).toBeVisible();
   });
 
   test("70 — sequences cadence library + enrollments (V2)", async ({ page }) => {
@@ -879,6 +871,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // switch cadence
     await page.getByRole("button", { name: /Re-engagement/ }).click();
     await expect(page.getByText(/Pattern-interrupt email/).first()).toBeVisible();
+    await expect(page.getByText("Cadence timeline")).toBeVisible();
+    await expect(page.getByLabel(/Step 1 on day 0/).first()).toBeVisible();
+
+    // the creator is a real cadence builder, not a loose collection of fields
+    await page.getByRole("link", { name: "New sequence" }).click();
+    const builder = page.getByRole("dialog", { name: "New sequence" });
+    await expect(builder.getByText("Template", { exact: true })).toBeVisible();
+    await expect(builder.getByText("Cadence builder")).toBeVisible();
+    await builder.getByRole("button", { name: /Executive outreach/ }).click();
+    await expect(builder.getByLabel("Step 1 day")).toHaveValue("0");
+    await expect(builder.getByLabel("Step 1 action")).toHaveValue(/role-specific introduction/i);
   });
 
   test("71 — settings: CRM two-way sync card (V2)", async ({ page }) => {
@@ -892,6 +895,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("72 — settings: roles + SSO access controls (V2)", async ({ page }) => {
     await page.goto(`${BASE}/settings`);
     await page.locator("main").getByRole("tab", { name: "Access" }).click();
+    await expect(page.getByRole("heading", { name: "Invite-only workspace" })).toBeVisible();
+    await expect(page.getByText("Identity", { exact: true })).toBeVisible();
+    await expect(page.getByText("Approval", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
+    await page.getByRole("button", { name: "Approve" }).click();
+    await expect(page.getByText("Queue clear")).toBeVisible();
     await expect(page.getByText("Role permissions")).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "SSO & security" })
@@ -899,7 +908,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // switch to Rep, then the Team invite is enforced as disabled
     await page.getByRole("button", { name: "Rep", exact: true }).click();
     await page.locator("main").getByRole("tab", { name: "Team" }).click();
-    await expect(page.getByRole("button", { name: "Invite" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Create invite" })).toBeDisabled();
   });
 
   test("73 — pipeline: saved views (V2)", async ({ page }) => {
@@ -958,7 +967,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("76 — dashboard hides the setup checklist once the workspace is in use (V3)", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
-    await expect(page.getByText("Active Pipeline")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening), Suren/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "What needs your attention" })).toBeVisible();
     // Established workspace (real pitch sessions exist) — no contradictory
     // "0 of 5 complete / run your first pitch session" checklist next to a
     // full book of business. The agent's recommendations lead instead.
@@ -972,7 +982,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.getByRole("button", { name: /Mark Miller/ }).click();
     await expect(page.getByText("Deals by stage")).toBeVisible();
     // date range scopes via ?range=
-    await page.getByRole("button", { name: "30D", exact: true }).click();
+    await page.getByRole("button", { name: "Last 30 days" }).click();
     await expect(page).toHaveURL(/range=30d/);
   });
 
@@ -1090,7 +1100,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
-    await expect(page.getByText("Needs Attention")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Needs Attention", exact: true })).toBeVisible();
     await expect(page.getByText(/At risk|Watch/).first()).toBeVisible();
   });
 
@@ -1108,7 +1118,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
   }) => {
     await page.goto(`${BASE}/forecast`);
-    await expect(page.getByRole("heading", { name: "Forecast" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Forecast", exact: true })).toBeVisible();
     await expect(page.getByText("Commit (weighted)")).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Quota attainment" })
@@ -1258,9 +1268,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
-    await expect(page.getByText("Your agent recommends")).toBeVisible();
-    // "Open Agent" went to the chat, which Suren didn't want — the link now
-    // leads to the full recommendation queue (Anir, Jul 8).
+    await expect(page.getByText("What needs your attention")).toBeVisible();
     await expect(
       page.getByRole("link", { name: /See all/ })
     ).toBeVisible();
@@ -2718,6 +2726,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/dashboard`);
     // Export is a real CSV download.
+    await page.getByRole("button", { name: "More dashboard actions" }).click();
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export CSV" }).click();
     expect((await download).suggestedFilename()).toBe(
@@ -4295,7 +4304,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // for context — labelled "About <type>" so it doesn't read as this
     // offering's own description.
     await page.goto(`${BASE}/offerings/of-001`);
-    await expect(page.getByText("About Freya Fusion (Module)")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Offering brief" })).toBeVisible();
     await expect(page.getByText(/system of record/i).first()).toBeVisible();
   });
 
@@ -5030,6 +5039,33 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Marcus Thorne").first()).toBeVisible();
   });
 
+  test("334b — voice outcome chart exposes sales detail on hover", async ({ page }) => {
+    await page.goto(`${BASE}/voice/agents/maya-regulatory-affairs`);
+
+    const chart = page.getByRole("img", {
+      name: /Donut chart: Interested 43%/,
+    });
+    await expect(chart).toBeVisible();
+
+    await chart.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(750);
+    const box = await chart.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(
+      box!.x + box!.width / 2 + 20,
+      box!.y + 7,
+      { steps: 4 }
+    );
+
+    const tooltip = page.getByRole("tooltip");
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText("Interested");
+    await expect(tooltip).toContainText("Share of total");
+    await expect(tooltip).toContainText("Total shown");
+    await expect(tooltip).toContainText("Records in this segment");
+    await expect(tooltip).toContainText(/Marcus Thorne|Owen Bradley|Claudia Hofmann/);
+  });
+
   test("335 — campaign cards are fully clickable (V60)", async ({ page }) => {
     await page.goto(`${BASE}/campaigns`);
     // the whole card is the link — no hunting for a View button
@@ -5172,5 +5208,103 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("link", { name: "Reports" }).first().click();
     await expect(page).toHaveURL(/\/reports/);
+  });
+
+  test("342 — customer intelligence tabs keep charts, context, and entity imagery (V64)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/customers/cust-008`);
+
+    await page.getByRole("tab", { name: "Analytics" }).click();
+    await expect(page.getByText("Account pipeline momentum")).toBeVisible();
+    await expect(page.getByText("Pipeline composition")).toBeVisible();
+    await expect(page.getByText("Touch outcome mix")).toBeVisible();
+
+    await page.getByRole("tab", { name: "Offerings" }).click();
+    await expect(page.getByLabel("Customer segment")).toBeVisible();
+    await expect(page.getByText("Pharmaceutical", { exact: true })).toBeVisible();
+    await expect(page.getByText("Mid size", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add to account" }).first()).toBeVisible();
+
+    await page.getByRole("tab", { name: "Deals" }).click();
+    await expect(page.getByText("Pipeline value over time")).toBeVisible();
+    await expect(page.getByText("Stage mix")).toBeVisible();
+    await expect(page.getByRole("img", { name: "Megan Ruiz" }).first()).toBeVisible();
+
+    await page.getByRole("tab", { name: "Activity" }).click();
+    await expect(page.getByRole("img", { name: "Megan Ruiz" }).first()).toBeVisible();
+    await expect(page.getByRole("img", { name: "Suren Dheen" }).last()).toBeVisible();
+    await expect(page.getByText("Logged by Suren Dheen")).toBeVisible();
+  });
+
+  test("343 — dashboard metrics and priority rows explain their data on hover (V64)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/dashboard`);
+
+    await expect(page.getByText("Quota attainment")).toBeVisible();
+    await expect(page.getByText("Commit vs quota")).toBeVisible();
+    await expect(page.getByText("Open pipeline exposed")).toBeVisible();
+    await expect(page.getByText("Session-to-meeting rate")).toBeVisible();
+
+    await page.getByRole("link", { name: /Pipeline vs quota/ }).hover();
+    const metricTip = page.getByRole("tooltip").last();
+    await expect(metricTip.getByText("Quarter quota")).toBeVisible();
+    await expect(metricTip.getByText("Open deals")).toBeVisible();
+
+    await page.getByText("Approve the pitch for Cortexa Biopharma").hover();
+    const attentionTip = page.getByRole("tooltip").last();
+    await expect(attentionTip.getByText(/Priority 1/)).toBeVisible();
+    await expect(attentionTip.getByText(/waiting on your compliance sign-off/)).toBeVisible();
+
+    await page
+      .getByRole("link", { name: /Dr. Lena Vogt Helix Biologics In Progress/ })
+      .hover();
+    const activityTip = page.getByRole("tooltip").last();
+    await expect(activityTip.getByText("Interaction note")).toBeVisible();
+    await expect(activityTip.getByText(/Logged by/)).toBeVisible();
+
+    const forecast = page.getByRole("img", { name: /Trend chart.*Quarter quota/ });
+    await forecast.hover({ position: { x: 360, y: 120 } });
+    const chartTip = page.getByRole("tooltip").last();
+    await expect(chartTip.getByText("Quota attainment")).toBeVisible();
+    await expect(chartTip.getByText("Records at this point")).toBeVisible();
+  });
+
+  test("344 — campaign audience stacks fan out into named record links (V64)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/campaigns`);
+
+    const contactFan = page.getByTestId("campaign-contacts-fan").first();
+    const contactLinks = contactFan.getByRole("link");
+    await expect(contactLinks.first()).toHaveAttribute("href", /\/contacts\//);
+    await expect(contactLinks.nth(1)).toBeVisible();
+
+    const firstBefore = await contactLinks.first().boundingBox();
+    const secondBefore = await contactLinks.nth(1).boundingBox();
+    await contactFan.hover();
+    await page.waitForTimeout(250);
+    const firstAfter = await contactLinks.first().boundingBox();
+    const secondAfter = await contactLinks.nth(1).boundingBox();
+    expect(firstBefore && secondBefore && firstAfter && secondAfter).toBeTruthy();
+    expect(secondAfter!.x - firstAfter!.x).toBeGreaterThan(
+      secondBefore!.x - firstBefore!.x
+    );
+
+    const contactLabel = await contactLinks.nth(1).getAttribute("aria-label");
+    const contactName = contactLabel!.replace("Open contact ", "");
+    await contactLinks.nth(1).hover();
+    await expect(page.getByRole("tooltip").last()).toContainText(contactName);
+    await expect(page.getByRole("tooltip").last()).toContainText("Open contact");
+
+    const companyFan = page.getByTestId("campaign-companies-fan").first();
+    const companyLinks = companyFan.getByRole("link");
+    await expect(companyLinks.first()).toHaveAttribute("href", /\/customers\//);
+    const companyLabel = await companyLinks.first().getAttribute("aria-label");
+    const companyName = companyLabel!.replace("Open company ", "");
+    await companyLinks.first().hover();
+    await expect(page.getByRole("tooltip").last()).toContainText(companyName);
+    await expect(page.getByRole("tooltip").last()).toContainText(/campaign recipient/);
   });
 });

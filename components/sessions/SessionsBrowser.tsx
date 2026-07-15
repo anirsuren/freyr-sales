@@ -5,20 +5,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Download, Search, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CalendarClock, ArrowDownWideNarrow } from "lucide-react";
-import { OUTCOME_META, formatDate, formatDateTime, cn } from "@/lib/utils";
+import { OUTCOME_META, formatDateTime } from "@/lib/utils";
 import { REVIEW_META } from "@/lib/review";
 import type { ReviewStatus } from "@/lib/types";
 import { toCSV, downloadCSV } from "@/lib/csv";
 
 export interface SessionRow {
   id: string;
+  customerId: string;
+  contactId: string;
   company: string;
   contact: string;
   title: string;
@@ -180,23 +181,36 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                 {view.map((r) => (
                   <tr
                     key={r.id}
-                    onClick={() => router.push(`/sessions/${r.id}`)}
+                    onClick={(event) => {
+                      if ((event.target as Element).closest("a,button")) return;
+                      router.push(`/sessions/${r.id}`);
+                    }}
                     className="hover:bg-surface active:bg-blue-light/50 transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
+                      <Link
+                        href={`/customers/${r.customerId}`}
+                        className="group/company flex items-center gap-3"
+                      >
                         <CompanyLogo name={r.company} className="w-8 h-8 text-[11px]" />
-                        <span className="text-[13px] font-semibold text-text-primary">{r.company}</span>
-                      </div>
+                        <span className="text-[13px] font-semibold text-text-primary group-hover/company:text-blue-primary">
+                          {r.company}
+                        </span>
+                      </Link>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-2.5">
+                      <Link
+                        href={`/contacts/${r.contactId}`}
+                        className="group/contact flex items-center gap-2.5"
+                      >
                         <Avatar name={r.contact} className="w-7 h-7 text-[10px]" />
                         <div>
-                          <div className="text-[13px] font-semibold text-text-primary">{r.contact}</div>
+                          <div className="text-[13px] font-semibold text-text-primary group-hover/contact:text-blue-primary">
+                            {r.contact}
+                          </div>
                           <div className="text-[11px] text-text-tertiary">{r.title}</div>
                         </div>
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">{r.service}</td>
                     <td className="px-5 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "—"}</td>
@@ -217,11 +231,13 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                     </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDateTime(r.date)}</td>
                     <td className="px-5 py-4 text-right">
-                      <ArrowRight
-                        size={16}
-                        strokeWidth={1.5}
-                        className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform"
-                      />
+                      <Link
+                        href={`/sessions/${r.id}`}
+                        aria-label={`Open session for ${r.company}`}
+                        className="inline-flex rounded p-1 text-text-tertiary group-hover:text-blue-primary hover:bg-blue-light transition-colors"
+                      >
+                        <ArrowRight size={16} strokeWidth={1.5} />
+                      </Link>
                     </td>
                   </tr>
                 ))}

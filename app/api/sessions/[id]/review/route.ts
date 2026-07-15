@@ -16,7 +16,7 @@ const ACTION_TO_STATUS: Record<string, ReviewStatus> = {
 // and an optional note. Gates the "Send to CRM" action client-side.
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const body = await req.json().catch(() => ({}));
   const status = ACTION_TO_STATUS[String(body.action)];
@@ -25,14 +25,14 @@ export async function POST(
   }
 
   const db = getDb();
-  const session = await db.pitchSessions.get(params.id);
+  const session = await db.pitchSessions.get((await params).id);
   if (!session) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
 
   const reviewer =
     status === "in_review" ? null : String(body.reviewer || "Suren Dheen");
-  const updated = await db.pitchSessions.update(params.id, {
+  const updated = await db.pitchSessions.update((await params).id, {
     review_status: status,
     reviewer,
     review_note: body.note ? String(body.note).slice(0, 1000) : null,

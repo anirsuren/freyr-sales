@@ -3,12 +3,12 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingTypesManager } from "@/components/offerings/OfferingTypesManager";
 import { listOfferingTypes, listOfferings } from "@/lib/offerings";
-import { isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offering types" };
 
-export default function OfferingTypesPage() {
+export default async function OfferingTypesPage() {
   const offeringTypes = listOfferingTypes();
   // How many offerings use each type — offerings store the type as a string, so
   // match by name → the type's id, to link "the offerings of this type".
@@ -35,7 +35,7 @@ export default function OfferingTypesPage() {
       <OfferingTypesManager
         offeringTypes={offeringTypes}
         offeringCounts={offeringCounts}
-        canEdit={isAdmin()}
+        canEdit={await canManageOfferings()}
       />
     </div>
   );

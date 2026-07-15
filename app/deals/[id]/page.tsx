@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, Clock, Flame, BookOpen, Sparkles, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
-import { Badge, SizeBadge } from "@/components/ui/Badge";
+import { SizeBadge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -12,7 +12,7 @@ import { AgentActions } from "@/components/agent/AgentActions";
 import { AgentRunPanel } from "@/components/agent/AgentRunPanel";
 import { BriefingCard } from "@/components/agent/BriefingCard";
 import { nextBestActions, buildDealBriefing } from "@/lib/agent";
-import { formatDate, cn, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, cn } from "@/lib/utils";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DonutChart, BarChart, VIZ } from "@/components/charts/Charts";
@@ -34,10 +34,11 @@ export const dynamic = "force-dynamic";
 export default async function DealDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const id = (await params).id;
   const db = getDb();
-  const session = await db.pitchSessions.get(params.id);
+  const session = await db.pitchSessions.get(id);
   if (!session) {
     return (
       <EmptyState
@@ -70,7 +71,7 @@ export default async function DealDetailPage({
     ]);
 
   const deal = buildDeals(sessions, customers, contacts, allInteractions).find(
-    (d) => d.sessionId === params.id
+    (d) => d.sessionId === id
   );
   const stage = deal?.stage || "Prospect";
   const value = deal?.value || 0;

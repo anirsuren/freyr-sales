@@ -10,7 +10,20 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
-import { VIZ, VIZ_SERIES } from "./palette";
+import { VIZ } from "./palette";
+function useChartHover() {
+  const [hover, setHover] = useState<number | null>(null);
+
+  function show(index: number) {
+    setHover((current) => (current === index ? current : index));
+  }
+
+  function clear() {
+    setHover(null);
+  }
+
+  return { hover, show, clear };
+}
 
 // A tooltip rendered into <body> via a portal so it can NEVER be clipped by a
 // card's overflow or painted over by a neighbouring container — the recurring
@@ -36,6 +49,7 @@ function PortalTip({
   const above = anchor.y > 150;
   return createPortal(
     <div
+      role="tooltip"
       className="fixed z-[9999] pointer-events-none"
       style={{
         left,
@@ -117,10 +131,15 @@ export type TipItem = {
   avatar?: string; // person name → headshot
 };
 
-function TipBreakdown({ items }: { items?: TipItem[] }) {
+function TipBreakdown({ items, label }: { items?: TipItem[]; label?: string }) {
   if (!items || items.length === 0) return null;
   return (
     <div className="mt-2 space-y-1.5 border-t border-border-light pt-2 text-left">
+      {label && (
+        <p className="mb-1 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+          {label}
+        </p>
+      )}
       {items.slice(0, 5).map((t, j) => (
         <div key={j} className="flex items-center gap-2 text-[11px]">
           {t.logo ? (
@@ -179,7 +198,7 @@ export function AreaChart({
   // to the top — reading like a perfect score instead of an at-risk one.
   yMax?: number;
 }) {
-  const [hover, setHover] = useState<number | null>(null);
+  const { hover, show: showHover, clear: clearHover } = useChartHover();
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const w = 600;
   const h = height;
@@ -203,11 +222,15 @@ export function AreaChart({
   const last = data[data.length - 1];
   const trend = last >= first ? "up" : "down";
   const hi = hover ?? n - 1;
+  const priorValue = hi > 0 ? data[hi - 1] : data[hi];
+  const pointDelta = data[hi] - priorValue;
+  const attainment = goal && goal > 0 ? Math.round((data[hi] / goal) * 100) : null;
+  const goalGap = goal != null ? goal - data[hi] : null;
 
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
-    setHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
+    showHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
     setMouse({ x: e.clientX, y: e.clientY });
   }
 
@@ -217,7 +240,7 @@ export function AreaChart({
       style={{ height }}
       onMouseMove={onMove}
       onMouseLeave={() => {
-        setHover(null);
+        clearHover();
         setMouse(null);
       }}
     >
@@ -334,12 +357,43 @@ export function AreaChart({
         }}
       />
       {hover != null && (
-        <Tip anchor={mouse} wide={!!pointTips?.[hi]?.length}>
-          <div className="whitespace-nowrap font-semibold">
-            {xLabels?.[hi] ? `${xLabels[hi]} · ` : ""}
-            {fmt(format, data[hi])}
+        <Tip anchor={mouse} wide={!!pointTips || goal != null}>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              {xLabels?.[hi] || `Point ${hi + 1} of ${n}`}
+            </p>
+            <p className="mt-0.5 text-[17px] font-bold text-text-primary tnum">
+              {fmt(format, data[hi])}
+            </p>
           </div>
-          <TipBreakdown items={pointTips?.[hi]} />
+          <div className="mt-2 rounded-md bg-surface px-2.5 py-2 text-[10.5px]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-text-tertiary">Change from prior</span>
+              <span
+                className={cn(
+                  "font-semibold tnum",
+                  pointDelta > 0 ? "text-success" : pointDelta < 0 ? "text-error" : "text-text-secondary"
+                )}
+              >
+                {hi === 0 ? "Baseline" : `${pointDelta > 0 ? "+" : pointDelta < 0 ? "−" : ""}${fmt(format, Math.abs(pointDelta))}`}
+              </span>
+            </div>
+            {attainment != null && (
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <span className="text-text-tertiary">Quota attainment</span>
+                <span className="font-semibold text-text-primary tnum">{attainment}%</span>
+              </div>
+            )}
+            {goalGap != null && (
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <span className="text-text-tertiary">{goalGap > 0 ? "Gap to quota" : "Above quota"}</span>
+                <span className={cn("font-semibold tnum", goalGap > 0 ? "text-warning" : "text-success")}>
+                  {fmt(format, Math.abs(goalGap))}
+                </span>
+              </div>
+            )}
+          </div>
+          <TipBreakdown items={pointTips?.[hi]} label="Records at this point" />
         </Tip>
       )}
       {goalY != null && goalLabel && (
@@ -365,7 +419,6 @@ export function DonutChart({
   centerLabel,
   centerSub,
   format,
-  noTip = false,
 }: {
   segments: {
     label: string;
@@ -378,12 +431,8 @@ export function DonutChart({
   centerLabel?: string;
   centerSub?: string;
   format?: Fmt;
-  // Suppress the segment hover tooltip — for cramped popovers where a legend
-  // beside the donut already shows the breakdown, so the tip would only clip and
-  // duplicate (Suren: "the pop-up is getting cut off / a bare '1' looks atrocious").
-  noTip?: boolean;
 }) {
-  const [hover, setHover] = useState<number | null>(null);
+  const { hover, show: showHover, clear: clearHover } = useChartHover();
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   // Circumference draw-in: each arc starts at length 0 and grows to its share,
   // staggered by its start position so the ring sweeps around on load (Suren).
@@ -401,7 +450,8 @@ export function DonutChart({
     const t = setTimeout(() => setDrawn(true), 40);
     return () => clearTimeout(t);
   }, []);
-  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  const rawTotal = segments.reduce((s, x) => s + x.value, 0);
+  const total = rawTotal || 1;
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
   let offset = 0;
@@ -441,12 +491,12 @@ export function DonutChart({
                 strokeDashoffset={-offset}
                 strokeLinecap="butt"
                 onMouseEnter={(e) => {
-                  setHover(i);
+                  showHover(i);
                   setMouse({ x: e.clientX, y: e.clientY });
                 }}
                 onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
                 onMouseLeave={() => {
-                  setHover(null);
+                  clearHover();
                   setMouse(null);
                 }}
                 style={{
@@ -490,17 +540,41 @@ export function DonutChart({
           </text>
         )}
       </svg>
-      {!noTip && hover != null && segments[hover] && (
-        <PortalTip anchor={mouse} wide={!!segments[hover].tip?.length}>
-          <div className="whitespace-nowrap font-semibold">
+      {hover != null && segments[hover] && (
+        <PortalTip anchor={mouse} wide>
+          <div className="flex items-start gap-2">
             <span
-              className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
+              className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ background: segments[hover].color }}
             />
-            {segments[hover].label}: {fmt(format, segments[hover].value)} ·{" "}
-            {Math.round((segments[hover].value / total) * 100)}%
+            <span className="min-w-0">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                {segments[hover].label}
+              </span>
+              <span className="mt-0.5 block text-[17px] font-bold text-text-primary tnum">
+                {fmt(format, segments[hover].value)}
+              </span>
+            </span>
           </div>
-          <TipBreakdown items={segments[hover].tip} />
+          <div className="mt-2 rounded-md bg-surface px-2.5 py-2 text-[10.5px]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-text-tertiary">Share of total</span>
+              <span className="font-semibold text-text-primary tnum">
+                {Math.round((segments[hover].value / total) * 100)}%
+              </span>
+            </div>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <span className="text-text-tertiary">Total shown</span>
+              <span className="font-semibold text-text-primary tnum">{fmt(format, rawTotal)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <span className="text-text-tertiary">Other segments</span>
+              <span className="font-semibold text-text-secondary tnum">
+                {fmt(format, Math.max(0, rawTotal - segments[hover].value))}
+              </span>
+            </div>
+          </div>
+          <TipBreakdown items={segments[hover].tip} label="Records in this segment" />
         </PortalTip>
       )}
     </div>
@@ -532,52 +606,77 @@ export function BarChart({
   // "12 calls" without hovering (Suren: "all graphs need units").
   unit?: string;
 }) {
-  const [hover, setHover] = useState<number | null>(null);
+  const { hover, show: showHover, clear: clearHover } = useChartHover();
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const max = Math.max(...data.map((d) => d.value), 1);
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const ranked = [...data].sort((a, b) => b.value - a.value);
   // Hover wins over the externally-selected bar; otherwise the selected bar lit.
   const lit = hover ?? activeIndex;
   return (
     <div
-      className="relative flex items-end justify-start gap-6"
-      style={{ height }}
+      className="relative grid w-full items-stretch gap-3"
+      style={{
+        height,
+        gridTemplateColumns: `repeat(${Math.max(data.length, 1)}, minmax(0, 1fr))`,
+      }}
       role="img"
       aria-label={`Bar chart: ${data
         .map((d) => `${d.label} ${d.value}`)
         .join(", ")}`}
     >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-[38px] h-px bg-border-light"
+      />
       {data.map((d, i) => (
         <div
           key={i}
-          className="relative flex-1 flex flex-col items-center h-full min-w-[44px]"
+          className="group/bar relative z-[1] flex h-full min-w-0 flex-col items-center rounded-md transition-colors hover:bg-surface/45"
           onMouseEnter={(e) => {
-            setHover(i);
+            showHover(i);
             setMouse({ x: e.clientX, y: e.clientY });
           }}
           onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
           onMouseLeave={() => {
-            setHover(null);
+            clearHover();
             setMouse(null);
           }}
         >
           {/* Hover breakdown — portaled so it's never clipped by the card. */}
           {hover === i && (
-            <PortalTip anchor={mouse} wide={!!(d.tip && d.tip.length)}>
-              <div className="font-semibold whitespace-nowrap">
-                {d.label} · {fmt(format, d.value)}
+            <PortalTip anchor={mouse} wide>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">{d.label}</p>
+                <p className="mt-0.5 text-[17px] font-bold text-text-primary tnum">
+                  {fmt(format, d.value)}{unit ? ` ${unit}` : ""}
+                </p>
               </div>
-              <TipBreakdown items={d.tip} />
+              <div className="mt-2 rounded-md bg-surface px-2.5 py-2 text-[10.5px]">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-text-tertiary">Share of shown total</span>
+                  <span className="font-semibold text-text-primary tnum">
+                    {total ? Math.round((d.value / total) * 100) : 0}%
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-3">
+                  <span className="text-text-tertiary">Rank</span>
+                  <span className="font-semibold text-text-primary tnum">
+                    #{ranked.findIndex((item) => item === d) + 1} of {data.length}
+                  </span>
+                </div>
+              </div>
+              <TipBreakdown items={d.tip} label="Records behind this bar" />
             </PortalTip>
           )}
-          {/* Value on top — its own fixed row so tall bars never clip it */}
-          <span className="text-[11px] font-semibold text-text-secondary tnum whitespace-nowrap shrink-0 mb-1">
+          {/* A fixed value row and label row keep every plot baseline aligned. */}
+          <span className="flex h-5 shrink-0 items-start justify-center whitespace-nowrap px-1 text-[11px] font-semibold text-text-secondary tnum">
             {fmt(format, d.value)}
             {unit ? ` ${unit}` : ""}
           </span>
-          {/* Bar grows inside this flex-1 area, so the label below always fits */}
-          <div className="flex-1 w-full min-h-0 flex items-end justify-center">
+          <div className="flex min-h-0 w-full flex-1 items-end justify-center px-1.5">
             <div
-              className="chart-bar w-full max-w-[120px] rounded-t-md transition-[opacity,filter,box-shadow,transform]"
+              className="chart-bar w-[72%] min-w-[14px] max-w-[88px] rounded-t-md transition-[opacity,filter,box-shadow,transform] group-hover/bar:brightness-105"
               style={{
                 height: `${(d.value / max) * 100}%`,
                 minHeight: 4,
@@ -593,8 +692,8 @@ export function BarChart({
               }}
             />
           </div>
-          <span className="text-[11px] text-text-tertiary w-full text-center shrink-0 mt-1.5 leading-tight break-words">
-            {d.label}
+          <span className="mt-2 flex h-[30px] w-full shrink-0 items-start justify-center px-1 text-center text-[11px] leading-[1.2] text-text-tertiary">
+            <span className="line-clamp-2 max-w-[112px] break-normal">{d.label}</span>
           </span>
         </div>
       ))}
@@ -627,7 +726,7 @@ export function LineChart({
   // The who/which behind each x-point (shared across series).
   pointTips?: TipItem[][];
 }) {
-  const [hover, setHover] = useState<number | null>(null);
+  const { hover, show: showHover, clear: clearHover } = useChartHover();
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const w = 600;
   const h = height;
@@ -645,7 +744,7 @@ export function LineChart({
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
-    setHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
+    showHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
     setMouse({ x: e.clientX, y: e.clientY });
   }
 
@@ -653,7 +752,7 @@ export function LineChart({
     <div
       className={cn("relative w-full", className)}
       onMouseMove={onMove}
-      onMouseLeave={() => { setHover(null); setMouse(null); }}
+      onMouseLeave={() => { clearHover(); setMouse(null); }}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -750,39 +849,55 @@ export function LineChart({
         (() => {
           const tipLabel = pointLabels?.[hi] ?? xLabels?.[hi];
           return (
-            <Tip anchor={mouse} wide={!!pointTips?.[hi]?.length}>
+            <Tip anchor={mouse} wide>
               {series.length === 1 ? (
-                <span className="flex flex-col items-center gap-0.5 text-center">
-                  {tipLabel && (
-                    <span className="text-[10px] font-normal opacity-70 whitespace-nowrap">
-                      {tipLabel}
-                    </span>
-                  )}
-                  <span className="text-[13px] font-semibold whitespace-nowrap">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    {tipLabel || `Point ${hi + 1} of ${n}`}
+                  </p>
+                  <p className="mt-0.5 text-[17px] font-bold text-text-primary tnum">
                     {fmt(format, series[0].points[hi] ?? 0)}
                     {unit ? ` ${unit}` : ""}
-                  </span>
-                </span>
+                  </p>
+                  <div className="mt-2 flex items-center justify-between gap-3 rounded-md bg-surface px-2.5 py-2 text-[10.5px]">
+                    <span className="text-text-tertiary">Change from prior</span>
+                    {(() => {
+                      const current = series[0].points[hi] ?? 0;
+                      const prior = hi > 0 ? series[0].points[hi - 1] ?? current : current;
+                      const delta = current - prior;
+                      return (
+                        <span className={cn("font-semibold tnum", delta > 0 ? "text-success" : delta < 0 ? "text-error" : "text-text-secondary")}>
+                          {hi === 0 ? "Baseline" : `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${fmt(format, Math.abs(delta))}${unit ? ` ${unit}` : ""}`}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
               ) : (
-                <span className="flex flex-col gap-1">
-                  {tipLabel && (
-                    <span className="text-[10px] font-normal opacity-70">{tipLabel}</span>
-                  )}
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    {tipLabel || `Point ${hi + 1} of ${n}`}
+                  </p>
+                  <div className="space-y-1.5">
                   {series.map((s) => (
                     <span
                       key={s.label}
-                      className="flex items-center gap-1.5 whitespace-nowrap"
+                      className="flex items-center gap-1.5 whitespace-nowrap text-[11px]"
                     >
                       <span
                         className="w-1.5 h-1.5 rounded-full"
                         style={{ background: s.color }}
                       />
-                      {s.label}: {fmt(format, s.points[hi] ?? 0)}
+                      <span className="min-w-0 flex-1 text-text-secondary">{s.label}</span>
+                      <span className="font-semibold text-text-primary tnum">
+                        {fmt(format, s.points[hi] ?? 0)}{unit ? ` ${unit}` : ""}
+                      </span>
                     </span>
                   ))}
-                </span>
+                  </div>
+                </div>
               )}
-              <TipBreakdown items={pointTips?.[hi]} />
+              <TipBreakdown items={pointTips?.[hi]} label="Records at this point" />
             </Tip>
           );
         })()}
@@ -807,6 +922,7 @@ export function Sparkline({
   xLabels,
   unit,
   pointTips,
+  label,
 }: {
   points: number[];
   color?: string;
@@ -817,8 +933,11 @@ export function Sparkline({
   // (Suren: "7, what the fuck? What date was this?").
   unit?: string;
   pointTips?: TipItem[][];
+  // Names the metric in compact contexts where the surrounding card title is
+  // not part of the portaled tooltip (for example dashboard KPI sparklines).
+  label?: string;
 }) {
-  const [hover, setHover] = useState<number | null>(null);
+  const { hover, show: showHover, clear: clearHover } = useChartHover();
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const w = 120;
   const h = height;
@@ -837,7 +956,7 @@ export function Sparkline({
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
-    setHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
+    showHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
     setMouse({ x: e.clientX, y: e.clientY });
   }
 
@@ -846,7 +965,7 @@ export function Sparkline({
       className="relative w-full"
       style={{ height }}
       onMouseMove={onMove}
-      onMouseLeave={() => { setHover(null); setMouse(null); }}
+      onMouseLeave={() => { clearHover(); setMouse(null); }}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -875,13 +994,30 @@ export function Sparkline({
         }}
       />
       {hover != null && (
-        <Tip anchor={mouse} wide={!!pointTips?.[hi]?.length}>
-          <div className="whitespace-nowrap font-semibold">
-            {fmt(format, points[hi] ?? 0)}
-            {unit ? ` ${unit}` : ""}
-            {xLabels?.[hi] ? ` · ${xLabels[hi]}` : ""}
+        <Tip anchor={mouse} wide>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              {label ? `${label} · ` : ""}
+              {xLabels?.[hi] || `Point ${hi + 1} of ${points.length}`}
+            </p>
+            <p className="mt-0.5 text-[15px] font-bold text-text-primary tnum">
+              {fmt(format, points[hi] ?? 0)}{unit ? ` ${unit}` : ""}
+            </p>
+            <div className="mt-2 flex items-center justify-between gap-3 rounded-md bg-surface px-2.5 py-2 text-[10.5px]">
+              <span className="text-text-tertiary">Change from prior</span>
+              {(() => {
+                const current = points[hi] ?? 0;
+                const prior = hi > 0 ? points[hi - 1] ?? current : current;
+                const delta = current - prior;
+                return (
+                  <span className={cn("font-semibold tnum", delta > 0 ? "text-success" : delta < 0 ? "text-error" : "text-text-secondary")}>
+                    {hi === 0 ? "Baseline" : `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${fmt(format, Math.abs(delta))}${unit ? ` ${unit}` : ""}`}
+                  </span>
+                );
+              })()}
+            </div>
           </div>
-          <TipBreakdown items={pointTips?.[hi]} />
+          <TipBreakdown items={pointTips?.[hi]} label="Records at this point" />
         </Tip>
       )}
     </div>

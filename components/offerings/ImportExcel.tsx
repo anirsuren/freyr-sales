@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -12,6 +12,8 @@ export function ImportExcel() {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -52,15 +54,17 @@ export function ImportExcel() {
 
   return (
     <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".xlsx,.xls"
-        onChange={onFile}
-        className="hidden"
-        aria-hidden="true"
-        tabIndex={-1}
-      />
+      {mounted && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={onFile}
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      )}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}

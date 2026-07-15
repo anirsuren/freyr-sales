@@ -3,18 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SearchX, Search, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownWideNarrow, Rows3 } from "lucide-react";
+import { SearchX, Search, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3 } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
-import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { SizeBadge, OutcomeBadge } from "@/components/ui/Badge";
+import { OutcomeBadge } from "@/components/ui/Badge";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useToast } from "@/components/ui/Toast";
-import { cn, SIZE_TIER_LABEL, OUTCOME_META, formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { REPS } from "@/lib/pipeline";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
@@ -173,12 +172,16 @@ export function CustomersBrowser({
   function toggleSel(id: string) {
     setSelected((s) => {
       const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
 
-  const sizeRank: Record<string, number> = { large: 3, mid: 2, small: 1 };
+  const sizeRank = useMemo<Record<string, number>>(
+    () => ({ large: 3, mid: 2, small: 1 }),
+    []
+  );
 
   const filtered = useMemo(() => {
     let v = customers.filter((c) => {
@@ -202,7 +205,7 @@ export function CustomersBrowser({
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     return v;
-  }, [customers, query, healthFilter, sort]);
+  }, [customers, query, healthFilter, sort, sizeRank]);
 
   // reset to first page whenever the result set changes
   useEffect(() => {
@@ -354,11 +357,11 @@ export function CustomersBrowser({
             onChange={setSort}
             minWidth={185}
             options={[
-              { value: "recent", label: "Newest" },
-              { value: "company", label: "Company A–Z" },
-              { value: "size", label: "Opportunity" },
-              { value: "health", label: "Health (at-risk first)" },
-            ].map<ColorOption>((o) => ({ ...o, icon: ArrowDownWideNarrow }))}
+              { value: "recent", label: "Newest", icon: CalendarClock },
+              { value: "company", label: "Company A–Z", icon: ArrowDownAZ },
+              { value: "size", label: "Opportunity", icon: Target },
+              { value: "health", label: "Health (at-risk first)", icon: HeartPulse },
+            ] satisfies ColorOption[]}
           />
           <ColorSelect
             value={String(perPage)}
@@ -629,11 +632,17 @@ export function CustomersBrowser({
                       {c.contacts_preview.length > 0 ? (
                         <div className="flex items-center -space-x-2">
                           {c.contacts_preview.slice(0, 3).map((ct) => (
-                            <Avatar
+                            <Link
                               key={ct.id}
-                              name={ct.name}
-                              className="w-7 h-7 text-[10px] ring-2 ring-white"
-                            />
+                              href={`/contacts/${ct.id}`}
+                              aria-label={`Open ${ct.name}`}
+                              className="relative rounded-full hover:z-10"
+                            >
+                              <Avatar
+                                name={ct.name}
+                                className="w-7 h-7 text-[10px] ring-2 ring-white"
+                              />
+                            </Link>
                           ))}
                           {c.contact_count > 3 && (
                             <span className="w-7 h-7 rounded-full bg-surface border border-border-light text-[10px] font-semibold text-text-secondary flex items-center justify-center ring-2 ring-white tnum">

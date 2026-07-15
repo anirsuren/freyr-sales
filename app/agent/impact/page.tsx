@@ -22,7 +22,7 @@ import {
   type ImpactWindow,
 } from "@/lib/agent";
 import { buildDeals, formatMoney } from "@/lib/pipeline";
-import { cn, formatDateTime } from "@/lib/utils";
+import { formatDateTime, cn } from "@/lib/utils";
 
 export const metadata = { title: "Agent Impact" };
 export const dynamic = "force-dynamic";
@@ -47,10 +47,11 @@ const RANK_STYLE = [
 export default async function AgentImpactPage({
   searchParams,
 }: {
-  searchParams: { window?: string };
+  searchParams: Promise<{ window?: string }>;
 }) {
-  const win: ImpactWindow = WINDOWS.some((w) => w.key === searchParams.window)
-    ? (searchParams.window as ImpactWindow)
+  const query = await searchParams;
+  const win: ImpactWindow = WINDOWS.some((w) => w.key === query.window)
+    ? (query.window as ImpactWindow)
     : "quarter";
 
   const db = getDb();

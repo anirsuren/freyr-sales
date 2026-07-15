@@ -14,8 +14,6 @@ export const KPI_EVENT = "freyr:kpis-change";
 
 export function KpiCustomize({
   kpis,
-  comparable,
-  rangeLabel,
 }: {
   kpis: { key: string; label: string }[];
   comparable: boolean;
@@ -36,7 +34,8 @@ export function KpiCustomize({
   }
   function toggleHidden(key: string) {
     const next = new Set(hidden);
-    next.has(key) ? next.delete(key) : next.add(key);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
     if (next.size >= kpis.length) return; // never hide all
     setHidden(next);
     try {

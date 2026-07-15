@@ -143,12 +143,19 @@ export default function IntakePage() {
   // recent prospects (#71)
   const [recents, setRecents] = useState<Recent[]>([]);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("freyr.recentProspects");
-      setRecents(raw ? JSON.parse(raw) : SEED_RECENTS);
-    } catch {
-      setRecents(SEED_RECENTS);
-    }
+    let active = true;
+    fetch("/api/settings/data-mode")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        if (data.mode !== "mock") { setRecents([]); return; }
+        try {
+          const raw = localStorage.getItem("freyr.recentProspects");
+          setRecents(raw ? JSON.parse(raw) : SEED_RECENTS);
+        } catch { setRecents(SEED_RECENTS); }
+      })
+      .catch(() => setRecents([]));
+    return () => { active = false; };
   }, []);
 
   // bulk intake (#73)

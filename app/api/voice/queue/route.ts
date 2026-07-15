@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { listVoiceQueue, placeOrQueueCall, voiceStatus } from "@/lib/voice";
+import { isDialedVoiceCall, listVoiceQueue, placeOrQueueCall, voiceStatus } from "@/lib/voice";
 
 // Bulk voice-agent run (Suren, Jul 3): select a bunch of contacts + an
 // offering CATEGORY, and the category's voice agent works the list — dialing
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     queued: results.length,
-    called: results.filter((r) => r.status === "called").length,
+    called: results.filter((r) => isDialedVoiceCall(r.status)).length,
     status: voiceStatus(),
   });
 }

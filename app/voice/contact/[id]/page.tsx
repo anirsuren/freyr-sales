@@ -8,9 +8,7 @@ import {
   Timer,
   ThumbsUp,
   Sparkles,
-  BarChart3,
   ArrowRight,
-  Building2,
   ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -21,10 +19,12 @@ import { SizeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton } from "@/components/ui/BackButton";
 import { DonutChart, BarChart, VIZ } from "@/components/charts/Charts";
+import { ChartInspector } from "@/components/charts/ChartInspector";
 import { getDb } from "@/lib/db";
-import { listVoiceQueue, mockCallTranscript, type VoiceOutcome } from "@/lib/voice";
+import { isDialedVoiceCall, listVoiceQueue, mockCallTranscript, type VoiceOutcome } from "@/lib/voice";
 import { personaFor } from "@/lib/voicePersonas";
 import { formatPhone, formatDateTime, formatDate, cn } from "@/lib/utils";
+import { listStoredVoiceConversations, storedVoiceCall } from "@/lib/voiceEvents";
 
 export const metadata = { title: "Contact — voice" };
 export const dynamic = "force-dynamic";
@@ -46,10 +46,11 @@ const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer", "
 export default async function VoiceContactPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const id = (await params).id;
   const db = getDb();
-  const contact = await db.contacts.get(params.id);
+  const contact = await db.contacts.get(id);
   if (!contact) {
     return (
       <EmptyState
@@ -74,8 +75,21 @@ export default async function VoiceContactPage({
     ? await db.customers.get(contact.customer_id)
     : null;
 
-  const calls = listVoiceQueue()
-    .filter((q) => q.contact_id === params.id)
+  const queuedCalls = listVoiceQueue().filter((q) => q.contact_id === id);
+  const storedCalls = (await listStoredVoiceConversations(100))
+    .filter((call) => call.contact_id === id)
+    .map(storedVoiceCall);
+  const storedIds = new Set(
+    storedCalls.flatMap((call) => [call.conversation_id, call.call_sid].filter(Boolean))
+  );
+  const calls = [
+    ...storedCalls,
+    ...queuedCalls.filter(
+      (call) =>
+        !storedIds.has(call.conversation_id || "") &&
+        !storedIds.has(call.call_sid || "")
+    ),
+  ]
     .sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
@@ -129,6 +143,13 @@ export default async function VoiceContactPage({
   const about = contact.career_summary || contact.enrichment_summary || "";
   const phone = calls[0]?.phone || contact.phone;
   const hasAnalytics = finished.length > 0;
+  const callRecords = calls.map((call) => ({
+    id: call.id,
+    label: call.offering_name || "Call",
+    meta: `${call.outcome ? OUTCOME_META[call.outcome].label : "Queued"} · ${formatDateTime(call.created_at)}`,
+    value: call.duration_secs ? fmtLen(call.duration_secs) : "—",
+    href: isDialedVoiceCall(call.status) ? `/voice/c/${call.conversation_id || call.id}` : undefined,
+  }));
 
   const kpis = [
     { label: "Calls", value: String(calls.length), sub: calls.length === 1 ? "conversation" : "conversations", icon: PhoneCall },
@@ -223,18 +244,30 @@ export default async function VoiceContactPage({
       {/* Graphs — how this contact's calls are trending */}
       {hasAnalytics && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card className="flex flex-col">
-            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
-              <BarChart3 size={16} strokeWidth={1.9} className="text-blue-primary" />
-              How {firstName}&apos;s calls ended
-            </h2>
-            <p className="text-[12px] text-text-tertiary mb-3">
-              Every finished call with {firstName}, by outcome.
-            </p>
+          <ChartInspector
+            title={`How ${firstName}'s calls ended`}
+            description={`Every finished call with ${firstName}, by outcome.`}
+            records={callRecords}
+            searchPlaceholder="Search calls..."
+            expandedChildren={
+              <div className="flex items-center justify-center gap-10 py-4">
+                <DonutChart segments={outcomeSegments} size={280} thickness={28} />
+                <div className="space-y-3 text-[14px]">
+                  {outcomeSegments.map((segment) => (
+                    <p key={segment.label} className="flex items-center gap-2.5">
+                      <span className="h-3 w-3 rounded-full" style={{ background: segment.color }} />
+                      <span className="min-w-[100px] text-text-secondary">{segment.label}</span>
+                      <span className="font-bold text-text-primary tnum">{segment.value}</span>
+                    </p>
+                  ))}
+                </div>
+              </div>
+            }
+          >
             <div className="flex-1 flex items-center gap-5">
               <div className="relative shrink-0" style={{ width: 120, height: 120 }}>
                 <DonutChart segments={outcomeSegments} size={120} thickness={12} />
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-[24px] font-bold leading-none tnum text-text-primary">
                     {finished.length}
                   </span>
@@ -251,15 +284,15 @@ export default async function VoiceContactPage({
                 ))}
               </div>
             </div>
-          </Card>
+          </ChartInspector>
 
-          <Card className="flex flex-col">
-            <h2 className="text-[15px] font-semibold text-text-primary mb-1">
-              Talk time per call
-            </h2>
-            <p className="text-[12px] text-text-tertiary mb-3">
-              How long each conversation ran, oldest to newest.
-            </p>
+          <ChartInspector
+            title="Talk time per call"
+            description="How long each conversation ran, oldest to newest."
+            records={callRecords}
+            searchPlaceholder="Search calls..."
+            expandedChildren={talkBars.length > 0 ? <BarChart data={talkBars} height={390} format="duration" /> : null}
+          >
             <div className="flex-1 flex items-end">
               {talkBars.length > 0 ? (
                 <BarChart data={talkBars} height={150} format="duration" />
@@ -267,7 +300,7 @@ export default async function VoiceContactPage({
                 <p className="text-[13px] text-text-secondary">No answered calls yet.</p>
               )}
             </div>
-          </Card>
+          </ChartInspector>
         </div>
       )}
 

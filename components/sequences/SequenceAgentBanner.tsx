@@ -58,20 +58,20 @@ export function SequenceAgentBanner({
   }
 
   return (
-    <div className="rounded-2xl border border-blue-subtle bg-blue-light/50 p-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="rounded-lg border border-border-light bg-white px-4 py-3 flex items-center justify-between gap-4 shadow-[inset_3px_0_0_#0071E3]">
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
-          <Sparkles size={16} strokeWidth={1.9} />
+        <span className="w-8 h-8 rounded-md bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+          <Sparkles size={15} strokeWidth={1.9} />
         </span>
         <div className="min-w-0">
           <p className="text-[14px] font-semibold text-text-primary">
             {pending
-              ? `${candidateCount} to enroll · ${dueCount} due to advance`
+              ? `${candidateCount} stalled account${candidateCount === 1 ? "" : "s"} · ${dueCount} touch${dueCount === 1 ? "" : "es"} due`
               : `${sequenceName} is up to date`}
           </p>
           <p className="text-[12px] text-text-secondary">
             {pending
-              ? `One click and the agent sets up the "${sequenceName}" plan — adds the stalled accounts and preps each due step (drafts emails, sets call reminders) for your review. Nothing is sent or dialed.`
+              ? `Prep the next ${sequenceName} touches for review. Nothing sends or dials automatically.`
               : `Nothing pending — the "${sequenceName}" plan is up to date.`}
           </p>
         </div>
@@ -79,7 +79,7 @@ export function SequenceAgentBanner({
       <div className="flex items-center gap-2 shrink-0">
         <Link
           href="/agent"
-          className="hidden sm:inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+          className="inline-flex items-center gap-1 text-[12px] font-semibold text-text-secondary hover:text-blue-primary"
         >
           Open Agent
           <ArrowRight size={13} strokeWidth={1.8} />

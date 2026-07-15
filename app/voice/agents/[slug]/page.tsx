@@ -13,16 +13,18 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
-import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DonutChart, LineChart, Sparkline, VIZ, type TipItem } from "@/components/charts/Charts";
-import { voiceStatus, listVoiceQueue, type VoiceOutcome } from "@/lib/voice";
+import { ChartInspector } from "@/components/charts/ChartInspector";
+import { ContactTalkTimePanel } from "@/components/voice/ContactTalkTimePanel";
+import { voiceStatus, listVoiceQueue, isDialedVoiceCall, voiceCallStatusLabel, type VoiceOutcome } from "@/lib/voice";
 import { listConversations } from "@/lib/elevenlabs";
 import { listOfferings } from "@/lib/offerings";
 import { personaBySlug } from "@/lib/voicePersonas";
 import { getDb } from "@/lib/db";
 import { formatDate, formatDateTime, formatPhone, cn } from "@/lib/utils";
+import { listStoredVoiceConversations, storedVoiceCall } from "@/lib/voiceEvents";
 
 export const metadata = { title: "Voice agent" };
 export const dynamic = "force-dynamic";
@@ -43,9 +45,9 @@ const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer", "
 export default async function VoiceAgentPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const persona = personaBySlug(params.slug);
+  const persona = personaBySlug((await params).slug);
   if (!persona) {
     return (
       <EmptyState
@@ -69,7 +71,21 @@ export default async function VoiceAgentPage({
   const status = voiceStatus();
   const agentId = status.agents[persona.category];
   const line = status.numbers[persona.category];
-  const queue = listVoiceQueue().filter((q) => q.category === persona.category);
+  const queued = listVoiceQueue().filter((q) => q.category === persona.category);
+  const stored = (await listStoredVoiceConversations(100))
+    .filter((call) => call.agent_id === status.agents[persona.category])
+    .map(storedVoiceCall);
+  const storedIds = new Set(
+    stored.flatMap((call) => [call.conversation_id, call.call_sid].filter(Boolean))
+  );
+  const queue = [
+    ...stored,
+    ...queued.filter(
+      (call) =>
+        !storedIds.has(call.conversation_id || "") &&
+        !storedIds.has(call.call_sid || "")
+    ),
+  ];
   const offerings = listOfferings().filter(
     (o) => o.offering_category === persona.category
   );
@@ -86,7 +102,7 @@ export default async function VoiceAgentPage({
     : 0;
   const success = done.filter((c) => c.call_successful === "success").length;
 
-  const called = queue.filter((q) => q.status === "called");
+  const called = queue.filter((q) => isDialedVoiceCall(q.status));
   const waiting = queue.filter((q) => q.status === "waiting_for_number");
   const Icon = persona.icon;
 
@@ -174,13 +190,31 @@ export default async function VoiceAgentPage({
   // Talk time per placed call — WHO was on each call (avatar), not a bare name.
   const talk = called
     .filter((q) => q.duration_secs)
-    .slice(0, 6)
     .map((q) => ({
+      id: q.id,
       name: q.contact_name,
-      first: q.contact_name.replace(/^Dr\.\s*/i, "").split(/\s+/)[0],
+      company: q.company || "Account",
       value: q.duration_secs || 0,
+      outcome: q.outcome ? OUTCOME_META[q.outcome].label : "Completed",
+      createdAt: q.created_at,
+      href: `/voice/c/${q.conversation_id || q.id}`,
     }));
-  const maxTalk = Math.max(...talk.map((t) => t.value), 1);
+  const outcomeRecords = finishedCalls.map((call) => ({
+    id: call.id,
+    label: call.contact_name,
+    meta: `${call.company || "Account"} · ${call.outcome ? OUTCOME_META[call.outcome].label : "Completed"}`,
+    value: call.duration_secs ? fmtLen(call.duration_secs) : "—",
+    href: `/voice/c/${call.conversation_id || call.id}`,
+    avatar: call.contact_name,
+  }));
+  const activityRecords = called.map((call) => ({
+    id: call.id,
+    label: call.contact_name,
+    meta: `${call.company || "Account"} · ${formatDateTime(call.created_at)}`,
+    value: call.outcome ? OUTCOME_META[call.outcome].label : "Queued",
+    href: `/voice/c/${call.id}`,
+    avatar: call.contact_name,
+  }));
 
   // 30-day trajectory sparklines for the KPI cards (real, from this agent's
   // calls). Conversations = per-day count; length + went-well = per-call.
@@ -390,22 +424,35 @@ export default async function VoiceAgentPage({
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Outcome mix */}
-            <Card className="flex flex-col">
-              <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                How calls ended
-              </h3>
-              <p className="text-[12px] text-text-tertiary mb-3">
-                Every finished call, by outcome.
-              </p>
+            <ChartInspector
+              title="How calls ended"
+              description="Every finished call, by outcome."
+              records={outcomeRecords}
+              searchPlaceholder="Find a contact..."
+              expandedChildren={
+                <div className="flex items-center justify-center gap-10 py-4">
+                  <DonutChart segments={outcomeSegments} size={280} thickness={28} />
+                  <div className="space-y-3 text-[14px]">
+                    {outcomeSegments.map((segment) => (
+                      <p key={segment.label} className="flex items-center gap-2.5">
+                        <span className="h-3 w-3 rounded-full" style={{ background: segment.color }} />
+                        <span className="min-w-[100px] text-text-secondary">{segment.label}</span>
+                        <span className="font-bold text-text-primary tnum">{segment.value}</span>
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              }
+            >
               <div className="flex-1 flex items-center gap-5">
                 <div className="relative shrink-0" style={{ width: 120, height: 120 }}>
-                  <DonutChart segments={outcomeSegments} size={120} thickness={12} />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-[24px] font-bold leading-none tnum text-text-primary">
-                      {finishedCalls.length}
-                    </span>
-                    <span className="text-[10px] text-text-tertiary mt-0.5">calls</span>
-                  </div>
+                  <DonutChart
+                    segments={outcomeSegments}
+                    size={120}
+                    thickness={12}
+                    centerLabel={String(finishedCalls.length)}
+                    centerSub="calls"
+                  />
                 </div>
                 <div className="space-y-2 text-[13px]">
                   {outcomeSegments.map((s) => (
@@ -420,7 +467,7 @@ export default async function VoiceAgentPage({
                   ))}
                 </div>
               </div>
-            </Card>
+            </ChartInspector>
 
             {/* Quality */}
             <Card className="flex flex-col">
@@ -458,57 +505,26 @@ export default async function VoiceAgentPage({
             </Card>
 
             {/* Talk time per call — WHO was on each call (photo), not a name */}
-            <Card className="flex flex-col">
-              <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                Talk time by contact
-              </h3>
-              <p className="text-[12px] text-text-tertiary mb-3">
-                How long each person stayed on the call.
-              </p>
-              <div className="flex-1 flex items-stretch justify-center gap-4 min-h-[160px]">
-                {talk.length > 0 ? (
-                  talk.map((t) => (
-                    <div
-                      key={t.name}
-                      className="flex flex-col items-center gap-2 h-full min-w-[52px]"
-                      title={`${t.name} · ${fmtLen(t.value)}`}
-                    >
-                      {/* Bar grows within its own flex region — so the tallest bar
-                          can't push the avatar + name past the card edge (clipping). */}
-                      <div className="flex-1 min-h-0 w-full flex flex-col justify-end items-center gap-1">
-                        <span className="text-[11px] font-semibold text-text-secondary tnum">
-                          {fmtLen(t.value)}
-                        </span>
-                        <div
-                          className="w-8 rounded-t-md"
-                          style={{
-                            height: `${(t.value / maxTalk) * 100}%`,
-                            minHeight: 4,
-                            background: persona.color,
-                          }}
-                        />
-                      </div>
-                      <Avatar name={t.name} className="w-7 h-7 text-[9px] shrink-0" />
-                      <span className="text-[10.5px] text-text-tertiary truncate max-w-[64px] text-center shrink-0">
-                        {t.first}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-[13px] text-text-secondary">No answered calls yet.</p>
-                )}
-              </div>
-            </Card>
+            <ContactTalkTimePanel calls={talk} color={persona.color} />
           </div>
 
           {/* Activity trend */}
-          <Card>
-            <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-              Calls per day
-            </h3>
-            <p className="text-[12px] text-text-tertiary mb-4">
-              {persona.name}&apos;s calling activity over the last two weeks.
-            </p>
+          <ChartInspector
+            title="Calls per day"
+            description={`${persona.name}'s calling activity over the last two weeks.`}
+            records={activityRecords}
+            searchPlaceholder="Find a contact..."
+            expandedChildren={
+              <LineChart
+                series={[{ label: "Calls", color: persona.color, points: perDay }]}
+                xLabels={dayLabels}
+                pointLabels={perDayLabels}
+                pointTips={perDayTips}
+                unit="calls"
+                height={390}
+              />
+            }
+          >
             <LineChart
               series={[{ label: "Calls", color: persona.color, points: perDay }]}
               xLabels={dayLabels}
@@ -517,7 +533,7 @@ export default async function VoiceAgentPage({
               unit="calls"
               height={150}
             />
-          </Card>
+          </ChartInspector>
         </section>
       )}
 
@@ -611,8 +627,8 @@ export default async function VoiceAgentPage({
                     // that call's transcript (Suren). The profile is one hop away
                     // via "View contact" on the transcript.
                     const href =
-                      q.status === "called"
-                        ? `/voice/c/${q.id}`
+                      isDialedVoiceCall(q.status)
+                        ? `/voice/c/${q.conversation_id || q.id}`
                         : `/voice/contact/${q.contact_id}`;
                     return (
                     <tr key={q.id} className="hover:bg-surface transition-colors group">
@@ -640,16 +656,16 @@ export default async function VoiceAgentPage({
                         <span
                           className={cn(
                             "inline-flex text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
-                            q.status === "called"
+                            isDialedVoiceCall(q.status)
                               ? "text-success bg-success/10"
                               : "text-warning bg-warning/10"
                           )}
                         >
-                          {q.status === "called"
+                          {isDialedVoiceCall(q.status)
                             ? q.outcome
                               ? q.outcome.replace("_", "-")
-                              : "Called"
-                            : "Waiting"}
+                              : voiceCallStatusLabel(q.status)
+                            : voiceCallStatusLabel(q.status)}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">

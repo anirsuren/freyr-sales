@@ -234,7 +234,13 @@ export function CustomerCard({
                 points={healthTrend}
                 color={health ? HEALTH_COLOR[health.band].color : undefined}
                 height={40}
-                unit=" pts"
+                unit="pts"
+                label={`${customer.company_name} health`}
+                xLabels={healthTrend.map((_, index) =>
+                  index === healthTrend.length - 1
+                    ? "this week"
+                    : `${healthTrend.length - 1 - index}w ago`
+                )}
                 pointTips={trendTips}
               />
             </div>

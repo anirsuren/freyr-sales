@@ -94,14 +94,14 @@ function Stat({
   );
 }
 
-export default function OfferingsPage() {
+export default async function OfferingsPage() {
   const offerings = listOfferings().map(hydrateOffering) as HydratedOffering[];
   const customerTypes = listCustomerTypes();
   const markets = listMarkets();
   const offeringTypes = listOfferingTypes();
   const offeringCategories = listOfferingCategories();
-  const role = getRole();
-  const admin = role === "admin";
+  const role = await getRole();
+  const canEdit = role === "admin" || role === "editor";
 
   // Repository completeness — useful as Suren rolls this out and has the data entered.
   const mapped = offerings.filter(
@@ -120,8 +120,8 @@ export default function OfferingsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <RoleSwitcher current={role} />
             <OfferingsManageMenu />
-            {admin && <ImportExcel />}
-            {admin && (
+            {canEdit && <ImportExcel />}
+            {canEdit && (
               <NewOfferingButton
                 customerTypes={customerTypes}
                 markets={markets}

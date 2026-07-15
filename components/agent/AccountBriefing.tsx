@@ -43,11 +43,7 @@ export function AccountBriefing({ context }: { context: AccountContext }) {
   }, [context.company, context.healthScore, context.topAction]);
 
   useEffect(() => {
-    let alive = true;
     load().catch(() => {});
-    return () => {
-      alive = false;
-    };
   }, [load]);
 
   async function copy() {

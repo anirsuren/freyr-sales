@@ -29,9 +29,13 @@ export default async function CampaignsPage() {
         }))}
         contacts={contacts.map((c) => ({
           id: c.id,
+          customerId: c.customer_id,
           name: c.full_name,
+          title: c.job_title || "",
+          role: c.role_bucket || "Other",
           email: c.email || "",
           company: companyById.get(c.customer_id) || "",
+          industry: customers.find((customer) => customer.id === c.customer_id)?.industry || "Other",
         }))}
       />
     </div>

@@ -7,12 +7,12 @@ import {
   listMarkets,
   listOfferings,
 } from "@/lib/offerings";
-import { isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Customer types & markets" };
 
-export default function CustomerTypesPage() {
+export default async function CustomerTypesPage() {
   // How many offerings are mapped to each customer type / market — lets the
   // definitions page link straight to "the offerings for this type".
   const offerings = listOfferings();
@@ -42,7 +42,7 @@ export default function CustomerTypesPage() {
         markets={listMarkets()}
         typeCounts={typeCounts}
         marketCounts={marketCounts}
-        canEdit={isAdmin()}
+        canEdit={await canManageOfferings()}
       />
     </div>
   );

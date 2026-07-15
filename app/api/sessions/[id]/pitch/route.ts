@@ -9,12 +9,12 @@ export const dynamic = "force-dynamic";
 // Each save is also snapshotted into the session's version history.
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const body = await req.json().catch(() => ({}));
   const db = getDb();
 
-  const session = await db.pitchSessions.get(params.id);
+  const session = await db.pitchSessions.get((await params).id);
   if (!session)
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
@@ -42,7 +42,7 @@ export async function PATCH(
     "manual"
   );
 
-  const updated = await db.pitchSessions.update(params.id, patch);
+  const updated = await db.pitchSessions.update((await params).id, patch);
   if (!updated)
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   return NextResponse.json({ ok: true, versions: patch.pitch_versions });

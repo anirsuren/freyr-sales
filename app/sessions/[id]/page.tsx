@@ -15,10 +15,10 @@ export const dynamic = "force-dynamic";
 export default async function SessionPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const db = getDb();
-  const session = await db.pitchSessions.get(params.id);
+  const session = await db.pitchSessions.get((await params).id);
 
   if (!session) {
     return (

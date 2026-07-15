@@ -1,0 +1,52 @@
+trigger:
+  branches:
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+  - stage: Verify
+    jobs:
+      - job: Quality
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+          - script: npm ci
+            displayName: Install locked dependencies
+          - script: npm run typecheck
+            displayName: Type check
+          - script: npm run lint
+            displayName: Lint
+          - script: npm audit --omit=dev --audit-level=high
+            displayName: Production dependency audit
+          - script: npm run build
+            displayName: Production build
+          - script: npx playwright install --with-deps chromium
+            displayName: Install browser
+          - script: npm run test:smoke
+            displayName: Smoke tests
+
+  - stage: Container
+    dependsOn: Verify
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: BuildImage
+        steps:
+          - task: Docker@2
+            displayName: Build and push immutable image
+            inputs:
+              containerRegistry: $(AWS_ECR_DOCKER_SERVICE_CONNECTION)
+              repository: freyr-sales
+              command: buildAndPush
+              Dockerfile: Dockerfile
+              tags: |
+                $(Build.SourceVersion)

@@ -4,7 +4,6 @@ import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
 import { HealthBadge } from "@/components/ui/HealthBadge";
-import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { NewSessionButton } from "@/components/sessions/NewSessionButton";
@@ -25,10 +24,11 @@ export const dynamic = "force-dynamic";
 export default async function CustomerDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const id = (await params).id;
   const db = getDb();
-  const customer = await db.customers.get(params.id);
+  const customer = await db.customers.get(id);
 
   if (!customer) {
     return (
@@ -50,11 +50,11 @@ export default async function CustomerDetailPage({
     );
   }
 
-  const contacts = await db.contacts.list(params.id);
-  const interactions = await db.interactions.list(params.id);
-  const sessions = await db.pitchSessions.list(params.id);
+  const contacts = await db.contacts.list(id);
+  const interactions = await db.interactions.list(id);
+  const sessions = await db.pitchSessions.list(id);
   const allRuns = await db.agentRuns.list();
-  const agentRuns = allRuns.filter((r) => r.customer_id === params.id);
+  const agentRuns = allRuns.filter((r) => r.customer_id === id);
 
   // Account health for the header — the most important signal, so it's visible
   // the moment you land (matches the customers list cards).

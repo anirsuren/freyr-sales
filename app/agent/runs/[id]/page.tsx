@@ -22,7 +22,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { RunDetailActions } from "@/components/agent/RunDetailActions";
-import { cn, formatDateTime } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import type { AgentRun, AgentStepStatus, Interaction } from "@/lib/types";
 
 export const metadata = { title: "Agent run" };
@@ -63,10 +64,10 @@ function StepIcon({ status }: { status: AgentStepStatus }) {
 export default async function AgentRunDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const db = getDb();
-  const run = await db.agentRuns.get(params.id);
+  const run = await db.agentRuns.get((await params).id);
   if (!run) notFound();
 
   // Only pull the activity log when the run actually wrote entries (#52).

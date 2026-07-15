@@ -10,6 +10,7 @@ import {
   type ElConversation,
   type ElConversationDetail,
 } from "./elevenlabs";
+import { ingestElevenLabsConversation } from "./voiceEvents";
 
 export interface ConvoMatch {
   contactId: string;
@@ -20,7 +21,6 @@ export interface ConvoMatch {
 }
 
 interface SyncState {
-  logged: Set<string>; // conversation_ids already written to a timeline
   details: Map<string, ElConversationDetail | null>; // detail fetch cache
   matches: Map<string, ConvoMatch | null>;
 }
@@ -29,7 +29,6 @@ function state(): SyncState {
   const g = globalThis as typeof globalThis & { __freyrVoiceSync?: SyncState };
   if (!g.__freyrVoiceSync)
     g.__freyrVoiceSync = {
-      logged: new Set(),
       details: new Map(),
       matches: new Map(),
     };
@@ -92,25 +91,9 @@ export async function syncConversations(
       st.matches.set(id, match);
       out[id] = match;
 
-      // Store it on the account — once, and only for finished calls.
-      if (convo.status === "done" && !st.logged.has(id)) {
-        st.logged.add(id);
-        const summary = detail?.analysis?.transcript_summary;
-        await db.interactions.create({
-          pitch_session_id: null,
-          customer_id: contact.customer_id,
-          contact_id: contact.id,
-          outcome:
-            detail?.analysis?.call_successful === "failure"
-              ? "ai_call_failed"
-              : "ai_call_completed",
-          notes: `📞 AI voice call with ${contact.full_name}${
-            summary ? ` — ${summary.slice(0, 240)}` : ""
-          } (transcript: /voice/c/${id})`,
-          follow_up_date: null,
-          logged_by: "Freyr Voice Agent",
-        });
-      }
+      // Durable ingestion handles lifecycle, transcript storage, and a
+      // deterministic interaction id so webhook/API retries cannot duplicate it.
+      if (detail) await ingestElevenLabsConversation(detail);
     }
   } catch {
     // Live sync must never take the page down.

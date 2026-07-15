@@ -18,10 +18,10 @@ import { SizeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton } from "@/components/ui/BackButton";
 import { DonutChart, DonutLegend, BarChart, AreaChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { ChartInspector, type ChartRecord } from "@/components/charts/ChartInspector";
 import {
   buildDeals,
   buildRepStats,
-  OPEN_STAGES,
   STAGE_COLOR,
   STAGE_PROBABILITY,
   SALES_TEAM,
@@ -51,9 +51,10 @@ function hash(s: string): number {
 export default async function RepPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const name = SALES_TEAM.find((r) => slugify(r) === params.slug);
+  const slug = (await params).slug;
+  const name = SALES_TEAM.find((r) => slugify(r) === slug);
   if (!name) {
     return (
       <EmptyState
@@ -203,9 +204,8 @@ export default async function RepPage({
   const byAccount = new Map<string, number>();
   for (const d of myDeals.filter((d) => d.stage !== "Closed Lost"))
     byAccount.set(d.company, (byAccount.get(d.company) || 0) + d.value);
-  const topAccounts = Array.from(byAccount.entries())
+  const rankedAccounts = Array.from(byAccount.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
     .map(([company, value], i) => ({
       label: company,
       value,
@@ -220,14 +220,28 @@ export default async function RepPage({
           value: formatMoney(d.value),
         })),
     }));
+  const topAccounts = rankedAccounts.slice(0, 5);
+  const accountRecords: ChartRecord[] = rankedAccounts.map((account) => {
+    const deal = myDeals.find(
+      (candidate) =>
+        candidate.company === account.label && candidate.stage !== "Closed Lost"
+    );
+    return {
+      id: deal?.customerId || account.label,
+      label: account.label,
+      meta: deal ? `${deal.contactName} · ${deal.stage}` : "Open account",
+      value: formatMoney(account.value),
+      href: deal ? `/customers/${deal.customerId}` : undefined,
+      logo: account.label,
+    };
+  });
 
   // Going quiet — the rep's open deals ranked by days since the last touch,
   // coloured by stage. The agent-lens partner to "biggest accounts": the left
   // chart says where the money is, this one says what needs a touch TODAY.
-  const goingQuiet = [...myDeals]
+  const quietDeals = [...myDeals]
     .filter((d) => d.stage !== "Closed Lost")
     .sort((a, b) => b.staleDays - a.staleDays)
-    .slice(0, 5)
     .map((d) => ({
       label: d.company,
       value: d.staleDays,
@@ -240,6 +254,18 @@ export default async function RepPage({
           value: ago(d.staleDays),
         },
       ],
+    }));
+  const goingQuiet = quietDeals.slice(0, 5);
+  const quietRecords: ChartRecord[] = [...myDeals]
+    .filter((deal) => deal.stage !== "Closed Lost")
+    .sort((a, b) => b.staleDays - a.staleDays)
+    .map((deal) => ({
+      id: deal.sessionId,
+      label: deal.company,
+      meta: `${deal.contactName} · ${deal.stage}`,
+      value: ago(deal.staleDays),
+      href: `/customers/${deal.customerId}`,
+      avatar: deal.contactName,
     }));
 
   const sortedDeals = [...myDeals].sort((a, b) => b.value - a.value);
@@ -381,22 +407,36 @@ export default async function RepPage({
           side: where's the money, and what needs a touch today (Suren: "if you
           were a Freyr sales agent, what would you need to see?"). */}
       {topAccounts.length > 0 && (
-        <Card>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
-            <div>
-              <h2 className="text-[15px] font-semibold text-text-primary mb-1">Biggest accounts</h2>
-              <p className="text-[12px] text-text-tertiary mb-4">Where the open value is concentrated.</p>
-              <BarChart data={topAccounts} height={150} format="money" />
-            </div>
-            <div className="lg:border-l lg:border-border-light lg:pl-10">
-              <h2 className="text-[15px] font-semibold text-text-primary mb-1">Going quiet</h2>
-              <p className="text-[12px] text-text-tertiary mb-4">
-                Days since the last touch — tallest bar needs a call first. Colored by stage.
-              </p>
-              <BarChart data={goingQuiet} height={150} unit="days" />
-            </div>
-          </div>
-        </Card>
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ChartInspector
+            title="Biggest accounts"
+            description="Where the open value is concentrated."
+            records={accountRecords}
+            searchPlaceholder="Find an account..."
+            className="h-full"
+            expandedChildren={
+              <BarChart
+                data={rankedAccounts.slice(0, 12)}
+                height={390}
+                format="money"
+              />
+            }
+          >
+            <BarChart data={topAccounts} height={150} format="money" />
+          </ChartInspector>
+          <ChartInspector
+            title="Going quiet"
+            description="Days since the last touch. Tallest bar needs a call first."
+            records={quietRecords}
+            searchPlaceholder="Find an account or contact..."
+            className="h-full"
+            expandedChildren={
+              <BarChart data={quietDeals.slice(0, 12)} height={390} unit="days" />
+            }
+          >
+            <BarChart data={goingQuiet} height={150} unit="days" />
+          </ChartInspector>
+        </section>
       )}
 
       {/* Deals table — real reps only */}
@@ -428,15 +468,22 @@ export default async function RepPage({
                   return (
                     <tr key={d.sessionId} className="hover:bg-surface transition-colors group">
                       <td className="px-5 py-3">
-                        <Link href={`/deals/${d.sessionId}`} className="flex items-center gap-2.5">
+                        <Link href={`/customers/${d.customerId}`} className="group/account flex items-center gap-2.5">
                           <CompanyLogo name={d.company} className="w-7 h-7 text-[10px]" />
-                          <span className="text-[13px] font-semibold text-text-primary group-hover:text-blue-primary">
+                          <span className="text-[13px] font-semibold text-text-primary group-hover/account:text-blue-primary">
                             {d.company}
                           </span>
                           <SizeBadge tier={d.sizeTier} />
                         </Link>
                       </td>
-                      <td className="px-5 py-3 text-[13px] text-text-secondary whitespace-nowrap">{d.contactName}</td>
+                      <td className="px-5 py-3 text-[13px] whitespace-nowrap">
+                        <Link
+                          href={`/contacts/${d.contactId}`}
+                          className="text-text-secondary hover:text-blue-primary"
+                        >
+                          {d.contactName}
+                        </Link>
+                      </td>
                       <td className="px-5 py-3 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary">
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: STAGE_COLOR[d.stage] }} />

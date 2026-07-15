@@ -11,6 +11,7 @@ import {
   Contact,
   UsersRound,
   Settings,
+  Rocket,
   Plus,
   Activity,
   ChartColumnBig,
@@ -29,7 +30,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
-import { RELEASE_MODE, HOME_PATH, isReleased } from "@/lib/release";
+import type { DataMode } from "@/lib/dataMode";
+import { getHomePath, isOfferingsOnly, isReleased } from "@/lib/release";
 
 // One flat, scannable list — no section headers, no scrolling. Reference/tool
 // pages (Knowledge base, Service catalog, Recordings) live in the account menu;
@@ -59,8 +61,6 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
 
 // Release gating (Suren): the first Freyr rollout shows ONLY production-ready
 // modules — everything else stays hidden until it's released.
-const NAV_ITEMS = ALL_NAV_ITEMS.filter((i) => isReleased(i.href));
-
 const COLLAPSE_KEY = "freyr.sidebar.collapsed";
 
 // Every page must light up a sidebar section so you always know where you are
@@ -80,13 +80,17 @@ function isActive(pathname: string, href: string) {
 }
 
 export function Sidebar({
+  dataMode,
   mobileOpen = false,
   onMobileClose,
 }: {
+  dataMode: DataMode;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
-} = {}) {
+}) {
   const pathname = usePathname() || "";
+  const offeringsOnly = isOfferingsOnly(dataMode);
+  const navItems = ALL_NAV_ITEMS.filter((item) => isReleased(item.href, dataMode));
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
@@ -101,6 +105,7 @@ export function Sidebar({
   // live count of everything needing the rep — approvals + sent-back reworks
   // (V9 agent inbox badge, #69)
   useEffect(() => {
+    if (offeringsOnly) return;
     let alive = true;
     fetch("/api/agent/inbox")
       .then((r) => r.json())
@@ -112,7 +117,7 @@ export function Sidebar({
     return () => {
       alive = false;
     };
-  }, [pathname]);
+  }, [offeringsOnly, pathname]);
 
   function toggle() {
     setCollapsed((c) => {
@@ -178,7 +183,7 @@ export function Sidebar({
           collapsed ? "px-0 flex-col gap-3" : "px-6 justify-between"
         )}
       >
-        <Link href={HOME_PATH} className="flex items-center gap-2.5" title="Freyr">
+        <Link href={getHomePath(dataMode)} className="flex items-center gap-2.5" title="Freyr">
           <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
             <Activity size={18} strokeWidth={2.25} />
           </span>
@@ -207,7 +212,7 @@ export function Sidebar({
       </div>
 
       {/* New Session CTA — hidden in the offerings-only rollout (intake isn't released) */}
-      {RELEASE_MODE === "all" && (
+      {!offeringsOnly && (
       <div className={cn("mb-5", collapsed ? "px-3" : "px-4")}>
         <button
           onClick={() => router.push("/intake")}
@@ -225,11 +230,27 @@ export function Sidebar({
 
       {/* Nav */}
       <nav aria-label="Primary" className="flex-1 px-3 overflow-y-auto">
-        <div className="space-y-0.5">{NAV_ITEMS.map(navLink)}</div>
+        <div className="space-y-0.5">{navItems.map(navLink)}</div>
       </nav>
 
       {/* Footer: settings + profile */}
       <div className="mt-auto px-3 pt-4 border-t border-border-light space-y-0.5">
+        {!offeringsOnly && (
+        <Link
+          href="/onboarding"
+          title={collapsed ? "Get started" : undefined}
+          className={cn(
+            "flex items-center gap-3 py-2 rounded-md text-[14px] border-l-[3px] transition-colors",
+            collapsed ? "justify-center px-0" : "pl-3 pr-3",
+            isActive(pathname, "/onboarding")
+              ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
+              : "border-transparent text-text-secondary hover:bg-surface"
+          )}
+        >
+          <Rocket size={20} strokeWidth={1.5} className="shrink-0" />
+          {!collapsed && "Get started"}
+        </Link>
+        )}
         <Link
           href="/settings"
           title={collapsed ? "Settings" : undefined}
@@ -244,6 +265,7 @@ export function Sidebar({
           <Settings size={20} strokeWidth={1.5} className="shrink-0" />
           {!collapsed && "Settings"}
         </Link>
+        {!offeringsOnly && (
         <Link
           href="/settings?tab=profile"
           title={collapsed ? "Suren Dheen — profile" : undefined}
@@ -260,6 +282,7 @@ export function Sidebar({
             </div>
           )}
         </Link>
+        )}
       </div>
     </aside>
   );

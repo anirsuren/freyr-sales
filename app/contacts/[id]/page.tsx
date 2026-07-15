@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   Mail,
   Phone,
-  ExternalLink,
   Clock,
   CalendarClock,
   Users,
@@ -75,10 +74,11 @@ function relDaysLabel(dateStr: string | null, mode: "past" | "future"): string |
 export default async function ContactDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const id = (await params).id;
   const db = getDb();
-  const contact = await db.contacts.get(params.id);
+  const contact = await db.contacts.get(id);
 
   if (!contact) {
     return (
@@ -101,10 +101,10 @@ export default async function ContactDetailPage({
   }
 
   const customer = await db.customers.get(contact.customer_id);
-  const sessions = await db.pitchSessions.list(undefined, params.id);
-  const interactions = await db.interactions.list(undefined, params.id);
+  const sessions = await db.pitchSessions.list(undefined, id);
+  const interactions = await db.interactions.list(undefined, id);
   const siblings = customer
-    ? (await db.contacts.list(customer.id)).filter((c) => c.id !== params.id)
+    ? (await db.contacts.list(customer.id)).filter((c) => c.id !== id)
     : [];
 
   const linkedin = contact.raw_linkedin_data || {};

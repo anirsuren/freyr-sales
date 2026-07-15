@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Phone, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
+import { Phone, ArrowRight, LayoutGrid, Table2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -16,7 +16,7 @@ import {
   Sparkline,
   VIZ,
 } from "@/components/charts/Charts";
-import { formatMoney } from "@/lib/pipeline";
+import { formatMoney, STAGE_PROBABILITY, type Stage } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
 
 export type RosterRep = {
@@ -34,7 +34,7 @@ export type RosterRep = {
   quota: number;
   wonFY: number;
   trend: number[];
-  stageValues: { stage: string; color: string; value: number }[];
+  stageValues: { stage: string; color: string; value: number; count: number }[];
   // The actual deals sitting in each stage — so a hovered slice / row shows the
   // real company + contact + value behind the number, not just the aggregate.
   stageDeals?: Record<string, { company: string; contact: string; value: number }[]>;
@@ -137,6 +137,261 @@ function TripleStat({ rep }: { rep: RosterRep }) {
         </div>
       ))}
     </div>
+  );
+}
+
+const STAGE_DETAIL: Record<string, string> = {
+  Prospect: "Early-stage account with no meaningful two-way engagement yet.",
+  Engaged: "The account is responding and an active sales conversation has started.",
+  Qualified: "Need, relevance, and buying potential have been confirmed.",
+  "Meeting Booked": "A concrete sales meeting is scheduled with the account.",
+};
+
+function PipelineInspector({
+  rep,
+  focusedStage,
+}: {
+  rep: RosterRep;
+  focusedStage: string | null;
+}) {
+  const total = rep.stageValues.reduce((sum, stage) => sum + stage.value, 0) || 1;
+  const coverage = rep.quota ? Math.round((rep.openValue / rep.quota) * 100) : 0;
+  const weightedRate = rep.openValue ? Math.round((rep.weighted / rep.openValue) * 100) : 0;
+  const selected = rep.stageValues.find((stage) => stage.stage === focusedStage) || null;
+  const deals = selected
+    ? rep.stageDeals?.[selected.stage] ?? []
+    : topOpenDeals(rep, 5);
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-4 border-b border-border-light pb-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            {selected ? `${selected.stage} pipeline` : "Open pipeline composition"}
+          </p>
+          <h3 className="mt-1 text-[16px] font-semibold text-text-primary">{rep.name}</h3>
+          <p className="mt-0.5 text-[11.5px] text-text-tertiary">
+            {selected
+              ? STAGE_DETAIL[selected.stage]
+              : `${rep.openCount} open deals distributed across the active sales stages.`}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[22px] font-bold leading-none text-text-primary tnum">
+            {formatMoney(selected?.value ?? rep.openValue)}
+          </p>
+          <p className="mt-1 text-[10.5px] text-text-tertiary">
+            {selected
+              ? `${Math.round((selected.value / total) * 100)}% of ${formatMoney(rep.openValue)}`
+              : "total open value"}
+          </p>
+        </div>
+      </div>
+
+      <div className="my-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface/55 px-2 py-2">
+        {[
+          { label: "Weighted forecast", value: formatMoney(rep.weighted), detail: `${weightedRate}% of open value` },
+          { label: "Quota coverage", value: `${coverage}%`, detail: `${formatMoney(rep.quota)} annual quota` },
+          { label: "Average deal", value: formatMoney(rep.openValue / Math.max(rep.openCount, 1)), detail: `${rep.openCount} open deals` },
+        ].map((stat) => (
+          <div key={stat.label} className="px-2">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">{stat.label}</p>
+            <p className="mt-1 text-[15px] font-bold text-text-primary tnum">{stat.value}</p>
+            <p className="mt-0.5 text-[10px] text-text-tertiary">{stat.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="overflow-hidden rounded-md border border-border-light">
+        <div className="grid grid-cols-[minmax(0,1fr)_78px_66px_76px] gap-2 bg-surface/60 px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+          <span>Stage and share</span><span className="text-right">Value</span><span className="text-right">Win odds</span><span className="text-right">Weighted</span>
+        </div>
+        {rep.stageValues.filter((stage) => stage.value > 0).map((stage) => {
+          const probability = STAGE_PROBABILITY[stage.stage as Stage] || 0;
+          const isFocused = selected?.stage === stage.stage;
+          const share = Math.round((stage.value / total) * 100);
+          return (
+            <div
+              key={stage.stage}
+              className={cn(
+                "grid grid-cols-[minmax(0,1fr)_78px_66px_76px] items-center gap-2 border-t border-border-light px-3 py-2.5 transition-colors",
+                isFocused && "bg-blue-light/35"
+              )}
+            >
+              <div className="min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2 text-[11.5px] font-semibold text-text-primary">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: stage.color }} />
+                    <span className="truncate">{stage.stage}</span>
+                    <span className="shrink-0 font-normal text-text-tertiary">{stage.count} {stage.count === 1 ? "deal" : "deals"}</span>
+                  </span>
+                  <span className="text-[10.5px] text-text-tertiary tnum">{share}%</span>
+                </div>
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-surface">
+                  <div className="h-full rounded-full" style={{ width: `${share}%`, background: stage.color }} />
+                </div>
+              </div>
+              <span className="text-right text-[11.5px] font-semibold text-text-primary tnum">{formatMoney(stage.value)}</span>
+              <span className="text-right text-[11px] text-text-secondary tnum">{Math.round(probability * 100)}%</span>
+              <span className="text-right text-[11px] text-text-secondary tnum">{formatMoney(stage.value * probability)}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-2.5 border-t border-border-light pt-2.5">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+            {selected ? `Deals in ${selected.stage}` : "Largest open deals"}
+          </p>
+          {selected && <span className="text-[10px] text-text-tertiary">{selected.count} total</span>}
+        </div>
+        {deals.length ? (
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+            {deals.slice(0, 4).map((deal, index) => (
+              <div key={`${deal.company}-${deal.contact}-${index}`} className="flex items-center gap-2 rounded-md bg-surface/60 px-2 py-1.5">
+                <CompanyLogo name={deal.company} className="h-6 w-6 shrink-0 text-[7px]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[11px] font-semibold text-text-primary">{deal.company}</span>
+                  <span className="block truncate text-[9.5px] text-text-tertiary">{deal.contact}</span>
+                </span>
+                <span className="shrink-0 text-[10.5px] font-semibold text-text-secondary tnum">{formatMoney(deal.value)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-1.5 rounded-md bg-surface/60 px-3 py-2 text-[11px] text-text-tertiary">No deal-level records in this stage.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PipelineBarInspector({ rep }: { rep: RosterRep }) {
+  const [focusedStage, setFocusedStage] = useState<string | null>(null);
+  const total = rep.stageValues.reduce((sum, stage) => sum + stage.value, 0) || 1;
+  return (
+    <HoverCard
+      side="top"
+      width={430}
+      delayMs={0}
+      className="w-[200px]"
+      content={<PipelineInspector rep={rep} focusedStage={focusedStage} />}
+    >
+      <div
+        className="group flex h-5 items-center rounded-full cursor-help"
+        aria-label={`${rep.name} open pipeline: ${formatMoney(rep.openValue)}`}
+      >
+        <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface transition-all duration-200 group-hover:h-4 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.14)]">
+          {rep.stageValues.filter((stage) => stage.value > 0).map((stage) => (
+            <button
+              key={stage.stage}
+              type="button"
+              aria-label={`${stage.stage}: ${formatMoney(stage.value)}, ${Math.round((stage.value / total) * 100)}% of pipeline`}
+              onMouseEnter={() => setFocusedStage(stage.stage)}
+              onFocus={() => setFocusedStage(stage.stage)}
+              className="h-full border-0 transition-[filter,box-shadow] hover:z-10 hover:brightness-110 hover:shadow-[inset_0_0_0_2px_rgba(255,255,255,0.8)] focus:z-10 focus:outline-none focus:shadow-[inset_0_0_0_2px_white]"
+              style={{ width: `${(stage.value / total) * 100}%`, background: stage.color }}
+            />
+          ))}
+        </div>
+      </div>
+    </HoverCard>
+  );
+}
+
+function ActivityInspector({ rep }: { rep: RosterRep }) {
+  const total = rep.trend.reduce((sum, value) => sum + value, 0);
+  const latest = rep.trend[rep.trend.length - 1] || 0;
+  const previous = rep.trend[rep.trend.length - 2] || 0;
+  const change = latest - previous;
+  const average = rep.trend.length ? total / rep.trend.length : 0;
+  const peak = Math.max(...rep.trend, 0);
+  const max = Math.max(peak, 1);
+  const MomentumIcon = change > 0 ? TrendingUp : change < 0 ? TrendingDown : Minus;
+  const momentumColor = change > 0 ? "#1A7A35" : change < 0 ? "#B02020" : "#6E6E73";
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-4 border-b border-border-light pb-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Sales activity · last 10 weeks</p>
+          <h3 className="mt-1 text-[16px] font-semibold text-text-primary">{rep.name}</h3>
+          <p className="mt-0.5 text-[11.5px] text-text-tertiary">Logged calls, emails, meetings, and account touches by week.</p>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5" style={{ color: momentumColor, background: `${momentumColor}12` }}>
+          <MomentumIcon size={14} />
+          <span className="text-[11px] font-semibold tnum">{change > 0 ? "+" : ""}{change} vs last week</span>
+        </div>
+      </div>
+
+      <div className="my-3 grid grid-cols-4 gap-2">
+        {[
+          { label: "This week", value: String(latest), detail: "touches logged" },
+          { label: "10-week total", value: String(total), detail: "all activity" },
+          { label: "Weekly average", value: average.toFixed(1), detail: "touches per week" },
+          { label: "Peak week", value: String(peak), detail: "highest volume" },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-md border border-border-light bg-surface/55 px-2.5 py-2.5">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">{stat.label}</p>
+            <p className="mt-1 text-[16px] font-bold text-text-primary tnum">{stat.value}</p>
+            <p className="mt-0.5 text-[9.5px] text-text-tertiary">{stat.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-md border border-border-light bg-surface/25 px-3 pb-2.5 pt-3">
+        <div className="flex h-[128px] items-end gap-2">
+          {rep.trend.map((value, index) => {
+            const current = index === rep.trend.length - 1;
+            return (
+              <div key={index} className="flex h-full min-w-0 flex-1 flex-col justify-end text-center">
+                <span className="mb-1 text-[10px] font-semibold text-text-secondary tnum">{value}</span>
+                <div
+                  className={cn("mx-auto w-full max-w-[30px] rounded-t transition-all", current ? "bg-blue-primary" : "bg-blue-primary/45")}
+                  style={{ height: `${Math.max(8, (value / max) * 86)}px` }}
+                />
+                <span className={cn("mt-1.5 whitespace-nowrap text-[8.5px]", current ? "font-semibold text-blue-primary" : "text-text-tertiary")}>
+                  {current ? "Now" : `${rep.trend.length - 1 - index}w`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <p className="mt-2.5 text-[10.5px] leading-relaxed text-text-tertiary">
+        {latest > average
+          ? `Current activity is ${(latest - average).toFixed(1)} touches above ${rep.name.split(" ")[0]}'s ten-week average.`
+          : latest < average
+          ? `Current activity is ${(average - latest).toFixed(1)} touches below ${rep.name.split(" ")[0]}'s ten-week average.`
+          : "Current activity is exactly in line with the ten-week average."}
+      </p>
+    </div>
+  );
+}
+
+function ActivityTrendInspector({ rep }: { rep: RosterRep }) {
+  return (
+    <HoverCard side="top" width={380} delayMs={0} content={<ActivityInspector rep={rep} />}>
+      <div
+        className="group w-[100px] cursor-help rounded-md p-1 transition-all hover:bg-blue-light/45 hover:shadow-[0_3px_10px_rgba(10,115,232,0.12)]"
+        aria-label={`${rep.name} activity over the last 10 weeks`}
+        tabIndex={0}
+      >
+        <div className="transition-transform duration-200 group-hover:scale-[1.04]">
+          <Sparkline
+            points={rep.trend}
+            color={VIZ.blue}
+            height={30}
+            unit="touches"
+            label={`${rep.name} activity`}
+            xLabels={rep.trend.map((_, index) =>
+              index === rep.trend.length - 1 ? "this week" : `${rep.trend.length - 1 - index}w ago`
+            )}
+          />
+        </div>
+      </div>
+    </HoverCard>
   );
 }
 
@@ -284,6 +539,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                       color={VIZ.blue}
                       height={38}
                       unit="touches"
+                      label={`${r.name} activity`}
                       xLabels={r.trend.map((_, i) =>
                         i === r.trend.length - 1 ? "this week" : `${r.trend.length - 1 - i}w ago`
                       )}
@@ -308,7 +564,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                 <th className="px-5 py-3 text-right">Weighted</th>
                 <th className="px-5 py-3 text-right">Open deals</th>
                 <th className="px-5 py-3 text-right">Meetings</th>
-                <th className="px-5 py-3 w-[120px]">Activity</th>
+                <th className="px-5 py-3 w-[120px]">Activity · 10w</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -328,7 +584,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         // share bars (Suren: "the bars are bleeding"). Left =
                         // the mix + headline stats, right = the deals + whether
                         // they're actually working them (activity trend).
-                        width={620}
+                        width={460}
                         content={
                           <div>
                             <div className="flex items-center gap-2.5 mb-2.5">
@@ -403,7 +659,17 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                     {r.trend.reduce((s, x) => s + x, 0)} touches
                                   </span>
                                 </div>
-                                <Sparkline points={r.trend} height={34} unit="touches" />
+                                <Sparkline
+                                  points={r.trend}
+                                  height={34}
+                                  unit="touches"
+                                  label={`${r.name} activity`}
+                                  xLabels={r.trend.map((_, index) =>
+                                    index === r.trend.length - 1
+                                      ? "this week"
+                                      : `${r.trend.length - 1 - index}w ago`
+                                  )}
+                                />
                               </div>
                             </div>
                             <p className="mt-2.5 pt-2.5 border-t border-border-light text-[11.5px] text-blue-primary font-medium">
@@ -445,19 +711,8 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                       <p className="text-[14px] font-semibold text-text-primary tnum">
                         {formatMoney(r.openValue)}
                       </p>
-                      <div className="mt-1.5 flex h-2.5 rounded-full overflow-hidden bg-surface w-[200px]">
-                        {r.stageValues
-                          .filter((s) => s.value > 0)
-                          .map((s) => {
-                            const total = r.stageValues.reduce((a, v) => a + v.value, 0) || 1;
-                            return (
-                              <span
-                                key={s.stage}
-                                style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
-                                title={`${s.stage} · ${formatMoney(s.value)}`}
-                              />
-                            );
-                          })}
+                      <div className="mt-0.5">
+                        <PipelineBarInspector rep={r} />
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
@@ -470,19 +725,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                       {r.meetings}
                     </td>
                     <td className="px-5 py-3.5">
-                      {/* A per-row activity trend so the table reads as richly as
-                          the grid cards (Suren: "the row view is lacking"). */}
-                      <div className="w-[100px]">
-                        <Sparkline
-                          points={r.trend}
-                          color={VIZ.blue}
-                          height={30}
-                          unit="touches"
-                          xLabels={r.trend.map((_, i) =>
-                            i === r.trend.length - 1 ? "this week" : `${r.trend.length - 1 - i}w ago`
-                          )}
-                        />
-                      </div>
+                      <ActivityTrendInspector rep={r} />
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <Link

@@ -15,7 +15,6 @@ import {
   Download,
   Package,
   Users,
-  UserRound,
   Swords,
   BookOpen,
   Quote,
@@ -25,6 +24,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -420,8 +420,8 @@ export function OfferingsBrowser({
             )}
             {/* Service-delivery POC */}
             {o.poc && (
-              <p className="inline-flex items-center gap-1 text-[11px] text-text-tertiary">
-                <UserRound size={11} strokeWidth={1.8} />
+              <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                <Avatar name={o.poc} className="h-5 w-5 text-[7px]" />
                 POC: {o.poc}
               </p>
             )}

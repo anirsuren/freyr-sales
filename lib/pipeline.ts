@@ -162,11 +162,24 @@ export type RepStat = {
 // Per-rep leaderboard stats — the four real deal-owners use their actual deals;
 // the rest of the roster gets a deterministic synthetic spread. Shared by the
 // Analytics leaderboard AND the Team page so the numbers can never disagree.
-export function buildRepStats(deals: Deal[]): RepStat[] {
-  return SALES_TEAM.map((name): RepStat => {
+export function buildRepStats(
+  deals: Deal[],
+  options: {
+    rangeDays?: number;
+    includeSynthetic?: boolean;
+    actualOwners?: string[];
+  } = {}
+): RepStat[] {
+  const includeSynthetic = options.includeSynthetic !== false;
+  const actualOwners = new Set(options.actualOwners ?? deals.map((d) => d.owner));
+  const roster = includeSynthetic
+    ? SALES_TEAM
+    : Array.from(actualOwners).sort((a, b) => a.localeCompare(b));
+
+  return roster.map((name): RepStat => {
     const rd = deals.filter((d) => d.owner === name);
     const open = rd.filter((d) => d.stage !== "Closed Lost");
-    if (rd.length > 0) {
+    if (rd.length > 0 || actualOwners.has(name)) {
       const openValue = open.reduce((s, d) => s + d.value, 0);
       const weighted = open.reduce(
         (s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0),
@@ -194,21 +207,56 @@ export function buildRepStats(deals: Deal[]): RepStat[] {
       };
     }
     const synth = repForecast(name);
+    // Mock teammates represent a full historical book. Slice that book by the
+    // selected reporting window so 7D / 30D / 90D are real, stable views rather
+    // than four buttons pointing at the same timeless totals.
+    const h = hashName(name);
+    const baseShare =
+      options.rangeDays == null
+        ? 1
+        : options.rangeDays <= 7
+          ? 0.22
+          : options.rangeDays <= 30
+            ? 0.56
+            : 0.84;
+    const jitter = options.rangeDays == null ? 0 : (((h >>> 17) % 9) - 4) / 100;
+    const share = Math.max(0.08, Math.min(1, baseShare + jitter));
+    const visibleOpenValue = Math.max(5000, Math.round((synth.open * share) / 5000) * 5000);
+    const visibleWeighted = Math.max(1000, Math.round((synth.weighted * share) / 1000) * 1000);
+    const visibleDeals = Math.max(1, Math.round(synth.deals * share));
     const baseW = [0.34, 0.28, 0.23, 0.15];
     const offset = name.charCodeAt(0) % OPEN_STAGES.length;
+    const fractions = OPEN_STAGES.map((_, i) => baseW[(i + offset) % baseW.length] ?? 0.2);
+    const counts = fractions.map((fraction) => Math.floor(visibleDeals * fraction));
+    let countRemainder = visibleDeals - counts.reduce((sum, count) => sum + count, 0);
+    for (const index of fractions
+      .map((fraction, index) => ({ fraction, index }))
+      .sort((a, b) => b.fraction - a.fraction)
+      .map((item) => item.index)) {
+      if (countRemainder <= 0) break;
+      counts[index] += 1;
+      countRemainder -= 1;
+    }
+    let allocatedValue = 0;
     const stageValues = OPEN_STAGES.map((stage, i) => {
-      const frac = baseW[(i + offset) % baseW.length] ?? 0.2;
+      const frac = fractions[i];
+      const value =
+        i === OPEN_STAGES.length - 1
+          ? visibleOpenValue - allocatedValue
+          : Math.round(visibleOpenValue * frac);
+      allocatedValue += value;
       return {
         stage,
         color: STAGE_COLOR[stage],
-        value: Math.round(synth.open * frac),
-        count: Math.max(1, Math.round(synth.deals * frac)),
+        value,
+        count: counts[i],
       };
     });
     // Open deals = the true sum of the composition graph; total owned = open +
     // a deterministic count of closed deals so owned is always ≥ open.
     const openCount = stageValues.reduce((a, s) => a + s.count, 0);
-    const closedOwned = 1 + (name.charCodeAt(name.length - 1) % 4);
+    const fullClosedOwned = 1 + (name.charCodeAt(name.length - 1) % 4);
+    const closedOwned = Math.max(0, Math.round(fullClosedOwned * share));
     const qualifiedPlus = stageValues
       .filter((s) => s.stage === "Qualified" || s.stage === "Meeting Booked")
       .reduce((a, s) => a + s.count, 0);
@@ -216,9 +264,9 @@ export function buildRepStats(deals: Deal[]): RepStat[] {
       name,
       deals: openCount + closedOwned,
       openCount,
-      openValue: synth.open,
-      weighted: synth.weighted,
-      avgDeal: Math.round(synth.open / Math.max(openCount, 1)),
+      openValue: visibleOpenValue,
+      weighted: visibleWeighted,
+      avgDeal: Math.round(visibleOpenValue / Math.max(openCount, 1)),
       qualifiedPlus,
       meetings: stageValues.find((s) => s.stage === "Meeting Booked")?.count ?? 0,
       stageValues,
@@ -335,11 +383,10 @@ export function pipelineGrowthSeries(
   return series;
 }
 
-// The WHO behind each point of `pipelineGrowthSeries` — the open deals that came
-// in during each step of the curve, aligned index-for-index with that series so
-// a hover on any point shows the actual deals that built the pipeline up to
-// there (Suren: "every graph has to tell me who"). Uses the identical
-// order-spaced sampling as the series, so bucket i sits under series point i.
+// The WHO behind each point of `pipelineGrowthSeries` — every open deal included
+// in the cumulative total at that point. Returning only newly-added deals left
+// interpolated points with an empty tooltip, even though the plotted value was
+// meaningful. Uses the identical order-spaced sampling as the series.
 export function pipelineGrowthPointDeals(
   deals: Deal[],
   points = 12
@@ -356,18 +403,16 @@ export function pipelineGrowthPointDeals(
   // `cum` in pipelineGrowthSeries has open.length + 1 entries, so lastIdx =
   // open.length — mirror it exactly so the point math lines up.
   const lastIdx = open.length;
-  let prev = 0;
   for (let i = 0; i < points; i++) {
     const idx = lastIdx * (i / (points - 1));
     const hi = Math.round(idx);
-    for (let k = prev; k < hi && k < open.length; k++) {
+    for (let k = 0; k < hi && k < open.length; k++) {
       buckets[i].push({
         company: open[k].company,
         contact: open[k].contactName,
         value: open[k].value,
       });
     }
-    prev = Math.max(prev, hi);
   }
   return buckets;
 }

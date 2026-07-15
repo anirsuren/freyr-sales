@@ -9,6 +9,7 @@ import {
   CalendarClock,
   BellOff,
   Check,
+  PhoneCall,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -24,12 +25,14 @@ const ICON: Record<NotificationType, typeof Flame> = {
   rotting: Flame,
   signal: Sparkles,
   followup: CalendarClock,
+  voice: PhoneCall,
 };
 const TONE: Record<NotificationType, string> = {
   review: "bg-blue-light text-blue-primary",
   rotting: "bg-error/12 text-error",
   signal: "bg-success/15 text-success",
   followup: "bg-blue-light text-blue-primary",
+  voice: "bg-success/15 text-success",
 };
 
 function readSet(): Set<string> {

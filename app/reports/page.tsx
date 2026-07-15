@@ -7,7 +7,6 @@ import {
   ReceiptText,
   CircleDot,
   CalendarClock,
-  TrendingUp,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -71,14 +70,6 @@ export default async function ReportsPage() {
   ];
 
   // Chart data
-  const offeringBars = report.byOffering
-    .filter((o) => o.revenue > 0)
-    .slice(0, 8)
-    .map((o, i) => ({
-      label: o.name,
-      value: o.revenue,
-      color: VIZ_SERIES[i % VIZ_SERIES.length],
-    }));
   const categorySegments = report.byCategory.map((c, i) => ({
     label: c.label,
     value: c.value,
@@ -302,15 +293,15 @@ export default async function ReportsPage() {
                     {report.renewals.map((r, i) => (
                       <tr key={`${r.customer_id}-${r.offering_id}-${i}`}>
                         <td className="px-5 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2.5">
+                          <Link
+                            href={`/customers/${r.customer_id}?tab=offerings`}
+                            className="group/customer flex items-center gap-2.5"
+                          >
                             <CompanyLogo name={r.customer} className="w-7 h-7 text-[10px]" />
-                            <Link
-                              href={`/customers/${r.customer_id}?tab=offerings`}
-                              className="text-[13px] font-semibold text-text-primary hover:text-blue-primary"
-                            >
+                            <span className="text-[13px] font-semibold text-text-primary group-hover/customer:text-blue-primary">
                               {r.customer}
-                            </Link>
-                          </div>
+                            </span>
+                          </Link>
                         </td>
                         <td className="px-5 py-3 text-[12.5px] text-text-secondary whitespace-nowrap">
                           {r.offering}

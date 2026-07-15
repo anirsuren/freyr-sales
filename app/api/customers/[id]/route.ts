@@ -19,10 +19,10 @@ function uid(prefix: string): string {
 // attachment (#60). All persist via the mock/Supabase customer update.
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const db = getDb();
-  const customer = await db.customers.get(params.id);
+  const customer = await db.customers.get((await params).id);
   if (!customer) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
@@ -105,12 +105,12 @@ export async function PATCH(
     // A logged call/email/meeting is a real interaction — record it so it shows
     // on the timeline and (with a follow-up) lands in Tasks (Suren, #96).
     if (note.kind !== "note") {
-      const contacts = await db.contacts.list(params.id);
+      const contacts = await db.contacts.list((await params).id);
       const contactId = contacts[0]?.id;
       if (contactId) {
         const verb = note.kind === "call" ? "Call" : note.kind === "email" ? "Email" : "Meeting";
         await db.interactions.create({
-          customer_id: params.id,
+          customer_id: (await params).id,
           contact_id: contactId,
           outcome: "in_progress",
           notes: `${verb} logged: ${note.body}${note.next_step ? ` · Next: ${note.next_step}` : ""}`,
@@ -151,22 +151,22 @@ export async function PATCH(
     patch.account_deals = [deal, ...(customer.account_deals || [])];
   }
 
-  const updated = await db.customers.update(params.id, patch);
+  const updated = await db.customers.update((await params).id, patch);
   return NextResponse.json({ ok: true, customer: updated });
 }
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const db = getDb();
-  const customer = await db.customers.get(params.id);
+  const customer = await db.customers.get((await params).id);
   if (!customer) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
-  const contacts = await db.contacts.list(params.id);
-  const sessions = await db.pitchSessions.list(params.id);
-  const interactions = await db.interactions.list(params.id);
+  const contacts = await db.contacts.list((await params).id);
+  const sessions = await db.pitchSessions.list((await params).id);
+  const interactions = await db.interactions.list((await params).id);
 
   return NextResponse.json({ customer, contacts, sessions, interactions });
 }

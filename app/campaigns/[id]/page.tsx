@@ -10,7 +10,6 @@ import {
   X,
   SearchX,
   BarChart3,
-  Activity,
   Building2,
   ArrowRight,
 } from "lucide-react";
@@ -20,7 +19,8 @@ import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EngagementChart } from "@/components/campaigns/EngagementChart";
-import { DonutChart, BarChart, Legend, VIZ, VIZ_SERIES, type TipItem } from "@/components/charts/Charts";
+import { ChartInspector } from "@/components/charts/ChartInspector";
+import { DonutChart, BarChart, VIZ, VIZ_SERIES, type TipItem } from "@/components/charts/Charts";
 import { getCampaign } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { listVoiceQueue } from "@/lib/voice";
@@ -36,9 +36,9 @@ export const dynamic = "force-dynamic";
 export default async function CampaignDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const campaign = getCampaign(params.id);
+  const campaign = getCampaign((await params).id);
   if (!campaign) {
     return (
       <EmptyState
@@ -77,6 +77,7 @@ export default async function CampaignDetailPage({
             title: c.job_title || "",
             email: c.email || "",
             company: companyById.get(c.customer_id) || "—",
+            customerId: c.customer_id,
           }
         : null;
     })
@@ -88,6 +89,32 @@ export default async function CampaignDetailPage({
   const offering = campaign.offering_id ? getOffering(campaign.offering_id) : null;
   const openRate = sent ? Math.round((campaign.opens / sent) * 100) : 0;
   const replyRate = sent ? Math.round((campaign.replies / sent) * 100) : 0;
+  const engagementBars = [
+    {
+      label: "Opened",
+      value: openRate,
+      color: VIZ.green,
+      tip: [
+        {
+          name: `${campaign.opens} recipients opened`,
+          sub: `${sent} emails delivered`,
+          value: `${openRate}%`,
+        },
+      ],
+    },
+    {
+      label: "Replied",
+      value: replyRate,
+      color: VIZ.indigo,
+      tip: [
+        {
+          name: `${campaign.replies} recipients replied`,
+          sub: `${sent} emails delivered`,
+          value: `${replyRate}%`,
+        },
+      ],
+    },
+  ];
 
   // Show the message the way it actually goes out — personalized — instead of a
   // raw {{first_name}} merge tag, which reads as unfinished to a non-technical
@@ -133,10 +160,7 @@ export default async function CampaignDetailPage({
   ];
 
   // Delivery donut — sent (green) vs queued (amber) vs unqueued draft (grey).
-  const r = 52;
-  const C = 2 * Math.PI * r;
   const sentFrac = total ? sent / total : 0;
-  const queuedFrac = total ? queued / total : 0;
 
   const tiles = [
     { label: "Recipients", value: String(total), icon: Users },
@@ -299,41 +323,23 @@ export default async function CampaignDetailPage({
           </div>
         </Card>
 
-        {/* Engagement snapshot — the quick read between the two rings */}
-        <Card className="flex flex-col">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
-            <Activity size={16} strokeWidth={1.9} className="text-blue-primary" />
-            Engagement
-          </h2>
-          <p className="text-[12px] text-text-tertiary mb-3">
-            How recipients are responding.
-          </p>
+        {/* Engagement snapshot — rates stay comparable across campaigns. */}
+        <ChartInspector
+          title="Engagement"
+          description="How recipients are responding."
+          className="h-full"
+          expandedChildren={
+            <BarChart data={engagementBars} height={390} format="percent" />
+          }
+        >
           {sent > 0 ? (
-            <div className="flex-1 flex flex-col justify-center gap-5">
-              <div>
-                <p className="text-[30px] font-bold tnum text-text-primary leading-none">
-                  {openRate}%
-                </p>
-                <p className="text-[12px] text-text-tertiary mt-1.5">
-                  open rate · <span className="tnum">{campaign.opens}</span> of{" "}
-                  <span className="tnum">{sent}</span> opened
-                </p>
-              </div>
-              <div>
-                <p className="text-[30px] font-bold tnum text-text-primary leading-none">
-                  {replyRate}%
-                </p>
-                <p className="text-[12px] text-text-tertiary mt-1.5">
-                  reply rate · <span className="tnum">{campaign.replies}</span> replied
-                </p>
-              </div>
-            </div>
+            <BarChart data={engagementBars} height={170} format="percent" />
           ) : (
-            <p className="flex-1 flex items-center text-[13px] text-text-secondary leading-relaxed">
+            <p className="min-h-[170px] flex items-center text-[13px] text-text-secondary leading-relaxed">
               No engagement yet — send the blast and opens &amp; replies show up here.
             </p>
           )}
-        </Card>
+        </ChartInspector>
 
         <Card className="flex flex-col">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
@@ -438,7 +444,10 @@ export default async function CampaignDetailPage({
                         {p.name}
                       </Link>
                       <p className="text-[11.5px] text-text-tertiary truncate">
-                        {p.company} · {p.email}
+                        <Link href={`/customers/${p.customerId}`} className="hover:text-blue-primary">
+                          {p.company}
+                        </Link>{" "}
+                        · {p.email}
                       </p>
                     </div>
                   </div>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Video, Presentation, FileText, DollarSign, Swords, BookOpen, Quote, File, Table2, type LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { MATERIAL_META, type MaterialKind, type OfferingMaterial } from "@/lib/offerings";
+import { MATERIAL_META, type MaterialKind, type OfferingMaterial } from "@/lib/offeringMaterials";
 
 // Every material type gets its own icon + colour + a short label, so the picker
 // reads as a clean, symmetric 3×3 grid of colour-coded tiles (Suren).

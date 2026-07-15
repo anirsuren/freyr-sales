@@ -6,8 +6,10 @@
 // campaigns pages renders with realistic numbers, exactly like the rest of the
 // app's seeded customers/deals/sessions. Campaigns a user creates at runtime
 // keep honest zeros until the channel connects.
+import { getDataMode } from "./dataMode";
 
 export type CampaignStatus = "draft" | "queued" | "sent";
+export type CampaignObjective = "pipeline" | "awareness" | "event_follow_up" | "expansion";
 
 export interface Campaign {
   id: string;
@@ -17,6 +19,10 @@ export interface Campaign {
   subject: string;
   body: string;
   recipient_contact_ids: string[];
+  objective: CampaignObjective;
+  owner: string;
+  audience_summary: string;
+  scheduled_at: string | null;
   status: CampaignStatus;
   // Deliveries + engagement. Seeded demo campaigns carry realistic numbers;
   // runtime-created campaigns start at 0 and stay honest until email connects.
@@ -53,6 +59,10 @@ function seedCampaigns(): Campaign[] {
         "cont-006",
         "cont-012",
       ],
+      objective: "awareness",
+      owner: "Suren Dheen",
+      audience_summary: "Regulatory leaders at biopharma accounts",
+      scheduled_at: null,
       status: "sent",
       sent_count: 6,
       opens: 4,
@@ -75,6 +85,10 @@ function seedCampaigns(): Campaign[] {
         "cont-006",
         "cont-011",
       ],
+      objective: "pipeline",
+      owner: "Suren Dheen",
+      audience_summary: "Regulatory intelligence prospects",
+      scheduled_at: null,
       status: "queued",
       sent_count: 2,
       opens: 1,
@@ -91,6 +105,10 @@ function seedCampaigns(): Campaign[] {
       subject: "Six markets, one label change — without the scramble",
       body: "Draft — pick the labeling offering to ground this, then tighten the hook before queueing.",
       recipient_contact_ids: ["cont-008", "cont-004", "cont-010"],
+      objective: "pipeline",
+      owner: "Suren Dheen",
+      audience_summary: "Labeling and compliance stakeholders",
+      scheduled_at: null,
       status: "draft",
       sent_count: 0,
       opens: 0,
@@ -103,7 +121,14 @@ function seedCampaigns(): Campaign[] {
 }
 
 function store(): CampaignStore {
-  const g = globalThis as typeof globalThis & { __freyrCampaigns?: CampaignStore };
+  const g = globalThis as typeof globalThis & {
+    __freyrCampaigns?: CampaignStore;
+    __freyrLiveCampaigns?: CampaignStore;
+  };
+  if (getDataMode() === "live") {
+    if (!g.__freyrLiveCampaigns) g.__freyrLiveCampaigns = { campaigns: [] };
+    return g.__freyrLiveCampaigns;
+  }
   if (!g.__freyrCampaigns) g.__freyrCampaigns = { campaigns: seedCampaigns() };
   return g.__freyrCampaigns;
 }
@@ -126,6 +151,10 @@ export function createCampaign(data: {
   subject: string;
   body: string;
   recipient_contact_ids: string[];
+  objective?: CampaignObjective;
+  owner?: string;
+  audience_summary?: string;
+  scheduled_at?: string | null;
 }): Campaign {
   const c: Campaign = {
     id: uid(),
@@ -135,6 +164,10 @@ export function createCampaign(data: {
     subject: data.subject,
     body: data.body,
     recipient_contact_ids: data.recipient_contact_ids,
+    objective: data.objective || "pipeline",
+    owner: data.owner || "Suren Dheen",
+    audience_summary: data.audience_summary || "Selected contacts",
+    scheduled_at: data.scheduled_at || null,
     status: "draft",
     sent_count: 0,
     opens: 0,
@@ -149,7 +182,7 @@ export function createCampaign(data: {
 
 export function updateCampaign(
   id: string,
-  patch: Partial<Pick<Campaign, "name" | "subject" | "body" | "recipient_contact_ids" | "status" | "queued_at">>
+  patch: Partial<Pick<Campaign, "name" | "subject" | "body" | "recipient_contact_ids" | "status" | "queued_at" | "scheduled_at" | "objective" | "audience_summary">>
 ): Campaign | null {
   const c = getCampaign(id);
   if (!c) return null;

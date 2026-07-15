@@ -13,11 +13,23 @@ function key(): string | null {
 // remembers me" — Anir, Jul 4): the agent greets the prospect by name, opens
 // with a line written for THIS call, and pitches the right offering.
 export interface CallContext {
+  freyr_call_id?: string;
+  contact_id?: string;
+  customer_id?: string;
+  offering_id?: string;
   contact_name?: string;
   company?: string;
   offering?: string;
+  category?: string;
   opening_line?: string;
   call_direction?: "inbound" | "outbound";
+}
+
+export interface OutboundCallResult {
+  success: boolean;
+  message?: string;
+  conversation_id?: string;
+  callSid?: string;
 }
 
 export async function outboundCall(
@@ -25,9 +37,9 @@ export async function outboundCall(
   agentPhoneNumberId: string,
   toNumber: string,
   context?: CallContext
-): Promise<boolean> {
+): Promise<OutboundCallResult> {
   const k = key();
-  if (!k) return false;
+  if (!k) return { success: false, message: "ElevenLabs is not configured." };
   try {
     const vars: Record<string, string> = {
       contact_name: context?.contact_name || "there",
@@ -35,6 +47,11 @@ export async function outboundCall(
       offering: context?.offering || "our regulatory services",
       call_direction: context?.call_direction || "outbound",
     };
+    if (context?.freyr_call_id) vars.freyr_call_id = context.freyr_call_id;
+    if (context?.contact_id) vars.contact_id = context.contact_id;
+    if (context?.customer_id) vars.customer_id = context.customer_id;
+    if (context?.offering_id) vars.offering_id = context.offering_id;
+    if (context?.category) vars.category = context.category;
     if (context?.opening_line) vars.opening_line = context.opening_line;
     const res = await fetch(`${API_BASE}/convai/twilio/outbound-call`, {
       method: "POST",
@@ -46,9 +63,17 @@ export async function outboundCall(
         conversation_initiation_client_data: { dynamic_variables: vars },
       }),
     });
-    return res.ok;
-  } catch {
-    return false;
+    const data = (await res.json().catch(() => ({}))) as OutboundCallResult;
+    return {
+      ...data,
+      success: res.ok && data.success !== false,
+      message: data.message || (res.ok ? undefined : `ElevenLabs returned ${res.status}.`),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unable to place call.",
+    };
   }
 }
 
@@ -90,6 +115,7 @@ export interface ElTranscriptTurn {
 export interface ElConversationDetail {
   conversation_id: string;
   agent_id: string;
+  agent_name?: string;
   status: string;
   transcript: ElTranscriptTurn[];
   metadata?: {
@@ -100,12 +126,22 @@ export interface ElConversationDetail {
       external_number?: string;
       agent_number?: string;
       direction?: string;
+      call_sid?: string;
     };
   };
   analysis?: {
     call_successful?: string;
     transcript_summary?: string;
+    data_collection_results?: Record<string, unknown>;
+    evaluation_criteria_results?: Record<string, unknown>;
   };
+  conversation_initiation_client_data?: {
+    dynamic_variables?: Record<string, string | number | boolean | null>;
+    [key: string]: unknown;
+  };
+  has_audio?: boolean;
+  has_user_audio?: boolean;
+  has_response_audio?: boolean;
 }
 
 export async function getConversation(

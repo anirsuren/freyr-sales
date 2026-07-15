@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Wallet, Briefcase, Target, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HoverCard } from "@/components/ui/HoverCard";
-import { BarChart, DonutChart, DonutLegend, Legend, VIZ_SERIES } from "@/components/charts/Charts";
+import { BarChart, DonutChart, DonutLegend, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -24,42 +24,6 @@ interface OutcomeStat {
 }
 type StageDeal = { company: string; contact: string; value: number; customerId: string };
 type OutcomeContact = { name: string; company: string; contactId: string };
-
-function Donut({ pct }: { pct: number }) {
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  const off = c - (pct / 100) * c;
-  return (
-    <svg width="130" height="130" viewBox="0 0 130 130">
-      <circle cx="65" cy="65" r={r} fill="none" className="stroke-[var(--border-light)]" strokeWidth="12" />
-      <circle
-        cx="65"
-        cy="65"
-        r={r}
-        fill="none"
-        stroke="#0071E3"
-        strokeWidth="12"
-        strokeLinecap="round"
-        strokeDasharray={c}
-        strokeDashoffset={off}
-        transform="rotate(-90 65 65)"
-        className="donut-arc"
-        style={{ ["--donut-c" as string]: c }}
-      />
-      <text
-        x="65"
-        y="65"
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="tnum fill-current text-text-primary"
-        fontSize="26"
-        fontWeight="700"
-      >
-        {pct}%
-      </text>
-    </svg>
-  );
-}
 
 // The "who" reveal — the deals or contacts behind a bar/segment.
 function WhoPanel({ children }: { children: React.ReactNode }) {
@@ -123,8 +87,7 @@ export function AnalyticsView({
     .filter((s) => s.value > 0);
   const totalWeighted = weightedByStage.reduce((t, x) => t + x.value, 0);
   const avgByStage = openStages.map((s, i) => ({
-    label:
-      s.stage === "Meeting Booked" ? "Meeting" : s.stage === "Qualified" ? "Qualified" : s.stage,
+    label: s.stage,
     value: s.count > 0 ? Math.round(s.value / s.count) : 0,
     color: VIZ_SERIES[i % VIZ_SERIES.length],
     tip: stageTip(s.stage),
@@ -183,7 +146,17 @@ export function AnalyticsView({
               Qualified or further, of all worked deals
             </p>
           </div>
-          <Donut pct={winRate} />
+          <DonutChart
+            segments={[
+              { label: "Qualified or further", value: winRate, color: VIZ.blue },
+              { label: "Did not reach Qualified", value: Math.max(0, 100 - winRate), color: VIZ.slate },
+            ]}
+            size={130}
+            thickness={12}
+            centerLabel={`${winRate}%`}
+            centerSub="qualified"
+            format="percent"
+          />
         </Card>
       </div>
 
@@ -439,6 +412,7 @@ export function AnalyticsView({
                   <HoverCard
                     side="top"
                     width={280}
+                    delayMs={0}
                     className="block"
                     content={
                       <div>
@@ -538,7 +512,7 @@ export function AnalyticsView({
             Average Deal Size by Stage
             <InfoHint text="The average open-deal value at each step — where the bigger deals sit in your process." />
           </h2>
-          <div className="flex-1 flex items-end">
+          <div className="flex flex-1 items-end w-full">
             <BarChart data={avgByStage} height={190} format="money" />
           </div>
         </Card>

@@ -3,12 +3,12 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingCategoriesManager } from "@/components/offerings/OfferingCategoriesManager";
 import { listOfferingCategories, listOfferings } from "@/lib/offerings";
-import { isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offering categories" };
 
-export default function OfferingCategoriesPage() {
+export default async function OfferingCategoriesPage() {
   const offeringCategories = listOfferingCategories();
   // How many offerings sit in each category — offerings store the category as a
   // string, so match by name → the category's id.
@@ -35,7 +35,7 @@ export default function OfferingCategoriesPage() {
       <OfferingCategoriesManager
         offeringCategories={offeringCategories}
         offeringCounts={offeringCounts}
-        canEdit={isAdmin()}
+        canEdit={await canManageOfferings()}
       />
     </div>
   );

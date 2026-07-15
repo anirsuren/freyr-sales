@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ArrowDownAZ, Layers, Target, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -20,10 +21,34 @@ export type ByRep = {
 };
 
 const SORTS: ColorOption[] = [
-  { value: "weighted", label: "Weighted forecast" },
-  { value: "open", label: "Open pipeline" },
-  { value: "pct", label: "Quota share" },
-  { value: "name", label: "Name A–Z" },
+  {
+    value: "weighted",
+    label: "Weighted forecast",
+    description: "Probability-adjusted pipeline",
+    color: "#0071E3",
+    icon: TrendingUp,
+  },
+  {
+    value: "open",
+    label: "Open pipeline",
+    description: "All active deal value",
+    color: "#14B8A6",
+    icon: Layers,
+  },
+  {
+    value: "pct",
+    label: "Quota share",
+    description: "Contribution to team target",
+    color: "#7C3AED",
+    icon: Target,
+  },
+  {
+    value: "name",
+    label: "Name A–Z",
+    description: "Alphabetical teammate order",
+    color: "#64748B",
+    icon: ArrowDownAZ,
+  },
 ];
 
 const slugify = (s: string) =>
@@ -52,7 +77,13 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
             </span>
           )}
         </div>
-        <ColorSelect value={sort} onChange={setSort} minWidth={185} options={SORTS} />
+        <ColorSelect
+          value={sort}
+          onChange={setSort}
+          minWidth={238}
+          options={SORTS}
+          ariaLabel="Sort reps by"
+        />
       </div>
 
       <div className="flex items-stretch justify-between gap-1.5 h-[240px]">
@@ -153,6 +184,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                 <HoverCard
                   side="top"
                   width={240}
+                  delayMs={0}
                   content={hover}
                   className="w-full flex justify-center shrink-0"
                 >

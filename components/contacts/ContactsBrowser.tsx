@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownWideNarrow } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
@@ -113,7 +112,8 @@ export function ContactsBrowser({
   function toggleSel(id: string) {
     setSelected((s) => {
       const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -396,12 +396,24 @@ export function ContactsBrowser({
                       {c.title}
                     </p>
                   </div>
-                  <div className="hidden sm:flex items-center gap-2 min-w-0 flex-1">
-                    <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
-                    <span className="text-[13px] text-text-secondary truncate">
-                      {c.company}
-                    </span>
-                  </div>
+                  {c.companyId && !selectMode ? (
+                    <Link
+                      href={`/customers/${c.companyId}`}
+                      className="relative z-10 hidden sm:flex items-center gap-2 min-w-0 flex-1 group/company"
+                    >
+                      <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
+                      <span className="text-[13px] text-text-secondary group-hover/company:text-blue-primary truncate">
+                        {c.company}
+                      </span>
+                    </Link>
+                  ) : (
+                    <div className="hidden sm:flex items-center gap-2 min-w-0 flex-1">
+                      <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
+                      <span className="text-[13px] text-text-secondary truncate">
+                        {c.company}
+                      </span>
+                    </div>
+                  )}
                   {c.role && (
                     <Badge
                       label={c.role}
@@ -428,9 +440,14 @@ export function ContactsBrowser({
                   {row}
                 </button>
               ) : (
-                <Link key={c.id} href={`/contacts/${c.id}`} className={rowClass}>
+                <div key={c.id} className={cn(rowClass, "relative")}>
                   {row}
-                </Link>
+                  <Link
+                    href={`/contacts/${c.id}`}
+                    aria-label={`View ${c.name}`}
+                    className="absolute inset-0 rounded-lg"
+                  />
+                </div>
               );
             })}
           </div>
@@ -600,7 +617,7 @@ export function ContactsBrowser({
                     <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">
                       Engagement
                     </p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-[0.8fr_0.8fr_1.4fr] gap-2">
                       {[
                         { l: "Touches", v: String(touches) },
                         { l: "Offerings", v: String(c.offerings ?? 0) },
@@ -610,7 +627,7 @@ export function ContactsBrowser({
                           <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                             {s.l}
                           </p>
-                          <p className="text-[13px] font-semibold text-text-primary tnum truncate mt-0.5">
+                          <p className="mt-0.5 whitespace-nowrap text-[13px] font-semibold text-text-primary tnum">
                             {s.v}
                           </p>
                         </div>

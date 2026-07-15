@@ -20,6 +20,8 @@ import {
   repTrend,
 } from "@/lib/team";
 import { TeamRoster, type RosterRep } from "@/components/team/TeamRoster";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { getDataMode } from "@/lib/dataMode";
 
 export const metadata = { title: "Team" };
 export const dynamic = "force-dynamic";
@@ -52,6 +54,9 @@ function synthStageDeals(
 }
 
 export default async function TeamPage() {
+  if (getDataMode() === "live") {
+    return <EmptyState icon={Users} title="No teammates yet" description="Invite your first teammate from Settings to build the sales workspace." />;
+  }
   const db = getDb();
   const [sessions, customers, contacts, interactions] = await Promise.all([
     db.pitchSessions.list(),
@@ -109,6 +114,7 @@ export default async function TeamPage() {
         stage: s.stage,
         color: s.color,
         value: s.value,
+        count: s.count,
       })),
       stageDeals,
     };

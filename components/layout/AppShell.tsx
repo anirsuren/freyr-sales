@@ -1,20 +1,48 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AgentDock } from "@/components/agent/AgentDock";
+import type { DataMode } from "@/lib/dataMode";
+import { isOfferingsOnly } from "@/lib/release";
+import { useHoverPreference } from "@/lib/hoverPreferences";
+import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 
 const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
 
 // Wraps every page with the persistent sidebar + top bar, except /login.
 // Session-detail pages render full-bleed (3-pane); everything else gets a
 // full-width 32px workspace (no narrow centered column).
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  dataMode,
+}: {
+  children: React.ReactNode;
+  dataMode: DataMode;
+}) {
   const pathname = usePathname() || "";
+  const router = useRouter();
+  const offeringsOnly = isOfferingsOnly(dataMode);
+  const restrictedPath =
+    offeringsOnly &&
+    pathname !== "/login" &&
+    pathname !== "/settings" &&
+    pathname !== "/offerings" &&
+    !pathname.startsWith("/offerings/");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const hoverPreference = useHoverPreference();
+
+  // CSS-only tooltips read the same preference as the interactive chart and
+  // hover-card components. Keeping it on <html> also lets the off switch hide
+  // every hover popup immediately, including server-rendered help text.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--freyr-hover-delay", `${hoverPreference.delayMs}ms`);
+    root.dataset.hoverPopups = hoverPreference.enabled ? "on" : "off";
+  }, [hoverPreference.delayMs, hoverPreference.enabled]);
 
   // Always-on assistant dock (Anir, Jul 8). Open state is per-session; "hidden"
   // (bubble dismissed) persists, and the top-bar spark button brings it back.
@@ -45,8 +73,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMobileNavOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (restrictedPath) router.replace("/offerings");
+  }, [restrictedPath, router]);
+
+  if (restrictedPath) return null;
+
   // login + printable reports render chrome-free
-  if (pathname === "/login" || /^\/customers\/[^/]+\/report$/.test(pathname)) {
+  if (
+    pathname === "/login" ||
+    pathname === "/access-pending" ||
+    /^\/customers\/[^/]+\/report$/.test(pathname)
+  ) {
     return <>{children}</>;
   }
 
@@ -73,11 +111,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
         )}
         <Sidebar
+          dataMode={dataMode}
           mobileOpen={mobileNavOpen}
           onMobileClose={() => setMobileNavOpen(false)}
         />
         <div className="flex-1 min-w-0 flex flex-col h-screen">
           <TopBar
+            offeringsOnly={offeringsOnly}
             onMenuClick={() => setMobileNavOpen(true)}
             onAgentToggle={toggleAgent}
             agentActive={agentOpen && !agentHidden}
@@ -108,13 +148,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </div>
-      <AgentDock
-        open={agentOpen}
-        onOpenChange={setAgentOpen}
-        hidden={agentHidden}
-        onHide={hideAgent}
-        pathname={pathname}
-      />
+      {!offeringsOnly && (
+        <AgentDock
+          open={agentOpen}
+          onOpenChange={setAgentOpen}
+          hidden={agentHidden}
+          onHide={hideAgent}
+          pathname={pathname}
+        />
+      )}
+      <AutoTruncationTooltip />
     </ToastProvider>
   );
 }

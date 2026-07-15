@@ -173,7 +173,6 @@ export function AgentDock({
   open,
   onOpenChange,
   hidden,
-  onHide,
   pathname,
 }: {
   open: boolean;

@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Layers,
   CheckCircle2,
   Sparkles,
-  UserRound,
   ExternalLink,
   X,
   Package,
@@ -16,7 +15,9 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { Avatar } from "@/components/ui/Avatar";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 import { DonutChart, type TipItem } from "@/components/charts/Charts";
 import { VIZ } from "@/components/charts/palette";
@@ -57,6 +58,19 @@ function segmentColor(type: string): string {
   if (t.includes("device")) return "#D97706"; // amber
   if (t.includes("consumer")) return "#0F9E8E"; // teal
   return "#8E98A8"; // slate
+}
+
+function segmentParts(type: string) {
+  const [family, ...sizeParts] = type.split(/\s+-\s+/);
+  const size = sizeParts.join(" - ") || "Segment";
+  const key = size.toLowerCase();
+  if (key.includes("small")) {
+    return { family, size, color: "#0369A1", bg: "rgba(2,132,199,0.08)" };
+  }
+  if (key.includes("large")) {
+    return { family, size, color: "#047857", bg: "rgba(5,150,105,0.08)" };
+  }
+  return { family, size, color: "#B45309", bg: "rgba(217,119,6,0.08)" };
 }
 
 // One offering, serialized for this tab by the server page (materials carry a
@@ -359,8 +373,8 @@ export function CustomerOfferingsTab({
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [pickedType, setPickedType] = useState("");
   const [savingType, setSavingType] = useState(false);
+  const [selectedType, setSelectedType] = useState(customerType || "");
   const [busyId, setBusyId] = useState<string | null>(null);
   // Local copy of the revenue lines so add/remove feels instant.
   const [usageState, setUsageState] = useState<OfferingUsage[]>(usage);
@@ -370,6 +384,25 @@ export function CustomerOfferingsTab({
     () => applicable.filter((o) => !inUseIds.has(o.id)),
     [applicable, inUseIds]
   );
+
+  useEffect(() => setSelectedType(customerType || ""), [customerType]);
+
+  const segmentOptions = useMemo<ColorOption[]>(() => {
+    const values = selectedType && !typeOptions.includes(selectedType)
+      ? [selectedType, ...typeOptions]
+      : typeOptions;
+    return values.map((type) => {
+      const parts = segmentParts(type);
+      return {
+        value: type,
+        label: parts.family,
+        color: segmentColor(type),
+        icon: Layers,
+        badge: parts.size,
+        badgeColor: parts.color,
+      };
+    });
+  }, [selectedType, typeOptions]);
 
   const linesForOffering = (id: string) =>
     usageState.find((u) => u.offering_id === id)?.revenue_lines || [];
@@ -399,6 +432,8 @@ export function CustomerOfferingsTab({
 
   async function saveType(type: string) {
     if (!type) return;
+    const previous = selectedType;
+    setSelectedType(type);
     setSavingType(true);
     try {
       const res = await fetch(`/api/customers/${customerId}`, {
@@ -411,9 +446,11 @@ export function CustomerOfferingsTab({
         toast(`Classified as ${type} — here's everything that applies.`);
         router.refresh();
       } else {
+        setSelectedType(previous);
         toast(data.error || "Couldn't save the customer type.", "error");
       }
     } catch {
+      setSelectedType(previous);
       toast("Couldn't save the customer type.", "error");
     } finally {
       setSavingType(false);
@@ -569,11 +606,7 @@ export function CustomerOfferingsTab({
         </div>
         {o.poc && (
           <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-text-secondary">
-            <UserRound
-              size={13}
-              strokeWidth={1.8}
-              className="text-text-tertiary"
-            />
+            <Avatar name={o.poc} className="h-6 w-6 text-[8px]" />
             POC: {o.poc}
           </span>
         )}
@@ -628,12 +661,8 @@ export function CustomerOfferingsTab({
         </p>
       )}
       {o.poc && (
-        <p className="flex items-center gap-1 text-[11.5px] text-text-secondary mt-2">
-          <UserRound
-            size={12}
-            strokeWidth={1.8}
-            className="text-text-tertiary shrink-0"
-          />
+        <p className="flex items-center gap-1.5 text-[11.5px] text-text-secondary mt-2">
+          <Avatar name={o.poc} className="h-6 w-6 shrink-0 text-[8px]" />
           <span className="truncate">POC: {o.poc}</span>
         </p>
       )}
@@ -642,10 +671,10 @@ export function CustomerOfferingsTab({
         <button
           onClick={() => toggleInUse(o.id, true)}
           disabled={busyId === o.id}
-          className="w-full inline-flex items-center justify-center gap-1.5 text-[12px] font-semibold px-2.5 py-2 rounded-md border border-border-light text-success hover:bg-success/10 transition-colors disabled:opacity-50"
+          className="w-full inline-flex items-center justify-center gap-1.5 text-[12px] font-semibold px-2.5 py-2 rounded-md border border-blue-subtle bg-blue-light text-blue-primary hover:bg-[#DCEBFB] hover:border-blue-primary transition-colors disabled:opacity-50"
         >
-          <CheckCircle2 size={13} strokeWidth={2} />
-          {busyId === o.id ? "…" : "Mark as already using"}
+          <Plus size={13} strokeWidth={2.2} />
+          {busyId === o.id ? "Adding…" : "Add to account"}
         </button>
       </div>
     </Card>
@@ -669,20 +698,32 @@ export function CustomerOfferingsTab({
           with its description and sales materials.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-left">
-          {typeOptions.map((t) => (
-            <button
-              key={t}
-              onClick={() => saveType(t)}
-              disabled={savingType}
-              className="flex items-center gap-2.5 rounded-xl border border-border-light bg-white px-3.5 py-3 text-[13px] font-medium text-text-primary hover:border-blue-primary hover:bg-blue-light/40 hover:shadow-[0_2px_10px_rgba(0,113,227,0.10)] transition-all disabled:opacity-50 text-left active:scale-[0.98]"
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ background: segmentColor(t) }}
-              />
-              <span className="min-w-0 truncate">{t}</span>
-            </button>
-          ))}
+          {typeOptions.map((t) => {
+            const parts = segmentParts(t);
+            const family = segmentColor(t);
+            return (
+              <button
+                key={t}
+                aria-label={t}
+                onClick={() => saveType(t)}
+                disabled={savingType}
+                className="flex min-h-[54px] items-center gap-2 rounded-lg border border-border-light px-3 py-3 text-[12.5px] font-medium text-text-primary hover:border-blue-primary hover:shadow-[0_2px_10px_rgba(0,113,227,0.10)] transition-all disabled:opacity-50 text-left active:scale-[0.98]"
+                style={{ borderLeft: `3px solid ${family}`, background: parts.bg }}
+              >
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: family }}
+                />
+                <span className="min-w-0 flex-1 leading-tight">{parts.family}</span>
+                <span
+                  className="shrink-0 rounded-md px-1.5 py-0.5 text-[9.5px] font-semibold"
+                  style={{ color: parts.color, background: `${parts.color}14` }}
+                >
+                  {parts.size}
+                </span>
+              </button>
+            );
+          })}
         </div>
         <p className="flex items-center justify-center gap-1.5 text-[12px] text-text-tertiary mt-6">
           <Sparkles size={13} strokeWidth={1.8} className="text-blue-primary" />
@@ -730,28 +771,20 @@ export function CustomerOfferingsTab({
             </div>
           )}
         </div>
-        <label className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+        <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
           <span className="inline-flex items-center gap-1">
             Segment
             <InfoHint text="This account's segment — its industry and company size (e.g. Biologics, mid-size). It decides which of your offerings apply, shown below. Change it if the account was classified wrong." />
           </span>
-          <select
-            aria-label="Change customer segment"
-            value={customerType}
-            onChange={(e) => saveType(e.target.value)}
-            disabled={savingType}
-            className="rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-text-primary focus:outline-none focus:shadow-input-focus"
-          >
-            {!typeOptions.includes(customerType) && (
-              <option value={customerType}>{customerType}</option>
-            )}
-            {typeOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </label>
+          <ColorSelect
+            ariaLabel="Change customer segment"
+            value={selectedType}
+            onChange={saveType}
+            options={segmentOptions}
+            minWidth={250}
+            className={savingType ? "pointer-events-none opacity-60" : undefined}
+          />
+        </div>
       </div>
 
       {inUse.length > 0 && (

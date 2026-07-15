@@ -5,7 +5,6 @@
 // paths, so production (no API key → deterministic) gets it too.
 import {
   listOfferings,
-  getOffering,
   hydrateOffering,
   listMarkets,
   listCustomerTypes,
@@ -25,10 +24,7 @@ const SUGGESTIONS = [
   "Offerings for pharmaceutical large",
 ];
 
-export function offeringsAnswer(
-  message: string,
-  _customers: { id: string; company_name: string }[] = []
-): OfferingsAnswer | null {
+export function offeringsAnswer(message: string): OfferingsAnswer | null {
   const m = message.toLowerCase().trim();
   const offs = listOfferings();
   if (offs.length === 0) return null;

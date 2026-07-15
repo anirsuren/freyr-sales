@@ -3,6 +3,11 @@
 // lib/mock-db) so it survives dev HMR and doesn't touch the shared Db type.
 // Holds Freyr's offerings, the customer-type definitions, and the markets, plus
 // the sales-material artifacts attached to each offering.
+import { getDataMode } from "./dataMode";
+import { hasSupabase } from "./env";
+import { createClient } from "@supabase/supabase-js";
+import type { OfferingMaterial } from "./offeringMaterials";
+export { MATERIAL_META, type MaterialKind, type OfferingMaterial } from "./offeringMaterials";
 
 export type CustomerFamily =
   | "Pharmaceutical"
@@ -47,24 +52,6 @@ export interface OfferingCategory {
   owner: string; // the offering owner accountable for this category
 }
 
-export type MaterialKind =
-  | "video"
-  | "presentation"
-  | "whitepaper"
-  | "pricing"
-  | "competition"
-  | "case_study"
-  | "reference"
-  | "one_pager"
-  | "datasheet";
-
-export interface OfferingMaterial {
-  id: string;
-  kind: MaterialKind;
-  label: string;
-  url: string;
-}
-
 export interface Offering {
   id: string;
   offering_type: string;
@@ -79,25 +66,6 @@ export interface Offering {
   materials: OfferingMaterial[];
   created_at: string;
 }
-
-export const MATERIAL_META: Record<
-  MaterialKind,
-  { label: string; plural: string }
-> = {
-  video: { label: "Video", plural: "Videos" },
-  presentation: { label: "Sales presentation", plural: "Sales presentations" },
-  whitepaper: {
-    label: "Whitepaper / thought leadership",
-    plural: "Whitepapers & thought leadership",
-  },
-  pricing: { label: "Pricing", plural: "Pricing" },
-  // Added from Suren's live meeting — material types a rep grabs per offering.
-  competition: { label: "Competition", plural: "Competition" },
-  case_study: { label: "Case study", plural: "Case studies" },
-  reference: { label: "Customer reference", plural: "Customer references" },
-  one_pager: { label: "One-pager", plural: "One-pagers" },
-  datasheet: { label: "Datasheet", plural: "Datasheets" },
-};
 
 // ---------------------------------------------------------------------------
 // Seed (read directly from Suren's two sheets)
@@ -580,6 +548,12 @@ interface OfferingsStore {
 declare global {
   // eslint-disable-next-line no-var
   var __FREYR_OFFERINGS_STORE__: OfferingsStore | undefined;
+  // eslint-disable-next-line no-var
+  var __FREYR_LIVE_OFFERINGS_STORE__: OfferingsStore | undefined;
+  // eslint-disable-next-line no-var
+  var __FREYR_OFFERINGS_INIT__: Promise<void> | undefined;
+  // eslint-disable-next-line no-var
+  var __FREYR_OFFERINGS_WRITE_QUEUE__: Promise<void> | undefined;
 }
 
 function seed(): OfferingsStore {
@@ -596,11 +570,104 @@ const store: OfferingsStore = globalThis.__FREYR_OFFERINGS_STORE__ ?? seed();
 if (!globalThis.__FREYR_OFFERINGS_STORE__) {
   globalThis.__FREYR_OFFERINGS_STORE__ = store;
 }
+// The catalog is approved Freyr master data, not demo CRM data. Keep a separate
+// live copy so edits never leak between modes, but seed both modes from the
+// master sheet. Live customers, contacts, sessions, and activity remain empty.
+const liveStore: OfferingsStore = globalThis.__FREYR_LIVE_OFFERINGS_STORE__ ?? seed();
+globalThis.__FREYR_LIVE_OFFERINGS_STORE__ = liveStore;
 // Back-fill collections added in a later build onto a store that an earlier build
 // already created (matters only for dev HMR; prod always starts fresh).
 if (!store.offeringTypes) store.offeringTypes = seedOfferingTypes();
 if (!store.offeringCategories)
   store.offeringCategories = seedOfferingCategories();
+
+function activeStore(): OfferingsStore {
+  return getDataMode() === "mock" ? store : liveStore;
+}
+
+function replaceStore(target: OfferingsStore, source: OfferingsStore) {
+  target.customerTypes = structuredClone(source.customerTypes);
+  target.markets = structuredClone(source.markets);
+  target.offeringTypes = structuredClone(source.offeringTypes);
+  target.offeringCategories = structuredClone(source.offeringCategories);
+  target.offerings = structuredClone(source.offerings);
+}
+
+function isOfferingsStore(value: unknown): value is OfferingsStore {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<OfferingsStore>;
+  return (
+    Array.isArray(candidate.customerTypes) &&
+    Array.isArray(candidate.markets) &&
+    Array.isArray(candidate.offeringTypes) &&
+    Array.isArray(candidate.offeringCategories) &&
+    Array.isArray(candidate.offerings)
+  );
+}
+
+function catalogClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+export async function persistLiveOfferings(): Promise<void> {
+  if (getDataMode() !== "live") return;
+  if (!hasSupabase()) {
+    throw new Error("Live offering changes require the configured Supabase database.");
+  }
+  const { error } = await catalogClient().from("offering_catalog_state").upsert({
+    id: "default",
+    catalog: structuredClone(liveStore),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(`Could not persist the offering catalog: ${error.message}`);
+}
+
+export async function initializeLiveOfferings(): Promise<void> {
+  if (getDataMode() !== "live" || !hasSupabase()) return;
+  if (!globalThis.__FREYR_OFFERINGS_INIT__) {
+    globalThis.__FREYR_OFFERINGS_INIT__ = (async () => {
+      const { data, error } = await catalogClient()
+        .from("offering_catalog_state")
+        .select("catalog")
+        .eq("id", "default")
+        .maybeSingle();
+      if (error) throw new Error(`Could not load the offering catalog: ${error.message}`);
+      if (isOfferingsStore(data?.catalog)) {
+        replaceStore(liveStore, data.catalog);
+        return;
+      }
+      await persistLiveOfferings();
+    })();
+  }
+  await globalThis.__FREYR_OFFERINGS_INIT__;
+}
+
+export async function commitOfferingsChange<T>(
+  change: () => T | Promise<T>
+): Promise<T> {
+  const previous = globalThis.__FREYR_OFFERINGS_WRITE_QUEUE__ ?? Promise.resolve();
+  let resolveQueue: () => void = () => undefined;
+  globalThis.__FREYR_OFFERINGS_WRITE_QUEUE__ = new Promise<void>((resolve) => {
+    resolveQueue = resolve;
+  });
+  await previous.catch(() => undefined);
+
+  const target = activeStore();
+  const before = structuredClone(target);
+  try {
+    const result = await change();
+    await persistLiveOfferings();
+    return result;
+  } catch (error) {
+    replaceStore(target, before);
+    throw error;
+  } finally {
+    resolveQueue();
+  }
+}
 
 function rid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -610,16 +677,16 @@ function rid(prefix: string) {
 // CRUD
 // ---------------------------------------------------------------------------
 export function listCustomerTypes(): CustomerType[] {
-  return [...store.customerTypes];
+  return [...activeStore().customerTypes];
 }
 export function getCustomerType(id: string): CustomerType | null {
-  return store.customerTypes.find((c) => c.id === id) || null;
+  return activeStore().customerTypes.find((c) => c.id === id) || null;
 }
 export function createCustomerType(data: Omit<CustomerType, "id">): CustomerType {
   // A family+size pair identifies a customer type, so don't create a second
   // "Pharmaceutical - Small" — refine the existing definition instead (blank
   // fields leave the current value intact). Mirrors createMarket's dedupe.
-  const existing = store.customerTypes.find(
+  const existing = activeStore().customerTypes.find(
     (c) => c.family === data.family && c.size === data.size
   );
   if (existing) {
@@ -632,38 +699,38 @@ export function createCustomerType(data: Omit<CustomerType, "id">): CustomerType
     return existing;
   }
   const record: CustomerType = { ...data, id: rid("ct") };
-  store.customerTypes.push(record);
+  activeStore().customerTypes.push(record);
   return record;
 }
 export function updateCustomerType(
   id: string,
   data: Partial<CustomerType>
 ): CustomerType | null {
-  const i = store.customerTypes.findIndex((c) => c.id === id);
+  const i = activeStore().customerTypes.findIndex((c) => c.id === id);
   if (i === -1) return null;
-  store.customerTypes[i] = { ...store.customerTypes[i], ...data, id };
-  return store.customerTypes[i];
+  activeStore().customerTypes[i] = { ...activeStore().customerTypes[i], ...data, id };
+  return activeStore().customerTypes[i];
 }
 
 export function listMarkets(): Market[] {
-  return [...store.markets];
+  return [...activeStore().markets];
 }
 export function createMarket(name: string): Market {
-  const existing = store.markets.find(
+  const existing = activeStore().markets.find(
     (m) => m.name.toLowerCase() === name.trim().toLowerCase()
   );
   if (existing) return existing;
   const record: Market = { id: rid("mkt"), name: name.trim() };
-  store.markets.push(record);
+  activeStore().markets.push(record);
   return record;
 }
 
 export function deleteMarket(id: string): boolean {
-  const before = store.markets.length;
-  store.markets = store.markets.filter((m) => m.id !== id);
-  if (store.markets.length === before) return false;
+  const before = activeStore().markets.length;
+  activeStore().markets = activeStore().markets.filter((m) => m.id !== id);
+  if (activeStore().markets.length === before) return false;
   // Strip the removed market from every offering so nothing references a ghost id.
-  for (const o of store.offerings) {
+  for (const o of activeStore().offerings) {
     o.market_ids = o.market_ids.filter((mid) => mid !== id);
   }
   return true;
@@ -671,10 +738,10 @@ export function deleteMarket(id: string): boolean {
 
 // ---- Offering types (managed master list) --------------------------------
 export function listOfferingTypes(): OfferingType[] {
-  return [...store.offeringTypes];
+  return [...activeStore().offeringTypes];
 }
 export function getOfferingType(id: string): OfferingType | null {
-  return store.offeringTypes.find((t) => t.id === id) || null;
+  return activeStore().offeringTypes.find((t) => t.id === id) || null;
 }
 export function createOfferingType(data: {
   name: string;
@@ -683,7 +750,7 @@ export function createOfferingType(data: {
   const name = String(data.name || "").trim();
   // Dedupe by name (like markets) — re-adding an existing type updates its
   // description instead of creating a duplicate.
-  const existing = store.offeringTypes.find(
+  const existing = activeStore().offeringTypes.find(
     (t) => t.name.toLowerCase() === name.toLowerCase()
   );
   if (existing) {
@@ -695,24 +762,24 @@ export function createOfferingType(data: {
     name,
     description: (data.description || "").trim(),
   };
-  store.offeringTypes.push(record);
+  activeStore().offeringTypes.push(record);
   return record;
 }
 export function updateOfferingType(
   id: string,
   data: Partial<Omit<OfferingType, "id">>
 ): OfferingType | null {
-  const i = store.offeringTypes.findIndex((t) => t.id === id);
+  const i = activeStore().offeringTypes.findIndex((t) => t.id === id);
   if (i === -1) return null;
-  store.offeringTypes[i] = { ...store.offeringTypes[i], ...data, id };
-  return store.offeringTypes[i];
+  activeStore().offeringTypes[i] = { ...activeStore().offeringTypes[i], ...data, id };
+  return activeStore().offeringTypes[i];
 }
 export function deleteOfferingType(id: string): boolean {
   // Removes the definition from the master list. Offerings keep their
   // offering_type string — this just drops the managed entry/description.
-  const before = store.offeringTypes.length;
-  store.offeringTypes = store.offeringTypes.filter((t) => t.id !== id);
-  return store.offeringTypes.length < before;
+  const before = activeStore().offeringTypes.length;
+  activeStore().offeringTypes = activeStore().offeringTypes.filter((t) => t.id !== id);
+  return activeStore().offeringTypes.length < before;
 }
 // Keep the master list complete when an offering introduces a brand-new type
 // name via the entry form, so it shows up in the filter and the manager.
@@ -720,18 +787,18 @@ function ensureOfferingType(name: string) {
   const n = String(name || "").trim();
   if (!n) return;
   if (
-    !store.offeringTypes.some((t) => t.name.toLowerCase() === n.toLowerCase())
+    !activeStore().offeringTypes.some((t) => t.name.toLowerCase() === n.toLowerCase())
   ) {
-    store.offeringTypes.push({ id: rid("ot"), name: n, description: "" });
+    activeStore().offeringTypes.push({ id: rid("ot"), name: n, description: "" });
   }
 }
 
 // ---- Offering categories (managed master list) --------------------------
 export function listOfferingCategories(): OfferingCategory[] {
-  return [...store.offeringCategories];
+  return [...activeStore().offeringCategories];
 }
 export function getOfferingCategory(id: string): OfferingCategory | null {
-  return store.offeringCategories.find((c) => c.id === id) || null;
+  return activeStore().offeringCategories.find((c) => c.id === id) || null;
 }
 export function createOfferingCategory(data: {
   name: string;
@@ -741,7 +808,7 @@ export function createOfferingCategory(data: {
   const name = String(data.name || "").trim();
   // Dedupe by name (like offering types) — re-adding an existing category
   // refines it instead of creating a duplicate.
-  const existing = store.offeringCategories.find(
+  const existing = activeStore().offeringCategories.find(
     (c) => c.name.toLowerCase() === name.toLowerCase()
   );
   if (existing) {
@@ -755,24 +822,24 @@ export function createOfferingCategory(data: {
     description: (data.description || "").trim(),
     owner: (data.owner || "").trim(),
   };
-  store.offeringCategories.push(record);
+  activeStore().offeringCategories.push(record);
   return record;
 }
 export function updateOfferingCategory(
   id: string,
   data: Partial<Omit<OfferingCategory, "id">>
 ): OfferingCategory | null {
-  const i = store.offeringCategories.findIndex((c) => c.id === id);
+  const i = activeStore().offeringCategories.findIndex((c) => c.id === id);
   if (i === -1) return null;
-  store.offeringCategories[i] = { ...store.offeringCategories[i], ...data, id };
-  return store.offeringCategories[i];
+  activeStore().offeringCategories[i] = { ...activeStore().offeringCategories[i], ...data, id };
+  return activeStore().offeringCategories[i];
 }
 export function deleteOfferingCategory(id: string): boolean {
   // Removes the definition from the master list. Offerings keep their
   // offering_category string — this just drops the managed entry.
-  const before = store.offeringCategories.length;
-  store.offeringCategories = store.offeringCategories.filter((c) => c.id !== id);
-  return store.offeringCategories.length < before;
+  const before = activeStore().offeringCategories.length;
+  activeStore().offeringCategories = activeStore().offeringCategories.filter((c) => c.id !== id);
+  return activeStore().offeringCategories.length < before;
 }
 // Keep the master list complete when an offering introduces a brand-new
 // category name (via the entry form or Excel import).
@@ -780,11 +847,11 @@ function ensureOfferingCategory(name: string) {
   const n = String(name || "").trim();
   if (!n) return;
   if (
-    !store.offeringCategories.some(
+    !activeStore().offeringCategories.some(
       (c) => c.name.toLowerCase() === n.toLowerCase()
     )
   ) {
-    store.offeringCategories.push({
+    activeStore().offeringCategories.push({
       id: rid("oc"),
       name: n,
       description: "",
@@ -794,10 +861,10 @@ function ensureOfferingCategory(name: string) {
 }
 
 export function listOfferings(): Offering[] {
-  return [...store.offerings];
+  return [...activeStore().offerings];
 }
 export function getOffering(id: string): Offering | null {
-  return store.offerings.find((o) => o.id === id) || null;
+  return activeStore().offerings.find((o) => o.id === id) || null;
 }
 export function createOffering(data: Partial<Offering>): Offering {
   const record: Offering = {
@@ -816,29 +883,29 @@ export function createOffering(data: Partial<Offering>): Offering {
   };
   ensureOfferingType(record.offering_type);
   ensureOfferingCategory(record.offering_category);
-  store.offerings.unshift(record);
+  activeStore().offerings.unshift(record);
   return record;
 }
 export function updateOffering(
   id: string,
   data: Partial<Offering>
 ): Offering | null {
-  const i = store.offerings.findIndex((o) => o.id === id);
+  const i = activeStore().offerings.findIndex((o) => o.id === id);
   if (i === -1) return null;
   const materials = data.materials
     ? data.materials.map((m) => ({ ...m, id: m.id || rid("m") }))
-    : store.offerings[i].materials;
-  store.offerings[i] = { ...store.offerings[i], ...data, materials, id };
-  if (data.offering_type) ensureOfferingType(store.offerings[i].offering_type);
+    : activeStore().offerings[i].materials;
+  activeStore().offerings[i] = { ...activeStore().offerings[i], ...data, materials, id };
+  if (data.offering_type) ensureOfferingType(activeStore().offerings[i].offering_type);
   if (data.offering_category)
-    ensureOfferingCategory(store.offerings[i].offering_category);
-  return store.offerings[i];
+    ensureOfferingCategory(activeStore().offerings[i].offering_category);
+  return activeStore().offerings[i];
 }
 
 export function deleteOffering(id: string): boolean {
-  const before = store.offerings.length;
-  store.offerings = store.offerings.filter((o) => o.id !== id);
-  return store.offerings.length < before;
+  const before = activeStore().offerings.length;
+  activeStore().offerings = activeStore().offerings.filter((o) => o.id !== id);
+  return activeStore().offerings.length < before;
 }
 
 // Helper: hydrate an offering with its customer-type + market objects.
@@ -849,15 +916,15 @@ export function hydrateOffering(o: Offering) {
       .map((id) => getCustomerType(id))
       .filter((c): c is CustomerType => !!c),
     markets: o.market_ids
-      .map((id) => store.markets.find((m) => m.id === id))
+      .map((id) => activeStore().markets.find((m) => m.id === id))
       .filter((m): m is Market => !!m),
     // The matched master offering type (carries the description), looked up by
     // name since offerings store the type as a string.
     offeringType:
-      store.offeringTypes.find((t) => t.name === o.offering_type) || null,
+      activeStore().offeringTypes.find((t) => t.name === o.offering_type) || null,
     // The matched master offering category (carries the description + owner).
     offeringCategory:
-      store.offeringCategories.find((c) => c.name === o.offering_category) ||
+      activeStore().offeringCategories.find((c) => c.name === o.offering_category) ||
       null,
   };
 }

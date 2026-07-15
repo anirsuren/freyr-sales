@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 // snapshot from the current content when nothing has been saved yet.
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const db = getDb();
-  const session = await db.pitchSessions.get(params.id);
+  const session = await db.pitchSessions.get((await params).id);
   if (!session)
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
-import { SEQUENCES } from "@/lib/sequences";
+import { getSequence } from "@/lib/sequences";
 import type { AgentRunStep } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     ? [String(body.customerId)]
     : [];
 
-  const seq = SEQUENCES.find((s) => s.id === sequenceId);
+  const seq = getSequence(sequenceId);
   if (!seq || ids.length === 0) {
     return NextResponse.json({ error: "Nothing to enroll" }, { status: 400 });
   }

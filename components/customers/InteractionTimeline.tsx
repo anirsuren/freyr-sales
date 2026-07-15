@@ -2,6 +2,7 @@ import { MessageSquareText, CalendarClock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Avatar } from "@/components/ui/Avatar";
 import { formatDate, formatDateTime, OUTCOME_META } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
 
@@ -45,8 +46,12 @@ export function InteractionTimeline({
                   <div className="flex items-center gap-2 min-w-0">
                     <OutcomeBadge outcome={it.outcome} />
                     {contactNames?.[it.contact_id] && (
-                      <span className="text-[13px] text-text-primary font-medium truncate">
-                        {contactNames[it.contact_id]}
+                      <span className="flex min-w-0 items-center gap-2 text-[13px] text-text-primary font-medium">
+                        <Avatar
+                          name={contactNames[it.contact_id]}
+                          className="h-7 w-7 shrink-0 text-[9px]"
+                        />
+                        <span className="truncate">{contactNames[it.contact_id]}</span>
                       </span>
                     )}
                   </div>
@@ -66,7 +71,12 @@ export function InteractionTimeline({
                       Follow-up {formatDate(it.follow_up_date)}
                     </span>
                   )}
-                  {it.logged_by && <span>Logged by {it.logged_by}</span>}
+                  {it.logged_by && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Avatar name={it.logged_by} className="h-5 w-5 text-[7px]" />
+                      Logged by {it.logged_by}
+                    </span>
+                  )}
                 </div>
               </li>
             );

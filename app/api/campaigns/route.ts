@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createCampaign, listCampaigns } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { descSnippet, FREYR_CONTEXT } from "@/lib/outreach";
+import type { CampaignObjective } from "@/lib/campaigns";
 
 export async function GET() {
   return NextResponse.json({ ok: true, campaigns: listCampaigns() });
@@ -17,6 +18,12 @@ export async function POST(req: NextRequest) {
     subject?: string;
     body?: string;
     recipientContactIds?: string[];
+    objective?: CampaignObjective;
+    owner?: string;
+    audienceSummary?: string;
+    scheduledAt?: string | null;
+    preview?: boolean;
+    queue?: boolean;
   } = {};
   try {
     body = await req.json();
@@ -65,6 +72,10 @@ export async function POST(req: NextRequest) {
   if (!subject) subject = body.name.trim();
   if (!content) content = FREYR_CONTEXT;
 
+  if (body.preview) {
+    return NextResponse.json({ ok: true, draft: { subject, body: content } });
+  }
+
   const campaign = createCampaign({
     name: body.name.trim(),
     offering_id: offering?.id || null,
@@ -74,6 +85,14 @@ export async function POST(req: NextRequest) {
     recipient_contact_ids: Array.isArray(body.recipientContactIds)
       ? body.recipientContactIds.filter((x): x is string => typeof x === "string")
       : [],
+    objective: body.objective,
+    owner: body.owner,
+    audience_summary: body.audienceSummary,
+    scheduled_at: body.scheduledAt || null,
   });
+  if (body.queue) {
+    campaign.status = "queued";
+    campaign.queued_at = new Date().toISOString();
+  }
   return NextResponse.json({ ok: true, campaign });
 }

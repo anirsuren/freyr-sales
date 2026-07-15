@@ -1,0 +1,48 @@
+{
+  "family": "freyr-sales",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${TASK_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "freyr-sales",
+      "image": "${IMAGE_URI}",
+      "essential": true,
+      "readonlyRootFilesystem": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "8080" },
+        { "name": "AUTH_MODE", "value": "aws-alb" },
+        { "name": "DEFAULT_DATA_MODE", "value": "mock" },
+        { "name": "DATA_MODE_LOCKED", "value": "0" }
+      ],
+      "secrets": [
+        { "name": "ANTHROPIC_API_KEY", "valueFrom": "${APP_SECRETS_ARN}:ANTHROPIC_API_KEY::" },
+        { "name": "FIRECRAWL_API_KEY", "valueFrom": "${APP_SECRETS_ARN}:FIRECRAWL_API_KEY::" },
+        { "name": "APIFY_API_TOKEN", "valueFrom": "${APP_SECRETS_ARN}:APIFY_API_TOKEN::" },
+        { "name": "NEXT_PUBLIC_SUPABASE_URL", "valueFrom": "${APP_SECRETS_ARN}:NEXT_PUBLIC_SUPABASE_URL::" },
+        { "name": "SUPABASE_SERVICE_ROLE_KEY", "valueFrom": "${APP_SECRETS_ARN}:SUPABASE_SERVICE_ROLE_KEY::" },
+        { "name": "RESEND_API_KEY", "valueFrom": "${APP_SECRETS_ARN}:RESEND_API_KEY::" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 45
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/freyr/freyr-sales",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "app"
+        }
+      }
+    }
+  ]
+}

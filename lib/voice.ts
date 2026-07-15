@@ -6,6 +6,7 @@
 // land in a queue with an honest status.
 
 import { hasElevenLabs } from "./env";
+import { getDataMode } from "./dataMode";
 import type { Contact, Customer } from "./types";
 import type { Offering } from "./offerings";
 import agentIds from "./voiceAgents.json";
@@ -20,7 +21,15 @@ export function numberForCategory(category: string): NumberEntry | null {
   return NUMBERS[category] || null;
 }
 
-export type VoiceCallStatus = "called" | "waiting_for_number" | "no_agent";
+export type VoiceCallStatus =
+  | "called"
+  | "initiated"
+  | "in_progress"
+  | "analyzing"
+  | "completed"
+  | "failed"
+  | "waiting_for_number"
+  | "no_agent";
 
 // How a finished call ended — filled by ElevenLabs conversation results once
 // the number is live; seeded with sample values so the analytics render now.
@@ -36,6 +45,8 @@ export interface VoiceCall {
   offering_name: string; // or the category for bulk runs
   category: string;
   agent_id: string | null;
+  conversation_id?: string | null;
+  call_sid?: string | null;
   status: VoiceCallStatus;
   reason?: string;
   outcome?: VoiceOutcome | null;
@@ -167,7 +178,14 @@ function seedCalls(): VoiceCall[] {
 }
 
 function store(): VoiceStore {
-  const g = globalThis as typeof globalThis & { __freyrVoice?: VoiceStore };
+  const g = globalThis as typeof globalThis & {
+    __freyrVoice?: VoiceStore;
+    __freyrLiveVoice?: VoiceStore;
+  };
+  if (getDataMode() === "live") {
+    if (!g.__freyrLiveVoice) g.__freyrLiveVoice = { queue: [] };
+    return g.__freyrLiveVoice;
+  }
   if (!g.__freyrVoice) g.__freyrVoice = { queue: seedCalls() };
   return g.__freyrVoice;
 }
@@ -236,10 +254,15 @@ export async function placeOrQueueCall(opts: {
       // like an inbound one.
       const firstName = contact.full_name.replace(/^Dr\.\s*/i, "").split(/\s+/)[0];
       const pitchName = offering?.offering_name || category;
-      const ok = await outboundCall(agent_id, phoneId!, contact.phone, {
+      const result = await outboundCall(agent_id, phoneId!, contact.phone, {
+        freyr_call_id: entry.id,
+        contact_id: contact.id,
+        customer_id: customer?.id,
+        offering_id: offering?.id,
         contact_name: contact.full_name,
         company: customer?.company_name || undefined,
         offering: pitchName,
+        category,
         call_direction: "outbound",
         opening_line: `Hi ${firstName}, this is ${
           line?.persona || "the Freyr team"
@@ -247,10 +270,40 @@ export async function placeOrQueueCall(opts: {
           customer?.company_name ? ` for ${customer.company_name}` : ""
         }. Did I catch you at an okay moment?`,
       });
-      if (ok) {
-        entry.status = "called";
+      if (result.success) {
+        entry.status = "initiated";
+        entry.conversation_id = result.conversation_id || null;
+        entry.call_sid = result.callSid || null;
+        const { upsertVoiceConversation } = await import("./voiceEvents");
+        await upsertVoiceConversation({
+          conversation_id: result.conversation_id,
+          call_sid: result.callSid,
+          agent_id,
+          direction: "outbound",
+          status: "initiated",
+          contact_id: contact.id,
+          contact_name: contact.full_name,
+          customer_id: customer?.id,
+          company: customer?.company_name,
+          external_number: contact.phone,
+          offering_id: offering?.id,
+          offering_name: pitchName,
+          category,
+          dynamic_variables: {
+            freyr_call_id: entry.id,
+            contact_id: contact.id,
+            customer_id: customer?.id || "",
+            offering_id: offering?.id || "",
+            contact_name: contact.full_name,
+            company: customer?.company_name || "",
+            offering: pitchName,
+            category,
+            call_direction: "outbound",
+          },
+          started_at: entry.created_at,
+        });
       } else {
-        entry.reason = "Dial failed — left in the queue.";
+        entry.reason = result.message || "Dial failed - left in the queue.";
       }
     } catch {
       entry.reason = "Dial failed — left in the queue.";
@@ -273,6 +326,24 @@ export function listVoiceQueue(): VoiceCall[] {
 
 export function findQueueCall(id: string): VoiceCall | null {
   return store().queue.find((c) => c.id === id) || null;
+}
+
+export function isDialedVoiceCall(status: VoiceCallStatus): boolean {
+  return ["called", "initiated", "in_progress", "analyzing", "completed"].includes(status);
+}
+
+export function voiceCallStatusLabel(status: VoiceCallStatus): string {
+  const labels: Record<VoiceCallStatus, string> = {
+    called: "Called",
+    initiated: "Calling",
+    in_progress: "Live call",
+    analyzing: "Analyzing",
+    completed: "Ready",
+    failed: "Failed",
+    waiting_for_number: "Waiting for number",
+    no_agent: "No agent",
+  };
+  return labels[status];
 }
 
 export interface MockTurn {

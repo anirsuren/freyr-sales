@@ -6,13 +6,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import {
-  MATERIAL_META,
-  type CustomerType,
-  type Market,
-  type MaterialKind,
-  type OfferingCategory,
-} from "@/lib/offerings";
+import type { CustomerType, Market, OfferingCategory } from "@/lib/offerings";
+import { MATERIAL_META, type MaterialKind } from "@/lib/offeringMaterials";
 
 interface MaterialRow {
   kind: MaterialKind;

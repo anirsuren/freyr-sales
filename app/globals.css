@@ -501,6 +501,17 @@ select:focus-visible,
 .hovercard-in {
   animation: hoverCardIn 0.13s ease-out both;
 }
+
+/* One user-controlled delay for help tooltips and other CSS hover popups. */
+.freyr-hover-trigger:hover .freyr-hover-popup {
+  transition-delay: var(--freyr-hover-delay, 500ms);
+}
+.freyr-hover-trigger:focus-within .freyr-hover-popup {
+  transition-delay: 0ms;
+}
+html[data-hover-popups="off"] .freyr-hover-popup {
+  display: none !important;
+}
 @media (prefers-reduced-motion: reduce) {
   .hovercard-in { animation: none; }
 }

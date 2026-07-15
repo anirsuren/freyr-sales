@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { listMarkets, createMarket } from "@/lib/offerings";
-import { isAdmin } from "@/lib/role";
+import { listMarkets, createMarket, commitOfferingsChange } from "@/lib/offerings";
+import { canManageOfferings } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!isAdmin())
+  if (!(await canManageOfferings()))
     return NextResponse.json(
       { error: "View only — admin access required" },
       { status: 403 }
@@ -18,6 +18,13 @@ export async function POST(req: Request) {
   if (!body.name || !String(body.name).trim()) {
     return NextResponse.json({ error: "Market name is required" }, { status: 400 });
   }
-  const market = createMarket(String(body.name));
-  return NextResponse.json({ ok: true, market });
+  try {
+    const market = await commitOfferingsChange(() => createMarket(String(body.name)));
+    return NextResponse.json({ ok: true, market });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Market save failed" },
+      { status: 503 }
+    );
+  }
 }

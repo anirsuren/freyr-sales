@@ -12,13 +12,12 @@ import {
   pipelineGrowthSeries,
   pipelineGrowthPointDeals,
   STAGES,
-  OPEN_STAGES,
-  STAGE_COLOR,
-  STAGE_PROBABILITY,
-  SALES_TEAM,
   formatMoney,
 } from "@/lib/pipeline";
 import { OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { getDataMode } from "@/lib/dataMode";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { BarChart3 } from "lucide-react";
 
 export const metadata = { title: "Analytics" };
 export const dynamic = "force-dynamic";
@@ -28,20 +27,25 @@ const RANGE_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams?: { range?: string };
+  searchParams?: Promise<{ range?: string }>;
 }) {
+  const query = await searchParams;
   const db = getDb();
+  const dataMode = getDataMode();
   const [allSessions, customers, contacts, allInteractions] = await Promise.all([
     db.pitchSessions.list(),
     db.customers.list(),
     db.contacts.list(),
     db.interactions.list(),
   ]);
+  if (dataMode === "live" && allSessions.length === 0) {
+    return <EmptyState icon={BarChart3} title="No analytics yet" description="Create your first account and log activity to begin building real performance analytics." />;
+  }
 
   const range =
-    searchParams?.range &&
-    (RANGE_DAYS[searchParams.range] || searchParams.range === "all")
-      ? searchParams.range
+    query?.range &&
+    (RANGE_DAYS[query.range] || query.range === "all")
+      ? query.range
       : "all";
   const days = RANGE_DAYS[range];
   const cutoff = days ? Date.now() - days * 86400000 : 0;
@@ -53,12 +57,33 @@ export default async function AnalyticsPage({
     ? allInteractions.filter((i) => inRange(i.created_at))
     : allInteractions;
 
-  const deals = buildDeals(sessions, customers, contacts, interactions);
+  // The range describes when pipeline entered the book. Current stage must use
+  // the full interaction history; filtering outcomes by the same cutoff could
+  // resurrect an older closed-lost deal as an open prospect in a shorter view.
+  const deals = buildDeals(sessions, customers, contacts, allInteractions);
 
   // Real cumulative pipeline-growth curve from the full book (not the date
   // filter) — no hardcoded curve or invented "+12%".
   const fullDeals = buildDeals(allSessions, customers, contacts, allInteractions);
   const trendSeries = pipelineGrowthSeries(fullDeals, Date.now());
+  const openTrendDeals = fullDeals
+    .filter((deal) => deal.stage !== "Closed Lost")
+    .filter((deal) => !Number.isNaN(new Date(deal.createdAt).getTime()))
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const trendLabels = trendSeries.map((_, index) => {
+    if (index === 0 || openTrendDeals.length === 0) return "Pipeline start";
+    const dealIndex = Math.max(
+      0,
+      Math.min(
+        openTrendDeals.length - 1,
+        Math.round(openTrendDeals.length * (index / (trendSeries.length - 1))) - 1
+      )
+    );
+    return `Through ${new Date(openTrendDeals[dealIndex].createdAt).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })}`;
+  });
   // The deals behind each point of the growth curve, aligned to trendSeries.
   const trendPointTips = pipelineGrowthPointDeals(fullDeals).map((bucket) =>
     bucket.map((d) => ({
@@ -76,7 +101,12 @@ export default async function AnalyticsPage({
   // four real deal-owners use their actual numbers; the rest of the roster gets
   // a deterministic mock forecast so the leaderboard is full and every row can
   // expand into real graphs without a click-through.
-  const reps: RepStat[] = buildRepStats(deals);
+  const actualOwners = Array.from(new Set(fullDeals.map((deal) => deal.owner)));
+  const reps: RepStat[] = buildRepStats(deals, {
+    rangeDays: days,
+    includeSynthetic: dataMode !== "live",
+    actualOwners,
+  });
   const stages = STAGES.map((stage) => {
     const ds = deals.filter((d) => d.stage === stage);
     return { stage, count: ds.length, value: ds.reduce((s, d) => s + d.value, 0) };
@@ -157,7 +187,7 @@ export default async function AnalyticsPage({
       />
 
       {/* Hero trend */}
-      <Card className="p-0 overflow-hidden">
+      <Card className="p-0 pb-5">
         <div className="p-5 flex items-end justify-between">
           <div>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
@@ -177,6 +207,7 @@ export default async function AnalyticsPage({
           goal={3.0}
           goalLabel="Quota $3.0M"
           format="millions"
+          xLabels={trendLabels}
           pointTips={trendPointTips}
         />
       </Card>

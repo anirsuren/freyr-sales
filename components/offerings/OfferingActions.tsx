@@ -16,11 +16,13 @@ export function OfferingActions({
   offeringName,
   customers,
   extra,
+  commercialActionsEnabled = true,
 }: {
   offeringId: string;
   offeringName: string;
   customers: { id: string; name: string }[];
   extra?: ReactNode;
+  commercialActionsEnabled?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -57,23 +59,27 @@ export function OfferingActions({
   return (
     <div className="flex flex-col items-stretch lg:items-end gap-2">
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        <Link
-          href="/intake"
-          className="inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-3.5 py-2 bg-blue-primary text-white hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-        >
-          <Rocket size={14} strokeWidth={2} />
-          Use in a pitch
-        </Link>
-        <button
-          onClick={() => setAdding((v) => !v)}
-          className="inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-3.5 py-2 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
-        >
-          {adding ? <X size={14} strokeWidth={2} /> : <Plus size={14} strokeWidth={2} />}
-          Add to a customer
-        </button>
+        {commercialActionsEnabled && (
+          <>
+            <Link
+              href="/intake"
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-3.5 py-2 bg-blue-primary text-white hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+            >
+              <Rocket size={14} strokeWidth={2} />
+              Use in a pitch
+            </Link>
+            <button
+              onClick={() => setAdding((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold rounded-md px-3.5 py-2 bg-white border border-border text-text-primary hover:bg-surface transition-colors"
+            >
+              {adding ? <X size={14} strokeWidth={2} /> : <Plus size={14} strokeWidth={2} />}
+              Add to a customer
+            </button>
+          </>
+        )}
         {extra}
       </div>
-      {adding && (
+      {commercialActionsEnabled && adding && (
         <div className="flex items-center gap-2 bg-surface/70 border border-border-light rounded-lg p-2">
           <select
             aria-label="Choose a customer"

@@ -22,6 +22,7 @@ export function DashboardExport({ rows }: { rows: ExportRow[] }) {
   return (
     <button
       onClick={exportCsv}
+      data-dashboard-menu-close
       className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-lg border border-border text-text-secondary hover:bg-surface transition-colors"
     >
       <Download size={16} strokeWidth={1.5} />

@@ -2,98 +2,55 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Video,
-  Presentation,
-  FileText,
-  DollarSign,
-  ExternalLink,
-  Sparkles,
   Pencil,
   Plus,
   ChevronRight,
   UserRound,
-  Swords,
-  BookOpen,
-  Quote,
   Layers,
   Building2,
-  AlignLeft,
-  BarChart3,
-  FolderOpen,
   Globe,
-  File,
-  Table2,
 } from "lucide-react";
-import { Card } from "@/components/ui/Card";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { RecordView } from "@/components/RecordView";
 import { DuplicateButton } from "@/components/offerings/DuplicateButton";
+import { OfferingOverviewMain } from "@/components/offerings/OfferingOverviewMain";
 import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { OfferingActions } from "@/components/offerings/OfferingActions";
-import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
-import { DonutChart, BarChart, VIZ_SERIES } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
-import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
-import { isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
+import { getDataMode } from "@/lib/dataMode";
+import { isOfferingsOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
 import { reportForOffering } from "@/lib/revenue";
-import { formatMoney } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
-import {
-  getOffering,
-  hydrateOffering,
-  listOfferings,
-  MATERIAL_META,
-  type MaterialKind,
-} from "@/lib/offerings";
+import { getOffering, hydrateOffering, listOfferings } from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { id: string } }) {
-  const o = getOffering(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const o = getOffering((await params).id);
   return { title: o ? `${o.offering_name} · Offerings` : "Offering" };
 }
 
-const MATERIAL_ICON: Record<MaterialKind, typeof Video> = {
-  video: Video,
-  presentation: Presentation,
-  whitepaper: FileText,
-  pricing: DollarSign,
-  competition: Swords,
-  case_study: BookOpen,
-  reference: Quote,
-  one_pager: File,
-  datasheet: Table2,
-};
-const KIND_ORDER: MaterialKind[] = [
-  "video",
-  "presentation",
-  "whitepaper",
-  "pricing",
-  "case_study",
-  "reference",
-  "competition",
-  "one_pager",
-  "datasheet",
-];
 const CT_FAMILIES = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
 export default async function OfferingDetailPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { tab?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ tab?: string }>;
 }) {
-  const raw = getOffering(params.id);
+  const query = await searchParams;
+  const raw = getOffering((await params).id);
   if (!raw) notFound();
   const o = hydrateOffering(raw);
 
-  const tab = searchParams?.tab === "reports" ? "reports" : "overview";
+  const tab = query?.tab === "reports" ? "reports" : "overview";
   const allCustomers = await getDb().customers.list();
   const report = reportForOffering(allCustomers, o.id);
   const customerPickList = allCustomers.map((c) => ({
@@ -111,7 +68,8 @@ export default async function OfferingDetailPage({
 
   const isMapped =
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
-  const admin = isAdmin();
+  const admin = await canManageOfferings();
+  const commercialActionsEnabled = !isOfferingsOnly(getDataMode());
 
   // The internal person accountable for this offering — the category owner if
   // set, else the delivery POC. Only render the owner card when one is real.
@@ -170,24 +128,6 @@ export default async function OfferingDetailPage({
     return { bg: "rgba(217,119,6,0.15)", color: "#B45309" }; // mid — amber
   };
 
-  // Commercials bars (revenue by customer) for the inline summary.
-  const commercialsBars = report.customers
-    .filter((c) => c.revenue > 0)
-    .map((c, i) => ({
-      label: c.name,
-      value: c.revenue,
-      color: VIZ_SERIES[i % VIZ_SERIES.length],
-      tip: [{ logo: c.name, name: c.name, value: formatMoney(c.revenue) }],
-    }));
-  const licenseBars = report.customers
-    .filter((c) => c.licenses > 0)
-    .map((c, i) => ({
-      label: c.name,
-      value: c.licenses,
-      color: VIZ_SERIES[i % VIZ_SERIES.length],
-      tip: [{ logo: c.name, name: c.name, value: `${c.licenses} seats` }],
-    }));
-
   return (
     <div>
       <RecordView
@@ -243,6 +183,7 @@ export default async function OfferingDetailPage({
             offeringId={o.id}
             offeringName={o.offering_name}
             customers={customerPickList}
+            commercialActionsEnabled={commercialActionsEnabled}
             extra={
               admin ? (
                 <>
@@ -316,228 +257,12 @@ export default async function OfferingDetailPage({
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
           {/* ---------------------------------------------------- MAIN column */}
-          <div className="space-y-5">
-            {/* Summary / About — labelled "About {type}" when the offering has
-                no description of its own (falls back to the type's). */}
-            <SectionCard
-              title={o.offering_description ? "Summary" : o.offeringType?.description ? `About ${o.offering_type}` : "Summary"}
-              icon={AlignLeft}
-            >
-              {o.offering_description ? (
-                <CollapsibleDescription text={o.offering_description} />
-              ) : o.offeringType?.description ? (
-                <CollapsibleDescription text={o.offeringType.description} />
-              ) : (
-                <p className="text-[13px] text-text-tertiary">
-                  No description yet — it comes from this offering&apos;s sales
-                  materials.
-                </p>
-              )}
-              {o.future_availability && (
-                <p className="text-[12.5px] text-text-secondary leading-relaxed mt-3 pt-3 border-t border-border-light">
-                  <span className="font-medium text-text-tertiary">
-                    Availability —{" "}
-                  </span>
-                  {o.future_availability}
-                </p>
-              )}
-            </SectionCard>
-
-            {/* Commercials — inline summary, deep dive on the Reports tab */}
-            <SectionCard
-              title="Commercials"
-              icon={BarChart3}
-              action={
-                report.customerCount > 0 ? (
-                  <Link
-                    href={`/offerings/${o.id}?tab=reports`}
-                    className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-                  >
-                    View full report
-                    <ChevronRight size={13} strokeWidth={2} />
-                  </Link>
-                ) : null
-              }
-            >
-              {report.customerCount === 0 ? (
-                <p className="text-[13px] text-text-tertiary">
-                  No revenue logged yet — add it on a customer&apos;s Offerings
-                  tab and it rolls up here.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Card 1 — Revenue: donut is the ONLY place the total shows
-                      (no repeated stat), legend stacked one-per-row to save
-                      space (Suren). */}
-                  <div className="rounded-xl border border-border-light p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
-                      Revenue
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <DonutChart
-                        segments={commercialsBars}
-                        size={96}
-                        thickness={12}
-                        centerLabel={formatMoney(report.totalRevenue)}
-                        centerSub="total"
-                      />
-                      <div className="min-w-0 flex-1 space-y-1.5">
-                        {commercialsBars.map((b) => (
-                          <div key={b.label} className="flex items-center gap-1.5 text-[12px]">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: b.color }} />
-                            <span className="truncate text-text-secondary">{b.label}</span>
-                            <span className="ml-auto font-semibold text-text-primary tnum">
-                              {formatMoney(b.value)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 2 — Licensed seats + a per-customer bar (the extra graph). */}
-                  <div className="rounded-xl border border-border-light p-4 flex flex-col">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      Licensed seats
-                    </p>
-                    <p className="text-[26px] font-bold text-text-primary tnum leading-none mt-1">
-                      {report.totalLicenses}
-                    </p>
-                    <p className="text-[12px] text-text-tertiary mt-1">
-                      across {report.customerCount} customer{report.customerCount === 1 ? "" : "s"}
-                    </p>
-                    {licenseBars.length > 0 && (
-                      <div className="mt-3 flex-1 flex items-end">
-                        <BarChart data={licenseBars} height={72} format="number" unit="seats" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card 3 — Contracts + derived economics (no repeated numbers). */}
-                  <div className="rounded-xl border border-border-light p-4 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                        Contracts
-                      </p>
-                      <p className="text-[26px] font-bold text-text-primary tnum leading-none mt-1">
-                        {report.lineCount}
-                      </p>
-                      <p className="text-[12px] text-text-tertiary mt-1">
-                        revenue lines across {report.customerCount} customer
-                        {report.customerCount === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <div className="rounded-lg bg-surface px-2.5 py-2">
-                        <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                          Avg / customer
-                        </p>
-                        <p className="text-[14px] font-bold text-text-primary tnum leading-none mt-0.5">
-                          {formatMoney(Math.round(report.totalRevenue / Math.max(report.customerCount, 1)))}
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-surface px-2.5 py-2">
-                        <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                          Avg / seat
-                        </p>
-                        <p className="text-[14px] font-bold text-text-primary tnum leading-none mt-0.5">
-                          {report.totalLicenses ? formatMoney(Math.round(report.totalRevenue / report.totalLicenses)) : "—"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </SectionCard>
-
-            {/* Sales materials */}
-            <SectionCard title={`Sales materials (${o.materials.length})`} icon={FolderOpen}>
-              {o.materials.length === 0 ? (
-                admin ? (
-                  <AddMaterialButton offeringId={o.id} materials={o.materials} />
-                ) : (
-                  <p className="text-[13px] text-text-tertiary">No materials yet</p>
-                )
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {KIND_ORDER.flatMap((kind) =>
-                    o.materials
-                      .filter((m) => m.kind === kind)
-                      .map((m) => {
-                        const Icon = MATERIAL_ICON[kind];
-                        return (
-                          <a
-                            key={m.id}
-                            href={m.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group flex items-center gap-3 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
-                          >
-                            <span className="w-9 h-9 rounded-md bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                              <Icon size={16} strokeWidth={1.8} />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
-                                {m.label}
-                              </span>
-                              <span className="block text-[11px] text-text-tertiary">
-                                {MATERIAL_META[kind].label}
-                              </span>
-                            </span>
-                            <ExternalLink
-                              size={14}
-                              strokeWidth={1.7}
-                              className="text-text-tertiary group-hover:text-blue-primary shrink-0"
-                            />
-                          </a>
-                        );
-                      })
-                  )}
-                </div>
-              )}
-              {admin && o.materials.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-border-light">
-                  <AddMaterialButton offeringId={o.id} materials={o.materials} />
-                </div>
-              )}
-            </SectionCard>
-
-            {/* Cross-sell — related offerings in the same family */}
-            {related.length > 0 && (
-              <SectionCard
-                title={`Cross-sell — more in ${o.offering_type} (${related.length})`}
-                icon={Layers}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {related.map((r) => (
-                    <Link
-                      key={r.id}
-                      href={`/offerings/${r.id}`}
-                      className="group flex items-center gap-3 p-3 rounded-lg border border-border-light hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
-                    >
-                      <OfferingIcon name={r.offering_name} className="w-9 h-9 shrink-0" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
-                          {r.offering_name}
-                        </span>
-                        {r.current_availability && (
-                          <span className="mt-1 inline-flex">
-                            <AvailabilityPill value={r.current_availability} size="sm" />
-                          </span>
-                        )}
-                      </span>
-                      <ChevronRight
-                        size={16}
-                        strokeWidth={1.6}
-                        className="text-text-tertiary group-hover:text-blue-primary shrink-0"
-                      />
-                    </Link>
-                  ))}
-                </div>
-              </SectionCard>
-            )}
-          </div>
-
+          <OfferingOverviewMain
+            offering={o}
+            report={report}
+            related={related}
+            admin={admin}
+          />
           {/* ---------------------------------------------------- SIDE rail */}
           <div className="space-y-5">
             {/* Internal owner — only when a real person is on file */}
@@ -570,11 +295,7 @@ export default async function OfferingDetailPage({
                 )}
                 {o.offeringCategory.owner && (
                   <p className="inline-flex items-center gap-1.5 text-[12.5px] text-text-secondary mt-2.5">
-                    <UserRound
-                      size={13}
-                      strokeWidth={1.8}
-                      className="text-text-tertiary"
-                    />
+                    <Avatar name={o.offeringCategory.owner} className="h-6 w-6 text-[8px]" />
                     Offering owner: {o.offeringCategory.owner}
                   </p>
                 )}

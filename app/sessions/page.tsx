@@ -29,6 +29,8 @@ export default async function SessionsPage() {
     const svc = (s.recommended_services || []) as RecommendedService[];
     return {
       id: s.id,
+      customerId: s.customer_id,
+      contactId: s.contact_id,
       company: c?.company_name || "—",
       contact: ct?.full_name || "—",
       title: ct?.job_title || "",

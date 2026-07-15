@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ArrowRight, DollarSign, TrendingUp, Target, CalendarCheck } from "lucide-react";
@@ -13,10 +13,10 @@ import { formatMoney, CURRENT_REP, type RepStat } from "@/lib/pipeline";
 export type { RepStat };
 
 const RANGES = [
-  { k: "7d", l: "7D" },
-  { k: "30d", l: "30D" },
-  { k: "90d", l: "90D" },
-  { k: "all", l: "All" },
+  { k: "7d", l: "7D", name: "Last 7 days" },
+  { k: "30d", l: "30D", name: "Last 30 days" },
+  { k: "90d", l: "90D", name: "Last 90 days" },
+  { k: "all", l: "All", name: "All time" },
 ];
 
 const slugify = (s: string) =>
@@ -38,6 +38,16 @@ export function RepAnalytics({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<string | null>(null);
+  const [selectedRange, setSelectedRange] = useState(range);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => setSelectedRange(range), [range]);
+
+  const rangeName = RANGES.find((item) => item.k === selectedRange)?.name ?? "All time";
+  const rangeContext =
+    selectedRange === "all"
+      ? "across all recorded history"
+      : `in the ${rangeName.toLowerCase()}`;
 
   // Team roll-up for the supervisor lens — the whole floor at a glance.
   const team = useMemo(() => {
@@ -74,19 +84,32 @@ export function RepAnalytics({
             Rep performance
           </h2>
           <p className="text-[12.5px] text-text-tertiary mt-0.5">
-            The whole team, ranked by pipeline. Click a rep to expand their
-            breakdown, or open their full page.
+            Pipeline created {rangeContext}, ranked by owner. Click a rep to expand their breakdown.
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-border-light">
+        <div
+          className={cn(
+            "flex items-center gap-1 bg-surface p-1 rounded-lg border border-border-light transition-opacity",
+            isPending && "opacity-70"
+          )}
+          aria-label="Rep performance date range"
+        >
           {RANGES.map((r) => (
             <button
               key={r.k}
-              onClick={() => router.push(`/analytics?range=${r.k}`, { scroll: false })}
+              type="button"
+              aria-label={r.name}
+              aria-pressed={selectedRange === r.k}
+              onClick={() => {
+                setSelectedRange(r.k);
+                startTransition(() => {
+                  router.push(`/analytics?range=${r.k}`, { scroll: false });
+                });
+              }}
               className={cn(
-                "px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-[0.05em] transition-colors",
-                range === r.k
-                  ? "bg-white shadow-card text-text-primary"
+                "px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-[0.05em] transition-[color,background-color,box-shadow]",
+                selectedRange === r.k
+                  ? "bg-blue-primary shadow-sm text-white"
                   : "text-text-secondary hover:text-text-primary"
               )}
             >

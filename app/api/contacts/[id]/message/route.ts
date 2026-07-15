@@ -8,7 +8,7 @@ import { generateMessage, type MessageKind } from "@/lib/outreach";
 // personalized draft they copy out and send themselves — NEVER auto-sent.
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   let body: { kind?: string; offeringId?: string; extra?: string } = {};
   try {
@@ -25,7 +25,7 @@ export async function POST(
   }
 
   const db = getDb();
-  const contact = await db.contacts.get(params.id);
+  const contact = await db.contacts.get((await params).id);
   if (!contact) {
     return NextResponse.json(
       { ok: false, error: "Contact not found." },

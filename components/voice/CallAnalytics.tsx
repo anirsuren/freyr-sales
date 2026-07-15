@@ -10,9 +10,16 @@ import {
   Minus,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { AreaChart, DonutChart, DonutLegend, VIZ } from "@/components/charts/Charts";
+import { AreaChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
+import { ChartInspector } from "@/components/charts/ChartInspector";
+import { Tooltip } from "@/components/ui/Tooltip";
 
-type Turn = { role: "agent" | "user"; message: string };
+type Turn = { role: "agent" | "user"; message: string; time?: number };
+
+const formatOffset = (seconds?: number) =>
+  typeof seconds === "number"
+    ? `${Math.floor(seconds / 60)}:${String(Math.round(seconds) % 60).padStart(2, "0")}`
+    : "";
 
 // Everything a rep would want from the AI's read of a call, derived from the
 // transcript (Suren: sentiment analysis, a sentiment heat-map/line, objections,
@@ -76,6 +83,7 @@ export function CallAnalytics({
     {
       name: t.role === "agent" ? agentLabel : contactFirst,
       sub: t.message.slice(0, 80),
+      value: formatOffset(t.time) || undefined,
     },
   ]);
   const overall = Math.round(sentiment.reduce((s, v) => s + v, 0) / sentiment.length);
@@ -90,8 +98,26 @@ export function CallAnalytics({
   const agentWords = words(turns.filter((t) => t.role === "agent"));
   const contactWords = words(turns.filter((t) => t.role === "user"));
   const talkRatio = [
-    { label: agentLabel, value: agentWords, color: personaColor },
-    { label: contactFirst, value: contactWords, color: "#8B5CF6" },
+    {
+      label: agentLabel,
+      value: agentWords,
+      color: personaColor,
+      tip: [{
+        name: `${agentLabel} · AI agent`,
+        sub: `${agentWords} words spoken`,
+        value: `${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`,
+      }],
+    },
+    {
+      label: contactFirst,
+      value: contactWords,
+      color: "#8B5CF6",
+      tip: [{
+        name: contactFirst,
+        sub: `${contactWords} words spoken`,
+        value: `${Math.round((contactWords / Math.max(1, agentWords + contactWords)) * 100)}%`,
+      }],
+    },
   ].filter((s) => s.value > 0);
 
   // Objections raised by the contact.
@@ -117,6 +143,13 @@ export function CallAnalytics({
   });
 
   const TrendIcon = overall >= 62 ? TrendingUp : overall >= 45 ? Minus : TrendingDown;
+  const turnRecords = turns.map((turn, index) => ({
+    id: `turn-${index}`,
+    label: turn.role === "agent" ? agentLabel : contactFirst,
+    meta: turn.message,
+    value: formatOffset(turn.time) || `Turn ${index + 1}`,
+    avatar: turn.role === "agent" ? agentLabel : contactFirst,
+  }));
 
   const stats = [
     { icon: Activity, label: "Overall sentiment", value: overallBand, color: overallColor },
@@ -148,7 +181,10 @@ export function CallAnalytics({
           const Icon = s.icon;
           return (
             <Card key={s.label} className="h-[104px] flex flex-col justify-between">
-              <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center">
+              <span
+                className="w-8 h-8 rounded-md flex items-center justify-center"
+                style={{ color: s.color || "#0071E3", background: `${s.color || "#0071E3"}14` }}
+              >
                 <Icon size={16} strokeWidth={1.9} />
               </span>
               <div>
@@ -169,22 +205,33 @@ export function CallAnalytics({
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 items-stretch">
         {/* Sentiment over the call — a line + a per-turn heat-map strip. */}
-        <Card className="flex flex-col">
-          <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-            Sentiment through the call
-          </h3>
-          <p className="text-[12px] text-text-tertiary mb-4">
-            How the mood moved, turn by turn — higher is warmer.
-          </p>
+        <ChartInspector
+          title="Sentiment through the call"
+          description="How the mood moved, turn by turn — higher is warmer."
+          records={turnRecords}
+          searchPlaceholder="Search transcript..."
+          expandedChildren={
+            <AreaChart
+              data={sentiment}
+              height={390}
+              color={overallColor}
+              format="number"
+              unit="score"
+              yMax={100}
+              xLabels={turns.map((turn, i) => formatOffset(turn.time) || `Turn ${i + 1}`)}
+              pointTips={sentimentTips}
+              className="w-full"
+            />
+          }
+        >
           <AreaChart
             data={sentiment}
-            height={150}
+            height={190}
             color={overallColor}
             format="number"
-            unit="/100"
-            xLabels={sentiment.map((_, i) =>
-              i === 0 ? "start" : i === sentiment.length - 1 ? "end" : ""
-            )}
+            unit="score"
+            yMax={100}
+            xLabels={turns.map((turn, i) => formatOffset(turn.time) || `Turn ${i + 1}`)}
             pointTips={sentimentTips}
             className="w-full"
           />
@@ -193,37 +240,72 @@ export function CallAnalytics({
               Turn-by-turn heat map
             </p>
             <div className="flex gap-0.5">
-              {sentiment.map((v, i) => (
-                <span
-                  key={i}
-                  title={`Turn ${i + 1}: ${v}/100`}
-                  className="flex-1 h-5 rounded-[3px] min-w-[3px]"
-                  style={{
-                    background:
-                      v >= 62 ? "#34C759" : v >= 45 ? "#FFCC00" : "#FF453A",
-                    opacity: 0.35 + (Math.abs(v - 50) / 50) * 0.65,
-                  }}
-                />
-              ))}
+              {sentiment.map((v, i) => {
+                const turn = turns[i];
+                const band = v >= 62 ? "Positive" : v >= 45 ? "Neutral" : "Negative";
+                return (
+                  <Tooltip
+                    key={i}
+                    delayMs={0}
+                    label={
+                      <span className="block min-w-[220px]">
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="font-semibold">
+                            {turn.role === "agent" ? agentLabel : contactFirst}
+                          </span>
+                          <span className="tnum">{formatOffset(turn.time) || `Turn ${i + 1}`}</span>
+                        </span>
+                        <span className="mt-1 flex items-center justify-between gap-3 text-white/75">
+                          <span>{band} sentiment</span>
+                          <span className="font-semibold text-white tnum">{v}/100</span>
+                        </span>
+                        <span className="mt-2 block border-t border-white/15 pt-2 text-white/85">
+                          {turn.message}
+                        </span>
+                      </span>
+                    }
+                    className="flex-1"
+                  >
+                    <span
+                      className="block h-5 min-w-[3px] rounded-[3px] transition-transform hover:scale-y-125"
+                      style={{
+                        background:
+                          v >= 62 ? "#34C759" : v >= 45 ? "#FFCC00" : "#FF453A",
+                        opacity: 0.35 + (Math.abs(v - 50) / 50) * 0.65,
+                      }}
+                    />
+                  </Tooltip>
+                );
+              })}
             </div>
           </div>
-        </Card>
+        </ChartInspector>
 
         {/* Talk ratio donut. */}
-        <Card className="flex flex-col">
-          <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-            Who did the talking
-          </h3>
-          <p className="text-[12px] text-text-tertiary mb-4">Share of words spoken.</p>
+        <ChartInspector
+          title="Who did the talking"
+          description="Share of words spoken."
+          expandedChildren={
+            <div className="flex items-center justify-center gap-10 py-5">
+              <DonutChart
+                segments={talkRatio}
+                size={280}
+                thickness={28}
+                centerLabel={`${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`}
+                centerSub="agent"
+              />
+              <DonutLegend items={talkRatio} className="max-w-[320px]" />
+            </div>
+          }
+        >
           {talkRatio.length > 0 ? (
             <div className="flex-1 flex items-center gap-4">
               <DonutChart
                 segments={talkRatio}
-                size={130}
-                thickness={14}
+                size={150}
+                thickness={16}
                 centerLabel={`${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`}
                 centerSub="agent"
-                noTip
               />
               <DonutLegend items={talkRatio} />
             </div>
@@ -232,7 +314,7 @@ export function CallAnalytics({
               Not enough dialogue to measure.
             </p>
           )}
-        </Card>
+        </ChartInspector>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
@@ -281,7 +363,9 @@ export function CallAnalytics({
                 <p className="text-[13px] font-semibold text-text-primary leading-none">
                   {m.label}
                 </p>
-                <p className="text-[11.5px] text-text-tertiary mt-1">Turn {m.turn}</p>
+                <p className="text-[11.5px] text-text-tertiary mt-1">
+                  {formatOffset(turns[m.turn - 1]?.time) || `Turn ${m.turn}`}
+                </p>
               </li>
             ))}
           </ol>

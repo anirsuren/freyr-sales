@@ -131,7 +131,7 @@ export function AgentActions({
     <div
       className={
         grid
-          ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 stagger"
+          ? "grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-3 stagger"
           : "space-y-2.5 stagger"
       }
     >
@@ -141,11 +141,11 @@ export function AgentActions({
         const isDone = done.has(a.id);
         const draftable = DRAFTABLE.includes(a.kind);
         return (
-          <Card key={a.id} className={compact ? "p-3" : "p-4"}>
+          <Card key={a.id} className={compact ? "p-3" : grid ? "flex h-full flex-col p-4" : "p-4"}>
             {/* Compact (280px rail): stack text above the buttons and let them
                 wrap — nothing overflows the card (Anir: "this button is
                 literally going out of the screen"). Full width: one row. */}
-            <div className={compact ? "space-y-2.5" : "flex items-center gap-3"}>
+            <div className={compact ? "space-y-2.5" : grid ? "flex h-full flex-col gap-3" : "flex items-center gap-3"}>
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 {a.company ? (
                   // Lead with the account's identity so you know who this is
@@ -178,7 +178,7 @@ export function AgentActions({
                 <div className="min-w-0 flex-1">
                   <p
                     className={
-                      compact
+                      compact || grid
                         ? "text-[13px] font-semibold text-text-primary leading-snug"
                         : "text-[14px] font-semibold text-text-primary truncate"
                     }
@@ -187,7 +187,7 @@ export function AgentActions({
                   </p>
                   <p
                     className={
-                      compact
+                      compact || grid
                         ? "text-[11.5px] text-text-secondary leading-snug line-clamp-2 mt-0.5"
                         : "text-[12px] text-text-secondary truncate"
                     }
@@ -200,6 +200,8 @@ export function AgentActions({
                 className={
                   compact
                     ? "flex items-center gap-1.5 flex-wrap"
+                    : grid
+                    ? "mt-auto flex items-center gap-1.5 whitespace-nowrap"
                     : "flex items-center justify-end gap-2 shrink-0"
                 }
               >
@@ -207,7 +209,7 @@ export function AgentActions({
                 (isDone && drafts[a.id] ? (
                   <button
                     onClick={() => setViewing(a.id)}
-                    className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md border border-success/40 text-success hover:bg-success/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md border border-success/40 text-success hover:bg-success/10 transition-colors"
                   >
                     <Check size={14} strokeWidth={2.2} /> Drafted · View
                   </button>
@@ -215,7 +217,7 @@ export function AgentActions({
                   <button
                     onClick={() => handle(a)}
                     disabled={busy === a.id}
-                    className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50 active:scale-[0.97]"
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50 active:scale-[0.97]"
                   >
                     <Sparkles size={13} strokeWidth={1.9} />
                     {busy === a.id ? "Drafting…" : "Draft it for me"}
@@ -237,7 +239,7 @@ export function AgentActions({
                       }}
                       disabled={busy === a.id}
                       aria-label={`Decline ${a.title}`}
-                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-text-secondary hover:bg-surface hover:text-error transition-colors disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-text-secondary hover:bg-surface hover:text-error transition-colors disabled:opacity-50"
                     >
                       <X size={13} strokeWidth={2.2} />
                       Decline
@@ -246,7 +248,7 @@ export function AgentActions({
                       onClick={() => review(a, "approve")}
                       disabled={busy === a.id}
                       aria-label={`Approve ${a.title}`}
-                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50"
                     >
                       <ShieldCheck size={13} strokeWidth={1.9} />
                       {busy === a.id ? "Working…" : "Approve"}
@@ -255,7 +257,7 @@ export function AgentActions({
                 ))}
               <Link
                 href={a.href}
-                className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary px-3 py-1.5 rounded-md border border-border-light hover:bg-surface transition-colors"
+                className="inline-flex items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-blue-primary px-3 py-1.5 rounded-md border border-border-light hover:bg-surface transition-colors"
               >
                 {a.cta}
                 <ArrowRight size={13} strokeWidth={1.8} />

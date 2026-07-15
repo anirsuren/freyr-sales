@@ -17,6 +17,7 @@ import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton } from "@/components/ui/BackButton";
 import { CallAnalytics } from "@/components/voice/CallAnalytics";
+import { CallStatusRefresh } from "@/components/voice/CallStatusRefresh";
 import { getConversation } from "@/lib/elevenlabs";
 import { syncConversations } from "@/lib/voiceSync";
 import {
@@ -28,6 +29,12 @@ import {
 import { personaFor } from "@/lib/voicePersonas";
 import { getDb } from "@/lib/db";
 import { formatDateTime, formatPhone, cn } from "@/lib/utils";
+import {
+  getStoredVoiceConversation,
+  ingestElevenLabsConversation,
+  mapElevenLabsStatus,
+  type VoiceLifecycleStatus,
+} from "@/lib/voiceEvents";
 
 export const metadata = { title: "Call transcript" };
 export const dynamic = "force-dynamic";
@@ -42,10 +49,18 @@ const OUTCOME_META: Record<VoiceOutcome, { label: string; chip: string }> = {
   declined: { label: "Declined", chip: "text-error bg-error/10" },
 };
 
+const CALL_STATUS_META: Record<VoiceLifecycleStatus, { label: string; chip: string }> = {
+  initiated: { label: "Calling", chip: "text-blue-primary bg-blue-light" },
+  in_progress: { label: "Live call", chip: "text-success bg-success/10" },
+  analyzing: { label: "Analyzing", chip: "text-warning bg-warning/10" },
+  completed: { label: "Analysis ready", chip: "text-success bg-success/10" },
+  failed: { label: "Failed", chip: "text-error bg-error/10" },
+};
+
 type Turn = { role: "agent" | "user"; message: string; time?: number };
 type CallVM = {
   title: string;
-  status: "done" | "failed" | "in-progress";
+  status: VoiceLifecycleStatus;
   duration: number;
   startedISO?: string;
   summary?: string;
@@ -65,13 +80,49 @@ type CallVM = {
 export default async function ConversationPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const convo = await getConversation(params.id);
+  const conversationId = (await params).id;
+  let stored = await getStoredVoiceConversation(conversationId);
+  const convo = stored ? null : await getConversation(conversationId);
   const status = voiceStatus();
   let vm: CallVM | null = null;
 
-  if (convo) {
+  if (stored) {
+    const category = stored.category || stored.offering_name || "Voice agent";
+    const persona = personaFor(category);
+    const contact = stored.contact_id
+      ? await getDb().contacts.get(stored.contact_id).catch(() => null)
+      : null;
+    vm = {
+      title: `${category} call`,
+      status: stored.status,
+      duration: stored.duration_secs || 0,
+      startedISO: stored.started_at || stored.created_at,
+      summary: stored.summary || undefined,
+      turns: (stored.transcript || [])
+        .filter((turn) => turn.message)
+        .map((turn) => ({
+          role: turn.role === "agent" ? "agent" : "user",
+          message: turn.message as string,
+          time:
+            typeof turn.time_in_call_secs === "number"
+              ? turn.time_in_call_secs
+              : undefined,
+        })),
+      personaName: stored.agent_name || persona?.name,
+      personaColor: persona?.color,
+      contactName: stored.contact_name || contact?.full_name,
+      contactId: stored.contact_id || undefined,
+      contactTitle: contact?.job_title || undefined,
+      linkedin: contact?.linkedin_url || null,
+      company: stored.company || undefined,
+      phone: stored.external_number || contact?.phone || undefined,
+      outcome: stored.outcome || undefined,
+      offering: stored.offering_name || stored.category || undefined,
+    };
+  } else if (convo) {
+    stored = await ingestElevenLabsConversation(convo).catch(() => null);
     const category =
       Object.entries(status.agents).find(([, id]) => id === convo.agent_id)?.[0] ||
       "Voice agent";
@@ -89,8 +140,7 @@ export default async function ConversationPage({
       : null;
     vm = {
       title: `${category} call`,
-      status:
-        convo.status === "done" ? "done" : convo.status === "failed" ? "failed" : "in-progress",
+      status: mapElevenLabsStatus(convo.status),
       duration: convo.metadata?.call_duration_secs || 0,
       startedISO: convo.metadata?.start_time_unix_secs
         ? new Date(convo.metadata.start_time_unix_secs * 1000).toISOString()
@@ -113,7 +163,7 @@ export default async function ConversationPage({
       offering: category,
     };
   } else {
-    const call = findQueueCall(params.id);
+    const call = findQueueCall(conversationId);
     if (call) {
       const persona = personaFor(call.category);
       const { summary, turns } = mockCallTranscript(call, persona?.name || "The agent");
@@ -121,7 +171,7 @@ export default async function ConversationPage({
       const contact = await db.contacts.get(call.contact_id).catch(() => null);
       vm = {
         title: `${call.category} call`,
-        status: "done",
+        status: "completed",
         duration: call.duration_secs || 0,
         startedISO: call.created_at,
         summary,
@@ -160,6 +210,17 @@ export default async function ConversationPage({
     );
   }
 
+  // Live transcripts include offsets from ElevenLabs. Seeded/demo transcripts
+  // do not, so distribute their turns across the recorded duration instead of
+  // rendering an apparently timeless conversation in mock mode.
+  vm.turns = vm.turns.map((turn, index, all) => ({
+    ...turn,
+    time:
+      typeof turn.time === "number"
+        ? turn.time
+        : Math.round((index / Math.max(1, all.length - 1)) * vm!.duration),
+  }));
+
   const outcome = vm.outcome ? OUTCOME_META[vm.outcome] : null;
   // Readable speaker labels for the transcript — the agent persona vs. the
   // contact's first name (Suren: "improve the transcript").
@@ -179,9 +240,41 @@ export default async function ConversationPage({
 
   return (
     <div className="space-y-6">
+      <CallStatusRefresh status={vm.status} />
       {/* router.back() so it returns to wherever you came from — the agent's page
           (Maya) when you drilled in from there, not always the main list (Suren). */}
       <BackButton fallback="/voice" label="Back" />
+
+      <div className="flex items-center justify-between gap-5 border-b border-border-light pb-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white"
+            style={{ background: vm.personaColor || "#0071E3" }}
+          >
+            <PhoneCall size={19} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate text-[22px] font-semibold text-text-primary">
+              {vm.contactName ? `Call with ${vm.contactName}` : vm.title}
+            </h1>
+            <p className="mt-0.5 truncate text-[12.5px] text-text-secondary">
+              {agentLabel}
+              {vm.company ? ` · ${vm.company}` : ""}
+              {vm.startedISO ? ` · ${formatDateTime(vm.startedISO)}` : ""}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-md bg-surface px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary tnum">
+            {fmtLen(vm.duration)}
+          </span>
+          {outcome && (
+            <span className={cn("rounded-md px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.04em]", outcome.chip)}>
+              {outcome.label}
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* Two columns so the width is actually used — transcript + a details rail */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
@@ -191,18 +284,15 @@ export default async function ConversationPage({
             <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               Transcript
             </h2>
-            {vm.status !== "done" && (
-              <span
-                className={cn(
-                  "text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
-                  vm.status === "failed"
-                    ? "text-error bg-error/10"
-                    : "text-blue-primary bg-blue-light"
-                )}
-              >
-                {vm.status === "failed" ? "Failed" : "In progress"}
-              </span>
-            )}
+            <span
+              className={cn(
+                "text-[11px] font-semibold uppercase tracking-[0.04em] rounded-md px-2.5 py-1",
+                CALL_STATUS_META[vm.status].chip,
+                vm.status === "analyzing" && "animate-pulse"
+              )}
+            >
+              {CALL_STATUS_META[vm.status].label}
+            </span>
           </div>
           {/* Speaker legend — names the two voices so the bubbles read like a
               real call recording, not anonymous left/right blobs. */}
@@ -220,9 +310,24 @@ export default async function ConversationPage({
             </span>
           </div>
           {vm.turns.length === 0 ? (
-            <p className="text-[13px] text-text-secondary">
-              No words captured yet — transcripts appear a moment after the call ends.
-            </p>
+            <div className="rounded-lg border border-border-light bg-surface px-4 py-5">
+              <p className="text-[13px] font-semibold text-text-primary">
+                {vm.status === "analyzing"
+                  ? "Analyzing the completed call"
+                  : vm.status === "in_progress"
+                    ? "The call is live"
+                    : vm.status === "initiated"
+                      ? "Connecting the call"
+                      : "No transcript was captured"}
+              </p>
+              <p className="mt-1 text-[12.5px] text-text-secondary">
+                {vm.status === "analyzing"
+                  ? "Transcript turns appear first; the summary, outcome, and CRM activity fill in as ElevenLabs finishes analysis."
+                  : vm.status === "in_progress" || vm.status === "initiated"
+                    ? "Freyr already has the caller and account context. The transcript will populate as soon as processing begins."
+                    : "The call ended without usable speech data."}
+              </p>
+            </div>
           ) : (
             <div className="space-y-3.5">
               {vm.turns.map((t, i) => (

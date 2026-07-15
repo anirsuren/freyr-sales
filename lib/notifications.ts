@@ -3,10 +3,11 @@
 import { buildDeals, ROTTING_DAYS } from "./pipeline";
 import { OUTCOME_META } from "./utils";
 import type { Customer, Contact, PitchSession, Interaction } from "./types";
+import type { StoredVoiceConversation } from "./voiceEvents";
 
 export const NOTIF_READ_KEY = "freyr.notif.read.v1";
 
-export type NotificationType = "review" | "rotting" | "signal" | "followup";
+export type NotificationType = "review" | "rotting" | "signal" | "followup" | "voice";
 
 export interface AppNotification {
   id: string;
@@ -22,8 +23,9 @@ export function buildNotifications(input: {
   customers: Customer[];
   contacts: Contact[];
   interactions: Interaction[];
+  voiceConversations?: StoredVoiceConversation[];
 }): AppNotification[] {
-  const { sessions, customers, contacts, interactions } = input;
+  const { sessions, customers, contacts, interactions, voiceConversations = [] } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
   const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
   const out: AppNotification[] = [];
@@ -115,6 +117,21 @@ export function buildNotifications(input: {
         ts: i.follow_up_date,
       });
     }
+  }
+
+  for (const call of voiceConversations) {
+    if (call.status !== "completed" && call.status !== "failed") continue;
+    out.push({
+      id: `voice-${call.conversation_id || call.id}-${call.status}`,
+      type: "voice",
+      title: call.status === "failed" ? "Voice call needs attention" : "Call analysis is ready",
+      body:
+        call.status === "failed"
+          ? `${call.contact_name || call.external_number || "A call"} - ${call.failure_reason || "the call did not complete"}.`
+          : `${call.contact_name || "A contact"}${call.company ? ` at ${call.company}` : ""} - transcript and analysis are ready.`,
+      href: `/voice/c/${call.conversation_id || call.id}`,
+      ts: call.completed_at || call.updated_at,
+    });
   }
 
   return out

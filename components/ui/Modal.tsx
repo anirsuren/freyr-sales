@@ -17,7 +17,7 @@ export function Modal({
   title: string;
   children: React.ReactNode;
   // "wide" for content-heavy dialogs (editors, recipient pickers) — 640px.
-  size?: "default" | "wide";
+  size?: "default" | "wide" | "workflow" | "chart";
 }) {
   // Portal to <body> so the fixed overlay always covers the whole viewport —
   // if a parent has a CSS transform (e.g. a tab animation), a non-portaled
@@ -46,7 +46,13 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={`w-full ${
-          size === "wide" ? "max-w-[640px]" : "max-w-[440px]"
+          size === "chart"
+            ? "max-w-[1180px]"
+            : size === "workflow"
+            ? "max-w-[980px]"
+            : size === "wide"
+            ? "max-w-[640px]"
+            : "max-w-[440px]"
         } max-h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl border border-border-light shadow-[0_24px_64px_-16px_rgba(0,0,0,0.30)] modal-in`}
         onClick={(e) => e.stopPropagation()}
       >

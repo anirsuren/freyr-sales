@@ -12,6 +12,12 @@ import { Card } from "@/components/ui/Card";
 // run a pitch session the workspace is "established" and this card is gone.
 const STEPS = [
   {
+    key: "launch",
+    label: "Open the guided setup",
+    desc: "Configure the workspace, imports, identity, and first approved pitch in order.",
+    href: "/onboarding",
+  },
+  {
     // Offerings first — Suren's north star is the offering repository, so a new
     // workspace is guided to set that up before anything else.
     key: "offerings",

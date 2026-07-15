@@ -7,28 +7,29 @@ import {
   Clock,
   Timer,
   ThumbsUp,
-  CalendarCheck,
   Phone,
   PhoneIncoming,
   PhoneMissed,
+  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { voiceStatus, listVoiceQueue, type VoiceOutcome } from "@/lib/voice";
+import { voiceStatus, listVoiceQueue, isDialedVoiceCall, voiceCallStatusLabel, type VoiceOutcome } from "@/lib/voice";
 import { listConversations } from "@/lib/elevenlabs";
 import { syncConversations } from "@/lib/voiceSync";
 import { listOfferings } from "@/lib/offerings";
 import { VOICE_PERSONAS, personaFor } from "@/lib/voicePersonas";
 import { LineChart, BarChart, DonutChart, DonutLegend, Sparkline, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
-import { HoverCard } from "@/components/ui/HoverCard";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { getDb } from "@/lib/db";
 import { formatDateTime, formatPhone, cn } from "@/lib/utils";
+import { VoiceLifecyclePanel } from "@/components/voice/VoiceLifecyclePanel";
+import { listStoredVoiceConversations, storedVoiceCall } from "@/lib/voiceEvents";
 
 export const metadata = { title: "Voice agents" };
 export const dynamic = "force-dynamic";
@@ -53,6 +54,7 @@ const fmtLen = (secs: number) =>
 export default async function VoicePage() {
   const status = voiceStatus();
   const queue = listVoiceQueue();
+  const storedCalls = (await listStoredVoiceConversations(100)).map(storedVoiceCall);
   const offerings = listOfferings();
   // Contacts → phone + photo for the call rows (Suren: "how do these contacts
   // not have phone numbers?" + "I need profile pictures here").
@@ -99,11 +101,14 @@ export default async function VoicePage() {
     };
   });
 
-  const placed = queue.filter((q) => q.status === "called").length;
+  const placed = queue.filter((q) => isDialedVoiceCall(q.status)).length;
   const waiting = queue.filter((q) => q.status === "waiting_for_number").length;
 
   // Analytics over finished calls — outcomes, connect rate, talk time.
-  const finished = queue.filter((q) => q.status === "called" && q.outcome);
+  const analyticsBase = live && storedCalls.length > 0 ? storedCalls : queue;
+  const finished = analyticsBase.filter(
+    (q) => (q.status === "called" || q.status === "completed") && q.outcome
+  );
   const callerName = (q: (typeof finished)[number]) =>
     contactById.get(q.contact_id)?.full_name || q.phone || "Unknown caller";
   const outcomeCounts = OUTCOME_ORDER.map((o) => ({
@@ -133,17 +138,6 @@ export default async function VoicePage() {
     .sort((a, b) => b.n - a.n);
   // Who asked for a callback — the analytics card that's also a to-do list.
   const callbacks = finished.filter((q) => q.outcome === "follow_up");
-  // Donut geometry — same pattern as the campaign delivery ring.
-  const R = 52;
-  const CIRC = 2 * Math.PI * R;
-  let acc = 0;
-  const donutSegs = outcomeCounts.map(({ outcome, n: cnt }) => {
-    const frac = cnt / finished.length;
-    const seg = { outcome, frac, start: acc };
-    acc += frac;
-    return seg;
-  });
-
   // Calling activity, day by day (queue + live calls over the last 14 days).
   const DAY = 86_400_000;
   const today = new Date();
@@ -255,6 +249,8 @@ export default async function VoicePage() {
           Nothing dials silently until then.
         </p>
       )}
+
+      <VoiceLifecyclePanel />
 
       {/* The team — six personas, each with their own line. Click one for
           their conversations, transcripts and stats. */}
@@ -373,7 +369,19 @@ export default async function VoicePage() {
                     <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
                       Calls · last 2 weeks
                     </p>
-                    <Sparkline points={pPerDay} color={p.color} height={40} pointTips={pPerDayTips} />
+                    <Sparkline
+                      points={pPerDay}
+                      color={p.color}
+                      height={40}
+                      unit="calls"
+                      label={`${p.name} activity`}
+                      xLabels={pPerDay.map((_, index) =>
+                        index === pPerDay.length - 1
+                          ? "today"
+                          : `${pPerDay.length - 1 - index}d ago`
+                      )}
+                      pointTips={pPerDayTips}
+                    />
                   </>
                 ) : (
                   <p className="text-[12.5px] text-text-secondary">
@@ -615,7 +623,7 @@ export default async function VoicePage() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-border-light">
-                    {["Contact", "Company", "About", "Status", "Outcome", "Length", "Queued"].map(
+                    {["Contact", "Company", "About", "Status", "Outcome", "Length", "Queued", ""].map(
                       (h) => (
                         <th
                           key={h}
@@ -640,12 +648,18 @@ export default async function VoicePage() {
                     // + every call + graphs), not straight into one transcript.
                     const href = `/voice/contact/${q.contact_id}`;
                     return (
-                    <tr key={q.id} className="hover:bg-surface transition-colors">
+                    <tr
+                      key={q.id}
+                      className="group border-l-[3px] border-l-transparent transition-[background-color,border-color,box-shadow] duration-200 hover:border-l-blue-primary hover:bg-blue-light/20 hover:shadow-[0_7px_20px_rgba(10,115,232,0.08)]"
+                    >
                       <td className="px-5 py-3.5 whitespace-nowrap">
-                        <Link href={href} className="flex items-center gap-2.5 group">
-                          <Avatar name={q.contact_name} className="w-8 h-8 text-[11px] shrink-0" />
-                          <span className="min-w-0">
-                            <span className="block text-[13px] font-semibold text-text-primary group-hover:text-blue-primary truncate">
+                        <Link href={href} className="flex items-center gap-2.5">
+                          <Avatar
+                            name={q.contact_name}
+                            className="h-8 w-8 shrink-0 text-[11px] transition-[transform,box-shadow] duration-200 group-hover:scale-110 group-hover:shadow-[0_4px_12px_rgba(10,115,232,0.22)]"
+                          />
+                          <span className="min-w-0 transition-transform duration-200 group-hover:translate-x-0.5">
+                            <span className="block truncate text-[13px] font-semibold text-text-primary transition-colors group-hover:text-blue-primary">
                               {q.contact_name}
                             </span>
                             {phone && (
@@ -656,10 +670,10 @@ export default async function VoicePage() {
                           </span>
                         </Link>
                       </td>
-                      <td className="px-5 py-3.5 text-[13px] text-text-secondary whitespace-nowrap">
+                      <td className="px-5 py-3.5 text-[13px] text-text-secondary whitespace-nowrap transition-colors duration-200 group-hover:text-text-primary">
                         {q.company || "—"}
                       </td>
-                      <td className="px-5 py-3.5 text-[13px] text-text-secondary">
+                      <td className="px-5 py-3.5 text-[13px] text-text-secondary transition-colors duration-200 group-hover:text-text-primary">
                         {q.offering_name}
                         {q.offering_name !== q.category && (
                           <span className="text-text-tertiary">
@@ -671,31 +685,27 @@ export default async function VoicePage() {
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
-                            q.status === "called"
+                            "inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5 transition-[transform,box-shadow] duration-200 group-hover:-translate-y-px group-hover:scale-[1.04] group-hover:shadow-sm",
+                            isDialedVoiceCall(q.status)
                               ? "text-success bg-success/10"
                               : q.status === "no_agent"
                               ? "text-error bg-error/10"
                               : "text-warning bg-warning/10"
                           )}
                         >
-                          {q.status === "called" ? (
+                          {isDialedVoiceCall(q.status) ? (
                             <PhoneCall size={11} strokeWidth={2.2} />
                           ) : (
                             <Clock size={11} strokeWidth={2.2} />
                           )}
-                          {q.status === "called"
-                            ? "Called"
-                            : q.status === "no_agent"
-                            ? "No agent"
-                            : "Waiting for number"}
+                          {voiceCallStatusLabel(q.status)}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         {q.outcome ? (
                           <span
                             className={cn(
-                              "inline-flex text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
+                              "inline-flex text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5 transition-[transform,box-shadow] duration-200 group-hover:-translate-y-px group-hover:scale-[1.04] group-hover:shadow-sm",
                               OUTCOME_META[q.outcome].chip
                             )}
                           >
@@ -705,11 +715,20 @@ export default async function VoicePage() {
                           <span className="text-[12.5px] text-text-tertiary">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
+                      <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap transition-colors duration-200 group-hover:font-semibold group-hover:text-blue-primary">
                         {q.duration_secs ? fmtLen(q.duration_secs) : "—"}
                       </td>
-                      <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap">
+                      <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap transition-colors duration-200 group-hover:text-text-secondary">
                         {formatDateTime(q.created_at)}
+                      </td>
+                      <td className="w-10 px-2 py-3.5 text-right">
+                        <Link
+                          href={href}
+                          aria-label={`Open ${q.contact_name}'s call history`}
+                          className="inline-flex h-7 w-7 -translate-x-1 items-center justify-center rounded-md text-blue-primary opacity-0 transition-[opacity,transform,background-color] duration-200 group-hover:translate-x-0 group-hover:opacity-100 hover:bg-blue-light focus:translate-x-0 focus:opacity-100"
+                        >
+                          <ArrowRight size={15} strokeWidth={2} />
+                        </Link>
                       </td>
                     </tr>
                     );
@@ -740,7 +759,7 @@ export default async function VoicePage() {
           <div className="space-y-4">
             {/* One even row — three cards, same height (Anir: symmetry). */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="flex flex-col">
+              <Card className="flex flex-col transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
                 <h3 className="text-[15px] font-semibold text-text-primary mb-1">
                   Call breakdown
                 </h3>
@@ -777,7 +796,7 @@ export default async function VoicePage() {
                         .map((o) => (
                           <li
                             key={o.outcome}
-                            className="flex items-center justify-between gap-2 text-[12px]"
+                            className="-mx-1 flex items-center justify-between gap-2 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
                           >
                             <span className="flex items-center gap-1.5 min-w-0 text-text-secondary">
                               <span
@@ -822,7 +841,7 @@ export default async function VoicePage() {
                       {catCounts.map((c, i) => (
                         <li
                           key={c.category}
-                          className="flex items-center justify-between gap-2 text-[12px]"
+                          className="-mx-1 flex items-center justify-between gap-2 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
                         >
                           <span className="flex items-center gap-1.5 min-w-0 text-text-secondary">
                             <span
@@ -843,7 +862,7 @@ export default async function VoicePage() {
                 </div>
               </Card>
 
-              <Card className="flex flex-col">
+              <Card className="flex flex-col transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
                 <h3 className="text-[15px] font-semibold text-text-primary mb-1">
                   Call quality
                 </h3>
@@ -863,8 +882,8 @@ export default async function VoicePage() {
                   ].map((st) => {
                     const StIcon = st.icon;
                     return (
-                      <div key={st.label} className="flex items-center gap-3 py-2.5">
-                        <span className="w-9 h-9 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                      <div key={st.label} className="group/stat -mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-blue-light/35">
+                        <span className="w-9 h-9 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0 transition-transform duration-150 group-hover/stat:scale-110">
                           <StIcon size={16} strokeWidth={1.9} />
                         </span>
                         <span className="min-w-0">
@@ -881,7 +900,7 @@ export default async function VoicePage() {
                 </div>
               </Card>
 
-              <Card className="flex flex-col">
+              <Card className="flex flex-col transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
                 <h3 className="text-[15px] font-semibold text-text-primary mb-1">
                   Callbacks to make
                 </h3>
@@ -895,12 +914,12 @@ export default async function VoicePage() {
                 ) : (
                   <ul className="flex-1 divide-y divide-border-light max-h-[300px] overflow-y-auto -mr-2 pr-2">
                     {callbacks.map((q) => (
-                      <li key={q.id} className="flex items-center gap-3 py-2.5">
-                        <Avatar name={q.contact_name} className="w-9 h-9 text-[12px] shrink-0" />
+                      <li key={q.id} className="group/callback -mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-blue-light/30">
+                        <Avatar name={q.contact_name} className="w-9 h-9 text-[12px] shrink-0 transition-[transform,box-shadow] duration-150 group-hover/callback:scale-105 group-hover/callback:shadow-sm" />
                         <span className="min-w-0 flex-1">
                           <Link
                             href={`/contacts/${q.contact_id}`}
-                            className="block text-[13px] font-semibold text-text-primary hover:text-blue-primary truncate"
+                            className="block text-[13px] font-semibold text-text-primary transition-colors group-hover/callback:text-blue-primary truncate"
                           >
                             {q.contact_name}
                           </Link>
@@ -912,7 +931,7 @@ export default async function VoicePage() {
                         </span>
                         <a
                           href={q.phone ? `tel:${q.phone}` : undefined}
-                          className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2.5 py-1 hover:bg-blue-primary hover:text-white transition-colors"
+                          className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2.5 py-1 transition-[background-color,color,transform] group-hover/callback:scale-[1.03] hover:bg-blue-primary hover:text-white"
                         >
                           Call back
                         </a>
@@ -925,7 +944,7 @@ export default async function VoicePage() {
 
             {/* Row 2 — two even halves (Anir: side by side, symmetrical) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card>
+              <Card className="transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
                 <h3 className="text-[15px] font-semibold text-text-primary mb-1">
                   Calls by team member
                 </h3>
@@ -935,9 +954,9 @@ export default async function VoicePage() {
                 <BarChart
                   data={VOICE_PERSONAS.map((p) => ({
                     label: p.name,
-                    value: queue.filter((q) => q.category === p.category).length,
+                    value: analyticsBase.filter((q) => q.category === p.category).length,
                     color: p.color,
-                    tip: queue
+                    tip: analyticsBase
                       .filter((q) => q.category === p.category)
                       .map((q) => ({
                         avatar: q.contact_name,
@@ -950,7 +969,7 @@ export default async function VoicePage() {
                   unit="calls"
                 />
               </Card>
-              <Card>
+              <Card className="transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
                 <h3 className="text-[15px] font-semibold text-text-primary mb-1">
                   Calls per day
                 </h3>

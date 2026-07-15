@@ -23,7 +23,6 @@ import {
   Mail,
   Phone,
   Briefcase,
-  Package,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -37,15 +36,20 @@ import { AccountAgentChat } from "@/components/agent/AccountAgentChat";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
+import {
+  CustomerDealRow,
+  type CustomerDealRowData,
+} from "@/components/customers/CustomerDealRow";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
-import { AreaChart, DonutChart, DonutLegend, type TipItem } from "@/components/charts/Charts";
+import { AreaChart, DonutChart, DonutLegend, LineChart, Sparkline, type TipItem } from "@/components/charts/Charts";
 import {
   buildDeals,
   formatMoney,
@@ -57,7 +61,6 @@ import {
 } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries, HEALTH_COLOR } from "@/lib/health";
 import { HealthBadge } from "@/components/ui/HealthBadge";
-import { Sparkline } from "@/components/ui/Sparkline";
 import { nextBestActions, weeklyOutcomeSummary } from "@/lib/agent";
 import { AgentActions } from "@/components/agent/AgentActions";
 import { AgentRunPanel } from "@/components/agent/AgentRunPanel";
@@ -105,15 +108,8 @@ const NOTE_KIND_META: Record<
   note: { label: "Note", icon: FileText, color: "#8E98A8" },
 };
 
-const STAGE_TONE: Record<string, string> = {
-  Prospect: "bg-surface text-text-secondary border-border-light",
-  Engaged: "bg-blue-light text-blue-primary border-blue-subtle",
-  Qualified: "bg-blue-light text-blue-primary border-blue-subtle",
-  "Meeting Booked": "bg-blue-primary text-white border-blue-primary",
-  "Closed Lost": "bg-surface text-text-tertiary border-border-light",
-};
-
 const TEAM = ["Suren Dheen", "Mark Miller", "Priya Nair", "Diego Alvarez"];
+const SERVICE_TAG_COLORS = ["#0071E3", "#19C3B1", "#7C3AED", "#E11D48", "#D97706"];
 
 const DELIVERABLES = [
   { label: "Account Brief", icon: ClipboardList, ask: "Prepare an account brief for" },
@@ -214,6 +210,40 @@ export function CustomerTabs({
     sessionDeals.reduce((s, d) => s + d.value, 0) +
     accountDeals.reduce((s, d) => s + d.value, 0);
   const dealCount = sessionDeals.length + accountDeals.length;
+  const dealRows = useMemo<CustomerDealRowData[]>(
+    () => [
+      ...sessionDeals.map((deal) => ({
+        id: deal.sessionId,
+        href: `/deals/${deal.sessionId}`,
+        name: deal.service,
+        offering: "Pitch-session opportunity",
+        stage: deal.stage,
+        value: deal.value,
+        contact: deal.contactName,
+        owner: deal.owner,
+        createdAt: deal.createdAt,
+        lastActivity: deal.lastActivity,
+        nextStep:
+          deal.stage === "Meeting Booked"
+            ? "Prepare the meeting brief and confirm the decision process."
+            : "Review the latest session and move the opportunity to its next qualified stage.",
+      })),
+      ...accountDeals.map((deal) => ({
+        id: deal.id,
+        name: deal.name,
+        offering: deal.offering,
+        stage: deal.stage,
+        value: deal.value,
+        contact: deal.contact,
+        owner: deal.owner,
+        createdAt: deal.created_at,
+        closeDate: deal.close_date,
+        nextStep: deal.next_step,
+        notes: deal.notes,
+      })),
+    ],
+    [sessionDeals, accountDeals]
+  );
   const health = useMemo(
     () =>
       accountHealth({
@@ -567,6 +597,11 @@ export function CustomerTabs({
                     format="number"
                     unit="pts"
                     yMax={100}
+                    xLabels={healthSeries.points.map((_, index) =>
+                      index === healthSeries.points.length - 1
+                        ? "this week"
+                        : `${healthSeries.points.length - 1 - index}w ago`
+                    )}
                     pointTips={healthPointTips}
                     className="w-full"
                   />
@@ -591,9 +626,15 @@ export function CustomerTabs({
                     <DonutLegend items={outcomeMix} />
                   </div>
                 ) : (
-                  <p className="flex-1 flex items-center text-[13px] text-text-tertiary">
-                    No touches logged with this account yet.
-                  </p>
+                  <div className="flex flex-1 items-center gap-3 rounded-md border border-dashed border-border bg-surface/45 px-4 py-4">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                      <CalendarClock size={17} strokeWidth={1.8} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-text-primary">No activity yet</p>
+                      <p className="mt-0.5 text-[11.5px] text-text-tertiary">The first call, email, meeting, or note will build this account&apos;s outcome mix.</p>
+                    </div>
+                  </div>
                 )}
               </Card>
             </div>
@@ -764,12 +805,14 @@ export function CustomerTabs({
                   value: d.value,
                   company: d.company,
                   contactName: d.contactName,
+                  createdAt: d.createdAt,
                 })),
                 ...accountDeals.map((d) => ({
                   stage: d.stage,
                   value: d.value,
                   company: customer.company_name,
                   contactName: d.contact || "",
+                  createdAt: d.created_at,
                 })),
               ];
               const dealsByStage = STAGES.map((stage) => {
@@ -810,11 +853,32 @@ export function CustomerTabs({
                   })
                   .map((i) => touchTip(i, true));
               });
+              const pipelinePointLabels = Array.from({ length: 12 }, (_, w) => {
+                const end = nowMs - (11 - w) * WEEK;
+                return formatDate(new Date(end).toISOString());
+              });
+              const pipelineTrend = pipelinePointLabels.map((_, w) => {
+                const end = nowMs - (11 - w) * WEEK;
+                return acctDeals
+                  .filter((deal) => new Date(deal.createdAt).getTime() <= end)
+                  .reduce((sum, deal) => sum + deal.value, 0);
+              });
+              const pipelineTrendTips: TipItem[][] = pipelinePointLabels.map((_, w) => {
+                const end = nowMs - (11 - w) * WEEK;
+                return acctDeals
+                  .filter((deal) => new Date(deal.createdAt).getTime() <= end)
+                  .map((deal) => ({
+                    logo: deal.company,
+                    name: deal.company,
+                    sub: [deal.contactName, deal.stage].filter(Boolean).join(" · "),
+                    value: formatMoney(deal.value),
+                  }));
+              });
               const kpis = [
-                { label: "Open pipeline", value: formatMoney(totalOpen) },
-                { label: "Open deals", value: String(acctDeals.length) },
-                { label: "Health", value: `${health.score}/100`, color: HEALTH_COLOR[health.band].color },
-                { label: "Touches", value: String(interactions.length) },
+                { label: "Open pipeline", value: formatMoney(totalOpen), sub: "current open value" },
+                { label: "Open deals", value: String(acctDeals.length), sub: "active opportunities" },
+                { label: "Health", value: `${health.score}/100`, sub: health.band.replace("_", " "), color: HEALTH_COLOR[health.band].color },
+                { label: "Touches", value: String(interactions.length), sub: "logged interactions" },
               ];
               const H3 = ({ children }: { children: React.ReactNode }) => (
                 <h3 className="text-[15px] font-semibold text-text-primary mb-4">{children}</h3>
@@ -833,21 +897,51 @@ export function CustomerTabs({
                         >
                           {k.value}
                         </p>
+                        <p className="text-[10.5px] capitalize text-text-tertiary">{k.sub}</p>
                       </Card>
                     ))}
                   </div>
 
+                  <Card className="p-5">
+                    <div className="mb-3 flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-[16px] font-semibold text-text-primary">
+                          Account pipeline momentum
+                        </h3>
+                        <p className="mt-0.5 text-[12px] text-text-tertiary">
+                          Open value accumulated over the last 12 weeks. Hover any week for the deals, contacts, and stage behind it.
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Current</p>
+                        <p className="text-[19px] font-bold text-text-primary tnum">{formatMoney(totalOpen)}</p>
+                      </div>
+                    </div>
+                    <LineChart
+                      series={[{ label: "Open pipeline", color: "#0071E3", points: pipelineTrend }]}
+                      height={220}
+                      format="money"
+                      pointLabels={pipelinePointLabels}
+                      xLabels={[pipelinePointLabels[0], pipelinePointLabels[5], pipelinePointLabels[11]]}
+                      pointTips={pipelineTrendTips}
+                    />
+                  </Card>
+
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                    <Card className="flex flex-col">
-                      <H3>Pipeline by stage</H3>
+                    <Card className="flex flex-col p-5">
+                      <div>
+                        <H3>Pipeline composition</H3>
+                        <p className="-mt-3 mb-3 text-[11.5px] text-text-tertiary">Current open value by selling stage.</p>
+                      </div>
                       {dealsByStage.length > 0 ? (
-                        <div className="flex-1 flex items-center gap-5">
+                        <div className="flex-1 flex items-center gap-4">
                           <DonutChart
                             segments={dealsByStage.map((s) => ({ label: s.label, value: s.value, color: s.color, tip: s.tip }))}
-                            size={150}
-                            thickness={16}
+                            size={132}
+                            thickness={14}
                             centerLabel={formatMoney(totalOpen)}
                             centerSub="open"
+                            format="money"
                           />
                           <DonutLegend
                             items={dealsByStage.map((s) => ({ label: s.label, value: s.value, color: s.color }))}
@@ -860,14 +954,17 @@ export function CustomerTabs({
                         </p>
                       )}
                     </Card>
-                    <Card className="flex flex-col">
-                      <H3>How touches have landed</H3>
+                    <Card className="flex flex-col p-5">
+                      <div>
+                        <H3>Touch outcome mix</H3>
+                        <p className="-mt-3 mb-3 text-[11.5px] text-text-tertiary">What happened across every logged interaction.</p>
+                      </div>
                       {outcomeMix.length > 0 ? (
-                        <div className="flex-1 flex items-center gap-5">
+                        <div className="flex-1 flex items-center gap-4">
                           <DonutChart
                             segments={outcomeMix}
-                            size={150}
-                            thickness={16}
+                            size={132}
+                            thickness={14}
                             centerLabel={String(interactions.length)}
                             centerSub="touches"
                           />
@@ -892,6 +989,11 @@ export function CustomerTabs({
                           format="number"
                           unit="pts"
                           yMax={100}
+                          xLabels={healthSeries.points.map((_, index) =>
+                            index === healthSeries.points.length - 1
+                              ? "this week"
+                              : `${healthSeries.points.length - 1 - index}w ago`
+                          )}
                           pointTips={healthPointTips}
                           className="w-full"
                         />
@@ -982,7 +1084,43 @@ export function CustomerTabs({
           </div>
         )}
 
-        {tab === "deals" && (
+        {tab === "deals" && (() => {
+          const orderedDeals = [...dealRows].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          let runningValue = 0;
+          const valueTimeline = [0, ...orderedDeals.map((deal) => (runningValue += deal.value))];
+          const dealPointLabels = ["Account opened", ...orderedDeals.map((deal) => formatDate(deal.createdAt))];
+          const dealPointTips: TipItem[][] = [
+            [],
+            ...orderedDeals.map((_, index) =>
+              orderedDeals.slice(0, index + 1).map((deal) => ({
+                name: deal.name,
+                sub: [deal.contact, deal.stage].filter(Boolean).join(" · "),
+                avatar: deal.contact || undefined,
+                value: formatMoney(deal.value),
+              }))
+            ),
+          ];
+          const stageMix = STAGES.map((stage) => {
+            const rows = dealRows.filter((deal) => deal.stage === stage);
+            return {
+              label: stage,
+              value: rows.length,
+              color: STAGE_COLOR[stage],
+              tip: rows.map((deal) => ({
+                name: deal.name,
+                sub: deal.contact || deal.owner || "Unassigned",
+                avatar: deal.contact || deal.owner || undefined,
+                value: formatMoney(deal.value),
+              })),
+            };
+          }).filter((segment) => segment.value > 0);
+          const weightedTotal = dealRows.reduce(
+            (sum, deal) => sum + deal.value * (STAGE_PROBABILITY[deal.stage as keyof typeof STAGE_PROBABILITY] || 0),
+            0
+          );
+          return (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-[13px] text-text-secondary">
@@ -1004,69 +1142,62 @@ export function CustomerTabs({
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {sessionDeals.map((d) => (
-                <Link key={d.sessionId} href={`/deals/${d.sessionId}`}>
-                  <Card className="p-4 hover:border-blue-subtle transition-colors h-full">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span
-                        className={cn(
-                          "text-[11px] font-semibold rounded-full px-2 py-0.5 border",
-                          STAGE_TONE[d.stage] || STAGE_TONE.Prospect
-                        )}
-                      >
-                        {d.stage}
-                      </span>
-                      <span className="text-[14px] font-bold text-text-primary tnum">
-                        {formatMoney(d.value)}
-                      </span>
+            {dealCount > 0 && (
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.7fr_1fr]">
+                <Card className="p-4">
+                  <div className="mb-3 flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-[15px] font-semibold text-text-primary">Pipeline value over time</h3>
+                      <p className="mt-0.5 text-[11.5px] text-text-tertiary">
+                        Cumulative open value as opportunities entered this account.
+                      </p>
                     </div>
-                    <p className="text-[14px] font-semibold text-text-primary truncate">
-                      {d.service}
-                    </p>
-                    <p className="text-[12px] text-text-secondary mt-0.5">
-                      {Math.round((STAGE_PROBABILITY[d.stage] ?? 0) * 100)}% ·
-                      weighted {formatMoney(d.value * (STAGE_PROBABILITY[d.stage] ?? 0))}
-                    </p>
-                  </Card>
-                </Link>
-              ))}
-              {accountDeals.map((d) => (
-                <Card key={d.id} className="p-4 h-full">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span
-                      className={cn(
-                        "text-[11px] font-semibold rounded-full px-2 py-0.5 border",
-                        STAGE_TONE[d.stage] || STAGE_TONE.Prospect
-                      )}
-                    >
-                      {d.stage}
-                    </span>
-                    <span className="text-[14px] font-bold text-text-primary tnum">
-                      {formatMoney(d.value)}
-                    </span>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[10px] uppercase tracking-[0.05em] text-text-tertiary">Weighted</p>
+                      <p className="text-[17px] font-bold text-text-primary tnum">{formatMoney(weightedTotal)}</p>
+                    </div>
                   </div>
-                  <p className="text-[14px] font-semibold text-text-primary truncate">
-                    {d.name}
-                  </p>
-                  <p className="text-[12px] text-text-tertiary mt-0.5">
-                    Added {formatDateTime(d.created_at)}
-                  </p>
+                  <LineChart
+                    series={[{ label: "Open pipeline", color: "#0071E3", points: valueTimeline }]}
+                    height={118}
+                    format="money"
+                    pointLabels={dealPointLabels}
+                    xLabels={[dealPointLabels[0], dealPointLabels[dealPointLabels.length - 1]]}
+                    pointTips={dealPointTips}
+                  />
                 </Card>
+                <Card className="p-4">
+                  <h3 className="text-[15px] font-semibold text-text-primary">Stage mix</h3>
+                  <p className="mt-0.5 text-[11.5px] text-text-tertiary">Where every active opportunity sits now.</p>
+                  <div className="mt-3 flex items-center gap-4">
+                    <DonutChart
+                      segments={stageMix}
+                      size={94}
+                      thickness={11}
+                      centerLabel={String(dealCount)}
+                      centerSub={dealCount === 1 ? "deal" : "deals"}
+                    />
+                    <DonutLegend items={stageMix} />
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {dealRows.map((deal) => (
+                <CustomerDealRow key={deal.id} deal={deal} />
               ))}
               {dealCount === 0 && (
                 <EmptyState
                   icon={Briefcase}
                   title="No deals yet"
                   description="Add a deal or generate a session to start building pipeline for this account."
-                  // spans the 2-col deals grid so it centers on the page,
-                  // not inside the first column
-                  className="sm:col-span-2"
                 />
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {tab === "sessions" && (
           <Card className="p-0 overflow-hidden">
@@ -1147,9 +1278,14 @@ export function CustomerTabs({
                             {svc.slice(0, 3).map((sv, i) => (
                               <span
                                 key={i}
-                                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2 py-0.5"
+                                className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11.5px] font-medium"
+                                style={{
+                                  color: SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length],
+                                  background: `${SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length]}0F`,
+                                  borderColor: `${SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length]}26`,
+                                }}
                               >
-                                <Package size={11} strokeWidth={1.9} className="text-text-tertiary" />
+                                <OfferingIcon name={sv.service_name} className="h-4 w-4 rounded text-[6px]" />
                                 {sv.service_name}
                               </span>
                             ))}
@@ -1449,7 +1585,10 @@ export function CustomerTabs({
         )}
 
         {tab === "activity" && (
-          <InteractionTimeline interactions={interactions} />
+          <InteractionTimeline
+            interactions={interactions}
+            contactNames={Object.fromEntries(contacts.map((contact) => [contact.id, contact.full_name]))}
+          />
         )}
         </div>
       </div>
@@ -1486,22 +1625,30 @@ export function CustomerTabs({
           </h3>
           <div className="flex items-center gap-4 mb-3">
             {(() => {
-              const ringR = 30;
-              const ringC = 2 * Math.PI * ringR;
               const color = HEALTH_COLOR[health.band].color;
               return (
-                <svg width="76" height="76" viewBox="0 0 76 76" className="shrink-0">
-                  <circle cx="38" cy="38" r={ringR} fill="none" stroke="#E5E5EA" strokeWidth="7" />
-                  <circle
-                    cx="38" cy="38" r={ringR} fill="none"
-                    stroke={color} strokeWidth="7" strokeLinecap="round"
-                    strokeDasharray={`${ringC * (health.score / 100)} ${ringC}`}
-                    transform="rotate(-90 38 38)"
-                  />
-                  <text x="38" y="43" textAnchor="middle" className="tnum" fontSize="20" fontWeight="700" fill={color}>
-                    {health.score}
-                  </text>
-                </svg>
+                <DonutChart
+                  segments={[
+                    {
+                      label: `${health.band} health`,
+                      value: health.score,
+                      color,
+                      tip: health.factors.slice(0, 5).map((factor) => ({
+                        name: factor.label,
+                        value: `${factor.delta > 0 ? "+" : ""}${factor.delta} pts`,
+                      })),
+                    },
+                    {
+                      label: "Gap to full health",
+                      value: Math.max(0, 100 - health.score),
+                      color: "#E5E5EA",
+                    },
+                  ]}
+                  size={76}
+                  thickness={7}
+                  centerLabel={String(health.score)}
+                  format="percent"
+                />
               );
             })()}
             <div className="min-w-0">
@@ -1531,6 +1678,14 @@ export function CustomerTabs({
                 <Sparkline
                   points={healthSeries.points}
                   color={HEALTH_COLOR[health.band].color}
+                  format="number"
+                  unit="pts"
+                  label="Account health"
+                  xLabels={healthSeries.points.map((_, index) =>
+                    index === healthSeries.points.length - 1
+                      ? "this week"
+                      : `${healthSeries.points.length - 1 - index}w ago`
+                  )}
                 />
               </div>
             </div>

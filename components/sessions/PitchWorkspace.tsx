@@ -22,8 +22,8 @@ import {
   Phone,
   FileText,
   Timer,
-  UserRound,
 } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
 import { EMAIL_TEMPLATES, fillTemplate } from "@/lib/email-templates";
 import { cn, formatDateTime, timeAgo } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
@@ -361,7 +361,7 @@ export function PitchWorkspace({
     }
   }
 
-  async function pushToCrm(target: string, label: string) {
+  async function pushToCrm(target: string) {
     setCrmOpen(false);
     // Compliance gate (#7): a pitch must be approved before it leaves the building.
     if (reviewStatus !== "approved") {
@@ -472,7 +472,7 @@ export function PitchWorkspace({
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
             {title}
           </h1>
-          <div className="flex items-center flex-wrap gap-2 mt-4">
+          <div className="flex items-center flex-nowrap gap-1.5 mt-4 pb-1 whitespace-nowrap overflow-x-auto [&>*]:shrink-0">
             {/* Compliance approval (#7) */}
             {(() => {
               const rm = REVIEW_META[reviewStatus];
@@ -496,7 +496,7 @@ export function PitchWorkspace({
                 <button
                   onClick={() => review("approve")}
                   disabled={reviewing}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
                 >
                   <Check size={15} strokeWidth={2} />
                   Approve
@@ -504,7 +504,7 @@ export function PitchWorkspace({
                 <button
                   onClick={() => review("request_changes")}
                   disabled={reviewing}
-                  className="px-3 py-2 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
                 >
                   Request changes
                 </button>
@@ -513,7 +513,7 @@ export function PitchWorkspace({
               <button
                 onClick={() => review("submit")}
                 disabled={reviewing}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
               >
                 <Send size={15} strokeWidth={1.8} />
                 {reviewStatus === "changes_requested"
@@ -529,7 +529,7 @@ export function PitchWorkspace({
                   ? "Send this email"
                   : "Unlocks after compliance approval"
               }
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors"
             >
               {reviewStatus === "approved" ? (
                 <Mail size={15} strokeWidth={1.7} />
@@ -551,7 +551,7 @@ export function PitchWorkspace({
                     : "Unlocks after compliance approval"
                 }
                 className={cn(
-                  "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-semibold transition-colors disabled:opacity-50",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors disabled:opacity-50",
                   reviewStatus === "approved"
                     ? "bg-blue-primary text-white hover:bg-blue-hover"
                     : "border border-border-light text-text-secondary hover:bg-surface"
@@ -577,7 +577,7 @@ export function PitchWorkspace({
                       <button
                         key={t.key}
                         role="menuitem"
-                        onClick={() => pushToCrm(t.key, t.label)}
+                        onClick={() => pushToCrm(t.key)}
                         className="w-full text-left px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
                       >
                         {t.label}
@@ -596,7 +596,7 @@ export function PitchWorkspace({
                 aria-label="More actions"
                 aria-haspopup="menu"
                 aria-expanded={moreOpen}
-                className="p-2 border border-border-light rounded-lg hover:bg-surface transition-colors text-text-secondary"
+                className="p-1.5 border border-border-light rounded-lg hover:bg-surface transition-colors text-text-secondary"
               >
                 <MoreHorizontal size={18} strokeWidth={1.8} />
               </button>
@@ -723,7 +723,7 @@ export function PitchWorkspace({
           <div className="p-6 md:p-8">
             {active === "email" && (
               <div className="mb-5 flex items-center gap-2.5 rounded-xl bg-surface border border-border-light px-4 py-2.5 text-[13px]">
-                <UserRound size={15} strokeWidth={1.7} className="text-text-tertiary shrink-0" />
+                <Avatar name={recipientName || "Contact"} className="h-7 w-7 shrink-0 text-[9px]" />
                 <span className="text-text-tertiary shrink-0">To</span>
                 <span className="font-semibold text-text-primary truncate">
                   {recipientName ? `${recipientName} · ` : ""}
