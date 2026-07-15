@@ -1,56 +1,107 @@
-# CI/CD for freyr-sales → AWS ECS Fargate (account 602367507820, us-east-1).
-# Prereqs (one-time, in the Azure DevOps project "Freyr-Sales"):
-#   1. AWS Toolkit for Azure DevOps extension installed in the FreyrDevOps org.
-#   2. An AWS service connection in THIS project whose credentials target account
-#      602367507820 — set its name in awsCredentials below.
-#   3. Variable group "freyr-sales-ci" with: AWS_REGION=us-east-1,
-#      ECR_REGISTRY=602367507820.dkr.ecr.us-east-1.amazonaws.com, ECR_REPO=freyr-sales,
-#      ECS_CLUSTER=freyr-sales-cluster, ECS_SERVICE=freyr-sales-svc, TASK_FAMILY=freyr-sales,
-#      NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY.
 trigger:
   branches:
-    include:
-      - main
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
 
 pool:
   vmImage: ubuntu-latest
 
 variables:
   - group: freyr-sales-ci
+  - name: nodeVersion
+    value: '20.x'
 
-steps:
-  - task: AWSShellScript@1
-    displayName: Build, push, and deploy
-    inputs:
-      # NOTE: must be an AWS service connection defined in the "Freyr-Sales" ADO project
-      # whose credentials target account 602367507820. Replace the name below once created.
-      awsCredentials: 'freyr-sales-aws'
-      regionName: '$(AWS_REGION)'
-      scriptType: 'inline'
-      inlineScript: |
-        set -euo pipefail
-        TAG=$(echo "$(Build.SourceVersion)" | cut -c1-7)
-        IMAGE="$(ECR_REGISTRY)/$(ECR_REPO)"
+stages:
+  - stage: Verify
+    jobs:
+      - job: Quality
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+          - script: npm ci
+            displayName: Install locked dependencies
+          - script: npm run typecheck
+            displayName: Type check
+          - script: npm run lint
+            displayName: Lint
+          - script: npm audit --omit=dev --audit-level=high
+            displayName: Production dependency audit
+          - script: npm run build
+            displayName: Production build
+          - script: npx playwright install --with-deps chromium
+            displayName: Install browser
+          - script: npm run test:smoke
+            displayName: Smoke tests
 
-        aws ecr get-login-password --region "$(AWS_REGION)" \
-          | docker login --username AWS --password-stdin "$(ECR_REGISTRY)"
+  - stage: Deploy
+    dependsOn: Verify
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: BuildAndDeploy
+        steps:
+          - task: AWSShellScript@1
+            displayName: Build, push, and deploy to AWS ECS
+            inputs:
+              awsCredentials: freyr-sales-aws
+              regionName: $(AWS_REGION)
+              scriptType: inline
+              inlineScript: |
+                set -euo pipefail
 
-        docker build --platform linux/amd64 \
-          --build-arg NEXT_PUBLIC_SUPABASE_URL="$(NEXT_PUBLIC_SUPABASE_URL)" \
-          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$(NEXT_PUBLIC_SUPABASE_ANON_KEY)" \
-          -t "$IMAGE:$TAG" -t "$IMAGE:latest" .
-        docker push "$IMAGE:$TAG"
-        docker push "$IMAGE:latest"
+                TAG=$(echo "$(Build.SourceVersion)" | cut -c1-7)
+                IMAGE="$(ECR_REGISTRY)/$(ECR_REPO)"
 
-        TD=$(aws ecs describe-task-definition --task-definition "$(TASK_FAMILY)" \
-              --query 'taskDefinition' --output json)
-        echo "$TD" | jq --arg IMG "$IMAGE:$TAG" '
-          .containerDefinitions[0].image=$IMG
-          | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,
-                .compatibilities,.registeredAt,.registeredBy)' > taskdef.json
-        REV=$(aws ecs register-task-definition --cli-input-json file://taskdef.json \
-              --query 'taskDefinition.revision' --output text)
+                aws ecr get-login-password --region "$(AWS_REGION)" \
+                  | docker login --username AWS --password-stdin "$(ECR_REGISTRY)"
 
-        aws ecs update-service --cluster "$(ECS_CLUSTER)" --service "$(ECS_SERVICE)" \
-          --task-definition "$(TASK_FAMILY):$REV" --force-new-deployment
-        aws ecs wait services-stable --cluster "$(ECS_CLUSTER)" --services "$(ECS_SERVICE)"
+                docker build --platform linux/amd64 \
+                  --build-arg NEXT_PUBLIC_SUPABASE_URL="$(NEXT_PUBLIC_SUPABASE_URL)" \
+                  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$(NEXT_PUBLIC_SUPABASE_ANON_KEY)" \
+                  -t "$IMAGE:$TAG" -t "$IMAGE:latest" .
+                docker push "$IMAGE:$TAG"
+                docker push "$IMAGE:latest"
+
+                TD=$(aws ecs describe-task-definition \
+                  --task-definition "$(TASK_FAMILY)" \
+                  --query taskDefinition \
+                  --output json)
+
+                echo "$TD" | jq --arg IMG "$IMAGE:$TAG" '
+                  def set_env($name; $value):
+                    .containerDefinitions[0].environment = (
+                      ((.containerDefinitions[0].environment // [])
+                        | map(select(.name != $name)))
+                      + [{name: $name, value: $value}]
+                    );
+                  .containerDefinitions[0].image = $IMG
+                  | set_env("DEFAULT_DATA_MODE"; "mock")
+                  | set_env("DATA_MODE_LOCKED"; "0")
+                  | del(
+                      .taskDefinitionArn,
+                      .revision,
+                      .status,
+                      .requiresAttributes,
+                      .compatibilities,
+                      .registeredAt,
+                      .registeredBy
+                    )
+                ' > taskdef.json
+
+                REV=$(aws ecs register-task-definition \
+                  --cli-input-json file://taskdef.json \
+                  --query taskDefinition.revision \
+                  --output text)
+
+                aws ecs update-service \
+                  --cluster "$(ECS_CLUSTER)" \
+                  --service "$(ECS_SERVICE)" \
+                  --task-definition "$(TASK_FAMILY):$REV" \
+                  --force-new-deployment
+
+                aws ecs wait services-stable \
+                  --cluster "$(ECS_CLUSTER)" \
+                  --services "$(ECS_SERVICE)"

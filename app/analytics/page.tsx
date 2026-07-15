@@ -8,12 +8,16 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
 import {
   buildDeals,
+  buildRepStats,
   pipelineGrowthSeries,
+  pipelineGrowthPointDeals,
   STAGES,
-  REPS,
   formatMoney,
 } from "@/lib/pipeline";
-import { OUTCOME_META } from "@/lib/utils";
+import { OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { getDataMode } from "@/lib/dataMode";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { BarChart3 } from "lucide-react";
 
 export const metadata = { title: "Analytics" };
 export const dynamic = "force-dynamic";
@@ -23,20 +27,25 @@ const RANGE_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams?: { range?: string };
+  searchParams?: Promise<{ range?: string }>;
 }) {
+  const query = await searchParams;
   const db = getDb();
+  const dataMode = getDataMode();
   const [allSessions, customers, contacts, allInteractions] = await Promise.all([
     db.pitchSessions.list(),
     db.customers.list(),
     db.contacts.list(),
     db.interactions.list(),
   ]);
+  if (dataMode === "live" && allSessions.length === 0) {
+    return <EmptyState icon={BarChart3} title="No analytics yet" description="Create your first account and log activity to begin building real performance analytics." />;
+  }
 
   const range =
-    searchParams?.range &&
-    (RANGE_DAYS[searchParams.range] || searchParams.range === "all")
-      ? searchParams.range
+    query?.range &&
+    (RANGE_DAYS[query.range] || query.range === "all")
+      ? query.range
       : "all";
   const days = RANGE_DAYS[range];
   const cutoff = days ? Date.now() - days * 86400000 : 0;
@@ -48,33 +57,56 @@ export default async function AnalyticsPage({
     ? allInteractions.filter((i) => inRange(i.created_at))
     : allInteractions;
 
-  const deals = buildDeals(sessions, customers, contacts, interactions);
+  // The range describes when pipeline entered the book. Current stage must use
+  // the full interaction history; filtering outcomes by the same cutoff could
+  // resurrect an older closed-lost deal as an open prospect in a shorter view.
+  const deals = buildDeals(sessions, customers, contacts, allInteractions);
 
   // Real cumulative pipeline-growth curve from the full book (not the date
   // filter) — no hardcoded curve or invented "+12%".
   const fullDeals = buildDeals(allSessions, customers, contacts, allInteractions);
   const trendSeries = pipelineGrowthSeries(fullDeals, Date.now());
+  const openTrendDeals = fullDeals
+    .filter((deal) => deal.stage !== "Closed Lost")
+    .filter((deal) => !Number.isNaN(new Date(deal.createdAt).getTime()))
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const trendLabels = trendSeries.map((_, index) => {
+    if (index === 0 || openTrendDeals.length === 0) return "Pipeline start";
+    const dealIndex = Math.max(
+      0,
+      Math.min(
+        openTrendDeals.length - 1,
+        Math.round(openTrendDeals.length * (index / (trendSeries.length - 1))) - 1
+      )
+    );
+    return `Through ${new Date(openTrendDeals[dealIndex].createdAt).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })}`;
+  });
+  // The deals behind each point of the growth curve, aligned to trendSeries.
+  const trendPointTips = pipelineGrowthPointDeals(fullDeals).map((bucket) =>
+    bucket.map((d) => ({
+      logo: d.company,
+      name: d.company,
+      sub: d.contact,
+      value: formatMoney(d.value),
+    }))
+  );
 
-  // per-rep breakdown (V3 #6) — grouped by deal owner
-  const reps: RepStat[] = REPS.map((name) => {
-    const rd = deals.filter((d) => d.owner === name);
-    const worked = rd.filter((d) => d.stage !== "Prospect").length;
-    const won = rd.filter(
-      (d) => d.stage === "Qualified" || d.stage === "Meeting Booked"
-    ).length;
-    return {
-      name,
-      deals: rd.length,
-      openValue: rd
-        .filter((d) => d.stage !== "Closed Lost")
-        .reduce((s, d) => s + d.value, 0),
-      winRate: worked ? Math.round((won / worked) * 100) : 0,
-      stages: STAGES.map((stage) => ({
-        stage,
-        count: rd.filter((d) => d.stage === stage).length,
-      })),
-    };
-  }).sort((a, b) => b.openValue - a.openValue);
+  // per-rep breakdown (V3 #6) — grouped by deal owner. Richer now so the
+  // leaderboard shows real stats + a pipeline-composition graph per rep without
+  // a click (Suren: "I should see the graphs without needing to click").
+  // The whole sales floor (Suren: 20 reps, scroll + expand each inline). The
+  // four real deal-owners use their actual numbers; the rest of the roster gets
+  // a deterministic mock forecast so the leaderboard is full and every row can
+  // expand into real graphs without a click-through.
+  const actualOwners = Array.from(new Set(fullDeals.map((deal) => deal.owner)));
+  const reps: RepStat[] = buildRepStats(deals, {
+    rangeDays: days,
+    includeSynthetic: dataMode !== "live",
+    actualOwners,
+  });
   const stages = STAGES.map((stage) => {
     const ds = deals.filter((d) => d.stage === stage);
     return { stage, count: ds.length, value: ds.reduce((s, d) => s + d.value, 0) };
@@ -95,9 +127,57 @@ export default async function AnalyticsPage({
     .map(([k, count]) => ({
       label: OUTCOME_META[k]?.label || k,
       count,
-      color: OUTCOME_META[k]?.color || "#8E8E93",
+      color: OUTCOME_CHART_COLOR[k] || "#AF9BF5",
     }))
     .sort((a, b) => b.count - a.count);
+
+  // WHO is behind each bar/segment (Suren: "every graph has to tell me who is
+  // prospect, who I lost, who's interested…"). Grouped so the charts can reveal
+  // the actual deals/contacts on click.
+  const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
+  const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
+  const stageDeals: Record<string, { company: string; contact: string; value: number; customerId: string }[]> = {};
+  for (const st of STAGES) stageDeals[st] = [];
+  for (const d of deals) {
+    (stageDeals[d.stage] ||= []).push({
+      company: d.company,
+      contact: d.contactName,
+      value: d.value,
+      customerId: d.customerId,
+    });
+  }
+  for (const st of STAGES) stageDeals[st].sort((a, b) => b.value - a.value);
+  const outcomeContacts: Record<string, { name: string; company: string; contactId: string }[]> = {};
+  for (const i of interactions) {
+    const label = OUTCOME_META[i.outcome]?.label || i.outcome;
+    const ct = contactById[i.contact_id];
+    const co = custById[i.customer_id];
+    (outcomeContacts[label] ||= []).push({
+      name: ct?.full_name || "Unknown",
+      company: co?.company_name || "—",
+      contactId: i.contact_id,
+    });
+  }
+
+  // WHO is behind each rep's stage bar/segment — grouped by deal owner + stage
+  // so the leaderboard's Pipeline-value bar and Deals-by-stage donut show the
+  // actual deals on hover (Suren: every graph shows who). Only the real
+  // deal-owning reps have entries; synthetic reps have none.
+  const repStageDeals: Record<
+    string,
+    Record<string, { company: string; contact: string; value: number }[]>
+  > = {};
+  for (const d of deals) {
+    (repStageDeals[d.owner] ||= {});
+    (repStageDeals[d.owner][d.stage] ||= []).push({
+      company: d.company,
+      contact: d.contactName,
+      value: d.value,
+    });
+  }
+  for (const owner of Object.keys(repStageDeals))
+    for (const st of Object.keys(repStageDeals[owner]))
+      repStageDeals[owner][st].sort((a, b) => b.value - a.value);
 
   return (
     <div className="space-y-8">
@@ -107,7 +187,7 @@ export default async function AnalyticsPage({
       />
 
       {/* Hero trend */}
-      <Card className="p-0 overflow-hidden">
+      <Card className="p-0 pb-5">
         <div className="p-5 flex items-end justify-between">
           <div>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
@@ -126,20 +206,25 @@ export default async function AnalyticsPage({
           color={VIZ.blue}
           goal={3.0}
           goalLabel="Quota $3.0M"
+          format="millions"
+          xLabels={trendLabels}
+          pointTips={trendPointTips}
         />
       </Card>
 
-      {/* Reuse analytics panels */}
+      {/* Reuse analytics panels — with the who-is-behind-each-segment breakdowns */}
       <AnalyticsView
         stages={stages}
         outcomes={outcomes}
         winRate={winRate}
         totalDeals={deals.length}
         openValue={openValue}
+        stageDeals={stageDeals}
+        outcomeContacts={outcomeContacts}
       />
 
       {/* Per-rep performance + drill-down (V3 #6) */}
-      <RepAnalytics reps={reps} range={range} />
+      <RepAnalytics reps={reps} range={range} repStageDeals={repStageDeals} />
     </div>
   );
 }

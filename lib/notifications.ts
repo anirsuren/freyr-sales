@@ -3,10 +3,11 @@
 import { buildDeals, ROTTING_DAYS } from "./pipeline";
 import { OUTCOME_META } from "./utils";
 import type { Customer, Contact, PitchSession, Interaction } from "./types";
+import type { StoredVoiceConversation } from "./voiceEvents";
 
 export const NOTIF_READ_KEY = "freyr.notif.read.v1";
 
-export type NotificationType = "review" | "rotting" | "signal" | "followup";
+export type NotificationType = "review" | "rotting" | "signal" | "followup" | "voice";
 
 export interface AppNotification {
   id: string;
@@ -22,9 +23,11 @@ export function buildNotifications(input: {
   customers: Customer[];
   contacts: Contact[];
   interactions: Interaction[];
+  voiceConversations?: StoredVoiceConversation[];
 }): AppNotification[] {
-  const { sessions, customers, contacts, interactions } = input;
+  const { sessions, customers, contacts, interactions, voiceConversations = [] } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
+  const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
   const out: AppNotification[] = [];
 
   // Pitches awaiting compliance review
@@ -87,17 +90,48 @@ export function buildNotifications(input: {
         now.getDate()
       ).getTime();
       const overdue = dueDay < todayDay;
+      // Useful copy for a rep (Anir: the old "scheduled for [date]" told them
+      // nothing): who, how late, and what the last outcome was — one tap to the
+      // account to act on it.
+      const dayMs = 86_400_000;
+      const contactName = contactById[i.contact_id]?.full_name || "";
+      const outcomeLabel = i.outcome ? OUTCOME_META[i.outcome]?.label || "" : "";
+      let when: string;
+      if (overdue) {
+        const n = Math.max(1, Math.round((todayDay - dueDay) / dayMs));
+        when = `${n} day${n === 1 ? "" : "s"} overdue`;
+      } else if (dueDay === todayDay) {
+        when = "due today";
+      } else {
+        const n = Math.round((dueDay - todayDay) / dayMs);
+        when = `due in ${n} day${n === 1 ? "" : "s"}`;
+      }
       out.push({
         id: `followup-${i.id}`,
         type: "followup",
         title: overdue ? "Follow-up overdue" : "Follow-up due",
-        body: `${company} — ${
-          overdue ? "was due" : "scheduled for"
-        } ${due.toLocaleDateString()}.`,
-        href: "/tasks",
+        body: `${company}${contactName ? ` · ${contactName}` : ""} — ${when}${
+          outcomeLabel ? `, last: ${outcomeLabel}` : ""
+        }.`,
+        href: `/customers/${i.customer_id}`,
         ts: i.follow_up_date,
       });
     }
+  }
+
+  for (const call of voiceConversations) {
+    if (call.status !== "completed" && call.status !== "failed") continue;
+    out.push({
+      id: `voice-${call.conversation_id || call.id}-${call.status}`,
+      type: "voice",
+      title: call.status === "failed" ? "Voice call needs attention" : "Call analysis is ready",
+      body:
+        call.status === "failed"
+          ? `${call.contact_name || call.external_number || "A call"} - ${call.failure_reason || "the call did not complete"}.`
+          : `${call.contact_name || "A contact"}${call.company ? ` at ${call.company}` : ""} - transcript and analysis are ready.`,
+      href: `/voice/c/${call.conversation_id || call.id}`,
+      ts: call.completed_at || call.updated_at,
+    });
   }
 
   return out

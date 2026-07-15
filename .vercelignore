@@ -1,0 +1,12 @@
+.env
+.env.local
+.env*.local
+test-results
+tests
+playwright.config.ts
+shots-cycle.mjs
+teams-video
+teams-video2
+TEAMS-VIDEO-REVIEW.md
+TEAMS-VIDEO2-REVIEW.md
+SUREN-VIDEO-REVIEW.md

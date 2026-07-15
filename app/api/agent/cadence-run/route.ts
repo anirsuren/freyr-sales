@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
-import { SEQUENCES, CHANNEL_LABEL } from "@/lib/sequences";
+import { getSequence, CHANNEL_LABEL } from "@/lib/sequences";
 import { buildDeals, ROTTING_DAYS } from "@/lib/pipeline";
 import type { AgentRunStep } from "@/lib/types";
 
@@ -14,9 +14,12 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const sequenceId = String(body.sequenceId || "reengage");
-  const seq = SEQUENCES.find((s) => s.id === sequenceId);
+  const seq = getSequence(sequenceId);
   if (!seq) {
     return NextResponse.json({ error: "Unknown sequence" }, { status: 400 });
+  }
+  if (seq.status === "paused") {
+    return NextResponse.json({ error: "This sequence is paused" }, { status: 409 });
   }
   const lastIdx = seq.steps.length - 1;
 

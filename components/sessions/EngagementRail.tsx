@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Plus, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { OUTCOME_META, formatDate } from "@/lib/utils";
+import { OUTCOME_META, formatDateTime, cn } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
 
 const DISPOSITIONS = [
@@ -27,6 +27,7 @@ export function EngagementRail({
   initialInteractions: Interaction[];
 }) {
   const { toast } = useToast();
+  const [open, setOpen] = useState(false);
   const [outcome, setOutcome] = useState("");
   const [followUp, setFollowUp] = useState("");
   const [notes, setNotes] = useState("");
@@ -57,6 +58,7 @@ export function EngagementRail({
       setOutcome("");
       setNotes("");
       setFollowUp("");
+      setOpen(false);
       toast("Interaction logged");
     } catch {
       toast("Failed to log interaction", "error");
@@ -66,7 +68,7 @@ export function EngagementRail({
   }
 
   const labelCls =
-    "flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5";
+    "block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5";
   const fieldCls =
     "w-full bg-white border border-border rounded-lg p-2 text-[14px] text-text-primary outline-none focus:border-blue-primary focus:shadow-focus transition";
 
@@ -75,60 +77,78 @@ export function EngagementRail({
       <div className="p-4 border-b border-border-light">
         <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
           Engagement
-          <InfoHint text="A running log of every touch with this contact — calls, emails, meetings. Record what just happened below, and the full timeline shows underneath." />
+          <InfoHint text="The timeline of every touch with this contact — calls, emails, meetings. The full history is below; log a new one only when something actually happens." />
         </h2>
       </div>
 
-      {/* Outcome block */}
-      <div className="p-4 space-y-4 border-b border-border-light bg-surface">
-        <div>
-          <label className={labelCls}>
-            Outcome
-            <InfoHint text="What came out of this touch — were they interested, did you book a meeting, no answer, or not a fit? Pick one so the deal's status stays current." />
-          </label>
-          <select
-            className={fieldCls}
-            value={outcome}
-            onChange={(e) => setOutcome(e.target.value)}
-          >
-            <option value="">Select outcome…</option>
-            {DISPOSITIONS.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>
-            Next step
-            <InfoHint text="When you plan to reach out next. Set a date and it'll show up as a reminder so this contact doesn't slip through the cracks." />
-          </label>
-          <input
-            type="date"
-            className={fieldCls}
-            value={followUp}
-            onChange={(e) => setFollowUp(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Notes</label>
-          <textarea
-            rows={3}
-            className={`${fieldCls} resize-none`}
-            placeholder="Discussed EMA Module 3 concerns…"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </div>
+      {/* Logging is opt-in — not every visit records an outcome, so the form
+          stays tucked behind one button and the timeline leads (Suren). */}
+      <div className="p-4 border-b border-border-light">
         <button
-          onClick={log}
-          disabled={saving}
-          className="w-full bg-text-primary text-white py-2.5 rounded-lg text-[14px] font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-border text-[13px] font-semibold text-text-primary hover:bg-surface transition-colors"
         >
-          <Send size={16} strokeWidth={1.75} />
-          {saving ? "Logging…" : "Log Interaction"}
+          <span className="flex items-center gap-1.5">
+            <Plus size={15} strokeWidth={2} className="text-blue-primary" />
+            Log an interaction
+          </span>
+          <ChevronDown
+            size={15}
+            strokeWidth={2}
+            className={cn(
+              "text-text-tertiary transition-transform",
+              open && "rotate-180"
+            )}
+          />
         </button>
+
+        {open && (
+          <div className="mt-3 space-y-3">
+            <div>
+              <label className={labelCls}>Outcome</label>
+              <select
+                className={fieldCls}
+                value={outcome}
+                onChange={(e) => setOutcome(e.target.value)}
+              >
+                <option value="">Select outcome…</option>
+                {DISPOSITIONS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Next step</label>
+              <input
+                type="date"
+                className={fieldCls}
+                value={followUp}
+                onChange={(e) => setFollowUp(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Notes</label>
+              <textarea
+                rows={3}
+                className={`${fieldCls} resize-none`}
+                placeholder="Discussed EMA Module 3 concerns…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={log}
+              disabled={saving}
+              className="w-full bg-text-primary text-white py-2.5 rounded-lg text-[14px] font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              <Send size={16} strokeWidth={1.75} />
+              {saving ? "Logging…" : "Log Interaction"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* History */}
@@ -155,7 +175,7 @@ export function EngagementRail({
               <div key={it.id} className="relative">
                 <span className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-text-tertiary ring-4 ring-white" />
                 <p className="text-[11px] uppercase tracking-[0.04em] text-text-tertiary tnum">
-                  {formatDate(it.created_at)}
+                  {formatDateTime(it.created_at)}
                 </p>
                 <p className="text-[14px] font-medium text-text-primary">
                   {m?.label || it.outcome}

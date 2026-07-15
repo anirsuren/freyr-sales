@@ -14,23 +14,18 @@ export const KPI_EVENT = "freyr:kpis-change";
 
 export function KpiCustomize({
   kpis,
-  comparable,
-  rangeLabel,
 }: {
   kpis: { key: string; label: string }[];
   comparable: boolean;
   rangeLabel: string;
 }) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [compareOn, setCompareOn] = useState(true);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KPI_STORE);
       if (raw) setHidden(new Set(JSON.parse(raw)));
-      const c = localStorage.getItem(KPI_COMPARE);
-      if (c != null) setCompareOn(c === "1");
     } catch {}
   }, []);
 
@@ -39,7 +34,8 @@ export function KpiCustomize({
   }
   function toggleHidden(key: string) {
     const next = new Set(hidden);
-    next.has(key) ? next.delete(key) : next.add(key);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
     if (next.size >= kpis.length) return; // never hide all
     setHidden(next);
     try {
@@ -47,31 +43,8 @@ export function KpiCustomize({
     } catch {}
     broadcast();
   }
-  function toggleCompare() {
-    const v = !compareOn;
-    setCompareOn(v);
-    try {
-      localStorage.setItem(KPI_COMPARE, v ? "1" : "0");
-    } catch {}
-    broadcast();
-  }
-
   return (
     <>
-      {comparable && (
-        <button
-          onClick={toggleCompare}
-          aria-pressed={compareOn}
-          className={cn(
-            "text-[13px] font-medium px-3 py-2 rounded-md border transition-colors whitespace-nowrap",
-            compareOn
-              ? "border-blue-primary bg-blue-light text-blue-primary"
-              : "border-border text-text-secondary hover:bg-surface"
-          )}
-        >
-          vs {rangeLabel}
-        </button>
-      )}
       <div className="relative">
         <button
           onClick={() => setOpen((o) => !o)}

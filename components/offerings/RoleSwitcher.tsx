@@ -2,15 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { ShieldCheck, Eye } from "lucide-react";
+import { ShieldCheck, Eye, Pencil } from "lucide-react";
 
 // Flips the active role cookie and refreshes so the (server-rendered) edit
 // controls appear/disappear. Demo stand-in for real per-user logins.
-export function RoleSwitcher({ current }: { current: "admin" | "sales" }) {
+export function RoleSwitcher({ current }: { current: "admin" | "editor" | "sales" }) {
   const router = useRouter();
   const [pending, start] = useTransition();
 
-  function setRole(role: "admin" | "sales") {
+  function setRole(role: "admin" | "editor" | "sales") {
     if (role === current) return;
     document.cookie = `freyr_role=${role}; path=/; max-age=31536000`;
     start(() => router.refresh());
@@ -34,6 +34,14 @@ export function RoleSwitcher({ current }: { current: "admin" | "sales" }) {
       <span className="text-[11px] font-medium text-text-tertiary pl-2 pr-1">
         Viewing as
       </span>
+      <button
+        type="button"
+        onClick={() => setRole("editor")}
+        aria-pressed={current === "editor"}
+        className={btn(current === "editor")}
+      >
+        <Pencil size={13} strokeWidth={2} /> Editor
+      </button>
       <button
         type="button"
         onClick={() => setRole("admin")}

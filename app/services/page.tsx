@@ -13,7 +13,7 @@ export default async function ServiceCatalogPage() {
   const db = getDb();
   const kb = await db.freyrKb.get();
   const services: any[] = kb?.structured_kb?.services || [];
-  const admin = isAdmin();
+  const admin = await isAdmin();
 
   return (
     <div>

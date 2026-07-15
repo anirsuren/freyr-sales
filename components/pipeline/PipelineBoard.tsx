@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  GripVertical,
   Search,
   Flame,
   Plus,
@@ -11,18 +10,17 @@ import {
   CheckSquare,
   Square,
   X,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { SizeBadge } from "@/components/ui/Badge";
+import { SizeBadge, SIZE_TIER_META } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
-import { Tooltip, Term } from "@/components/ui/Tooltip";
+import { Term } from "@/components/ui/Tooltip";
 import { stageKey } from "@/lib/glossary";
 import { cn } from "@/lib/utils";
 import {
@@ -36,7 +34,6 @@ import {
   type Stage,
 } from "@/lib/pipeline";
 
-const ORDER_KEY = "freyr.pipeline.order.v1";
 const WIP_KEY = "freyr.pipeline.wip.v1";
 const VIEWS_KEY = "freyr.pipeline.views.v1";
 
@@ -66,8 +63,6 @@ const EMPTY_ADD = {
 export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   const { toast } = useToast();
   const [deals, setDeals] = useState<Deal[]>(initial);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [over, setOver] = useState<Stage | null>(null);
   const [q, setQ] = useState("");
   const [size, setSize] = useState("all");
   const [mine, setMine] = useState(false); // team vs my-deals (#27)
@@ -78,19 +73,13 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   const [showSaveView, setShowSaveView] = useState(false);
   const [viewName, setViewName] = useState("");
 
-  // persisted column order + WIP limits (#35)
-  const [order, setOrder] = useState<Stage[]>([...STAGES]);
+  // Persist deal limits while keeping the sales stages in their canonical order.
   const [wip, setWip] = useState<Record<string, number>>({});
   useEffect(() => {
     try {
-      const o = localStorage.getItem(ORDER_KEY);
-      if (o) {
-        const parsed: Stage[] = JSON.parse(o);
-        // keep only known stages + append any missing (schema drift safe)
-        const valid = parsed.filter((s) => STAGES.includes(s));
-        const merged = [...valid, ...STAGES.filter((s) => !valid.includes(s))];
-        setOrder(merged);
-      }
+      // Remove the retired custom-column preference so an accidentally moved
+      // layout cannot return after a reload or an older tab refreshes.
+      localStorage.removeItem("freyr.pipeline.order.v1");
       const w = localStorage.getItem(WIP_KEY);
       if (w) setWip(JSON.parse(w));
       const v = localStorage.getItem(VIEWS_KEY);
@@ -117,20 +106,6 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     toast(`Saved view “${name}”`);
   }
 
-  function persistOrder(next: Stage[]) {
-    setOrder(next);
-    try {
-      localStorage.setItem(ORDER_KEY, JSON.stringify(next));
-    } catch {}
-  }
-  function moveColumn(stage: Stage, dir: -1 | 1) {
-    const i = order.indexOf(stage);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= order.length) return;
-    const next = [...order];
-    [next[i], next[j]] = [next[j], next[i]];
-    persistOrder(next);
-  }
   function setWipLimit(stage: Stage, value: string) {
     const n = Math.max(0, Math.round(Number(value.replace(/[^0-9]/g, ""))));
     const next = { ...wip };
@@ -195,6 +170,24 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     [deals, q, size, mine]
   );
 
+  const sizeCounts = useMemo(() => {
+    const matching = deals.filter(
+      (deal) =>
+        (!mine || deal.owner === CURRENT_REP) &&
+        (!q ||
+          deal.company.toLowerCase().includes(q.toLowerCase()) ||
+          deal.contactName.toLowerCase().includes(q.toLowerCase()))
+    );
+    return matching.reduce<Record<string, number>>(
+      (counts, deal) => {
+        counts.all += 1;
+        if (deal.sizeTier) counts[deal.sizeTier] = (counts[deal.sizeTier] || 0) + 1;
+        return counts;
+      },
+      { all: 0, large: 0, mid: 0, small: 0 }
+    );
+  }, [deals, mine, q]);
+
   const byStage = useMemo(() => {
     const map: Record<string, Deal[]> = {};
     for (const st of STAGES) map[st] = [];
@@ -221,18 +214,6 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     }).catch(() => {});
   }
 
-  function onDrop(stage: Stage) {
-    setOver(null);
-    const id = dragId;
-    setDragId(null);
-    if (!id) return;
-    const deal = deals.find((d) => d.sessionId === id);
-    if (!deal || deal.stage === stage) return;
-    setDeals((ds) => ds.map((d) => (d.sessionId === id ? { ...d, stage } : d)));
-    toast(`${deal.company} → ${stage}`);
-    persistStage(deal, stage);
-  }
-
   function commitValue(id: string) {
     const n = Math.round(Number(editVal.replace(/[^0-9.]/g, "")));
     setEditingId(null);
@@ -244,7 +225,8 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   function toggleSelect(id: string) {
     setSelected((s) => {
       const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -374,21 +356,38 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
             className="w-full bg-surface border border-border rounded-md pl-9 pr-3 py-2 text-[13px] outline-none focus:border-blue-primary"
           />
         </div>
-        <div className="flex gap-2">
-          {SIZE_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setSize(f.key)}
-              className={cn(
-                "text-[13px] font-medium px-3 py-1.5 rounded-md border transition-colors",
-                size === f.key
-                  ? "border-blue-primary bg-blue-light text-blue-primary"
-                  : "border-border text-text-secondary hover:bg-surface"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex gap-2" aria-label="Filter deals by company size">
+          {SIZE_FILTERS.map((f) => {
+            const selected = size === f.key;
+            const meta =
+              f.key === "all"
+                ? { color: "#4B5563", bg: "rgba(75,85,99,0.09)" }
+                : SIZE_TIER_META[f.key];
+            return (
+              <button
+                key={f.key}
+                onClick={() => setSize(f.key)}
+                aria-pressed={selected}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-[12.5px] font-semibold transition-all hover:-translate-y-px"
+                style={{
+                  color: selected ? "#FFFFFF" : meta.color,
+                  background: selected ? meta.color : meta.bg,
+                  borderColor: selected ? meta.color : `${meta.color}30`,
+                  boxShadow: selected ? `0 2px 8px ${meta.color}30` : undefined,
+                }}
+              >
+                {selected ? (
+                  <Check size={12} strokeWidth={2.6} />
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.color }} />
+                )}
+                {f.label}
+                <span className={cn("tnum", selected ? "text-white/75" : "opacity-60")}>
+                  {sizeCounts[f.key] || 0}
+                </span>
+              </button>
+            );
+          })}
         </div>
         <div className="flex items-center gap-2 sm:ml-auto">
           <span className="text-[13px] text-text-secondary hidden lg:block">
@@ -477,7 +476,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
       )}
 
       <div className="flex gap-4 overflow-x-auto pb-4 stagger">
-      {order.map((stage, colIdx) => {
+      {STAGES.map((stage) => {
         const items = byStage[stage] || [];
         const total = items.reduce((sum, d) => sum + d.value, 0);
         const wt = total * (STAGE_PROBABILITY[stage] ?? 0);
@@ -486,18 +485,10 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
         return (
           <div
             key={stage}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setOver(stage);
-            }}
-            onDragLeave={() => setOver((o) => (o === stage ? null : o))}
-            onDrop={() => onDrop(stage)}
             className={cn(
               "w-[280px] shrink-0 rounded-xl border transition-colors",
               overLimit
                 ? "border-error bg-error/5"
-                : over === stage
-                ? "border-blue-primary bg-blue-light/40"
                 : "border-border-light bg-surface"
             )}
           >
@@ -523,24 +514,6 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 >
                   {items.length}
                   {limit != null ? `/${limit}` : ""}
-                </span>
-                <span className="flex items-center">
-                  <button
-                    onClick={() => moveColumn(stage, -1)}
-                    disabled={colIdx === 0}
-                    aria-label={`Move ${stage} left`}
-                    className="text-text-tertiary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft size={14} strokeWidth={2} />
-                  </button>
-                  <button
-                    onClick={() => moveColumn(stage, 1)}
-                    disabled={colIdx === order.length - 1}
-                    aria-label={`Move ${stage} right`}
-                    className="text-text-tertiary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight size={14} strokeWidth={2} />
-                  </button>
                 </span>
               </div>
               <span className="text-right leading-tight">
@@ -578,29 +551,27 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 <span className="text-[10px] font-bold text-error">over limit</span>
               )}
             </div>
-            <div className="p-2 space-y-2 min-h-[120px]">
+            <div className="p-2.5 space-y-3 min-h-[120px]">
               {items.map((d) => {
                 const isManual = d.sessionId.startsWith("manual-");
                 const isSel = selected.has(d.sessionId);
                 return (
                 <div
                   key={d.sessionId}
-                  draggable={!selectMode}
-                  onDragStart={() => setDragId(d.sessionId)}
-                  onDragEnd={() => {
-                    setDragId(null);
-                    setOver(null);
-                  }}
                   className={cn(
-                    "group bg-white border rounded-lg p-3 shadow-card transition-colors",
-                    selectMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
-                    isSel ? "border-blue-primary ring-1 ring-blue-primary" : "border-border-light hover:border-blue-subtle",
-                    dragId === d.sessionId ? "opacity-50" : ""
+                    // Stronger shadow + crisper border so each white card clearly
+                    // lifts off the column and stacked cards are easy to tell apart
+                    // (Suren). Hover lifts it further.
+                    "group bg-white border rounded-lg p-3 transition-all shadow-[0_1px_2px_rgba(16,24,40,0.05),0_4px_10px_rgba(16,24,40,0.07)] hover:shadow-[0_10px_24px_rgba(16,24,40,0.13)] hover:-translate-y-0.5",
+                    selectMode ? "cursor-pointer" : "",
+                    isSel
+                      ? "border-blue-primary ring-1 ring-blue-primary"
+                      : "border-border hover:border-blue-subtle"
                   )}
                   onClick={() => selectMode && toggleSelect(d.sessionId)}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       {selectMode && (
                         <button
                           aria-label="Select deal"
@@ -608,7 +579,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                             e.stopPropagation();
                             toggleSelect(d.sessionId);
                           }}
-                          className="shrink-0 mt-0.5 text-blue-primary"
+                          className="shrink-0 text-blue-primary"
                         >
                           {isSel ? (
                             <CheckSquare size={16} strokeWidth={1.8} />
@@ -617,31 +588,65 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                           )}
                         </button>
                       )}
+                      <CompanyLogo
+                        name={d.company}
+                        className="w-7 h-7 text-[10px] shrink-0"
+                      />
                       {isManual ? (
                         <span className="text-[14px] font-semibold text-text-primary leading-tight truncate">
                           {d.company}
                         </span>
                       ) : (
                         <Link
-                          href={`/deals/${d.sessionId}`}
+                          href={`/customers/${d.customerId}`}
                           className="text-[14px] font-semibold text-text-primary hover:text-blue-primary leading-tight truncate"
                         >
                           {d.company}
                         </Link>
                       )}
                     </div>
-                    {!selectMode && (
-                      <GripVertical
-                        size={16}
-                        strokeWidth={1.5}
-                        className="text-text-tertiary opacity-0 group-hover:opacity-100 shrink-0"
-                      />
-                    )}
                   </div>
-                  <p className="text-[12px] text-text-secondary mt-0.5 truncate">
-                    {d.contactName} · {d.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1.5">
+                  {d.contactName && d.contactName !== "—" ? (
+                    isManual ? (
+                      <div className="flex items-center gap-2 mt-2.5 min-w-0">
+                        <Avatar name={d.contactName} className="w-7 h-7 text-[10px] shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-semibold text-text-primary truncate leading-tight">
+                            {d.contactName}
+                          </p>
+                          {d.title && (
+                            <p className="text-[11.5px] text-text-secondary truncate leading-tight mt-0.5">
+                              {d.title}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/contacts/${d.contactId}`}
+                        className="group/contact flex items-center gap-2 mt-2.5 min-w-0"
+                      >
+                        <Avatar name={d.contactName} className="w-7 h-7 text-[10px] shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-semibold text-text-primary group-hover/contact:text-blue-primary truncate leading-tight">
+                            {d.contactName}
+                          </p>
+                          {d.title && (
+                            <p className="text-[11.5px] text-text-secondary truncate leading-tight mt-0.5">
+                              {d.title}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    )
+                  ) : (
+                    d.title && (
+                      <p className="text-[12px] text-text-secondary mt-2 truncate">
+                        {d.title}
+                      </p>
+                    )
+                  )}
+                  <div className="flex items-center gap-2 mt-2.5">
                     <p className="text-[12px] text-text-tertiary truncate flex-1">
                       {d.service}
                     </p>
@@ -656,14 +661,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                     )}
                   </div>
                   <div className="flex items-center justify-between mt-3">
-                    <span className="flex items-center gap-1.5">
-                      <SizeBadge tier={d.sizeTier} />
-                      <Avatar
-                        name={d.owner}
-                        className="w-5 h-5 text-[9px]"
-                        tooltip={`Owner: ${d.owner} — the rep responsible for this deal`}
-                      />
-                    </span>
+                    <SizeBadge tier={d.sizeTier} />
                     {editingId === d.sessionId ? (
                       <span className="flex items-center gap-1">
                         <input
@@ -739,7 +737,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
               })}
               {items.length === 0 && (
                 <div className="text-[12px] text-text-tertiary text-center py-6">
-                  Drop deals here
+                  No deals in this stage
                 </div>
               )}
             </div>

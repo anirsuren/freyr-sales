@@ -45,6 +45,5 @@ export async function sendEmail(input: {
     }
   }
 
-  // SMTP configured but no inline transport in this build — report intent.
-  return { ok: true, channel: "smtp", skipped: true };
+  return { ok: false, channel: "mock", skipped: true, error: "No supported email provider is configured." };
 }

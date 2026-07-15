@@ -13,6 +13,8 @@ import {
   Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number };
 type Convo = { id: string; title: string; messages: Msg[]; updated: number };
@@ -73,12 +75,35 @@ function renderInline(s: string, keyBase: string): ReactNode[] {
   let k = 0;
   while ((m = re.exec(s)) !== null) {
     if (m.index > last) nodes.push(s.slice(last, m.index));
-    if (m[2] != null && m[3] != null)
+    if (m[2] != null && m[3] != null) {
+      const href = m[3];
+      const label = m[2];
+      // Company/contact mentions render as a proper PILL — logo/headshot + bold
+      // name in a rounded chip — not a bare blue link (Suren: "make it an actual
+      // pill with the logo and the name bolded"). Still deep-links through.
+      const isCompany = href.startsWith("/customers/");
+      const isContact = href.startsWith("/contacts/");
       nodes.push(
-        <Link key={`${keyBase}-${k++}`} href={m[3]} className="text-blue-primary font-medium hover:underline">
-          {m[2]}
-        </Link>
+        isCompany || isContact ? (
+          <Link
+            key={`${keyBase}-${k++}`}
+            href={href}
+            className="inline-flex items-center gap-1 align-middle rounded-full bg-blue-light/70 border border-blue-subtle/60 pl-1 pr-2 py-0.5 mx-0.5 font-semibold text-blue-primary no-underline hover:bg-blue-light hover:border-blue-subtle transition-colors"
+          >
+            {isCompany ? (
+              <CompanyLogo name={label} className="w-4 h-4 text-[7px] shrink-0" />
+            ) : (
+              <Avatar name={label} className="w-4 h-4 text-[7px] shrink-0" />
+            )}
+            {label}
+          </Link>
+        ) : (
+          <Link key={`${keyBase}-${k++}`} href={href} className="text-blue-primary font-medium hover:underline">
+            {label}
+          </Link>
+        )
       );
+    }
     else if (m[4] != null) nodes.push(<strong key={`${keyBase}-${k++}`}>{m[4]}</strong>);
     else if (m[5] != null) nodes.push(<strong key={`${keyBase}-${k++}`}>{m[5]}</strong>);
     else if (m[6] != null) nodes.push(<em key={`${keyBase}-${k++}`}>{m[6]}</em>);

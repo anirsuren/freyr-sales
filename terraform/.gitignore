@@ -1,8 +1,0 @@
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-!*.tfvars.example
-taskdef.json
-secret.json
-tfplan

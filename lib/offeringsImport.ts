@@ -6,8 +6,10 @@
 // dot/space-insensitive) so a lightly-reformatted sheet still imports. The Early
 // Adopters column is intentionally ignored — Suren removed that field.
 //
-// Server-only (xlsx is a Node module); imported by the import API route.
-import * as XLSX from "xlsx";
+// Server-only; imported by the import API route. The parser is intentionally
+// small and read-only; workbook size and row limits are enforced before data is
+// allowed into the repository.
+import ExcelJS from "exceljs";
 import {
   listOfferings,
   createOffering,
@@ -43,22 +45,30 @@ function normName(s: unknown): string {
 }
 
 // Convert a worksheet to an array of row-objects keyed by normalised header.
-function rowsOf(ws: XLSX.WorkSheet): Record<string, string>[] {
-  const grid = XLSX.utils.sheet_to_json<unknown[]>(ws, {
-    header: 1,
-    blankrows: false,
-    defval: "",
-  });
-  if (!grid.length) return [];
-  const headers = (grid[0] as unknown[]).map(norm);
+function cellText(value: ExcelJS.CellValue): string {
+  if (value == null) return "";
+  if (typeof value === "object") {
+    if ("text" in value) return String(value.text ?? "");
+    if ("result" in value) return String(value.result ?? "");
+    if ("richText" in value) return value.richText.map((part) => part.text).join("");
+  }
+  return String(value);
+}
+
+function rowsOf(sheet: ExcelJS.Worksheet): Record<string, string>[] {
+  if (!sheet.rowCount) return [];
+  const header = sheet.getRow(1);
+  const headers = Array.from({ length: header.cellCount }, (_, index) =>
+    norm(cellText(header.getCell(index + 1).value))
+  );
   const out: Record<string, string>[] = [];
-  for (let r = 1; r < grid.length; r++) {
-    const row = grid[r] as unknown[];
+  for (let r = 2; r <= sheet.rowCount; r++) {
+    const row = sheet.getRow(r);
     const obj: Record<string, string> = {};
     let any = false;
     headers.forEach((h, c) => {
       if (!h) return;
-      const v = String(row[c] ?? "").trim();
+      const v = cellText(row.getCell(c + 1).value).trim();
       obj[h] = v;
       if (v) any = true;
     });
@@ -81,14 +91,18 @@ function pick(row: Record<string, string>, ...keys: string[]): string {
   return "";
 }
 
-export function importOfferingsWorkbook(
+export async function importOfferingsWorkbook(
   data: ArrayBuffer | Uint8Array | Buffer
-): ImportResult {
-  let wb: XLSX.WorkBook;
+): Promise<ImportResult> {
+  const buf = Buffer.from(
+    data instanceof ArrayBuffer ? new Uint8Array(data) : data
+  );
+  const workbook = new ExcelJS.Workbook();
   try {
-    const buf =
-      data instanceof ArrayBuffer ? new Uint8Array(data) : (data as Uint8Array);
-    wb = XLSX.read(buf, { type: "array" });
+    await workbook.xlsx.load(buf as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    if (workbook.worksheets.length > 20) throw new Error("Too many worksheets");
+    if (workbook.worksheets.some((sheet) => sheet.rowCount > 5000))
+      throw new Error("Too many rows");
   } catch {
     return {
       ok: false,
@@ -107,16 +121,16 @@ export function importOfferingsWorkbook(
     types: 0,
     offeringsCreated: 0,
     offeringsUpdated: 0,
-    sheetsSeen: wb.SheetNames.slice(),
+    sheetsSeen: workbook.worksheets.map((sheet) => sheet.name),
   };
 
   const findSheet = (re: RegExp) =>
-    wb.SheetNames.find((n) => re.test(n.toLowerCase()));
+    workbook.worksheets.find((sheet) => re.test(sheet.name.toLowerCase()));
 
   // --- Offering Category sheet -> upsert categories ------------------------
   const catSheet = findSheet(/offering categor/);
   if (catSheet) {
-    for (const row of rowsOf(wb.Sheets[catSheet])) {
+    for (const row of rowsOf(catSheet)) {
       const name = pick(row, "offering category", "category", "name");
       if (!name) continue;
       createOfferingCategory({
@@ -131,7 +145,7 @@ export function importOfferingsWorkbook(
   // --- Offering Type sheet -> upsert types ---------------------------------
   const typeSheet = findSheet(/offering type/);
   if (typeSheet) {
-    for (const row of rowsOf(wb.Sheets[typeSheet])) {
+    for (const row of rowsOf(typeSheet)) {
       const name = pick(row, "offering type", "type", "name");
       if (!name) continue;
       createOfferingType({ name, description: pick(row, "description") });
@@ -143,18 +157,18 @@ export function importOfferingsWorkbook(
   // The offerings sheet is the one with an "offering" column that ISN'T the
   // type/category sheet.
   const offSheet =
-    wb.SheetNames.find((n) => /^offerings?$/i.test(n.trim())) ||
-    wb.SheetNames.find(
-      (n) =>
-        n !== catSheet &&
-        n !== typeSheet &&
-        rowsOf(wb.Sheets[n]).some((r) =>
+    workbook.worksheets.find((sheet) => /^offerings?$/i.test(sheet.name.trim())) ||
+    workbook.worksheets.find(
+      (sheet) =>
+        sheet !== catSheet &&
+        sheet !== typeSheet &&
+        rowsOf(sheet).some((r) =>
           Object.keys(r).some((h) => h === "offering" || h.includes("offering name"))
         )
     );
   if (offSheet) {
     const existing = listOfferings();
-    for (const row of rowsOf(wb.Sheets[offSheet])) {
+    for (const row of rowsOf(offSheet)) {
       const name = pick(row, "offering name", "offering", "name");
       if (!name) continue;
       const fields = {

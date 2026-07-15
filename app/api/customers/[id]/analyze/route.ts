@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic";
 // only PROPOSES; the user approves (a PATCH) before it's saved (Suren's ask).
 export async function POST(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const db = getDb();
-  const customer = await db.customers.get(params.id);
+  const customer = await db.customers.get((await params).id);
   if (!customer) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }

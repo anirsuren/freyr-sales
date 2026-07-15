@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
-import { SEQUENCES, CHANNEL_LABEL } from "@/lib/sequences";
+import { getSequence, CHANNEL_LABEL } from "@/lib/sequences";
 import type { AgentRunStep, SequenceEnrollment } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -32,8 +32,8 @@ export async function POST(req: Request) {
   let advanced = 0;
   let completed = 0;
   for (const e of targets) {
-    const seq = SEQUENCES.find((s) => s.id === e.sequence_id);
-    if (!seq) continue;
+    const seq = getSequence(e.sequence_id);
+    if (!seq || seq.status === "paused") continue;
     const lastIdx = seq.steps.length - 1;
     if (e.step_index >= lastIdx) continue; // already at the end
 

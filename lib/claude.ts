@@ -965,3 +965,54 @@ Generate three pitch formats. Return JSON:
     return MOCK_PITCHES;
   }
 }
+
+// On-demand outreach drafts (Suren, Jul 3): a LinkedIn note or email grounded
+// in the SELECTED offering + the contact's profile + the Freyr/Freya context.
+// Returns null when no live client — the caller falls back to its template.
+export async function generateOutreachWithClaude(input: {
+  kind: "linkedin" | "email";
+  contactName: string;
+  contactTitle: string;
+  company: string;
+  offeringName: string;
+  offeringCategory: string;
+  offeringDescription: string;
+  materials: string[];
+  freyrContext: string;
+  extra: string;
+  linkedinLimit: number;
+}): Promise<{ subject?: string; message: string } | null> {
+  if (!client) return null;
+  const isLi = input.kind === "linkedin";
+  const prompt = `You write outreach for a Freyr Solutions sales rep. Context about Freyr: ${input.freyrContext}
+
+Write a ${isLi ? `LinkedIn connection note (HARD LIMIT ${input.linkedinLimit} characters)` : "short sales email (subject + 120-170 word body)"} to:
+- ${input.contactName}, ${input.contactTitle} at ${input.company}
+
+Pitching this offering (use its substance, don't just name-drop):
+- ${input.offeringName} (${input.offeringCategory})
+- What it is: ${input.offeringDescription || "(description pending — lean on the category)"}
+${input.materials.length ? `- Supporting materials we can share: ${input.materials.join("; ")}` : ""}
+${input.extra ? `Rep's added context: ${input.extra}` : ""}
+
+Rules: personal to their role, no fluff, one clear ask, no placeholder brackets, sign as "Suren Dheen, Freyr Solutions"${isLi ? `, and the whole note MUST be under ${input.linkedinLimit} characters` : ""}.
+Return ONLY JSON: {"subject": ${isLi ? "null" : '"..."'}, "message": "..."}`;
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 700,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const out = parseJson<{ subject?: string | null; message: string }>(
+      textFrom(response)
+    );
+    if (!out?.message) return null;
+    let message = out.message.trim();
+    if (isLi && message.length > input.linkedinLimit) {
+      message = message.slice(0, input.linkedinLimit - 1) + "…";
+    }
+    return { subject: out.subject || undefined, message };
+  } catch {
+    return null;
+  }
+}

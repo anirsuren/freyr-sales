@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { Sparkles, History, GraduationCap, ExternalLink } from "lucide-react";
+import { History, GraduationCap } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { SIZE_TIER_LABEL } from "@/lib/utils";
 import type { Customer, Contact, RecommendedService } from "@/lib/types";
 
@@ -26,12 +28,9 @@ export function IntelligenceRail({
 }) {
   return (
     <section className="hidden lg:block w-[320px] shrink-0 bg-surface border-r border-border-light overflow-y-auto p-4 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[17px] font-semibold text-text-primary">
-          Intelligence
-        </h2>
-        <Sparkles size={18} strokeWidth={1.5} className="text-blue-primary" />
-      </div>
+      <h2 className="text-[17px] font-semibold text-text-primary">
+        Intelligence
+      </h2>
 
       {/* Account card */}
       <div className="bg-white border border-border-light rounded-xl p-4 shadow-card">
@@ -47,7 +46,7 @@ export function IntelligenceRail({
               {customer.company_name}
             </Link>
           </div>
-          <Avatar
+          <CompanyLogo
             name={customer.company_name}
             className="w-10 h-10 text-[13px] rounded-lg"
           />
@@ -64,13 +63,15 @@ export function IntelligenceRail({
             </span>
           )}
         </div>
-        <div className="mt-4 pt-4 border-t border-border-light space-y-2 text-[13px]">
-          <div className="flex justify-between gap-3">
-            <span className="text-text-secondary shrink-0">Geography</span>
-            <span className="font-medium text-text-primary text-right">
-              {customer.geography || "—"}
-            </span>
-          </div>
+        <div className="mt-4 pt-4 border-t border-border-light">
+          {/* Stacked so a long location wraps cleanly instead of glitching onto
+              two right-aligned lines (Suren: "can never glitch out like this"). */}
+          <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
+            Geography
+          </p>
+          <p className="text-[13px] font-medium text-text-primary">
+            {customer.geography || "—"}
+          </p>
         </div>
       </div>
 
@@ -80,12 +81,15 @@ export function IntelligenceRail({
           <div className="flex items-center gap-3 mb-4">
             <Avatar name={contact.full_name} className="w-12 h-12 text-[15px]" />
             <div>
-              <Link
-                href={`/contacts/${contact.id}`}
-                className="text-[15px] font-semibold text-text-primary leading-none hover:text-blue-primary"
-              >
-                {contact.full_name}
-              </Link>
+              <span className="flex items-center gap-1.5">
+                <Link
+                  href={`/contacts/${contact.id}`}
+                  className="text-[15px] font-semibold text-text-primary leading-none hover:text-blue-primary"
+                >
+                  {contact.full_name}
+                </Link>
+                <LinkedInLink url={contact.linkedin_url} size={14} />
+              </span>
               <p className="text-[13px] text-text-secondary mt-1">
                 {contact.job_title}
               </p>
@@ -114,17 +118,6 @@ export function IntelligenceRail({
               <div className="p-2.5 bg-surface rounded-lg border-l-2 border-blue-primary text-[13px] text-text-secondary italic leading-relaxed">
                 {contact.enrichment_summary}
               </div>
-            )}
-            {contact.linkedin_url && (
-              <a
-                href={contact.linkedin_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[13px] text-blue-primary hover:underline"
-              >
-                View LinkedIn
-                <ExternalLink size={13} strokeWidth={1.5} />
-              </a>
             )}
           </div>
         </div>

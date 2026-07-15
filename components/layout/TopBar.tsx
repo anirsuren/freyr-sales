@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const NOTIF_ICON: Record<NotificationType, typeof Bell> = {
   rotting: Flame,
   signal: Sparkles,
   followup: CalendarClock,
+  voice: PhoneCall,
 };
 
 const SHORTCUTS = [
@@ -32,9 +33,20 @@ const NEW_ITEMS = [
   { icon: Building2, label: "Customer account", sub: "Add a company to track", href: "/intake" },
   { icon: UserPlus, label: "Contact", sub: "Add a buying-committee member", href: "/intake" },
   { icon: Package, label: "Offering", sub: "Add to the offering repository", href: "/offerings/new" },
+  { icon: Upload, label: "Import data", sub: "Load accounts, contacts, and offerings", href: "/import" },
 ];
 
-export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
+export function TopBar({
+  onMenuClick,
+  onAgentToggle,
+  agentActive,
+  offeringsOnly = false,
+}: {
+  onMenuClick?: () => void;
+  onAgentToggle?: () => void;
+  agentActive?: boolean;
+  offeringsOnly?: boolean;
+} = {}) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
@@ -44,23 +56,33 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
   const [userOpen, setUserOpen] = useState(false);
 
   useEffect(() => {
+    if (offeringsOnly) return;
     let on = true;
-    fetch("/api/notifications")
-      .then((r) => r.json())
-      .then((d) => {
-        if (on) setNotifs(d.notifications || []);
-      })
-      .catch(() => {});
+    const load = () =>
+      fetch("/api/notifications", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (on) setNotifs(d.notifications || []);
+        })
+        .catch(() => {});
+    load();
+    const timer = window.setInterval(load, 15_000);
+    window.addEventListener("focus", load);
     try {
       const raw = localStorage.getItem(NOTIF_READ_KEY);
       if (raw) setReadIds(new Set(JSON.parse(raw)));
     } catch {}
     return () => {
       on = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", load);
     };
-  }, []);
+  }, [offeringsOnly]);
 
   const unread = notifs.filter((n) => !readIds.has(n.id)).length;
+  const newItems = offeringsOnly
+    ? NEW_ITEMS.filter((item) => item.href.startsWith("/offerings"))
+    : NEW_ITEMS;
 
   function markRead(id: string) {
     setReadIds((prev) => {
@@ -106,17 +128,30 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
       >
         <Menu size={20} strokeWidth={1.7} />
       </button>
-      <div className="flex-1 max-w-xl min-w-0">
+      <div className="relative flex-1 max-w-xl min-w-0">
         <button
           onClick={() => setPaletteOpen(true)}
-          className="w-full flex items-center gap-2 bg-surface border border-border-light rounded-full pl-10 pr-2.5 py-2 text-[14px] text-text-tertiary hover:bg-white hover:border-blue-subtle hover:shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all relative"
+          className="group w-full flex items-center gap-2 bg-surface border border-border-light rounded-full pl-10 pr-2.5 py-2 text-[14px] text-text-tertiary hover:bg-white hover:border-blue-subtle hover:shadow-[0_4px_16px_rgba(0,113,227,0.10)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/40 focus-visible:border-blue-subtle active:scale-[0.99] transition-all duration-200 relative"
         >
-          <Search size={18} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0" />
-          <span className="truncate">Search offerings, companies, contacts, or jump to a page…</span>
+          <Search
+            size={18}
+            strokeWidth={1.5}
+            className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0 transition-all duration-200 group-hover:text-blue-primary group-hover:scale-110 group-focus-visible:text-blue-primary"
+          />
+          <span className="truncate">
+            {offeringsOnly ? "Search offerings…" : "Search offerings, companies, contacts, or jump to a page…"}
+          </span>
           <kbd className="ml-auto shrink-0 inline-flex items-center text-[11px] font-medium text-text-secondary bg-white border border-border-light rounded-md px-1.5 py-0.5 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
             ⌘K
           </kbd>
         </button>
+        {/* Anchored dropdown — opens right under the search bar, no dark modal */}
+          <CommandPalette
+            open={paletteOpen}
+            onClose={() => setPaletteOpen(false)}
+            anchored
+            offeringsOnly={offeringsOnly}
+        />
       </div>
 
       <div className="flex items-center gap-1.5">
@@ -140,7 +175,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
                 aria-label="Create new"
                 className="absolute right-0 mt-2 w-[260px] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden p-1.5"
               >
-                {NEW_ITEMS.map((it) => {
+                {newItems.map((it) => {
                   const Icon = it.icon;
                   return (
                     <Link
@@ -164,7 +199,22 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
             </>
           )}
         </div>
-        <div className="relative">
+        {!offeringsOnly && onAgentToggle && (
+          <button
+            aria-label="Ask your agent"
+            title="Your agent"
+            onClick={onAgentToggle}
+            className={cn(
+              "w-9 h-9 flex items-center justify-center rounded-full transition-colors",
+              agentActive
+                ? "bg-blue-light text-blue-primary"
+                : "text-text-secondary hover:bg-surface"
+            )}
+          >
+            <Sparkles size={19} strokeWidth={1.7} />
+          </button>
+        )}
+        {!offeringsOnly && <div className="relative">
           <button
             aria-label="Notifications"
             onClick={() => setNotifOpen((o) => !o)}
@@ -231,16 +281,16 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
               </div>
             </>
           )}
-        </div>
-        <button
+        </div>}
+        {!offeringsOnly && <button
           aria-label="Keyboard shortcuts"
           onClick={() => setHelpOpen(true)}
           className="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
         >
           <CircleHelp size={19} strokeWidth={1.5} />
-        </button>
-        <div className="w-px h-7 bg-border-light mx-2" />
-        <div className="relative">
+        </button>}
+        {!offeringsOnly && <div className="w-px h-7 bg-border-light mx-2" />}
+        {!offeringsOnly && <div className="relative">
           <button
             aria-label="Account menu"
             aria-haspopup="menu"
@@ -334,10 +384,8 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
               </div>
             </>
           )}
-        </div>
+        </div>}
       </div>
-
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="Keyboard shortcuts">
         <ul className="divide-y divide-border-light">

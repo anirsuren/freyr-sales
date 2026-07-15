@@ -11,10 +11,10 @@ export const maxDuration = 60;
 // Returns the fresh pitches (live AI when ANTHROPIC_API_KEY is set; mock otherwise).
 export async function POST(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const db = getDb();
-  const session = await db.pitchSessions.get(params.id);
+  const session = await db.pitchSessions.get((await params).id);
   if (!session)
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
@@ -54,7 +54,7 @@ export async function POST(
   };
   const pitch_versions = pushVersion(session, newFields, "regenerate");
 
-  await db.pitchSessions.update(params.id, { ...newFields, pitch_versions });
+  await db.pitchSessions.update((await params).id, { ...newFields, pitch_versions });
 
   return NextResponse.json({ ok: true, pitches, versions: pitch_versions });
 }

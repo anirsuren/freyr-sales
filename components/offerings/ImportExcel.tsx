@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -12,6 +12,8 @@ export function ImportExcel() {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -52,24 +54,26 @@ export function ImportExcel() {
 
   return (
     <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".xlsx,.xls"
-        onChange={onFile}
-        className="hidden"
-        aria-hidden="true"
-        tabIndex={-1}
-      />
+      {mounted && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={onFile}
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      )}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
         title="Import offerings from Suren's Excel sheet"
-        className="inline-flex items-center justify-center gap-1.5 text-[14px] font-semibold rounded-md px-4 py-2.5 bg-white border border-border text-text-primary hover:bg-surface transition-colors disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-1.5 text-[13px] font-medium rounded-md px-2.5 py-2 bg-white border border-border-light text-text-secondary hover:bg-surface hover:text-text-primary transition-colors disabled:opacity-60"
       >
-        <Upload size={15} strokeWidth={1.9} />
-        {busy ? "Importing…" : "Import Excel"}
+        <Upload size={14} strokeWidth={1.8} />
+        {busy ? "Importing…" : "Import"}
       </button>
     </>
   );

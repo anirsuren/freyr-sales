@@ -3,10 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  RefreshCw,
   Copy,
   Check,
-  Save,
   Download,
   History,
   Send,
@@ -16,9 +14,18 @@ import {
   RotateCcw,
   Mail,
   CalendarClock,
+  Lock,
+  MessageSquare,
+  CornerDownRight,
+  Pencil,
+  Clock,
+  Phone,
+  FileText,
+  Timer,
 } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
 import { EMAIL_TEMPLATES, fillTemplate } from "@/lib/email-templates";
-import { cn, formatDate, timeAgo } from "@/lib/utils";
+import { cn, formatDateTime, timeAgo } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -29,19 +36,7 @@ import type {
   ReviewStatus,
 } from "@/lib/types";
 
-const REVIEW_META: Record<
-  ReviewStatus,
-  { label: string; bg: string; color: string }
-> = {
-  draft: { label: "Draft", bg: "#F3F4F6", color: "#6E6E73" },
-  in_review: { label: "In review", bg: "rgba(255,159,10,0.14)", color: "#7A4A00" },
-  approved: { label: "Approved", bg: "rgba(52,199,89,0.14)", color: "#1A7A35" },
-  changes_requested: {
-    label: "Changes requested",
-    bg: "rgba(255,59,48,0.12)",
-    color: "#B02020",
-  },
-};
+import { REVIEW_META } from "@/lib/review";
 
 const CRM_TARGETS = [
   { key: "hubspot", label: "HubSpot" },
@@ -63,6 +58,21 @@ const TABS = [
   { key: "brief", label: "Account Brief" },
 ];
 const EDITABLE = new Set(["5min", "email", "phone"]);
+
+// Per-format identity for the editor's document header — an icon, a real name,
+// and a one-line "what this is" so each AI output reads like a finished
+// deliverable, not a raw text box (Suren: "redo how this feels… make it look
+// so much better").
+const FORMAT_META: Record<
+  string,
+  { icon: typeof Send; name: string; hint: string }
+> = {
+  "5min": { icon: Clock, name: "5-Minute Script", hint: "What to say on a quick intro call" },
+  email: { icon: Mail, name: "Intro Email", hint: "A first-touch email to open the conversation" },
+  phone: { icon: Phone, name: "Cold Call Script", hint: "A guided script for a cold call" },
+  objections: { icon: MessageSquare, name: "Objection Handling", hint: "Common pushbacks and how to answer them" },
+  brief: { icon: FileText, name: "Account Brief", hint: "The context to know before you reach out" },
+};
 
 export interface AccountBrief {
   summary: string;
@@ -148,6 +158,7 @@ export function PitchWorkspace({
   accountBrief,
   objections,
   initialReviewStatus,
+  initialReviewNote,
   recipientEmail,
   recipientName,
   companyName,
@@ -161,6 +172,7 @@ export function PitchWorkspace({
   accountBrief?: AccountBrief;
   objections?: { q: string; a: string }[];
   initialReviewStatus?: ReviewStatus;
+  initialReviewNote?: string | null;
   recipientEmail?: string;
   recipientName?: string;
   companyName?: string;
@@ -180,6 +192,9 @@ export function PitchWorkspace({
   const [reviewStatus, setReviewStatus] = useState<ReviewStatus>(
     initialReviewStatus || "draft"
   );
+  const [reviewNote, setReviewNote] = useState<string | null>(
+    initialReviewNote || null
+  );
   const [reviewing, setReviewing] = useState(false);
 
   // compose & send email (V3)
@@ -190,7 +205,6 @@ export function PitchWorkspace({
   const [scheduleOn, setScheduleOn] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
-  const [tone, setTone] = useState("Executive / Direct");
   const [script, setScript] = useState(pitch5min || "");
   const [subjects, setSubjects] = useState<string[]>(email0.subject_lines || []);
   const [emailBody, setEmailBody] = useState(email0.body || "");
@@ -200,7 +214,11 @@ export function PitchWorkspace({
   );
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
+  // Track unsaved edits so the Save button (now at the bottom-right of the
+  // editor, where a Save belongs) can show a clear dirty/saved state — Suren:
+  // "the user should edit it themselves… where's the save button, it can't go
+  // up there." Editing is the primary interaction; regenerate is gone.
+  const [dirty, setDirty] = useState(false);
 
   const briefText = accountBrief
     ? `${accountBrief.summary}\n\n${accountBrief.facts
@@ -246,36 +264,12 @@ export function PitchWorkspace({
         }),
       });
       const data = await res.json();
+      if (data.ok) setDirty(false);
       toast(data.ok ? "Pitch saved" : data.error || "Couldn't save", data.ok ? "success" : "error");
     } catch {
       toast("Couldn't save", "error");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function regenerate() {
-    const label = TABS.find((t) => t.key === active)?.label || "pitch";
-    setRegenerating(true);
-    try {
-      const res = await fetch(`/api/sessions/${sessionId}/regenerate`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (data.ok && data.pitches) {
-        setScript(data.pitches.pitch_5min_script || script);
-        setSubjects(data.pitches.pitch_email?.subject_lines || subjects);
-        setEmailBody(data.pitches.pitch_email?.body || emailBody);
-        setSelectedSubject(data.pitches.pitch_email?.subject_lines?.[0] || selectedSubject);
-        setPhoneText(callToText(asCall(data.pitches.pitch_call_script)));
-        toast(`${label} regenerated`);
-      } else {
-        toast("Couldn't regenerate", "error");
-      }
-    } catch {
-      toast("Couldn't regenerate", "error");
-    } finally {
-      setRegenerating(false);
     }
   }
 
@@ -349,9 +343,10 @@ export function PitchWorkspace({
       const data = await res.json();
       if (data.ok && data.session) {
         setReviewStatus(data.session.review_status);
+        setReviewNote(data.session.review_note || null);
         toast(
           action === "submit"
-            ? "Submitted for compliance review"
+            ? "Submitted — the Sessions list now shows In review; approve or send back from here"
             : action === "approve"
             ? "Pitch approved — cleared to send"
             : "Sent back for changes"
@@ -366,7 +361,7 @@ export function PitchWorkspace({
     }
   }
 
-  async function pushToCrm(target: string, label: string) {
+  async function pushToCrm(target: string) {
     setCrmOpen(false);
     // Compliance gate (#7): a pitch must be approved before it leaves the building.
     if (reviewStatus !== "approved") {
@@ -414,6 +409,7 @@ export function PitchWorkspace({
     setSelectedSubject(em.subject_lines?.[0] || "");
     setPhoneText(callToText(asCall(v.pitch_call_script)));
     setHistoryOpen(false);
+    setDirty(false);
     try {
       await fetch(`/api/sessions/${sessionId}/pitch`, {
         method: "PATCH",
@@ -452,8 +448,12 @@ export function PitchWorkspace({
     }
   }
 
+  const fm = FORMAT_META[active];
+  const FIcon = fm.icon;
+  const readTime = Math.max(1, Math.round(wordCount(currentText) / 160));
+
   const taClass =
-    "w-full min-h-[340px] bg-transparent text-[15px] leading-relaxed text-text-primary outline-none resize-y";
+    "w-full min-h-[440px] bg-transparent text-[15px] leading-[1.75] text-text-primary outline-none resize-y placeholder:text-text-tertiary";
 
   return (
     <div className="flex flex-col h-full">
@@ -472,30 +472,39 @@ export function PitchWorkspace({
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
             {title}
           </h1>
-          <div className="flex items-center flex-wrap gap-2 mt-4">
+          <div className="flex items-center flex-nowrap gap-1.5 mt-4 pb-1 whitespace-nowrap overflow-x-auto [&>*]:shrink-0">
             {/* Compliance approval (#7) */}
-            <span
-              className="text-[11px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
-              style={{
-                background: REVIEW_META[reviewStatus].bg,
-                color: REVIEW_META[reviewStatus].color,
-              }}
-            >
-              {REVIEW_META[reviewStatus].label}
-            </span>
+            {(() => {
+              const rm = REVIEW_META[reviewStatus];
+              const RIcon = rm.icon;
+              return (
+                <span
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.04em] px-2.5 py-1 rounded"
+                  style={{ background: rm.bg, color: rm.color }}
+                >
+                  <RIcon size={12} strokeWidth={2.4} />
+                  {rm.label}
+                </span>
+              );
+            })()}
+            <span className="w-px h-6 bg-border-light mx-0.5" />
+            {/* The one action that moves this pitch forward is the blue
+                primary — everything gated stays clearly secondary so the row
+                reads left-to-right in the order you actually work it. */}
             {reviewStatus === "in_review" ? (
               <>
                 <button
                   onClick={() => review("approve")}
                   disabled={reviewing}
-                  className="px-3 py-2 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
                 >
+                  <Check size={15} strokeWidth={2} />
                   Approve
                 </button>
                 <button
                   onClick={() => review("request_changes")}
                   disabled={reviewing}
-                  className="px-3 py-2 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
                 >
                   Request changes
                 </button>
@@ -504,18 +513,29 @@ export function PitchWorkspace({
               <button
                 onClick={() => review("submit")}
                 disabled={reviewing}
-                className="px-3 py-2 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
               >
-                Submit for review
+                <Send size={15} strokeWidth={1.8} />
+                {reviewStatus === "changes_requested"
+                  ? "Resubmit for review"
+                  : "Submit for review"}
               </button>
             ) : null}
-            <span className="w-px h-6 bg-border-light mx-1" />
-            {/* Compose & send email (V3) */}
+            {/* Compose & send email — locked until compliance clears it */}
             <button
               onClick={openCompose}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors"
+              title={
+                reviewStatus === "approved"
+                  ? "Send this email"
+                  : "Unlocks after compliance approval"
+              }
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors"
             >
-              <Mail size={15} strokeWidth={1.7} />
+              {reviewStatus === "approved" ? (
+                <Mail size={15} strokeWidth={1.7} />
+              ) : (
+                <Lock size={13} strokeWidth={1.9} className="text-text-tertiary" />
+              )}
               Send email
             </button>
             {/* Send to CRM / sequence (#42) */}
@@ -525,9 +545,23 @@ export function PitchWorkspace({
                 disabled={pushing}
                 aria-haspopup="menu"
                 aria-expanded={crmOpen}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
+                title={
+                  reviewStatus === "approved"
+                    ? "Push to your CRM or a sequence"
+                    : "Unlocks after compliance approval"
+                }
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors disabled:opacity-50",
+                  reviewStatus === "approved"
+                    ? "bg-blue-primary text-white hover:bg-blue-hover"
+                    : "border border-border-light text-text-secondary hover:bg-surface"
+                )}
               >
-                <Send size={15} strokeWidth={1.8} />
+                {reviewStatus === "approved" ? (
+                  <Send size={15} strokeWidth={1.8} />
+                ) : (
+                  <Lock size={13} strokeWidth={1.9} className="text-text-tertiary" />
+                )}
                 Send to CRM
                 <ChevronDown size={14} strokeWidth={2} className="opacity-80" />
               </button>
@@ -543,7 +577,7 @@ export function PitchWorkspace({
                       <button
                         key={t.key}
                         role="menuitem"
-                        onClick={() => pushToCrm(t.key, t.label)}
+                        onClick={() => pushToCrm(t.key)}
                         className="w-full text-left px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
                       >
                         {t.label}
@@ -562,7 +596,7 @@ export function PitchWorkspace({
                 aria-label="More actions"
                 aria-haspopup="menu"
                 aria-expanded={moreOpen}
-                className="p-2 border border-border-light rounded-lg hover:bg-surface transition-colors text-text-secondary"
+                className="p-1.5 border border-border-light rounded-lg hover:bg-surface transition-colors text-text-secondary"
               >
                 <MoreHorizontal size={18} strokeWidth={1.8} />
               </button>
@@ -600,127 +634,214 @@ export function PitchWorkspace({
             </div>
           </div>
         </div>
+        {/* What the compliance gate means, in the state you're in right now */}
+        <p className="mt-3 text-[12.5px] text-text-secondary leading-relaxed max-w-[720px]">
+          {REVIEW_META[reviewStatus].explain}
+          {reviewStatus === "changes_requested" && reviewNote && (
+            <span className="text-text-primary"> Reviewer note: &ldquo;{reviewNote}&rdquo;</span>
+          )}
+        </p>
       </div>
 
-      {/* Tabs */}
-      <div className="px-8 border-b border-border-light flex items-center justify-between gap-4 overflow-x-auto">
-        <div role="tablist" aria-label="Pitch formats" className="flex gap-6 h-12">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              role="tab"
-              aria-selected={active === t.key}
-              onClick={() => setActive(t.key)}
-              className={cn(
-                "h-full flex items-center border-b-2 text-[14px] px-1 transition-colors whitespace-nowrap",
-                active === t.key
-                  ? "border-blue-primary text-blue-primary font-semibold"
-                  : "border-transparent text-text-secondary hover:text-text-primary font-medium"
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <label className="text-[13px] text-text-secondary hidden xl:flex items-center gap-2 shrink-0">
-          Tone:
-          <select
-            value={tone}
-            onChange={(e) => setTone(e.target.value)}
-            className="text-[13px] font-semibold text-text-primary bg-surface border border-border-light rounded-md px-2 py-1 outline-none focus:border-blue-primary"
-          >
-            {["Executive / Direct", "Consultative", "Friendly / Warm", "Technical / Precise"].map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {/* Content */}
+      {/* Tabs + actions live INSIDE the scroll area, above the content, so they
+          scroll together instead of staying locked at the top (Suren: "when I
+          scroll, the copy button should scroll with it, not lock in"). */}
       <div className="flex-1 overflow-y-auto p-8">
-        <div className="bg-white border border-border-light rounded-xl shadow-card relative">
-          <div className="absolute top-4 right-4 flex gap-2 z-10">
-            {EDITABLE.has(active) && (
-              <>
-                <button
-                  onClick={regenerate}
-                  disabled={regenerating}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors bg-white disabled:opacity-50"
-                >
-                  <RefreshCw size={16} strokeWidth={1.5} className={regenerating ? "animate-spin" : ""} />
-                  Regenerate
-                </button>
-                <button
-                  onClick={save}
-                  disabled={saving}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors bg-white disabled:opacity-50"
-                >
-                  <Save size={16} strokeWidth={1.5} />
-                  Save
-                </button>
-              </>
-            )}
+        {/* One row, always: tabs left, utilities right. No wrap — on a narrow
+            pane the tablist scrolls sideways instead of dumping the icons onto
+            their own line (Suren: "put it on the same row as the 5 things"). */}
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div
+            role="tablist"
+            aria-label="Pitch formats"
+            className="inline-flex items-center gap-1 rounded-xl bg-surface p-1 min-w-0 overflow-x-auto"
+          >
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={active === t.key}
+                onClick={() => setActive(t.key)}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-lg text-[13px] transition-all whitespace-nowrap",
+                  active === t.key
+                    ? "bg-white text-blue-primary font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                    : "text-text-secondary hover:text-text-primary font-medium"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Compact icon utilities — download + copy. */}
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={exportTab}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors bg-white"
+              title="Download as a text file"
+              aria-label="Export as text file"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface hover:text-text-primary transition-colors active:scale-[0.94]"
             >
-              <Download size={16} strokeWidth={1.5} />
-              Export
+              <Download size={16} strokeWidth={1.7} />
             </button>
             <button
               onClick={copy}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-primary text-white text-[13px] font-medium hover:bg-blue-hover transition-colors"
+              title="Copy to clipboard"
+              aria-label="Copy to clipboard"
+              className={cn(
+                "w-8 h-8 flex items-center justify-center rounded-lg transition-colors active:scale-[0.94]",
+                copied
+                  ? "text-success bg-success/10"
+                  : "text-text-secondary hover:bg-surface hover:text-text-primary"
+              )}
             >
-              {copied ? <Check size={16} strokeWidth={2} /> : <Copy size={16} strokeWidth={1.5} />}
-              {copied ? "Copied" : "Copy"}
+              {copied ? <Check size={16} strokeWidth={2.1} /> : <Copy size={16} strokeWidth={1.7} />}
             </button>
           </div>
-
-          <div className="p-8 pt-16 max-w-3xl">
-            {active === "email" && subjects.length > 0 && (
-              <div className="mb-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
-                  Subject lines — click to select
+        </div>
+        <div className="mx-auto max-w-3xl bg-white border border-border-light rounded-2xl shadow-card overflow-hidden page-in">
+          {/* Document header: names the format + read time */}
+          <div className="flex items-center justify-between gap-3 px-6 py-3.5 border-b border-border-light bg-surface/40">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="w-9 h-9 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                <FIcon size={17} strokeWidth={1.8} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold text-text-primary leading-tight">
+                  {fm.name}
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {subjects.map((s, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedSubject(s)}
-                      className={cn(
-                        "text-[13px] px-3 py-1.5 rounded-md border transition-colors text-left",
-                        selectedSubject === s
-                          ? "border-blue-primary bg-blue-light text-blue-primary"
-                          : "border-border text-text-secondary hover:bg-surface"
-                      )}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                <p className="text-[12px] text-text-tertiary truncate">{fm.hint}</p>
+              </div>
+            </div>
+            {EDITABLE.has(active) && wordCount(currentText) > 0 && (
+              <span className="shrink-0 flex items-center gap-1.5 text-[11.5px] font-medium text-text-tertiary tnum whitespace-nowrap">
+                <Timer size={13} strokeWidth={1.8} />
+                {readTime} min read
+              </span>
+            )}
+          </div>
+          <div className="p-6 md:p-8">
+            {active === "email" && (
+              <div className="mb-5 flex items-center gap-2.5 rounded-xl bg-surface border border-border-light px-4 py-2.5 text-[13px]">
+                <Avatar name={recipientName || "Contact"} className="h-7 w-7 shrink-0 text-[9px]" />
+                <span className="text-text-tertiary shrink-0">To</span>
+                <span className="font-semibold text-text-primary truncate">
+                  {recipientName ? `${recipientName} · ` : ""}
+                  {recipientEmail || "the contact"}
+                </span>
+              </div>
+            )}
+            {active === "email" && subjects.length > 0 && (
+              <div className="mb-6">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
+                  Subject line
+                  <span className="ml-1.5 font-normal normal-case tracking-normal text-text-tertiary">
+                    — pick the one to send
+                  </span>
+                </p>
+                {/* A clean radio-style list reads far better than ragged, uneven
+                    chips for full-sentence subject lines (Suren). */}
+                <div className="space-y-2">
+                  {subjects.map((s, i) => {
+                    const on = selectedSubject === s;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setSelectedSubject(s);
+                          setDirty(true);
+                        }}
+                        aria-pressed={on}
+                        className={cn(
+                          "w-full flex items-center gap-3 text-left rounded-lg border px-3.5 py-2.5 transition-all duration-150",
+                          on
+                            ? "border-blue-primary bg-blue-light/60 shadow-[0_1px_2px_rgba(0,113,227,0.12)]"
+                            : "border-border-light hover:border-blue-subtle hover:bg-surface"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                            on ? "border-blue-primary" : "border-border"
+                          )}
+                        >
+                          {on && <span className="w-2 h-2 rounded-full bg-blue-primary" />}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[13.5px] leading-snug",
+                            on ? "text-blue-primary font-semibold" : "text-text-secondary"
+                          )}
+                        >
+                          {s}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {active === "5min" && (
-              <textarea className={taClass} value={script} onChange={(e) => setScript(e.target.value)} />
+              <textarea
+                className={taClass}
+                value={script}
+                onChange={(e) => {
+                  setScript(e.target.value);
+                  setDirty(true);
+                }}
+              />
             )}
             {active === "email" && (
-              <textarea className={taClass} value={emailBody} onChange={(e) => setEmailBody(e.target.value)} />
+              <textarea
+                className={taClass}
+                value={emailBody}
+                onChange={(e) => {
+                  setEmailBody(e.target.value);
+                  setDirty(true);
+                }}
+              />
             )}
             {active === "phone" && (
-              <textarea className={taClass} value={phoneText} onChange={(e) => setPhoneText(e.target.value)} />
+              <textarea
+                className={taClass}
+                value={phoneText}
+                onChange={(e) => {
+                  setPhoneText(e.target.value);
+                  setDirty(true);
+                }}
+              />
             )}
 
             {active === "objections" && (
-              <div className="space-y-4">
+              <div className="space-y-3.5">
                 {(objections || []).map((o, i) => (
-                  <div key={i} className="border border-border-light rounded-lg p-4">
-                    <p className="text-[14px] font-semibold text-text-primary mb-1.5">
-                      “{o.q}”
-                    </p>
-                    <p className="text-[14px] text-text-secondary leading-relaxed">{o.a}</p>
+                  <div
+                    key={i}
+                    className="rounded-xl border border-border-light overflow-hidden"
+                  >
+                    {/* What they say */}
+                    <div className="flex items-start gap-2.5 px-4 py-3 bg-surface border-b border-border-light">
+                      <MessageSquare
+                        size={16}
+                        strokeWidth={1.7}
+                        className="text-text-tertiary mt-0.5 shrink-0"
+                      />
+                      <p className="text-[14px] font-semibold text-text-primary leading-snug">
+                        {o.q}
+                      </p>
+                    </div>
+                    {/* How to respond */}
+                    <div className="flex items-start gap-2.5 px-4 py-3">
+                      <CornerDownRight
+                        size={16}
+                        strokeWidth={1.7}
+                        className="text-blue-primary mt-0.5 shrink-0"
+                      />
+                      <p className="text-[14px] text-text-secondary leading-relaxed">
+                        {o.a}
+                      </p>
+                    </div>
                   </div>
                 ))}
                 {(!objections || objections.length === 0) && (
@@ -751,9 +872,36 @@ export function PitchWorkspace({
           </div>
 
           {EDITABLE.has(active) && (
-            <div className="px-8 py-3 border-t border-border-light flex justify-between items-center text-[12px] text-text-tertiary">
-              <span>Editable — Save to persist your changes</span>
-              <span className="tnum">{wordCount(currentText)} words</span>
+            <div className="px-6 py-3 border-t border-border-light flex justify-between items-center gap-3">
+              <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+                <Pencil size={13} strokeWidth={1.7} />
+                Type to edit
+                <span className="text-border">·</span>
+                <span className="tnum">{wordCount(currentText)} words</span>
+              </span>
+              {/* Save belongs at the bottom-right of the editor, not up in the
+                  toolbar (Suren). Shows dirty vs. saved so it's obvious. */}
+              <button
+                onClick={save}
+                disabled={saving || !dirty}
+                className={cn(
+                  "inline-flex items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-lg transition-colors active:scale-[0.97] disabled:cursor-default",
+                  dirty
+                    ? "bg-blue-primary text-white hover:bg-blue-hover"
+                    : "bg-surface text-text-tertiary"
+                )}
+              >
+                {saving ? (
+                  "Saving…"
+                ) : dirty ? (
+                  "Save changes"
+                ) : (
+                  <>
+                    <Check size={15} strokeWidth={2} />
+                    Saved
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>
@@ -789,7 +937,7 @@ export function PitchWorkspace({
                     )}
                   </p>
                   <p className="text-[12px] text-text-tertiary tnum">
-                    {formatDate(v.created_at)}
+                    {formatDateTime(v.created_at)}
                   </p>
                 </div>
                 {i === 0 ? (

@@ -7,12 +7,12 @@ export const dynamic = "force-dynamic";
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const body = await req.json().catch(() => ({}));
   const db = getDb();
 
-  const session = await db.pitchSessions.get(params.id);
+  const session = await db.pitchSessions.get((await params).id);
   const customerId = body.customer_id || session?.customer_id;
   const contactId = body.contact_id || session?.contact_id;
 
@@ -24,7 +24,7 @@ export async function POST(
   }
 
   const interaction = await db.interactions.create({
-    pitch_session_id: params.id,
+    pitch_session_id: (await params).id,
     customer_id: customerId,
     contact_id: contactId,
     outcome: body.outcome,

@@ -10,30 +10,34 @@ export function DashboardToggle({
   overview,
   analytics,
   actions,
+  showViewToggle = true,
 }: {
   title: string;
-  date: string;
+  date?: string;
   overview: React.ReactNode;
   analytics: React.ReactNode;
   actions?: React.ReactNode;
+  showViewToggle?: boolean;
 }) {
   const [view, setView] = useState<"overview" | "analytics">("overview");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <section className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
             {title}
           </h1>
-          <p className="text-[14px] text-text-secondary flex items-center gap-1.5 mt-1">
-            <Calendar size={16} strokeWidth={1.5} />
-            {date}
-          </p>
+          {date && (
+            <p className="text-[14px] text-text-secondary flex items-center gap-1.5 mt-1">
+              <Calendar size={16} strokeWidth={1.5} />
+              {date}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start">
           {actions}
-          <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-border-light">
+          {showViewToggle && <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-border-light">
             {(["overview", "analytics"] as const).map((v) => (
               <button
                 key={v}
@@ -48,11 +52,11 @@ export function DashboardToggle({
                 {v}
               </button>
             ))}
-          </div>
+          </div>}
         </div>
       </section>
 
-      {view === "overview" ? overview : analytics}
+      {!showViewToggle || view === "overview" ? overview : analytics}
     </div>
   );
 }

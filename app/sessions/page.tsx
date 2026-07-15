@@ -1,5 +1,4 @@
 import { getDb } from "@/lib/db";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SessionsBrowser, type SessionRow } from "@/components/sessions/SessionsBrowser";
 import type { RecommendedService } from "@/lib/types";
 
@@ -30,21 +29,20 @@ export default async function SessionsPage() {
     const svc = (s.recommended_services || []) as RecommendedService[];
     return {
       id: s.id,
+      customerId: s.customer_id,
+      contactId: s.contact_id,
       company: c?.company_name || "—",
       contact: ct?.full_name || "—",
       title: ct?.job_title || "",
       service: svc[0]?.service_name || "—",
       outcome: latestOutcome[s.contact_id] || null,
+      review: s.review_status || "draft",
       date: s.created_at,
     };
   });
 
   return (
     <div>
-      <PageHeader
-        title="Sessions"
-        subtitle={`${rows.length} pitch sessions across your book.`}
-      />
       <SessionsBrowser rows={rows} />
     </div>
   );

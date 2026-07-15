@@ -5,7 +5,7 @@ import { ChevronDown, FileText } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PitchPanel } from "@/components/sessions/PitchPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatDate, cn } from "@/lib/utils";
+import { formatDateTime, cn } from "@/lib/utils";
 import type { PitchSession, RecommendedService } from "@/lib/types";
 
 export function ContactSessions({ sessions }: { sessions: PitchSession[] }) {
@@ -42,7 +42,7 @@ export function ContactSessions({ sessions }: { sessions: PitchSession[] }) {
                   {services[0]?.service_name || "Pitch session"}
                 </p>
                 <p className="text-[13px] text-text-tertiary">
-                  {formatDate(s.created_at)}
+                  {formatDateTime(s.created_at)}
                 </p>
               </div>
               <ChevronDown

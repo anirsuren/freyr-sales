@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import { ReportToolbar } from "@/components/customers/ReportToolbar";
 import { buildDeals, formatMoney, ownerFor } from "@/lib/pipeline";
-import { formatDate, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
+import { formatDate, formatDateTime, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
 
 export const metadata = { title: "Account report" };
@@ -10,10 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function AccountReportPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const id = (await params).id;
   const db = getDb();
-  const customer = await db.customers.get(params.id);
+  const customer = await db.customers.get(id);
   if (!customer) {
     return (
       <div className="p-10 text-[14px] text-text-secondary">
@@ -24,15 +25,15 @@ export default async function AccountReportPage({
 
   const [contacts, sessions, interactions, allCustomers, allContacts] =
     await Promise.all([
-      db.contacts.list(params.id),
-      db.pitchSessions.list(params.id),
-      db.interactions.list(params.id),
+      db.contacts.list(id),
+      db.pitchSessions.list(id),
+      db.interactions.list(id),
       db.customers.list(),
       db.contacts.list(),
     ]);
 
   const deals = buildDeals(sessions, allCustomers, allContacts, interactions).filter(
-    (d) => d.customerId === params.id
+    (d) => d.customerId === id
   );
   const accountDeals = customer.account_deals || [];
   const services: RecommendedService[] = [];
@@ -193,7 +194,7 @@ export default async function AccountReportPage({
                     {i.notes ? ` — ${i.notes}` : ""}
                   </span>
                   <span className="text-[12px] text-text-tertiary tnum shrink-0">
-                    {formatDate(i.created_at)}
+                    {formatDateTime(i.created_at)}
                   </span>
                 </li>
               ))}

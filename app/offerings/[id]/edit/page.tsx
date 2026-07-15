@@ -11,24 +11,24 @@ import {
   listOfferingTypes,
   listOfferingCategories,
 } from "@/lib/offerings";
-import { isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
 import { ViewOnlyNotice } from "@/components/offerings/ViewOnlyNotice";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { id: string } }) {
-  const o = getOffering(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const o = getOffering((await params).id);
   return { title: o ? `Edit ${o.offering_name} · Offerings` : "Edit offering" };
 }
 
-export default function EditOfferingPage({
+export default async function EditOfferingPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const o = getOffering(params.id);
+  const o = getOffering((await params).id);
   if (!o) notFound();
-  if (!isAdmin()) return <ViewOnlyNotice backHref={`/offerings/${o.id}`} />;
+  if (!(await canManageOfferings())) return <ViewOnlyNotice backHref={`/offerings/${o.id}`} />;
   return (
     <div>
       <Link

@@ -1,3 +1,5 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
 # dependencies
 /node_modules
 /.pnp
@@ -6,11 +8,10 @@
 
 # testing
 /coverage
-/test-results
-/playwright-report
 
 # next.js
 /.next/
+/.next-*/
 /out/
 
 # production
@@ -27,7 +28,6 @@ yarn-error.log*
 
 # local env files
 .env*.local
-.env
 
 # vercel
 .vercel
@@ -36,6 +36,24 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local tooling scratch
-.gstack/
-.superpowers/
+# playwright test artifacts
+/test-results/
+/playwright-report/
+
+# internal Teams meeting recordings + working artifacts (raw video/audio/frames/
+# transcripts of Freyr internal calls — not app code, keep off GitHub)
+teams-video*/
+TEAMS-VIDEO*-REVIEW.md
+
+# Internal design references (Kendo AI teardown screenshots — ~15MB, keep out of the public repo; ANALYSIS.md is fine to keep local)
+references/kendo-ai/*.png
+
+# internal working artifacts — build-loop notes, audits, feedback reviews and
+# local diag/tooling scripts. Not app code; keep off GitHub.
+AUDIT-*.md
+AGENT-CHAT-SCENARIOS.md
+AGENT-TEST-REPORT.md
+AGENT-VISION.md
+SUREN-VIDEO-REVIEW.md
+references/
+scripts/

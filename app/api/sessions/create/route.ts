@@ -8,6 +8,8 @@ import {
   generatePitches,
 } from "@/lib/claude";
 import { notifyTelegram } from "@/lib/telegram";
+import { getDataMode } from "@/lib/dataMode";
+import { hasAnthropic, hasApify, hasFirecrawl } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -24,6 +26,26 @@ export async function POST(req: Request) {
     linkedinUrl,
     additionalContext,
   } = body || {};
+
+  if (!String(companyName || "").trim() || !String(contactName || "").trim()) {
+    return Response.json({ error: "Company and contact name are required." }, { status: 400 });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(contactEmail || ""))) {
+    return Response.json({ error: "A valid contact email is required." }, { status: 400 });
+  }
+  if (!/^https?:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/in\//i.test(String(linkedinUrl || ""))) {
+    return Response.json({ error: "A valid LinkedIn profile URL is required." }, { status: 400 });
+  }
+  if (getDataMode() === "live") {
+    const missing = [
+      !hasAnthropic() && "Anthropic",
+      !hasApify() && "Apify",
+      websiteUrl && !hasFirecrawl() && "Firecrawl",
+    ].filter(Boolean);
+    if (missing.length) {
+      return Response.json({ error: `Live research is unavailable. Configure: ${missing.join(", ")}. No mock data was generated.` }, { status: 503 });
+    }
+  }
 
   const db = getDb();
   const encoder = new TextEncoder();

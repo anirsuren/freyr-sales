@@ -15,10 +15,10 @@ export const dynamic = "force-dynamic";
 export default async function SessionPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const db = getDb();
-  const session = await db.pitchSessions.get(params.id);
+  const session = await db.pitchSessions.get((await params).id);
 
   if (!session) {
     return (
@@ -124,12 +124,15 @@ export default async function SessionPage({
           accountBrief={accountBrief}
           objections={objections}
           initialReviewStatus={session.review_status || "draft"}
+          initialReviewNote={session.review_note || null}
           recipientEmail={contact?.email || ""}
           recipientName={contact?.full_name || ""}
           companyName={customer?.company_name || ""}
         />
       </div>
 
+      {/* Right rail — log a real call/meeting outcome against this session. Opt-in
+          (collapsed) so it never clutters the pitch, but always one click away. */}
       <EngagementRail
         sessionId={session.id}
         customerId={session.customer_id}

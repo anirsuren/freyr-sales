@@ -1,3 +1,5 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { MOCK_PITCHES, MOCK_MATCHING_OUTPUT, MOCK_FREYR_KB } from "./claude";
 import { buildAccountPitch } from "./pitch";
@@ -73,7 +75,7 @@ function seed(): MockStore {
       full_name: "Dr. Priya Mehta",
       email: "p.mehta@bionextherapeutics.com",
       linkedin_url: "https://linkedin.com/in/drpriyamehta",
-      phone: null,
+      phone: "+1 (617) 424-9903",
       job_title: "VP Regulatory Affairs",
       role_bucket: "Regulatory Affairs",
       career_summary:
@@ -132,6 +134,19 @@ function seed(): MockStore {
   const iso = (daysAgo: number) =>
     new Date(NOW - daysAgo * 86400000).toISOString();
 
+  // Same day, but a believable business-hours time-of-day derived from a seed —
+  // so the Activity feed doesn't show every single event logged at 8:00 AM
+  // (which reads as fake). Deterministic, so it's stable across reloads.
+  const isoAt = (daysAgo: number, seedStr: string) => {
+    let h = 0;
+    for (const ch of seedStr) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const hour = 13 + (h % 8); // 13–20 UTC ≈ 9am–4pm ET, spread across the day
+    const minute = (((h ^ (h >>> 13)) >>> 0) % 60); // xorshift so minutes spread
+    const d = new Date(NOW - daysAgo * 86400000);
+    d.setUTCHours(hour, minute, 0, 0);
+    return d.toISOString();
+  };
+
   const pitchSessions: PitchSession[] = [
     {
       id: "sess-001",
@@ -162,7 +177,7 @@ function seed(): MockStore {
       // stays in the future as the demo date drifts) — not months overdue.
       follow_up_date: iso(-21).slice(0, 10),
       logged_by: "Suren Dheen",
-      created_at: iso(5),
+      created_at: isoAt(5, "int-001"),
     },
   ];
 
@@ -172,6 +187,18 @@ function seed(): MockStore {
   // "novagenetherapeu.com" / "northwindbioscie.com", which read as fake.
   const slug = (s: string) =>
     s.toLowerCase().replace(/[^a-z]+/g, "");
+
+  // Deterministic US phone from a seed so every contact has a real-looking
+  // number (Suren: "how do these contacts not have phone numbers?"). Stable
+  // across reloads, and never generates a 555/000 area code.
+  const mockPhone = (seedStr: string) => {
+    let h = 0;
+    for (const ch of seedStr) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const area = 201 + (h % 799);
+    const mid = 200 + ((h >> 4) % 800);
+    const last = h % 10000;
+    return `+1 (${area}) ${String(mid).padStart(3, "0")}-${String(last).padStart(4, "0")}`;
+  };
 
   type Spec = {
     id: string;
@@ -191,17 +218,38 @@ function seed(): MockStore {
     note?: string;
     follow?: number;
     review?: PitchSession["review_status"];
+    // Adoption-story fields (Suren's customer⇄offering link): a classified
+    // customer with offerings already in use demos the Offerings tab on open.
+    ctype?: string;
+    own?: string;
+    rev?: string;
+    inUse?: string[];
+    // Commercial detail per in-use offering (Suren's Jul 5 dictation) — seeds
+    // the revenue lines + the offering Reports tab (revenue across customers).
+    usage?: import("./types").OfferingUsage[];
   };
 
   const specs: Spec[] = [
     { id: "003", company: "Cortexa Biopharma", size: "mid", industry: "Biotechnology", geo: "United States (Boston, MA)", csum: "Clinical-stage neuro biotech, ~300 staff, two Phase 2 CNS assets, first EMA filing planned.", contact: "Marcus Thorne", title: "Head of CMC", role: "Quality Assurance", csumc: "15 yrs CMC across biologics; owns dossier technical writing.", service: "NDA/MAA CMC Writing", score: 9, outcome: "interested", days: 6, note: "Keen on CTD/CMC support for the EMA filing.", follow: 5, review: "in_review" },
-    { id: "004", company: "Helix Biologics", size: "large", industry: "Pharmaceutical", geo: "United Kingdom (Cambridge)", csum: "Top-20 pharma, global biologics portfolio, simultaneous FDA/EMA/PMDA programs.", contact: "Dr. Lena Vogt", title: "SVP Global Regulatory", role: "Executive", csumc: "Former EMA assessor; runs a 60-person global RA org.", service: "Global Labeling Strategy", score: 8, outcome: "meeting_booked", days: 3, note: "Booked exec briefing for next Thursday.", follow: 7 },
+    { id: "004", company: "Helix Biologics", size: "large", industry: "Pharmaceutical", geo: "United Kingdom (Cambridge)", csum: "Top-20 pharma, global biologics portfolio, simultaneous FDA/EMA/PMDA programs.", contact: "Dr. Lena Vogt", title: "SVP Global Regulatory", role: "Executive", csumc: "Former EMA assessor; runs a 60-person global RA org.", service: "Global Labeling Strategy", score: 8, outcome: "meeting_booked", days: 3, note: "Booked exec briefing for next Thursday.", follow: 7, ctype: "Pharmaceutical - Large", own: "Public", rev: "$8.2B", inUse: ["of-001", "of-023"], usage: [
+      { offering_id: "of-001", revenue_lines: [
+        { id: "rev-h1", revenue_type: "license", amount: 480000, num_licenses: 60, start_date: "2026-01-01", end_date: "2026-12-31", description: "Freya.Register seats across the global RA org." },
+        { id: "rev-h2", revenue_type: "project", amount: 220000, num_licenses: null, start_date: "2026-02-01", end_date: "2026-08-31", description: "Registration data migration & implementation project." },
+      ] },
+      { offering_id: "of-023", revenue_lines: [
+        { id: "rev-h3", revenue_type: "annual_service", amount: 150000, num_licenses: null, start_date: "2026-01-01", end_date: "2026-12-31", description: "On-demand regulatory intelligence retainer." },
+      ] },
+    ] },
     { id: "005", company: "Solvance Pharma", size: "large", industry: "Pharmaceutical", geo: "United States (San Diego, CA)", csum: "Commercial-stage; expanding rare-disease pipeline into EU and Japan.", contact: "Prithvi Nair", title: "Director, Regulatory Ops", role: "Regulatory Affairs", csumc: "Owns submission operations and publishing tooling.", service: "Regulatory Submission Services", score: 9, outcome: "in_progress", days: 17, note: "Reviewing our eCTD throughput benchmarks.", follow: 4 },
     { id: "006", company: "NovaGene Therapeutics", size: "mid", industry: "Biotechnology", geo: "United States (Princeton, NJ)", csum: "Gene-therapy biotech, first BLA in 18 months, lean RA team.", contact: "Dana Whitfield", title: "VP Regulatory Affairs", role: "Regulatory Affairs", csumc: "Built RA from scratch; needs scalable submission capacity.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "interested", days: 19, note: "Wants IND-to-BLA roadmap.", follow: 6 },
     { id: "007", company: "Aether Medical Devices", size: "mid", industry: "Medical Device", geo: "Germany (Munich)", csum: "Class III cardiovascular devices, navigating EU MDR transition.", contact: "Stefan Bauer", title: "Head of Regulatory", role: "Regulatory Affairs", csumc: "MDR specialist under technical-documentation deadline pressure.", service: "Regulatory Intelligence", score: 7, outcome: "no_response", days: 22 },
     { id: "008", company: "Solara Consumer Health", size: "small", industry: "Consumer Health", geo: "United States (Chicago, IL)", csum: "OTC and supplements brand expanding into EU and Canada.", contact: "Megan Ruiz", title: "Compliance Manager", role: "Compliance", csumc: "Owns OTC labeling and ingredient compliance.", service: "Labeling and Artwork Management", score: 7, outcome: "in_progress", days: 5, note: "Multi-market labeling pain across 6 SKUs.", follow: 3 },
     { id: "009", company: "Quantum Oncology", size: "mid", industry: "Biotechnology", geo: "United States (South SF, CA)", csum: "Precision-oncology biotech, ADC platform, two pivotal trials.", contact: "Dr. Arun Pillai", title: "Chief Medical Officer", role: "Medical Affairs", csumc: "Physician-scientist; cares about trial regulatory de-risking.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "meeting_booked", days: 2, note: "Exec sponsor engaged; aligning on scope.", follow: 8, review: "approved" },
-    { id: "010", company: "Meridian Pharmaceuticals", size: "large", industry: "Pharmaceutical", geo: "Switzerland (Basel)", csum: "Global generics + specialty; high-volume ANDA/MAA submissions.", contact: "Claudia Hofmann", title: "Global Head, Reg Submissions", role: "Executive", csumc: "Runs a high-throughput global submissions factory.", service: "Regulatory Submission Services", score: 9, outcome: "not_interested", days: 18, note: "Has incumbent vendor mid-contract.", },
+    { id: "010", company: "Meridian Pharmaceuticals", size: "large", industry: "Pharmaceutical", geo: "Switzerland (Basel)", csum: "Global generics + specialty; high-volume ANDA/MAA submissions.", contact: "Claudia Hofmann", title: "Global Head, Reg Submissions", role: "Executive", csumc: "Runs a high-throughput global submissions factory.", service: "Regulatory Submission Services", score: 9, outcome: "not_interested", days: 18, note: "Has incumbent vendor mid-contract.", inUse: ["of-001"], usage: [
+      { offering_id: "of-001", revenue_lines: [
+        { id: "rev-m1", revenue_type: "license", amount: 260000, num_licenses: 32, start_date: "2026-03-01", end_date: "2027-02-28", description: "Freya.Register licenses for the submissions team." },
+      ] },
+    ] },
     { id: "011", company: "Northwind Biosciences", size: "small", industry: "Biotechnology", geo: "Canada (Toronto)", csum: "Seed-stage biotech, pre-IND, first-time FDA filer.", contact: "Owen Bradley", title: "Co-founder & COO", role: "Executive", csumc: "Wears many hats; needs end-to-end regulatory hand-holding.", service: "Clinical Trial Regulatory Support", score: 7, outcome: null, days: 1 },
     { id: "012", company: "Orion Vaccines", size: "mid", industry: "Biotechnology", geo: "United States (Rockville, MD)", csum: "Vaccine developer, pandemic-preparedness portfolio, EUA experience.", contact: "Dr. Hana Kim", title: "VP Regulatory Strategy", role: "Regulatory Affairs", csumc: "Led multiple EUAs; values speed and agency relationships.", service: "Regulatory Intelligence", score: 8, outcome: "interested", days: 16, note: "Wants global guidance monitoring.", follow: 5 },
   ];
@@ -220,6 +268,18 @@ function seed(): MockStore {
       enrichment_summary: s.csum,
       created_at: iso(s.days + 30),
       last_enriched_at: iso(s.days),
+      ...(s.ctype
+        ? {
+            customer_type: s.ctype,
+            ownership: s.own || null,
+            revenue: s.rev || null,
+            analyzed_at: iso(s.days),
+            offerings_in_use: s.inUse || [],
+          }
+        : s.inUse
+        ? { offerings_in_use: s.inUse }
+        : {}),
+      ...(s.usage ? { offering_usage: s.usage } : {}),
     });
     contacts.push({
       id: ctid,
@@ -227,7 +287,7 @@ function seed(): MockStore {
       full_name: s.contact,
       email: `${slug(s.contact)}@${slug(s.company)}.com`,
       linkedin_url: `https://linkedin.com/in/${slug(s.contact)}`,
-      phone: null,
+      phone: mockPhone(ctid),
       job_title: s.title,
       role_bucket: s.role,
       career_summary: s.csumc,
@@ -271,7 +331,7 @@ function seed(): MockStore {
       additional_context: s.note || null,
       review_status: s.review,
       reviewed_at: s.review === "approved" ? iso(s.days) : null,
-      created_at: iso(s.days),
+      created_at: isoAt(s.days, s.id),
     });
     if (s.outcome) {
       interactions.push({
@@ -283,7 +343,7 @@ function seed(): MockStore {
         notes: s.note || null,
         follow_up_date: s.follow ? iso(-s.follow) : null,
         logged_by: "Suren Dheen",
-        created_at: iso(Math.max(0, s.days - 1)),
+        created_at: isoAt(Math.max(0, s.days - 1), `int-${s.id}`),
       });
     }
   }
@@ -388,7 +448,49 @@ function seed(): MockStore {
   };
 }
 
-const store: MockStore = globalThis.__FREYR_MOCK_STORE__ ?? seed();
+// ---------------------------------------------------------------------------
+// Durable persistence (Suren: "everything has to save — it can't vanish").
+// The store is written to a JSON file so edits survive a server restart, not
+// just page reloads. It lives under node_modules/.cache so Next's file watcher
+// doesn't treat it as a source change (which would loop the dev server), and
+// it's DISABLED under the test flag so the Playwright suite always sees a fresh
+// seed. Bump SCHEMA_VERSION whenever the seed shape changes to auto-reseed.
+const SCHEMA_VERSION = 1;
+const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
+const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
+
+function loadOrSeed(): MockStore {
+  if (PERSIST) {
+    try {
+      if (existsSync(STORE_FILE)) {
+        const parsed = JSON.parse(readFileSync(STORE_FILE, "utf8"));
+        if (parsed && parsed.__v === SCHEMA_VERSION && parsed.store) {
+          return parsed.store as MockStore;
+        }
+      }
+    } catch {
+      /* corrupt or unreadable — fall through to a fresh seed */
+    }
+  }
+  return seed();
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function persist() {
+  if (!PERSIST) return;
+  // Debounce so a burst of writes coalesces into one file write.
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try {
+      mkdirSync(dirname(STORE_FILE), { recursive: true });
+      writeFileSync(STORE_FILE, JSON.stringify({ __v: SCHEMA_VERSION, store }));
+    } catch {
+      /* best-effort; never crash a request because we couldn't persist */
+    }
+  }, 120);
+}
+
+const store: MockStore = globalThis.__FREYR_MOCK_STORE__ ?? loadOrSeed();
 if (!globalThis.__FREYR_MOCK_STORE__) {
   globalThis.__FREYR_MOCK_STORE__ = store;
 }
@@ -417,6 +519,7 @@ export const mockDb = {
         last_enriched_at: new Date().toISOString(),
       };
       store.customers.push(record);
+      persist();
       return record;
     },
     update: async (id: string, data: Partial<Customer>) => {
@@ -427,6 +530,7 @@ export const mockDb = {
         ...data,
         last_enriched_at: new Date().toISOString(),
       };
+      persist();
       return store.customers[idx];
     },
   },
@@ -443,12 +547,14 @@ export const mockDb = {
         last_enriched_at: new Date().toISOString(),
       };
       store.contacts.push(record);
+      persist();
       return record;
     },
     update: async (id: string, data: Partial<Contact>) => {
       const idx = store.contacts.findIndex((c) => c.id === id);
       if (idx === -1) return null;
       store.contacts[idx] = { ...store.contacts[idx], ...data };
+      persist();
       return store.contacts[idx];
     },
   },
@@ -474,12 +580,14 @@ export const mockDb = {
         created_at: new Date().toISOString(),
       };
       store.pitchSessions.push(record);
+      persist();
       return record;
     },
     update: async (id: string, data: Partial<PitchSession>) => {
       const idx = store.pitchSessions.findIndex((s) => s.id === id);
       if (idx === -1) return null;
       store.pitchSessions[idx] = { ...store.pitchSessions[idx], ...data };
+      persist();
       return store.pitchSessions[idx];
     },
   },
@@ -503,6 +611,7 @@ export const mockDb = {
         created_at: new Date().toISOString(),
       };
       store.interactions.push(record);
+      persist();
       return record;
     },
     remove: async (id: string) => {
@@ -546,6 +655,7 @@ export const mockDb = {
         created_at: new Date().toISOString(),
       };
       store.sequenceEnrollments.push(record);
+      persist();
       return record;
     },
     update: async (id: string, data: Partial<SequenceEnrollment>) => {
@@ -555,6 +665,7 @@ export const mockDb = {
         ...store.sequenceEnrollments[idx],
         ...data,
       };
+      persist();
       return store.sequenceEnrollments[idx];
     },
     remove: async (id: string) => {
@@ -573,6 +684,7 @@ export const mockDb = {
         ...data,
         updated_at: new Date().toISOString(),
       };
+      persist();
       return store.agentPrefs;
     },
   },

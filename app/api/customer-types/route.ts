@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import {
   listCustomerTypes,
   createCustomerType,
+  commitOfferingsChange,
   type CustomerFamily,
   type CustomerSize,
 } from "@/lib/offerings";
-import { isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!isAdmin())
+  if (!(await canManageOfferings()))
     return NextResponse.json(
       { error: "View only — admin access required" },
       { status: 403 }
@@ -28,14 +29,23 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const customerType = createCustomerType({
-    name: `${family} - ${size}`,
-    family,
-    size,
-    product_type: String(body.product_type || ""),
-    revenue: String(body.revenue || ""),
-    employees: String(body.employees || ""),
-    operational_focus: String(body.operational_focus || ""),
-  });
-  return NextResponse.json({ ok: true, customerType });
+  try {
+    const customerType = await commitOfferingsChange(() =>
+      createCustomerType({
+        name: `${family} - ${size}`,
+        family,
+        size,
+        product_type: String(body.product_type || ""),
+        revenue: String(body.revenue || ""),
+        employees: String(body.employees || ""),
+        operational_focus: String(body.operational_focus || ""),
+      })
+    );
+    return NextResponse.json({ ok: true, customerType });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Customer type save failed" },
+      { status: 503 }
+    );
+  }
 }

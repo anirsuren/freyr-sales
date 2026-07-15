@@ -17,6 +17,11 @@ export interface AccountNote {
   author: string;
   body: string;
   created_at: string;
+  // Log a real interaction, not just free text (Suren): call / email / meeting /
+  // note, plus an optional next step and follow-up date.
+  kind?: "call" | "email" | "meeting" | "note" | null;
+  next_step?: string | null;
+  follow_up_date?: string | null;
 }
 
 export interface AccountAttachment {
@@ -32,6 +37,14 @@ export interface AccountDeal {
   stage: string;
   value: number;
   created_at: string;
+  // Richer deal detail (Suren: "this is an enterprise app… this is all you
+  // have for a new deal?"). All optional so existing deals still validate.
+  offering?: string | null;
+  contact?: string | null;
+  owner?: string | null;
+  close_date?: string | null;
+  next_step?: string | null;
+  notes?: string | null;
 }
 
 export interface Customer {
@@ -58,6 +71,34 @@ export interface Customer {
   ownership?: string | null; // "Public" | "Private"
   revenue?: string | null;
   analyzed_at?: string | null;
+  // Offerings this customer ALREADY uses (offering ids) — the adoption link:
+  // the customer's Offerings tab splits the applicable list into "already
+  // using" vs. the opportunities left to sell.
+  offerings_in_use?: string[] | null;
+  // Commercial detail per in-use offering (Suren's Jul 5 dictation): for each
+  // offering they're using, one or more revenue lines — how we make money on
+  // it (annual / project / service / license), the amount, dates, licenses.
+  // Feeds the offering's "Reports" tab (revenue cumulated across customers).
+  offering_usage?: OfferingUsage[] | null;
+}
+
+// How Freyr earns on an in-use offering (Suren: "revenue type — annual,
+// project, annual service, or annual license revenue").
+export type RevenueType = "annual" | "project" | "annual_service" | "license";
+
+export interface OfferingRevenueLine {
+  id: string;
+  revenue_type: RevenueType;
+  amount: number; // annual/project/service revenue $, or the license revenue $
+  num_licenses?: number | null; // only for license revenue
+  start_date: string | null; // yyyy-mm-dd
+  end_date: string | null;
+  description?: string | null; // e.g. "implementation project for them"
+}
+
+export interface OfferingUsage {
+  offering_id: string;
+  revenue_lines: OfferingRevenueLine[];
 }
 
 export interface Contact {
@@ -171,6 +212,9 @@ export interface AgentRun {
   // Timeline entries this run created, so an auto-handled run can be undone (V9).
   interaction_ids?: string[];
   reverted?: boolean;
+  // The actual draft the agent produced (email/plan) so "Draft it for me" shows
+  // real, readable output and the run page can display it — not just a log line.
+  draft?: { title: string; body: string } | null;
 }
 
 // Per-account agent chat (V9 #45) — the "Ask the agent" thread, persisted so the

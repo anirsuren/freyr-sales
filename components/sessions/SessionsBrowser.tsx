@@ -3,23 +3,29 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Download, Search } from "lucide-react";
+import { Download, Search, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OutcomeBadge } from "@/components/ui/Badge";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CalendarClock } from "lucide-react";
-import { OUTCOME_META, formatDate, cn } from "@/lib/utils";
+import { CalendarClock, ArrowDownWideNarrow } from "lucide-react";
+import { OUTCOME_META, formatDateTime } from "@/lib/utils";
+import { REVIEW_META } from "@/lib/review";
+import type { ReviewStatus } from "@/lib/types";
 import { toCSV, downloadCSV } from "@/lib/csv";
 
 export interface SessionRow {
   id: string;
+  customerId: string;
+  contactId: string;
   company: string;
   contact: string;
   title: string;
   service: string;
   outcome: string | null;
+  review: ReviewStatus;
   date: string;
 }
 
@@ -60,13 +66,14 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
 
   function exportCsv() {
     const csv = toCSV(
-      ["Customer", "Contact", "Recommended Service", "Outcome", "Date"],
+      ["Customer", "Contact", "Recommended Service", "Outcome", "Review", "Date"],
       view.map((r) => [
         r.company,
         r.contact,
         r.service,
         r.outcome ? OUTCOME_META[r.outcome]?.label || r.outcome : "",
-        formatDate(r.date),
+        REVIEW_META[r.review].label,
+        formatDateTime(r.date),
       ])
     );
     downloadCSV("freyr-sessions.csv", csv);
@@ -74,48 +81,59 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-        <div className="relative sm:max-w-[320px] w-full">
-          <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search sessions…"
-            className="pl-9"
-          />
+      {/* Title + filters (incl. a compact search) on one row — no standalone
+          search bar eating a whole row (Suren). */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+        <div className="min-w-0">
+          <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
+            Sessions
+          </h1>
+          <p className="text-[14px] text-text-secondary mt-0.5">
+            {rows.length} pitch session{rows.length === 1 ? "" : "s"} across your book.
+          </p>
         </div>
-        <select
-          value={outcome}
-          onChange={(e) => setOutcome(e.target.value)}
-          className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-        >
-          <option value="all">All outcomes</option>
-          {outcomes.map((o) => (
-            <option key={o} value={o}>
-              {OUTCOME_META[o]?.label || o}
-            </option>
-          ))}
-        </select>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="text-[13px] bg-surface border border-border rounded-md px-3 py-2 outline-none focus:border-blue-primary"
-        >
-          {SORTS.map((s) => (
-            <option key={s.key} value={s.key}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={exportCsv}
-          className="sm:ml-auto flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-        >
-          <Download size={16} strokeWidth={1.5} />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="relative w-[190px]">
+            <Search size={15} strokeWidth={1.6} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search sessions…"
+              className="w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
+            />
+          </div>
+          <ColorSelect
+            value={outcome}
+            onChange={setOutcome}
+            minWidth={155}
+            options={[
+              { value: "all", label: "All outcomes" },
+              ...outcomes.map<ColorOption>((o) => ({
+                value: o,
+                label: OUTCOME_META[o]?.label || o,
+                color: OUTCOME_META[o]?.color,
+              })),
+            ]}
+          />
+          <ColorSelect
+            value={sort}
+            onChange={setSort}
+            minWidth={150}
+            options={SORTS.map<ColorOption>((s) => ({
+              value: s.key,
+              label: s.label,
+              icon: ArrowDownWideNarrow,
+            }))}
+          />
+          <button
+            onClick={exportCsv}
+            className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+          >
+            <Download size={16} strokeWidth={1.5} />
+            Export CSV
+          </button>
+        </div>
       </div>
-
       {view.length > 0 && (
         <p className="text-[13px] text-text-secondary mb-4 tnum">
           Showing <span className="font-semibold text-text-primary">{view.length}</span> of{" "}
@@ -151,8 +169,8 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-surface border-b border-border-light">
-                  {["Customer", "Contact", "Recommended Service", "Outcome", "Date"].map((h) => (
-                    <th key={h} className="px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
+                  {["Customer", "Contact", "Recommended Service", "Outcome", "Review", "Date"].map((h) => (
+                    <th key={h} className="px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -163,24 +181,61 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                 {view.map((r) => (
                   <tr
                     key={r.id}
-                    onClick={() => router.push(`/sessions/${r.id}`)}
-                    className="hover:bg-surface transition-colors group cursor-pointer"
+                    onClick={(event) => {
+                      if ((event.target as Element).closest("a,button")) return;
+                      router.push(`/sessions/${r.id}`);
+                    }}
+                    className="hover:bg-surface active:bg-blue-light/50 transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={r.company} className="w-8 h-8 text-[12px] rounded-md" />
-                        <span className="text-[13px] font-semibold text-text-primary">{r.company}</span>
-                      </div>
+                      <Link
+                        href={`/customers/${r.customerId}`}
+                        className="group/company flex items-center gap-3"
+                      >
+                        <CompanyLogo name={r.company} className="w-8 h-8 text-[11px]" />
+                        <span className="text-[13px] font-semibold text-text-primary group-hover/company:text-blue-primary">
+                          {r.company}
+                        </span>
+                      </Link>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="text-[13px] text-text-primary">{r.contact}</div>
-                      <div className="text-[11px] text-text-tertiary">{r.title}</div>
+                      <Link
+                        href={`/contacts/${r.contactId}`}
+                        className="group/contact flex items-center gap-2.5"
+                      >
+                        <Avatar name={r.contact} className="w-7 h-7 text-[10px]" />
+                        <div>
+                          <div className="text-[13px] font-semibold text-text-primary group-hover/contact:text-blue-primary">
+                            {r.contact}
+                          </div>
+                          <div className="text-[11px] text-text-tertiary">{r.title}</div>
+                        </div>
+                      </Link>
                     </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">{r.service}</td>
                     <td className="px-5 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "—"}</td>
-                    <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDate(r.date)}</td>
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      {(() => {
+                        const rm = REVIEW_META[r.review];
+                        const RIcon = rm.icon;
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
+                            style={{ background: rm.bg, color: rm.color }}
+                          >
+                            <RIcon size={11} strokeWidth={2.4} />
+                            {rm.label}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDateTime(r.date)}</td>
                     <td className="px-5 py-4 text-right">
-                      <Link href={`/sessions/${r.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open session">
+                      <Link
+                        href={`/sessions/${r.id}`}
+                        aria-label={`Open session for ${r.company}`}
+                        className="inline-flex rounded p-1 text-text-tertiary group-hover:text-blue-primary hover:bg-blue-light transition-colors"
+                      >
                         <ArrowRight size={16} strokeWidth={1.5} />
                       </Link>
                     </td>

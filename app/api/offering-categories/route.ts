@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import {
   listOfferingCategories,
   createOfferingCategory,
+  commitOfferingsChange,
 } from "@/lib/offerings";
-import { isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!isAdmin())
+  if (!(await canManageOfferings()))
     return NextResponse.json(
       { error: "View only — admin access required" },
       { status: 403 }
@@ -24,10 +25,19 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const offeringCategory = createOfferingCategory({
-    name: String(body.name),
-    description: body.description != null ? String(body.description) : "",
-    owner: body.owner != null ? String(body.owner) : "",
-  });
-  return NextResponse.json({ ok: true, offeringCategory });
+  try {
+    const offeringCategory = await commitOfferingsChange(() =>
+      createOfferingCategory({
+        name: String(body.name),
+        description: body.description != null ? String(body.description) : "",
+        owner: body.owner != null ? String(body.owner) : "",
+      })
+    );
+    return NextResponse.json({ ok: true, offeringCategory });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Offering category save failed" },
+      { status: 503 }
+    );
+  }
 }

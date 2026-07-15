@@ -192,6 +192,48 @@ select:focus-visible,
   animation: riseIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Tab content — keyed on the active tab so it re-mounts and fades/lifts in
+   each time the rep switches tabs (Suren: "need animations on all tabs"). */
+@keyframes tabPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.tab-panel {
+  animation: tabPanelIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-panel {
+    animation: none;
+  }
+}
+
+/* Page-enter — used on every page wrapper (keyed by pathname) so navigations
+   fade in. OPACITY ONLY (no transform): a transform here would create a
+   containing block that traps position:fixed / sticky descendants app-wide
+   (and a residual translate visibly shifts the page). Fade is safe everywhere. */
+@keyframes pageIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.page-in {
+  animation: pageIn 0.24s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-in {
+    animation: none;
+  }
+}
+
 /* Modal entrance — backdrop fades in, dialog scales up subtly (premium feel). */
 @keyframes modalIn {
   from {
@@ -216,6 +258,53 @@ select:focus-visible,
 }
 .backdrop-in {
   animation: backdropIn 0.18s ease-out both;
+}
+/* Right-side slide-over (the Ask Agent drawer) */
+@keyframes drawerIn {
+  from {
+    transform: translateX(48px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.drawer-in {
+  animation: drawerIn 0.24s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* Carousel slide — the current card glides in from the side you paged toward */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(34px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-34px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.slide-in-right {
+  animation: slideInRight 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.slide-in-left {
+  animation: slideInLeft 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-in-right,
+  .slide-in-left {
+    animation: none;
+  }
 }
 
 /* Staggered list/grid entrance — add `stagger` to a container and its direct
@@ -287,12 +376,56 @@ select:focus-visible,
 .chart-area {
   animation: chartFade 1.3s ease both;
 }
+/* Bars grow up from the baseline on mount. */
+@keyframes chartBarGrow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.chart-bar {
+  transform-origin: bottom;
+  animation: chartBarGrow 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Donuts sweep + settle in on mount. */
+@keyframes chartDonutIn {
+  from {
+    opacity: 0;
+    transform: rotate(-14deg) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+.chart-donut {
+  transform-origin: center;
+  animation: chartDonutIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Horizontal bars / meters fill in from the left on mount. */
+@keyframes chartGrowX {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.chart-grow-x {
+  transform-origin: left;
+  animation: chartGrowX 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
   .chart-line {
     stroke-dasharray: none;
     animation: none;
   }
-  .chart-area {
+  .chart-area,
+  .chart-bar,
+  .chart-donut,
+  .chart-grow-x {
     animation: none;
   }
 }
@@ -312,6 +445,75 @@ select:focus-visible,
   .donut-arc {
     animation: none;
   }
+}
+
+/* Chart hover tooltip — one premium style for every graph (Suren: "make it
+   look better when I hover, especially in the charts"). Dark pill, soft shadow,
+   a little down-caret pointing at the data point, and a quick fade-in. Opacity-
+   only animation so it never fights a wrapper's -translate-x-1/2 centering. */
+@keyframes chartTipIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* White, card-like tooltips — same family as the hover popovers (Suren:
+   "the white ones look fine", the black ones don't). */
+.chart-tip {
+  white-space: nowrap;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--text-primary, #1d1d1f);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 7px 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08);
+  animation: chartTipIn 0.12s ease-out both;
+}
+.dark .chart-tip {
+  background: rgba(44, 44, 48, 0.98);
+  color: #f5f5f7;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.chart-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.98);
+}
+.dark .chart-tip::after {
+  border-top-color: rgba(44, 44, 48, 0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-tip { animation: none; }
+}
+
+/* Hover popover entrance — quick fade + tiny lift. */
+@keyframes hoverCardIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.hovercard-in {
+  animation: hoverCardIn 0.13s ease-out both;
+}
+
+/* One user-controlled delay for help tooltips and other CSS hover popups. */
+.freyr-hover-trigger:hover .freyr-hover-popup {
+  transition-delay: var(--freyr-hover-delay, 500ms);
+}
+.freyr-hover-trigger:focus-within .freyr-hover-popup {
+  transition-delay: 0ms;
+}
+html[data-hover-popups="off"] .freyr-hover-popup {
+  display: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hovercard-in { animation: none; }
 }
 
 /* Hide scrollbars on tab chips while keeping scroll */
@@ -337,4 +539,48 @@ input {
   main {
     overflow: visible !important;
   }
+}
+
+/* Agent "thinking" — three bars doing an equalizer wave. */
+@keyframes eqbar {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+.eq-bar {
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #4aa3ff 0%, #0071e3 100%);
+  transform-origin: center bottom;
+  animation: eqbar 0.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar { animation: none; }
+}
+
+/* Thin, subtle scrollbars app-wide (Anir: the fat default bar is ugly). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+/* Fully hide the scrollbar where a bar would be pure noise (e.g. tab rows). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

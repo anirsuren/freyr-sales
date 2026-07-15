@@ -22,7 +22,7 @@ import {
   type ImpactWindow,
 } from "@/lib/agent";
 import { buildDeals, formatMoney } from "@/lib/pipeline";
-import { formatDate, cn } from "@/lib/utils";
+import { formatDateTime, cn } from "@/lib/utils";
 
 export const metadata = { title: "Agent Impact" };
 export const dynamic = "force-dynamic";
@@ -47,10 +47,11 @@ const RANK_STYLE = [
 export default async function AgentImpactPage({
   searchParams,
 }: {
-  searchParams: { window?: string };
+  searchParams: Promise<{ window?: string }>;
 }) {
-  const win: ImpactWindow = WINDOWS.some((w) => w.key === searchParams.window)
-    ? (searchParams.window as ImpactWindow)
+  const query = await searchParams;
+  const win: ImpactWindow = WINDOWS.some((w) => w.key === query.window)
+    ? (query.window as ImpactWindow)
     : "quarter";
 
   const db = getDb();
@@ -107,7 +108,7 @@ export default async function AgentImpactPage({
   ];
 
   return (
-    <div className="max-w-[860px] space-y-6">
+    <div className="space-y-6">
       <div>
         <Link
           href="/agent"
@@ -170,7 +171,7 @@ export default async function AgentImpactPage({
               No agent runs in this window yet.
             </p>
           ) : (
-            <BarChart data={seriesData} height={160} />
+            <BarChart data={seriesData} height={160} unit="runs" />
           )}
         </Card>
       </div>
@@ -194,7 +195,7 @@ export default async function AgentImpactPage({
           <Card>
             <p className="text-[13px] text-text-secondary">
               The agent hasn&apos;t worked any specific account in the last 90
-              days. Run a play or let autopilot work the queue to build impact.
+              days. Let the agent work the queue or let autopilot run to build impact.
             </p>
           </Card>
         ) : (
@@ -225,7 +226,7 @@ export default async function AgentImpactPage({
                         </span>
                         <span className="block text-[12px] text-text-secondary">
                           {parts.join(" · ") || "activity logged"} · last{" "}
-                          {formatDate(r.lastAt)}
+                          {formatDateTime(r.lastAt)}
                         </span>
                       </span>
                       <span className="text-right shrink-0">

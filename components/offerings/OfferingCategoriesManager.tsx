@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, ArrowRight, X, Pencil, UserRound } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingCategory } from "@/lib/offerings";
 
@@ -262,8 +263,8 @@ export function OfferingCategoriesManager({
                   )}
                   {/* Offering owner — the role Suren wants per category */}
                   {c.owner ? (
-                    <p className="inline-flex items-center gap-1 text-[12px] text-text-secondary mt-1.5">
-                      <UserRound size={12} strokeWidth={1.8} className="text-text-tertiary" />
+                    <p className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary mt-1.5">
+                      <Avatar name={c.owner} className="h-6 w-6 text-[8px]" />
                       Owner: {c.owner}
                     </p>
                   ) : canEdit ? (

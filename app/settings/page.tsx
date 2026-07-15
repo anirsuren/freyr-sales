@@ -3,6 +3,8 @@ import { getDb } from "@/lib/db";
 import { buildDeals } from "@/lib/pipeline";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
+import { getDataMode } from "@/lib/dataMode";
+import { isApprovalGateEnabled } from "@/lib/accessControl";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -27,8 +29,19 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Profile, team, notifications, and integrations." />
-      <SettingsTabs services={services} crmCounts={crmCounts} />
+      <PageHeader
+        title="Settings"
+        subtitle="Workspace behavior, identity, access, notifications, and connected systems."
+      />
+      <SettingsTabs
+        services={services}
+        crmCounts={crmCounts}
+        initialDataMode={getDataMode()}
+        authConfig={{
+          authMode: process.env.AUTH_MODE || "local",
+          approvalEnabled: isApprovalGateEnabled(),
+        }}
+      />
     </div>
   );
 }

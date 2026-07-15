@@ -62,7 +62,6 @@ export function buildAccountPitch(p: {
   const fn = firstName(contactName);
   const hook = hookFor(service);
   const sit = situation(p.context);
-  const role = p.contactTitle ? p.contactTitle.toLowerCase() : "regulatory leader";
 
   const subject_lines = [
     `${service} for ${company}`,
