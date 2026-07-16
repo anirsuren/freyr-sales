@@ -41,7 +41,7 @@ export default async function ActivityPage() {
     <div>
       <PageHeader
         title="Activity"
-        subtitle={`${items.length} interactions logged across every account.`}
+        subtitle="Every customer touch, reply, and follow-up in one place."
       />
       <ActivityFeed items={items} />
     </div>

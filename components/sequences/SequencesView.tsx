@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Archive,
+  BriefcaseBusiness,
   CalendarClock,
   Check,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   CircleDotDashed,
   Clock,
@@ -19,7 +21,9 @@ import {
   Phone,
   Play,
   Plus,
+  RefreshCcw,
   Search,
+  Send,
   Trash2,
   Users,
   Zap,
@@ -80,11 +84,21 @@ function blankStep(day = 0): SequenceStep {
 const SEQUENCE_TEMPLATES: Array<{
   label: string;
   description: string;
+  useCase: string;
+  icon: typeof Mail;
+  color: string;
+  bg: string;
+  border: string;
   steps: SequenceStep[];
 }> = [
   {
     label: "Executive outreach",
     description: "Open a focused conversation with a senior regulatory stakeholder.",
+    useCase: "Start a new conversation",
+    icon: BriefcaseBusiness,
+    color: "#0066CC",
+    bg: "#EFF6FF",
+    border: "#BFDBFE",
     steps: [
       { day: 0, channel: "email", label: "Send a concise, role-specific introduction" },
       { day: 2, channel: "email", label: "Share a relevant proof point or customer outcome" },
@@ -96,6 +110,11 @@ const SEQUENCE_TEMPLATES: Array<{
   {
     label: "Post-meeting follow-up",
     description: "Turn a completed meeting into an agreed commercial next step.",
+    useCase: "Move an active deal forward",
+    icon: Send,
+    color: "#047857",
+    bg: "#ECFDF5",
+    border: "#A7F3D0",
     steps: [
       { day: 0, channel: "email", label: "Send the recap, owners, and agreed next steps" },
       { day: 2, channel: "call", label: "Confirm stakeholders, timing, and open questions" },
@@ -106,6 +125,11 @@ const SEQUENCE_TEMPLATES: Array<{
   {
     label: "Re-engage a stalled account",
     description: "Restart a quiet conversation without repeating the original pitch.",
+    useCase: "Revive a quiet opportunity",
+    icon: RefreshCcw,
+    color: "#C2410C",
+    bg: "#FFF7ED",
+    border: "#FED7AA",
     steps: [
       { day: 0, channel: "email", label: "Send a short pattern-interrupt with a new reason to reply" },
       { day: 3, channel: "call", label: "Call with a specific, low-friction question" },
@@ -113,6 +137,13 @@ const SEQUENCE_TEMPLATES: Array<{
     ],
   },
 ];
+
+const EDITOR_STEPS = [
+  { number: 1, label: "Starting point", helper: "Choose a template" },
+  { number: 2, label: "Audience and goal", helper: "Name the sequence" },
+  { number: 3, label: "Cadence", helper: "Plan each touch" },
+  { number: 4, label: "Review", helper: "Confirm and create" },
+] as const;
 
 function timingLabel(steps: SequenceStep[], index: number) {
   if (index === 0) {
@@ -154,6 +185,8 @@ export function SequencesView({
   const [draftDescription, setDraftDescription] = useState("");
   const [draftSteps, setDraftSteps] = useState<SequenceStep[]>([blankStep()]);
   const [templateChoice, setTemplateChoice] = useState<string | null>(null);
+  const [editorStage, setEditorStage] = useState<1 | 2 | 3 | 4>(1);
+  const editorContentRef = useRef<HTMLDivElement>(null);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [enrollQuery, setEnrollQuery] = useState("");
   const [pickedAccounts, setPickedAccounts] = useState<Set<string>>(new Set());
@@ -174,6 +207,12 @@ export function SequencesView({
     // Opening is intentionally driven only by the query value.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+    const scrollContainer = editorContentRef.current?.parentElement;
+    if (scrollContainer) scrollContainer.scrollTop = 0;
+  }, [editorOpen, editorStage]);
 
   const countBySequence = useMemo(
     () =>
@@ -213,6 +252,10 @@ export function SequencesView({
   const totalSteps = sequences.reduce((total, sequence) => total + sequence.steps.length, 0);
   const activeCount = sequences.filter((sequence) => sequence.status === "active").length;
   const reengagement = sequences.find((sequence) => sequence.id === "reengage");
+  const selectedTemplate = SEQUENCE_TEMPLATES.find(
+    (template) => template.label === templateChoice
+  );
+  const SelectedTemplateIcon = selectedTemplate?.icon;
 
   const stats = [
     { icon: Zap, label: "Active sequences", value: String(activeCount), sub: "running" },
@@ -226,7 +269,8 @@ export function SequencesView({
     setDraftName(sequence?.name || "");
     setDraftDescription(sequence?.description || "");
     setDraftSteps(sequence?.steps.map((step) => ({ ...step })) || [blankStep()]);
-    setTemplateChoice(null);
+    setTemplateChoice(sequence ? "__existing" : null);
+    setEditorStage(sequence ? 2 : 1);
     setEditorOpen(true);
   }
 
@@ -241,6 +285,36 @@ export function SequencesView({
     setDraftName(template.label);
     setDraftDescription(template.description);
     setDraftSteps(template.steps.map((step) => ({ ...step })));
+  }
+
+  function startBlankSequence() {
+    setTemplateChoice("__blank");
+    setDraftName("");
+    setDraftDescription("");
+    setDraftSteps([blankStep()]);
+  }
+
+  function continueEditor() {
+    if (editorStage === 1) {
+      if (!templateChoice) return toast("Choose a starting plan or start from scratch.", "error");
+      setEditorStage(2);
+      return;
+    }
+    if (editorStage === 2) {
+      if (!draftName.trim()) return toast("Give the sequence a clear name.", "error");
+      if (!draftDescription.trim()) {
+        return toast("Describe who this sequence is for and the outcome it should drive.", "error");
+      }
+      setEditorStage(3);
+      return;
+    }
+    if (!draftSteps.length || draftSteps.some((step) => !step.label.trim())) {
+      return toast("Every cadence step needs a clear action.", "error");
+    }
+    if (draftSteps.some((step, index) => index > 0 && step.day < draftSteps[index - 1].day)) {
+      return toast("Step days need to move forward through the cadence.", "error");
+    }
+    setEditorStage(4);
   }
 
   async function saveSequence() {
@@ -538,15 +612,20 @@ export function SequencesView({
                     <span className="rounded-md border border-border-light bg-white px-2 py-1">{active.steps.filter((step) => step.channel === "call").length} calls</span>
                   </div>
                 </div>
-                <ol className="grid grid-cols-4 gap-3" aria-label={`${active.name} timeline`}>
+                <ol
+                  data-testid="sequence-cadence-scroll"
+                  aria-label={`${active.name} timeline, scroll horizontally for all steps`}
+                  className="-mx-1 flex snap-x snap-proximity gap-3 overflow-x-auto overflow-y-hidden px-1 pb-3"
+                >
                   {active.steps.map((step, index) => {
                     const meta = CHANNEL_META[step.channel];
                     const Icon = meta.icon;
                     return (
                       <li
                         key={`${step.day}-${index}`}
+                        data-testid="sequence-cadence-step"
                         aria-label={`Step ${index + 1} on day ${step.day}: ${CHANNEL_LABEL[step.channel]} — ${step.label}`}
-                        className="relative flex min-h-[146px] min-w-0 flex-col rounded-md border border-border-light bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+                        className="relative flex min-h-[146px] min-w-[270px] flex-none basis-[calc((100%-2.25rem)/4)] snap-start flex-col rounded-md border border-border-light bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
                         style={{ borderTopColor: meta.color, borderTopWidth: 3 }}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -568,7 +647,7 @@ export function SequencesView({
                         <p className="mt-auto border-t border-border-light pt-2 text-[10px] font-medium text-text-tertiary">
                           {timingLabel(active.steps, index)}
                         </p>
-                        {index < active.steps.length - 1 && index % 4 !== 3 && (
+                        {index < active.steps.length - 1 && (
                           <ChevronRight size={14} className="absolute -right-[14px] top-1/2 z-10 -translate-y-1/2 text-text-tertiary" aria-hidden="true" />
                         )}
                       </li>
@@ -604,15 +683,14 @@ export function SequencesView({
                     const step = active.steps[stepIndex];
                     const meta = CHANNEL_META[step.channel];
                     const StepIcon = meta.icon;
-                    const percent = Math.round(((stepIndex + 1) / active.steps.length) * 100);
                     const complete = enrollment.stepIndex >= active.steps.length - 1;
                     const nextStep = complete ? null : active.steps[stepIndex + 1];
                     const nextMeta = nextStep ? CHANNEL_META[nextStep.channel] : null;
                     const NextIcon = nextMeta?.icon;
                     const stage = stageStyle(enrollment.stage);
                     return (
-                      <article key={enrollment.enrollmentId || `${enrollment.customerId}-${enrollment.sequenceId}`} className="px-5 py-4 hover:bg-surface/30">
-                        <div className="grid grid-cols-[minmax(170px,1fr)_160px_auto] items-center gap-4">
+                      <article key={enrollment.enrollmentId || `${enrollment.customerId}-${enrollment.sequenceId}`} className="px-5 py-3.5 hover:bg-surface/30">
+                        <div className="flex items-center gap-4">
                           <Link href={`/customers/${enrollment.customerId}`} className="group flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30">
                             <CompanyLogo name={enrollment.company} className="h-8 w-8 shrink-0 text-[10px]" />
                             <span className="min-w-0">
@@ -620,16 +698,10 @@ export function SequencesView({
                               <span className="mt-1 block w-fit rounded px-1.5 py-0.5 text-[9.5px] font-semibold" style={{ color: stage.color, background: stage.bg }}>{enrollment.stage}</span>
                             </span>
                           </Link>
-                          <span className="min-w-0">
-                            <span className="flex items-center justify-between text-[10px] font-medium text-text-secondary"><span>{complete ? "Completed" : `${active.steps.length - stepIndex - 1} remaining`}</span><span className="tnum">{percent}%</span></span>
-                            <span className="mt-1.5 flex gap-1" aria-label={`${percent}% complete`}>
-                              {active.steps.map((cadenceStep, cadenceIndex) => (
-                                <span
-                                  key={`${cadenceStep.day}-${cadenceIndex}`}
-                                  className="h-1.5 min-w-0 flex-1 rounded-full"
-                                  style={{ background: cadenceIndex <= stepIndex ? CHANNEL_META[cadenceStep.channel].color : "#E5E7EB" }}
-                                />
-                              ))}
+                          <span className="ml-auto text-right">
+                            <span className="block text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Sequence position</span>
+                            <span className={complete ? "mt-0.5 block text-[11.5px] font-semibold text-success" : "mt-0.5 block text-[11.5px] font-semibold text-text-primary"}>
+                              {complete ? "All steps completed" : `Current: step ${stepIndex + 1} of ${active.steps.length}`}
                             </span>
                           </span>
                           <span className="flex items-center justify-end gap-1.5">
@@ -648,31 +720,48 @@ export function SequencesView({
                           </span>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_20px_minmax(0,1fr)] items-stretch gap-2">
-                          <div className="rounded-md border border-border-light bg-surface/35 p-2.5">
-                            <span className="mb-1.5 block text-[9.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Current touch</span>
-                            <span className="flex min-w-0 items-start gap-2.5">
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md" style={{ color: meta.color, background: meta.bg }}><StepIcon size={14} /></span>
-                              <span className="min-w-0">
-                                <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-secondary">Step {stepIndex + 1} of {active.steps.length} <span className="text-text-tertiary">· Day {step.day}</span></span>
-                                <span className="mt-1 block line-clamp-2 text-[11.5px] leading-snug text-text-primary">{step.label}</span>
-                              </span>
-                            </span>
+                        <div className="mt-3 rounded-lg border border-border-light bg-white px-3 py-3" data-testid="enrollment-timeline">
+                          <div className="grid items-start" style={{ gridTemplateColumns: `repeat(${active.steps.length}, minmax(0, 1fr))` }}>
+                            {active.steps.map((cadenceStep, cadenceIndex) => {
+                              const cadenceMeta = CHANNEL_META[cadenceStep.channel];
+                              const CadenceIcon = cadenceMeta.icon;
+                              const isCompleted = complete || cadenceIndex < stepIndex;
+                              const isCurrent = !complete && cadenceIndex === stepIndex;
+                              return (
+                                <div key={`${cadenceStep.day}-${cadenceIndex}`} className="relative min-w-0 text-center" data-step-state={isCompleted ? "completed" : isCurrent ? "current" : "upcoming"}>
+                                  {cadenceIndex > 0 && <span className={cn("absolute right-1/2 top-3.5 h-0.5 w-full", isCompleted || isCurrent ? "bg-blue-primary" : "bg-border-light")} aria-hidden="true" />}
+                                  <Tooltip label={`${isCompleted ? "Completed" : isCurrent ? "Current action" : "Upcoming"}: Step ${cadenceIndex + 1}, day ${cadenceStep.day} — ${cadenceStep.label}`}>
+                                    <span className={cn(
+                                      "relative z-10 mx-auto flex h-7 w-7 items-center justify-center rounded-full border-2",
+                                      isCompleted && "border-blue-primary bg-blue-primary text-white",
+                                      isCurrent && "border-blue-primary bg-white text-blue-primary ring-4 ring-blue-light",
+                                      !isCompleted && !isCurrent && "border-border bg-white text-text-tertiary"
+                                    )}>
+                                      {isCompleted ? <Check size={13} strokeWidth={2.5} /> : <CadenceIcon size={12} strokeWidth={2.1} />}
+                                    </span>
+                                  </Tooltip>
+                                  <span className={cn("mt-1.5 block truncate px-1 text-[9.5px] font-semibold", isCurrent ? "text-blue-primary" : isCompleted ? "text-text-primary" : "text-text-tertiary")}>Step {cadenceIndex + 1}</span>
+                                  <span className="mt-0.5 block text-[9px] text-text-tertiary tnum">Day {cadenceStep.day}</span>
+                                </div>
+                              );
+                            })}
                           </div>
-                          <span className="flex items-center justify-center text-text-tertiary"><ChevronRight size={14} /></span>
-                          <div className="rounded-md border border-border-light bg-white p-2.5">
-                            <span className="mb-1.5 block text-[9.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Next touch</span>
+
+                          <div className="mt-3 flex items-center gap-3 border-t border-border-light pt-2.5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ color: meta.color, background: meta.bg }}><StepIcon size={13} /></span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-blue-primary">{complete ? "Completed" : "Do now"} · Step {stepIndex + 1} · Day {step.day}</span>
+                              <span className="mt-0.5 block truncate text-[11.5px] font-medium text-text-primary" title={step.label}>{step.label}</span>
+                            </span>
                             {nextStep && nextMeta && NextIcon ? (
-                              <span className="flex min-w-0 items-start gap-2.5">
-                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md" style={{ color: nextMeta.color, background: nextMeta.bg }}><NextIcon size={14} /></span>
+                              <span className="flex max-w-[40%] min-w-0 items-center gap-2 border-l border-border-light pl-3">
+                                <NextIcon size={13} className="shrink-0" style={{ color: nextMeta.color }} />
                                 <span className="min-w-0">
-                                  <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-secondary">Step {stepIndex + 2} <span className="text-text-tertiary">· Day {nextStep.day}</span></span>
-                                  <span className="mt-1 block line-clamp-2 text-[11.5px] leading-snug text-text-primary">{nextStep.label}</span>
+                                  <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Next · Step {stepIndex + 2} · Day {nextStep.day}</span>
+                                  <span className="mt-0.5 block truncate text-[10.5px] text-text-secondary" title={nextStep.label}>{nextStep.label}</span>
                                 </span>
                               </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-2 text-[11.5px] font-semibold text-success"><CheckCircle2 size={15} /> Sequence complete</span>
-                            )}
+                            ) : <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-success"><CheckCircle2 size={14} /> Sequence complete</span>}
                           </div>
                         </div>
                       </article>
@@ -703,117 +792,191 @@ export function SequencesView({
       </div>
 
       <Modal open={editorOpen} onClose={() => setEditorOpen(false)} title={editingId ? "Edit sequence" : "New sequence"} size="workflow">
-        <div className="space-y-4">
-          {!editingId && (
+        <div ref={editorContentRef}>
+          <div className="sticky top-0 z-20 mb-5 bg-white pb-2">
+            <ol className="grid grid-cols-4 overflow-hidden rounded-xl border border-border-light bg-surface/45" aria-label="Sequence setup progress">
+              {EDITOR_STEPS.map((step) => {
+                const current = editorStage === step.number;
+                const complete = editorStage > step.number;
+                return (
+                  <li key={step.number} className={cn("relative flex min-w-0 items-center gap-2.5 px-3 py-3", current && "bg-white shadow-sm")} aria-current={current ? "step" : undefined}>
+                    <span className={cn(
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold",
+                      current && "border-blue-primary bg-blue-primary text-white",
+                      complete && "border-success bg-success text-white",
+                      !current && !complete && "border-border bg-white text-text-tertiary"
+                    )}>
+                      {complete ? <Check size={13} strokeWidth={2.5} /> : step.number}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={cn("block truncate text-[10.5px] font-semibold", current || complete ? "text-text-primary" : "text-text-tertiary")}>{step.label}</span>
+                      <span className="mt-0.5 block truncate text-[9px] text-text-tertiary">{step.helper}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          {editorStage === 1 && (
             <section aria-labelledby="sequence-template-heading">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 id="sequence-template-heading" className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-secondary">Template</h3>
-                <span className="text-[10.5px] text-text-tertiary">Optional</span>
+              <div className="mb-4">
+                <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-blue-primary">Step 1 of 4</span>
+                <h3 id="sequence-template-heading" className="mt-1 text-[18px] font-semibold text-text-primary">What are you trying to accomplish?</h3>
+                <p className="mt-1 text-[12px] text-text-secondary">Pick the plan that best matches the sales moment. You can change every touch later.</p>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {SEQUENCE_TEMPLATES.map((template) => (
-                  <button
-                    key={template.label}
-                    type="button"
-                    onClick={() => applyTemplate(template)}
-                    aria-pressed={templateChoice === template.label}
-                    className={cn(
-                      "rounded-md border bg-white px-3 py-2.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30",
-                      templateChoice === template.label ? "border-blue-primary bg-blue-light/35 ring-1 ring-blue-primary/10" : "border-border-light"
-                    )}
-                  >
-                    <span className="block text-[12px] font-semibold text-text-primary">{template.label}</span>
-                    <span className="mt-1 block text-[10.5px] text-text-tertiary">{template.steps.length} steps · {template.steps[template.steps.length - 1]?.day || 0} days</span>
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 gap-3">
+                {SEQUENCE_TEMPLATES.map((template) => {
+                  const selected = templateChoice === template.label;
+                  const TemplateIcon = template.icon;
+                  return (
+                    <button
+                      key={template.label}
+                      type="button"
+                      onClick={() => applyTemplate(template)}
+                      aria-pressed={selected}
+                      className="relative min-h-[190px] rounded-xl border-2 p-4 text-left transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:shadow-card"
+                      style={{
+                        borderColor: selected ? template.color : template.border,
+                        background: selected ? template.bg : "#FFFFFF",
+                        boxShadow: selected ? `0 0 0 3px ${template.color}18` : undefined,
+                      }}
+                    >
+                      {selected && <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-white" style={{ background: template.color }}><Check size={13} /></span>}
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ color: template.color, background: template.bg }}>
+                        <TemplateIcon size={18} strokeWidth={1.9} />
+                      </span>
+                      <span className="mt-4 block text-[10px] font-bold uppercase tracking-[0.05em]" style={{ color: template.color }}>{template.useCase}</span>
+                      <span className="mt-1 block text-[14px] font-semibold text-text-primary">{template.label}</span>
+                      <span className="mt-1.5 block text-[10.5px] leading-relaxed text-text-secondary">{template.description}</span>
+                      <span className="mt-3 block text-[10px] font-medium text-text-tertiary">{template.steps.length} touches across {template.steps[template.steps.length - 1]?.day || 0} days</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={startBlankSequence}
+                aria-pressed={templateChoice === "__blank"}
+                className={cn(
+                  "mt-3 flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors",
+                  templateChoice === "__blank" ? "border-blue-primary bg-blue-light/40" : "border-border-light hover:border-blue-subtle hover:bg-surface/50"
+                )}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface text-text-secondary"><Plus size={15} /></span>
+                <span className="min-w-0 flex-1"><span className="block text-[12px] font-semibold text-text-primary">Start from scratch</span><span className="mt-0.5 block text-[10px] text-text-tertiary">Begin with one blank email touch and build your own plan.</span></span>
+                {templateChoice === "__blank" && <CheckCircle2 size={18} className="text-blue-primary" />}
+              </button>
+            </section>
+          )}
+
+          {editorStage === 2 && (
+            <section aria-labelledby="sequence-details-heading">
+              <div className="mb-4">
+                <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-blue-primary">Step 2 of 4</span>
+                <h3 id="sequence-details-heading" className="mt-1 text-[18px] font-semibold text-text-primary">Name the plan and define its goal</h3>
+                <p className="mt-1 text-[12px] text-text-secondary">A rep should understand who this is for and what success looks like before enrolling an account.</p>
+              </div>
+              {selectedTemplate && SelectedTemplateIcon && (
+                <div className="mb-4 flex items-center gap-3 rounded-lg border px-3.5 py-3" style={{ borderColor: selectedTemplate.border, background: selectedTemplate.bg }}>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white" style={{ color: selectedTemplate.color }}><SelectedTemplateIcon size={15} /></span>
+                  <span className="min-w-0"><span className="block text-[10px] font-semibold uppercase tracking-[0.04em]" style={{ color: selectedTemplate.color }}>Starting from</span><span className="block truncate text-[12px] font-semibold text-text-primary">{selectedTemplate.label}</span></span>
+                </div>
+              )}
+              <div className="space-y-4 rounded-xl border border-border-light bg-surface/30 p-5">
+                <label className="block">
+                  <span className="text-[11px] font-semibold text-text-primary">Sequence name</span>
+                  <span className="ml-2 text-[10px] text-text-tertiary">What reps will see in the library</span>
+                  <input value={draftName} onChange={(event) => setDraftName(event.target.value)} aria-label="Sequence name" placeholder="e.g. Clinical-stage executive outreach" className="mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[13px] outline-none focus:border-blue-primary" />
+                </label>
+                <label className="block">
+                  <span className="text-[11px] font-semibold text-text-primary">Who is this for, and what should happen?</span>
+                  <span className="ml-2 text-[10px] text-text-tertiary">Audience + intended outcome</span>
+                  <textarea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} aria-label="Sequence description" placeholder="Example: VP Regulatory at clinical-stage biopharma — secure a 20-minute discovery call." rows={3} className="mt-1.5 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-blue-primary" />
+                </label>
               </div>
             </section>
           )}
 
-          <section className="rounded-md border border-border-light bg-surface/30 p-3.5" aria-labelledby="sequence-details-heading">
-            <h3 id="sequence-details-heading" className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-secondary">Sequence details</h3>
-            <div className="grid grid-cols-[minmax(240px,0.75fr)_minmax(0,1.25fr)] gap-3">
-              <label>
-                <span className="mb-1 block text-[10.5px] font-semibold text-text-secondary">Name</span>
-                <input value={draftName} onChange={(event) => setDraftName(event.target.value)} aria-label="Sequence name" placeholder="e.g. Clinical-stage outreach" className="h-10 w-full rounded-md border border-border bg-white px-3 text-[13px] outline-none focus:border-blue-primary" />
-              </label>
-              <label>
-                <span className="mb-1 block text-[10.5px] font-semibold text-text-secondary">Purpose and audience</span>
-                <input value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} aria-label="Sequence description" placeholder="Who this is for and the outcome it should drive" className="h-10 w-full rounded-md border border-border bg-white px-3 text-[13px] outline-none focus:border-blue-primary" />
-              </label>
-            </div>
-          </section>
-
-          <section aria-labelledby="cadence-builder-heading">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+          {editorStage === 3 && (
+            <section aria-labelledby="cadence-builder-heading">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 id="cadence-builder-heading" className="text-[13px] font-semibold text-text-primary">Cadence builder</h3>
-                  <p className="text-[10.5px] text-text-tertiary">{countLabel(draftSteps.length, "step")} · {countLabel(draftSteps[draftSteps.length - 1]?.day || 0, "day")} · {countLabel(draftSteps.filter((step) => step.channel === "email").length, "email")} · {countLabel(draftSteps.filter((step) => step.channel === "call").length, "call")}</p>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-blue-primary">Step 3 of 4</span>
+                  <h3 id="cadence-builder-heading" className="mt-1 text-[18px] font-semibold text-text-primary">Plan the touches in order</h3>
+                  <p className="mt-1 text-[12px] text-text-secondary">For each step, choose the channel, when it happens, and the exact job it should do.</p>
+                </div>
+                <button type="button" onClick={() => setDraftSteps((steps) => [...steps, blankStep((steps[steps.length - 1]?.day || 0) + 2)])} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-border px-3 text-[11.5px] font-semibold text-blue-primary hover:bg-blue-light"><Plus size={13} /> Add touch</button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-medium text-text-secondary">
+                <span className="rounded-md bg-surface px-2 py-1">{countLabel(draftSteps.length, "touch")}</span>
+                <span className="rounded-md bg-surface px-2 py-1">{countLabel(draftSteps[draftSteps.length - 1]?.day || 0, "day")}</span>
+                <span className="rounded-md bg-blue-light px-2 py-1 text-blue-primary">{countLabel(draftSteps.filter((step) => step.channel === "email").length, "email")}</span>
+                <span className="rounded-md bg-green-50 px-2 py-1 text-green-700">{countLabel(draftSteps.filter((step) => step.channel === "call").length, "call")}</span>
+              </div>
+              <div className="mt-3 max-h-[400px] space-y-2 overflow-y-auto pr-1">
+                {draftSteps.map((step, index) => {
+                  const meta = CHANNEL_META[step.channel];
+                  return (
+                    <div key={index} className="grid grid-cols-[40px_minmax(0,1fr)_32px] gap-3 rounded-lg border border-border-light bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)]" style={{ borderLeftColor: meta.color, borderLeftWidth: 3 }}>
+                      <div className="flex flex-col items-center"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-text-primary text-[11px] font-bold text-white">{index + 1}</span>{index < draftSteps.length - 1 && <span className="mt-1 h-full min-h-[36px] w-px bg-border-light" />}</div>
+                      <div className="min-w-0">
+                        <div className="mb-2 flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-secondary">Touch {index + 1}</span><span className="rounded bg-surface px-2 py-0.5 text-[10px] font-medium text-text-tertiary">{timingLabel(draftSteps, index)}</span></div>
+                        <div className="grid grid-cols-[210px_86px_minmax(0,1fr)] items-end gap-2.5">
+                          <div>
+                            <span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">1. Choose channel</span>
+                            <div className="grid h-9 grid-cols-3 rounded-md border border-border bg-surface/40 p-0.5" role="group" aria-label={`Step ${index + 1} channel`}>
+                              {(["email", "call", "wait"] as SequenceChannel[]).map((channel) => { const channelMeta = CHANNEL_META[channel]; const ChannelIcon = channelMeta.icon; const selected = step.channel === channel; return <button key={channel} type="button" aria-pressed={selected} onClick={() => updateDraftStep(index, { channel })} className={cn("inline-flex items-center justify-center gap-1 rounded text-[10px] font-semibold transition-colors", selected ? "bg-white text-text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary")}><ChannelIcon size={11} style={{ color: selected ? channelMeta.color : undefined }} /> {CHANNEL_LABEL[channel]}</button>; })}
+                            </div>
+                          </div>
+                          <label><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">2. Set day</span><input type="number" min={0} value={step.day} onChange={(event) => updateDraftStep(index, { day: Math.max(0, Number(event.target.value)) })} aria-label={`Step ${index + 1} day`} className="h-9 w-full rounded-md border border-border bg-white px-2 text-[12px] font-semibold outline-none focus:border-blue-primary" /></label>
+                          <label className="min-w-0"><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">3. Describe the action</span><input value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="What should the rep do or send?" className="h-9 w-full min-w-0 rounded-md border border-border bg-white px-3 text-[12px] outline-none focus:border-blue-primary" /></label>
+                        </div>
+                      </div>
+                      <Tooltip label="Remove touch" align="right"><button type="button" onClick={() => setDraftSteps((steps) => steps.filter((_, stepIndex) => stepIndex !== index))} disabled={draftSteps.length === 1} aria-label={`Remove step ${index + 1}`} className="mt-6 flex h-8 w-8 items-center justify-center rounded text-text-tertiary hover:bg-error/10 hover:text-error disabled:opacity-30"><Trash2 size={14} /></button></Tooltip>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {editorStage === 4 && (
+            <section aria-labelledby="sequence-review-heading">
+              <div className="mb-4">
+                <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-blue-primary">Step 4 of 4</span>
+                <h3 id="sequence-review-heading" className="mt-1 text-[18px] font-semibold text-text-primary">Review what reps will follow</h3>
+                <p className="mt-1 text-[12px] text-text-secondary">Confirm the audience, timing, and actions before making this sequence available.</p>
+              </div>
+              <div className="rounded-xl border border-border-light bg-surface/30 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0"><p className="truncate text-[16px] font-semibold text-text-primary">{draftName}</p><p className="mt-1 text-[11.5px] leading-relaxed text-text-secondary">{draftDescription}</p></div>
+                  <div className="flex shrink-0 gap-1.5 text-[9.5px] font-medium text-text-secondary"><span className="rounded-md bg-white px-2 py-1">{draftSteps.length} touches</span><span className="rounded-md bg-white px-2 py-1">{draftSteps[draftSteps.length - 1]?.day || 0} days</span></div>
                 </div>
               </div>
-              <button type="button" onClick={() => setDraftSteps((steps) => [...steps, blankStep((steps[steps.length - 1]?.day || 0) + 2)])} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-[11.5px] font-semibold text-blue-primary hover:bg-blue-light"><Plus size={13} /> Add step</button>
-            </div>
-            <div className="mt-3 max-h-[390px] space-y-2 overflow-y-auto pr-1">
-              {draftSteps.map((step, index) => {
-                const meta = CHANNEL_META[step.channel];
-                return (
-                  <div key={index} className="grid grid-cols-[40px_minmax(0,1fr)_32px] gap-3 rounded-md border border-border-light bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)]" style={{ borderLeftColor: meta.color, borderLeftWidth: 3 }}>
-                    <div className="flex flex-col items-center">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-text-primary text-[11px] font-bold text-white">{index + 1}</span>
-                      {index < draftSteps.length - 1 && <span className="mt-1 h-full min-h-[36px] w-px bg-border-light" />}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-secondary">Step {index + 1}</span>
-                        <span className="rounded bg-surface px-2 py-0.5 text-[10px] font-medium text-text-tertiary">{timingLabel(draftSteps, index)}</span>
-                      </div>
-                      <div className="grid grid-cols-[210px_86px_minmax(0,1fr)] items-end gap-2.5">
-                        <div>
-                          <span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">Channel</span>
-                          <div className="grid h-9 grid-cols-3 rounded-md border border-border bg-surface/40 p-0.5" role="group" aria-label={`Step ${index + 1} channel`}>
-                            {(["email", "call", "wait"] as SequenceChannel[]).map((channel) => {
-                              const channelMeta = CHANNEL_META[channel];
-                              const ChannelIcon = channelMeta.icon;
-                              const selected = step.channel === channel;
-                              return (
-                                <button
-                                  key={channel}
-                                  type="button"
-                                  aria-pressed={selected}
-                                  onClick={() => updateDraftStep(index, { channel })}
-                                  className={cn("inline-flex items-center justify-center gap-1 rounded text-[10px] font-semibold transition-colors", selected ? "bg-white text-text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary")}
-                                >
-                                  <ChannelIcon size={11} style={{ color: selected ? channelMeta.color : undefined }} /> {CHANNEL_LABEL[channel]}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <label>
-                          <span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">Day</span>
-                          <input type="number" min={0} value={step.day} onChange={(event) => updateDraftStep(index, { day: Math.max(0, Number(event.target.value)) })} aria-label={`Step ${index + 1} day`} className="h-9 w-full rounded-md border border-border bg-white px-2 text-[12px] font-semibold outline-none focus:border-blue-primary" />
-                        </label>
-                        <label className="min-w-0">
-                          <span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">Action</span>
-                          <input value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="Describe the exact touch" className="h-9 w-full min-w-0 rounded-md border border-border bg-white px-3 text-[12px] outline-none focus:border-blue-primary" />
-                        </label>
-                      </div>
-                    </div>
-                    <Tooltip label="Remove step" align="right">
-                      <button type="button" onClick={() => setDraftSteps((steps) => steps.filter((_, stepIndex) => stepIndex !== index))} disabled={draftSteps.length === 1} aria-label={`Remove step ${index + 1}`} className="mt-6 flex h-8 w-8 items-center justify-center rounded text-text-tertiary hover:bg-error/10 hover:text-error disabled:opacity-30"><Trash2 size={14} /></button>
-                    </Tooltip>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+              <div className="mt-3 overflow-hidden rounded-xl border border-border-light">
+                <div className="grid grid-cols-[44px_72px_minmax(0,1fr)_110px] gap-3 bg-surface/70 px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><span>Touch</span><span>When</span><span>Action</span><span>Channel</span></div>
+                <div className="divide-y divide-border-light bg-white">
+                  {draftSteps.map((step, index) => { const meta = CHANNEL_META[step.channel]; const StepIcon = meta.icon; return <div key={index} className="grid grid-cols-[44px_72px_minmax(0,1fr)_110px] items-center gap-3 px-4 py-3"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-text-primary text-[9px] font-bold text-white">{index + 1}</span><span className="text-[10.5px] font-semibold text-text-secondary tnum">Day {step.day}</span><span className="truncate text-[11.5px] font-medium text-text-primary">{step.label}</span><span className="inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-[9.5px] font-semibold" style={{ color: meta.color, background: meta.bg }}><StepIcon size={11} /> {CHANNEL_LABEL[step.channel]}</span></div>; })}
+                </div>
+              </div>
+              <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-blue-subtle bg-blue-light/35 px-3.5 py-3"><ListChecks size={15} className="mt-0.5 shrink-0 text-blue-primary" /><span><span className="block text-[11px] font-semibold text-text-primary">Nothing sends automatically</span><span className="mt-0.5 block text-[10.5px] text-text-secondary">Email steps create drafts and call steps create reminders. A rep reviews every action before it goes out.</span></span></div>
+            </section>
+          )}
 
-          <div className="flex items-center justify-between border-t border-border-light pt-4">
-            <p className="inline-flex items-center gap-1.5 text-[10.5px] text-text-tertiary"><ListChecks size={12} /> Drafts and call reminders stay review-gated.</p>
+          <div className="mt-5 flex items-center justify-between border-t border-border-light pt-4">
+            <p className="text-[10.5px] text-text-tertiary">Step {editorStage} of 4 · {EDITOR_STEPS[editorStage - 1].helper}</p>
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setEditorOpen(false)}>Cancel</Button>
-              <Button onClick={saveSequence} loading={busy === "save-sequence"}><Check size={14} /> {editingId ? "Save changes" : "Create sequence"}</Button>
+              {editorStage > (editingId ? 2 : 1) ? (
+                <Button variant="secondary" onClick={() => setEditorStage((stage) => Math.max(1, stage - 1) as 1 | 2 | 3 | 4)}><ChevronLeft size={14} /> Back</Button>
+              ) : (
+                <Button variant="secondary" onClick={() => setEditorOpen(false)}>Cancel</Button>
+              )}
+              {editorStage < 4 ? (
+                <Button onClick={continueEditor} disabled={editorStage === 1 && !templateChoice}>Continue <ChevronRight size={14} /></Button>
+              ) : (
+                <Button onClick={saveSequence} loading={busy === "save-sequence"}><Check size={14} /> {editingId ? "Save sequence" : "Create sequence"}</Button>
+              )}
             </div>
           </div>
         </div>

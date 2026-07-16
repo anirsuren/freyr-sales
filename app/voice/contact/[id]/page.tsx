@@ -8,7 +8,6 @@ import {
   Timer,
   ThumbsUp,
   Sparkles,
-  ArrowRight,
   ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -18,12 +17,16 @@ import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { SizeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton } from "@/components/ui/BackButton";
-import { DonutChart, BarChart, VIZ } from "@/components/charts/Charts";
+import { AreaChart, DonutChart, VIZ } from "@/components/charts/Charts";
 import { ChartInspector } from "@/components/charts/ChartInspector";
+import {
+  ContactConversations,
+  type ContactConversationItem,
+} from "@/components/voice/ContactConversations";
 import { getDb } from "@/lib/db";
 import { isDialedVoiceCall, listVoiceQueue, mockCallTranscript, type VoiceOutcome } from "@/lib/voice";
 import { personaFor } from "@/lib/voicePersonas";
-import { formatPhone, formatDateTime, formatDate, cn } from "@/lib/utils";
+import { formatPhone, formatDateTime, formatDate } from "@/lib/utils";
 import { listStoredVoiceConversations, storedVoiceCall } from "@/lib/voiceEvents";
 
 export const metadata = { title: "Contact — voice" };
@@ -76,9 +79,11 @@ export default async function VoiceContactPage({
     : null;
 
   const queuedCalls = listVoiceQueue().filter((q) => q.contact_id === id);
-  const storedCalls = (await listStoredVoiceConversations(100))
-    .filter((call) => call.contact_id === id)
-    .map(storedVoiceCall);
+  const storedRecords = (await listStoredVoiceConversations(100)).filter(
+    (call) => call.contact_id === id
+  );
+  const storedRecordById = new Map(storedRecords.map((record) => [record.id, record]));
+  const storedCalls = storedRecords.map(storedVoiceCall);
   const storedIds = new Set(
     storedCalls.flatMap((call) => [call.conversation_id, call.call_sid].filter(Boolean))
   );
@@ -120,23 +125,24 @@ export default async function VoiceContactPage({
         value: OUTCOME_META[o].label,
       })),
   })).filter((s) => s.value > 0);
-  // Oldest → newest so the talk-time bars read left-to-right in time.
-  const talkBars = [...calls]
+  // A sales-useful progression: did each conversation move the buyer closer or
+  // farther away? This replaces raw call length, which says little about deal
+  // quality on its own.
+  const engagementCalls = [...finished]
     .reverse()
-    .filter((c) => c.duration_secs)
-    .map((c) => ({
-      label: formatDate(c.created_at).replace(/,.*$/, ""),
-      value: c.duration_secs || 0,
-      color: VIZ.blue,
-      // Each bar is one call — name what it was about, how it landed, how long.
-      tip: [
-        {
-          name: c.offering_name || "Call",
-          sub: c.outcome ? OUTCOME_META[c.outcome].label : undefined,
-          value: fmtLen(c.duration_secs || 0),
-        },
-      ],
-    }));
+    .map((call) => {
+      const score = call.outcome === "interested" ? 100 : call.outcome === "follow_up" ? 72 : call.outcome === "no_answer" ? 28 : 8;
+      const persona = personaFor(call.category);
+      const summary = storedRecordById.get(call.id)?.summary || mockCallTranscript(call, persona?.name || "The agent").summary;
+      return { call, score, summary };
+    });
+  const engagementTrend = engagementCalls.map(({ score }) => score);
+  const engagementLabels = engagementCalls.map(({ call }) => formatDate(call.created_at).replace(/,.*$/, ""));
+  const engagementTips = engagementCalls.map(({ call, summary }) => [{
+    name: OUTCOME_META[call.outcome!].label,
+    sub: summary,
+    value: call.duration_secs ? fmtLen(call.duration_secs) : "Not connected",
+  }]);
 
   const firstName =
     contact.full_name.replace(/^Dr\.\s*/i, "").split(/\s+/)[0] || "them";
@@ -150,6 +156,46 @@ export default async function VoiceContactPage({
     value: call.duration_secs ? fmtLen(call.duration_secs) : "—",
     href: isDialedVoiceCall(call.status) ? `/voice/c/${call.conversation_id || call.id}` : undefined,
   }));
+  const conversationItems: ContactConversationItem[] = calls.map((call) => {
+    const persona = personaFor(call.category);
+    const mockTranscript = mockCallTranscript(call, persona?.name || "The agent");
+    const storedRecord = storedRecordById.get(call.id);
+    const transcript = storedRecord?.transcript?.length
+      ? storedRecord.transcript
+          .filter((turn) => Boolean(turn.message))
+          .map((turn) => ({
+            role: turn.role === "agent" ? ("agent" as const) : ("user" as const),
+            speaker: turn.role === "agent" ? storedRecord.agent_name || persona?.name || "Agent" : contact.full_name,
+            message: turn.message || "",
+            time:
+              typeof turn.time_in_call_secs === "number"
+                ? fmtLen(Math.max(0, Math.round(turn.time_in_call_secs)))
+                : undefined,
+          }))
+      : mockTranscript.turns.map((turn) => ({
+          role: turn.role,
+          speaker: turn.role === "agent" ? persona?.name || "Agent" : contact.full_name,
+          message: turn.message,
+        }));
+    const outcome = call.outcome ? OUTCOME_META[call.outcome] : null;
+    return {
+      id: call.id,
+      href: isDialedVoiceCall(call.status)
+        ? `/voice/c/${call.conversation_id || call.id}`
+        : undefined,
+      contactName: contact.full_name,
+      company: customer?.company_name || call.company,
+      direction: storedRecord?.direction || "outbound",
+      agentName: storedRecord?.agent_name || persona?.name,
+      agentColor: persona?.color,
+      outcomeLabel: outcome?.label,
+      outcomeClassName: outcome?.chip,
+      startedAt: formatDateTime(call.created_at),
+      duration: call.duration_secs ? fmtLen(call.duration_secs) : "Not connected",
+      summary: storedRecord?.summary || mockTranscript.summary,
+      transcript,
+    };
+  });
 
   const kpis = [
     { label: "Calls", value: String(calls.length), sub: calls.length === 1 ? "conversation" : "conversations", icon: PhoneCall },
@@ -243,12 +289,14 @@ export default async function VoiceContactPage({
 
       {/* Graphs — how this contact's calls are trending */}
       {hasAnalytics && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
           <ChartInspector
             title={`How ${firstName}'s calls ended`}
             description={`Every finished call with ${firstName}, by outcome.`}
             records={callRecords}
-            searchPlaceholder="Search calls..."
+            showSearch={false}
+            bodyClassName="pt-3"
+            className="lg:col-span-5"
             expandedChildren={
               <div className="flex items-center justify-center gap-10 py-4">
                 <DonutChart segments={outcomeSegments} size={280} thickness={28} />
@@ -264,9 +312,9 @@ export default async function VoiceContactPage({
               </div>
             }
           >
-            <div className="flex-1 flex items-center gap-5">
-              <div className="relative shrink-0" style={{ width: 120, height: 120 }}>
-                <DonutChart segments={outcomeSegments} size={120} thickness={12} />
+            <div className="grid grid-cols-[108px_1fr] items-center gap-4">
+              <div className="relative shrink-0" style={{ width: 108, height: 108 }}>
+                <DonutChart segments={outcomeSegments} size={108} thickness={11} />
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-[24px] font-bold leading-none tnum text-text-primary">
                     {finished.length}
@@ -274,7 +322,7 @@ export default async function VoiceContactPage({
                   <span className="text-[10px] text-text-tertiary mt-0.5">calls</span>
                 </div>
               </div>
-              <div className="space-y-2 text-[13px]">
+              <div className="space-y-2 text-[12.5px]">
                 {outcomeSegments.map((s) => (
                   <p key={s.label} className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
@@ -287,17 +335,19 @@ export default async function VoiceContactPage({
           </ChartInspector>
 
           <ChartInspector
-            title="Talk time per call"
-            description="How long each conversation ran, oldest to newest."
+            title="Buyer engagement trend"
+            description="Whether each call moved this contact closer to a next step."
             records={callRecords}
-            searchPlaceholder="Search calls..."
-            expandedChildren={talkBars.length > 0 ? <BarChart data={talkBars} height={390} format="duration" /> : null}
+            showSearch={false}
+            bodyClassName="pt-3"
+            className="lg:col-span-7"
+            expandedChildren={engagementTrend.length > 0 ? <AreaChart data={engagementTrend} height={390} color={VIZ.blue} format="percent" yMax={100} xLabels={engagementLabels} pointTips={engagementTips} /> : null}
           >
-            <div className="flex-1 flex items-end">
-              {talkBars.length > 0 ? (
-                <BarChart data={talkBars} height={150} format="duration" />
+            <div>
+              {engagementTrend.length > 0 ? (
+                <AreaChart data={engagementTrend} height={126} color={VIZ.blue} format="percent" yMax={100} xLabels={engagementLabels} pointTips={engagementTips} />
               ) : (
-                <p className="text-[13px] text-text-secondary">No answered calls yet.</p>
+                <p className="flex h-[108px] items-center text-[13px] text-text-secondary">No finished calls to evaluate yet.</p>
               )}
             </div>
           </ChartInspector>
@@ -314,78 +364,7 @@ export default async function VoiceContactPage({
         </Card>
       )}
 
-      {/* Every conversation — click one to read the transcript */}
-      <section>
-        <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
-          Conversations <span className="text-text-primary tnum">({calls.length})</span>
-        </h2>
-        {calls.length === 0 ? (
-          <Card>
-            <p className="text-[13px] text-text-secondary">
-              No calls with {firstName} yet. Queue one from the Contacts page and
-              it lands here with its transcript.
-            </p>
-          </Card>
-        ) : (
-          <div className="space-y-3 stagger">
-            {calls.map((c) => {
-              const persona = personaFor(c.category);
-              const summary = mockCallTranscript(c, persona?.name || "The agent").summary;
-              const meta = c.outcome ? OUTCOME_META[c.outcome] : null;
-              return (
-                <Link key={c.id} href={`/voice/c/${c.id}`} className="block group">
-                  <Card className="hover:border-blue-subtle hover:-translate-y-0.5 transition-all duration-200">
-                    <div className="flex items-start gap-3">
-                      {persona && (
-                        <span
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white mt-0.5"
-                          style={{ background: persona.color }}
-                        >
-                          <persona.icon size={17} strokeWidth={1.9} />
-                        </span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary">
-                            {c.offering_name || c.category}
-                          </span>
-                          {meta && (
-                            <span
-                              className={cn(
-                                "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
-                                meta.chip
-                              )}
-                            >
-                              {meta.label}
-                            </span>
-                          )}
-                          <span className="text-[12px] text-text-tertiary tnum ml-auto whitespace-nowrap">
-                            {formatDateTime(c.created_at)}
-                          </span>
-                        </div>
-                        <p className="text-[12.5px] text-text-tertiary mt-1 flex items-center gap-3">
-                          {persona && <span>Handled by {persona.name}</span>}
-                          <span className="tnum">
-                            {c.duration_secs ? fmtLen(c.duration_secs) : "—"}
-                          </span>
-                        </p>
-                        <p className="text-[13px] text-text-secondary mt-1.5 leading-relaxed line-clamp-2">
-                          {summary}
-                        </p>
-                      </div>
-                      <ArrowRight
-                        size={16}
-                        strokeWidth={1.6}
-                        className="text-text-tertiary group-hover:text-blue-primary group-hover:translate-x-0.5 transition-transform shrink-0 mt-1"
-                      />
-                    </div>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <ContactConversations firstName={firstName} items={conversationItems} />
     </div>
   );
 }

@@ -1,14 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ChevronDown, ArrowRight, DollarSign, TrendingUp, Target, CalendarCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { DonutChart, BarChart } from "@/components/charts/Charts";
 import { cn } from "@/lib/utils";
-import { formatMoney, CURRENT_REP, type RepStat } from "@/lib/pipeline";
+import {
+  formatMoney,
+  CURRENT_REP,
+  STAGE_PROBABILITY,
+  type RepStat,
+  type Stage,
+} from "@/lib/pipeline";
 
 export type { RepStat };
 
@@ -21,6 +28,160 @@ const RANGES = [
 
 const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+type StageDeal = { company: string; contact: string; value: number };
+
+const STAGE_CONTEXT: Record<string, string> = {
+  Prospect: "Early-stage accounts that still need meaningful two-way engagement.",
+  Engaged: "Active conversations where the account is responding to outreach.",
+  Qualified: "Opportunities with confirmed need, relevance, and buying potential.",
+  "Meeting Booked": "Opportunities with a concrete sales meeting already scheduled.",
+};
+
+function RepPipelineBar({
+  rep,
+  stageDeals,
+}: {
+  rep: RepStat;
+  stageDeals?: Record<string, StageDeal[]>;
+}) {
+  const visibleStages = rep.stageValues.filter((stage) => stage.value > 0);
+  const total = rep.openValue || 1;
+
+  if (visibleStages.length === 0) {
+    return (
+      <div className="mt-2 h-2.5 max-w-[440px] rounded-full bg-surface" />
+    );
+  }
+
+  return (
+    <div
+      data-testid="rep-pipeline-stage-bar"
+      className="group mt-2 flex h-5 max-w-[440px] cursor-help items-center rounded-full"
+      aria-label={`${rep.name} open pipeline composition`}
+    >
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface transition-all duration-150 group-hover:h-4 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.14)]">
+        {visibleStages.map((stage) => {
+          const share = Math.round((stage.value / total) * 100);
+          const probability = STAGE_PROBABILITY[stage.stage as Stage] ?? 0;
+          const deals = stageDeals?.[stage.stage] ?? [];
+          const content = (
+            <div data-testid="rep-stage-hover-card">
+              <div className="flex items-center gap-2.5">
+                <Avatar
+                  name={rep.name}
+                  className="h-10 w-10 shrink-0 text-[10px]"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-text-primary">
+                    {rep.name}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: stage.color }}
+                    />
+                    {stage.stage}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-[17px] font-bold leading-none text-text-primary tnum">
+                    {formatMoney(stage.value)}
+                  </p>
+                  <p className="mt-1 text-[9.5px] text-text-tertiary tnum">
+                    {share}% of pipeline
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-lg bg-surface/60 py-2">
+                {[
+                  {
+                    label: "Deals",
+                    value: String(stage.count),
+                  },
+                  {
+                    label: "Win odds",
+                    value: `${Math.round(probability * 100)}%`,
+                  },
+                  {
+                    label: "Weighted",
+                    value: formatMoney(stage.value * probability),
+                  },
+                ].map((stat) => (
+                  <div key={stat.label} className="px-2 text-center">
+                    <p className="text-[8.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                      {stat.label}
+                    </p>
+                    <p className="mt-0.5 text-[13px] font-bold text-text-primary tnum">
+                      {stat.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {deals.length > 0 ? (
+                <div className="mt-2.5 border-t border-border-light pt-2.5">
+                  <p className="text-[8.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                    Top opportunities
+                  </p>
+                  <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                    {deals.slice(0, 2).map((deal, index) => (
+                      <div
+                        key={`${deal.company}-${deal.contact}-${index}`}
+                        className="flex min-w-0 items-center gap-1.5 rounded-md bg-surface/60 px-1.5 py-1.5"
+                      >
+                        <CompanyLogo
+                          name={deal.company}
+                          className="h-6 w-6 shrink-0 text-[6px]"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[9.5px] font-semibold text-text-primary">
+                            {deal.company}
+                          </span>
+                          <span className="block truncate text-[8.5px] text-text-tertiary">
+                            {formatMoney(deal.value)}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2.5 truncate border-t border-border-light pt-2.5 text-[9.5px] text-text-tertiary">
+                  {STAGE_CONTEXT[stage.stage]}
+                </p>
+              )}
+            </div>
+          );
+
+          return (
+            <div
+              key={stage.stage}
+              className="h-full min-w-0"
+              style={{ width: `${(stage.value / total) * 100}%` }}
+            >
+              <HoverCard
+                side="top"
+                width={310}
+                delayMs={0}
+                className="h-full w-full"
+                content={content}
+              >
+                <span
+                  data-testid="rep-pipeline-stage-segment"
+                  aria-label={`${rep.name} ${stage.stage}: ${formatMoney(stage.value)}, ${stage.count} ${stage.count === 1 ? "deal" : "deals"}`}
+                  className="block h-full w-full transition-[filter,box-shadow] hover:z-10 hover:brightness-110 hover:shadow-[inset_0_0_0_2px_rgba(255,255,255,0.85)]"
+                  style={{ background: stage.color }}
+                />
+              </HoverCard>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function RepAnalytics({
   reps,
@@ -36,16 +197,10 @@ export function RepAnalytics({
     Record<string, { company: string; contact: string; value: number }[]>
   >;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState<string | null>(null);
-  const [selectedRange, setSelectedRange] = useState(range);
-  const [isPending, startTransition] = useTransition();
-
-  useEffect(() => setSelectedRange(range), [range]);
-
-  const rangeName = RANGES.find((item) => item.k === selectedRange)?.name ?? "All time";
+  const rangeName = RANGES.find((item) => item.k === range)?.name ?? "All time";
   const rangeContext =
-    selectedRange === "all"
+    range === "all"
       ? "across all recorded history"
       : `in the ${rangeName.toLowerCase()}`;
 
@@ -78,7 +233,7 @@ export function RepAnalytics({
 
   return (
     <Card>
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+      <div className="mb-4">
         <div>
           <h2 className="text-[17px] font-semibold text-text-primary">
             Rep performance
@@ -86,36 +241,6 @@ export function RepAnalytics({
           <p className="text-[12.5px] text-text-tertiary mt-0.5">
             Pipeline created {rangeContext}, ranked by owner. Click a rep to expand their breakdown.
           </p>
-        </div>
-        <div
-          className={cn(
-            "flex items-center gap-1 bg-surface p-1 rounded-lg border border-border-light transition-opacity",
-            isPending && "opacity-70"
-          )}
-          aria-label="Rep performance date range"
-        >
-          {RANGES.map((r) => (
-            <button
-              key={r.k}
-              type="button"
-              aria-label={r.name}
-              aria-pressed={selectedRange === r.k}
-              onClick={() => {
-                setSelectedRange(r.k);
-                startTransition(() => {
-                  router.push(`/analytics?range=${r.k}`, { scroll: false });
-                });
-              }}
-              className={cn(
-                "px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-[0.05em] transition-[color,background-color,box-shadow]",
-                selectedRange === r.k
-                  ? "bg-blue-primary shadow-sm text-white"
-                  : "text-text-secondary hover:text-text-primary"
-              )}
-            >
-              {r.l}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -149,7 +274,6 @@ export function RepAnalytics({
         // other reps, expand any of them inline").
         <div className="max-h-[620px] overflow-y-auto -mx-2 px-2 divide-y divide-border-light">
           {reps.map((rep, i) => {
-            const total = rep.openValue || 1;
             const isOpen = open === rep.name;
             const you = rep.name === CURRENT_REP;
             const slug = slugify(rep.name);
@@ -197,17 +321,10 @@ export function RepAnalytics({
                       {rep.openCount} open deal{rep.openCount === 1 ? "" : "s"} ·{" "}
                       {rep.deals} total owned
                     </p>
-                    <div className="mt-2 h-2.5 rounded-full bg-surface overflow-hidden flex max-w-[440px]">
-                      {rep.stageValues
-                        .filter((s) => s.value > 0)
-                        .map((s) => (
-                          <div
-                            key={s.stage}
-                            style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
-                            title={`${s.stage}: ${formatMoney(s.value)} (${s.count})`}
-                          />
-                        ))}
-                    </div>
+                    <RepPipelineBar
+                      rep={rep}
+                      stageDeals={repStageDeals?.[rep.name]}
+                    />
                   </div>
 
                   {/* KPI cluster */}

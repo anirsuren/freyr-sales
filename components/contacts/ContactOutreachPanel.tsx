@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Sparkles,
   Package,
-  MessageSquareText,
   Mail,
   Copy,
   RefreshCw,
@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { useToast } from "@/components/ui/Toast";
+import { copyText } from "@/lib/clipboard";
 
 // One ranked offering row, serialized by the contact page.
 export type ContactOffering = {
@@ -113,14 +115,13 @@ export function ContactOutreachPanel({
       draft?.kind === "email" && draft.subject
         ? `Subject: ${draft.subject}\n\n${message}`
         : message;
-    try {
-      await navigator.clipboard.writeText(text);
+    if (await copyText(text)) {
       setCopied(true);
       toast("Copied — paste it into LinkedIn / your email and send.");
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast("Couldn't copy — select the text manually.", "error");
+      return;
     }
+    toast("Couldn't copy — select the text manually.", "error");
   }
 
   async function queueCall() {
@@ -154,7 +155,7 @@ export function ContactOutreachPanel({
     draft?.kind === "linkedin" && draft.limit ? message.length > draft.limit : false;
 
   const headerBtn =
-    "inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border transition-colors";
+    "group inline-flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-[border-color,background-color,box-shadow,transform] hover:-translate-y-px hover:shadow-sm";
 
   return (
     <Card className="mt-8" data-testid="contact-outreach">
@@ -164,17 +165,13 @@ export function ContactOutreachPanel({
             <Package size={20} strokeWidth={1.9} />
           </span>
           <div className="min-w-0">
-            <h2 className="flex items-center gap-2 text-[17px] font-semibold text-text-primary flex-wrap">
+            <h2 className="text-[17px] font-semibold text-text-primary">
               Offerings for {firstName}
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-full bg-blue-light text-blue-primary px-2 py-0.5">
-                <Sparkles size={11} strokeWidth={2} />
-                AI matched
-              </span>
             </h2>
             <p className="text-[12.5px] text-text-secondary mt-0.5">
               {classified
-                ? `Inherited from ${companyName} — the ones matching ${firstName}'s role are flagged.`
-                : `Once ${companyName} is classified, every offering that applies shows here — flagged for ${firstName}'s role.`}
+                ? `Matched from ${companyName}'s portfolio to ${firstName}'s role and priorities.`
+                : `Once ${companyName} is classified, the services relevant to ${firstName}'s role will appear here.`}
             </p>
           </div>
         </div>
@@ -185,36 +182,52 @@ export function ContactOutreachPanel({
               aria-pressed={mode === "linkedin"}
               className={`${headerBtn} ${
                 mode === "linkedin"
-                  ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
-                  : "border-border text-text-primary bg-white hover:bg-surface"
+                  ? "border-[#0A66C2] bg-[#EAF4FB] shadow-sm"
+                  : "border-border bg-white hover:border-[#0A66C2]/40 hover:bg-[#F4F9FC]"
               }`}
             >
-              <MessageSquareText size={14} strokeWidth={1.8} />
-              LinkedIn message
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0A66C2] text-white">
+                <Image src="/linkedin.webp" alt="" width={16} height={16} className="rounded-[3px]" />
+              </span>
+              <span>
+                <span className="block text-[11.5px] font-semibold text-text-primary">LinkedIn</span>
+                <span className="block text-[9.5px] text-text-tertiary">Draft message</span>
+              </span>
             </button>
             <button
               onClick={() => (mode === "email" ? setMode(null) : open("email"))}
               aria-pressed={mode === "email"}
               className={`${headerBtn} ${
                 mode === "email"
-                  ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
-                  : "border-border text-text-primary bg-white hover:bg-surface"
+                  ? "border-[#7C3AED] bg-[#F3EEFF] shadow-sm"
+                  : "border-border bg-white hover:border-[#7C3AED]/40 hover:bg-[#FAF8FF]"
               }`}
             >
-              <Mail size={14} strokeWidth={1.8} />
-              Email message
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
+                <Mail size={14} strokeWidth={2} />
+              </span>
+              <span>
+                <span className="block text-[11.5px] font-semibold text-text-primary">Email</span>
+                <span className="block text-[9.5px] text-text-tertiary">Compose pitch</span>
+              </span>
             </button>
             <button
               onClick={() => (mode === "voice" ? setMode(null) : open("voice"))}
               aria-pressed={mode === "voice"}
               className={`${headerBtn} ${
                 mode === "voice"
-                  ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
-                  : "border-border text-text-primary bg-white hover:bg-surface"
+                  ? "border-[#059669] bg-[#E9F8F2] shadow-sm"
+                  : "border-border bg-white hover:border-[#059669]/40 hover:bg-[#F4FBF8]"
               }`}
             >
-              <PhoneCall size={14} strokeWidth={1.8} />
-              AI voice call
+              <span className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-[#059669] text-white">
+                <PhoneCall size={14} strokeWidth={2} />
+                <Sparkles size={7} strokeWidth={2.4} className="absolute -right-0.5 -top-0.5" />
+              </span>
+              <span>
+                <span className="block text-[11.5px] font-semibold text-text-primary">AI voice</span>
+                <span className="block text-[9.5px] text-text-tertiary">Queue a call</span>
+              </span>
             </button>
           </div>
         )}
@@ -393,41 +406,39 @@ export function ContactOutreachPanel({
           {offerings.slice(0, 8).map((o) => (
             <div
               key={o.id}
-              className="flex items-center justify-between gap-3 py-2.5"
+              className="group/offering flex items-center justify-between gap-3 py-3 transition-colors hover:bg-surface/45"
               data-testid={`contact-offering-${o.id}`}
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
+              <OfferingIcon name={o.name} className="h-9 w-9" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
                   <Link
                     href={`/offerings/${o.id}`}
-                    className="text-[13.5px] font-medium text-text-primary hover:text-blue-primary truncate"
+                    className="truncate text-[13.5px] font-semibold text-text-primary transition-colors group-hover/offering:text-blue-primary"
                   >
                     {o.name}
                   </Link>
-                  {o.score >= 2 && (
-                    <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2 py-0.5">
-                      <Sparkles size={10} strokeWidth={2.2} />
-                      Strong match
+                  {o.materials > 0 && (
+                    <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[9.5px] font-medium text-text-tertiary tnum">
+                      {o.materials} {o.materials === 1 ? "asset" : "assets"}
                     </span>
                   )}
                 </div>
-                <p className="text-[11.5px] text-text-tertiary truncate">
-                  {[o.category || o.type, o.materials ? `${o.materials} material${o.materials === 1 ? "" : "s"}` : null]
-                    .filter(Boolean)
-                    .join(" · ")}
+                <p className="mt-0.5 truncate text-[11px] text-text-tertiary">
+                  <span className="font-medium text-text-secondary">{o.category || o.type}</span>
                   {o.matched.length > 0 && (
-                    <span className="text-text-secondary">
-                      {" "}
-                      · matches: {o.matched.slice(0, 3).join(", ")}
+                    <span>
+                      {" "}· Relevant to {o.matched.slice(0, 3).join(", ")}
                     </span>
                   )}
                 </p>
               </div>
               <button
                 onClick={() => open("linkedin", o.id)}
-                className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary px-2.5 py-1.5 rounded-md border border-border-light hover:bg-blue-light/50 transition-colors"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0A66C2]/20 bg-[#EAF4FB]/55 px-2.5 py-1.5 text-[11px] font-semibold text-[#0A66C2] transition-colors hover:border-[#0A66C2]/40 hover:bg-[#EAF4FB]"
               >
-                Message
+                <Image src="/linkedin.webp" alt="" width={13} height={13} className="rounded-[2px]" />
+                Draft outreach
                 <ChevronRight size={13} strokeWidth={2} />
               </button>
             </div>

@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import { RepAnalytics, type RepStat } from "@/components/analytics/RepAnalytics";
+import { AnalyticsRangeControl } from "@/components/analytics/AnalyticsRangeControl";
 import { AreaChart, VIZ } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
@@ -62,11 +63,11 @@ export default async function AnalyticsPage({
   // resurrect an older closed-lost deal as an open prospect in a shorter view.
   const deals = buildDeals(sessions, customers, contacts, allInteractions);
 
-  // Real cumulative pipeline-growth curve from the full book (not the date
-  // filter) — no hardcoded curve or invented "+12%".
+  // Keep the headline and its curve on the same page-wide period. Previously
+  // the number changed with the range while the line silently stayed all-time.
   const fullDeals = buildDeals(allSessions, customers, contacts, allInteractions);
-  const trendSeries = pipelineGrowthSeries(fullDeals, Date.now());
-  const openTrendDeals = fullDeals
+  const trendSeries = pipelineGrowthSeries(deals, Date.now());
+  const openTrendDeals = deals
     .filter((deal) => deal.stage !== "Closed Lost")
     .filter((deal) => !Number.isNaN(new Date(deal.createdAt).getTime()))
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -85,7 +86,7 @@ export default async function AnalyticsPage({
     })}`;
   });
   // The deals behind each point of the growth curve, aligned to trendSeries.
-  const trendPointTips = pipelineGrowthPointDeals(fullDeals).map((bucket) =>
+  const trendPointTips = pipelineGrowthPointDeals(deals).map((bucket) =>
     bucket.map((d) => ({
       logo: d.company,
       name: d.company,
@@ -183,7 +184,8 @@ export default async function AnalyticsPage({
     <div className="space-y-8">
       <PageHeader
         title="Analytics"
-        subtitle="Pipeline, conversion, and team performance."
+        subtitle="Pipeline, conversion, and team performance for the selected period."
+        action={<AnalyticsRangeControl range={range} />}
       />
 
       {/* Hero trend */}

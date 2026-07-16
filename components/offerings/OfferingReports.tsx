@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
+  CalendarClock,
   CalendarRange,
+  ChevronRight,
   DollarSign,
   KeyRound,
   ReceiptText,
@@ -8,14 +10,9 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
-import { ChartInspector } from "@/components/charts/ChartInspector";
 import {
   AreaChart,
-  BarChart,
-  DonutChart,
-  DonutLegend,
   VIZ,
-  VIZ_SERIES,
   type TipItem,
 } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -93,46 +90,26 @@ export function OfferingReports({
     .filter(({ line }) => line.end_date && Date.parse(line.end_date) >= now.getTime())
     .sort((a, b) => Date.parse(a.line.end_date!) - Date.parse(b.line.end_date!));
   const nextRenewal = renewals[0];
-  const maxLicenses = Math.max(...report.customers.map((customer) => customer.licenses), 1);
+  const customerSummaries = report.customers.map((customer) => {
+    const customerActiveLines = customer.lines.filter((line) => isActive(line, now));
+    const nextCustomerRenewal = customer.lines
+      .filter((line) => line.end_date && Date.parse(line.end_date) >= now.getTime())
+      .sort((a, b) => Date.parse(a.end_date!) - Date.parse(b.end_date!))[0];
+    return {
+      ...customer,
+      activeContracts: customerActiveLines.length,
+      nextRenewal: nextCustomerRenewal,
+      share: report.totalRevenue
+        ? Math.round((customer.revenue / report.totalRevenue) * 100)
+        : 0,
+    };
+  });
 
-  const customerBars = report.customers
-    .filter((customer) => customer.revenue > 0)
-    .map((customer, index) => ({
-      label: customer.name,
-      value: customer.revenue,
-      color: VIZ_SERIES[index % VIZ_SERIES.length],
-      tip: [
-        {
-          logo: customer.name,
-          name: customer.name,
-          sub: `${customer.licenses} licensed seats`,
-          value: formatMoney(customer.revenue),
-        },
-      ] as TipItem[],
-    }));
-  const customerRecords = report.customers.map((customer) => ({
-    id: customer.id,
-    label: customer.name,
-    meta: `${customer.licenses} licensed seats`,
-    value: formatMoney(customer.revenue),
-    href: `/customers/${customer.id}?tab=offerings`,
-    logo: customer.name,
-  }));
-
-  const typeSegments = REVENUE_TYPES.map((type, index) => {
+  const typeSegments = REVENUE_TYPES.map((type) => {
     const typeLines = lines.filter(({ line }) => line.revenue_type === type);
     return {
       label: REVENUE_TYPE_META[type].label,
       value: typeLines.reduce((sum, item) => sum + item.line.amount, 0),
-      color: VIZ_SERIES[(index + 1) % VIZ_SERIES.length],
-      tip: typeLines.map(
-        ({ customer, line }): TipItem => ({
-          logo: customer,
-          name: customer,
-          sub: line.description || REVENUE_TYPE_META[type].label,
-          value: formatMoney(line.amount),
-        })
-      ),
     };
   }).filter((segment) => segment.value > 0);
 
@@ -170,66 +147,104 @@ export function OfferingReports({
         <StatTile icon={ReceiptText} label="Active contracts" value={String(activeLines.length)} sub={`${formatMoney(activeRevenue)} covered`} />
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-[1.25fr_.75fr] gap-4 items-stretch">
-        <ChartInspector
-          title="Revenue by customer"
-          description="Booked value by account, ranked highest first."
-          records={customerRecords}
-          searchPlaceholder="Find a customer..."
-          className="h-full"
-          bodyClassName="flex items-end"
-          expandedChildren={<BarChart data={customerBars.slice(0, 12)} height={320} format="money" />}
-        >
-          <BarChart data={customerBars.slice(0, 6)} height={165} format="money" />
-        </ChartInspector>
-
-        <Card className="h-full flex flex-col">
+      <Card data-testid="offering-revenue-breakdown" className="p-0 overflow-hidden">
+        <div className="flex items-start justify-between gap-5 border-b border-border-light px-5 py-4">
           <div>
-            <h2 className="text-[15px] font-semibold text-text-primary">Revenue mix</h2>
-            <p className="mt-0.5 text-[12px] text-text-tertiary">How this offering earns revenue.</p>
+            <h2 className="text-[15px] font-semibold text-text-primary">Revenue by customer</h2>
+            <p className="mt-0.5 text-[12px] text-text-tertiary">
+              Revenue, licenses, contracts, and renewals in one compact view.
+            </p>
           </div>
-          <div className="mt-3 flex flex-1 items-center gap-4">
-            <DonutChart
-              segments={typeSegments}
-              size={126}
-              thickness={14}
-              centerLabel={formatMoney(report.totalRevenue)}
-              centerSub="total"
-            />
-            <DonutLegend
-              items={typeSegments.map((segment) => ({
-                label: segment.label,
-                color: segment.color,
-                value: segment.value,
-              }))}
-              format="money"
-            />
-          </div>
-        </Card>
-      </section>
-
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <Card className="h-full">
-          <h2 className="text-[15px] font-semibold text-text-primary">Licensed seats by customer</h2>
-          <p className="mt-0.5 text-[12px] text-text-tertiary">Seat distribution across active customer accounts.</p>
-          <div className="mt-4 divide-y divide-border-light">
-            {report.customers.filter((customer) => customer.licenses > 0).map((customer, index) => (
-              <Link key={customer.id} href={`/customers/${customer.id}?tab=offerings`} className="group flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <CompanyLogo name={customer.name} className="h-8 w-8 shrink-0 text-[8px]" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">{customer.name}</span>
-                    <span className="shrink-0 text-[12px] font-bold text-text-primary tnum">{customer.licenses} seats</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface">
-                    <div className="h-full rounded-full" style={{ width: `${(customer.licenses / maxLicenses) * 100}%`, background: VIZ_SERIES[(index + 1) % VIZ_SERIES.length] }} />
-                  </div>
-                </div>
-              </Link>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {typeSegments.map((segment) => (
+              <span
+                key={segment.label}
+                className="rounded-md border border-border-light bg-surface px-2.5 py-1 text-[10.5px] text-text-secondary"
+              >
+                {segment.label.replace(" revenue", "")}{" "}
+                <strong className="font-semibold text-text-primary tnum">{formatMoney(segment.value)}</strong>
+              </span>
             ))}
           </div>
-        </Card>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[920px]">
+            <div className="grid grid-cols-[minmax(220px,1.3fr)_minmax(190px,1fr)_80px_110px_165px_20px] items-center gap-4 border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+              <span>Customer</span>
+              <span>Booked revenue</span>
+              <span>Seats</span>
+              <span>Contracts</span>
+              <span>Next renewal</span>
+              <span aria-hidden="true" />
+            </div>
+            <div className="divide-y divide-border-light">
+              {customerSummaries.map((customer) => {
+                const renewalStatus = customer.nextRenewal
+                  ? lineStatus(customer.nextRenewal, now)
+                  : null;
+                return (
+                  <Link
+                    key={customer.id}
+                    data-testid="offering-customer-commercial-row"
+                    href={`/customers/${customer.id}?tab=offerings`}
+                    className="group grid grid-cols-[minmax(220px,1.3fr)_minmax(190px,1fr)_80px_110px_165px_20px] items-center gap-4 px-5 py-3 transition-colors hover:bg-surface/60"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <CompanyLogo name={customer.name} className="h-8 w-8 shrink-0 text-[8px]" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                          {customer.name}
+                        </span>
+                        <span className="block text-[10.5px] text-text-tertiary">
+                          {customer.lines.length} revenue {customer.lines.length === 1 ? "line" : "lines"}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="min-w-0">
+                      <span className="flex items-center justify-between gap-3 text-[11.5px]">
+                        <strong className="font-semibold text-text-primary tnum">{formatMoney(customer.revenue)}</strong>
+                        <span className="text-text-tertiary tnum">{customer.share}%</span>
+                      </span>
+                      <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-border-light">
+                        <span
+                          className="block h-full rounded-full bg-blue-primary"
+                          style={{ width: `${customer.share}%` }}
+                        />
+                      </span>
+                    </span>
+                    <span className="text-[12px] font-semibold text-text-primary tnum">
+                      {customer.licenses || "—"}
+                    </span>
+                    <span>
+                      <span className="block text-[11.5px] font-semibold text-text-primary tnum">
+                        {customer.activeContracts} active
+                      </span>
+                      <span className="block text-[10px] text-text-tertiary tnum">{customer.lines.length} total</span>
+                    </span>
+                    <span>
+                      {customer.nextRenewal?.end_date && renewalStatus ? (
+                        <>
+                          <span className="block text-[11px] font-semibold text-text-primary">
+                            {formatDate(customer.nextRenewal.end_date)}
+                          </span>
+                          <span className={cn("mt-1 inline-flex rounded-md px-1.5 py-0.5 text-[9.5px] font-semibold", renewalStatus.className)}>
+                            {renewalStatus.label}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-text-tertiary">Ongoing</span>
+                      )}
+                    </span>
+                    <ChevronRight size={15} className="text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary" />
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </Card>
 
+      <section className="grid grid-cols-1 lg:grid-cols-[1.35fr_.65fr] gap-4 items-stretch">
         <Card className="h-full flex flex-col">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -248,6 +263,46 @@ export function OfferingReports({
               xLabels={monthLabels}
               pointTips={coverageTips}
             />
+          </div>
+        </Card>
+
+        <Card className="h-full p-0 overflow-hidden">
+          <div className="flex items-start justify-between gap-4 border-b border-border-light px-4 py-3.5">
+            <div>
+              <h2 className="text-[15px] font-semibold text-text-primary">Renewal watch</h2>
+              <p className="mt-0.5 text-[12px] text-text-tertiary">Nearest contract decisions.</p>
+            </div>
+            <CalendarClock size={17} strokeWidth={1.8} className="shrink-0 text-blue-primary" />
+          </div>
+          <div className="divide-y divide-border-light">
+            {renewals.slice(0, 4).map((item) => {
+              const status = lineStatus(item.line, now);
+              return (
+                <Link
+                  key={`${item.customerId}-${item.line.id}`}
+                  href={`/customers/${item.customerId}?tab=offerings`}
+                  className="group flex items-center gap-2.5 px-4 py-3 transition-colors hover:bg-surface/60"
+                >
+                  <CompanyLogo name={item.customer} className="h-7 w-7 shrink-0 text-[8px]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[11.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                      {item.customer}
+                    </span>
+                    <span className="block truncate text-[10px] text-text-tertiary">
+                      {REVENUE_TYPE_META[item.line.revenue_type].label}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-[11px] font-semibold text-text-primary tnum">
+                      {formatMoney(item.line.amount)}
+                    </span>
+                    <span className={cn("mt-0.5 inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-semibold", status.className)}>
+                      {status.label}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </Card>
       </section>

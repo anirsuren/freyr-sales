@@ -5,12 +5,46 @@
 // prop accepts a serializable kind ("money" | "duration" | "percent" | …) so
 // SERVER components can use it (a function can't cross the client boundary), or
 // a function for client callers.
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { VIZ } from "./palette";
+
+type ChartAnchor = {
+  x: number;
+  y: number;
+  element?: Element;
+  offsetX?: number;
+  offsetY?: number;
+};
+
+function pointerAnchor(event: {
+  clientX: number;
+  clientY: number;
+  currentTarget: Element;
+}): ChartAnchor {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return {
+    x: event.clientX,
+    y: event.clientY,
+    element: event.currentTarget,
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top,
+  };
+}
+
+function elementAnchor(element: Element, x: number, y: number): ChartAnchor {
+  const rect = element.getBoundingClientRect();
+  return {
+    x,
+    y,
+    element,
+    offsetX: x - rect.left,
+    offsetY: y - rect.top,
+  };
+}
 function useChartHover() {
   const [hover, setHover] = useState<number | null>(null);
 
@@ -28,40 +62,121 @@ function useChartHover() {
 // A tooltip rendered into <body> via a portal so it can NEVER be clipped by a
 // card's overflow or painted over by a neighbouring container — the recurring
 // "the pop-up gets covered / cut off on every graph" bug (Suren). It's fixed to
-// the viewport at the cursor, clamped to stay fully on screen.
+// the viewport, clamped to stay fully on screen. Crucially, it is positioned
+// OUTSIDE the chart bounds rather than over the hovered data. The anchor also
+// keeps its position inside the chart element, so nested page scrolling moves
+// the popup with the graph instead of leaving it stranded over unrelated UI.
 function PortalTip({
   anchor,
   wide,
   children,
 }: {
-  anchor: { x: number; y: number } | null;
+  anchor: ChartAnchor | null;
   wide?: boolean;
   children: React.ReactNode;
 }) {
   const [ready, setReady] = useState(false);
+  const [, refreshPosition] = useState(0);
+  const frameRef = useRef<number | null>(null);
   useEffect(() => setReady(true), []);
+  useEffect(() => {
+    if (!anchor?.element) return;
+    const sync = () => {
+      if (frameRef.current != null) return;
+      frameRef.current = window.requestAnimationFrame(() => {
+        frameRef.current = null;
+        refreshPosition((value) => value + 1);
+      });
+    };
+    window.addEventListener("scroll", sync, { capture: true, passive: true });
+    window.addEventListener("resize", sync);
+    return () => {
+      window.removeEventListener("scroll", sync, { capture: true });
+      window.removeEventListener("resize", sync);
+      if (frameRef.current != null) window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    };
+  }, [anchor?.element]);
   if (!ready || !anchor) return null;
+
+  let currentAnchor = anchor;
+  if (anchor.element) {
+    if (!anchor.element.isConnected) return null;
+    const rect = anchor.element.getBoundingClientRect();
+    if (
+      rect.bottom < 0 ||
+      rect.top > window.innerHeight ||
+      rect.right < 0 ||
+      rect.left > window.innerWidth
+    ) {
+      return null;
+    }
+    currentAnchor = {
+      ...anchor,
+      x: rect.left + (anchor.offsetX ?? anchor.x - rect.left),
+      y: rect.top + (anchor.offsetY ?? anchor.y - rect.top),
+    };
+    // Once the exact hovered point leaves the viewport, let its popup leave
+    // with it instead of pinning the card against a screen edge.
+    if (
+      currentAnchor.x < 4 ||
+      currentAnchor.x > window.innerWidth - 4 ||
+      currentAnchor.y < 4 ||
+      currentAnchor.y > window.innerHeight - 4
+    ) {
+      return null;
+    }
+  }
   const width = wide ? 260 : 210;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const left = Math.max(8, Math.min(vw - width - 8, anchor.x - width / 2));
-  // Prefer above the cursor; flip below if too close to the top.
-  const above = anchor.y > 150;
+  const sideGap = 12;
+  const anchorElement = anchor.element;
+  const chartElement =
+    anchorElement?.closest('[data-chart-root], [role="img"]') ?? anchorElement;
+  const chartRect = chartElement?.getBoundingClientRect() ?? {
+    left: currentAnchor.x,
+    right: currentAnchor.x,
+    top: currentAnchor.y,
+    bottom: currentAnchor.y,
+  };
+  const rooms = {
+    top: Math.max(0, chartRect.top - 8),
+    bottom: Math.max(0, vh - chartRect.bottom - 8),
+  };
+  // Chart detail cards belong above their plot. Only fall below when the chart
+  // is effectively pinned to the top of the viewport and there is materially
+  // more usable room underneath. They never move into a side rail.
+  const placement =
+    rooms.top >= 56 || rooms.top >= rooms.bottom ? "top" : "bottom";
+  const verticalRoom = placement === "top" ? rooms.top : rooms.bottom;
+  const maxHeight = Math.max(48, verticalRoom - sideGap);
+  const left = Math.max(
+    8,
+    Math.min(vw - width - 8, currentAnchor.x - width / 2)
+  );
+  const top = placement === "top"
+    ? chartRect.top - sideGap
+    : chartRect.bottom + sideGap;
   return createPortal(
     <div
       role="tooltip"
       className="fixed z-[9999] pointer-events-none"
       style={{
         left,
-        top: above ? anchor.y - 16 : anchor.y + 18,
+        top,
         width,
-        transform: above ? "translateY(-100%)" : undefined,
-        maxHeight: Math.max(160, (above ? anchor.y : vh - anchor.y) - 24),
+        transform: placement === "top" ? "translateY(-100%)" : undefined,
+        maxHeight,
       }}
     >
       <div
-        className="chart-tip text-left overflow-hidden"
-        style={{ whiteSpace: "normal", width: "100%" }}
+        className={cn("chart-tip text-left overflow-y-auto", "chart-tip-side")}
+        style={{
+          whiteSpace: "normal",
+          width: "100%",
+          maxHeight,
+        }}
       >
         {children}
       </div>
@@ -97,8 +212,18 @@ function fmt(f: Fmt | undefined, v: number): string {
       return `${Math.round(v)}%`;
     case "compact":
       return v >= 1e3 ? `${(v / 1e3).toFixed(1)}k` : String(v);
-    default:
+    default: {
+      const absolute = Math.abs(v);
+      if (absolute >= 1e6) {
+        const value = v / 1e6;
+        return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}M`;
+      }
+      if (absolute >= 1e3) {
+        const value = v / 1e3;
+        return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}K`;
+      }
       return String(v);
+    }
   }
 }
 
@@ -108,7 +233,7 @@ function Tip({
   children,
   wide,
 }: {
-  anchor: { x: number; y: number } | null;
+  anchor: ChartAnchor | null;
   children: React.ReactNode;
   wide?: boolean;
 }) {
@@ -199,7 +324,7 @@ export function AreaChart({
   yMax?: number;
 }) {
   const { hover, show: showHover, clear: clearHover } = useChartHover();
-  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
+  const [mouse, setMouse] = useState<ChartAnchor | null>(null);
   const w = 600;
   const h = height;
   const pad = 6;
@@ -231,7 +356,7 @@ export function AreaChart({
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
     showHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
-    setMouse({ x: e.clientX, y: e.clientY });
+    setMouse(pointerAnchor(e));
   }
 
   return (
@@ -433,31 +558,28 @@ export function DonutChart({
   format?: Fmt;
 }) {
   const { hover, show: showHover, clear: clearHover } = useChartHover();
-  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
-  // Circumference draw-in: each arc starts at length 0 and grows to its share,
-  // staggered by its start position so the ring sweeps around on load (Suren).
-  const [drawn, setDrawn] = useState(false);
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    const r =
-      typeof window !== "undefined" &&
-      !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (r) {
-      setReduce(true);
-      setDrawn(true);
-      return;
-    }
-    const t = setTimeout(() => setDrawn(true), 40);
-    return () => clearTimeout(t);
-  }, []);
+  const [mouse, setMouse] = useState<ChartAnchor | null>(null);
   const rawTotal = segments.reduce((s, x) => s + x.value, 0);
   const total = rawTotal || 1;
-  const r = (size - thickness) / 2;
+  // Reserve room inside the SVG for the thicker hover stroke. Without this,
+  // the ring grows beyond its own viewBox and the outer edge gets visibly
+  // shaved off by the SVG viewport.
+  const hoverStroke = thickness + 4;
+  const r = (size - hoverStroke - 4) / 2;
   const c = 2 * Math.PI * r;
   let offset = 0;
   const summary = segments
     .map((s) => `${s.label} ${Math.round((s.value / total) * 100)}%`)
     .join(", ");
+  const compactCenter = size <= 90;
+  const centerLabelY = size / 2 - (centerSub ? (compactCenter ? 7 : 8) : 0);
+  const centerSubY = size / 2 + (compactCenter ? 14 : 16);
+  function positionTip(event: React.MouseEvent<SVGCircleElement>) {
+    const chartElement = event.currentTarget.ownerSVGElement;
+    if (!chartElement) return;
+    const chart = chartElement.getBoundingClientRect();
+    setMouse(elementAnchor(chartElement, event.clientX, chart.top));
+  }
   return (
     <div className="relative inline-block" style={{ width: size, height: size }}>
       <svg
@@ -478,6 +600,7 @@ export function DonutChart({
           />
           {segments.map((s, i) => {
             const len = (s.value / total) * c;
+            const fullCircle = len >= c - 0.01;
             const el = (
               <circle
                 key={i}
@@ -486,28 +609,24 @@ export function DonutChart({
                 r={r}
                 fill="none"
                 stroke={s.color}
-                strokeWidth={hover === i ? thickness + 3 : thickness}
-                strokeDasharray={drawn ? `${len} ${c - len}` : `0 ${c}`}
-                strokeDashoffset={-offset}
+                strokeWidth={hover === i ? hoverStroke : thickness}
+                strokeDasharray={fullCircle ? undefined : `${len} ${Math.max(0, c - len)}`}
+                strokeDashoffset={fullCircle ? undefined : -offset}
                 strokeLinecap="butt"
                 onMouseEnter={(e) => {
                   showHover(i);
-                  setMouse({ x: e.clientX, y: e.clientY });
+                  positionTip(e);
                 }}
-                onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
+                onMouseMove={positionTip}
                 onMouseLeave={() => {
                   clearHover();
                   setMouse(null);
                 }}
                 style={{
                   cursor: "pointer",
-                  // One continuous sweep: each slice draws for exactly its share
-                  // of the ring and starts the moment the previous slice ends —
-                  // a fixed per-slice duration left gaps mid-animation (Suren:
-                  // "why is this pie chart glitchy?").
-                  transition: reduce
-                    ? "stroke-width 120ms"
-                    : `stroke-dasharray ${((len / c) * 0.7).toFixed(3)}s linear ${((offset / c) * 0.7).toFixed(3)}s, stroke-width 120ms`,
+                  // Keep the arc geometry stable. Animating dash lengths caused
+                  // square notches at segment endpoints as the sweep completed.
+                  transition: "stroke-width 120ms ease",
                 }}
               />
             );
@@ -518,10 +637,10 @@ export function DonutChart({
         {centerLabel && (
           <text
             x={size / 2}
-            y={size / 2 - 4}
+            y={centerLabelY}
             textAnchor="middle"
             dominantBaseline="central"
-            fontSize="24"
+            fontSize={compactCenter ? 20 : 24}
             fontWeight="700"
             className="fill-current text-text-primary"
           >
@@ -531,9 +650,9 @@ export function DonutChart({
         {centerSub && (
           <text
             x={size / 2}
-            y={size / 2 + 16}
+            y={centerSubY}
             textAnchor="middle"
-            fontSize="10"
+            fontSize={compactCenter ? 9 : 10}
             className="fill-current text-text-tertiary"
           >
             {centerSub}
@@ -607,7 +726,7 @@ export function BarChart({
   unit?: string;
 }) {
   const { hover, show: showHover, clear: clearHover } = useChartHover();
-  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
+  const [mouse, setMouse] = useState<ChartAnchor | null>(null);
   const max = Math.max(...data.map((d) => d.value), 1);
   const total = data.reduce((sum, item) => sum + item.value, 0);
   const ranked = [...data].sort((a, b) => b.value - a.value);
@@ -635,9 +754,9 @@ export function BarChart({
           className="group/bar relative z-[1] flex h-full min-w-0 flex-col items-center rounded-md transition-colors hover:bg-surface/45"
           onMouseEnter={(e) => {
             showHover(i);
-            setMouse({ x: e.clientX, y: e.clientY });
+            setMouse(pointerAnchor(e));
           }}
-          onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
+          onMouseMove={(e) => setMouse(pointerAnchor(e))}
           onMouseLeave={() => {
             clearHover();
             setMouse(null);
@@ -727,7 +846,7 @@ export function LineChart({
   pointTips?: TipItem[][];
 }) {
   const { hover, show: showHover, clear: clearHover } = useChartHover();
-  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
+  const [mouse, setMouse] = useState<ChartAnchor | null>(null);
   const w = 600;
   const h = height;
   const pad = 8;
@@ -745,7 +864,7 @@ export function LineChart({
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
     showHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
-    setMouse({ x: e.clientX, y: e.clientY });
+    setMouse(pointerAnchor(e));
   }
 
   return (
@@ -923,6 +1042,7 @@ export function Sparkline({
   unit,
   pointTips,
   label,
+  interactive = true,
 }: {
   points: number[];
   color?: string;
@@ -936,9 +1056,12 @@ export function Sparkline({
   // Names the metric in compact contexts where the surrounding card title is
   // not part of the portaled tooltip (for example dashboard KPI sparklines).
   label?: string;
+  // Disable the point tooltip when the sparkline is itself the trigger for a
+  // larger contextual preview. This prevents two overlapping popovers.
+  interactive?: boolean;
 }) {
   const { hover, show: showHover, clear: clearHover } = useChartHover();
-  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
+  const [mouse, setMouse] = useState<ChartAnchor | null>(null);
   const w = 120;
   const h = height;
   const pad = 3;
@@ -957,15 +1080,15 @@ export function Sparkline({
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
     showHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
-    setMouse({ x: e.clientX, y: e.clientY });
+    setMouse(pointerAnchor(e));
   }
 
   return (
     <div
       className="relative w-full"
       style={{ height }}
-      onMouseMove={onMove}
-      onMouseLeave={() => { clearHover(); setMouse(null); }}
+      onMouseMove={interactive ? onMove : undefined}
+      onMouseLeave={interactive ? () => { clearHover(); setMouse(null); } : undefined}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -993,7 +1116,7 @@ export function Sparkline({
           transform: "translate(-50%,-50%)",
         }}
       />
-      {hover != null && (
+      {interactive && hover != null && (
         <Tip anchor={mouse} wide>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
@@ -1074,20 +1197,40 @@ export function DonutLegend({
 
 export function Legend({
   items,
+  layout = "row",
 }: {
   items: { label: string; color: string; value?: string }[];
+  layout?: "row" | "column";
 }) {
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+    <div
+      className={cn(
+        "flex gap-x-4 gap-y-1.5",
+        layout === "column" ? "min-w-0 flex-1 flex-col" : "flex-wrap"
+      )}
+    >
       {items.map((it, i) => (
-        <span key={i} className="flex items-center gap-1.5 text-[12px]">
+        <span
+          key={i}
+          className={cn(
+            "flex min-w-0 items-center gap-1.5 text-[12px]",
+            layout === "column" && "w-full"
+          )}
+        >
           <span
-            className="w-2.5 h-2.5 rounded-sm"
+            className="h-2.5 w-2.5 shrink-0 rounded-sm"
             style={{ background: it.color }}
           />
-          <span className="text-text-secondary">{it.label}</span>
+          <span className="whitespace-nowrap text-text-secondary">{it.label}</span>
           {it.value && (
-            <span className="text-text-primary font-medium tnum">{it.value}</span>
+            <span
+              className={cn(
+                "shrink-0 font-medium text-text-primary tnum",
+                layout === "column" && "ml-auto"
+              )}
+            >
+              {it.value}
+            </span>
           )}
         </span>
       ))}

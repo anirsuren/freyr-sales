@@ -101,14 +101,20 @@ function CampaignAudienceFan({
           }}
         >
           <Tooltip
-            delayMs={0}
             side="bottom"
             label={
-              <span className="block min-w-[150px]">
-                <span className="block font-semibold text-white">{item.name}</span>
-                <span className="mt-0.5 block text-[11px] text-white/70">{item.detail}</span>
-                <span className="mt-1 block text-[10px] font-medium text-white/55">
-                  Open {item.kind}
+              <span className="flex min-w-[210px] items-center gap-2.5 py-0.5">
+                {item.kind === "contact" ? (
+                  <Avatar name={item.name} className="h-9 w-9 text-[10px]" />
+                ) : (
+                  <CompanyLogo name={item.name} className="h-9 w-9 rounded-lg text-[8px]" />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-text-primary">{item.name}</span>
+                  <span className="mt-0.5 block text-[11px] text-text-secondary">{item.detail}</span>
+                  <span className="mt-1 block text-[10px] font-medium text-text-tertiary">
+                    Open {item.kind}
+                  </span>
                 </span>
               </span>
             }
@@ -136,7 +142,6 @@ function CampaignAudienceFan({
       ))}
       {hidden > 0 && (
         <Tooltip
-          delayMs={0}
           side="bottom"
           label={items
             .slice(visible.length)
@@ -175,11 +180,11 @@ function Gauge({
     ? live.map((s) => (tip && tip.length ? { ...s, tip } : s))
     : [{ label: "empty", value: 1, color: "#EEF0F3" }];
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <div className="relative" style={{ width: 64, height: 64 }}>
-        <DonutChart segments={finalSegs} size={64} thickness={8} />
+    <div className="flex min-w-[80px] flex-col items-center gap-1.5">
+      <div className="relative" style={{ width: 76, height: 76 }}>
+        <DonutChart segments={finalSegs} size={76} thickness={9} />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="text-[14px] font-bold tnum text-text-primary leading-none">
+          <span className="text-[15px] font-bold tnum text-text-primary leading-none">
             {pct}%
           </span>
         </div>
@@ -888,7 +893,7 @@ export function CampaignsView({
                     <div className="self-center h-16 w-px bg-border-light" />
                     {/* Three data points, three matching gauges (Suren: "I want
                         three data points… another gauge graph"). */}
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-5">
                     <Gauge
                       label="Delivery"
                       pct={pct}

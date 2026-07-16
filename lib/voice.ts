@@ -372,6 +372,14 @@ export function mockCallTranscript(
     role: "agent",
     message: `In short, we take the routine regulatory load off your team so they can focus on strategy — former FDA and EMA reviewers, 5,000+ submissions delivered. Where does ${what.toLowerCase()} sit on your priority list right now?`,
   };
+  const contactContext: MockTurn | null =
+    call.contact_name === "Megan Ruiz" && call.id === "vc-seed-08"
+      ? {
+          role: "user",
+          message:
+            "We are also reviewing biomedical labeling requirements for the Canada launch, especially how the evidence should appear across the label and artwork.",
+        }
+      : null;
 
   if (call.outcome === "no_answer") {
     return {
@@ -425,6 +433,7 @@ export function mockCallTranscript(
     turns: [
       opener,
       { role: "user", message: `Yeah, good timing actually — we've been feeling this.` },
+      ...(contactContext ? [contactContext] : []),
       value,
       { role: "user", message: `It's high. We're stretched thin heading into a filing. What would working together look like?` },
       {

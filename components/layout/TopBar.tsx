@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,7 @@ export function TopBar({
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [userOpen, setUserOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (offeringsOnly) return;
@@ -118,6 +119,22 @@ export function TopBar({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    if (!userOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) setUserOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setUserOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [userOpen]);
 
   return (
     <header className="sticky top-0 z-40 h-14 shrink-0 bg-white border-b border-border-light flex items-center justify-between gap-4 px-4 lg:px-8">
@@ -290,7 +307,7 @@ export function TopBar({
           <CircleHelp size={19} strokeWidth={1.5} />
         </button>}
         {!offeringsOnly && <div className="w-px h-7 bg-border-light mx-2" />}
-        {!offeringsOnly && <div className="relative">
+        {!offeringsOnly && <div className="relative" ref={userMenuRef}>
           <button
             aria-label="Account menu"
             aria-haspopup="menu"
@@ -305,13 +322,11 @@ export function TopBar({
             <ChevronDown size={16} strokeWidth={1.5} className="text-text-tertiary" />
           </button>
           {userOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setUserOpen(false)} />
-              <div
-                role="menu"
-                aria-label="Account menu"
-                className="absolute right-0 mt-2 w-[248px] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden"
-              >
+            <div
+              role="menu"
+              aria-label="Account menu"
+              className="absolute right-0 mt-2 w-[248px] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden"
+            >
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-border-light">
                   <Avatar name="Suren Dheen" className="w-9 h-9 text-[13px]" />
                   <div className="min-w-0">
@@ -380,9 +395,17 @@ export function TopBar({
                     <CircleHelp size={16} strokeWidth={1.7} className="text-text-secondary" />
                     Keyboard shortcuts
                   </button>
+                  <div className="my-1 border-t border-border-light" />
+                  <a
+                    role="menuitem"
+                    href="/api/auth/logout"
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-error hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut size={16} strokeWidth={1.7} />
+                    Log out
+                  </a>
                 </div>
               </div>
-            </>
           )}
         </div>}
       </div>

@@ -104,26 +104,49 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("07 — pitch tabs switch content correctly", async ({ page }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
-    await page.click("text=Intro Email");
+    await page.getByRole("tab", { name: "Intro Email" }).click();
     await expect(page.locator("text=/subject/i").first()).toBeVisible();
-    await page.click("text=Cold Call Script");
+    const subjectCarousel = page.getByRole("listbox", {
+      name: "Subject line options",
+    });
+    await expect(subjectCarousel).toBeVisible();
+    const subjectOptions = subjectCarousel.getByRole("option");
+    await expect(subjectOptions).toHaveCount(3);
+    await expect(subjectOptions.nth(0)).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("button", { name: "Next subject line" }).click();
+    await expect(subjectOptions.nth(1)).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Cold Call Script" }).click();
     await expect(
       page.locator("textarea, [contenteditable]").first()
     ).toBeVisible();
-    await page.click("text=5-Min Script");
+    await page.getByRole("tab", { name: "5-Min Script" }).click();
     await expect(
       page.locator("textarea, [contenteditable]").first()
     ).toBeVisible();
   });
 
   test("08 — copy button exists on each pitch tab", async ({ page }) => {
+    // Force the same non-secure conditions as the current HTTP AWS address.
+    // The selection fallback must work even when Clipboard.writeText cannot.
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "isSecureContext", {
+        configurable: true,
+        value: false,
+      });
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: undefined,
+      });
+    });
     await page.goto(`${BASE}/sessions/sess-001`);
     // Copy is an icon-only toolbar button now — aria-label carries the name.
     const copy = page.getByRole("button", { name: "Copy to clipboard" });
     await expect(copy).toBeVisible();
-    await page.click("text=Intro Email");
+    await copy.click();
+    await expect(page.getByText("Copied to clipboard")).toBeVisible();
+    await page.getByRole("tab", { name: "Intro Email" }).click();
     await expect(copy).toBeVisible();
-    await page.click("text=Cold Call Script");
+    await page.getByRole("tab", { name: "Cold Call Script" }).click();
     await expect(copy).toBeVisible();
   });
 
@@ -1124,6 +1147,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByRole("heading", { name: "Quota attainment" })
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "By stage" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Forecast risk" })).toBeVisible();
+    await expect(page.getByText("Deals driving the risk", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "By rep" })).toBeVisible();
   });
 
@@ -1761,6 +1786,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(
       page.getByRole("menuitem", { name: "Agent settings" })
     ).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
+
+    const main = page.locator("main");
+    const scrollable = await main.evaluate(
+      (element) => element.scrollHeight > element.clientHeight
+    );
+    if (scrollable) {
+      await main.evaluate((element) => element.scrollTo({ top: 120 }));
+      await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    }
+
     await settings.click();
     await expect(page).toHaveURL(/\/settings/);
   });
@@ -5064,6 +5100,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(tooltip).toContainText("Total shown");
     await expect(tooltip).toContainText("Records in this segment");
     await expect(tooltip).toContainText(/Marcus Thorne|Owen Bradley|Claudia Hofmann/);
+
+    const tooltipBox = await tooltip.boundingBox();
+    const chartBox = await chart.boundingBox();
+    expect(tooltipBox && chartBox).toBeTruthy();
+    expect(
+      tooltipBox!.x >= chartBox!.x + chartBox!.width ||
+        tooltipBox!.x + tooltipBox!.width <= chartBox!.x
+    ).toBe(true);
   });
 
   test("335 — campaign cards are fully clickable (V60)", async ({ page }) => {
@@ -5306,5 +5350,173 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await companyLinks.first().hover();
     await expect(page.getByRole("tooltip").last()).toContainText(companyName);
     await expect(page.getByRole("tooltip").last()).toContainText(/campaign recipient/);
+  });
+
+  test("345 — contact call history searches transcript text instead of chart cards (V65)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/voice/contact/cont-008`);
+
+    await expect(page.getByText("How Megan's calls ended")).toBeVisible();
+    await expect(page.getByPlaceholder("Search calls...")).toHaveCount(0);
+
+    const search = page.getByRole("textbox", {
+      name: "Search conversations, summaries, or transcripts",
+    });
+    await expect(search).toBeVisible();
+    await search.fill("biomedical");
+
+    await expect(page.getByText("Transcript match")).toBeVisible();
+    await expect(page.locator("mark").filter({ hasText: "biomedical" })).toBeVisible();
+    await expect(page.getByText("1 match")).toBeVisible();
+  });
+
+  test("346 — campaign engagement tooltip stays beside the chart (V66)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/campaigns`);
+
+    const chart = page.getByRole("img", {
+      name: /Line chart: Sent peaks at 6, Opened peaks at 4, Replied peaks at 2/,
+    });
+    await expect(chart).toBeVisible();
+    await chart.hover({ position: { x: 130, y: 44 } });
+
+    const tooltip = page.getByRole("tooltip");
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText("Records at this point");
+
+    const chartBox = await chart.boundingBox();
+    const tooltipBox = await tooltip.boundingBox();
+    expect(chartBox && tooltipBox).toBeTruthy();
+    expect(
+      tooltipBox!.x >= chartBox!.x + chartBox!.width ||
+        tooltipBox!.x + tooltipBox!.width <= chartBox!.x
+    ).toBe(true);
+  });
+
+  test("346b — shared donut tooltips never cover the chart", async ({ page }) => {
+    const pagesWithDonuts: { path: string; name: RegExp }[] = [
+      { path: "/dashboard", name: /Donut chart: Prospect/ },
+      { path: "/forecast", name: /Donut chart: Active/ },
+      {
+        path: "/customers/cust-004?tab=analytics",
+        name: /Donut chart: In Progress/,
+      },
+      {
+        path: "/voice/agents/maya-regulatory-affairs",
+        name: /Donut chart: Interested/,
+      },
+    ];
+
+    for (const { path, name } of pagesWithDonuts) {
+      await page.goto(`${BASE}${path}`);
+      const chart = page.getByRole("img", { name }).first();
+      await expect(chart).toBeVisible();
+      await page.waitForTimeout(500);
+      await chart.scrollIntoViewIfNeeded();
+      const chartBox = await chart.boundingBox();
+      expect(chartBox).not.toBeNull();
+      await page.mouse.move(
+        chartBox!.x + chartBox!.width / 2 + Math.min(20, chartBox!.width / 6),
+        chartBox!.y + 7,
+        { steps: 4 }
+      );
+
+      const tooltip = page.locator('[role="tooltip"].pointer-events-none');
+      await expect(tooltip).toBeVisible();
+      const tooltipBox = await tooltip.boundingBox();
+      expect(chartBox && tooltipBox).toBeTruthy();
+
+      const separatedHorizontally =
+        tooltipBox!.x >= chartBox!.x + chartBox!.width ||
+        tooltipBox!.x + tooltipBox!.width <= chartBox!.x;
+      const separatedVertically =
+        tooltipBox!.y >= chartBox!.y + chartBox!.height ||
+        tooltipBox!.y + tooltipBox!.height <= chartBox!.y;
+      expect(separatedHorizontally || separatedVertically).toBe(true);
+
+      await page.mouse.move(0, 0);
+      await expect(tooltip).toBeHidden();
+    }
+  });
+
+  test("347 — rep pipeline segments show sales context without breaking row expansion (V67)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/analytics`);
+
+    const bar = page.getByTestId("rep-pipeline-stage-bar").first();
+    const segment = bar.getByTestId("rep-pipeline-stage-segment").first();
+    await expect(bar).toBeVisible();
+    await expect(segment).toBeVisible();
+    expect(await segment.getAttribute("title")).toBeNull();
+
+    await segment.hover();
+    const tooltip = page.getByRole("tooltip");
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText("pipeline");
+    await expect(tooltip).toContainText("Open deals");
+    await expect(tooltip).toContainText("Win odds");
+    await expect(tooltip).toContainText("Weighted");
+    await expect(tooltip).toContainText("Stage mix");
+
+    await page.mouse.move(0, 0);
+    const row = bar.locator("xpath=ancestor::button[@aria-expanded][1]");
+    await row.click();
+    await expect(row).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByText("Pipeline value by stage").first()).toBeVisible();
+  });
+
+  test("348 — sequence cadence stays on one horizontally scrollable row (V68)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/sequences`);
+
+    const timeline = page.getByTestId("sequence-cadence-scroll");
+    const steps = timeline.getByTestId("sequence-cadence-step");
+    await expect(timeline).toBeVisible();
+    await expect(steps).toHaveCount(7);
+
+    const positions = await steps.evaluateAll((cards) =>
+      cards.map((card) => {
+        const rect = card.getBoundingClientRect();
+        return { x: rect.x, y: rect.y };
+      })
+    );
+    expect(new Set(positions.map(({ y }) => Math.round(y))).size).toBe(1);
+
+    const before = await timeline.evaluate((element) => ({
+      left: element.scrollLeft,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(before.scrollWidth).toBeGreaterThan(before.clientWidth);
+
+    await timeline.evaluate((element) => {
+      element.scrollLeft = element.scrollWidth;
+    });
+    await expect.poll(() => timeline.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    await expect(steps.last()).toBeInViewport();
+  });
+
+  test("349 — offering report uses a compact commercial breakdown (V69)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/offerings/of-001?tab=reports`);
+
+    const breakdown = page.getByTestId("offering-revenue-breakdown");
+    await expect(breakdown).toBeVisible();
+    await expect(breakdown.getByTestId("offering-customer-commercial-row")).toHaveCount(2);
+    await expect(breakdown).toContainText("Helix Biologics");
+    await expect(breakdown).toContainText("Meridian Pharmaceuticals");
+    await expect(page.getByText("Revenue mix")).toHaveCount(0);
+    await expect(page.getByText("Licensed seats by customer")).toHaveCount(0);
+    await expect(page.getByText("Contracted revenue outlook")).toBeVisible();
+    await expect(page.getByText("Renewal watch")).toBeVisible();
+
+    const box = await breakdown.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeLessThan(360);
   });
 });

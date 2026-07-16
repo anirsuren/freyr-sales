@@ -16,6 +16,7 @@ import { DashboardToggle } from "@/components/dashboard/DashboardToggle";
 import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import {
   AreaChart,
+  DonutChart,
   Legend,
   VIZ,
 } from "@/components/charts/Charts";
@@ -25,6 +26,7 @@ import {
   pipelineGrowthSeries,
   pipelineGrowthPointDeals,
   STAGES,
+  STAGE_COLOR,
   STAGE_PROBABILITY,
   formatMoney,
 } from "@/lib/pipeline";
@@ -37,6 +39,7 @@ import { KpiCustomize } from "@/components/dashboard/KpiCustomize";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { WeeklyDigest } from "@/components/dashboard/WeeklyDigest";
 import { AgentAttentionQueue } from "@/components/dashboard/AgentAttentionQueue";
+import { AccountAttentionPreview } from "@/components/dashboard/AccountAttentionPreview";
 import { DashboardMoreActions } from "@/components/dashboard/DashboardMoreActions";
 import { HoverCard } from "@/components/ui/HoverCard";
 import type { RecommendedService } from "@/lib/types";
@@ -135,6 +138,7 @@ export default async function DashboardPage({
       loggedBy: i.logged_by,
       when: formatDateTime(i.created_at),
       customerId: i.customer_id,
+      contactId: i.contact_id,
     }));
 
   // ---- analytics aggregates ----
@@ -304,6 +308,33 @@ export default async function DashboardPage({
         (deal) => deal.customerId === cust.id && deal.stage !== "Closed Lost"
       );
       const accountContacts = contacts.filter((contact) => contact.customer_id === cust.id);
+      const primaryContact = accountContacts[0];
+      const latestInteraction = accountInteractions[0];
+      const largestDeal = [...accountDeals].sort((a, b) => b.value - a.value)[0];
+      const nextFollowUp = accountInteractions
+        .map((interaction) => interaction.follow_up_date)
+        .filter((date): date is string => Boolean(date))
+        .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] || null;
+      const stageBreakdown = STAGES.filter((stage) => stage !== "Closed Lost")
+        .map((stage) => {
+          const stageDeals = accountDeals.filter((deal) => deal.stage === stage);
+          return {
+            stage,
+            count: stageDeals.length,
+            value: stageDeals.reduce((sum, deal) => sum + deal.value, 0),
+          };
+        })
+        .filter((stage) => stage.count > 0);
+      const recommendedAction =
+        accountContacts.length === 0
+          ? "Map a buying contact before the next outreach."
+          : nextFollowUp
+            ? `Follow up with ${primaryContact?.full_name || "the primary contact"} on ${new Date(nextFollowUp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`
+            : latestInteraction?.notes
+              ? "Review the latest interaction and schedule a concrete next step."
+              : largestDeal
+                ? `Advance the ${largestDeal.stage.toLowerCase()} deal with a dated next step.`
+                : "Qualify an opportunity and assign an owner."
       return {
         id: cust.id,
         company: cust.company_name,
@@ -315,10 +346,21 @@ export default async function DashboardPage({
         openValue: accountDeals.reduce((sum, deal) => sum + deal.value, 0),
         dealCount: accountDeals.length,
         contactCount: accountContacts.length,
-        primaryContact: accountContacts[0]?.full_name || "No contact mapped",
-        lastTouch: accountInteractions[0]?.created_at
-          ? formatDateTime(accountInteractions[0].created_at)
+        primaryContact: primaryContact?.full_name || "No contact mapped",
+        primaryContactTitle: primaryContact?.job_title || "Role not set",
+        lastTouch: latestInteraction?.created_at
+          ? formatDateTime(latestInteraction.created_at)
           : "No activity logged",
+        latestOutcome: latestInteraction?.outcome || null,
+        latestNote: latestInteraction?.notes || null,
+        nextFollowUp,
+        owner: cust.owner || largestDeal?.owner || "Unassigned",
+        industry: cust.industry || "Industry not set",
+        segment: [cust.customer_type || cust.size_tier, cust.geography].filter(Boolean).join(" · ") || "Segment not set",
+        largestDealValue: largestDeal?.value || 0,
+        largestDealStage: largestDeal?.stage || "No open deal",
+        stageBreakdown,
+        recommendedAction,
       };
     })
     .filter((a) => a.health.band !== "healthy")
@@ -450,7 +492,6 @@ export default async function DashboardPage({
     };
   });
 
-  const forecastGap = Math.max(0, QUARTER_QUOTA - commit);
   const mustCloseDeals = healthDeals
     .filter((deal) => deal.stage !== "Closed Lost")
     .sort((a, b) => {
@@ -458,6 +499,43 @@ export default async function DashboardPage({
       return probability || b.value - a.value;
     })
     .slice(0, 3);
+  const quarterOpenDeals = healthDeals.filter((deal) => deal.stage !== "Closed Lost");
+  const quarterBestCase = quarterOpenDeals.reduce((sum, deal) => sum + deal.value, 0);
+  const quarterCommit = quarterOpenDeals.reduce(
+    (sum, deal) => sum + deal.value * (STAGE_PROBABILITY[deal.stage] ?? 0),
+    0
+  );
+  const quarterGap = Math.max(0, QUARTER_QUOTA - quarterCommit);
+  const quarterCommitAttainment = Math.round((quarterCommit / QUARTER_QUOTA) * 100);
+  const quarterPipelineAttainment = Math.round((quarterBestCase / QUARTER_QUOTA) * 100);
+  const forecastStageRows = STAGES.filter((stage) => stage !== "Closed Lost")
+    .map((stage) => {
+      const stageDeals = quarterOpenDeals.filter((deal) => deal.stage === stage);
+      const weighted = stageDeals.reduce(
+        (sum, deal) => sum + deal.value * (STAGE_PROBABILITY[stage] ?? 0),
+        0
+      );
+      return {
+        stage,
+        count: stageDeals.length,
+        weighted,
+        raw: stageDeals.reduce((sum, deal) => sum + deal.value, 0),
+        share: quarterCommit ? Math.round((weighted / quarterCommit) * 100) : 0,
+        deals: stageDeals,
+      };
+    })
+    .filter((row) => row.count > 0);
+  const forecastSegments = forecastStageRows.map((row) => ({
+    label: row.stage,
+    value: row.weighted,
+    color: STAGE_COLOR[row.stage],
+    tip: row.deals.map((deal) => ({
+      logo: deal.company,
+      name: deal.company,
+      sub: `${deal.contactName} · ${Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}% close probability`,
+      value: `${formatMoney(deal.value)} raw`,
+    })),
+  }));
 
   const overview = (
     <>
@@ -483,10 +561,10 @@ export default async function DashboardPage({
             </div>
             <div className="mt-4 grid grid-cols-4 divide-x divide-border-light rounded-md border border-border-light bg-surface/45">
               {[
-                ["Weighted commit", formatMoney(commit), `${commitAttainment}% of quota`],
-                ["Best case", formatMoney(bestCase), `${pipelineAttainment}% of quota`],
-                ["Gap to quota", formatMoney(forecastGap), forecastGap ? "Needs closing coverage" : "Quota covered"],
-                ["Open deals", String(healthDeals.filter((deal) => deal.stage !== "Closed Lost").length), `${riskDeals.length} currently at risk`],
+                ["Weighted commit", formatMoney(quarterCommit), `${quarterCommitAttainment}% of quota`],
+                ["Best case", formatMoney(quarterBestCase), `${quarterPipelineAttainment}% of quota`],
+                ["Gap to quota", formatMoney(quarterGap), quarterGap ? "Needs closing coverage" : "Quota covered"],
+                ["Open deals", String(quarterOpenDeals.length), `${riskDeals.length} currently at risk`],
               ].map(([label, value, context]) => (
                 <div key={label} className="px-3.5 py-2.5">
                   <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">{label}</p>
@@ -499,7 +577,7 @@ export default async function DashboardPage({
           <div className="px-3 pb-5 pt-3">
             <AreaChart
               data={trendSeries}
-              height={238}
+              height={205}
               id="dash-trend"
               color={VIZ.blue}
               goal={3.0}
@@ -511,37 +589,115 @@ export default async function DashboardPage({
             />
           </div>
         </Card>
-        <Card className="p-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border-light px-5 py-3.5">
-            <div>
-              <h2 className="text-[15px] font-semibold text-text-primary">Must close to hit quota</h2>
-              <p className="mt-0.5 text-[11px] text-text-tertiary">Ranked by stage confidence and value</p>
+        <div className="grid gap-4 lg:grid-cols-12">
+          <Card className="overflow-visible p-5 lg:col-span-7">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[15px] font-semibold text-text-primary">Expected revenue by stage</h2>
+                <p className="mt-0.5 text-[11px] text-text-tertiary">Probability-adjusted revenue expected from each pipeline stage.</p>
+              </div>
+              <Link href="/forecast" className="shrink-0 text-[11px] font-semibold text-blue-primary hover:underline">Full forecast</Link>
             </div>
-            <span className="text-[12px] font-semibold text-error tnum">{formatMoney(forecastGap)} gap</span>
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-border-light">
-            {mustCloseDeals.map((deal) => {
-              const probability = STAGE_PROBABILITY[deal.stage] ?? 0;
-              const confidence = probability >= 0.65 ? "High" : probability >= 0.35 ? "Medium" : "Low";
-              return (
-                <Link key={deal.sessionId} href={`/sessions/${deal.sessionId}`} className="group min-w-0 px-5 py-3.5 hover:bg-surface transition-colors">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <CompanyLogo name={deal.company} className="h-8 w-8 shrink-0 text-[8px]" />
-                    <div className="min-w-0 flex-1">
-                      <span className="block truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary" title={deal.company}>{deal.company}</span>
-                      <span className="mt-0.5 block text-[10.5px] text-text-tertiary">{deal.stage}</span>
+            <div className="mt-4 grid grid-cols-[180px_minmax(0,1fr)] items-center gap-5">
+              <div className="flex justify-center">
+                <DonutChart
+                  segments={forecastSegments}
+                  size={170}
+                  thickness={20}
+                  centerLabel={formatMoney(quarterCommit)}
+                  centerSub="expected revenue"
+                  format="money"
+                />
+              </div>
+              <div className="space-y-2.5">
+                {forecastStageRows.map((row) => (
+                  <div key={row.stage}>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: STAGE_COLOR[row.stage] }} />
+                      <span className="min-w-0 flex-1 truncate font-medium text-text-primary">{row.stage}</span>
+                      <span className="shrink-0 text-right font-semibold text-text-primary tnum">{formatMoney(row.weighted)} expected</span>
                     </div>
-                    <span className="text-right text-[13px] font-bold text-text-primary tnum">{formatMoney(deal.value)}</span>
+                    <div className="ml-[18px] mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface">
+                      <div className="h-full rounded-full" style={{ width: `${Math.max(3, row.share)}%`, background: STAGE_COLOR[row.stage] }} />
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-center justify-between border-t border-border-light pt-2">
-                    <span className="text-[10px] text-text-tertiary">Close confidence</span>
-                    <span className={confidence === "High" ? "text-[10.5px] font-semibold text-success" : confidence === "Medium" ? "text-[10.5px] font-semibold text-warning" : "text-[10.5px] font-semibold text-text-tertiary"}>{confidence}</span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </Card>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          <Card className="overflow-visible p-0 lg:col-span-5">
+            <div className="flex items-center justify-between border-b border-border-light px-5 py-3.5">
+              <div>
+                <h2 className="text-[15px] font-semibold text-text-primary">Must close to hit quota</h2>
+                <p className="mt-0.5 text-[11px] text-text-tertiary">Best mix of confidence and value</p>
+              </div>
+              <span className="text-[12px] font-semibold text-error tnum">{formatMoney(quarterGap)} gap</span>
+            </div>
+            <div className="divide-y divide-border-light">
+              {mustCloseDeals.map((deal) => {
+                const probability = STAGE_PROBABILITY[deal.stage] ?? 0;
+                const confidence = probability >= 0.65 ? "High" : probability >= 0.35 ? "Medium" : "Low";
+                const nextMove =
+                  deal.stage === "Meeting Booked"
+                    ? "Confirm the meeting outcome, buying process, and a dated commercial next step."
+                    : deal.stage === "Qualified"
+                      ? "Lock the decision criteria, stakeholders, and meeting date."
+                      : deal.stage === "Engaged"
+                        ? "Convert interest into a qualified use case and meeting."
+                        : "Secure a response and confirm the account is a live opportunity.";
+                return (
+                  <HoverCard
+                    key={deal.sessionId}
+                    width={420}
+                    content={
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <CompanyLogo name={deal.company} className="h-10 w-10 shrink-0 text-[9px]" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] font-semibold text-text-primary">{deal.company}</p>
+                            <p className="mt-0.5 truncate text-[10.5px] text-text-tertiary">{deal.service}</p>
+                          </div>
+                          <span className="text-[17px] font-bold text-text-primary tnum">{formatMoney(deal.value)}</span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-4 divide-x divide-border-light rounded-md bg-surface px-2 py-2.5 text-center">
+                          <div><p className="text-[12px] font-bold text-text-primary">{deal.stage}</p><p className="text-[9px] text-text-tertiary">Stage</p></div>
+                          <div><p className="text-[12px] font-bold text-text-primary tnum">{Math.round(probability * 100)}%</p><p className="text-[9px] text-text-tertiary">Probability</p></div>
+                          <div><p className="text-[12px] font-bold text-text-primary tnum">{formatMoney(deal.value * probability)}</p><p className="text-[9px] text-text-tertiary">Weighted</p></div>
+                          <div><p className={deal.staleDays > 14 ? "text-[12px] font-bold text-error tnum" : "text-[12px] font-bold text-text-primary tnum"}>{deal.staleDays}d</p><p className="text-[9px] text-text-tertiary">Since activity</p></div>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <Avatar name={deal.contactName} className="h-7 w-7 text-[8px]" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[11px] font-semibold text-text-primary">{deal.contactName}</p>
+                            <p className="truncate text-[10px] text-text-tertiary">Owned by {deal.owner}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 rounded-md border border-blue-subtle bg-blue-light/40 px-3 py-2.5">
+                          <p className="text-[9.5px] font-semibold uppercase tracking-[0.05em] text-blue-primary">Recommended next move</p>
+                          <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">{nextMove}</p>
+                        </div>
+                      </div>
+                    }
+                  >
+                    <Link href={`/sessions/${deal.sessionId}`} className="group flex min-w-0 items-center gap-3 px-5 py-3 hover:bg-surface transition-colors">
+                      <CompanyLogo name={deal.company} className="h-8 w-8 shrink-0 text-[8px]" />
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">{deal.company}</span>
+                        <span className="mt-0.5 block text-[10.5px] text-text-tertiary">{deal.stage} · {confidence} confidence</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="block text-[13px] font-bold text-text-primary tnum">{formatMoney(deal.value)}</span>
+                        <span className="text-[10px] text-text-tertiary tnum">{formatMoney(deal.value * probability)} weighted</span>
+                      </div>
+                      <ArrowRight size={14} className="shrink-0 text-text-tertiary" />
+                    </Link>
+                  </HoverCard>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
       </section>
 
       {/* Needs attention + activity */}
@@ -561,41 +717,9 @@ export default async function DashboardPage({
               {atRisk.map((a) => (
                 <HoverCard
                   key={a.id}
-                  delayMs={0}
-                  width={360}
-                  content={
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <CompanyLogo name={a.company} className="h-10 w-10 shrink-0 text-[9px]" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-semibold text-text-primary">{a.company}</p>
-                          <p className="mt-0.5 text-[10.5px] text-text-tertiary">Last touch {a.lastTouch}</p>
-                        </div>
-                        <HealthBadge health={a.health} />
-                      </div>
-                      <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface px-2 py-2.5 text-center">
-                        <div><p className="text-[13px] font-bold text-text-primary tnum">{formatMoney(a.openValue)}</p><p className="text-[9px] text-text-tertiary">Open pipeline</p></div>
-                        <div><p className="text-[13px] font-bold text-text-primary tnum">{a.dealCount}</p><p className="text-[9px] text-text-tertiary">Open deals</p></div>
-                        <div><p className="text-[13px] font-bold text-text-primary tnum">{a.contactCount}</p><p className="text-[9px] text-text-tertiary">Contacts</p></div>
-                      </div>
-                      <div className="mt-3">
-                        <p className="text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Why it needs attention</p>
-                        <div className="mt-1.5 space-y-1.5">
-                          {a.health.factors.slice(0, 3).map((factor) => (
-                            <div key={factor.label} className="flex items-center justify-between gap-3 text-[11px]">
-                              <span className="text-text-secondary">{factor.label}</span>
-                              <span className={factor.delta < 0 ? "font-semibold text-error tnum" : "font-semibold text-success tnum"}>{factor.delta > 0 ? "+" : ""}{factor.delta}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2 border-t border-border-light pt-3">
-                        <Avatar name={a.primaryContact} className="h-7 w-7 text-[8px]" />
-                        <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">Primary contact: <strong className="font-semibold text-text-primary">{a.primaryContact}</strong></span>
-                        <span className="text-[11px] font-semibold text-blue-primary">Open account</span>
-                      </div>
-                    </div>
-                  }
+                  width={390}
+                  anchor="cursor"
+                  content={<AccountAttentionPreview {...a} />}
                 >
                   <Link href={`/customers/${a.id}`} className="p-5 flex justify-between items-center gap-3 hover:bg-surface transition-colors group">
                     <div className="flex gap-4 items-center min-w-0">
@@ -645,31 +769,71 @@ export default async function DashboardPage({
                       const positive =
                         a.outcome === "meeting_booked" || a.outcome === "interested";
                       const Icon = positive ? CheckCircle2 : MessageSquareText;
+                      const activityCustomer = customerById[a.customerId];
+                      const activityContact = contactById[a.contactId];
+                      const activityDeals = healthDeals.filter(
+                        (deal) => deal.customerId === a.customerId && deal.stage !== "Closed Lost"
+                      );
+                      const activityInteractions = allInteractionsRaw.filter(
+                        (interaction) => interaction.customer_id === a.customerId
+                      );
+                      const activityContacts = contacts.filter(
+                        (contact) => contact.customer_id === a.customerId
+                      );
+                      const activityHealth = accountHealth({
+                        interactions: activityInteractions,
+                        deals: activityDeals,
+                        contactCount: activityContacts.length,
+                      });
+                      const activityPipeline = activityDeals.reduce((sum, deal) => sum + deal.value, 0);
+                      const activityWeighted = activityDeals.reduce(
+                        (sum, deal) => sum + deal.value * (STAGE_PROBABILITY[deal.stage] ?? 0),
+                        0
+                      );
+                      const nextMove = a.followUp
+                        ? `Follow up with ${a.contact} on ${new Date(a.followUp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`
+                        : positive
+                          ? "Turn the positive signal into a dated next step with the buying team."
+                          : "Review the interaction and schedule the next outreach before the account cools.";
                       return (
                         <HoverCard
                           key={a.id}
-                          delayMs={0}
-                          width={350}
+                          width={430}
                           content={
                             <div>
                               <div className="flex items-center gap-3">
                                 <Avatar name={a.contact} className="h-10 w-10 shrink-0 text-[10px]" />
                                 <div className="min-w-0 flex-1">
                                   <p className="truncate text-[13px] font-semibold text-text-primary">{a.contact}</p>
+                                  <p className="mt-0.5 truncate text-[10.5px] text-text-secondary">{activityContact?.job_title || "Role not set"}</p>
                                   <div className="mt-0.5 flex items-center gap-1.5">
                                     <CompanyLogo name={a.company} className="h-4 w-4 text-[6px]" />
-                                    <span className="truncate text-[10.5px] text-text-tertiary">{a.company}</span>
+                                    <span className="truncate text-[10px] text-text-tertiary">{a.company} · {activityCustomer?.industry || "Industry not set"}</span>
                                   </div>
                                 </div>
-                                <OutcomeBadge outcome={a.outcome} />
+                                <div className="flex flex-col items-end gap-1.5">
+                                  <OutcomeBadge outcome={a.outcome} />
+                                  <HealthBadge health={activityHealth} />
+                                </div>
+                              </div>
+                              <div className="mt-3 grid grid-cols-4 divide-x divide-border-light rounded-md bg-surface px-2 py-2.5 text-center">
+                                <div><p className="text-[12px] font-bold text-text-primary tnum">{formatMoney(activityPipeline)}</p><p className="text-[9px] text-text-tertiary">Pipeline</p></div>
+                                <div><p className="text-[12px] font-bold text-text-primary tnum">{formatMoney(activityWeighted)}</p><p className="text-[9px] text-text-tertiary">Weighted</p></div>
+                                <div><p className="text-[12px] font-bold text-text-primary tnum">{activityDeals.length}</p><p className="text-[9px] text-text-tertiary">Open deals</p></div>
+                                <div><p className="text-[12px] font-bold text-text-primary tnum">{activityContacts.length}</p><p className="text-[9px] text-text-tertiary">Contacts</p></div>
                               </div>
                               <div className="mt-3 rounded-md bg-surface px-3 py-2.5">
                                 <p className="text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Interaction note</p>
                                 <p className="mt-1 text-[11.5px] leading-relaxed text-text-secondary">{a.note || "No note was recorded for this interaction."}</p>
                               </div>
-                              <div className="mt-3 grid grid-cols-2 gap-2 text-[10.5px]">
+                              <div className="mt-3 grid grid-cols-3 gap-2 text-[10.5px]">
                                 <div><p className="text-text-tertiary">Logged</p><p className="mt-0.5 font-semibold text-text-primary">{a.when}</p></div>
                                 <div><p className="text-text-tertiary">Follow-up</p><p className="mt-0.5 font-semibold text-text-primary">{a.followUp ? formatDateTime(a.followUp) : "Not scheduled"}</p></div>
+                                <div><p className="text-text-tertiary">Account owner</p><p className="mt-0.5 truncate font-semibold text-text-primary">{activityCustomer?.owner || activityDeals[0]?.owner || "Unassigned"}</p></div>
+                              </div>
+                              <div className="mt-3 rounded-md border border-blue-subtle bg-blue-light/40 px-3 py-2.5">
+                                <p className="text-[9.5px] font-semibold uppercase tracking-[0.05em] text-blue-primary">Recommended next move</p>
+                                <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">{nextMove}</p>
                               </div>
                               <div className="mt-3 flex items-center gap-2 border-t border-border-light pt-3">
                                 <Avatar name={a.loggedBy} className="h-6 w-6 text-[7px]" />
@@ -764,8 +928,20 @@ export default async function DashboardPage({
                         </Link>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="text-[13px] text-text-primary">{contact?.full_name || "—"}</div>
-                        <div className="text-[11px] text-text-tertiary">{contact?.job_title || ""}</div>
+                        <div className="flex min-w-[190px] items-center gap-2.5">
+                          <Avatar
+                            name={contact?.full_name || "Primary contact"}
+                            className="h-8 w-8 shrink-0 text-[9px]"
+                          />
+                          <div className="min-w-0">
+                            <div className="truncate text-[13px] font-medium text-text-primary">
+                              {contact?.full_name || "—"}
+                            </div>
+                            <div className="truncate text-[11px] text-text-tertiary">
+                              {contact?.job_title || ""}
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">
                         {services[0]?.service_name || "—"}
