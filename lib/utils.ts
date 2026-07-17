@@ -80,8 +80,8 @@ export const OUTCOME_META: Record<
   },
   in_progress: {
     label: "In Progress",
-    bg: "rgba(255,159,10,0.12)",
-    color: "#7A4A00",
+    bg: "rgba(255,204,0,0.28)",
+    color: "#705600",
   },
   no_response: {
     label: "No Response",

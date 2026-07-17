@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { copyText } from "@/lib/clipboard";
 
 export type AgentDraft = { title: string; body: string; runId?: string };
 
@@ -27,12 +28,11 @@ export function AgentDraftModal({
 
   async function copy() {
     if (!draft) return;
-    try {
-      await navigator.clipboard.writeText(draft.body);
+    if (await copyText(draft.body)) {
       toast("Draft copied to your clipboard");
-    } catch {
-      toast("Couldn't copy — select and copy manually", "error");
+      return;
     }
+    toast("Couldn't copy — select and copy manually", "error");
   }
 
   return (

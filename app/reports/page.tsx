@@ -18,7 +18,7 @@ import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { ReportsExport } from "@/components/reports/ReportsExport";
 import {
   DonutChart,
-  Legend,
+  LineChart,
   VIZ,
   VIZ_SERIES,
 } from "@/components/charts/Charts";
@@ -99,6 +99,35 @@ export default async function ReportsPage() {
         value: formatMoney(r.amount),
       })),
   }));
+  const renewalHorizons = [0, 90, 180, 365];
+  const renewalHorizonLabels = ["Now", "90 days", "180 days", "1 year"];
+  const topOfferings = report.byOffering
+    .filter((offering) => offering.revenue > 0)
+    .slice(0, 4);
+  const offeringTrendSeries = topOfferings.map((offering, index) => ({
+    label: offering.name,
+    color: VIZ_SERIES[index % VIZ_SERIES.length],
+    points: renewalHorizons.map((horizon) =>
+      report.renewals
+        .filter(
+          (renewal) =>
+            renewal.offering_id === offering.offering_id &&
+            renewal.daysLeft >= horizon
+        )
+        .reduce((total, renewal) => total + renewal.amount, 0)
+    ),
+  }));
+  const offeringTrendTips = renewalHorizons.map((horizon) =>
+    report.renewals
+      .filter((renewal) => renewal.daysLeft >= horizon)
+      .slice(0, 6)
+      .map((renewal) => ({
+        logo: renewal.customer,
+        name: renewal.customer,
+        sub: `${renewal.offering} · ${REVENUE_TYPE_META[renewal.revenue_type].short}`,
+        value: formatMoney(renewal.amount),
+      }))
+  );
 
   return (
     <div className="space-y-6 stagger">
@@ -129,55 +158,150 @@ export default async function ReportsPage() {
           </section>
 
 
-          {/* Two donuts side by side — by category and by revenue type */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            <Card>
+          {/* Three complementary revenue views in one compact row. Donut
+              legends stay one item per line so labels never wrap into a
+              confusing left-to-right tag cloud. */}
+          <section className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+            <Card className="self-start p-4">
               <h2 className="text-[15px] font-semibold text-text-primary mb-1">
                 Revenue by category
               </h2>
-              <p className="text-[12px] text-text-tertiary mb-4">
-                Where revenue sits across the six offering categories.
+              <p className="mb-3 text-[12px] text-text-tertiary">
+                Revenue across offering categories.
               </p>
-              <div className="flex items-center gap-6">
-                <DonutChart
-                  segments={categorySegments}
-                  size={150}
-                  thickness={16}
-                  centerLabel={formatMoney(report.totalRevenue)}
-                  centerSub="total"
-                />
-                <Legend
-                  items={categorySegments.map((s) => ({
-                    label: s.label,
-                    color: s.color,
-                    value: formatMoney(s.value),
-                  }))}
-                />
+              <div className="grid grid-cols-[124px_minmax(0,1fr)] items-center gap-3">
+                <div className="relative h-[124px] w-[124px] shrink-0">
+                  <DonutChart
+                    segments={categorySegments}
+                    size={124}
+                    thickness={14}
+                    format="money"
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center leading-none">
+                    <span className="text-[24px] font-bold text-text-primary tnum">
+                      {formatMoney(report.totalRevenue)}
+                    </span>
+                    <span className="mt-1.5 text-[10px] font-medium text-text-tertiary">
+                      total
+                    </span>
+                  </div>
+                </div>
+                <div className="min-w-0 space-y-2">
+                  {categorySegments.map((segment) => {
+                    const share = report.totalRevenue
+                      ? Math.round((segment.value / report.totalRevenue) * 100)
+                      : 0;
+                    return (
+                      <div key={segment.label} className="min-w-0">
+                        <div className="grid grid-cols-[8px_minmax(0,1fr)_auto] items-start gap-2 text-[10.5px] leading-[1.25]">
+                          <span
+                            className="mt-0.5 h-2 w-2 rounded-full"
+                            style={{ backgroundColor: segment.color }}
+                          />
+                          <span className="min-w-0 break-words text-text-secondary">
+                            {segment.label}
+                          </span>
+                          <span className="pl-1 font-semibold tabular-nums text-text-primary">
+                            {formatMoney(segment.value)}
+                          </span>
+                        </div>
+                        <div className="ml-4 mt-1 h-1 overflow-hidden rounded-full bg-surface">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${share}%`, backgroundColor: segment.color }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </Card>
-            <Card>
+            <Card className="self-start p-4">
               <h2 className="text-[15px] font-semibold text-text-primary mb-1">
                 Revenue by type
               </h2>
-              <p className="text-[12px] text-text-tertiary mb-4">
-                Annual, project, service and license revenue.
+              <p className="mb-3 text-[12px] text-text-tertiary">
+                Revenue by contract structure.
               </p>
-              <div className="flex items-center gap-6">
-                <DonutChart
-                  segments={typeSegments}
-                  size={150}
-                  thickness={16}
-                  centerLabel={formatMoney(report.totalRevenue)}
-                  centerSub="total"
-                />
-                <Legend
-                  items={report.byType.map((t) => ({
-                    label: `${t.label} (${t.count})`,
-                    color: TYPE_COLOR[t.type] || VIZ.slate,
-                    value: formatMoney(t.revenue),
-                  }))}
-                />
+              <div className="grid grid-cols-[124px_minmax(0,1fr)] items-center gap-3">
+                <div className="relative h-[124px] w-[124px] shrink-0">
+                  <DonutChart
+                    segments={typeSegments}
+                    size={124}
+                    thickness={14}
+                    format="money"
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center leading-none">
+                    <span className="text-[24px] font-bold text-text-primary tnum">
+                      {formatMoney(report.totalRevenue)}
+                    </span>
+                    <span className="mt-1.5 text-[10px] font-medium text-text-tertiary">
+                      total
+                    </span>
+                  </div>
+                </div>
+                <div className="min-w-0 space-y-2">
+                  {report.byType.map((type) => {
+                    const color = TYPE_COLOR[type.type] || VIZ.slate;
+                    const share = report.totalRevenue
+                      ? Math.round((type.revenue / report.totalRevenue) * 100)
+                      : 0;
+                    return (
+                      <div key={type.type} className="min-w-0">
+                        <div className="grid grid-cols-[8px_minmax(0,1fr)_auto] items-start gap-2 text-[10.5px] leading-[1.25]">
+                          <span
+                            className="mt-0.5 h-2 w-2 rounded-full"
+                            style={{ backgroundColor: color }}
+                          />
+                          <span className="min-w-0 break-words text-text-secondary">
+                            {type.label} <span className="text-text-tertiary">({type.count})</span>
+                          </span>
+                          <span className="pl-1 font-semibold tabular-nums text-text-primary">
+                            {formatMoney(type.revenue)}
+                          </span>
+                        </div>
+                        <div className="ml-4 mt-1 h-1 overflow-hidden rounded-full bg-surface">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${share}%`, backgroundColor: color }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
+            </Card>
+            <Card className="p-4">
+              <h2 className="mb-1 text-[15px] font-semibold text-text-primary">
+                Top offerings
+              </h2>
+              <p className="mb-3 text-[12px] text-text-tertiary">
+                Contracted revenue remaining through upcoming renewals.
+              </p>
+              <div className="mb-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1">
+                {topOfferings.map((offering, index) => (
+                  <span
+                    key={offering.offering_id}
+                    className="inline-flex min-w-0 items-center gap-1.5 text-[10px] text-text-secondary"
+                  >
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: VIZ_SERIES[index % VIZ_SERIES.length] }}
+                    />
+                    <span className="max-w-[150px] truncate">{offering.name}</span>
+                  </span>
+                ))}
+              </div>
+              <LineChart
+                series={offeringTrendSeries}
+                xLabels={renewalHorizonLabels}
+                pointLabels={renewalHorizonLabels}
+                pointTips={offeringTrendTips}
+                height={106}
+                format="money"
+              />
             </Card>
           </section>
 

@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { SubjectLineCarousel } from "@/components/sessions/SubjectLineCarousel";
+import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import type { PitchEmail, PitchCallScript } from "@/lib/types";
 
@@ -57,18 +60,27 @@ function CopyButton({ getText }: { getText: () => string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
+      type="button"
+      aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
+      title={copied ? "Copied" : "Copy to clipboard"}
       onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(getText());
-        } catch {
-          /* clipboard may be blocked in some contexts */
+        if (await copyText(getText())) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
         }
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
       }}
-      className="text-[13px] font-medium text-blue-primary hover:text-blue-hover px-3 py-1 rounded-md hover:bg-blue-light transition-colors"
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-lg border transition-[color,background-color,border-color,transform] active:scale-95",
+        copied
+          ? "border-success/20 bg-success/10 text-success"
+          : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+      )}
     >
-      {copied ? "Copied ✓" : "Copy"}
+      {copied ? (
+        <Check size={15} strokeWidth={2.2} />
+      ) : (
+        <Copy size={15} strokeWidth={1.8} />
+      )}
     </button>
   );
 }
@@ -156,42 +168,11 @@ export function PitchPanel({
             />
           </div>
           {email.subject_lines && email.subject_lines.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {email.subject_lines.map((s, i) => {
-                const on = selectedSubject === s;
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setSelectedSubject(s)}
-                    aria-pressed={on}
-                    className={cn(
-                      "w-full flex items-center gap-3 text-left rounded-lg border px-3.5 py-2.5 transition-all duration-150",
-                      on
-                        ? "border-blue-primary bg-blue-light/60 shadow-[0_1px_2px_rgba(0,113,227,0.12)]"
-                        : "border-border-light hover:border-blue-subtle hover:bg-surface"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                        on ? "border-blue-primary" : "border-border"
-                      )}
-                    >
-                      {on && <span className="w-2 h-2 rounded-full bg-blue-primary" />}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[13.5px] leading-snug",
-                        on ? "text-blue-primary font-semibold" : "text-text-secondary"
-                      )}
-                    >
-                      {s}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <SubjectLineCarousel
+              subjects={email.subject_lines}
+              selected={selectedSubject}
+              onSelect={setSelectedSubject}
+            />
           )}
           <textarea
             className={textareaClass}

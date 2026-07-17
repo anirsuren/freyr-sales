@@ -671,7 +671,17 @@ export default async function VoicePage() {
                         </Link>
                       </td>
                       <td className="px-5 py-3.5 text-[13px] text-text-secondary whitespace-nowrap transition-colors duration-200 group-hover:text-text-primary">
-                        {q.company || "—"}
+                        {q.company ? (
+                          <span className="flex items-center gap-2.5">
+                            <CompanyLogo
+                              name={q.company}
+                              className="h-7 w-7 rounded-lg text-[7px] transition-transform duration-200 group-hover:scale-105"
+                            />
+                            <span>{q.company}</span>
+                          </span>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="px-5 py-3.5 text-[13px] text-text-secondary transition-colors duration-200 group-hover:text-text-primary">
                         {q.offering_name}
@@ -758,7 +768,7 @@ export default async function VoicePage() {
         ) : (
           <div className="space-y-4">
             {/* One even row — three cards, same height (Anir: symmetry). */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_.9fr_.95fr] gap-4">
               <Card className="flex flex-col transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
                 <h3 className="text-[15px] font-semibold text-text-primary mb-1">
                   Call breakdown
@@ -796,18 +806,16 @@ export default async function VoicePage() {
                         .map((o) => (
                           <li
                             key={o.outcome}
-                            className="-mx-1 flex items-center justify-between gap-2 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
+                            className="-mx-1 flex items-start gap-1.5 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
                           >
-                            <span className="flex items-center gap-1.5 min-w-0 text-text-secondary">
-                              <span
-                                className="w-2 h-2 rounded-full shrink-0"
-                                style={{ background: OUTCOME_META[o.outcome].color }}
-                              />
-                              <span className="truncate">
-                                {OUTCOME_META[o.outcome].label}
-                              </span>
+                            <span
+                              className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                              style={{ background: OUTCOME_META[o.outcome].color }}
+                            />
+                            <span className="leading-[1.25] text-text-secondary">
+                              {OUTCOME_META[o.outcome].label}
                             </span>
-                            <span className="tnum font-semibold text-text-primary shrink-0">
+                            <span className="tnum shrink-0 font-semibold leading-[1.25] text-text-primary">
                               {o.n}
                             </span>
                           </li>
@@ -839,22 +847,20 @@ export default async function VoicePage() {
                     </p>
                     <ul className="mt-3 w-full space-y-1.5">
                       {catCounts.map((c, i) => (
-                        <li
-                          key={c.category}
-                          className="-mx-1 flex items-center justify-between gap-2 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
-                        >
-                          <span className="flex items-center gap-1.5 min-w-0 text-text-secondary">
+                          <li
+                            key={c.category}
+                            className="-mx-1 flex items-start gap-1.5 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
+                          >
                             <span
-                              className="w-2 h-2 rounded-full shrink-0"
+                              className="mt-1 h-2 w-2 shrink-0 rounded-full"
                               style={{ background: VIZ_SERIES[i % VIZ_SERIES.length] }}
                             />
-                            <span className="truncate" title={c.category}>
+                            <span className="min-w-0 leading-[1.25] text-text-secondary">
                               {c.category}
                             </span>
-                          </span>
-                          <span className="tnum font-semibold text-text-primary shrink-0">
-                            {c.n}
-                          </span>
+                            <span className="tnum shrink-0 font-semibold leading-[1.25] text-text-primary">
+                              {c.n}
+                            </span>
                         </li>
                       ))}
                     </ul>

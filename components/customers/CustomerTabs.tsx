@@ -112,10 +112,34 @@ const TEAM = ["Suren Dheen", "Mark Miller", "Priya Nair", "Diego Alvarez"];
 const SERVICE_TAG_COLORS = ["#0071E3", "#19C3B1", "#7C3AED", "#E11D48", "#D97706"];
 
 const DELIVERABLES = [
-  { label: "Account Brief", icon: ClipboardList, ask: "Prepare an account brief for" },
-  { label: "Market Report", icon: BarChart3, ask: "Draft a market report for" },
-  { label: "ABM Plan", icon: FileText, ask: "Outline an ABM plan for" },
-  { label: "Slide Outline", icon: Presentation, ask: "Draft a slide outline for" },
+  {
+    label: "Account Brief",
+    icon: ClipboardList,
+    ask: "Prepare an account brief for",
+    color: "#0071E3",
+    bg: "rgba(0,113,227,0.07)",
+  },
+  {
+    label: "Market Report",
+    icon: BarChart3,
+    ask: "Draft a market report for",
+    color: "#0F9E8E",
+    bg: "rgba(15,158,142,0.07)",
+  },
+  {
+    label: "ABM Plan",
+    icon: FileText,
+    ask: "Outline an ABM plan for",
+    color: "#7C3AED",
+    bg: "rgba(124,58,237,0.07)",
+  },
+  {
+    label: "Slide Outline",
+    icon: Presentation,
+    ask: "Draft a slide outline for",
+    color: "#D97706",
+    bg: "rgba(217,119,6,0.07)",
+  },
 ];
 
 export function CustomerTabs({
@@ -725,6 +749,7 @@ export function CustomerTabs({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {valueProps.map((vp, i) => {
                   const match = Math.round((vp.relevance_score || 0) * 10);
+                  const color = SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length];
                   const matchClass =
                     match >= 70
                       ? "text-success bg-success/10"
@@ -732,10 +757,22 @@ export function CustomerTabs({
                       ? "text-blue-primary bg-blue-light"
                       : "text-warning bg-warning/10";
                   return (
-                  <Card key={i}>
+                  <Card
+                    key={i}
+                    className="relative overflow-hidden"
+                    style={{ borderLeftWidth: 3, borderLeftColor: color }}
+                  >
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="text-[14px] font-semibold text-text-primary leading-snug">
-                        {vp.service_name}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+                          style={{ color, background: `${color}14` }}
+                        >
+                          <Sparkles size={14} strokeWidth={1.9} />
+                        </span>
+                        <span className="text-[14px] font-semibold leading-snug text-text-primary">
+                          {vp.service_name}
+                        </span>
                       </span>
                       <span
                         className={`shrink-0 inline-flex items-center text-[11px] font-semibold rounded-full px-2 py-0.5 tnum ${matchClass}`}
@@ -1169,15 +1206,44 @@ export function CustomerTabs({
                 <Card className="p-4">
                   <h3 className="text-[15px] font-semibold text-text-primary">Stage mix</h3>
                   <p className="mt-0.5 text-[11.5px] text-text-tertiary">Where every active opportunity sits now.</p>
-                  <div className="mt-3 flex items-center gap-4">
+                  <div className="mt-3 grid grid-cols-[124px_minmax(0,1fr)] items-center gap-5">
                     <DonutChart
                       segments={stageMix}
-                      size={94}
-                      thickness={11}
+                      size={124}
+                      thickness={14}
                       centerLabel={String(dealCount)}
                       centerSub={dealCount === 1 ? "deal" : "deals"}
                     />
-                    <DonutLegend items={stageMix} />
+                    <ul className="min-w-0 space-y-2">
+                      {stageMix.map((segment) => {
+                        const percentage = Math.round((segment.value / dealCount) * 100);
+                        return (
+                          <li key={segment.label} className="min-w-0">
+                            <div className="flex items-center gap-2 text-[11.5px]">
+                              <span
+                                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                style={{ background: segment.color }}
+                              />
+                              <span className="min-w-0 flex-1 font-medium text-text-secondary">
+                                {segment.label}
+                              </span>
+                              <span className="font-semibold text-text-primary tnum">
+                                {segment.value}
+                              </span>
+                              <span className="w-9 text-right text-text-tertiary tnum">
+                                {percentage}%
+                              </span>
+                            </div>
+                            <div className="ml-[18px] mt-1 h-1.5 overflow-hidden rounded-full bg-surface">
+                              <span
+                                className="block h-full rounded-full"
+                                style={{ width: `${percentage}%`, background: segment.color }}
+                              />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
                 </Card>
               </div>
@@ -1879,9 +1945,15 @@ export function CustomerTabs({
                     )
                   }
                   className="flex flex-col items-start gap-1.5 px-2.5 py-2.5 rounded-lg border border-border-light text-[12.5px] font-medium text-text-primary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors text-left"
+                  style={{ borderColor: `${d.color}35`, background: d.bg }}
                 >
-                  <Icon size={16} strokeWidth={1.6} className="text-blue-primary" />
-                  {d.label}
+                  <span
+                    className="flex h-8 w-8 items-center justify-center rounded-md"
+                    style={{ color: d.color, background: `${d.color}14` }}
+                  >
+                    <Icon size={16} strokeWidth={1.8} />
+                  </span>
+                  <span>{d.label}</span>
                 </button>
               );
             })}

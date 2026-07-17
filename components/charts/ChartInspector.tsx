@@ -27,6 +27,7 @@ export function ChartInspector({
   expandedChildren,
   records = [],
   searchPlaceholder = "Search records...",
+  showSearch = true,
   className,
   bodyClassName,
 }: {
@@ -36,6 +37,7 @@ export function ChartInspector({
   expandedChildren?: ReactNode;
   records?: ChartRecord[];
   searchPlaceholder?: string;
+  showSearch?: boolean;
   className?: string;
   bodyClassName?: string;
 }) {
@@ -111,7 +113,7 @@ export function ChartInspector({
             </Tooltip>
           </div>
         </div>
-        {records.length > 0 && (
+        {showSearch && records.length > 0 && (
           <div className="relative mt-3 mb-3 w-full">
             <Search size={13} strokeWidth={1.8} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
             <input
@@ -124,7 +126,7 @@ export function ChartInspector({
           </div>
         )}
         {records.length === 0 && <div className="mb-3" />}
-        {query && records.length > 0 && (
+        {showSearch && query && records.length > 0 && (
           <div className="mb-3 grid grid-cols-2 gap-2 rounded-md bg-surface/70 p-2">
             {matches.slice(0, 4).map((record) => recordRow(record, true))}
             {matches.length === 0 && (
@@ -142,7 +144,7 @@ export function ChartInspector({
 
       <Modal open={open} onClose={() => setOpen(false)} title={title} size="chart">
         {description && <p className="mb-4 text-[13px] text-text-secondary">{description}</p>}
-        {records.length > 0 && (
+        {showSearch && records.length > 0 && (
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="relative w-[320px]">
               <Search size={14} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />

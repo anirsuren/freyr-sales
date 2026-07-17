@@ -5,6 +5,7 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
   "/api/health",
   "/api/auth/resolve",
+  "/api/auth/logout",
   "/login",
   "/access-pending",
 ]);
@@ -90,12 +91,14 @@ export async function middleware(request: NextRequest) {
     !PUBLIC_PATHS.has(pathname) &&
     !hasIdentity
   ) {
-    const response = pathname.startsWith("/api/") || authMode === "aws-alb"
+    const response = pathname.startsWith("/api/")
       ? NextResponse.json(
           { error: "Authentication required", requestId },
           { status: 401 }
         )
-      : NextResponse.redirect(new URL("/.auth/login/aad", request.url));
+      : NextResponse.redirect(
+          new URL(authMode === "entra" ? "/.auth/login/aad" : "/login", request.url)
+        );
     securityHeaders(response, requestId);
     return response;
   }

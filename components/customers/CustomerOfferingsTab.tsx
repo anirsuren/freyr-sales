@@ -10,6 +10,11 @@ import {
   ExternalLink,
   X,
   Package,
+  DollarSign,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -25,7 +30,6 @@ import { formatMoney } from "@/lib/pipeline";
 import { formatDate } from "@/lib/utils";
 import { REVENUE_TYPES, REVENUE_TYPE_META } from "@/lib/revenue";
 import type { OfferingUsage, OfferingRevenueLine, RevenueType } from "@/lib/types";
-import { DollarSign, Plus, Trash2 } from "lucide-react";
 
 // One colour per revenue type — shared by the donut and its legend so the
 // "already using" revenue reads as a real chart, not a plain list (Suren:
@@ -183,38 +187,51 @@ function RevenueSection({
           distinction"): a donut of the revenue split with a one-column legend,
           the total called out in the centre. */}
       {total > 0 && (
-        <div className="flex items-center gap-4 rounded-xl border border-success/25 bg-success/[0.05] px-4 py-3 mb-2.5">
-          <DonutChart
-            size={104}
-            thickness={13}
-            segments={byType.map((b) => ({
-              label: b.label,
-              value: b.value,
-              color: b.color,
-              tip: b.tip,
-            }))}
-            centerLabel={compactMoney(total)}
-            centerSub="on file"
-          />
-          <ul className="min-w-0 flex-1 space-y-1.5">
+        <div className="mb-2.5 grid max-w-[760px] grid-cols-[136px_minmax(0,420px)] items-center gap-5 rounded-xl border border-success/25 bg-success/[0.05] px-4 py-3">
+          <div className="flex justify-center">
+            <DonutChart
+              size={118}
+              thickness={14}
+              segments={byType.map((b) => ({
+                label: b.label,
+                value: b.value,
+                color: b.color,
+                tip: b.tip,
+              }))}
+              centerLabel={compactMoney(total)}
+              centerSub="on file"
+              format="money"
+            />
+          </div>
+          <ul className="min-w-0 space-y-2">
             {byType.map((b) => (
               <li
                 key={b.type}
-                className="flex items-center justify-between gap-2 text-[12.5px]"
+                className="min-w-0 text-[12.5px]"
               >
-                <span className="flex items-center gap-1.5 min-w-0 text-text-secondary">
-                  <span
-                    className="w-2.5 h-2.5 rounded-sm shrink-0"
-                    style={{ background: b.color }}
-                  />
-                  <span className="truncate">{b.label}</span>
-                </span>
-                <span className="shrink-0 tnum font-semibold text-text-primary">
-                  {formatMoney(b.value)}
-                  <span className="text-text-tertiary font-normal">
-                    {" · "}
-                    {Math.round((b.value / total) * 100)}%
+                <div className="flex items-center gap-2">
+                  <span className="flex min-w-0 items-center gap-1.5 text-text-secondary">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                      style={{ background: b.color }}
+                    />
+                    <span className="truncate">{b.label}</span>
                   </span>
+                  <span className="ml-auto shrink-0 font-semibold text-text-primary tnum">
+                    {formatMoney(b.value)}
+                    <span className="ml-1 text-text-tertiary font-normal">
+                      {Math.round((b.value / total) * 100)}%
+                    </span>
+                  </span>
+                </div>
+                <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-white/80">
+                  <span
+                    className="block h-full rounded-full"
+                    style={{
+                      width: `${(b.value / total) * 100}%`,
+                      background: b.color,
+                    }}
+                  />
                 </span>
               </li>
             ))}
@@ -224,16 +241,21 @@ function RevenueSection({
 
       {lines.length > 0 && (
         <ul className="space-y-1.5 mb-2">
-          {lines.map((l) => (
-            <li
-              key={l.id}
-              className="flex items-start justify-between gap-2 text-[12.5px] bg-surface/70 rounded-md px-2.5 py-1.5"
-            >
+          {lines.map((l) => {
+            const typeColor = REV_COLOR[l.revenue_type];
+            return (
+              <li
+                key={l.id}
+                className="flex items-start justify-between gap-2 text-[12.5px] bg-surface/70 rounded-md px-2.5 py-1.5"
+              >
               <span className="min-w-0">
                 <span className="font-semibold text-text-primary tnum">
                   {formatMoney(l.amount)}
                 </span>{" "}
-                <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded px-1.5 py-0.5">
+                <span
+                  className="rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.04em]"
+                  style={{ color: typeColor, background: `${typeColor}14` }}
+                >
                   {REVENUE_TYPE_META[l.revenue_type].short}
                 </span>
                 {l.revenue_type === "license" && l.num_licenses ? (
@@ -258,8 +280,9 @@ function RevenueSection({
               >
                 <Trash2 size={14} strokeWidth={1.8} />
               </button>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -378,6 +401,9 @@ export function CustomerOfferingsTab({
   const [busyId, setBusyId] = useState<string | null>(null);
   // Local copy of the revenue lines so add/remove feels instant.
   const [usageState, setUsageState] = useState<OfferingUsage[]>(usage);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(inUse.map((offering) => offering.id))
+  );
 
   const inUseIds = useMemo(() => new Set(inUse.map((o) => o.id)), [inUse]);
   const toPitch = useMemo(
@@ -487,6 +513,15 @@ export function CustomerOfferingsTab({
     }
   }
 
+  function toggleExpanded(id: string) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   // ------------------------------------------------------------------ cards
   const OfferingCard = ({
     o,
@@ -494,7 +529,9 @@ export function CustomerOfferingsTab({
   }: {
     o: TabOffering;
     using: boolean;
-  }) => (
+  }) => {
+    const expanded = !using || expandedIds.has(o.id);
+    return (
     <Card className="p-5" data-testid={`cust-offering-${o.id}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -532,30 +569,43 @@ export function CustomerOfferingsTab({
           )}
           </div>
         </div>
-        <button
-          onClick={() => toggleInUse(o.id, !using)}
-          disabled={busyId === o.id}
-          className={`shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-md border transition-colors disabled:opacity-50 ${
-            using
-              ? "border-error/30 text-error hover:bg-error/10"
-              : "border-border-light text-success hover:bg-success/10"
-          }`}
-        >
-          {using ? (
-            <>
-              <X size={13} strokeWidth={2.2} />
-              {busyId === o.id ? "…" : "Not using anymore"}
-            </>
-          ) : (
-            <>
-              <CheckCircle2 size={13} strokeWidth={2} />
-              {busyId === o.id ? "…" : "Mark as already using"}
-            </>
+        <div className="flex shrink-0 items-center gap-2">
+          {using && (
+            <button
+              type="button"
+              onClick={() => toggleExpanded(o.id)}
+              aria-label={expanded ? `Collapse ${o.name}` : `Expand ${o.name}`}
+              title={expanded ? "Collapse offering" : "Expand offering"}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary"
+            >
+              {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
           )}
-        </button>
+          <button
+            onClick={() => toggleInUse(o.id, !using)}
+            disabled={busyId === o.id}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-50 ${
+              using
+                ? "border-error/30 text-error hover:bg-error/10"
+                : "border-border-light text-success hover:bg-success/10"
+            }`}
+          >
+            {using ? (
+              <>
+                <X size={13} strokeWidth={2.2} />
+                {busyId === o.id ? "…" : "Not using anymore"}
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={13} strokeWidth={2} />
+                {busyId === o.id ? "…" : "Mark as already using"}
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      {o.description && (
+      {expanded && o.description && (
         <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line line-clamp-3 mt-2.5 pl-12">
           {o.description}
         </p>
@@ -563,14 +613,14 @@ export function CustomerOfferingsTab({
 
       {/* Revenue on this offering — only for the ones they're actually using
           (Suren, Jul 5: revenue type / amount / licenses / dates / notes). */}
-      {using && (
+      {using && expanded && (
         <RevenueSection
           lines={linesForOffering(o.id)}
           onSave={(lines) => saveLines(o.id, lines)}
         />
       )}
 
-      {(using || o.materials.length > 0 || o.poc) && (
+      {expanded && (using || o.materials.length > 0 || o.poc) && (
       <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-border-light">
         <div className="min-w-0 flex-1">
           {(using || o.materials.length > 0) && (
@@ -613,7 +663,8 @@ export function CustomerOfferingsTab({
       </div>
       )}
     </Card>
-  );
+    );
+  };
 
   // Compact tile for the "opportunities to pitch" grid — four to a row, every
   // card the SAME height (Suren: "rows of four… four distinct cards, all the
@@ -661,17 +712,21 @@ export function CustomerOfferingsTab({
         </p>
       )}
       {o.poc && (
-        <p className="flex items-center gap-1.5 text-[11.5px] text-text-secondary mt-2">
+        <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface px-2 py-1 text-[11.5px]">
           <Avatar name={o.poc} className="h-6 w-6 shrink-0 text-[8px]" />
-          <span className="truncate">POC: {o.poc}</span>
-        </p>
+          <span className="text-text-tertiary">POC</span>
+          <span className="truncate font-medium text-text-secondary">{o.poc}</span>
+        </div>
       )}
 
-      <div className="mt-auto pt-3">
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border-light pt-3">
+        <span className="text-[11px] text-text-tertiary">
+          {o.materials.length} {o.materials.length === 1 ? "material" : "materials"}
+        </span>
         <button
           onClick={() => toggleInUse(o.id, true)}
           disabled={busyId === o.id}
-          className="w-full inline-flex items-center justify-center gap-1.5 text-[12px] font-semibold px-2.5 py-2 rounded-md border border-blue-subtle bg-blue-light text-blue-primary hover:bg-[#DCEBFB] hover:border-blue-primary transition-colors disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-blue-subtle bg-white px-3 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-primary hover:bg-blue-light/50 disabled:opacity-50"
         >
           <Plus size={13} strokeWidth={2.2} />
           {busyId === o.id ? "Adding…" : "Add to account"}

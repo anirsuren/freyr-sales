@@ -79,18 +79,24 @@ test("onboarding exposes the production setup path", async ({ page }) => {
 
 test("clean workspace imports approved account and contact CSV", async ({ request }) => {
   await request.post("/api/settings/data-mode", { data: { mode: "live" } });
+  const suffix = Date.now();
+  const companyName = `Launch Biotech ${suffix}`;
   const response = await request.post("/api/import/crm", {
     multipart: {
       file: {
         name: "accounts.csv",
         mimeType: "text/csv",
-        buffer: Buffer.from("company_name,website_url,contact_name,contact_email\nLaunch Biotech,https://launch.example,Alex Rivera,alex@launch.example\n"),
+        buffer: Buffer.from(`company_name,website_url,contact_name,contact_email\n${companyName},https://launch.example,Alex Rivera,alex+${suffix}@launch.example\n`),
       },
     },
   });
   expect(response.ok()).toBeTruthy();
   expect(await response.json()).toMatchObject({ customers: 1, contacts: 1, skipped: 0 });
   const customers = await request.get("/api/customers");
-  expect((await customers.json()).customers[0].company_name).toBe("Launch Biotech");
+  expect(
+    (await customers.json()).customers.some(
+      (customer: { company_name: string }) => customer.company_name === companyName
+    )
+  ).toBeTruthy();
   await request.post("/api/settings/data-mode", { data: { mode: "mock" } });
 });

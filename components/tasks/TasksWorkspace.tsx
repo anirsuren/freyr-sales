@@ -119,11 +119,11 @@ export function TasksWorkspace({
     );
   }
 
-  const filters: { key: Filter; label: string; count: number }[] = [
-    { key: "all", label: "All", count: queue.length },
-    { key: "review", label: "Reviews", count: reviewTasks.length },
-    { key: "followup", label: "Follow-ups", count: followUps.length },
-    { key: "overdue", label: "Overdue", count: overdue },
+  const filters: { key: Filter; label: string; count: number; color: string; active: string }[] = [
+    { key: "all", label: "All", count: queue.length, color: "bg-blue-light text-blue-primary", active: "ring-blue-primary/25" },
+    { key: "review", label: "Reviews", count: reviewTasks.length, color: "bg-violet-50 text-violet-700", active: "ring-violet-500/25" },
+    { key: "followup", label: "Follow-ups", count: followUps.length, color: "bg-emerald-50 text-emerald-700", active: "ring-emerald-500/25" },
+    { key: "overdue", label: "Overdue", count: overdue, color: "bg-red-50 text-red-700", active: "ring-red-500/25" },
   ];
 
   return (
@@ -166,7 +166,7 @@ export function TasksWorkspace({
               Open Agent <ArrowRight size={13} />
             </Link>
           </div>
-          <AgentActions actions={agentActions} grid />
+          <AgentActions actions={agentActions} />
         </section>
       )}
 
@@ -187,7 +187,7 @@ export function TasksWorkspace({
                 className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-white text-[13px] outline-none focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
               />
             </div>
-            <div className="flex items-center rounded-md border border-border p-0.5" role="group" aria-label="Filter tasks">
+            <div className="flex items-center gap-1.5" role="group" aria-label="Filter tasks">
               {filters.map((item) => (
                 <button
                   key={item.key}
@@ -195,11 +195,14 @@ export function TasksWorkspace({
                   onClick={() => setFilter(item.key)}
                   aria-pressed={filter === item.key}
                   className={cn(
-                    "h-8 px-3 rounded text-[12px] font-semibold transition-colors",
-                    filter === item.key ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface"
+                    "h-8 rounded-full px-3 text-[12px] font-semibold transition-all",
+                    item.color,
+                    filter === item.key
+                      ? `ring-2 ring-offset-1 ${item.active}`
+                      : "opacity-70 hover:opacity-100"
                   )}
                 >
-                  {item.label} <span className="tnum opacity-70">{item.count}</span>
+                  {item.label} <span className="ml-1 tnum opacity-75">{item.count}</span>
                 </button>
               ))}
             </div>

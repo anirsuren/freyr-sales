@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Bot,
-  Play,
+  Workflow,
   Zap,
   ChevronRight,
   Check,
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
 import type { AgentRun, AgentStepStatus } from "@/lib/types";
 
-const KIND_ICON = { act: Bot, play: Play, autopilot: Zap, plan: ListChecks } as const;
+const KIND_ICON = { act: Bot, play: Workflow, autopilot: Zap, plan: ListChecks } as const;
 const KIND_LABEL = {
   act: "Drafted",
   play: "Outreach",
@@ -170,56 +170,61 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
             <li key={run.id}>
               <button
                 onClick={() => setOpen(isOpen ? null : run.id)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface transition-colors"
+                className="grid w-full grid-cols-[32px_minmax(0,1fr)_16px] items-start gap-x-2.5 px-3 py-3 text-left transition-colors hover:bg-surface"
                 aria-expanded={isOpen}
               >
-                <span className="w-7 h-7 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
                   <Icon size={15} strokeWidth={1.7} />
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium text-text-primary truncate">
-                    {run.title}
+                <span className="min-w-0">
+                  <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <span className="min-w-0 text-[13px] font-semibold leading-snug text-text-primary">
+                      {run.title}
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold capitalize",
+                        run.reverted
+                          ? "bg-surface text-text-tertiary line-through"
+                          : OUTCOME_STYLE[run.outcome]
+                      )}
+                    >
+                      {run.reverted ? "reverted" : run.outcome}
+                    </span>
                   </span>
-                  <span className="block text-[12px] text-text-secondary truncate">
+                  <span className="mt-0.5 block break-words text-[11.5px] leading-snug text-text-secondary">
                     {KIND_LABEL[run.kind]} · {run.steps.length} step
-                    {run.steps.length === 1 ? "" : "s"} · {run.summary}
+                    {run.steps.length === 1 ? "" : "s"}
                   </span>
-                </span>
-                <span
-                  className={cn(
-                    "text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 capitalize",
-                    run.reverted
-                      ? "bg-surface text-text-tertiary line-through"
-                      : OUTCOME_STYLE[run.outcome]
-                  )}
-                >
-                  {run.reverted ? "reverted" : run.outcome}
-                </span>
-                <span className="text-[12px] text-text-tertiary tnum shrink-0 hidden sm:inline">
-                  {formatDateTime(run.created_at)}
+                  <span className="mt-1 block break-words text-[11.5px] leading-snug text-text-tertiary">
+                    {run.summary}
+                  </span>
+                  <span className="mt-1 block text-[10.5px] text-text-tertiary tnum">
+                    {formatDateTime(run.created_at)}
+                  </span>
                 </span>
                 <ChevronRight
                   size={16}
                   className={cn(
-                    "text-text-tertiary shrink-0 transition-transform",
+                    "mt-1 shrink-0 text-text-tertiary transition-transform",
                     isOpen && "rotate-90"
                   )}
                 />
               </button>
 
               {isOpen && (
-                <div className="px-4 pb-4 pl-14">
-                  <ol className="relative border-l border-border-light ml-1 space-y-3 py-1">
+                <div className="px-3 pb-3">
+                  <ol className="relative ml-4 space-y-3 border-l border-border-light py-1">
                     {run.steps.map((step, i) => (
-                      <li key={i} className="relative pl-5">
+                      <li key={i} className="relative min-w-0 pl-5">
                         <span className="absolute -left-[9px] top-0 w-[18px] h-[18px] rounded-full bg-white border border-border-light flex items-center justify-center">
                           <StepIcon status={step.status} />
                         </span>
-                        <span className="block text-[13px] text-text-primary">
+                        <span className="block break-words text-[12.5px] font-medium leading-snug text-text-primary">
                           {step.label}
                         </span>
                         {step.detail && (
-                          <span className="block text-[12px] text-text-secondary">
+                          <span className="mt-0.5 block break-words text-[11.5px] leading-snug text-text-secondary">
                             {step.detail}
                           </span>
                         )}
@@ -227,10 +232,10 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
                     ))}
                   </ol>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="mt-3 grid grid-cols-2 gap-2 pl-4">
                     <Link
                       href={`/agent/runs/${run.id}`}
-                      className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-text-secondary hover:bg-surface transition-colors"
+                      className="inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-border-light px-2.5 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:bg-surface"
                     >
                       <Maximize2 size={13} strokeWidth={2} />
                       Open run
@@ -239,7 +244,7 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
                       <button
                         onClick={() => replay(run)}
                         disabled={replaying === run.id}
-                        className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-md border border-border-light text-blue-primary hover:bg-blue-light transition-colors disabled:opacity-50"
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-border-light px-2.5 py-1.5 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:opacity-50"
                       >
                         <RotateCw
                           size={13}

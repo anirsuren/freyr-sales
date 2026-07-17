@@ -158,7 +158,7 @@ export function Tooltip({
             ref={popupRef}
             id={tooltipId}
             role="tooltip"
-            className="pointer-events-none fixed z-[9999] w-max max-w-[260px] rounded-lg bg-text-primary px-2.5 py-1.5 text-left text-[12px] font-normal normal-case leading-snug tracking-normal text-white shadow-lg"
+            className="pointer-events-none fixed z-[9999] w-max max-w-[260px] rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-left text-[12px] font-normal normal-case leading-snug tracking-normal text-text-primary shadow-[0_12px_32px_rgba(0,0,0,0.14),0_2px_6px_rgba(0,0,0,0.08)]"
             style={{
               left: position?.left ?? 0,
               top: position?.top ?? 0,

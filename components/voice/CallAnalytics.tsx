@@ -10,7 +10,7 @@ import {
   Minus,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { AreaChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
+import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { ChartInspector } from "@/components/charts/ChartInspector";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -97,6 +97,8 @@ export function CallAnalytics({
     arr.reduce((s, t) => s + t.message.trim().split(/\s+/).filter(Boolean).length, 0);
   const agentWords = words(turns.filter((t) => t.role === "agent"));
   const contactWords = words(turns.filter((t) => t.role === "user"));
+  const agentTurns = turns.filter((t) => t.role === "agent").length;
+  const contactTurns = turns.filter((t) => t.role === "user").length;
   const talkRatio = [
     {
       label: agentLabel,
@@ -119,6 +121,20 @@ export function CallAnalytics({
       }],
     },
   ].filter((s) => s.value > 0);
+  const participationBars = [
+    {
+      label: agentLabel,
+      value: agentTurns,
+      color: personaColor,
+      tip: [{ name: `${agentLabel} · AI agent`, sub: `${agentWords} words across the call`, value: `${agentTurns} turns` }],
+    },
+    {
+      label: contactFirst,
+      value: contactTurns,
+      color: "#8B5CF6",
+      tip: [{ name: contactFirst, sub: `${contactWords} words across the call`, value: `${contactTurns} turns` }],
+    },
+  ].filter((item) => item.value > 0);
 
   // Objections raised by the contact.
   const objections = turns
@@ -255,11 +271,11 @@ export function CallAnalytics({
                           </span>
                           <span className="tnum">{formatOffset(turn.time) || `Turn ${i + 1}`}</span>
                         </span>
-                        <span className="mt-1 flex items-center justify-between gap-3 text-white/75">
+                        <span className="mt-1 flex items-center justify-between gap-3 text-text-secondary">
                           <span>{band} sentiment</span>
-                          <span className="font-semibold text-white tnum">{v}/100</span>
+                          <span className="font-semibold text-text-primary tnum">{v}/100</span>
                         </span>
-                        <span className="mt-2 block border-t border-white/15 pt-2 text-white/85">
+                        <span className="mt-2 block border-t border-border-light pt-2 text-text-secondary">
                           {turn.message}
                         </span>
                       </span>
@@ -281,40 +297,53 @@ export function CallAnalytics({
           </div>
         </ChartInspector>
 
-        {/* Talk ratio donut. */}
-        <ChartInspector
-          title="Who did the talking"
-          description="Share of words spoken."
-          expandedChildren={
-            <div className="flex items-center justify-center gap-10 py-5">
-              <DonutChart
-                segments={talkRatio}
-                size={280}
-                thickness={28}
-                centerLabel={`${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`}
-                centerSub="agent"
-              />
-              <DonutLegend items={talkRatio} className="max-w-[320px]" />
-            </div>
-          }
-        >
-          {talkRatio.length > 0 ? (
-            <div className="flex-1 flex items-center gap-4">
-              <DonutChart
-                segments={talkRatio}
-                size={150}
-                thickness={16}
-                centerLabel={`${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`}
-                centerSub="agent"
-              />
-              <DonutLegend items={talkRatio} />
-            </div>
-          ) : (
-            <p className="flex-1 flex items-center text-[13px] text-text-tertiary">
-              Not enough dialogue to measure.
-            </p>
-          )}
-        </ChartInspector>
+        <div className="grid gap-4">
+          {/* Talk ratio and participation are separate: one shows airtime, the
+              other shows whether the contact actively exchanged turns. */}
+          <ChartInspector
+            title="Who did the talking"
+            description="Share of words spoken — aim for a balanced discovery call."
+            bodyClassName="pt-2"
+            expandedChildren={
+              <div className="flex items-center justify-center gap-10 py-5">
+                <DonutChart
+                  segments={talkRatio}
+                  size={280}
+                  thickness={28}
+                  centerLabel={`${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`}
+                  centerSub="agent"
+                />
+                <DonutLegend items={talkRatio} className="max-w-[320px]" />
+              </div>
+            }
+          >
+            {talkRatio.length > 0 ? (
+              <div className="flex items-center gap-4">
+                <DonutChart
+                  segments={talkRatio}
+                  size={104}
+                  thickness={12}
+                  centerLabel={`${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`}
+                  centerSub="agent"
+                />
+                <DonutLegend items={talkRatio} />
+              </div>
+            ) : (
+              <p className="text-[13px] text-text-tertiary">Not enough dialogue to measure.</p>
+            )}
+          </ChartInspector>
+
+          <ChartInspector
+            title="Conversation participation"
+            description="How often each person took a turn in the discussion."
+            records={turnRecords}
+            showSearch={false}
+            bodyClassName="pt-2"
+            expandedChildren={<BarChart data={participationBars} height={320} format="number" />}
+          >
+            <BarChart data={participationBars} height={104} format="number" />
+          </ChartInspector>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">

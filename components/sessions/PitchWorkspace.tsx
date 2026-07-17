@@ -24,6 +24,8 @@ import {
   Timer,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { SubjectLineCarousel } from "@/components/sessions/SubjectLineCarousel";
+import { copyText } from "@/lib/clipboard";
 import { EMAIL_TEMPLATES, fillTemplate } from "@/lib/email-templates";
 import { cn, formatDateTime, timeAgo } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
@@ -243,12 +245,13 @@ export function PitchWorkspace({
       : briefText;
 
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(currentText);
-    } catch {}
-    setCopied(true);
-    toast("Copied to clipboard");
-    setTimeout(() => setCopied(false), 1800);
+    if (await copyText(currentText)) {
+      setCopied(true);
+      toast("Copied to clipboard");
+      setTimeout(() => setCopied(false), 1800);
+      return;
+    }
+    toast("Copy failed — select the text and copy it manually", "error");
   }
 
   async function save() {
@@ -739,46 +742,14 @@ export function PitchWorkspace({
                     — pick the one to send
                   </span>
                 </p>
-                {/* A clean radio-style list reads far better than ragged, uneven
-                    chips for full-sentence subject lines (Suren). */}
-                <div className="space-y-2">
-                  {subjects.map((s, i) => {
-                    const on = selectedSubject === s;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          setSelectedSubject(s);
-                          setDirty(true);
-                        }}
-                        aria-pressed={on}
-                        className={cn(
-                          "w-full flex items-center gap-3 text-left rounded-lg border px-3.5 py-2.5 transition-all duration-150",
-                          on
-                            ? "border-blue-primary bg-blue-light/60 shadow-[0_1px_2px_rgba(0,113,227,0.12)]"
-                            : "border-border-light hover:border-blue-subtle hover:bg-surface"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
-                            on ? "border-blue-primary" : "border-border"
-                          )}
-                        >
-                          {on && <span className="w-2 h-2 rounded-full bg-blue-primary" />}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-[13.5px] leading-snug",
-                            on ? "text-blue-primary font-semibold" : "text-text-secondary"
-                          )}
-                        >
-                          {s}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <SubjectLineCarousel
+                  subjects={subjects}
+                  selected={selectedSubject}
+                  onSelect={(subject) => {
+                    setSelectedSubject(subject);
+                    setDirty(true);
+                  }}
+                />
               </div>
             )}
 

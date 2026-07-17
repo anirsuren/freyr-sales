@@ -5,6 +5,7 @@ import {
   CalendarClock,
   ChevronRight,
   Clock3,
+  UserRound,
 } from "lucide-react";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { Avatar } from "@/components/ui/Avatar";
@@ -53,7 +54,7 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
   const summary = (
     <div
       data-deal-row={deal.id}
-      className="grid min-h-[76px] grid-cols-[minmax(230px,1.8fr)_105px_100px_minmax(138px,.8fr)_18px] items-center gap-3"
+      className="grid min-h-[76px] grid-cols-[minmax(220px,1.55fr)_142px_100px_minmax(158px,.9fr)_18px] items-center gap-3"
     >
       <span className="flex min-w-0 items-center gap-3">
         <span
@@ -74,17 +75,25 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
 
       <span className="min-w-0">
         <span
-          className="inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-semibold"
+          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[10.5px] font-semibold"
           style={{ color, background: `${color}14` }}
         >
           <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
-          <span className="truncate">{stage}</span>
+          <span>{stage}</span>
         </span>
-        <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface">
+        <span className="mt-1.5 flex items-center gap-2">
+          <span className="block h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+            <span
+              className="block h-full rounded-full"
+              style={{ width: `${probability * 100}%`, background: color }}
+            />
+          </span>
           <span
-            className="block h-full rounded-full"
-            style={{ width: `${probability * 100}%`, background: color }}
-          />
+            className="w-8 shrink-0 text-right text-[10px] font-semibold tnum"
+            style={{ color }}
+          >
+            {Math.round(probability * 100)}%
+          </span>
         </span>
       </span>
 
@@ -123,9 +132,12 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
     <div className="grid grid-cols-[1.1fr_1fr_1.15fr] gap-5">
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-          Pipeline position
+          Sales stage progress
         </p>
-        <div className="relative mt-4 flex items-center justify-between">
+        <p className="mt-0.5 text-[10.5px] text-text-tertiary">
+          Current stage and the remaining path before close.
+        </p>
+        <div className="relative mt-3 flex items-center justify-between">
           <span className="absolute left-2 right-2 top-2 h-px bg-border-light" />
           {STAGES.map((item, index) => {
             const reached = index <= currentStageIndex;
@@ -146,6 +158,12 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
             );
           })}
         </div>
+        <p className="mt-2 text-[10.5px] text-text-secondary">
+          Stage {currentStageIndex + 1} of {STAGES.length} ·{" "}
+          <span className="font-semibold" style={{ color }}>
+            {Math.round(probability * 100)}% close likelihood
+          </span>
+        </p>
       </div>
 
       <div className="min-w-0 border-l border-border-light pl-5">
@@ -172,16 +190,18 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
         </p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <span className="min-w-0">
-            <span className="flex items-center gap-1 text-[9.5px] uppercase tracking-[0.04em] text-text-tertiary">
+            <span className="flex min-h-[14px] items-center gap-1 text-[9.5px] uppercase tracking-[0.04em] text-text-tertiary">
               <CalendarClock size={11} /> Expected close
             </span>
-            <span className="mt-1 block text-[11.5px] font-semibold text-text-primary">
+            <span className="mt-1.5 flex min-h-[26px] items-center text-[11.5px] font-semibold text-text-primary">
               {deal.closeDate ? formatDate(deal.closeDate) : "Not scheduled"}
             </span>
           </span>
           <span className="min-w-0">
-            <span className="text-[9.5px] uppercase tracking-[0.04em] text-text-tertiary">Owner</span>
-            <span className="mt-1 flex min-w-0 items-center gap-2 text-[11.5px] font-semibold text-text-primary">
+            <span className="flex min-h-[14px] items-center gap-1 text-[9.5px] uppercase tracking-[0.04em] text-text-tertiary">
+              <UserRound size={11} /> Owner
+            </span>
+            <span className="mt-1.5 flex min-h-[26px] min-w-0 items-center gap-2 text-[11.5px] font-semibold text-text-primary">
               <Avatar
                 name={deal.owner || "Unassigned"}
                 className="h-6 w-6 shrink-0 text-[8px]"

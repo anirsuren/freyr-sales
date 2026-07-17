@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { ForecastExport } from "@/components/forecast/ForecastExport";
@@ -485,82 +486,152 @@ export default async function ForecastPage() {
             })()}
           </div>
 
-          {/* THIRD — probability-adjusted value that is going stale. */}
-          <div className="flex flex-col border-t border-border-light pt-5 xl:col-span-2 xl:mt-5 xl:grid xl:grid-cols-[190px_1fr] xl:gap-6 xl:pt-5">
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <h2 className="text-[15px] font-semibold text-text-primary">Forecast risk</h2>
-                <InfoHint text={`Weighted forecast split by recent activity. A deal becomes at risk after ${ROTTING_DAYS} days without a logged touch.`} />
+          {/* THIRD — risk, freshness, and quality in one compact analysis band. */}
+          <div className="border-t border-border-light pt-5 xl:col-span-2 xl:mt-5">
+            <div className="mb-4 flex items-end justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-[15px] font-semibold text-text-primary">Forecast risk</h2>
+                  <InfoHint text={`The probability-adjusted commit, split by activity recency. A deal becomes stale after ${ROTTING_DAYS} days without a logged touch.`} />
+                </div>
+                <p className="mt-0.5 text-[11px] text-text-tertiary">
+                  What is exposed, how fresh the book is, and whether the commit is dependable
+                </p>
               </div>
-              <p className="text-[11px] text-text-tertiary mb-3">Activity risk inside the commit</p>
+              <p className="text-[11px] font-medium text-text-secondary">
+                {staleOpen.length === 0
+                  ? "No stale deals in the open book"
+                  : `${staleOpen.length} stale ${staleOpen.length === 1 ? "deal" : "deals"} need a touch`}
+              </p>
             </div>
+
             {(() => {
-              const riskSegments = [
-                {
-                  label: "Active",
-                  value: activeWeighted,
-                  color: "#34C759",
-                  tip: open
-                    .filter((deal) => deal.staleDays <= ROTTING_DAYS)
-                    .map((deal) => ({
-                      logo: deal.company,
-                      name: deal.company,
-                      sub: `${deal.stage} · ${deal.staleDays}d since activity`,
-                      value: formatMoney(
-                        deal.value * (STAGE_PROBABILITY[deal.stage] ?? 0)
-                      ),
-                    })),
-                },
-                {
-                  label: "At risk",
-                  value: riskWeighted,
-                  color: "#FF9500",
-                  tip: staleOpen.map((deal) => ({
-                    logo: deal.company,
-                    name: deal.company,
-                    sub: `${deal.stage} · ${deal.staleDays}d since activity`,
-                    value: formatMoney(
-                      deal.value * (STAGE_PROBABILITY[deal.stage] ?? 0)
-                    ),
-                  })),
-                },
-              ].filter((segment) => segment.value > 0);
+              const rankedRiskDeals = [...staleOpen]
+                .sort((a, b) => {
+                  const aWeighted = a.value * (STAGE_PROBABILITY[a.stage] ?? 0);
+                  const bWeighted = b.value * (STAGE_PROBABILITY[b.stage] ?? 0);
+                  return bWeighted - aWeighted;
+                })
+                .slice(0, 4);
+              const activePct = Math.max(0, 100 - riskPct);
+
               return (
-                <div className="flex flex-1 items-center gap-5">
-                  <DonutChart
-                    segments={riskSegments}
-                    size={112}
-                    thickness={14}
-                    format="money"
-                    centerLabel={`${riskPct}%`}
-                    centerSub="at risk"
-                  />
-                  <div className="grid min-w-0 flex-1 grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.04em] text-text-tertiary">
-                        Exposed commit
-                      </p>
-                      <p className="mt-0.5 text-[16px] font-bold text-text-primary tnum">
-                        {formatMoney(riskWeighted)}
-                      </p>
+                <div className="grid items-stretch gap-4 lg:grid-cols-2">
+                  <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white">
+                    <div className="flex min-h-[54px] items-center justify-between gap-3 border-b border-border-light px-4 py-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Commit activity health</p>
+                        <p className="mt-0.5 text-[10.5px] text-text-secondary">How much of the forecast is backed by recent activity</p>
+                      </div>
+                      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-700 tnum">
+                        {staleOpen.length} {staleOpen.length === 1 ? "deal needs" : "deals need"} a touch
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.04em] text-text-tertiary">
-                        Stale deals
-                      </p>
-                      <p className="mt-0.5 text-[13px] font-semibold text-text-primary tnum">
-                        {staleOpen.length} of {open.length}
-                      </p>
+
+                    <div className="flex flex-1 flex-col p-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-lg border border-green-100 bg-green-50/45 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-green-800">
+                              <CircleCheck size={14} /> Active
+                            </span>
+                            <span className="text-[10px] font-semibold text-green-700 tnum">{activePct}%</span>
+                          </div>
+                          <p className="mt-2 text-[20px] font-bold leading-none text-text-primary tnum">{formatMoney(activeWeighted)}</p>
+                          <p className="mt-1.5 text-[9.5px] text-text-secondary">Touched in the last {ROTTING_DAYS} days</p>
+                        </div>
+                        <div className="rounded-lg border border-orange-100 bg-orange-50/45 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-orange-800">
+                              <ShieldAlert size={14} /> Exposed
+                            </span>
+                            <span className="text-[10px] font-semibold text-orange-700 tnum">{riskPct}%</span>
+                          </div>
+                          <p className="mt-2 text-[20px] font-bold leading-none text-text-primary tnum">{formatMoney(riskWeighted)}</p>
+                          <p className="mt-1.5 text-[9.5px] text-text-secondary">No touch for more than {ROTTING_DAYS} days</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-lg border border-border-light bg-surface/35 p-3">
+                        <div className="mb-2.5 flex items-center justify-between gap-3">
+                          <p className="text-[10px] font-semibold text-text-primary">Weighted commit coverage</p>
+                          <p className="text-[10px] text-text-tertiary tnum">{formatMoney(commit)} total</p>
+                        </div>
+                        <div className="flex h-3 overflow-hidden rounded-full bg-surface">
+                          {activePct > 0 && <span className="bg-[#34C759]" style={{ width: `${activePct}%` }} />}
+                          {riskPct > 0 && <span className="bg-[#FF9500]" style={{ width: `${riskPct}%` }} />}
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-3 text-[9.5px] text-text-secondary">
+                          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#34C759]" />{activePct}% recently active</span>
+                          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#FF9500]" />{riskPct}% needs attention</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-auto pt-4">
+                        <div className="flex items-center gap-3 border-t border-border-light pt-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-700">
+                            <ShieldAlert size={15} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Next move</span>
+                            <span className="mt-0.5 block text-[10px] leading-snug text-text-secondary">Reconnect with the {staleOpen.length} idle {staleOpen.length === 1 ? "deal" : "deals"} before keeping their revenue in commit.</span>
+                          </span>
+                          <Link href="/pipeline" className="shrink-0 rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[10px] font-semibold text-blue-primary hover:bg-blue-light">
+                            Review deals
+                          </Link>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.04em] text-text-tertiary">
-                        Confidence
-                      </p>
-                      <p className="mt-0.5 text-[13px] font-semibold text-text-primary tnum">
-                        {forecastConfidence}%
-                      </p>
+                  </section>
+
+                  <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white">
+                    <div className="flex min-h-[54px] items-center justify-between gap-3 border-b border-border-light px-4 py-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Deals driving the risk</p>
+                        <p className="mt-0.5 text-[10.5px] text-text-secondary">Ranked by probability-adjusted value exposed</p>
+                      </div>
+                      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-700 tnum">
+                        {rankedRiskDeals.length} priority {rankedRiskDeals.length === 1 ? "deal" : "deals"}
+                      </span>
                     </div>
-                  </div>
+                    <div className="flex-1 divide-y divide-border-light">
+                      {rankedRiskDeals.length > 0 ? rankedRiskDeals.map((deal) => {
+                        const weighted = deal.value * (STAGE_PROBABILITY[deal.stage] ?? 0);
+                        const exposureShare = riskWeighted > 0 ? Math.round((weighted / riskWeighted) * 100) : 0;
+                        return (
+                          <Link
+                            key={deal.sessionId}
+                            href={`/sessions/${deal.sessionId}`}
+                            className="group grid min-h-[72px] grid-cols-[34px_minmax(0,1fr)_96px] items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-surface/60"
+                          >
+                            <CompanyLogo name={deal.company} className="h-8 w-8 text-[7px]" />
+                            <span className="min-w-0">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className="truncate text-[11.5px] font-semibold text-text-primary">{deal.company}</span>
+                                <span
+                                  className="shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-semibold"
+                                  style={{ color: STAGE_COLOR[deal.stage], background: `${STAGE_COLOR[deal.stage]}14` }}
+                                >
+                                  {deal.stage === "Meeting Booked" ? "Meeting" : deal.stage}
+                                </span>
+                              </span>
+                              <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[9.5px] text-text-secondary">
+                                <Avatar name={deal.contactName} className="h-4 w-4 text-[6px]" />
+                                <span className="truncate">{deal.contactName}</span>
+                                <span className="text-text-tertiary">·</span>
+                                <span className="truncate text-text-tertiary">{deal.service}</span>
+                              </span>
+                            </span>
+                            <span className="text-right">
+                              <span className="block text-[11.5px] font-bold text-text-primary tnum">{formatMoney(weighted)}</span>
+                              <span className="mt-0.5 block text-[9px] font-semibold text-error tnum">{deal.staleDays}d idle</span>
+                              <span className="mt-0.5 block text-[8.5px] text-text-tertiary tnum">{exposureShare}% of risk · {formatMoney(deal.value)} open</span>
+                            </span>
+                          </Link>
+                        );
+                      }) : <p className="px-4 py-7 text-center text-[11.5px] text-success">No stale deals are putting the commit at risk.</p>}
+                    </div>
+                  </section>
                 </div>
               );
             })()}
@@ -604,16 +675,20 @@ export default async function ForecastPage() {
               return (
                 <HoverCard
                   key={deal.sessionId}
-                  side="top"
-                  width={300}
-                  delayMs={0}
+                  side="right"
+                  width={286}
                   content={
                     <div>
                       <div className="flex items-center gap-2.5">
                         <CompanyLogo name={deal.company} className="h-9 w-9 shrink-0 text-[8px]" />
                         <div className="min-w-0">
                           <p className="truncate text-[13px] font-semibold text-text-primary">{deal.company}</p>
-                          <p className="truncate text-[10.5px] text-text-tertiary">{deal.service} · {deal.contactName}</p>
+                          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                            <Avatar name={deal.contactName} className="h-4 w-4 text-[6px]" />
+                            <span className="truncate">{deal.contactName}</span>
+                            <span>·</span>
+                            <span className="truncate">{deal.service}</span>
+                          </div>
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface px-2 py-2 text-center">
@@ -635,8 +710,11 @@ export default async function ForecastPage() {
                       <span className="block truncate text-[12.5px] font-semibold text-text-primary">
                         {deal.company}
                       </span>
-                      <span className="block truncate text-[10.5px] text-text-tertiary">
-                        {deal.service} · {deal.contactName}
+                      <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                        <Avatar name={deal.contactName} className="h-4 w-4 text-[6px]" />
+                        <span className="truncate">{deal.contactName}</span>
+                        <span>·</span>
+                        <span className="truncate">{deal.service}</span>
                       </span>
                     </span>
                   </span>

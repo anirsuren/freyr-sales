@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Sparkles, ArrowRight, RotateCw, Copy, Check } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { copyText } from "@/lib/clipboard";
 import {
   buildAccountBriefing,
   type AccountContext,
@@ -51,14 +52,13 @@ export function AccountBriefing({ context }: { context: AccountContext }) {
       `${narrative}\n\n` +
       briefing.reads.map((r) => `${r.label}: ${r.text}`).join("\n") +
       `\n\nRecommended: ${briefing.recommendation}`;
-    try {
-      await navigator.clipboard.writeText(text);
+    if (await copyText(text)) {
       setCopied(true);
       toast("Briefing copied to clipboard");
       setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast("Couldn't copy the briefing", "error");
+      return;
     }
+    toast("Couldn't copy the briefing", "error");
   }
 
   return (
