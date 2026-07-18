@@ -191,9 +191,8 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
   return { status: "pending", workspaceId: workspace };
 }
 
-export async function listWorkspaceAccess(): Promise<AccessDirectory> {
+export async function listWorkspaceAccess(workspace: string): Promise<AccessDirectory> {
   const client = adminClient();
-  const workspace = await workspaceId(client);
   const [members, requests, invitations] = await Promise.all([
     client
       .from("app_users")
@@ -243,6 +242,7 @@ export async function listWorkspaceAccess(): Promise<AccessDirectory> {
 }
 
 export async function inviteWorkspaceUser(
+  workspace: string,
   actorId: string,
   emailValue: string,
   role: WorkspaceRole
@@ -250,7 +250,6 @@ export async function inviteWorkspaceUser(
   const email = normalizedEmail(emailValue);
   if (!email) throw new Error("Enter a valid email address.");
   const client = adminClient();
-  const workspace = await workspaceId(client);
   const result = await client.from("workspace_invitations").upsert(
     {
       workspace_id: workspace,
@@ -266,6 +265,7 @@ export async function inviteWorkspaceUser(
 }
 
 export async function reviewAccessRequest(
+  workspace: string,
   actorId: string,
   requestId: string,
   decision: "approve" | "reject",
@@ -276,6 +276,7 @@ export async function reviewAccessRequest(
     .from("access_requests")
     .select("*")
     .eq("id", requestId)
+    .eq("workspace_id", workspace)
     .eq("status", "pending")
     .single();
   if (request.error || !request.data) throw new Error(request.error?.message || "Request not found.");
@@ -300,11 +301,13 @@ export async function reviewAccessRequest(
   const reviewed = await client
     .from("access_requests")
     .update({ status: decision === "approve" ? "approved" : "rejected", reviewed_by: actorId, reviewed_at: now, updated_at: now })
-    .eq("id", requestId);
+    .eq("id", requestId)
+    .eq("workspace_id", workspace);
   if (reviewed.error) throw new Error(reviewed.error.message);
 }
 
 export async function updateWorkspaceMember(
+  workspace: string,
   memberId: string,
   patch: { role?: WorkspaceRole; active?: boolean }
 ) {
@@ -312,6 +315,10 @@ export async function updateWorkspaceMember(
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.role) update.app_role = patch.role;
   if (typeof patch.active === "boolean") update.active = patch.active;
-  const result = await client.from("app_users").update(update).eq("id", memberId);
+  const result = await client
+    .from("app_users")
+    .update(update)
+    .eq("id", memberId)
+    .eq("workspace_id", workspace);
   if (result.error) throw new Error(result.error.message);
 }

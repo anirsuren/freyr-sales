@@ -53,7 +53,9 @@ workspace. Before a production launch, use a separate task definition with
 `DEFAULT_DATA_MODE=live` and `DATA_MODE_LOCKED=1` so every task uses the same
 deployment-controlled mode.
 
-The deployment stage intentionally stops after pushing the image until Freyr
-provides the ECS cluster/service names and approves the production promotion
-gate. Add the ECS task registration/service update only after those values are
-known; guessing them would risk deploying into the wrong service.
+The deployment stage builds and pushes the immutable commit image, registers a
+new revision of the existing task family, updates the configured existing ECS
+service, and waits for the service to become stable. `APP_VERSION` is set to the
+full source commit so `/api/health` can prove which release is running. The
+pipeline preserves the existing task environment and Secrets Manager bindings;
+it does not create a new cluster, service, or deployment topology.

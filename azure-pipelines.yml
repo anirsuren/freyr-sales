@@ -70,7 +70,9 @@ stages:
                   --query taskDefinition \
                   --output json)
 
-                echo "$TD" | jq --arg IMG "$IMAGE:$TAG" '
+                echo "$TD" | jq \
+                  --arg IMG "$IMAGE:$TAG" \
+                  --arg VER "$(Build.SourceVersion)" '
                   def set_env($name; $value):
                     .containerDefinitions[0].environment = (
                       ((.containerDefinitions[0].environment // [])
@@ -78,6 +80,7 @@ stages:
                       + [{name: $name, value: $value}]
                     );
                   .containerDefinitions[0].image = $IMG
+                  | set_env("APP_VERSION"; $VER)
                   | set_env("DEFAULT_DATA_MODE"; "mock")
                   | set_env("DATA_MODE_LOCKED"; "0")
                   | del(

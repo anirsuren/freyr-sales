@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const grant = await adminGrant(request);
   if (!grant) return NextResponse.json({ error: "Workspace owner access required." }, { status: 403 });
   try {
-    return NextResponse.json(await listWorkspaceAccess());
+    return NextResponse.json(await listWorkspaceAccess(grant.workspaceId));
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not load workspace access." },
@@ -34,25 +34,31 @@ export async function POST(request: NextRequest) {
   const role: WorkspaceRole = ROLES.has(body.role) ? body.role : "sales";
   try {
     if (body.action === "invite") {
-      await inviteWorkspaceUser(grant.userId, body.email || "", role);
+      await inviteWorkspaceUser(grant.workspaceId, grant.userId, body.email || "", role);
     } else if (body.action === "approve" || body.action === "reject") {
       await reviewAccessRequest(
+        grant.workspaceId,
         grant.userId,
         body.requestId || "",
         body.action,
         role
       );
     } else if (body.action === "change_role") {
-      await updateWorkspaceMember(body.memberId || "", { role });
+      await updateWorkspaceMember(grant.workspaceId, body.memberId || "", { role });
     } else if (body.action === "deactivate" || body.action === "reactivate") {
       if (body.action === "deactivate" && body.memberId === grant.userId) {
         return NextResponse.json({ error: "You cannot suspend your own owner account." }, { status: 400 });
       }
-      await updateWorkspaceMember(body.memberId || "", { active: body.action === "reactivate" });
+      await updateWorkspaceMember(grant.workspaceId, body.memberId || "", {
+        active: body.action === "reactivate",
+      });
     } else {
       return NextResponse.json({ error: "Unsupported access action." }, { status: 400 });
     }
-    return NextResponse.json({ ok: true, directory: await listWorkspaceAccess() });
+    return NextResponse.json({
+      ok: true,
+      directory: await listWorkspaceAccess(grant.workspaceId),
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Access update failed." },
