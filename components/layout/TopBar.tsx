@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, Rocket } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -137,7 +137,10 @@ export function TopBar({
   }, [userOpen]);
 
   return (
-    <header className="sticky top-0 z-40 h-14 shrink-0 bg-white border-b border-border-light flex items-center justify-between gap-4 px-4 lg:px-8">
+    <header
+      data-tour="topbar"
+      className="sticky top-0 z-40 h-14 shrink-0 bg-white border-b border-border-light flex items-center justify-between gap-4 px-4 lg:px-8"
+    >
       <button
         onClick={onMenuClick}
         aria-label="Open navigation"
@@ -147,6 +150,7 @@ export function TopBar({
       </button>
       <div className="relative flex-1 max-w-xl min-w-0">
         <button
+          data-tour="global-search"
           onClick={() => setPaletteOpen(true)}
           className="group w-full flex items-center gap-2 bg-surface border border-border-light rounded-full pl-10 pr-2.5 py-2 text-[14px] text-text-tertiary hover:bg-white hover:border-blue-subtle hover:shadow-[0_4px_16px_rgba(0,113,227,0.10)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/40 focus-visible:border-blue-subtle active:scale-[0.99] transition-all duration-200 relative"
         >
@@ -174,6 +178,7 @@ export function TopBar({
       <div className="flex items-center gap-1.5">
         <div className="relative">
           <button
+            data-tour="create-new"
             aria-label="Create new"
             aria-haspopup="menu"
             aria-expanded={newOpen}
@@ -218,6 +223,7 @@ export function TopBar({
         </div>
         {!offeringsOnly && onAgentToggle && (
           <button
+            data-tour="agent-assistant"
             aria-label="Ask your agent"
             title="Your agent"
             onClick={onAgentToggle}
@@ -233,6 +239,7 @@ export function TopBar({
         )}
         {!offeringsOnly && <div className="relative">
           <button
+            data-tour="notifications"
             aria-label="Notifications"
             onClick={() => setNotifOpen((o) => !o)}
             className="relative w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
@@ -300,6 +307,7 @@ export function TopBar({
           )}
         </div>}
         {!offeringsOnly && <button
+          data-tour="help"
           aria-label="Keyboard shortcuts"
           onClick={() => setHelpOpen(true)}
           className="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
@@ -309,6 +317,7 @@ export function TopBar({
         {!offeringsOnly && <div className="w-px h-7 bg-border-light mx-2" />}
         {!offeringsOnly && <div className="relative" ref={userMenuRef}>
           <button
+            data-tour="account-menu"
             aria-label="Account menu"
             aria-haspopup="menu"
             aria-expanded={userOpen}
@@ -347,6 +356,15 @@ export function TopBar({
                   >
                     <Settings size={16} strokeWidth={1.7} className="text-text-secondary" />
                     Settings
+                  </Link>
+                  <Link
+                    role="menuitem"
+                    href="/onboarding"
+                    onClick={() => setUserOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
+                  >
+                    <Rocket size={16} strokeWidth={1.7} className="text-text-secondary" />
+                    Product tour
                   </Link>
                   <Link
                     role="menuitem"

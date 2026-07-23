@@ -8,7 +8,10 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6">
+    <div
+      data-tour="page-header"
+      className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6"
+    >
       <div>
         <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
           {title}

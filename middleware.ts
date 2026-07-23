@@ -165,6 +165,7 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith("/api/") &&
     pathname !== "/login" &&
     pathname !== "/access-pending" &&
+    pathname !== "/onboarding" &&
     pathname !== "/settings" &&
     pathname !== "/offerings" &&
     !pathname.startsWith("/offerings/")

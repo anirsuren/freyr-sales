@@ -137,6 +137,7 @@ export function Sidebar({
       <Link
         key={item.href}
         href={item.href}
+        data-tour={`nav-${item.href.slice(1).replaceAll("/", "-")}`}
         onClick={onMobileClose}
         aria-current={active ? "page" : undefined}
         title={collapsed ? item.label : undefined}
@@ -166,6 +167,7 @@ export function Sidebar({
 
   return (
     <aside
+      data-tour="sidebar"
       className={cn(
         "border-r border-border-light bg-white flex flex-col py-6 transition-transform duration-200 overflow-y-auto",
         // mobile: fixed off-canvas drawer
@@ -215,6 +217,7 @@ export function Sidebar({
       {!offeringsOnly && (
       <div className={cn("mb-5", collapsed ? "px-3" : "px-4")}>
         <button
+          data-tour="new-session"
           onClick={() => router.push("/intake")}
           title={collapsed ? "New Session" : undefined}
           className={cn(
@@ -235,10 +238,10 @@ export function Sidebar({
 
       {/* Footer: settings + profile */}
       <div className="mt-auto px-3 pt-4 border-t border-border-light space-y-0.5">
-        {!offeringsOnly && (
         <Link
           href="/onboarding"
-          title={collapsed ? "Get started" : undefined}
+          data-tour="product-tour"
+          title={collapsed ? "Product tour" : undefined}
           className={cn(
             "flex items-center gap-3 py-2 rounded-md text-[14px] border-l-[3px] transition-colors",
             collapsed ? "justify-center px-0" : "pl-3 pr-3",
@@ -248,11 +251,11 @@ export function Sidebar({
           )}
         >
           <Rocket size={20} strokeWidth={1.5} className="shrink-0" />
-          {!collapsed && "Get started"}
+          {!collapsed && "Product tour"}
         </Link>
-        )}
         <Link
           href="/settings"
+          data-tour="nav-settings"
           title={collapsed ? "Settings" : undefined}
           className={cn(
             "flex items-center gap-3 py-2 rounded-md text-[14px] border-l-[3px] transition-colors",

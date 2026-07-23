@@ -32,6 +32,7 @@ export function AppShell({
     offeringsOnly &&
     pathname !== "/login" &&
     pathname !== "/settings" &&
+    pathname !== "/onboarding" &&
     pathname !== "/offerings" &&
     !pathname.startsWith("/offerings/");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -183,6 +184,7 @@ export function AppShell({
             <main
               key={pathname}
               id="main-content"
+              data-tour="page-content"
               tabIndex={-1}
               className="flex-1 min-w-0 overflow-hidden page-in"
             >
@@ -191,6 +193,7 @@ export function AppShell({
           ) : (
             <main
               id="main-content"
+              data-tour="page-content"
               tabIndex={-1}
               className="flex-1 min-w-0 overflow-y-auto"
             >
