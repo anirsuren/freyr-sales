@@ -125,7 +125,8 @@ async function setAuthCookies(
 async function installOnboardingMock(
   page: Page,
   initial: Partial<TourState> = {},
-  role: TourRole = "admin"
+  role: TourRole = "admin",
+  options: { getFailures?: number } = {}
 ) {
   let state: TourState = {
     version: TOUR_VERSION,
@@ -134,6 +135,7 @@ async function installOnboardingMock(
     ...initial,
   };
   const actions: TourAction[] = [];
+  let remainingGetFailures = Math.max(0, options.getFailures || 0);
 
   // The real refresh route needs the access-control database. Keep this UI
   // suite deterministic while preserving middleware validation via the signed
@@ -150,6 +152,16 @@ async function installOnboardingMock(
   await page.route("**/api/onboarding", async (route) => {
     const method = route.request().method();
     if (method === "GET") {
+      if (remainingGetFailures > 0) {
+        remainingGetFailures -= 1;
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          headers: { "Cache-Control": "no-store" },
+          body: JSON.stringify({ error: "Onboarding is warming up." }),
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -219,6 +231,34 @@ async function installOnboardingMock(
     state: () => state,
   };
 }
+
+test("first use recovers from a transient post-login onboarding load", async ({
+  context,
+  page,
+}) => {
+  await setAuthCookies(context, "transient-load-user");
+  const mock = await installOnboardingMock(
+    page,
+    {},
+    "admin",
+    { getFailures: 1 }
+  );
+
+  await page.goto("/customers");
+  await expectTourRoute(page, 0);
+  await expect(page.getByTestId("product-tour-dialog")).toBeVisible();
+  await expect(page.getByTestId("product-tour-provider-state")).toHaveAttribute(
+    "data-load-failures",
+    "0"
+  );
+  await expect
+    .poll(() =>
+      mock.actions.some(
+        (action) => action.action === "progress" && action.currentStep === 0
+      )
+    )
+    .toBeTruthy();
+});
 
 test("first use launches an accessible tour and preserves progress across routes", async ({
   context,

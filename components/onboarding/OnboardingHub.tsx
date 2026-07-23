@@ -17,7 +17,6 @@ import {
   getProductTourSteps,
   localTourIndexForCatalogStep,
 } from "@/lib/productTourCatalog";
-import { requestProductTourStart } from "./productTourEvents";
 
 type OnboardingStatus =
   | "not_started"
@@ -95,6 +94,8 @@ export function OnboardingHub({
   const [currentStep, setCurrentStep] = useState(0);
   const [role, setRole] = useState<OnboardingResponse["role"]>();
   const [loading, setLoading] = useState(true);
+  const [launching, setLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -149,8 +150,60 @@ export function OnboardingHub({
         ? "Take tour again"
         : "Start guided tour";
 
-  function startTour() {
-    requestProductTourStart({ restart: replay });
+  async function patchOnboarding(action: {
+    action: "progress" | "reset";
+    currentStep?: number;
+  }): Promise<void> {
+    const response = await fetch("/api/onboarding", {
+      method: "PATCH",
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(action),
+    });
+    if (response.ok) return;
+
+    let message = "We could not start the product tour. Please try again.";
+    try {
+      const body = (await response.json()) as { error?: unknown };
+      if (typeof body.error === "string" && body.error.trim()) {
+        message = body.error;
+      }
+    } catch {
+      // Keep the useful fallback for empty and non-JSON responses.
+    }
+    throw new Error(message);
+  }
+
+  async function startTour() {
+    if (loading || launching || tourSteps.length === 0) return;
+    const nextLocalStep =
+      !replay && status === "in_progress" ? localStep : 0;
+    const nextStep = tourSteps[nextLocalStep] || tourSteps[0];
+
+    setLaunching(true);
+    setLaunchError(null);
+    try {
+      if (replay) await patchOnboarding({ action: "reset" });
+      await patchOnboarding({
+        action: "progress",
+        currentStep: nextStep.catalogIndex,
+      });
+      // A full navigation gives the provider a clean post-login mount and
+      // makes the hub a reliable recovery path even after a transient load
+      // failure or a missed client event.
+      window.location.assign(nextStep.route);
+    } catch (cause) {
+      setLaunchError(
+        cause instanceof Error
+          ? cause.message
+          : "We could not start the product tour. Please try again."
+      );
+      setLaunching(false);
+    }
   }
 
   return (
@@ -174,12 +227,16 @@ export function OnboardingHub({
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button
                 type="button"
-                onClick={startTour}
+                onClick={() => void startTour()}
                 aria-label={label}
-                disabled={loading}
+                disabled={loading || launching}
               >
                 {replay ? <RotateCcw size={17} /> : <Play size={17} />}
-                {loading ? "Loading tour…" : label}
+                {loading
+                  ? "Loading tour…"
+                  : launching
+                    ? "Starting tour…"
+                    : label}
               </Button>
               <Link
                 href={offeringsOnly ? "/offerings" : "/dashboard"}
@@ -189,6 +246,14 @@ export function OnboardingHub({
                 <ArrowRight size={15} />
               </Link>
             </div>
+            {launchError && (
+              <p
+                role="alert"
+                className="mt-3 text-[12px] font-medium text-error"
+              >
+                {launchError}
+              </p>
+            )}
           </div>
 
           <div className="rounded-xl border border-border-light bg-white/90 p-5 shadow-sm">

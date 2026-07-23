@@ -120,6 +120,7 @@ export function ProductTourProvider({
   const operationInFlightRef = useRef(false);
   const hydratedRef = useRef(false);
   const requestIdRef = useRef(0);
+  const loadFailuresRef = useRef(0);
 
   const steps = useMemo(
     () =>
@@ -156,10 +157,14 @@ export function ProductTourProvider({
         throw new Error("The product tour returned an invalid response.");
       }
       if (!mountedRef.current) return;
+      loadFailuresRef.current = 0;
       setSnapshot(body);
       setPhase("ready");
     } catch {
-      if (mountedRef.current) setPhase("error");
+      if (mountedRef.current) {
+        loadFailuresRef.current += 1;
+        setPhase("error");
+      }
     } finally {
       loadInFlightRef.current = false;
     }
@@ -258,10 +263,33 @@ export function ProductTourProvider({
     if (enabled && phase === "idle") void loadOnboarding();
   }, [enabled, loadOnboarding, phase]);
 
+  // Immediately after login, the durable access grant and onboarding store can
+  // become available a fraction of a second after the app shell mounts. Retry a
+  // bounded number of times so that one transient response cannot silently
+  // suppress first-use onboarding for the whole session.
+  useEffect(() => {
+    if (
+      !enabled ||
+      phase !== "error" ||
+      loadFailuresRef.current >= 5
+    ) {
+      return;
+    }
+    const delay = Math.min(
+      3200,
+      400 * 2 ** Math.max(0, loadFailuresRef.current - 1)
+    );
+    const timeout = window.setTimeout(() => {
+      setPhase((current) => (current === "error" ? "idle" : current));
+    }, delay);
+    return () => window.clearTimeout(timeout);
+  }, [enabled, phase]);
+
   useEffect(() => {
     const handleStart = (event: Event) => {
       const detail = (event as CustomEvent<OnboardingStartDetail>).detail;
       requestIdRef.current += 1;
+      loadFailuresRef.current = 0;
       setStartRequest({
         id: requestIdRef.current,
         restart: detail?.restart === true,
@@ -440,6 +468,13 @@ export function ProductTourProvider({
   return (
     <>
       {children}
+      <span
+        hidden
+        data-testid="product-tour-provider-state"
+        data-phase={phase}
+        data-state={snapshot?.state.status || "unavailable"}
+        data-load-failures={loadFailuresRef.current}
+      />
       {active && currentStep && (
         <ProductTourOverlay
           step={currentStep}
