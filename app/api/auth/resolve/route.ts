@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseAlbOidcPrincipal, parseEasyAuthPrincipal } from "@/lib/auth";
+import { requestUsesHttps } from "@/lib/appSession";
 import {
   ACCESS_COOKIE,
   ACCESS_TTL_SECONDS,
@@ -7,23 +7,35 @@ import {
   signAccessGrant,
 } from "@/lib/accessControl";
 import { resolveWorkspaceAccess } from "@/lib/accessStore";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
 
 function safeNext(request: NextRequest): string {
   const value = request.nextUrl.searchParams.get("next") || "/offerings";
-  return value.startsWith("/") && !value.startsWith("//") ? value : "/offerings";
+  try {
+    const candidate = new URL(value, request.nextUrl.origin);
+    if (
+      value.startsWith("/") &&
+      !value.startsWith("//") &&
+      !value.includes("\\") &&
+      candidate.origin === request.nextUrl.origin
+    ) {
+      return `${candidate.pathname}${candidate.search}${candidate.hash}`;
+    }
+  } catch {}
+  return "/offerings";
 }
 
 export async function GET(request: NextRequest) {
   const next = safeNext(request);
-  if (!isApprovalGateEnabled()) return NextResponse.redirect(new URL(next, request.url));
-
-  const principal =
-    parseEasyAuthPrincipal(request.headers.get("x-ms-client-principal")) ||
-    parseAlbOidcPrincipal(
-      request.headers.get("x-amzn-oidc-data"),
-      request.headers.get("x-amzn-oidc-identity")
-    );
-  if (!principal) return NextResponse.redirect(new URL("/login", request.url));
+  const principal = await authenticatedRequestPrincipal(request);
+  if (!principal) {
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", next);
+    return NextResponse.redirect(login);
+  }
+  if (!isApprovalGateEnabled()) {
+    return NextResponse.redirect(new URL(next, request.url));
+  }
 
   try {
     const access = await resolveWorkspaceAccess(principal);
@@ -44,7 +56,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(ACCESS_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: requestUsesHttps(request),
       path: "/",
       maxAge: ACCESS_TTL_SECONDS,
     });

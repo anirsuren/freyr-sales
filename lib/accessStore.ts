@@ -53,8 +53,55 @@ function adminClient(): SupabaseClient {
   });
 }
 
+export async function verifyAccessControlStorage(): Promise<void> {
+  const client = adminClient();
+  const [users, requests, invitations] = await Promise.all([
+    client
+      .from("app_users")
+      .select("id, auth_provider, provider_subject, active")
+      .limit(1),
+    client
+      .from("access_requests")
+      .select("id, auth_provider, provider_subject, status")
+      .limit(1),
+    client
+      .from("workspace_invitations")
+      .select("id, email, status")
+      .limit(1),
+  ]);
+  for (const result of [users, requests, invitations]) {
+    if (result.error) throw new Error(result.error.message);
+  }
+}
+
 async function workspaceId(client: SupabaseClient): Promise<string> {
-  if (process.env.FREYR_WORKSPACE_ID) return process.env.FREYR_WORKSPACE_ID;
+  const configured = process.env.FREYR_WORKSPACE_ID;
+  if (configured) {
+    const existing = await client
+      .from("workspaces")
+      .select("id")
+      .eq("id", configured)
+      .maybeSingle();
+    if (existing.error) throw new Error(existing.error.message);
+    if (existing.data?.id) return existing.data.id;
+    const created = await client
+      .from("workspaces")
+      .insert({
+        id: configured,
+        name: process.env.FREYR_WORKSPACE_NAME || "Freyr Sales",
+      })
+      .select("id")
+      .single();
+    if (created.error || !created.data?.id) {
+      throw new Error(
+        created.error?.message || "Could not create configured workspace."
+      );
+    }
+    return created.data.id;
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("FREYR_WORKSPACE_ID is required in production.");
+  }
   const existing = await client.from("workspaces").select("id").order("created_at").limit(1).maybeSingle();
   if (existing.error) throw new Error(existing.error.message);
   if (existing.data?.id) return existing.data.id;
@@ -72,13 +119,15 @@ async function workspaceId(client: SupabaseClient): Promise<string> {
 async function activeUser(
   client: SupabaseClient,
   workspace: string,
+  provider: "entra" | "aws-alb" | "supabase",
   subject: string
 ) {
   const result = await client
     .from("app_users")
     .select("id, app_role, active")
     .eq("workspace_id", workspace)
-    .eq("entra_object_id", subject)
+    .eq("auth_provider", provider)
+    .eq("provider_subject", subject)
     .maybeSingle();
   if (result.error) throw new Error(result.error.message);
   return result.data as { id: string; app_role: WorkspaceRole; active: boolean } | null;
@@ -89,7 +138,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
   const workspace = await workspaceId(client);
   const provider = providerForAuthMode();
   const email = normalizedEmail(user.email);
-  const existing = await activeUser(client, workspace, user.id);
+  const existing = await activeUser(client, workspace, provider, user.id);
 
   if (existing?.active) {
     await client.from("app_users").update({ last_seen_at: new Date().toISOString() }).eq("id", existing.id);
@@ -136,6 +185,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
       .insert({
         workspace_id: workspace,
         entra_object_id: user.id,
+        provider_subject: user.id,
         email,
         display_name: user.name,
         app_role: role,
@@ -286,6 +336,7 @@ export async function reviewAccessRequest(
       {
         workspace_id: request.data.workspace_id,
         entra_object_id: request.data.provider_subject,
+        provider_subject: request.data.provider_subject,
         email: request.data.email,
         display_name: request.data.display_name,
         app_role: role,
@@ -294,7 +345,7 @@ export async function reviewAccessRequest(
         approved_by: actorId,
         approved_at: now,
       },
-      { onConflict: "workspace_id,entra_object_id" }
+      { onConflict: "workspace_id,auth_provider,provider_subject" }
     );
     if (user.error) throw new Error(user.error.message);
   }

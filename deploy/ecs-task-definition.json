@@ -16,7 +16,8 @@
       "environment": [
         { "name": "NODE_ENV", "value": "production" },
         { "name": "PORT", "value": "8080" },
-        { "name": "AUTH_MODE", "value": "aws-alb" },
+        { "name": "AUTH_MODE", "value": "supabase" },
+        { "name": "ACCESS_CONTROL_MODE", "value": "approval" },
         { "name": "DEFAULT_DATA_MODE", "value": "mock" },
         { "name": "DATA_MODE_LOCKED", "value": "0" }
       ],
@@ -25,7 +26,11 @@
         { "name": "FIRECRAWL_API_KEY", "valueFrom": "${APP_SECRETS_ARN}:FIRECRAWL_API_KEY::" },
         { "name": "APIFY_API_TOKEN", "valueFrom": "${APP_SECRETS_ARN}:APIFY_API_TOKEN::" },
         { "name": "NEXT_PUBLIC_SUPABASE_URL", "valueFrom": "${APP_SECRETS_ARN}:NEXT_PUBLIC_SUPABASE_URL::" },
+        { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "valueFrom": "${APP_SECRETS_ARN}:NEXT_PUBLIC_SUPABASE_ANON_KEY::" },
         { "name": "SUPABASE_SERVICE_ROLE_KEY", "valueFrom": "${APP_SECRETS_ARN}:SUPABASE_SERVICE_ROLE_KEY::" },
+        { "name": "AUTH_COOKIE_SECRET", "valueFrom": "${APP_SECRETS_ARN}:AUTH_COOKIE_SECRET::" },
+        { "name": "OWNER_EMAILS", "valueFrom": "${APP_SECRETS_ARN}:OWNER_EMAILS::" },
+        { "name": "FREYR_WORKSPACE_ID", "valueFrom": "${APP_SECRETS_ARN}:FREYR_WORKSPACE_ID::" },
         { "name": "RESEND_API_KEY", "valueFrom": "${APP_SECRETS_ARN}:RESEND_API_KEY::" }
       ],
       "healthCheck": {

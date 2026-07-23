@@ -15,31 +15,101 @@ Required before production traffic:
    only from the ALB security group.
 5. Add an HTTPS listener with an ACM certificate for
    `freyrsales.dev.freyrapps.com`; redirect HTTP to HTTPS.
-6. Configure ALB OIDC authentication against Freyr's Microsoft Entra tenant,
-   then set `AUTH_MODE=aws-alb`. Keep `/api/health` available only to the ALB.
-   Authentication alone is not workspace access: after the database migration
-   and owner bootstrap below are ready, set `ACCESS_CONTROL_MODE=approval`.
+6. Choose exactly one authentication topology:
+   - For the Supabase email/password login shipped in the task template, set
+     `AUTH_MODE=supabase` and make the HTTPS listener's application action
+     **forward directly to the target group**. Do not add an ALB
+     `authenticate-oidc` action in front of it.
+   - To retain Microsoft Entra authentication at the load balancer, configure
+     the listener's `authenticate-oidc` action followed by the forward action
+     and set `AUTH_MODE=aws-alb`.
+
+   Do not combine ALB OIDC with `AUTH_MODE=supabase`: that creates two login
+   walls and also prevents unauthenticated provider webhooks from reaching the
+   application. In either topology, keep the ECS task private and allow port
+   8080 only from the ALB security group.
 7. Set the target-group health path to `/api/health` and enable deployment
    rollback/circuit breaker.
-8. Apply every SQL migration, including `004_invite_only_access.sql`, to the
-   approved PostgreSQL service before starting the live task. The offering
-   catalog is hydrated from that durable row when each ECS task starts.
+8. Apply every SQL migration in filename order, from
+   `001_initial_schema.sql` through `006_supabase_auth.sql`, to the approved
+   Supabase/PostgreSQL service before starting the live task. Migration 006 is
+   required for provider-aware Supabase identities. The offering catalog is
+   hydrated from its durable row when each ECS task starts.
 9. Store all provider and database credentials in AWS Secrets Manager and rotate
    any value previously pasted into chat.
 10. Run a live-mode smoke test after deploy. Use a separate mock-configured demo
     task or local environment for demonstrations.
 
-Invite-only access requires these deployment secrets/settings:
+## Supabase authentication setup
 
-- `AUTH_COOKIE_SECRET`: a randomly generated value of at least 32 characters.
-- `OWNER_EMAILS`: the comma-separated identities allowed to bootstrap the first
-  workspace administrator. Remove temporary addresses after the owner signs in.
-- `FREYR_WORKSPACE_ID`: the production workspace UUID. Setting this avoids any
-  ambiguity if the database later contains multiple workspaces.
-- `ACCESS_CONTROL_MODE=approval`: enable only after the migration, SSO headers,
-  service-role database access, owner email, and cookie secret are verified.
+For `AUTH_MODE=supabase`, configure the production Supabase project before
+deploying:
 
-Unknown SSO identities create an access request and see no application data.
+1. In **Authentication → Providers → Email**, enable email/password sign-in and
+   turn on **Confirm email**. Do not disable confirmation for production:
+   bootstrap-owner access is matched by verified email address.
+2. In **Authentication → URL Configuration**, set the production Site URL to
+   `https://freyrsales.dev.freyrapps.com` and add
+   `https://freyrsales.dev.freyrapps.com/login` to the redirect allow list.
+   Substitute the final approved hostname if it changes, and avoid broad
+   wildcard redirects. Keep localhost redirects limited to a development
+   project.
+3. Apply migrations `001` through `006` in order and confirm that
+   `006_supabase_auth.sql` completed successfully.
+
+The JSON secret referenced by `APP_SECRETS_ARN` must contain all of these keys:
+
+- `NEXT_PUBLIC_SUPABASE_URL`: the production Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: the project's public anon key. It is injected
+  at both image-build time and task runtime.
+- `SUPABASE_SERVICE_ROLE_KEY`: the server-only service-role key. Never expose it
+  to browser code, logs, pipeline output, or chat.
+- `AUTH_COOKIE_SECRET`: a cryptographically random value with at least 32 bytes
+  of entropy. Keep it identical across all running tasks and rolling
+  deployments; changing it signs every user out.
+- `FREYR_WORKSPACE_ID`: one UUID chosen once for this production workspace.
+  Keep it stable across deployments and task replacements.
+- `OWNER_EMAILS`: a comma-separated bootstrap allowlist. Initially set it to
+  the exact verified email address(es) that may create the first administrator.
+
+The Azure DevOps variable group must also provide
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to the container
+build, because Next.js embeds those public values in the login page. Never add
+`SUPABASE_SERVICE_ROLE_KEY` to build arguments; it belongs only in the ECS task
+secret bindings.
+
+The task environment must set `AUTH_MODE=supabase` and
+`ACCESS_CONTROL_MODE=approval`. The application fails its production health
+check when required authentication configuration is absent or the approval
+tables/migration are not reachable.
+
+### First-owner bootstrap
+
+`OWNER_EMAILS` is a temporary bootstrap mechanism, not an ongoing owner group:
+
+1. Deploy with only the intended first owner's exact email in `OWNER_EMAILS`.
+2. Have that owner sign up, click the Supabase confirmation email, and sign in.
+3. Verify an active `app_users` row exists for `FREYR_WORKSPACE_ID` with
+   `auth_provider = 'supabase'` and `app_role = 'admin'`.
+4. Set the existing `OWNER_EMAILS` JSON secret value to an empty string and
+   replace the ECS tasks. Keep the JSON key present because the task definition
+   references it.
+
+After bootstrap, owners should invite or approve every additional user from
+**Settings → Access**. A person who can authenticate but has not been approved
+sees the access-pending page and receives no application data.
+
+## Access-control settings
+
+Invite-only access uses these deployment settings:
+
+- `AUTH_COOKIE_SECRET`: signs both the login and workspace-access cookies.
+- `FREYR_WORKSPACE_ID`: binds approvals to the deterministic production
+  workspace.
+- `ACCESS_CONTROL_MODE=approval`: keep enabled after migrations, identity
+  configuration, service-role access, and the cookie secret are verified.
+
+Unknown identities create an access request and see no application data.
 An owner approves or rejects the request in Settings → Access. Owners can also
 pre-approve an identity by creating a 14-day invitation in Settings → Team.
 Catalog editors may maintain offerings and sales materials but cannot manage

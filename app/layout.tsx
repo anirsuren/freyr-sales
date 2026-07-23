@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDataMode } from "@/lib/dataMode";
+import { isApprovalGateEnabled } from "@/lib/accessControl";
 
 export const metadata: Metadata = {
   metadataBase: new URL("http://localhost:3001"),
@@ -30,7 +31,12 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased text-text-primary">
-        <AppShell dataMode={getDataMode()}>{children}</AppShell>
+        <AppShell
+          dataMode={getDataMode()}
+          approvalEnabled={isApprovalGateEnabled()}
+        >
+          {children}
+        </AppShell>
       </body>
     </html>
   );

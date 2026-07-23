@@ -36,6 +36,8 @@ stages:
             displayName: Install browser
           - script: npm run test:smoke
             displayName: Smoke tests
+          - script: npm run test:auth
+            displayName: Authentication boundary tests
 
   - stage: Deploy
     dependsOn: Verify
@@ -72,15 +74,33 @@ stages:
 
                 echo "$TD" | jq \
                   --arg IMG "$IMAGE:$TAG" \
-                  --arg VER "$(Build.SourceVersion)" '
+                  --arg VER "$(Build.SourceVersion)" \
+                  --arg SECRET_ARN "$(APP_SECRETS_ARN)" '
                   def set_env($name; $value):
                     .containerDefinitions[0].environment = (
                       ((.containerDefinitions[0].environment // [])
                         | map(select(.name != $name)))
                       + [{name: $name, value: $value}]
                     );
+                  def set_secret($name; $json_key):
+                    .containerDefinitions[0].secrets = (
+                      ((.containerDefinitions[0].secrets // [])
+                        | map(select(.name != $name)))
+                      + [{
+                          name: $name,
+                          valueFrom: ($SECRET_ARN + ":" + $json_key + "::")
+                        }]
+                    );
                   .containerDefinitions[0].image = $IMG
                   | set_env("APP_VERSION"; $VER)
+                  | set_secret("NEXT_PUBLIC_SUPABASE_URL"; "NEXT_PUBLIC_SUPABASE_URL")
+                  | set_secret("NEXT_PUBLIC_SUPABASE_ANON_KEY"; "NEXT_PUBLIC_SUPABASE_ANON_KEY")
+                  | set_secret("SUPABASE_SERVICE_ROLE_KEY"; "SUPABASE_SERVICE_ROLE_KEY")
+                  | set_secret("AUTH_COOKIE_SECRET"; "AUTH_COOKIE_SECRET")
+                  | set_secret("OWNER_EMAILS"; "OWNER_EMAILS")
+                  | set_secret("FREYR_WORKSPACE_ID"; "FREYR_WORKSPACE_ID")
+                  | set_env("AUTH_MODE"; "supabase")
+                  | set_env("ACCESS_CONTROL_MODE"; "approval")
                   | set_env("DEFAULT_DATA_MODE"; "mock")
                   | set_env("DATA_MODE_LOCKED"; "0")
                   | del(

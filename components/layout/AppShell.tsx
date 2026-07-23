@@ -19,9 +19,11 @@ const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
 export function AppShell({
   children,
   dataMode,
+  approvalEnabled,
 }: {
   children: React.ReactNode;
   dataMode: DataMode;
+  approvalEnabled: boolean;
 }) {
   const pathname = usePathname() || "";
   const router = useRouter();
@@ -76,6 +78,58 @@ export function AppShell({
   useEffect(() => {
     if (restrictedPath) router.replace("/offerings");
   }, [restrictedPath, router]);
+
+  useEffect(() => {
+    if (
+      !approvalEnabled ||
+      pathname === "/login" ||
+      pathname === "/access-pending"
+    ) {
+      return;
+    }
+
+    let active = true;
+    let refreshing = false;
+    const refreshAccess = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const response = await fetch("/api/auth/access", {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        if (!active || response.ok) return;
+
+        const next = `${window.location.pathname}${window.location.search}`;
+        if (response.status === 401) {
+          window.location.assign(`/login?next=${encodeURIComponent(next)}`);
+        } else if (response.status === 403) {
+          window.location.assign("/access-pending");
+        } else {
+          window.location.assign("/access-pending?configuration=error");
+        }
+      } catch {
+        // A short network interruption does not extend the current grant. The
+        // middleware will continue to fail closed once that grant expires.
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    void refreshAccess();
+    const interval = window.setInterval(refreshAccess, 10 * 60 * 1000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshAccess();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [approvalEnabled, pathname]);
 
   if (restrictedPath) return null;
 

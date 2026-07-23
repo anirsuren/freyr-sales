@@ -13,23 +13,32 @@ export async function getRole(): Promise<Role> {
   if (isApprovalGateEnabled()) {
     const grant = await verifyAccessGrant(store.get(ACCESS_COOKIE)?.value);
     if (grant) return grant.role;
+    // Protected deployments must never turn a missing or invalid grant into
+    // administrator access.
+    return "sales";
   }
 
   const headerStore = await headers();
   const principal =
-    parseEasyAuthPrincipal(headerStore.get("x-ms-client-principal")) ||
-    parseAlbOidcPrincipal(
-      headerStore.get("x-amzn-oidc-data"),
-      headerStore.get("x-amzn-oidc-identity")
-  );
+    process.env.AUTH_MODE === "entra"
+      ? parseEasyAuthPrincipal(headerStore.get("x-ms-client-principal"))
+      : process.env.AUTH_MODE === "aws-alb"
+        ? parseAlbOidcPrincipal(
+            headerStore.get("x-amzn-oidc-data"),
+            headerStore.get("x-amzn-oidc-identity")
+          )
+        : null;
   if (principal) {
     if (hasAppRole(principal, "Platform-Admins")) return "admin";
     if (hasAppRole(principal, "Offering-Editors")) return "editor";
     return "sales";
   }
 
-  const role = store.get("freyr_role")?.value;
-  return role === "sales" || role === "editor" ? role : "admin";
+  if (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE) {
+    const role = store.get("freyr_role")?.value;
+    return role === "sales" || role === "editor" ? role : "admin";
+  }
+  return "sales";
 }
 
 export async function isAdmin(): Promise<boolean> {

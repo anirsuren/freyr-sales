@@ -9,7 +9,9 @@ const norm = (phone: string) => phone.replace(/\D/g, "").slice(-10);
 
 export async function POST(req: NextRequest) {
   const secret = process.env.ELEVENLABS_INBOUND_WEBHOOK_SECRET;
-  const mockAllowed = process.env.AGENT_FORCE_MOCK === "1";
+  const mockAllowed =
+    process.env.NODE_ENV !== "production" &&
+    process.env.AGENT_FORCE_MOCK === "1";
   if (!secret && !mockAllowed) {
     return NextResponse.json(
       { error: "ELEVENLABS_INBOUND_WEBHOOK_SECRET is not configured." },

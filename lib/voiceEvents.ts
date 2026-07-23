@@ -382,7 +382,8 @@ export function verifyElevenLabsSignature(
 export function testWebhookSecret(): string | null {
   return (
     process.env.ELEVENLABS_WEBHOOK_SECRET ||
-    (process.env.AGENT_FORCE_MOCK === "1"
+    (process.env.NODE_ENV !== "production" &&
+    process.env.AGENT_FORCE_MOCK === "1"
       ? "freyr-test-elevenlabs-secret"
       : null)
   );

@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .js,.mjs,.ts,.tsx",
     "test:smoke": "playwright test tests/smoke.spec.ts --reporter=list",
+    "test:auth": "playwright test tests/auth.spec.ts --config=playwright.auth.config.ts --reporter=list",
     "test:real": "playwright test tests/real-mode.spec.ts --config=playwright.real.config.ts --reporter=list",
     "test:e2e": "playwright test tests/verify.spec.ts --reporter=list"
   },

@@ -11,7 +11,10 @@ export default async function AccessPendingPage({
 }) {
   const params = await searchParams;
   const authMode = process.env.AUTH_MODE;
-  const signOut = authMode === "entra" ? "/.auth/logout?post_logout_redirect_uri=/login" : "/login";
+  const signOut =
+    authMode === "entra"
+      ? "/.auth/logout?post_logout_redirect_uri=/login"
+      : "/api/auth/logout";
   const configurationError = params.configuration === "error";
 
   return (

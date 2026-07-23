@@ -1,7 +1,10 @@
 import type { AuthenticatedUser } from "./auth";
 
 export const ACCESS_COOKIE = "freyr_access";
-export const ACCESS_TTL_SECONDS = 5 * 60;
+// Keep authorization short-lived so a suspension or role change takes effect
+// promptly. The longer login session remains valid and can obtain a fresh grant
+// through /api/auth/resolve.
+export const ACCESS_TTL_SECONDS = 15 * 60;
 
 export type WorkspaceRole = "sales" | "editor" | "admin";
 export type AccessGrant = {
@@ -14,6 +17,10 @@ export type AccessGrant = {
 };
 
 export function isApprovalGateEnabled(): boolean {
+  // Supabase email/password sign-up is intentionally invite/approval-only.
+  // Authentication proves who someone is; it must never grant workspace data
+  // access by itself.
+  if (process.env.AUTH_MODE === "supabase") return true;
   return (
     (process.env.AUTH_MODE === "entra" || process.env.AUTH_MODE === "aws-alb") &&
     process.env.ACCESS_CONTROL_MODE === "approval"
@@ -79,7 +86,20 @@ export async function verifyAccessGrant(
     const payload = JSON.parse(
       new TextDecoder().decode(base64UrlToBytes(encoded))
     ) as AccessGrant;
-    if (!payload.sub || !payload.userId || !payload.workspaceId || payload.exp <= Math.floor(Date.now() / 1000)) {
+    const configuredWorkspace = process.env.FREYR_WORKSPACE_ID;
+    if (
+      typeof payload.sub !== "string" ||
+      !payload.sub ||
+      typeof payload.userId !== "string" ||
+      !payload.userId ||
+      typeof payload.workspaceId !== "string" ||
+      !payload.workspaceId ||
+      !["sales", "editor", "admin"].includes(payload.role) ||
+      typeof payload.exp !== "number" ||
+      !Number.isFinite(payload.exp) ||
+      payload.exp <= Math.floor(Date.now() / 1000) ||
+      (configuredWorkspace && payload.workspaceId !== configuredWorkspace)
+    ) {
       return null;
     }
     return payload;
@@ -88,7 +108,8 @@ export async function verifyAccessGrant(
   }
 }
 
-export function providerForAuthMode(): "entra" | "aws-alb" {
+export function providerForAuthMode(): "entra" | "aws-alb" | "supabase" {
+  if (process.env.AUTH_MODE === "supabase") return "supabase";
   return process.env.AUTH_MODE === "aws-alb" ? "aws-alb" : "entra";
 }
 

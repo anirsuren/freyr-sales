@@ -48,9 +48,15 @@ Deployment handoff and the ECS task template are in [`deploy/`](deploy/README.md
 Before production, Freyr infrastructure must provide:
 
 - HTTPS/ACM and the approved `freyrapps.com` hostname.
-- ALB OIDC authentication against Freyr Microsoft Entra ID.
+- Exactly one authentication edge: Supabase login with a forward-only ALB
+  listener (`AUTH_MODE=supabase`), or ALB Microsoft Entra OIDC
+  (`AUTH_MODE=aws-alb`). Do not enable both.
 - Private ECS networking and AWS Secrets Manager.
-- A durable PostgreSQL database with both SQL migrations applied.
+- A production Supabase/PostgreSQL database with migrations `001` through `006`
+  applied in order.
+- For Supabase login, confirmed-email enforcement, the exact production Site
+  URL/login redirect allowlist, a stable workspace UUID, and the temporary
+  first-owner bootstrap described in the deployment handoff.
 - Approved Azure DevOps repository access and ECR service connection.
 
 Never send API keys in Teams/chat or commit `.env.local`.

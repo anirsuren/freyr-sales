@@ -31,6 +31,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-auth-test/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts"
   ],

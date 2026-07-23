@@ -1,16 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ACCESS_COOKIE, isApprovalGateEnabled, verifyAccessGrant } from "@/lib/accessControl";
+import {
+  APP_SESSION_COOKIE,
+  type AppSession,
+  verifyAppSession,
+} from "@/lib/appSession";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
   "/api/health",
+  "/api/auth/access",
   "/api/auth/resolve",
+  "/api/auth/session",
   "/api/auth/logout",
   "/login",
   "/access-pending",
 ]);
+const PUBLIC_WEBHOOK_PATHS = new Set([
+  "/api/voice/webhooks/elevenlabs",
+  "/api/voice/webhooks/inbound",
+]);
 
-function accessSubject(request: NextRequest, authMode: string | undefined): string | null {
+function isPublicPath(pathname: string): boolean {
+  return (
+    PUBLIC_PATHS.has(pathname) ||
+    PUBLIC_WEBHOOK_PATHS.has(pathname) ||
+    pathname.startsWith("/.auth/")
+  );
+}
+
+function accessSubject(
+  request: NextRequest,
+  authMode: string | undefined,
+  appSession: AppSession | null
+): string | null {
+  if (authMode === "supabase") return appSession?.id || null;
   if (authMode === "aws-alb") return request.headers.get("x-amzn-oidc-identity");
   const encoded = request.headers.get("x-ms-client-principal");
   if (!encoded) return null;
@@ -29,6 +53,18 @@ function accessSubject(request: NextRequest, authMode: string | undefined): stri
   } catch {
     return null;
   }
+}
+
+function loginUrl(request: NextRequest, authMode: string | undefined): URL {
+  if (authMode === "entra") {
+    return new URL("/.auth/login/aad", request.url);
+  }
+  const url = new URL("/login", request.url);
+  url.searchParams.set(
+    "next",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`
+  );
+  return url;
 }
 
 function offeringsOnly(request: NextRequest) {
@@ -67,10 +103,41 @@ export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
   const pathname = request.nextUrl.pathname;
   const authMode = process.env.AUTH_MODE;
-  const requireAuth = authMode === "entra" || authMode === "aws-alb";
-  const hasIdentity = authMode === "aws-alb"
-    ? !!request.headers.get("x-amzn-oidc-identity") && !!request.headers.get("x-amzn-oidc-data")
-    : !!request.headers.get("x-ms-client-principal");
+  const recognizedAuthMode =
+    authMode === "entra" ||
+    authMode === "aws-alb" ||
+    authMode === "supabase";
+  const localAuthBypass =
+    process.env.NODE_ENV !== "production" && !authMode;
+  if (!recognizedAuthMode && !localAuthBypass && !isPublicPath(pathname)) {
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json(
+          { error: "Authentication is not configured", requestId },
+          { status: 503 }
+        )
+      : NextResponse.redirect(
+          new URL("/login?configuration=error", request.url)
+        );
+    securityHeaders(response, requestId);
+    return response;
+  }
+  const requireAuth =
+    authMode === "entra" ||
+    authMode === "aws-alb" ||
+    authMode === "supabase";
+  const appSession =
+    authMode === "supabase"
+      ? await verifyAppSession(
+          request.cookies.get(APP_SESSION_COOKIE)?.value
+        )
+      : null;
+  const hasIdentity =
+    authMode === "supabase"
+      ? !!appSession
+      : authMode === "aws-alb"
+        ? !!request.headers.get("x-amzn-oidc-identity") &&
+          !!request.headers.get("x-amzn-oidc-data")
+        : !!request.headers.get("x-ms-client-principal");
 
   if (
     offeringsOnly(request) &&
@@ -88,7 +155,7 @@ export async function middleware(request: NextRequest) {
 
   if (
     requireAuth &&
-    !PUBLIC_PATHS.has(pathname) &&
+    !isPublicPath(pathname) &&
     !hasIdentity
   ) {
     const response = pathname.startsWith("/api/")
@@ -96,9 +163,7 @@ export async function middleware(request: NextRequest) {
           { error: "Authentication required", requestId },
           { status: 401 }
         )
-      : NextResponse.redirect(
-          new URL(authMode === "entra" ? "/.auth/login/aad" : "/login", request.url)
-        );
+      : NextResponse.redirect(loginUrl(request, authMode));
     securityHeaders(response, requestId);
     return response;
   }
@@ -106,11 +171,10 @@ export async function middleware(request: NextRequest) {
   if (
     requireAuth &&
     isApprovalGateEnabled() &&
-    !PUBLIC_PATHS.has(pathname) &&
-    !pathname.startsWith("/.auth/")
+    !isPublicPath(pathname)
   ) {
     const grant = await verifyAccessGrant(request.cookies.get(ACCESS_COOKIE)?.value);
-    const subject = accessSubject(request, authMode);
+    const subject = accessSubject(request, authMode, appSession);
     if (!grant || !subject || grant.sub !== subject) {
       const response = pathname.startsWith("/api/")
         ? NextResponse.json(
@@ -129,8 +193,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // Block browser-based cross-origin mutations. Non-browser service calls that
-  // omit Origin still require the Entra identity above.
-  if (pathname.startsWith("/api/") && MUTATING.has(request.method)) {
+  // omit Origin still require authentication above. Signed provider webhooks
+  // are exempt because their route handlers verify provider-specific secrets.
+  if (
+    pathname.startsWith("/api/") &&
+    MUTATING.has(request.method) &&
+    !PUBLIC_WEBHOOK_PATHS.has(pathname)
+  ) {
     const origin = request.headers.get("origin");
     const forwardedHost = request.headers.get("x-forwarded-host");
     const requestHost = forwardedHost || request.headers.get("host");
@@ -158,5 +227,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|woff2?)$).*)"],
+  // Protect dynamic routes even when an attacker gives a route parameter a
+  // file-looking suffix such as ".png". Only framework assets and the favicon
+  // bypass authentication.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
