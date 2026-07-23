@@ -257,6 +257,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Session and access cookies are signed with runtime-injected ECS secrets.
+  // The Node.js middleware runtime reads the same runtime environment and
+  // cryptography implementation as the route handlers that issue them.
+  runtime: "nodejs",
   // Protect dynamic routes even when an attacker gives a route parameter a
   // file-looking suffix such as ".png". Only framework assets and the favicon
   // bypass authentication.
