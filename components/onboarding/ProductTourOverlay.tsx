@@ -15,6 +15,10 @@ import {
   ArrowRight,
   Check,
   Compass,
+  Eye,
+  LoaderCircle,
+  MousePointerClick,
+  Navigation,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -30,12 +34,27 @@ type TourRect = {
   width: number;
   height: number;
 };
+type PageTransition = {
+  from: string;
+  to: string;
+  stepId: string;
+};
 
 const FALLBACK_TARGETS = new Set([
   '[data-tour="page-content"]',
   "#main-content",
   "main",
 ]);
+
+function routeLabel(route: string): string {
+  const pathname = route.split("?")[0];
+  const segment = pathname.split("/").filter(Boolean).at(-1) || "dashboard";
+  return segment
+    .split("-")
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
 
 function elementIsVisible(element: HTMLElement): boolean {
   const style = window.getComputedStyle(element);
@@ -96,12 +115,23 @@ function useViewport(): Viewport {
   return viewport;
 }
 
-function useTourTarget(step: ProductTourStep, viewport: Viewport) {
+function useTourTarget(
+  step: ProductTourStep,
+  viewport: Viewport,
+  enabled: boolean
+) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [matchedSelector, setMatchedSelector] = useState<string | null>(null);
   const [rect, setRect] = useState<TourRect | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setTarget(null);
+      setMatchedSelector(null);
+      setRect(null);
+      return;
+    }
+
     let cancelled = false;
     let timer: number | undefined;
     let attempts = 0;
@@ -157,7 +187,7 @@ function useTourTarget(step: ProductTourStep, viewport: Viewport) {
       setTarget(null);
       setRect(null);
     };
-  }, [step.id, step.targets]);
+  }, [enabled, step.id, step.targets]);
 
   useLayoutEffect(() => {
     if (!target) {
@@ -217,7 +247,7 @@ function dialogPosition({
 }): CSSProperties {
   const margin = 16;
   const safe = 16;
-  const width = Math.min(dialogWidth || 384, viewport.width - safe * 2);
+  const width = Math.min(dialogWidth || 408, viewport.width - safe * 2);
   const height = dialogHeight || 270;
 
   if (!rect || fallback) {
@@ -303,6 +333,7 @@ export function ProductTourOverlay({
   step,
   currentStep,
   totalSteps,
+  routeReady,
   saving,
   error,
   onBack,
@@ -313,6 +344,7 @@ export function ProductTourOverlay({
   step: ProductTourStep;
   currentStep: number;
   totalSteps: number;
+  routeReady: boolean;
   saving: boolean;
   error: string | null;
   onBack: () => void;
@@ -324,21 +356,57 @@ export function ProductTourOverlay({
   const viewport = useViewport();
   const reducedMotion = useReducedMotion();
   const compact = viewport.width < 720 || viewport.height < 560;
-  const { rect, isFallback } = useTourTarget(step, viewport);
+  const { rect, isFallback } = useTourTarget(step, viewport, routeReady);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const [dialogSize, setDialogSize] = useState({ width: 384, height: 270 });
+  const previousRouteRef = useRef(step.route);
+  const [pageTransition, setPageTransition] =
+    useState<PageTransition | null>(null);
+  const [stepMotion, setStepMotion] = useState<{
+    step: number;
+    direction: "forward" | "backward";
+  }>({ step: currentStep, direction: "forward" });
+  const [dialogSize, setDialogSize] = useState({ width: 408, height: 288 });
   const lastStep = currentStep === totalSteps - 1;
+  const stepKind = step.kind;
+  const isNavigationStep = stepKind === "navigation";
+  const isModeStep = stepKind === "mode";
+  const pageName = routeLabel(step.route);
+  const stepDirection =
+    stepMotion.step === currentStep
+      ? stepMotion.direction
+      : currentStep < stepMotion.step
+        ? "backward"
+        : "forward";
+  const eyebrow = step.eyebrow;
 
   useEffect(() => setMounted(true), []);
+
+  useLayoutEffect(() => {
+    if (stepMotion.step === currentStep) return;
+    setStepMotion({ step: currentStep, direction: stepDirection });
+  }, [currentStep, stepDirection, stepMotion.step]);
+
+  useEffect(() => {
+    const previousRoute = previousRouteRef.current;
+    const previousPage = routeLabel(previousRoute);
+    if (previousPage !== pageName) {
+      setPageTransition({
+        from: previousPage,
+        to: pageName,
+        stepId: step.id,
+      });
+    }
+    previousRouteRef.current = step.route;
+  }, [pageName, step.id, step.route]);
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     const measure = () =>
       setDialogSize({
-        width: dialog.offsetWidth || 384,
-        height: dialog.offsetHeight || 270,
+        width: dialog.offsetWidth || 408,
+        height: dialog.offsetHeight || 288,
       });
     measure();
     const observer = new ResizeObserver(measure);
@@ -353,7 +421,7 @@ export function ProductTourOverlay({
     }
     const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
-  }, [currentStep, mounted]);
+  }, [currentStep, mounted, routeReady]);
 
   useEffect(
     () => () => {
@@ -374,6 +442,36 @@ export function ProductTourOverlay({
       if (event.key === "Escape") {
         event.preventDefault();
         onSkip();
+        return;
+      }
+      if (!routeReady) {
+        if (event.key === "Tab") {
+          const focusable = Array.from(
+            dialog.querySelectorAll<HTMLElement>(
+              'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((element) => elementIsVisible(element));
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (focusable.length === 0) {
+            event.preventDefault();
+            dialog.focus();
+          } else if (
+            event.shiftKey &&
+            (document.activeElement === first ||
+              document.activeElement === dialog)
+          ) {
+            event.preventDefault();
+            last.focus();
+          } else if (
+            !event.shiftKey &&
+            (document.activeElement === last ||
+              document.activeElement === dialog)
+          ) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
         return;
       }
       if (!typing && event.key === "ArrowRight") {
@@ -408,7 +506,7 @@ export function ProductTourOverlay({
         first.focus();
       }
     },
-    [currentStep, onBack, onNext, onSkip, saving]
+    [currentStep, onBack, onNext, onSkip, routeReady, saving]
   );
 
   useEffect(() => {
@@ -446,24 +544,150 @@ export function ProductTourOverlay({
 
   if (!mounted) return null;
 
+  if (!routeReady) {
+    return createPortal(
+      <>
+        <div
+          aria-hidden="true"
+          className="product-tour-backdrop fixed inset-0 z-[105] cursor-default bg-[rgba(8,15,28,0.66)]"
+          onMouseDown={(event) => event.preventDefault()}
+        />
+        <div className="pointer-events-none fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-busy="true"
+            aria-labelledby="product-tour-transition-title"
+            aria-describedby="product-tour-transition-description"
+            tabIndex={-1}
+            data-testid="product-tour-route-transition"
+            className="product-tour-card pointer-events-auto w-full max-w-[360px] overflow-hidden rounded-[20px] border border-white/20 bg-white text-text-primary shadow-[0_32px_90px_-18px_rgba(0,0,0,0.58),0_0_0_1px_rgba(0,113,227,0.24)] outline-none"
+          >
+            <div className="relative flex items-center justify-between overflow-hidden bg-[linear-gradient(135deg,#111c30_0%,#17345c_56%,#075cad_100%)] px-5 py-4 text-white">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-10 -top-14 h-28 w-28 rounded-full border border-white/[0.15] bg-white/10"
+              />
+              <div className="relative flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/20 bg-white/[0.14]">
+                  <Navigation size={15} strokeWidth={2.2} />
+                </span>
+                <div>
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/[0.72]">
+                    Guided walkthrough
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-medium text-white/80 tnum">
+                    Step {currentStep + 1} of {totalSteps}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onSkip}
+                disabled={saving}
+                aria-label="Close and skip tour"
+                className="relative flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-white/[0.72] transition-colors hover:border-white/[0.15] hover:bg-white/10 hover:text-white disabled:opacity-50"
+              >
+                <X size={17} />
+              </button>
+            </div>
+            <div className="px-5 py-6 text-center">
+              <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-primary/[0.15] bg-blue-light text-blue-primary">
+                <LoaderCircle
+                  size={21}
+                  strokeWidth={2.2}
+                  className={cn(!reducedMotion && "animate-spin")}
+                />
+              </span>
+              <h2
+                id="product-tour-transition-title"
+                className="mt-4 text-[19px] font-semibold tracking-[-0.02em] text-text-primary"
+              >
+                Opening {pageName}…
+              </h2>
+              <p
+                id="product-tour-transition-description"
+                className="mt-1.5 text-[13px] leading-relaxed text-text-secondary"
+              >
+                Taking you to the next part of the walkthrough.
+              </p>
+              <div
+                aria-hidden="true"
+                className="mx-auto mt-5 h-1.5 w-28 overflow-hidden rounded-full bg-blue-light"
+              >
+                <div
+                  className={cn(
+                    "h-full w-1/2 rounded-full bg-blue-primary",
+                    !reducedMotion && "animate-pulse"
+                  )}
+                />
+              </div>
+            </div>
+            <div className="flex justify-center border-t border-border-light bg-surface/60 px-5 py-3">
+              <button
+                type="button"
+                onClick={onSkip}
+                disabled={saving}
+                className="text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
+              >
+                Skip tour
+              </button>
+            </div>
+          </div>
+        </div>
+        <span className="sr-only" role="status" aria-live="polite">
+          Opening {pageName}. Please wait.
+        </span>
+      </>,
+      document.body
+    );
+  }
+
   const spotlight =
     rect && rect.width > 0 && rect.height > 0 ? (
-      <div
-        aria-hidden="true"
-        data-testid="product-tour-spotlight"
-        className={cn(
-          "pointer-events-none fixed z-[106] rounded-xl border-2 border-white/95",
-          !reducedMotion && "transition-all duration-200 ease-out"
-        )}
-        style={{
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-          boxShadow:
-            "0 0 0 9999px rgba(9, 14, 24, 0.62), 0 10px 32px rgba(0, 0, 0, 0.22)",
-        }}
-      />
+      <>
+        <div
+          aria-hidden="true"
+          data-testid="product-tour-spotlight"
+          className={cn(
+            "product-tour-spotlight pointer-events-none fixed z-[106] rounded-xl border-2 border-blue-primary",
+            !reducedMotion &&
+              "transition-[top,left,width,height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          )}
+          style={{
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            boxShadow:
+              "0 0 0 3px rgba(255,255,255,0.96), 0 0 0 9999px rgba(8, 15, 28, 0.66), 0 14px 42px rgba(0, 113, 227, 0.28)",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          data-testid="product-tour-focus-label"
+          className={cn(
+            "pointer-events-none fixed z-[108] inline-flex h-7 items-center gap-1.5 rounded-full border border-white/60 bg-blue-primary px-2.5 text-[10.5px] font-semibold text-white shadow-[0_7px_22px_rgba(0,71,171,0.42)]",
+            !reducedMotion &&
+              "product-tour-focus-label transition-[top,left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          )}
+          style={{
+            top:
+              rect.top >= 42
+                ? rect.top - 34
+                : Math.min(viewport.height - 34, rect.bottom + 7),
+            left: clamp(
+              rect.left + Math.min(18, Math.max(8, rect.width / 4)),
+              10,
+              viewport.width - 92
+            ),
+          }}
+        >
+          <Eye size={12} strokeWidth={2.4} />
+          Look here
+        </div>
+      </>
     ) : null;
 
   return createPortal(
@@ -471,7 +695,7 @@ export function ProductTourOverlay({
       <div
         aria-hidden="true"
         className={cn(
-          "fixed inset-0 z-[105] cursor-default",
+          "product-tour-backdrop fixed inset-0 z-[105] cursor-default",
           !spotlight && "bg-black/60"
         )}
         onMouseDown={(event) => event.preventDefault()}
@@ -485,39 +709,65 @@ export function ProductTourOverlay({
         aria-describedby="product-tour-description"
         tabIndex={-1}
         data-testid="product-tour-dialog"
+        data-step-kind={stepKind}
         className={cn(
-          "fixed z-[110] flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl border border-border-light bg-white text-text-primary shadow-[0_26px_80px_-18px_rgba(0,0,0,0.48)] outline-none",
+          "product-tour-card fixed z-[110] flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[20px] border border-white/20 bg-white text-text-primary shadow-[0_32px_90px_-18px_rgba(0,0,0,0.58),0_0_0_1px_rgba(0,113,227,0.24)] outline-none",
           compact && "rounded-xl",
-          !reducedMotion && "transition-[top,left,bottom] duration-200 ease-out"
+          !reducedMotion &&
+            "transition-[top,left,bottom,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
         )}
         style={position}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-border-light px-5 py-3.5">
+        <div
+          className={cn(
+            "relative flex items-center justify-between gap-4 overflow-hidden px-5 py-4 text-white",
+            isNavigationStep
+              ? "bg-[linear-gradient(135deg,#075dc7_0%,#0071e3_58%,#35a2ff_100%)]"
+              : isModeStep
+                ? "bg-[linear-gradient(135deg,#17345c_0%,#0a5ca8_52%,#087fba_100%)]"
+                : "bg-[linear-gradient(135deg,#111c30_0%,#17345c_56%,#075cad_100%)]"
+          )}
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-10 -top-14 h-28 w-28 rounded-full border border-white/[0.15] bg-white/10"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-12 right-16 h-20 w-20 rounded-full bg-blue-300/10 blur-xl"
+          />
           <div
             data-testid="product-tour-progress"
             role="progressbar"
             aria-valuemin={1}
             aria-valuemax={totalSteps}
             aria-valuenow={currentStep + 1}
-            className="flex min-w-0 flex-1 items-center gap-3"
+            className="relative flex min-w-0 flex-1 items-center gap-3"
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
-              <Compass size={15} strokeWidth={2} />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-white/20 bg-white/[0.14] text-white shadow-inner">
+              {isNavigationStep ? (
+                <Navigation size={15} strokeWidth={2.2} />
+              ) : isModeStep ? (
+                <MousePointerClick size={15} strokeWidth={2.2} />
+              ) : (
+                <Compass size={15} strokeWidth={2.2} />
+              )}
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  Product tour
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/[0.72]">
+                  Guided walkthrough
                 </span>
-                <span className="shrink-0 text-[11px] font-semibold text-text-secondary tnum">
+                <span className="shrink-0 text-[11px] font-semibold text-white/80 tnum">
                   Step {currentStep + 1} of {totalSteps}
                 </span>
               </div>
-              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-surface">
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/20">
                 <div
                   className={cn(
-                    "h-full rounded-full bg-blue-primary",
-                    !reducedMotion && "transition-[width] duration-200"
+                    "h-full rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.55)]",
+                    !reducedMotion &&
+                      "transition-[width] duration-300 ease-out"
                   )}
                   style={{
                     width: `${((currentStep + 1) / totalSteps) * 100}%`,
@@ -531,53 +781,105 @@ export function ProductTourOverlay({
             onClick={onSkip}
             disabled={saving}
             aria-label="Close and skip tour"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary disabled:opacity-50"
+            className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-transparent text-white/[0.72] transition-colors hover:border-white/[0.15] hover:bg-white/10 hover:text-white disabled:opacity-50"
           >
             <X size={17} />
           </button>
         </div>
 
-        <div className="overflow-y-auto px-5 py-5">
-          <h2
-            id="product-tour-title"
-            className="text-[19px] font-semibold tracking-[-0.02em] text-text-primary"
+        <div className="overflow-y-auto bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5 py-5">
+          <div
+            key={step.id}
+            className={cn(
+              !reducedMotion &&
+                (stepDirection === "backward"
+                  ? "product-tour-step-backward"
+                  : "product-tour-step-forward")
+            )}
           >
-            {step.title}
-          </h2>
-          <p
-            id="product-tour-description"
-            className="mt-2 text-[13.5px] leading-relaxed text-text-secondary"
-          >
-            {step.description}
-          </p>
+            {pageTransition?.stepId === step.id && (
+              <div className="product-tour-page-change mb-4 flex items-center gap-3 rounded-xl border border-blue-primary/20 bg-blue-light/70 px-3 py-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-primary text-white shadow-sm">
+                  <Navigation size={13} strokeWidth={2.4} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-blue-primary">
+                    Page changed
+                  </p>
+                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary">
+                    <span className="truncate text-text-secondary">
+                      {pageTransition.from}
+                    </span>
+                    <ArrowRight
+                      size={12}
+                      className="shrink-0 text-blue-primary"
+                    />
+                    <span className="truncate">{pageTransition.to}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-          {error && (
-            <div
-              role="alert"
-              className="mt-4 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5"
-            >
-              <p className="text-[12px] leading-relaxed text-red-700">
-                {error}
-              </p>
-              <button
-                type="button"
-                onClick={onRetry}
-                disabled={saving}
-                className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-red-700 hover:underline disabled:opacity-50"
+            <div className="mb-2.5 flex items-center gap-2">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                  isNavigationStep
+                    ? "border-blue-primary/20 bg-blue-light text-blue-primary"
+                    : isModeStep
+                      ? "border-cyan-200 bg-cyan-50 text-cyan-700"
+                      : "border-border-light bg-surface text-text-secondary"
+                )}
               >
-                <RotateCcw size={13} /> Retry
-              </button>
+                {isNavigationStep && (
+                  <Navigation size={11} strokeWidth={2.4} />
+                )}
+                {eyebrow}
+              </span>
             </div>
-          )}
 
-          {!compact && (
-            <p className="mt-4 text-[10.5px] text-text-tertiary">
-              Use ← and → to move · Esc to skip
+            <h2
+              id="product-tour-title"
+              className="text-[20px] font-semibold tracking-[-0.025em] text-text-primary"
+            >
+              {step.title}
+            </h2>
+            <p
+              id="product-tour-description"
+              className="mt-2 text-[13.5px] leading-[1.62] text-text-secondary"
+            >
+              {step.description}
             </p>
-          )}
+
+            {error && (
+              <div
+                role="alert"
+                className="mt-4 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5"
+              >
+                <p className="text-[12px] leading-relaxed text-red-700">
+                  {error}
+                </p>
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  disabled={saving}
+                  className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-red-700 hover:underline disabled:opacity-50"
+                >
+                  <RotateCcw size={13} /> Retry
+                </button>
+              </div>
+            )}
+
+            {!compact && (
+              <div className="mt-4 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                <MousePointerClick size={12} />
+                Follow the blue highlight · Use ← and → to move
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-border-light bg-surface/60 px-5 py-3.5">
+        <div className="flex items-center justify-between gap-3 border-t border-border-light bg-white px-5 py-3.5">
           <button
             type="button"
             onClick={onSkip}
@@ -590,16 +892,18 @@ export function ProductTourOverlay({
             <button
               type="button"
               onClick={onBack}
+              data-testid="product-tour-back"
               disabled={saving || currentStep === 0}
-              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-3.5 text-[13px] font-semibold text-text-primary transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-semibold text-text-primary transition-[background-color,border-color,transform] hover:-translate-x-0.5 hover:border-text-tertiary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-x-0"
             >
               <ArrowLeft size={14} /> Back
             </button>
             <button
               type="button"
               onClick={onNext}
+              data-testid="product-tour-next"
               disabled={saving}
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-blue-primary px-4 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-hover disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-primary px-4 text-[13px] font-semibold text-white shadow-[0_6px_16px_rgba(0,113,227,0.24)] transition-[background-color,box-shadow,transform] hover:translate-x-0.5 hover:bg-blue-hover hover:shadow-[0_8px_20px_rgba(0,113,227,0.3)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0"
             >
               {lastStep ? (
                 <>
@@ -607,7 +911,7 @@ export function ProductTourOverlay({
                 </>
               ) : (
                 <>
-                  Next <ArrowRight size={14} />
+                  {step.nextLabel || "Next"} <ArrowRight size={14} />
                 </>
               )}
             </button>

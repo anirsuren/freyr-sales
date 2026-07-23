@@ -259,6 +259,101 @@ select:focus-visible,
 .backdrop-in {
   animation: backdropIn 0.18s ease-out both;
 }
+
+/* Guided tour — visually distinct from app cards, with quiet directional
+   motion between steps and an unmistakable arrival cue between pages. */
+@keyframes productTourCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes productTourBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes productTourStepForward {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes productTourStepBackward {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes productTourPageChange {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes productTourFocus {
+  0%,
+  100% {
+    box-shadow: 0 7px 22px rgba(0, 71, 171, 0.42);
+  }
+  50% {
+    box-shadow:
+      0 8px 26px rgba(0, 71, 171, 0.54),
+      0 0 0 4px rgba(0, 113, 227, 0.14);
+  }
+}
+.product-tour-card {
+  animation: productTourCardIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+  isolation: isolate;
+}
+.product-tour-backdrop {
+  animation: productTourBackdropIn 0.22s ease-out both;
+}
+.product-tour-step-forward {
+  animation: productTourStepForward 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.product-tour-step-backward {
+  animation: productTourStepBackward 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.product-tour-page-change {
+  animation: productTourPageChange 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.product-tour-focus-label {
+  animation: productTourFocus 1.9s ease-in-out infinite;
+}
+.product-tour-spotlight {
+  isolation: isolate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-tour-card,
+  .product-tour-backdrop,
+  .product-tour-step-forward,
+  .product-tour-step-backward,
+  .product-tour-page-change,
+  .product-tour-focus-label {
+    animation: none;
+  }
+}
+
 /* Right-side slide-over (the Ask Agent drawer) */
 @keyframes drawerIn {
   from {

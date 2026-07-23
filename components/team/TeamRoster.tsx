@@ -320,7 +320,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
   const [view, setView] = useState<"table" | "grid">("table");
 
   return (
-    <Card className="p-0 overflow-hidden">
+    <Card data-tour="team-roster" className="p-0 overflow-hidden">
       <div className="px-5 pt-4 pb-3 border-b border-border-light flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold text-text-primary">

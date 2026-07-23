@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, Rocket } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -356,15 +356,6 @@ export function TopBar({
                   >
                     <Settings size={16} strokeWidth={1.7} className="text-text-secondary" />
                     Settings
-                  </Link>
-                  <Link
-                    role="menuitem"
-                    href="/onboarding"
-                    onClick={() => setUserOpen(false)}
-                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
-                  >
-                    <Rocket size={16} strokeWidth={1.7} className="text-text-secondary" />
-                    Product tour
                   </Link>
                   <Link
                     role="menuitem"

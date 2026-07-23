@@ -161,7 +161,10 @@ export default async function ReportsPage() {
           {/* Three complementary revenue views in one compact row. Donut
               legends stay one item per line so labels never wrap into a
               confusing left-to-right tag cloud. */}
-          <section className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          <section
+            data-tour="reports-revenue"
+            className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3"
+          >
             <Card className="self-start p-4">
               <h2 className="text-[15px] font-semibold text-text-primary mb-1">
                 Revenue by category

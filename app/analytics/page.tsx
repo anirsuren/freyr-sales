@@ -189,7 +189,7 @@ export default async function AnalyticsPage({
       />
 
       {/* Hero trend */}
-      <Card className="p-0 pb-5">
+      <Card className="p-0 pb-5" data-tour="analytics-pipeline-growth">
         <div className="p-5 flex items-end justify-between">
           <div>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">

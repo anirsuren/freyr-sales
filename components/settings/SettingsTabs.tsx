@@ -23,6 +23,8 @@ import {
   UserX,
   Clock3,
   Database,
+  ArrowRight,
+  Rocket,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -464,7 +466,7 @@ export function SettingsTabs({
               );
             })}
           </div>
-          <Card className="px-5 py-4">
+          <Card className="px-5 py-4" data-tour="settings-data-mode">
             <div className="flex items-center justify-between gap-6">
               <h2 className="text-[15px] font-semibold text-text-primary">Workspace data</h2>
               <div className="flex items-center gap-3" aria-label="Workspace data mode">
@@ -572,21 +574,50 @@ export function SettingsTabs({
             )}
           </Card>
 
-          <Card>
-            <h2 className="text-[15px] font-semibold text-text-primary">Recommended onboarding</h2>
-            <ol className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-              {[
-                ["1", "Review offerings", "Confirm the services, owners, availability, and supporting materials."],
-                ["2", "Add your first account", "Create a customer and contact, or start a new intelligence session."],
-                ["3", "Connect systems", "Ask an admin to connect the database, email, CRM, and enrichment services."],
-              ].map(([number, title, description]) => (
-                <li key={number} className="rounded-xl border border-border-light p-4">
-                  <span className="w-6 h-6 rounded-full bg-blue-primary text-white text-[11px] font-bold inline-flex items-center justify-center">{number}</span>
-                  <p className="mt-2 text-[13px] font-semibold text-text-primary">{title}</p>
-                  <p className="mt-1 text-[12px] text-text-secondary leading-relaxed">{description}</p>
-                </li>
-              ))}
-            </ol>
+          <Card
+            data-tour="settings-product-tour"
+            className="relative overflow-hidden p-0"
+          >
+            <div
+              aria-hidden="true"
+              className="absolute inset-y-0 left-0 w-1 bg-blue-primary"
+            />
+            <div className="relative flex flex-col items-start justify-between gap-5 px-6 py-5 md:flex-row md:items-center">
+              <div className="flex min-w-0 items-start gap-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+                  <Rocket size={20} strokeWidth={1.8} />
+                </span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-[15px] font-semibold text-text-primary">
+                      Guided product tour
+                    </h2>
+                    <span className="rounded-full bg-success/10 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-success">
+                      Available anytime
+                    </span>
+                  </div>
+                  <p className="mt-1 max-w-[650px] text-[12.5px] leading-relaxed text-text-secondary">
+                    Open the tour center to start, continue, or replay a guided
+                    walkthrough. Your progress is saved between visits.
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10.5px] font-medium text-text-tertiary">
+                    <span>Page-by-page guidance</span>
+                    <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border" />
+                    <span>Focused feature highlights</span>
+                    <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border" />
+                    <span>Resume whenever you want</span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => router.push("/onboarding")}
+                className="shrink-0"
+                aria-label="Open guided product tour"
+              >
+                Open product tour
+                <ArrowRight size={16} strokeWidth={2} />
+              </Button>
+            </div>
           </Card>
         </div>
       )}

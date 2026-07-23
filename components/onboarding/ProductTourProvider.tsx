@@ -115,6 +115,7 @@ export function ProductTourProvider({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [startRequest, setStartRequest] = useState<StartRequest | null>(null);
+  const [readyRoute, setReadyRoute] = useState<string | null>(null);
   const mountedRef = useRef(false);
   const loadInFlightRef = useRef(false);
   const operationInFlightRef = useRef(false);
@@ -464,6 +465,36 @@ export function ProductTourProvider({
   }, [localStep, persistLocalStep]);
 
   const currentStep = steps[localStep];
+  const currentRoute = currentStep?.route || null;
+  const routeReady =
+    !!currentRoute &&
+    readyRoute === currentRoute &&
+    routeMatches(currentRoute, pathname);
+
+  useEffect(() => {
+    if (!active || !currentRoute) {
+      setReadyRoute(null);
+      return;
+    }
+
+    let timer: number | undefined;
+    const markReadyWhenMatched = () => {
+      if (!routeMatches(currentRoute, pathname)) return false;
+      setReadyRoute(currentRoute);
+      if (timer) window.clearInterval(timer);
+      return true;
+    };
+
+    // `usePathname` covers normal page changes. A short-lived check also covers
+    // query-only destinations such as Settings tabs without introducing the
+    // root-level Suspense requirement of `useSearchParams`.
+    if (!markReadyWhenMatched()) {
+      timer = window.setInterval(markReadyWhenMatched, 50);
+    }
+    return () => {
+      if (timer) window.clearInterval(timer);
+    };
+  }, [active, currentRoute, pathname]);
 
   return (
     <>
@@ -480,6 +511,7 @@ export function ProductTourProvider({
           step={currentStep}
           currentStep={localStep}
           totalSteps={steps.length}
+          routeReady={routeReady}
           saving={saving}
           error={error}
           onBack={() => void persistLocalStep(localStep - 1)}

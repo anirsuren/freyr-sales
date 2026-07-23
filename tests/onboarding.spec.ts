@@ -33,10 +33,12 @@ function catalogStepIndex(id: string): number {
   return step.catalogIndex;
 }
 
-const AGENT_UI_STEP = adminTourStepIndex("agent");
-const OFFERINGS_UI_STEP = adminTourStepIndex("offerings");
-const AGENT_CATALOG_STEP = catalogStepIndex("agent");
-const OFFERINGS_CATALOG_STEP = catalogStepIndex("offerings");
+const TO_AGENT_UI_STEP = adminTourStepIndex("to-agent");
+const AGENT_UI_STEP = adminTourStepIndex("agent-workspace");
+const TO_OFFERINGS_UI_STEP = adminTourStepIndex("to-offerings");
+const OFFERINGS_UI_STEP = adminTourStepIndex("offerings-browser");
+const AGENT_CATALOG_STEP = catalogStepIndex("agent-workspace");
+const OFFERINGS_CATALOG_STEP = catalogStepIndex("offerings-browser");
 
 function adminTourRoute(step: number): string {
   const route = ADMIN_TOUR_STEPS[step]?.route;
@@ -285,14 +287,20 @@ test("first use launches an accessible tour and preserves progress across routes
   await expect(progress).toHaveAttribute("aria-valuenow", "1");
   await expect(progress).toContainText(`Step 1 of ${TOTAL_STEPS}`);
 
-  for (let step = 1; step < AGENT_UI_STEP; step += 1) {
-    await page.getByRole("button", { name: "Next", exact: true }).click();
-    await expectTourRoute(page, step);
-    await expect(dialog).toBeVisible();
-    await expect(progress).toHaveAttribute("aria-valuenow", String(step + 1));
-  }
+  await page.getByTestId("product-tour-next").click();
+  await expectTourRoute(page, 1);
+  await expect(dialog).toContainText("Start with a real prospect");
 
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByTestId("product-tour-next").click();
+  await expectTourRoute(page, TO_AGENT_UI_STEP);
+  await expect(dialog).toHaveAttribute("data-step-kind", "navigation");
+  await expect(dialog).toContainText("Open Agent");
+  await expect(page.getByTestId("product-tour-next")).toContainText(
+    "Open Agent"
+  );
+  await expect(new URL(page.url()).pathname).toBe("/dashboard");
+
+  await page.getByTestId("product-tour-next").click();
   await expectTourRoute(page, AGENT_UI_STEP);
   await expect(dialog).toBeVisible();
   await expect(page.getByTestId("product-tour-spotlight")).toBeVisible();
@@ -300,8 +308,16 @@ test("first use launches an accessible tour and preserves progress across routes
     "aria-valuenow",
     String(AGENT_UI_STEP + 1)
   );
+  await expect(dialog).toContainText("Work alongside your sales agent");
 
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByTestId("product-tour-next").click();
+  await expectTourRoute(page, TO_OFFERINGS_UI_STEP);
+  await expect(dialog).toHaveAttribute("data-step-kind", "navigation");
+  await expect(page.getByTestId("product-tour-next")).toContainText(
+    "Open Offerings"
+  );
+
+  await page.getByTestId("product-tour-next").click();
   await expectTourRoute(page, OFFERINGS_UI_STEP);
   await expect(dialog).toBeVisible();
   await expect(progress).toHaveAttribute(
@@ -309,13 +325,10 @@ test("first use launches an accessible tour and preserves progress across routes
     String(OFFERINGS_UI_STEP + 1)
   );
 
-  await page.getByRole("button", { name: "Back", exact: true }).click();
-  await expectTourRoute(page, AGENT_UI_STEP);
+  await page.getByTestId("product-tour-back").click();
+  await expectTourRoute(page, TO_OFFERINGS_UI_STEP);
   await expect(dialog).toBeVisible();
-  await expect(progress).toHaveAttribute(
-    "aria-valuenow",
-    String(AGENT_UI_STEP + 1)
-  );
+  await expect(dialog).toHaveAttribute("data-step-kind", "navigation");
 
   await expect
     .poll(() =>
@@ -328,38 +341,40 @@ test("first use launches an accessible tour and preserves progress across routes
     .toBeTruthy();
 });
 
-test("offerings-only filtering preserves the canonical Settings index", () => {
-  const settingsCatalogStep = catalogStepIndex("settings");
+test("offerings-only filtering keeps a focused five-step path", () => {
   const offeringsOnlySteps = getProductTourSteps({
     offeringsOnly: true,
     role: "admin",
   });
-  const settingsUiStep = offeringsOnlySteps.findIndex(
-    (step) => step.id === "settings"
-  );
 
-  expect(settingsCatalogStep).toBe(20);
-  expect(settingsUiStep).toBe(3);
-  expect(offeringsOnlySteps[settingsUiStep]).toMatchObject({
-    id: "settings",
-    route: "/settings",
-    catalogIndex: settingsCatalogStep,
+  expect(offeringsOnlySteps.map((step) => step.id)).toEqual([
+    "dashboard-tools",
+    "offerings-browser",
+    "to-settings",
+    "settings-mock-mode",
+    "settings-replay",
+  ]);
+  expect(offeringsOnlySteps[0]).toMatchObject({ route: "/offerings" });
+  expect(offeringsOnlySteps[2]).toMatchObject({
+    route: "/offerings",
+    kind: "navigation",
+    nextLabel: "Open Settings",
   });
+  expect(offeringsOnlySteps[3].route).toBe("/settings?tab=workspace");
 });
 
-test("a canonical saved step resumes on the right filtered role path", async ({
+test("a canonical saved navigation step resumes and opens the right page", async ({
   context,
   page,
 }) => {
   const role: TourRole = "sales";
-  const savedCatalogStep = catalogStepIndex("knowledge-base");
-  const nextCatalogStep = catalogStepIndex("service-catalog");
+  const savedCatalogStep = catalogStepIndex("to-analytics");
+  const nextCatalogStep = catalogStepIndex("analytics-growth");
   const roleSteps = getProductTourSteps({ offeringsOnly: false, role });
   const savedUiStep = roleSteps.findIndex(
     (step) => step.id === PRODUCT_TOUR_STEPS[savedCatalogStep].id
   );
-  expect(savedCatalogStep).toBe(22);
-  expect(savedUiStep).toBe(21);
+  expect(savedUiStep).toBeGreaterThanOrEqual(0);
 
   await setAuthCookies(context, "role-filter-user");
   const mock = await installOnboardingMock(
@@ -389,11 +404,16 @@ test("a canonical saved step resumes on the right filtered role path", async ({
     "aria-valuenow",
     String(savedUiStep + 1)
   );
+  await expect(dialog).toHaveAttribute("data-step-kind", "navigation");
+  await expect(page.getByTestId("product-tour-next")).toContainText(
+    "Open Analytics"
+  );
 
-  await dialog.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByTestId("product-tour-next").click();
   await expect
     .poll(() => new URL(page.url()).pathname)
     .toBe(catalogTourRoute(nextCatalogStep));
+  await expect(dialog).toContainText("See how pipeline is growing");
   await expect
     .poll(() =>
       mock.actions.some(
@@ -405,7 +425,7 @@ test("a canonical saved step resumes on the right filtered role path", async ({
     .toBeTruthy();
 });
 
-test("skip is saved, and replay resets the tour from the onboarding hub", async ({
+test("skip is saved, and Settings provides the replay path", async ({
   context,
   page,
 }) => {
@@ -425,7 +445,14 @@ test("skip is saved, and replay resets the tour from the onboarding hub", async 
   await expect(dialog).toBeHidden();
   await expect.poll(() => mock.state().status).toBe("skipped");
 
-  await page.goto("/onboarding");
+  await page.goto("/settings?tab=workspace");
+  await expect(
+    page.getByRole("button", { name: "Open guided product tour", exact: true })
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Open guided product tour", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/onboarding$/);
   await expect(
     page.getByRole("button", { name: "Take tour again", exact: true })
   ).toBeVisible();
@@ -441,27 +468,71 @@ test("skip is saved, and replay resets the tour from the onboarding hub", async 
     .toBeTruthy();
 });
 
-test("a completed limited-release tour expands when full features become available", async ({
+test("Analytics gets two focused steps and Mock mode is included", async ({
   context,
   page,
 }) => {
-  await setAuthCookies(context, "expanded-release-user");
+  await setAuthCookies(context, "focused-features-user");
   const mock = await installOnboardingMock(page, {
-    status: "completed",
-    currentStep: catalogStepIndex("settings"),
-    completedAt: new Date().toISOString(),
+    status: "in_progress",
+    currentStep: catalogStepIndex("analytics-growth"),
   });
 
-  await page.goto("/offerings");
-  await expectTourRoute(page, 0);
-  await expect(page.getByTestId("product-tour-dialog")).toBeVisible();
-  await expect(page.getByTestId("product-tour-progress")).toHaveAttribute(
-    "aria-valuenow",
-    "1"
+  await page.goto("/analytics");
+  const dialog = page.getByTestId("product-tour-dialog");
+  await expect(dialog).toContainText("See how pipeline is growing");
+  await expect(
+    page.locator('[data-tour="analytics-pipeline-growth"]')
+  ).toBeVisible();
+
+  await page.getByTestId("product-tour-next").click();
+  await expect(page).toHaveURL(/\/analytics$/);
+  await expect(dialog).toContainText("See where pipeline sits");
+  await expect(
+    page.locator('[data-tour="analytics-pipeline-stages"]')
+  ).toBeVisible();
+
+  await page.unrouteAll({ behavior: "wait" });
+  await installOnboardingMock(page, {
+    status: "in_progress",
+    currentStep: catalogStepIndex("settings-mock-mode"),
+  });
+  await page.reload();
+  await expect(page).toHaveURL(/\/settings\?tab=workspace$/);
+  await expect(dialog).toContainText("Learn safely in Mock mode");
+  await expect(page.locator('[data-tour="settings-data-mode"]')).toBeVisible();
+  await expect(
+    page.getByRole("switch", {
+      name: "Switch between real mode and mock mode",
+    })
+  ).toBeVisible();
+
+  await page.getByTestId("product-tour-next").click();
+  await expect(dialog).toContainText("Revisit this tour anytime");
+  await expect(
+    page.locator('[data-tour="settings-product-tour"]')
+  ).toBeVisible();
+  await expect(page.getByTestId("product-tour-next")).toContainText(
+    "Finish tour"
   );
+
+  await dialog
+    .getByRole("button", { name: "Skip tour", exact: true })
+    .last()
+    .click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("Product tour", { exact: true })).toHaveCount(0);
+  await page.locator('[data-tour="account-menu"]').click();
+  await expect(page.getByRole("menu")).not.toContainText("Product tour");
   await expect
-    .poll(() => mock.actions.map((action) => action.action))
-    .toEqual(["reset", "progress"]);
+    .poll(() =>
+      mock.actions.some(
+        (action) =>
+          action.action === "progress" &&
+          action.currentStep === catalogStepIndex("analytics-stage")
+      )
+    )
+    .toBeTruthy();
 });
 
 test("the final step completes once and a completed tour remains replayable", async ({

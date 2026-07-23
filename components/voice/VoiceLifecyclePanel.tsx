@@ -58,7 +58,10 @@ export function VoiceLifecyclePanel() {
   if (items.length === 0) return null;
 
   return (
-    <section className="border border-border-light rounded-lg overflow-hidden bg-white">
+    <section
+      data-tour="voice-lifecycle"
+      className="border border-border-light rounded-lg overflow-hidden bg-white"
+    >
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border-light">
         <div>
           <h2 className="text-[14px] font-semibold text-text-primary">Live call processing</h2>

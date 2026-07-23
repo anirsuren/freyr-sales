@@ -162,7 +162,10 @@ export function AnalyticsView({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         {/* Pipeline by stage — click a stage to see the deals in it */}
-        <Card className="h-full flex flex-col">
+        <Card
+          className="h-full flex flex-col"
+          data-tour="analytics-pipeline-stages"
+        >
           <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
             Pipeline by Stage
             <InfoHint text="Where your open dollars sit across the steps of your process. Click a stage to see the deals in it — including who you closed and lost." />

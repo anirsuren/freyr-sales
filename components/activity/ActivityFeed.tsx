@@ -360,7 +360,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
         </div>
       </Card>
 
-      <Card className="overflow-hidden p-0">
+      <Card data-tour="activity-feed" className="overflow-hidden p-0">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-light px-4 py-3.5">
           <div>
             <h2 className="text-[15px] font-semibold text-text-primary">

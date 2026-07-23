@@ -366,7 +366,7 @@ export function AgentChat() {
   }
 
   return (
-    <div className="flex h-full min-h-0">
+    <div data-tour="agent-workspace" className="flex h-full min-h-0">
       {/* Conversation list */}
       <aside className="w-[260px] shrink-0 border-r border-border-light flex flex-col bg-surface/40">
         <div className="p-3">

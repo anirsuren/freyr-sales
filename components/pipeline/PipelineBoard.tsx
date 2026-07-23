@@ -278,7 +278,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     "w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary";
 
   return (
-    <div>
+    <div data-tour="pipeline-board">
       {/* Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
         {/* Saved views (#4) */}

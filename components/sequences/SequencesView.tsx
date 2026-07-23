@@ -553,7 +553,7 @@ export function SequencesView({
 
         {active ? (
           <div className="min-w-0 space-y-5">
-            <Card className="overflow-hidden p-0">
+            <Card data-tour="sequences-timeline" className="overflow-hidden p-0">
               <div className="flex items-start justify-between gap-5 px-5 py-4">
                 <div className="min-w-0">
                   <div className="flex items-start gap-3">

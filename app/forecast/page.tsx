@@ -229,7 +229,10 @@ export default async function ForecastPage() {
         }
       />
 
-      <section className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <section
+        data-tour="forecast-summary"
+        className="grid grid-cols-1 sm:grid-cols-4 gap-4"
+      >
         <Stat
           label="Commit (weighted)"
           value={formatMoney(commit)}

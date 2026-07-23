@@ -662,7 +662,7 @@ export function CampaignsView({
           }
         />
       ) : (
-        <div className="space-y-3 stagger">
+        <div data-tour="campaigns-overview" className="space-y-3 stagger">
           {campaigns.map((c) => {
             const total = c.recipient_contact_ids.length;
             const recips = c.recipient_contact_ids

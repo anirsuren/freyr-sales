@@ -1,7 +1,7 @@
 import type { WorkspaceRole } from "./accessControl";
 
 /** Increment only when the onboarding flow changes incompatibly. */
-export const TOUR_VERSION = 1;
+export const TOUR_VERSION = 2;
 
 /** Onboarding step indexes are zero-based. */
 export const TOUR_FIRST_STEP = 0;
