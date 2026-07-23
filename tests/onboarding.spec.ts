@@ -385,6 +385,7 @@ test("a canonical saved navigation step resumes and opens the right page", async
     },
     role
   );
+  await page.setViewportSize({ width: 1512, height: 861 });
 
   await page.goto(catalogTourRoute(savedCatalogStep));
   const dialog = page.getByTestId("product-tour-dialog");
@@ -414,6 +415,17 @@ test("a canonical saved navigation step resumes and opens the right page", async
     .poll(() => new URL(page.url()).pathname)
     .toBe(catalogTourRoute(nextCatalogStep));
   await expect(dialog).toContainText("See how pipeline is growing");
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  await expect
+    .poll(async () => {
+      const dialogBox = await dialog.boundingBox();
+      if (!dialogBox) return Number.POSITIVE_INFINITY;
+      if (dialogBox.y < 0) return Number.POSITIVE_INFINITY;
+      return dialogBox.y + dialogBox.height;
+    })
+    .toBeLessThanOrEqual(viewport!.height + 1);
+  await expect(page.getByTestId("product-tour-next")).toBeInViewport();
   await expect
     .poll(() =>
       mock.actions.some(

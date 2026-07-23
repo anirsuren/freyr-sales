@@ -249,13 +249,28 @@ function dialogPosition({
   const safe = 16;
   const width = Math.min(dialogWidth || 408, viewport.width - safe * 2);
   const height = dialogHeight || 270;
+  const keepInsideViewport = (style: CSSProperties): CSSProperties => {
+    const requestedTop =
+      typeof style.top === "number" ? style.top : safe;
+    const minimumDialogHeight = 208;
+    const top = clamp(
+      requestedTop,
+      safe,
+      Math.max(safe, viewport.height - minimumDialogHeight - safe)
+    );
+    return {
+      ...style,
+      top,
+      maxHeight: Math.max(minimumDialogHeight, viewport.height - top - safe),
+    };
+  };
 
   if (!rect || fallback) {
-    return {
+    return keepInsideViewport({
       left: Math.max(safe, viewport.width - width - 24),
       top: clamp(76, safe, Math.max(safe, viewport.height - height - safe)),
       width,
-    };
+    });
   }
 
   const available = {
@@ -278,7 +293,7 @@ function dialogPosition({
         );
 
   if (preferred === "bottom") {
-    return {
+    return keepInsideViewport({
       top: rect.bottom + margin,
       left: clamp(
         rect.left + rect.width / 2 - width / 2,
@@ -286,10 +301,10 @@ function dialogPosition({
         viewport.width - width - safe
       ),
       width,
-    };
+    });
   }
   if (preferred === "top") {
-    return {
+    return keepInsideViewport({
       top: Math.max(safe, rect.top - height - margin),
       left: clamp(
         rect.left + rect.width / 2 - width / 2,
@@ -297,10 +312,10 @@ function dialogPosition({
         viewport.width - width - safe
       ),
       width,
-    };
+    });
   }
   if (preferred === "right") {
-    return {
+    return keepInsideViewport({
       left: rect.right + margin,
       top: clamp(
         rect.top + rect.height / 2 - height / 2,
@@ -308,10 +323,10 @@ function dialogPosition({
         viewport.height - height - safe
       ),
       width,
-    };
+    });
   }
   if (preferred === "left") {
-    return {
+    return keepInsideViewport({
       left: Math.max(safe, rect.left - width - margin),
       top: clamp(
         rect.top + rect.height / 2 - height / 2,
@@ -319,14 +334,14 @@ function dialogPosition({
         viewport.height - height - safe
       ),
       width,
-    };
+    });
   }
 
-  return {
+  return keepInsideViewport({
     left: Math.max(safe, viewport.width - width - 24),
     top: safe,
     width,
-  };
+  });
 }
 
 export function ProductTourOverlay({
@@ -412,7 +427,7 @@ export function ProductTourOverlay({
     const observer = new ResizeObserver(measure);
     observer.observe(dialog);
     return () => observer.disconnect();
-  }, [currentStep, error, mounted]);
+  }, [currentStep, error, mounted, pageTransition]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -720,7 +735,7 @@ export function ProductTourOverlay({
       >
         <div
           className={cn(
-            "relative flex items-center justify-between gap-4 overflow-hidden px-5 py-4 text-white",
+            "relative flex shrink-0 items-center justify-between gap-4 overflow-hidden px-5 py-4 text-white",
             isNavigationStep
               ? "bg-[linear-gradient(135deg,#075dc7_0%,#0071e3_58%,#35a2ff_100%)]"
               : isModeStep
@@ -787,7 +802,7 @@ export function ProductTourOverlay({
           </button>
         </div>
 
-        <div className="overflow-y-auto bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5 py-5">
           <div
             key={step.id}
             className={cn(
@@ -879,7 +894,7 @@ export function ProductTourOverlay({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-border-light bg-white px-5 py-3.5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border-light bg-white px-5 py-3.5">
           <button
             type="button"
             onClick={onSkip}
