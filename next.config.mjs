@@ -1,3 +1,5 @@
+const nextBuildCpus = Number.parseInt(process.env.NEXT_BUILD_CPUS || "", 10);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Lets local audits use an isolated build cache so another running dev
@@ -16,7 +18,12 @@ const nextConfig = {
   // Without this, saving on one page and navigating to another (e.g. submit
   // a pitch for review → open the Sessions list) showed a STALE cached copy
   // of the list — reads exactly like "my save disappeared" (Anir, Jul 5).
-  experimental: { staleTimes: { dynamic: 0 } },
+  experimental: {
+    staleTimes: { dynamic: 0 },
+    ...(Number.isInteger(nextBuildCpus) && nextBuildCpus > 0
+      ? { cpus: nextBuildCpus }
+      : {}),
+  },
 };
 
 export default nextConfig;
