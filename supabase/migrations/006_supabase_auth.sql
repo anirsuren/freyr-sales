@@ -9,13 +9,26 @@ UPDATE app_users
 SET provider_subject = entra_object_id
 WHERE provider_subject IS NULL;
 
+CREATE OR REPLACE FUNCTION sync_app_user_provider_subject()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.provider_subject := NEW.entra_object_id;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS app_users_provider_subject_sync ON app_users;
+CREATE TRIGGER app_users_provider_subject_sync
+  BEFORE INSERT OR UPDATE OF entra_object_id ON app_users
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_app_user_provider_subject();
+
 ALTER TABLE app_users
   ALTER COLUMN provider_subject SET NOT NULL;
 
--- The original identity uniqueness did not include the provider. Keep the
--- compatibility column but make collisions provider-aware from this point on.
-ALTER TABLE app_users
-  DROP CONSTRAINT IF EXISTS app_users_workspace_id_entra_object_id_key;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_app_users_provider_subject
+-- Keep the legacy workspace + subject constraint so deployments that still
+-- write entra_object_id remain fail-closed on cross-provider collisions.
+CREATE INDEX IF NOT EXISTS idx_app_users_provider_subject
   ON app_users (workspace_id, auth_provider, provider_subject);

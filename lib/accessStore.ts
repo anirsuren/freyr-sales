@@ -58,7 +58,7 @@ export async function verifyAccessControlStorage(): Promise<void> {
   const [users, requests, invitations] = await Promise.all([
     client
       .from("app_users")
-      .select("id, auth_provider, provider_subject, active")
+      .select("id, auth_provider, entra_object_id, active")
       .limit(1),
     client
       .from("access_requests")
@@ -127,7 +127,7 @@ async function activeUser(
     .select("id, app_role, active")
     .eq("workspace_id", workspace)
     .eq("auth_provider", provider)
-    .eq("provider_subject", subject)
+    .eq("entra_object_id", subject)
     .maybeSingle();
   if (result.error) throw new Error(result.error.message);
   return result.data as { id: string; app_role: WorkspaceRole; active: boolean } | null;
@@ -185,7 +185,6 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
       .insert({
         workspace_id: workspace,
         entra_object_id: user.id,
-        provider_subject: user.id,
         email,
         display_name: user.name,
         app_role: role,
@@ -332,22 +331,43 @@ export async function reviewAccessRequest(
   if (request.error || !request.data) throw new Error(request.error?.message || "Request not found.");
   const now = new Date().toISOString();
   if (decision === "approve") {
-    const user = await client.from("app_users").upsert(
-      {
-        workspace_id: request.data.workspace_id,
-        entra_object_id: request.data.provider_subject,
-        provider_subject: request.data.provider_subject,
-        email: request.data.email,
-        display_name: request.data.display_name,
-        app_role: role,
-        auth_provider: request.data.auth_provider,
-        active: true,
-        approved_by: actorId,
-        approved_at: now,
-      },
-      { onConflict: "workspace_id,auth_provider,provider_subject" }
-    );
-    if (user.error) throw new Error(user.error.message);
+    const existing = await client
+      .from("app_users")
+      .select("id, auth_provider")
+      .eq("workspace_id", request.data.workspace_id)
+      .eq("entra_object_id", request.data.provider_subject)
+      .maybeSingle();
+    if (existing.error) throw new Error(existing.error.message);
+    if (existing.data && existing.data.auth_provider !== request.data.auth_provider) {
+      throw new Error("Identity already belongs to another authentication provider.");
+    }
+    const values = {
+      email: request.data.email,
+      display_name: request.data.display_name,
+      app_role: role,
+      auth_provider: request.data.auth_provider,
+      active: true,
+      approved_by: actorId,
+      approved_at: now,
+    };
+    const user = existing.data
+      ? await client
+          .from("app_users")
+          .update(values)
+          .eq("id", existing.data.id)
+          .eq("workspace_id", workspace)
+          .eq("auth_provider", request.data.auth_provider)
+          .eq("entra_object_id", request.data.provider_subject)
+          .select("id")
+          .single()
+      : await client.from("app_users").insert({
+          workspace_id: request.data.workspace_id,
+          entra_object_id: request.data.provider_subject,
+          ...values,
+        }).select("id").single();
+    if (user.error || !user.data?.id) {
+      throw new Error(user.error?.message || "Could not approve user.");
+    }
   }
   const reviewed = await client
     .from("access_requests")
