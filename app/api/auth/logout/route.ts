@@ -4,6 +4,7 @@ import {
   APP_SESSION_COOKIE,
   requestUsesHttps,
 } from "@/lib/appSession";
+import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
 
 const AUTH_COOKIES = [
   ACCESS_COOKIE,
@@ -15,28 +16,45 @@ const AUTH_COOKIES = [
   "AWSELBAuthSessionCookie-3",
 ];
 
-function safeLogoutUrl(request: NextRequest): URL {
+function safeLogoutUrl(): URL {
+  const origin = configuredAuthOrigin();
+  if (!origin) {
+    throw new Error("Authentication redirect is not configured.");
+  }
   const configured = process.env.AUTH_LOGOUT_URL;
-  if (configured) {
+  if (configured && process.env.AUTH_MODE !== "supabase") {
     try {
-      const candidate = new URL(configured, request.url);
-      if (candidate.protocol === "https:" || candidate.origin === request.nextUrl.origin) {
+      const candidate = new URL(configured, origin);
+      if (
+        candidate.origin === origin ||
+        (process.env.AUTH_MODE === "entra" &&
+          candidate.protocol === "https:")
+      ) {
         return candidate;
       }
     } catch {}
   }
 
   if (process.env.AUTH_MODE === "entra") {
-    return new URL("/.auth/logout?post_logout_redirect_uri=/login", request.url);
+    return authUrl("/.auth/logout?post_logout_redirect_uri=/login");
   }
   if (process.env.AUTH_MODE === "supabase") {
-    return new URL("/login?signedOut=1", request.url);
+    return authUrl("/login?signedOut=1");
   }
-  return new URL("/login", request.url);
+  return authUrl("/login");
 }
 
 export async function GET(request: NextRequest) {
-  const response = NextResponse.redirect(safeLogoutUrl(request));
+  let destination: URL;
+  try {
+    destination = safeLogoutUrl();
+  } catch {
+    return NextResponse.json(
+      { error: "Authentication redirect is not configured." },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const response = NextResponse.redirect(destination);
   for (const name of AUTH_COOKIES) {
     response.cookies.set(name, "", {
       httpOnly: true,

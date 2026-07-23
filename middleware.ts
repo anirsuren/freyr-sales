@@ -5,6 +5,7 @@ import {
   type AppSession,
   verifyAppSession,
 } from "@/lib/appSession";
+import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
@@ -58,9 +59,9 @@ function accessSubject(
 
 function loginUrl(request: NextRequest, authMode: string | undefined): URL {
   if (authMode === "entra") {
-    return new URL("/.auth/login/aad", request.url);
+    return authUrl("/.auth/login/aad");
   }
-  const url = new URL("/login", request.url);
+  const url = authUrl("/login");
   url.searchParams.set(
     "next",
     `${request.nextUrl.pathname}${request.nextUrl.search}`
@@ -108,17 +109,36 @@ export async function middleware(request: NextRequest) {
     authMode === "entra" ||
     authMode === "aws-alb" ||
     authMode === "supabase";
+  const authOrigin = configuredAuthOrigin();
   const localAuthBypass =
     process.env.NODE_ENV !== "production" && !authMode;
+  if (
+    recognizedAuthMode &&
+    !authOrigin &&
+    pathname !== "/api/health"
+  ) {
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json(
+          { error: "Authentication redirect is not configured", requestId },
+          { status: 503 }
+        )
+      : new NextResponse("Authentication redirect is not configured.", {
+          status: 503,
+        });
+    securityHeaders(response, requestId);
+    return response;
+  }
   if (!recognizedAuthMode && !localAuthBypass && !isPublicPath(pathname)) {
     const response = pathname.startsWith("/api/")
       ? NextResponse.json(
           { error: "Authentication is not configured", requestId },
           { status: 503 }
         )
-      : NextResponse.redirect(
-          new URL("/login?configuration=error", request.url)
-        );
+      : authOrigin
+        ? NextResponse.redirect(authUrl("/login?configuration=error"))
+        : new NextResponse("Authentication is not configured.", {
+            status: 503,
+          });
     securityHeaders(response, requestId);
     return response;
   }
@@ -149,7 +169,7 @@ export async function middleware(request: NextRequest) {
     pathname !== "/offerings" &&
     !pathname.startsWith("/offerings/")
   ) {
-    const response = NextResponse.redirect(new URL("/offerings", request.url));
+    const response = NextResponse.redirect(authUrl("/offerings"));
     securityHeaders(response, requestId);
     return response;
   }
@@ -183,9 +203,8 @@ export async function middleware(request: NextRequest) {
             { status: 403 }
           )
         : NextResponse.redirect(
-            new URL(
-              `/api/auth/resolve?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`,
-              request.url
+            authUrl(
+              `/api/auth/resolve?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`
             )
           );
       securityHeaders(response, requestId);
@@ -202,15 +221,25 @@ export async function middleware(request: NextRequest) {
     !PUBLIC_WEBHOOK_PATHS.has(pathname)
   ) {
     const origin = request.headers.get("origin");
-    const forwardedHost = request.headers.get("x-forwarded-host");
-    const requestHost = forwardedHost || request.headers.get("host");
-    let originHost: string | null = null;
+    let parsedOrigin: string | null = null;
+    let parsedOriginHost: string | null = null;
     try {
-      originHost = origin ? new URL(origin).host : null;
+      const parsed = origin ? new URL(origin) : null;
+      parsedOrigin = parsed?.origin || null;
+      parsedOriginHost = parsed?.host || null;
     } catch {
-      originHost = "invalid";
+      parsedOrigin = "invalid";
+      parsedOriginHost = "invalid";
     }
-    if (origin && (!requestHost || originHost !== requestHost)) {
+    const developmentRequestHost =
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host");
+    const originAllowed = authOrigin
+      ? parsedOrigin === authOrigin
+      : process.env.NODE_ENV !== "production" &&
+        !!developmentRequestHost &&
+        parsedOriginHost === developmentRequestHost;
+    if (origin && !originAllowed) {
       const response = NextResponse.json(
         { error: "Cross-origin mutation rejected", requestId },
         { status: 403 }

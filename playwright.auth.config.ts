@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 const PORT = Number(process.env.AUTH_TEST_PORT || 3011);
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 const AUTH_COOKIE_SECRET = "freyr-auth-test-secret-2026-long-enough";
 
 export default defineConfig({
@@ -8,7 +9,7 @@ export default defineConfig({
   timeout: 30000,
   workers: 1,
   use: {
-    baseURL: `http://127.0.0.1:${PORT}`,
+    baseURL: BASE_URL,
     headless: true,
     screenshot: "only-on-failure",
     video: "off",
@@ -21,6 +22,7 @@ export default defineConfig({
       AUTH_COOKIE_SECRET,
       AUTH_MODE: "supabase",
       AUTH_ALLOWED_EMAIL_DOMAINS: "freyrsolutions.com",
+      AUTH_PUBLIC_ORIGIN: BASE_URL,
       DATA_MODE_LOCKED: "1",
       DEFAULT_DATA_MODE: "mock",
       FREYR_WORKSPACE_ID: "00000000-0000-4000-8000-000000000001",

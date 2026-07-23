@@ -86,8 +86,11 @@ secret bindings.
 
 The task environment must set `AUTH_MODE=supabase` and
 `ACCESS_CONTROL_MODE=approval`, plus
-`AUTH_ALLOWED_EMAIL_DOMAINS=freyrsolutions.com`. Domain comparison is exact and
-case-insensitive; subdomains and lookalike suffixes are rejected. The
+`AUTH_ALLOWED_EMAIL_DOMAINS=freyrsolutions.com` and
+`AUTH_PUBLIC_ORIGIN=https://freyrsales.dev.freyrapps.com`. The public origin is
+the fixed, browser-facing HTTPS origin used for authentication redirects and
+email callbacks; never derive it from proxy headers. Domain comparison is exact
+and case-insensitive; subdomains and lookalike suffixes are rejected. The
 application fails its production health check when required authentication
 configuration is absent or the approval tables/migration are not reachable.
 

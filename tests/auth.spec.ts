@@ -284,3 +284,62 @@ test("unsafe post-login redirects are discarded", async ({ request }) => {
   expect(location).toContain("/login?next=%2Fofferings");
   expect(location).not.toContain("evil.example");
 });
+
+test("auth redirects never expose an inbound proxy or ECS hostname", async ({
+  request,
+}) => {
+  const response = await request.get(
+    "/api/auth/resolve?next=%2Fdashboard",
+    {
+      headers: {
+        host: "ip-10-42-10-164.ec2.internal:8080",
+        "x-forwarded-host": "evil.example",
+        "x-forwarded-proto": "https",
+      },
+      maxRedirects: 0,
+    }
+  );
+
+  expect(response.status()).toBe(307);
+  const location = response.headers().location;
+  expect(location).toBe(`${BASE_URL}/login?next=%2Fdashboard`);
+  expect(location).not.toContain("ec2.internal");
+  expect(location).not.toContain("evil.example");
+
+  const logout = await request.get("/api/auth/logout", {
+    headers: {
+      host: "ip-10-42-10-164.ec2.internal:8080",
+      "x-forwarded-host": "evil.example",
+      "x-forwarded-proto": "https",
+    },
+    maxRedirects: 0,
+  });
+  expect(logout.status()).toBe(307);
+  expect(logout.headers().location).toBe(`${BASE_URL}/login?signedOut=1`);
+});
+
+test("proxy headers cannot authorize a cross-origin browser mutation", async ({
+  request,
+}) => {
+  const rejected = await request.post("/api/auth/session", {
+    headers: {
+      origin: "https://evil.example",
+      "x-forwarded-host": "evil.example",
+      "x-forwarded-proto": "https",
+    },
+    data: {},
+  });
+  expect(rejected.status()).toBe(403);
+  expect(await rejected.json()).toMatchObject({
+    error: "Cross-origin mutation rejected",
+  });
+
+  const canonical = await request.post("/api/auth/session", {
+    headers: { origin: BASE_URL },
+    data: {},
+  });
+  expect(canonical.status()).toBe(400);
+  expect(await canonical.json()).toMatchObject({
+    error: "Missing sign-in token.",
+  });
+});

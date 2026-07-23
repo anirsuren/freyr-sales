@@ -4,6 +4,7 @@ import {
   allowedAuthEmailDomains,
   isAllowedAuthEmail,
 } from "@/lib/authEmailPolicy";
+import { authUrl } from "@/lib/authOrigin";
 
 type RegistrationRequest = {
   email?: string;
@@ -56,12 +57,18 @@ export async function POST(request: NextRequest) {
   const supabase = createClient(url, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+  let emailRedirectTo: string;
+  try {
+    emailRedirectTo = authUrl("/login").toString();
+  } catch {
+    return json({ error: "Account confirmation is not configured." }, 503);
+  }
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { full_name: name },
-      emailRedirectTo: new URL("/login", request.url).toString(),
+      emailRedirectTo,
     },
   });
   if (error) {

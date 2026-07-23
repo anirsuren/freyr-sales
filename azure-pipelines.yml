@@ -101,6 +101,7 @@ stages:
                   | set_secret("FREYR_WORKSPACE_ID"; "FREYR_WORKSPACE_ID")
                   | set_env("AUTH_MODE"; "supabase")
                   | set_env("AUTH_ALLOWED_EMAIL_DOMAINS"; "freyrsolutions.com")
+                  | set_env("AUTH_PUBLIC_ORIGIN"; "https://freyrsales.dev.freyrapps.com")
                   | set_env("ACCESS_CONTROL_MODE"; "approval")
                   | set_env("DEFAULT_DATA_MODE"; "mock")
                   | set_env("DATA_MODE_LOCKED"; "0")

@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { SupabaseLoginForm } from "@/components/auth/SupabaseLoginForm";
 import { allowedAuthEmailDomains } from "@/lib/authEmailPolicy";
+import { configuredAuthOrigin } from "@/lib/authOrigin";
 
 export const metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default function LoginPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
     process.env.SUPABASE_SERVICE_ROLE_KEY &&
     allowedEmailDomains.length > 0 &&
+    !!configuredAuthOrigin() &&
     (process.env.NODE_ENV !== "production" || process.env.FREYR_WORKSPACE_ID) &&
     cookieSecret &&
     cookieSecret.length >= 32 &&

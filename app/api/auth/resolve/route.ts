@@ -8,16 +8,17 @@ import {
 } from "@/lib/accessControl";
 import { resolveWorkspaceAccess } from "@/lib/accessStore";
 import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
 
-function safeNext(request: NextRequest): string {
+function safeNext(request: NextRequest, origin: string): string {
   const value = request.nextUrl.searchParams.get("next") || "/offerings";
   try {
-    const candidate = new URL(value, request.nextUrl.origin);
+    const candidate = new URL(value, origin);
     if (
       value.startsWith("/") &&
       !value.startsWith("//") &&
       !value.includes("\\") &&
-      candidate.origin === request.nextUrl.origin
+      candidate.origin === origin
     ) {
       return `${candidate.pathname}${candidate.search}${candidate.hash}`;
     }
@@ -26,21 +27,28 @@ function safeNext(request: NextRequest): string {
 }
 
 export async function GET(request: NextRequest) {
-  const next = safeNext(request);
+  const origin = configuredAuthOrigin();
+  if (!origin) {
+    return NextResponse.json(
+      { error: "Authentication redirect is not configured." },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const next = safeNext(request, origin);
   const principal = await authenticatedRequestPrincipal(request);
   if (!principal) {
-    const login = new URL("/login", request.url);
+    const login = authUrl("/login");
     login.searchParams.set("next", next);
     return NextResponse.redirect(login);
   }
   if (!isApprovalGateEnabled()) {
-    return NextResponse.redirect(new URL(next, request.url));
+    return NextResponse.redirect(authUrl(next));
   }
 
   try {
     const access = await resolveWorkspaceAccess(principal);
     if (access.status === "pending") {
-      const pending = new URL("/access-pending", request.url);
+      const pending = authUrl("/access-pending");
       if (principal.email) pending.searchParams.set("email", principal.email);
       return NextResponse.redirect(pending);
     }
@@ -52,7 +60,7 @@ export async function GET(request: NextRequest) {
       role: access.role,
       workspaceId: access.workspaceId,
     });
-    const response = NextResponse.redirect(new URL(next, request.url));
+    const response = NextResponse.redirect(authUrl(next));
     response.cookies.set(ACCESS_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
@@ -62,7 +70,7 @@ export async function GET(request: NextRequest) {
     });
     return response;
   } catch {
-    const unavailable = new URL("/access-pending", request.url);
+    const unavailable = authUrl("/access-pending");
     unavailable.searchParams.set("configuration", "error");
     return NextResponse.redirect(unavailable);
   }
