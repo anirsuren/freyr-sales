@@ -62,6 +62,14 @@ function isMissingTableError(error: {
   );
 }
 
+function isUniqueViolation(error: { code?: string } | null): boolean {
+  return error?.code === "23505";
+}
+
+function isTerminalState(row: OnboardingRow | null): boolean {
+  return row?.status === "completed" || row?.status === "skipped";
+}
+
 function adminClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -264,6 +272,16 @@ async function writeMetadataState(
   state: MetadataState | null
 ): Promise<OnboardingRow | null> {
   const { appMetadata } = await authMetadata(client, access);
+  const currentState = metadataStateToRow(
+    metadataVersionState(appMetadata, access.workspaceId),
+    access
+  );
+  // A delayed request from another tab must not move a completed or skipped
+  // tour back into progress. Reset is the only operation that passes null and
+  // intentionally clears a terminal state.
+  if (state && isTerminalState(currentState)) {
+    return currentState;
+  }
   const currentRootValue = appMetadata[METADATA_KEY];
   const currentRoot: Record<string, unknown> = isRecord(currentRootValue)
     ? currentRootValue
@@ -286,22 +304,35 @@ async function writeMetadataState(
   } else {
     delete root[access.workspaceId];
   }
-  const nextAppMetadata = { ...appMetadata };
-  if (Object.keys(root).length > 0) {
-    nextAppMetadata[METADATA_KEY] = root;
-  } else {
-    delete nextAppMetadata[METADATA_KEY];
-  }
+  // GoTrue merges app_metadata at the top level. Omitting a removed key would
+  // leave the old value intact, so an empty onboarding root must be written as
+  // explicit null. Limit the update to our own namespace to avoid touching
+  // provider-managed or unrelated application metadata.
+  const onboardingMetadata =
+    Object.keys(root).length > 0 ? root : null;
   const updated = await client.auth.admin.updateUserById(access.subject, {
-    app_metadata: nextAppMetadata,
+    app_metadata: { [METADATA_KEY]: onboardingMetadata },
   });
-  if (updated.error) {
+  if (updated.error || !updated.data.user) {
     throw new OnboardingStoreError(
       "Could not save onboarding progress.",
       503
     );
   }
-  return state ? metadataStateToRow(state, access) : null;
+  const updatedMetadata = isRecord(updated.data.user.app_metadata)
+    ? updated.data.user.app_metadata
+    : {};
+  const persisted = metadataStateToRow(
+    metadataVersionState(updatedMetadata, access.workspaceId),
+    access
+  );
+  if ((state && !persisted) || (!state && persisted)) {
+    throw new OnboardingStoreError(
+      "Could not save onboarding progress.",
+      503
+    );
+  }
+  return persisted;
 }
 
 function response(
@@ -362,20 +393,26 @@ export async function updateOnboardingState(
         503
       );
     }
-    // Clear a temporary pre-migration fallback too. The database result is
-    // authoritative, so cleanup is best-effort.
+    // Clear a temporary pre-migration fallback too. Do not report success if
+    // this fails: otherwise GET could resurrect the old terminal state after
+    // the database row was removed.
     if (process.env.AUTH_MODE === "supabase") {
-      await writeMetadataState(client, access, null).catch(() => null);
+      await writeMetadataState(client, access, null);
     }
     return response(role, null);
   }
 
   let existing: OnboardingRow | null;
+  let databaseExisting = false;
   try {
     existing = await readRow(client, access);
+    databaseExisting = !!existing;
   } catch (error) {
     if (!(error instanceof OnboardingTableMissingError)) throw error;
     const fallbackExisting = await readMetadataRow(client, access);
+    if (isTerminalState(fallbackExisting)) {
+      return response(role, fallbackExisting);
+    }
     const fallbackState = nextMetadataState(role, action, fallbackExisting);
     return response(
       role,
@@ -383,7 +420,13 @@ export async function updateOnboardingState(
     );
   }
   if (!existing && process.env.AUTH_MODE === "supabase") {
-    existing = await readMetadataRow(client, access).catch(() => null);
+    // Mutation paths fail closed while checking the pre-migration fallback. A
+    // temporary Auth Admin failure must not hide a legacy completed/skipped
+    // state and replace it with a newly inserted in-progress database row.
+    existing = await readMetadataRow(client, access);
+  }
+  if (isTerminalState(existing)) {
+    return response(role, existing);
   }
   const currentStep =
     action.currentStep ?? existing?.current_step ?? TOUR_FIRST_STEP;
@@ -395,22 +438,32 @@ export async function updateOnboardingState(
         ? "skipped"
         : "in_progress";
 
-  const saved = await client
-    .from("user_onboarding_states")
-    .upsert(
-      {
-        workspace_id: access.workspaceId,
-        user_id: access.userId,
-        version: TOUR_VERSION,
-        role_snapshot: role,
-        status,
-        current_step: currentStep,
-        completed_at: status === "completed" ? now : null,
-        skipped_at: status === "skipped" ? now : null,
-        updated_at: now,
-      },
-      { onConflict: "workspace_id,user_id,version" }
-    )
+  const values = {
+    workspace_id: access.workspaceId,
+    user_id: access.userId,
+    version: TOUR_VERSION,
+    role_snapshot: role,
+    status,
+    current_step: currentStep,
+    completed_at: status === "completed" ? now : null,
+    skipped_at: status === "skipped" ? now : null,
+    updated_at: now,
+  };
+  const saved = databaseExisting
+    ? await client
+        .from("user_onboarding_states")
+        .update(values)
+        .eq("workspace_id", access.workspaceId)
+        .eq("user_id", access.userId)
+        .eq("version", TOUR_VERSION)
+        .eq("status", "in_progress")
+        .select(
+          "workspace_id, user_id, version, role_snapshot, status, current_step, completed_at, skipped_at"
+        )
+        .maybeSingle()
+    : await client
+        .from("user_onboarding_states")
+        .insert(values)
     .select(
       "workspace_id, user_id, version, role_snapshot, status, current_step, completed_at, skipped_at"
     )
@@ -422,14 +475,17 @@ export async function updateOnboardingState(
       await writeMetadataState(client, access, fallbackState)
     );
   }
+  if (isUniqueViolation(saved.error) || (!saved.error && !saved.data)) {
+    const winner = await readRow(client, access);
+    if (winner) return response(role, winner);
+  }
   if (saved.error || !saved.data) {
     throw new OnboardingStoreError(
       "Could not save onboarding progress.",
       503
     );
   }
-  if (process.env.AUTH_MODE === "supabase") {
-    await writeMetadataState(client, access, null).catch(() => null);
-  }
+  // The database row is authoritative. Leaving a pre-migration metadata value
+  // untouched avoids two auth-admin calls on every step; reset clears it.
   return response(role, saved.data as OnboardingRow);
 }

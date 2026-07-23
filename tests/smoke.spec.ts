@@ -70,11 +70,17 @@ test("live mode keeps the offering catalog and exposes only Offerings", async ({
   await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link")).toHaveCount(16);
 });
 
-test("onboarding exposes the production setup path", async ({ page }) => {
+test("onboarding exposes the replayable guided product tour", async ({ page }) => {
   await page.goto("/onboarding");
-  await expect(page.getByRole("heading", { name: "Welcome to Freyr" })).toBeVisible();
-  await expect(page.getByText("Import accounts and contacts")).toBeVisible();
-  await expect(page.getByText("Invite the team and validate access")).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /Learn the .*Freyr .* by using it\./,
+    })
+  ).toBeVisible();
+  await expect(page.getByText("Interactive product tour")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Start guided tour|Continue tour|Take tour again/ })
+  ).toBeVisible();
 });
 
 test("clean workspace imports approved account and contact CSV", async ({ request }) => {

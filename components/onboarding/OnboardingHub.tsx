@@ -13,6 +13,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import {
+  getProductTourSteps,
+  localTourIndexForCatalogStep,
+} from "@/lib/productTourCatalog";
+import { requestProductTourStart } from "./productTourEvents";
 
 type OnboardingStatus =
   | "not_started"
@@ -27,8 +32,6 @@ type OnboardingResponse = {
   };
   role?: "sales" | "editor" | "admin";
 };
-
-const START_EVENT = "freyr:onboarding:start";
 
 const CHAPTERS = [
   {
@@ -58,6 +61,24 @@ const CHAPTERS = [
   },
 ];
 
+const OFFERINGS_ONLY_CHAPTERS = [
+  {
+    title: "Find and create quickly",
+    description:
+      "Use global search and quick-create without leaving the offering work in front of you.",
+  },
+  {
+    title: "Master the offering repository",
+    description:
+      "Review approved services, customer fit, markets, owners, availability, and supporting material.",
+  },
+  {
+    title: "Configure your workspace",
+    description:
+      "Set your profile and preferences; admins also learn the access and team controls.",
+  },
+];
+
 function statusCopy(status: OnboardingStatus) {
   if (status === "completed") return "Completed";
   if (status === "skipped") return "Available anytime";
@@ -65,7 +86,11 @@ function statusCopy(status: OnboardingStatus) {
   return "Ready to begin";
 }
 
-export function OnboardingHub() {
+export function OnboardingHub({
+  offeringsOnly,
+}: {
+  offeringsOnly: boolean;
+}) {
   const [status, setStatus] = useState<OnboardingStatus>("not_started");
   const [currentStep, setCurrentStep] = useState(0);
   const [role, setRole] = useState<OnboardingResponse["role"]>();
@@ -99,6 +124,24 @@ export function OnboardingHub() {
   }, []);
 
   const replay = status === "completed" || status === "skipped";
+  const chapters = offeringsOnly ? OFFERINGS_ONLY_CHAPTERS : CHAPTERS;
+  const tourSteps = getProductTourSteps({ offeringsOnly, role });
+  const totalSteps = tourSteps.length;
+  const localStep = localTourIndexForCatalogStep(tourSteps, currentStep);
+  const progress =
+    status === "completed"
+      ? 100
+      : status === "not_started"
+        ? 0
+        : Math.min(
+            95,
+            Math.max(
+              1,
+              Math.round(
+                ((Math.min(localStep, totalSteps - 1) + 1) / totalSteps) * 100
+              )
+            )
+          );
   const label =
     status === "in_progress"
       ? "Continue tour"
@@ -107,11 +150,7 @@ export function OnboardingHub() {
         : "Start guided tour";
 
   function startTour() {
-    window.dispatchEvent(
-      new CustomEvent(START_EVENT, {
-        detail: { restart: replay },
-      })
-    );
+    requestProductTourStart({ restart: replay });
   }
 
   return (
@@ -124,12 +163,13 @@ export function OnboardingHub() {
               Interactive product tour
             </span>
             <h2 className="mt-5 max-w-[650px] text-[30px] font-semibold leading-tight tracking-[-0.03em] text-text-primary">
-              Learn Freyr by using the real workspace.
+              Learn the {offeringsOnly ? "released Freyr experience" : "whole Freyr workspace"} by using it.
             </h2>
             <p className="mt-3 max-w-[660px] text-[14px] leading-relaxed text-text-secondary">
-              Freyr will open each feature, highlight the controls that matter,
-              and explain what to do next. Your place is saved to your account,
-              so you can stop and continue on another visit.
+              Freyr will open each {offeringsOnly ? "available" : ""} feature,
+              highlight the controls that matter, and explain what to do next.
+              Your place is saved to your account, so you can stop and continue
+              on another visit.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button
@@ -142,10 +182,11 @@ export function OnboardingHub() {
                 {loading ? "Loading tour…" : label}
               </Button>
               <Link
-                href="/dashboard"
+                href={offeringsOnly ? "/offerings" : "/dashboard"}
                 className="inline-flex items-center gap-1.5 px-2 py-2.5 text-[13px] font-semibold text-blue-primary hover:underline"
               >
-                Go to dashboard <ArrowRight size={15} />
+                Go to {offeringsOnly ? "offerings" : "dashboard"}{" "}
+                <ArrowRight size={15} />
               </Link>
             </div>
           </div>
@@ -171,7 +212,7 @@ export function OnboardingHub() {
                     ? "100%"
                     : status === "not_started"
                       ? "0%"
-                      : `${Math.min(95, Math.max(5, currentStep * 5))}%`}
+                      : `${progress}%`}
                 </p>
                 <p className="mt-1 text-[11px] text-text-tertiary">
                   {role ? `${role === "admin" ? "Admin" : role === "editor" ? "Catalog editor" : "Sales rep"} path` : "Personalized path"}
@@ -183,11 +224,7 @@ export function OnboardingHub() {
                 className="h-full rounded-full bg-blue-primary transition-[width] duration-300"
                 style={{
                   width:
-                    status === "completed"
-                      ? "100%"
-                      : status === "not_started"
-                        ? "0%"
-                        : `${Math.min(95, Math.max(5, currentStep * 5))}%`,
+                    `${progress}%`,
                 }}
               />
             </div>
@@ -201,10 +238,10 @@ export function OnboardingHub() {
       </Card>
 
       <div className="mt-6 grid gap-3 md:grid-cols-2">
-        {CHAPTERS.map((chapter, index) => (
+        {chapters.map((chapter, index) => (
           <Card
             key={chapter.title}
-            className={index === CHAPTERS.length - 1 ? "md:col-span-2" : ""}
+            className={index === chapters.length - 1 ? "md:col-span-2" : ""}
           >
             <div className="flex items-start gap-3">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light text-[11px] font-bold text-blue-primary tnum">

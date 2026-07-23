@@ -15,10 +15,13 @@ human-reviewed agent actions, pipeline, campaigns, and voice workflows.
 
 Switch modes in **Settings → Workspace**. There is intentionally no billing UI.
 
-New team members start at `/onboarding`. The setup hub walks them through the
-workspace mode, profile, offering repository, customer/contact import, first
-human-approved pitch, and Entra-managed team access. `/import` accepts the
-approved offering workbook and an accounts/contacts CSV template.
+The first approved sign-in automatically starts a role-aware, interactive
+product tour. It opens each available feature, spotlights the relevant control,
+requires an explicit Next/Back choice, and saves progress to the user's account.
+The permanent **Product tour** link in the sidebar and account menu opens the
+tour hub at `/onboarding`, where a completed or skipped tour can be replayed.
+`/import` accepts the approved offering workbook and an accounts/contacts CSV
+template.
 
 ## Local development
 
@@ -35,6 +38,7 @@ npm run typecheck
 npm run lint
 npm run build
 npm run test:smoke
+npm run test:onboarding
 npm run test:e2e
 npm audit --omit=dev
 ```
@@ -52,11 +56,12 @@ Before production, Freyr infrastructure must provide:
   listener (`AUTH_MODE=supabase`), or ALB Microsoft Entra OIDC
   (`AUTH_MODE=aws-alb`). Do not enable both.
 - Private ECS networking and AWS Secrets Manager.
-- A production Supabase/PostgreSQL database with migrations `001` through `007`
+- A production Supabase/PostgreSQL database with migrations `001` through `008`
   applied in order.
 - For Supabase login, confirmed-email enforcement, the exact production Site
   URL/login redirect allowlist, production SMTP, the Before User Created domain
-  hook from migration `007`, `AUTH_ALLOWED_EMAIL_DOMAINS=freyrsolutions.com`, a
+  hook from migration `007`, per-user tour state from migration `008`,
+  `AUTH_ALLOWED_EMAIL_DOMAINS=freyrsolutions.com`, a
   stable workspace UUID, and the temporary first-owner bootstrap described in
   the deployment handoff.
 - Approved Azure DevOps repository access and ECR service connection.

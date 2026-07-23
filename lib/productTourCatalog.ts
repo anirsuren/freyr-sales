@@ -354,6 +354,30 @@ export const ADMIN_TOUR_STEPS = PRODUCT_TOUR_STEPS.filter(
 export const FULL_TOUR_STEP_COUNT = ADMIN_TOUR_STEPS.length;
 export const FULL_TOUR_LAST_STEP = FULL_TOUR_STEP_COUNT - 1;
 
+/**
+ * Persisted progress is a canonical catalog index. When a role or release
+ * filter removes that exact step, resume at the closest available feature.
+ */
+export function localTourIndexForCatalogStep(
+  steps: readonly ProductTourStep[],
+  catalogIndex: number
+): number {
+  if (steps.length === 0) return 0;
+  const exact = steps.findIndex((step) => step.catalogIndex === catalogIndex);
+  if (exact >= 0) return exact;
+
+  let nearestIndex = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  steps.forEach((step, index) => {
+    const distance = Math.abs(step.catalogIndex - catalogIndex);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = index;
+    }
+  });
+  return nearestIndex;
+}
+
 export function getProductTourSteps({
   offeringsOnly,
   role,

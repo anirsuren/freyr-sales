@@ -10,6 +10,7 @@ import type { DataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 import { useHoverPreference } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
+import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
 
 const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
 
@@ -214,6 +215,7 @@ export function AppShell({
           pathname={pathname}
         />
       )}
+      <ProductTourProvider offeringsOnly={offeringsOnly} />
       <AutoTruncationTooltip />
     </ToastProvider>
   );

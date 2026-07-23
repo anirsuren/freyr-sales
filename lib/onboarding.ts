@@ -5,8 +5,9 @@ export const TOUR_VERSION = 1;
 
 /** Onboarding step indexes are zero-based. */
 export const TOUR_FIRST_STEP = 0;
-// Leave room for product-tour branches without requiring a persistence
-// migration every time the client adds or reorders a small step.
+// The persisted number is the canonical PRODUCT_TOUR_STEPS index, never the
+// index of a role- or release-filtered path. Reordering existing catalog steps
+// requires incrementing TOUR_VERSION so stored progress is not reinterpreted.
 export const TOUR_LAST_STEP = 127;
 
 export type OnboardingStatus =

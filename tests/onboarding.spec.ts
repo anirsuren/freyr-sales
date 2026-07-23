@@ -227,7 +227,10 @@ test("first use launches an accessible tour and preserves progress across routes
   await setAuthCookies(context);
   const mock = await installOnboardingMock(page);
 
-  await page.goto("/dashboard");
+  // First-use onboarding must launch even when a post-login deep link does not
+  // already point at the tour's first page.
+  await page.goto("/customers");
+  await expectTourRoute(page, 0);
 
   const dialog = page.getByTestId("product-tour-dialog");
   await expect(dialog).toBeVisible();
@@ -396,6 +399,29 @@ test("skip is saved, and replay resets the tour from the onboarding hub", async 
   await expect
     .poll(() => mock.actions.some((action) => action.action === "reset"))
     .toBeTruthy();
+});
+
+test("a completed limited-release tour expands when full features become available", async ({
+  context,
+  page,
+}) => {
+  await setAuthCookies(context, "expanded-release-user");
+  const mock = await installOnboardingMock(page, {
+    status: "completed",
+    currentStep: catalogStepIndex("settings"),
+    completedAt: new Date().toISOString(),
+  });
+
+  await page.goto("/offerings");
+  await expectTourRoute(page, 0);
+  await expect(page.getByTestId("product-tour-dialog")).toBeVisible();
+  await expect(page.getByTestId("product-tour-progress")).toHaveAttribute(
+    "aria-valuenow",
+    "1"
+  );
+  await expect
+    .poll(() => mock.actions.map((action) => action.action))
+    .toEqual(["reset", "progress"]);
 });
 
 test("the final step completes once and a completed tour remains replayable", async ({

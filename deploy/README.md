@@ -31,11 +31,12 @@ Required before production traffic:
 7. Set the target-group health path to `/api/health` and enable deployment
    rollback/circuit breaker.
 8. Apply every SQL migration in filename order, from
-   `001_initial_schema.sql` through `007_restrict_auth_email_domain.sql`, to the
+   `001_initial_schema.sql` through `008_user_onboarding_state.sql`, to the
    approved Supabase/PostgreSQL service before starting the live task.
    Migration 006 is required for provider-aware Supabase identities, and
-   migration 007 provides the company-domain auth hook. The offering catalog
-   is hydrated from its durable row when each ECS task starts.
+   migration 007 provides the company-domain auth hook. Migration 008 stores
+   versioned product-tour progress for each approved workspace member. The
+   offering catalog is hydrated from its durable row when each ECS task starts.
 9. Store all provider and database credentials in AWS Secrets Manager and rotate
    any value previously pasted into chat.
 10. Run a live-mode smoke test after deploy. Use a separate mock-configured demo
@@ -57,11 +58,12 @@ deploying:
    project.
 3. Configure production SMTP so confirmation messages are sent from the
    approved Freyr sender instead of the development mail service.
-4. Apply migrations `001` through `007` in order. Migration `007` creates the
+4. Apply migrations `001` through `008` in order. Migration `007` creates the
    exact-domain guard function. In **Authentication → Auth Hooks**, configure
    **Before User Created** to use the Postgres function
    `public.freyr_before_user_created`. This prevents the public Supabase signup
-   API from creating outside-domain Auth rows.
+   API from creating outside-domain Auth rows. Migration `008` creates the
+   service-role-only, per-user product-tour state table.
 
 The JSON secret referenced by `APP_SECRETS_ARN` must contain all of these keys:
 

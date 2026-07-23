@@ -22,7 +22,7 @@ import type {
 import { TOUR_VERSION } from "@/lib/onboarding";
 import {
   getProductTourSteps,
-  type ProductTourStep,
+  localTourIndexForCatalogStep,
 } from "@/lib/productTourCatalog";
 
 export {
@@ -74,28 +74,8 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
-/**
- * Persisted progress is a canonical catalog index. When a role or release
- * filter removes that exact step, resume at the closest available feature.
- */
-export function localTourIndexForCatalogStep(
-  steps: readonly ProductTourStep[],
-  catalogIndex: number
-): number {
-  if (steps.length === 0) return 0;
-  const exact = steps.findIndex((step) => step.catalogIndex === catalogIndex);
-  if (exact >= 0) return exact;
-
-  let nearestIndex = 0;
-  let nearestDistance = Number.POSITIVE_INFINITY;
-  steps.forEach((step, index) => {
-    const distance = Math.abs(step.catalogIndex - catalogIndex);
-    if (distance < nearestDistance) {
-      nearestDistance = distance;
-      nearestIndex = index;
-    }
-  });
-  return nearestIndex;
+function isTerminalState(state: OnboardingState): boolean {
+  return state.status === "completed" || state.status === "skipped";
 }
 
 function routeMatches(route: string, pathname: string): boolean {
@@ -242,10 +222,15 @@ export function ProductTourProvider({
 
       try {
         if (reset) await patchOnboarding({ action: "reset" });
-        await patchOnboarding({
+        const response = await patchOnboarding({
           action: "progress",
           currentStep: nextStep.catalogIndex,
         });
+        // A concurrent tab may have completed or skipped after our reset/read.
+        // The API treats that terminal state as authoritative.
+        if (mountedRef.current && isTerminalState(response.state)) {
+          setActive(false);
+        }
       } catch (cause) {
         if (mountedRef.current) {
           setError(
@@ -336,10 +321,7 @@ export function ProductTourProvider({
       return;
     }
 
-    if (
-      autoStart &&
-      snapshot.state.status === "not_started"
-    ) {
+    if (autoStart && snapshot.state.status === "not_started") {
       hydratedRef.current = false;
       void beginTour(false);
     }
@@ -374,10 +356,13 @@ export function ProductTourProvider({
       setError(null);
       navigateTo(step.route);
       try {
-        await patchOnboarding({
+        const response = await patchOnboarding({
           action: "progress",
           currentStep: step.catalogIndex,
         });
+        if (mountedRef.current && isTerminalState(response.state)) {
+          setActive(false);
+        }
       } catch (cause) {
         if (mountedRef.current) {
           setError(
