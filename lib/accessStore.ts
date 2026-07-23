@@ -6,6 +6,7 @@ import {
   providerForAuthMode,
   type WorkspaceRole,
 } from "./accessControl";
+import { isAllowedAuthEmail } from "./authEmailPolicy";
 
 export type AccessMember = {
   id: string;
@@ -138,6 +139,9 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
   const workspace = await workspaceId(client);
   const provider = providerForAuthMode();
   const email = normalizedEmail(user.email);
+  if (provider === "supabase" && !isAllowedAuthEmail(email)) {
+    throw new Error("A permitted company email is required.");
+  }
   const existing = await activeUser(client, workspace, provider, user.id);
 
   if (existing?.active) {
@@ -298,6 +302,12 @@ export async function inviteWorkspaceUser(
 ) {
   const email = normalizedEmail(emailValue);
   if (!email) throw new Error("Enter a valid email address.");
+  if (
+    process.env.AUTH_MODE === "supabase" &&
+    !isAllowedAuthEmail(email)
+  ) {
+    throw new Error("Invite a permitted company email address.");
+  }
   const client = adminClient();
   const result = await client.from("workspace_invitations").upsert(
     {
@@ -331,6 +341,12 @@ export async function reviewAccessRequest(
   if (request.error || !request.data) throw new Error(request.error?.message || "Request not found.");
   const now = new Date().toISOString();
   if (decision === "approve") {
+    if (
+      request.data.auth_provider === "supabase" &&
+      !isAllowedAuthEmail(request.data.email)
+    ) {
+      throw new Error("This request does not use a permitted company email.");
+    }
     const existing = await client
       .from("app_users")
       .select("id, auth_provider")

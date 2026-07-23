@@ -10,6 +10,7 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
   "/api/health",
   "/api/auth/access",
+  "/api/auth/register",
   "/api/auth/resolve",
   "/api/auth/session",
   "/api/auth/logout",

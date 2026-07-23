@@ -17,6 +17,7 @@
         { "name": "NODE_ENV", "value": "production" },
         { "name": "PORT", "value": "8080" },
         { "name": "AUTH_MODE", "value": "supabase" },
+        { "name": "AUTH_ALLOWED_EMAIL_DOMAINS", "value": "freyrsolutions.com" },
         { "name": "ACCESS_CONTROL_MODE", "value": "approval" },
         { "name": "DEFAULT_DATA_MODE", "value": "mock" },
         { "name": "DATA_MODE_LOCKED", "value": "0" }

@@ -6,6 +6,10 @@ import {
   requestUsesHttps,
   signAppSession,
 } from "@/lib/appSession";
+import {
+  allowedAuthEmailDomains,
+  isAllowedAuthEmail,
+} from "@/lib/authEmailPolicy";
 
 export async function POST(request: NextRequest) {
   if (process.env.AUTH_MODE !== "supabase") {
@@ -43,6 +47,18 @@ export async function POST(request: NextRequest) {
   if (!user.email || !user.email_confirmed_at) {
     return NextResponse.json(
       { error: "Confirm your email before signing in." },
+      { status: 403, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const domains = allowedAuthEmailDomains();
+  if (domains.length === 0 || !isAllowedAuthEmail(user.email, domains)) {
+    return NextResponse.json(
+      {
+        error:
+          domains.length > 0
+            ? `Use your @${domains[0]} company email.`
+            : "Company email access is not configured.",
+      },
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }

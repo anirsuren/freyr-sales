@@ -1,0 +1,81 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import {
+  allowedAuthEmailDomains,
+  isAllowedAuthEmail,
+} from "@/lib/authEmailPolicy";
+
+type RegistrationRequest = {
+  email?: string;
+  password?: string;
+  name?: string;
+};
+
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: { "Cache-Control": "no-store" },
+  });
+}
+
+export async function POST(request: NextRequest) {
+  if (process.env.AUTH_MODE !== "supabase") {
+    return json({ error: "Account registration is not enabled." }, 404);
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const domains = allowedAuthEmailDomains();
+  if (!url || !anonKey || domains.length === 0) {
+    return json({ error: "Account registration is not configured." }, 503);
+  }
+
+  let body: RegistrationRequest;
+  try {
+    body = (await request.json()) as RegistrationRequest;
+  } catch {
+    return json({ error: "Invalid request." }, 400);
+  }
+
+  const email = body.email?.trim().toLowerCase();
+  const password = body.password || "";
+  const name = body.name?.trim();
+  if (!email || !isAllowedAuthEmail(email, domains)) {
+    return json(
+      { error: `Use your @${domains[0]} company email.` },
+      403
+    );
+  }
+  if (!name || name.length > 120) {
+    return json({ error: "Enter your full name." }, 400);
+  }
+  if (password.length < 8 || password.length > 128) {
+    return json({ error: "Use a password between 8 and 128 characters." }, 400);
+  }
+
+  const supabase = createClient(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: name },
+      emailRedirectTo: new URL("/login", request.url).toString(),
+    },
+  });
+  if (error) {
+    return json(
+      { error: "We could not create that account. Try again shortly." },
+      error.status && error.status >= 400 && error.status < 500
+        ? error.status
+        : 502
+    );
+  }
+
+  return json({
+    ok: true,
+    message:
+      "Check your company inbox to confirm your account, then sign in.",
+  });
+}

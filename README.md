@@ -52,11 +52,13 @@ Before production, Freyr infrastructure must provide:
   listener (`AUTH_MODE=supabase`), or ALB Microsoft Entra OIDC
   (`AUTH_MODE=aws-alb`). Do not enable both.
 - Private ECS networking and AWS Secrets Manager.
-- A production Supabase/PostgreSQL database with migrations `001` through `006`
+- A production Supabase/PostgreSQL database with migrations `001` through `007`
   applied in order.
 - For Supabase login, confirmed-email enforcement, the exact production Site
-  URL/login redirect allowlist, a stable workspace UUID, and the temporary
-  first-owner bootstrap described in the deployment handoff.
+  URL/login redirect allowlist, production SMTP, the Before User Created domain
+  hook from migration `007`, `AUTH_ALLOWED_EMAIL_DOMAINS=freyrsolutions.com`, a
+  stable workspace UUID, and the temporary first-owner bootstrap described in
+  the deployment handoff.
 - Approved Azure DevOps repository access and ECR service connection.
 
 Never send API keys in Teams/chat or commit `.env.local`.

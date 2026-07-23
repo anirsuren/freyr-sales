@@ -15,11 +15,14 @@ function sign(payload: Record<string, unknown>): string {
   return `${encoded}.${signature}`;
 }
 
-function appSession(exp = Math.floor(Date.now() / 1000) + 3600): string {
+function appSession(
+  exp = Math.floor(Date.now() / 1000) + 3600,
+  email = "owner@freyrsolutions.com"
+): string {
   return sign({
     id: SUBJECT,
     name: "Auth Test User",
-    email: "owner@example.com",
+    email,
     roles: [],
     exp,
   });
@@ -32,7 +35,7 @@ function accessGrant(
   return sign({
     sub: SUBJECT,
     userId: "auth-test-app-user",
-    email: "owner@example.com",
+    email: "owner@freyrsolutions.com",
     role: "admin",
     workspaceId,
     exp,
@@ -84,12 +87,12 @@ test("headers from other identity providers cannot bypass Supabase auth", async 
   const easyAuth = Buffer.from(
     JSON.stringify({
       userId: SUBJECT,
-      userDetails: "owner@example.com",
+      userDetails: "owner@freyrsolutions.com",
       claims: [],
     })
   ).toString("base64");
   const albClaims = Buffer.from(
-    JSON.stringify({ email: "owner@example.com" })
+    JSON.stringify({ email: "owner@freyrsolutions.com" })
   ).toString("base64url");
   const response = await request.get("/api/customers", {
     headers: {
@@ -111,13 +114,30 @@ test("file-looking dynamic API paths cannot bypass middleware", async ({
   });
 });
 
-test("the login and session-establishment endpoints remain public", async ({
+test("the login, registration, and session-establishment endpoints remain public", async ({
   page,
   request,
 }) => {
   await page.goto("/login");
   await expect(page.getByRole("button", { name: "Sign in securely" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Request access" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
+  await expect(
+    page.getByText("Use your @freyrsolutions.com work email.", {
+      exact: false,
+    })
+  ).toBeVisible();
+
+  const registration = await request.post("/api/auth/register", {
+    data: {
+      name: "Outside User",
+      email: "outside@example.com",
+      password: "test-password-123",
+    },
+  });
+  expect(registration.status()).toBe(403);
+  expect(await registration.json()).toMatchObject({
+    error: "Use your @freyrsolutions.com company email.",
+  });
 
   const response = await request.post("/api/auth/session", { data: {} });
   expect(response.status()).toBe(400);
@@ -201,6 +221,41 @@ test("expired or tampered sessions are rejected", async ({ context }) => {
     session: `${appSession()}tampered`,
   });
   expect((await context.request.get("/api/customers")).status()).toBe(401);
+});
+
+test("a correctly signed session from outside the exact company domain is rejected", async ({
+  context,
+}) => {
+  await setAuthCookies(context, {
+    session: appSession(
+      Math.floor(Date.now() / 1000) + 3600,
+      "owner@sub.freyrsolutions.com"
+    ),
+  });
+  expect((await context.request.get("/api/customers")).status()).toBe(401);
+});
+
+test("registration rejects malformed and lookalike company domains", async ({
+  request,
+}) => {
+  const rejected = [
+    "owner@sub.freyrsolutions.com",
+    "owner@evilfreyrsolutions.com",
+    "owner@freyrsolutions.com.evil",
+    "owner@@freyrsolutions.com",
+    "owner @freyrsolutions.com",
+    "owner@freyrsolutions.com.",
+  ];
+  for (const email of rejected) {
+    const response = await request.post("/api/auth/register", {
+      data: {
+        name: "Domain Test",
+        email,
+        password: "test-password-123",
+      },
+    });
+    expect(response.status(), email).toBe(403);
+  }
 });
 
 test("logout clears both authentication and access cookies", async ({

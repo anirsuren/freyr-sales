@@ -22,7 +22,7 @@ function safeNext(): string {
   return "/dashboard";
 }
 
-export function SupabaseLoginForm() {
+export function SupabaseLoginForm({ allowedDomain }: { allowedDomain: string }) {
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -65,25 +65,38 @@ export function SupabaseLoginForm() {
     setMessage(null);
     try {
       if (!supabase) throw new Error("Sign-in is not configured yet.");
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!normalizedEmail.endsWith(`@${allowedDomain}`)) {
+        throw new Error(`Use your @${allowedDomain} company email.`);
+      }
       if (mode === "request") {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: name.trim() },
-            emailRedirectTo: `${window.location.origin}/login`,
-          },
+        const response = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            password,
+            name: name.trim(),
+          }),
         });
-        if (signUpError) throw signUpError;
-        if (data.session?.access_token) {
-          await establishSession(data.session.access_token);
-          return;
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+        };
+        if (!response.ok) {
+          throw new Error(body.error || "Could not create your account.");
         }
+        setPassword("");
         setMessage(
-          "Check your email to confirm your account, then sign in. A workspace owner must approve access before any sales data is visible."
+          body.message ||
+            "Check your company inbox to confirm your account, then sign in."
         );
       } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          });
         if (signInError) throw signInError;
         if (!data.session?.access_token) throw new Error("Could not establish a sign-in session.");
         await establishSession(data.session.access_token);
@@ -110,7 +123,7 @@ export function SupabaseLoginForm() {
           className={`h-9 rounded text-[13px] font-semibold ${mode === "request" ? "bg-white text-text-primary shadow-sm" : "text-text-secondary"}`}
           onClick={() => { setMode("request"); setError(null); setMessage(null); }}
         >
-          Request access
+          Create account
         </button>
       </div>
 
@@ -138,6 +151,10 @@ export function SupabaseLoginForm() {
             className="mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[14px] text-text-primary outline-none focus:border-blue-primary focus:ring-2 focus:ring-blue-100"
           />
         </label>
+        <p className="-mt-2 text-[11px] text-text-tertiary">
+          Use your @{allowedDomain} work email. We will send a confirmation
+          link before you can sign in.
+        </p>
         <label className="block text-[12px] font-semibold text-text-secondary">
           Password
           <input
@@ -160,7 +177,7 @@ export function SupabaseLoginForm() {
           className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-blue-primary text-[14px] font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? <Loader2 size={17} className="animate-spin" /> : mode === "signin" ? <LockKeyhole size={17} /> : <UserPlus size={17} />}
-          {mode === "signin" ? "Sign in securely" : "Create account request"}
+          {mode === "signin" ? "Sign in securely" : "Create account"}
           {!busy && <ArrowRight size={16} />}
         </button>
       </form>

@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from "./auth";
+import { isAllowedAuthEmail } from "./authEmailPolicy";
 
 export const APP_SESSION_COOKIE = "freyr_session";
 export const APP_SESSION_TTL_SECONDS = 8 * 60 * 60;
@@ -81,7 +82,9 @@ export async function verifyAppSession(token?: string | null): Promise<AppSessio
       !payload.roles.every((role) => typeof role === "string") ||
       typeof payload.exp !== "number" ||
       !Number.isFinite(payload.exp) ||
-      payload.exp <= Math.floor(Date.now() / 1000)
+      payload.exp <= Math.floor(Date.now() / 1000) ||
+      (process.env.AUTH_MODE === "supabase" &&
+        !isAllowedAuthEmail(payload.email))
     ) {
       return null;
     }
