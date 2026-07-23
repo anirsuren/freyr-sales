@@ -51,11 +51,22 @@ export function SupabaseLoginForm({ allowedDomain }: { allowedDomain: string }) 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ accessToken }),
     });
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      approved?: boolean;
+    };
     if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
       throw new Error(body.error || "Could not complete sign-in.");
     }
-    window.location.assign(`/api/auth/resolve?next=${encodeURIComponent(safeNext())}`);
+    // Let the browser commit both HttpOnly cookies before the top-level
+    // navigation. The session endpoint issues login and workspace grants
+    // atomically, so an approved user never needs an intermediate redirect.
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
+    window.location.assign(
+      body.approved
+        ? safeNext()
+        : `/access-pending?email=${encodeURIComponent(email.trim().toLowerCase())}`
+    );
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {

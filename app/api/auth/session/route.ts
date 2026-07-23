@@ -10,6 +10,12 @@ import {
   allowedAuthEmailDomains,
   isAllowedAuthEmail,
 } from "@/lib/authEmailPolicy";
+import {
+  ACCESS_COOKIE,
+  ACCESS_TTL_SECONDS,
+  signAccessGrant,
+} from "@/lib/accessControl";
+import { resolveWorkspaceAccess } from "@/lib/accessStore";
 
 export async function POST(request: NextRequest) {
   if (process.env.AUTH_MODE !== "supabase") {
@@ -62,20 +68,22 @@ export async function POST(request: NextRequest) {
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }
+  const principal = {
+    id: user.id,
+    name:
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email?.split("@")[0] ||
+      "Freyr user",
+    email: user.email || null,
+    roles: Array.isArray(user.app_metadata?.roles)
+      ? user.app_metadata.roles.map(String)
+      : [],
+  };
+
   let token: string;
   try {
-    token = await signAppSession({
-      id: user.id,
-      name:
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email?.split("@")[0] ||
-        "Freyr user",
-      email: user.email || null,
-      roles: Array.isArray(user.app_metadata?.roles)
-        ? user.app_metadata.roles.map(String)
-        : [],
-    });
+    token = await signAppSession(principal);
   } catch {
     return NextResponse.json(
       { error: "Sign-in is not fully configured." },
@@ -83,7 +91,28 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.json({ ok: true });
+  let accessGrantToken: string | null = null;
+  let approved = false;
+  try {
+    const access = await resolveWorkspaceAccess(principal);
+    if (access.status === "approved") {
+      accessGrantToken = await signAccessGrant({
+        sub: principal.id,
+        userId: access.userId,
+        email: principal.email,
+        role: access.role,
+        workspaceId: access.workspaceId,
+      });
+      approved = true;
+    }
+  } catch {
+    return NextResponse.json(
+      { error: "Authentication service unavailable." },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  const response = NextResponse.json({ ok: true, approved });
   response.cookies.set(APP_SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
@@ -91,6 +120,24 @@ export async function POST(request: NextRequest) {
     path: "/",
     maxAge: APP_SESSION_TTL_SECONDS,
   });
+  if (accessGrantToken) {
+    response.cookies.set(ACCESS_COOKIE, accessGrantToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: requestUsesHttps(request),
+      path: "/",
+      maxAge: ACCESS_TTL_SECONDS,
+    });
+  } else {
+    response.cookies.set(ACCESS_COOKIE, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: requestUsesHttps(request),
+      path: "/",
+      expires: new Date(0),
+      maxAge: 0,
+    });
+  }
   response.headers.set("Cache-Control", "no-store");
   return response;
 }
