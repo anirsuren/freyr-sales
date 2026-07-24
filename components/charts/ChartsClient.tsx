@@ -330,7 +330,11 @@ export function AreaChart({
   const pad = 6;
   // Big enough to carry axes + always-visible dots (vs. a tiny inline sparkline).
   const showAxes = height >= 140;
-  const max = Math.max(...data, goal ?? 0, yMax ?? 0, 1);
+  const dataMax = Math.max(...data, goal ?? 0, 1);
+  // Auto-scaled charts get ~10% headroom so the stroke never runs under the
+  // max-value axis chip (a series that STARTS at its max drew the line right
+  // through the label). Bounded metrics (yMax, e.g. /100 health) stay exact.
+  const max = yMax != null ? Math.max(dataMax, yMax) : dataMax * 1.1;
   const min = Math.min(...data, 0);
   const range = max - min || 1;
   const n = data.length;
@@ -587,6 +591,10 @@ export function DonutChart({
         height={size}
         viewBox={`0 0 ${size} ${size}`}
         role="img"
+        // Entrance = the whole ring settling in (rotate + fade). The per-slice
+        // dash sweep is gone for good — animating dash lengths left square
+        // notches at segment edges (the "glitchy pie" Suren kept seeing).
+        className="chart-donut"
         aria-label={`Donut chart: ${summary}`}
       >
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>

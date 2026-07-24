@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, ArrowRight, X, Pencil, UserRound } from "lucide-react";
+import { Plus, ArrowRight, X, Pencil, UserRound, Layers } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingCategory } from "@/lib/offerings";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { listAccent } from "./filterPalette";
 
 const FIELD =
   "w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
@@ -205,8 +206,11 @@ export function OfferingCategoriesManager({
       {/* The list */}
       <Card className="p-0 overflow-hidden">
         <div className="divide-y divide-border-light">
-          {offeringCategories.map((c) => {
+          {offeringCategories.map((c, i) => {
             const count = offeringCounts[c.id] || 0;
+            // Same position-indexed palette as the offerings page, so each
+            // category is the same colour here and on its cards/filter chip.
+            const accent = listAccent(i);
             if (editingId === c.id) {
               return (
                 <div key={c.id} className="p-4 bg-surface/60 space-y-3">
@@ -255,7 +259,14 @@ export function OfferingCategoriesManager({
                 key={c.id}
                 className="flex items-start justify-between gap-3 px-4 py-3.5"
               >
-                <div className="min-w-0">
+                <div className="flex items-start gap-3 min-w-0">
+                  <span
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: `${accent}14`, color: accent }}
+                  >
+                    <Layers size={15} strokeWidth={1.9} />
+                  </span>
+                  <div className="min-w-0">
                   <p className="text-[13.5px] font-semibold text-text-primary">
                     {c.name}
                   </p>
@@ -289,6 +300,7 @@ export function OfferingCategoriesManager({
                       <UserRound size={12} strokeWidth={1.8} /> Assign an owner →
                     </button>
                   ) : null}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Link

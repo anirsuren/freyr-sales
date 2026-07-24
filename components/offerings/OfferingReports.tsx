@@ -1,18 +1,26 @@
 import Link from "next/link";
 import {
+  Briefcase,
   CalendarClock,
   CalendarRange,
   ChevronRight,
+  Crown,
   DollarSign,
   KeyRound,
   ReceiptText,
+  Repeat,
   Users,
+  Wrench,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import {
   AreaChart,
+  DonutChart,
+  DonutLegend,
   VIZ,
+  VIZ_SERIES,
   type TipItem,
 } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -44,6 +52,51 @@ function lineStatus(line: OfferingRevenueLine, now: Date) {
   if (days < 0) return { label: "Expired", className: "bg-red-50 text-red-700" };
   if (days <= 90) return { label: `${days}d left`, className: "bg-amber-50 text-amber-700" };
   return { label: "Active", className: "bg-green-50 text-green-700" };
+}
+
+// Every revenue type gets its own colour + icon (Suren: "different types need
+// different colors and different tags") — used on the detail table, renewal
+// rows, and the header roll-up chips so a type reads the same everywhere.
+const REVENUE_TYPE_STYLE: Record<
+  OfferingRevenueLine["revenue_type"],
+  { color: string; bg: string; icon: LucideIcon }
+> = {
+  annual: { color: "#0071E3", bg: "rgba(0,113,227,0.10)", icon: Repeat },
+  project: { color: "#7C3AED", bg: "rgba(124,58,237,0.10)", icon: Briefcase },
+  annual_service: { color: "#0F766E", bg: "rgba(15,118,110,0.10)", icon: Wrench },
+  license: { color: "#B45309", bg: "rgba(180,83,9,0.12)", icon: KeyRound },
+};
+
+function TypePill({
+  type,
+  short,
+}: {
+  type: OfferingRevenueLine["revenue_type"];
+  short?: boolean;
+}) {
+  const style = REVENUE_TYPE_STYLE[type];
+  const Icon = style.icon;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10.5px] font-semibold"
+      style={{ color: style.color, background: style.bg }}
+    >
+      <Icon size={11} strokeWidth={2.1} />
+      {short ? REVENUE_TYPE_META[type].short : REVENUE_TYPE_META[type].label}
+    </span>
+  );
+}
+
+// How much of a contract's term is left, as a fraction for the countdown bar.
+// No dates → ongoing (full bar); expired → empty.
+function renewalRunway(line: OfferingRevenueLine, now: Date): number {
+  if (!line.end_date) return 1;
+  const end = Date.parse(line.end_date);
+  const start = line.start_date
+    ? Date.parse(line.start_date)
+    : end - 365 * 86_400_000;
+  if (end <= now.getTime()) return 0;
+  return Math.max(0.04, Math.min(1, (end - now.getTime()) / Math.max(end - start, 1)));
 }
 
 export function OfferingReports({
@@ -138,6 +191,24 @@ export function OfferingReports({
     month.toLocaleDateString("en-US", { month: "short" })
   );
 
+  // Revenue split as a donut (Suren: a table alone isn't a picture) — one
+  // slice per customer, hover shows the account's seats + commercial lines.
+  const revenueSegments = customerSummaries.map((customer, i) => ({
+    label: customer.name,
+    value: customer.revenue,
+    color: VIZ_SERIES[i % VIZ_SERIES.length],
+    tip: [
+      {
+        logo: customer.name,
+        name: customer.name,
+        sub: `${customer.licenses || 0} seats · ${customer.lines.length} ${
+          customer.lines.length === 1 ? "line" : "lines"
+        }`,
+        value: formatMoney(customer.revenue),
+      },
+    ] as TipItem[],
+  }));
+
   return (
     <div className="mt-6 space-y-4">
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -156,18 +227,52 @@ export function OfferingReports({
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-1.5">
-            {typeSegments.map((segment) => (
-              <span
-                key={segment.label}
-                className="rounded-md border border-border-light bg-surface px-2.5 py-1 text-[10.5px] text-text-secondary"
-              >
-                {segment.label.replace(" revenue", "")}{" "}
-                <strong className="font-semibold text-text-primary tnum">{formatMoney(segment.value)}</strong>
-              </span>
-            ))}
+            {typeSegments.map((segment) => {
+              const styled = REVENUE_TYPES.find(
+                (t) => REVENUE_TYPE_META[t].label === segment.label
+              );
+              const style = styled ? REVENUE_TYPE_STYLE[styled] : null;
+              const Icon = style?.icon;
+              return (
+                <span
+                  key={segment.label}
+                  className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10.5px] font-semibold"
+                  style={
+                    style
+                      ? { color: style.color, background: style.bg }
+                      : undefined
+                  }
+                >
+                  {Icon && <Icon size={11} strokeWidth={2.1} />}
+                  {segment.label.replace(" revenue", "")}{" "}
+                  <strong className="font-semibold tnum">{formatMoney(segment.value)}</strong>
+                </span>
+              );
+            })}
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr]">
+        {/* LEFT — the split as a picture: donut with its legend BESIDE it
+            (Suren: labels to the right of the pie, table to the right of that). */}
+        <div className="border-b xl:border-b-0 xl:border-r border-border-light px-5 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
+            Revenue split
+          </p>
+          <div className="flex items-center gap-4">
+            <DonutChart
+              segments={revenueSegments}
+              size={126}
+              thickness={15}
+              format="money"
+              centerLabel={formatMoney(report.totalRevenue)}
+              centerSub="booked"
+            />
+            <div className="flex-1 min-w-0">
+              <DonutLegend items={revenueSegments} format="money" />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto max-h-[340px] overflow-y-auto">
           <div className="min-w-[920px]">
             <div className="grid grid-cols-[minmax(220px,1.3fr)_minmax(190px,1fr)_80px_110px_165px_20px] items-center gap-4 border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
               <span>Customer</span>
@@ -242,6 +347,8 @@ export function OfferingReports({
             </div>
           </div>
         </div>
+
+        </div>
       </Card>
 
       <section className="grid grid-cols-1 lg:grid-cols-[1.35fr_.65fr] gap-4 items-stretch">
@@ -253,10 +360,10 @@ export function OfferingReports({
             </div>
             <CalendarRange size={17} strokeWidth={1.8} className="shrink-0 text-blue-primary" />
           </div>
-          <div className="mt-4 flex-1">
+          <div className="mt-4 flex-1 flex flex-col justify-center pb-5">
             <AreaChart
               data={coverage}
-              height={145}
+              height={210}
               id={`offering-coverage-${offeringName.replace(/[^a-z0-9]/gi, "-")}`}
               color={VIZ.teal}
               format="money"
@@ -285,20 +392,40 @@ export function OfferingReports({
                 >
                   <CompanyLogo name={item.customer} className="h-7 w-7 shrink-0 text-[8px]" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[11.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                      {item.customer}
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="truncate text-[11.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                        {item.customer}
+                      </span>
+                      <span className="shrink-0 text-[11px] font-semibold text-text-primary tnum">
+                        {formatMoney(item.line.amount)}
+                      </span>
                     </span>
-                    <span className="block truncate text-[10px] text-text-tertiary">
-                      {REVENUE_TYPE_META[item.line.revenue_type].label}
+                    <span className="mt-0.5 flex items-center justify-between gap-3">
+                      <TypePill type={item.line.revenue_type} short />
+                      <span className={cn("inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-semibold shrink-0", status.className)}>
+                        {status.label}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-[11px] font-semibold text-text-primary tnum">
-                      {formatMoney(item.line.amount)}
-                    </span>
-                    <span className={cn("mt-0.5 inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-semibold", status.className)}>
-                      {status.label}
-                    </span>
+                    {/* Countdown bar — how much contract runway is left, at a
+                        glance (Suren: "I have to visually SEE the 38 days"). */}
+                    {(() => {
+                      const runway = renewalRunway(item.line, now);
+                      const barColor = status.label.endsWith("d left")
+                        ? "#F59E0B"
+                        : status.label === "Expired"
+                          ? "#EF4444"
+                          : status.label === "Ongoing"
+                            ? "#0071E3"
+                            : "#16A34A";
+                      return (
+                        <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-border-light">
+                          <span
+                            className="block h-full rounded-full transition-all"
+                            style={{ width: `${Math.round(runway * 100)}%`, background: barColor }}
+                          />
+                        </span>
+                      );
+                    })()}
                   </span>
                 </Link>
               );
@@ -309,16 +436,24 @@ export function OfferingReports({
 
       <Card className="p-0 overflow-hidden">
         <div className="grid grid-cols-2 lg:grid-cols-5 divide-x divide-border-light">
-          {[
-            ["Avg. per customer", formatMoney(Math.round(report.totalRevenue / Math.max(report.customerCount, 1)))],
-            ["Revenue per seat", report.totalLicenses ? formatMoney(Math.round(report.totalRevenue / report.totalLicenses)) : "—"],
-            ["Recurring share", `${recurringShare}%`],
-            ["Top-account share", `${topCustomerShare}%`],
-            ["Next renewal", nextRenewal?.line.end_date ? formatDate(nextRenewal.line.end_date) : "No date"],
-          ].map(([label, value]) => (
+          {(
+            [
+              [Users, "Avg. per customer", formatMoney(Math.round(report.totalRevenue / Math.max(report.customerCount, 1))), "booked value per account"],
+              [KeyRound, "Revenue per seat", report.totalLicenses ? formatMoney(Math.round(report.totalRevenue / report.totalLicenses)) : "—", "booked ÷ licensed seats"],
+              [Repeat, "Recurring share", `${recurringShare}%`, "on repeating contracts"],
+              [Crown, "Top-account share", `${topCustomerShare}%`, "held by the biggest account"],
+              [CalendarClock, "Next renewal", nextRenewal?.line.end_date ? formatDate(nextRenewal.line.end_date) : "No date", "the next contract decision"],
+            ] as [LucideIcon, string, string, string][]
+          ).map(([Icon, label, value, sub]) => (
             <div key={label} className="min-w-0 px-4 py-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">{label}</p>
-              <p className="mt-1 truncate text-[16px] font-bold text-text-primary tnum">{value}</p>
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                  <Icon size={11} strokeWidth={2} />
+                </span>
+                {label}
+              </p>
+              <p className="mt-1.5 truncate text-[16px] font-bold text-text-primary tnum">{value}</p>
+              <p className="mt-0.5 truncate text-[10.5px] text-text-tertiary">{sub}</p>
             </div>
           ))}
         </div>
@@ -361,9 +496,7 @@ export function OfferingReports({
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {line ? (
-                          <span className="rounded-md bg-blue-light px-2 py-1 text-[10.5px] font-semibold text-blue-primary">
-                            {REVENUE_TYPE_META[line.revenue_type].short}
-                          </span>
+                          <TypePill type={line.revenue_type} short />
                         ) : (
                           <span className="text-[12px] text-text-tertiary">In use</span>
                         )}

@@ -129,6 +129,9 @@ export function ColorSelect({
         >
           {options.map((o) => {
             const on = o.value === value;
+            // Selected look = a whisper of the option's own color (Suren: the old
+            // solid-blue fill + left notch looked bad). No bar, no heavy fill.
+            const accent = o.color || "#0071E3";
             return (
               <button
                 key={o.value || "__all"}
@@ -142,10 +145,9 @@ export function ColorSelect({
                 className={cn(
                   "relative w-full flex items-center rounded-lg text-left transition-[background-color,box-shadow,transform]",
                   detailed ? "min-h-[54px] gap-3 px-2.5 py-2" : "gap-2.5 px-2.5 py-2 text-[13px]",
-                  on
-                    ? "bg-blue-light shadow-[inset_3px_0_0_#0071E3]"
-                    : "hover:bg-surface active:scale-[0.99]"
+                  !on && "hover:bg-surface active:scale-[0.99]"
                 )}
+                style={on ? { background: `${accent}0D` } : undefined}
               >
                 <Dot o={o} prominent={detailed} />
                 <span className="flex-1 min-w-0">
@@ -170,9 +172,7 @@ export function ColorSelect({
                   </span>
                 )}
                 {on && (
-                  <span className="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Check size={14} strokeWidth={2.6} className="text-blue-primary" />
-                  </span>
+                  <Check size={15} strokeWidth={2.6} className="shrink-0" style={{ color: accent }} />
                 )}
               </button>
             );

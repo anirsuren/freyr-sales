@@ -6,16 +6,13 @@ import {
   setDataMode,
   type DataMode,
 } from "@/lib/dataMode";
-import { isAdmin } from "@/lib/role";
-
 export async function GET() {
   return NextResponse.json({ mode: getDataMode(), locked: isDataModeLocked() });
 }
 
+// Anyone signed in can flip between mock (the end-goal demo) and live (what's
+// released today) — visibility follows the MODE, never the person (Suren).
 export async function POST(request: Request) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "Admin access required." }, { status: 403 });
-  }
   if (isDataModeLocked()) {
     return NextResponse.json(
       { error: "Data mode is controlled by the deployment configuration." },

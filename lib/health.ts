@@ -120,8 +120,11 @@ export function accountHealthSeries(
   return { points, delta: points[points.length - 1] - points[0] };
 }
 
+// Plain traffic-light colors (Suren: "just make it green and red and yellow" —
+// the old Watch text was a muddy brown). Yellow uses a golden tone dark enough
+// to stay readable on the light chip.
 export const HEALTH_COLOR: Record<HealthBand, { bg: string; color: string }> = {
-  healthy: { bg: "rgba(52,199,89,0.14)", color: "#1A7A35" },
-  watch: { bg: "rgba(255,159,10,0.16)", color: "#7A4A00" },
-  at_risk: { bg: "rgba(255,59,48,0.12)", color: "#B02020" },
+  healthy: { bg: "rgba(34,197,94,0.14)", color: "#16A34A" },
+  watch: { bg: "rgba(250,204,21,0.22)", color: "#CA8A04" },
+  at_risk: { bg: "rgba(239,68,68,0.12)", color: "#DC2626" },
 };

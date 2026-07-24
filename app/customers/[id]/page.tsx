@@ -90,6 +90,10 @@ export default async function CustomerDetailPage({
       kind: MATERIAL_META[m.kind]?.label || m.kind,
       label: m.label,
       url: m.url,
+      // CR-3 tags travel as raw values; the tab narrows them safely so
+      // untagged legacy materials render without pills instead of crashing.
+      journeyStage: m.journeyStage,
+      accessLevel: m.accessLevel,
     })),
   });
   const allOfferings = listOfferings();

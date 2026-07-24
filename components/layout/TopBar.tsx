@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, FlaskConical, Rocket, Check } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -61,6 +61,45 @@ export function TopBar({
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const currentUser = useCurrentUser();
+  // Quick mock/real switch lives here so nobody has to dig into Settings
+  // (Suren). Mode drives what the whole app shows — see lib/release.ts.
+  const [dataMode, setDataModeState] = useState<"mock" | "live" | null>(null);
+  const [modeLocked, setModeLocked] = useState(false);
+  const [modeBusy, setModeBusy] = useState(false);
+
+  useEffect(() => {
+    let on = true;
+    fetch("/api/settings/data-mode", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!on) return;
+        setDataModeState(d.mode === "live" ? "live" : "mock");
+        setModeLocked(Boolean(d.locked));
+      })
+      .catch(() => {});
+    return () => {
+      on = false;
+    };
+  }, []);
+
+  async function switchMode(mode: "mock" | "live") {
+    if (modeBusy || mode === dataMode) return;
+    setModeBusy(true);
+    try {
+      const r = await fetch("/api/settings/data-mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      if (r.ok) {
+        // Full reload onto the new mode's home so every page re-renders
+        // with the right visibility (live = released only, mock = everything).
+        window.location.assign(mode === "live" ? "/offerings" : "/dashboard");
+        return;
+      }
+    } catch {}
+    setModeBusy(false);
+  }
   const notificationReadKey = userScopedStorageKey(
     NOTIF_READ_KEY,
     currentUser.id
@@ -341,8 +380,10 @@ export function TopBar({
         >
           <CircleHelp size={19} strokeWidth={1.5} />
         </button>}
-        {!offeringsOnly && <div className="w-px h-7 bg-border-light mx-2" />}
-        {!offeringsOnly && <div className="relative" ref={userMenuRef}>
+        <div className="w-px h-7 bg-border-light mx-2" />
+        {/* Account menu shows in BOTH modes — it carries the mock/real switch,
+            so real mode must keep it or you could never switch back. */}
+        <div className="relative" ref={userMenuRef}>
           <button
             data-tour="account-menu"
             aria-label="Account menu"
@@ -370,11 +411,65 @@ export function TopBar({
                       {currentUser.name}
                     </p>
                     <p className="text-[12px] text-text-secondary leading-tight truncate">
-                      {currentUser.email || currentUser.title}
+                      {currentUser.title}
                     </p>
+                    {currentUser.email && (
+                      <p className="text-[11.5px] text-text-tertiary leading-tight truncate mt-0.5">
+                        {currentUser.email}
+                      </p>
+                    )}
                   </div>
                 </div>
+                {/* Quick mock/real switch (Suren: "instead of going to settings
+                    every time"). Mock = the end-goal demo, Real = what's
+                    released today. Hidden only when the deployment locks it. */}
+                {dataMode && !modeLocked && (
+                  <div className="p-1.5 border-b border-border-light">
+                    <p className="px-2.5 pt-1 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Viewing
+                    </p>
+                    {(
+                      [
+                        { mode: "mock", icon: FlaskConical, label: "Mock mode", sub: "The full vision, with demo data", color: "#7C3AED" },
+                        { mode: "live", icon: Rocket, label: "Real mode", sub: "Only what's released today", color: "#16A34A" },
+                      ] as const
+                    ).map((m) => {
+                      const MIcon = m.icon;
+                      const active = dataMode === m.mode;
+                      return (
+                        <button
+                          key={m.mode}
+                          role="menuitem"
+                          disabled={modeBusy}
+                          onClick={() => switchMode(m.mode)}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors",
+                            !active && "hover:bg-surface",
+                            modeBusy && "opacity-60"
+                          )}
+                          style={active ? { background: `${m.color}0D` } : undefined}
+                        >
+                          <span
+                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: `${m.color}14`, color: m.color }}
+                          >
+                            <MIcon size={15} strokeWidth={1.8} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={cn("block text-[13px] text-text-primary", active ? "font-semibold" : "font-medium")}>
+                              {m.label}
+                            </span>
+                            <span className="block text-[11.5px] text-text-secondary leading-snug">{m.sub}</span>
+                          </span>
+                          {active && <Check size={15} strokeWidth={2.4} style={{ color: m.color }} className="shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="p-1.5">
+                  {!offeringsOnly && (
+                    <>
                   <Link
                     role="menuitem"
                     href="/settings"
@@ -432,6 +527,8 @@ export function TopBar({
                     Keyboard shortcuts
                   </button>
                   <div className="my-1 border-t border-border-light" />
+                    </>
+                  )}
                   <a
                     role="menuitem"
                     href="/api/auth/logout"
@@ -443,7 +540,7 @@ export function TopBar({
                 </div>
               </div>
           )}
-        </div>}
+        </div>
       </div>
 
       <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="Keyboard shortcuts">

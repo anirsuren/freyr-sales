@@ -90,12 +90,12 @@ export function Sidebar({
   onMobileClose?: () => void;
 }) {
   const pathname = usePathname() || "";
+  const currentUser = useCurrentUser();
   const offeringsOnly = isOfferingsOnly(dataMode);
   const navItems = ALL_NAV_ITEMS.filter((item) => isReleased(item.href, dataMode));
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
-  const currentUser = useCurrentUser();
   const collapseStorageKey = userScopedStorageKey(COLLAPSE_KEY, currentUser.id);
 
   // restore persisted collapse state after mount (avoids hydration mismatch)

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, ArrowRight, X } from "lucide-react";
+import { Plus, ArrowRight, X, Pill, Dna, FlaskConical, Store, Building, Building2, Globe2, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -13,6 +13,7 @@ import type {
   CustomerFamily,
   CustomerSize,
 } from "@/lib/offerings";
+import { listAccent } from "./filterPalette";
 
 const FIELD =
   "w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
@@ -24,6 +25,19 @@ const FAMILIES: CustomerFamily[] = [
   "Bio Pharmaceutical",
 ];
 const SIZES: CustomerSize[] = ["Small", "Mid size", "Large"];
+
+// Colour + icon per family and size (chip rule: never a plain chip). Family
+// colours match familyColor() on the offerings page.
+const FAMILY_META: Record<CustomerFamily, { color: string; icon: LucideIcon }> = {
+  Pharmaceutical: { color: "#0071E3", icon: Pill },
+  Biologics: { color: "#E11D48", icon: Dna },
+  "Bio Pharmaceutical": { color: "#7C3AED", icon: FlaskConical },
+};
+const SIZE_META: Record<CustomerSize, { color: string; icon: LucideIcon }> = {
+  Small: { color: "#059669", icon: Store },
+  "Mid size": { color: "#F59E0B", icon: Building },
+  Large: { color: "#0071E3", icon: Building2 },
+};
 
 export function CustomerTypesManager({
   customerTypes,
@@ -241,13 +255,24 @@ export function CustomerTypesManager({
       </Card>
 
       {/* Definitions, grouped by family */}
-      {groups.map(({ fam, types }) => (
+      {groups.map(({ fam, types }) => {
+        const fm = FAMILY_META[fam];
+        const FIcon = fm.icon;
+        return (
         <Card key={fam} className="p-0 overflow-hidden">
-          <div className="p-4 border-b border-border-light">
-            <h3 className="text-[15px] font-semibold text-text-primary">{fam}</h3>
-            <p className="text-[12.5px] text-text-secondary mt-0.5 leading-relaxed max-w-[680px]">
-              {types[0].product_type}
-            </p>
+          <div className="p-4 border-b border-border-light flex items-start gap-3">
+            <span
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: `${fm.color}14`, color: fm.color }}
+            >
+              <FIcon size={17} strokeWidth={1.8} />
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-[15px] font-semibold text-text-primary">{fam}</h3>
+              <p className="text-[12.5px] text-text-secondary mt-0.5 leading-relaxed max-w-[680px]">
+                {types[0].product_type}
+              </p>
+            </div>
           </div>
           <div className="hidden sm:grid grid-cols-[110px_140px_120px_1fr_auto] gap-3 px-4 py-2 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary border-b border-border-light bg-surface/40">
             <span>Size</span>
@@ -265,9 +290,19 @@ export function CustomerTypesManager({
                   href={`/offerings?type=${t.id}`}
                   className="grid grid-cols-1 sm:grid-cols-[110px_140px_120px_1fr_auto] gap-x-3 gap-y-1 px-4 py-3 items-baseline hover:bg-surface transition-colors group"
                 >
-                  <span className="inline-flex w-fit text-[11px] font-semibold text-blue-primary bg-blue-light rounded px-2 py-0.5">
-                    {t.size}
-                  </span>
+                  {(() => {
+                    const sm = SIZE_META[t.size as CustomerSize] ?? SIZE_META.Large;
+                    const SIcon = sm.icon;
+                    return (
+                      <span
+                        className="inline-flex w-fit items-center gap-1 text-[11px] font-semibold rounded px-2 py-0.5"
+                        style={{ color: sm.color, background: `${sm.color}14` }}
+                      >
+                        <SIcon size={11} strokeWidth={2} />
+                        {t.size}
+                      </span>
+                    );
+                  })()}
                   <span className="text-[13px] text-text-primary tnum">
                     {t.revenue}
                   </span>
@@ -290,7 +325,8 @@ export function CustomerTypesManager({
             })}
           </div>
         </Card>
-      ))}
+        );
+      })}
 
       {otherTypes.length > 0 && (
         <Card className="p-0 overflow-hidden">
@@ -351,17 +387,21 @@ export function CustomerTypesManager({
                 </span>
               );
             }
+            const accent = listAccent(markets.indexOf(m));
             return (
               <span
                 key={m.id}
-                className="group inline-flex items-center text-[12.5px] font-medium bg-surface border border-border-light rounded-md transition-colors hover:border-blue-subtle"
+                className="group inline-flex items-center text-[12.5px] font-medium border rounded-md transition-colors"
+                style={{ background: `${accent}0D`, borderColor: `${accent}33` }}
               >
                 <Link
                   href={`/offerings?market=${m.id}`}
-                  className="inline-flex items-center gap-1.5 text-text-primary group-hover:text-blue-primary pl-2.5 pr-1 py-1"
+                  className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1"
+                  style={{ color: accent }}
                 >
+                  <Globe2 size={12} strokeWidth={2} />
                   {m.name}
-                  <span className="text-[11px] text-text-tertiary tnum">
+                  <span className="text-[11px] tnum opacity-70">
                     {count}
                   </span>
                 </Link>

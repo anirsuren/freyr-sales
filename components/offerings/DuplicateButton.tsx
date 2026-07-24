@@ -21,7 +21,13 @@ export function DuplicateButton({
     poc: string;
     customer_type_ids: string[];
     market_ids: string[];
-    materials: { kind: string; label: string; url: string }[];
+    materials: {
+      kind: string;
+      label: string;
+      url: string;
+      journeyStage?: string;
+      accessLevel?: string;
+    }[];
   };
 }) {
   const router = useRouter();
@@ -48,6 +54,8 @@ export function DuplicateButton({
             kind: m.kind,
             label: m.label,
             url: m.url,
+            journeyStage: m.journeyStage,
+            accessLevel: m.accessLevel,
           })),
         }),
       });

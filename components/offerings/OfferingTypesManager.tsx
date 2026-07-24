@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, ArrowRight, X, Pencil } from "lucide-react";
+import { Plus, ArrowRight, X, Pencil, Package } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingType } from "@/lib/offerings";
+import { listAccent } from "./filterPalette";
 
 const FIELD =
   "w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
@@ -175,8 +176,9 @@ export function OfferingTypesManager({
       {/* The list */}
       <Card className="p-0 overflow-hidden">
         <div className="divide-y divide-border-light">
-          {offeringTypes.map((t) => {
+          {offeringTypes.map((t, i) => {
             const count = offeringCounts[t.id] || 0;
+            const accent = listAccent(i);
             if (editingId === t.id) {
               return (
                 <div key={t.id} className="p-4 bg-surface/60 space-y-3">
@@ -216,7 +218,16 @@ export function OfferingTypesManager({
                 key={t.id}
                 className="flex items-start justify-between gap-3 px-4 py-3.5"
               >
-                <div className="min-w-0">
+                <div className="flex items-start gap-3 min-w-0">
+                  {/* Colour + icon chip — same palette order as the offerings
+                      filter dropdown, so a type reads the same colour everywhere */}
+                  <span
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: `${accent}14`, color: accent }}
+                  >
+                    <Package size={15} strokeWidth={1.9} />
+                  </span>
+                  <div className="min-w-0">
                   <p className="text-[13.5px] font-semibold text-text-primary">
                     {t.name}
                   </p>
@@ -236,6 +247,7 @@ export function OfferingTypesManager({
                       No description yet
                     </p>
                   )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Link

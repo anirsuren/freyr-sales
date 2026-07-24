@@ -232,8 +232,18 @@ export function CustomerTabs({
     next_step: "",
     notes: "",
   });
+  // Reset per-account UI state only when switching to a DIFFERENT account.
+  // Keyed on customer.id — NOT the customer object: router.refresh() after any
+  // save sends a fresh object, and resetting then threw you back to the
+  // Overview tab mid-flow (classify, add deal, save revenue…).
   useEffect(() => {
-    setTabState("overview");
+    let wanted: string | null = null;
+    try {
+      wanted = new URLSearchParams(window.location.search).get("tab");
+    } catch {}
+    setTabState(
+      wanted && TABS.some((t) => t.key === wanted) ? wanted : "overview"
+    );
     setOwner(customer.owner || ownerFor(customer));
     setCompetitor(customer.competitor || "");
     setEditingComp(false);
@@ -259,15 +269,8 @@ export function CustomerTabs({
       next_step: "",
       notes: "",
     });
-  }, [
-    customer,
-    currentUser.id,
-    currentUser.name,
-    defaultDealOwner,
-    customer.competitor,
-    customer.id,
-    customer.owner,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customer.id, currentUser.id]);
   const sessionDeals = useMemo(
     () => buildDeals(sessions, [customer], contacts, interactions),
     [sessions, customer, contacts, interactions]

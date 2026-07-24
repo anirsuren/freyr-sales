@@ -30,11 +30,9 @@ import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 // Distinct palette so each category / type gets its own colour dot in the
-// dropdowns (Suren: "color code all the dropdowns").
-const FILTER_PALETTE = [
-  "#0071E3", "#E11D48", "#7C3AED", "#059669", "#B45309",
-  "#0F766E", "#DB2777", "#0369A1", "#EA580C", "#4F46E5",
-];
+// dropdowns (Suren: "color code all the dropdowns"). Shared with the
+// master-list managers so colours match everywhere.
+import { FILTER_PALETTE } from "./filterPalette";
 const familyColor = (fam: string): string => {
   const f = (fam || "").toLowerCase();
   if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED";

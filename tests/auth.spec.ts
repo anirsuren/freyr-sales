@@ -33,14 +33,15 @@ function accessGrant(
   exp = Math.floor(Date.now() / 1000) + 3600,
   workspaceId = WORKSPACE_ID,
   email = "owner@freyrsolutions.com",
-  displayName = "Auth Test User"
+  displayName = "Auth Test User",
+  role = "admin"
 ): string {
   return sign({
     sub: SUBJECT,
     userId: "auth-test-app-user",
     email,
     displayName,
-    role: "admin",
+    role,
     workspaceId,
     exp,
   });

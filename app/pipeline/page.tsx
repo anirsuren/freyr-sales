@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -5,7 +6,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { PipelineBoard } from "@/components/pipeline/PipelineBoard";
 import { PipelineAgentBanner } from "@/components/pipeline/PipelineAgentBanner";
 import { CountUp } from "@/components/ui/CountUp";
-import { Briefcase, TrendingUp, Clock, AlertTriangle, type LucideIcon } from "lucide-react";
+import { Briefcase, TrendingUp, Clock, AlertTriangle, Plus, type LucideIcon } from "lucide-react";
 import {
   buildDeals,
   formatMoney,
@@ -89,6 +90,25 @@ export default async function PipelinePage() {
       <PageHeader
         title="Pipeline"
         subtitle={`${deals.length} deals · ${formatMoney(openValue)} open pipeline value`}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/forecast"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-border-light bg-white text-[13px] font-semibold text-text-primary hover:bg-surface transition-colors"
+            >
+              <TrendingUp size={15} strokeWidth={1.9} className="text-blue-primary" />
+              Forecast
+            </Link>
+            <Link
+              href="/intake"
+              title="Start a sales session — that's how a new deal enters the pipeline"
+              className="inline-flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+            >
+              <Plus size={15} strokeWidth={2.2} />
+              New deal
+            </Link>
+          </div>
+        }
       />
 
       {/* Deal-velocity insights (V6) */}

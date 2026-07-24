@@ -202,6 +202,8 @@ export default async function OfferingDetailPage({
                         kind: m.kind,
                         label: m.label,
                         url: m.url,
+                        journeyStage: m.journeyStage,
+                        accessLevel: m.accessLevel,
                       })),
                     }}
                   />

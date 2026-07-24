@@ -445,7 +445,8 @@ export default async function ForecastPage() {
                         {/* Just the stage name at rest — the numbers live in the
                             hover breakdown so this reads as a chart, not a table. */}
                         <p className="mt-2 flex min-h-[28px] items-start justify-center gap-1.5 text-center text-[10.5px] font-medium leading-tight text-text-primary">
-                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
+                          {/* mt centers the 6px dot on the first text line (dot sat above the text) */}
+                          <span className="mt-[3.5px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
                           {s.stage}
                         </p>
                       </div>

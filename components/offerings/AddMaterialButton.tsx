@@ -5,7 +5,32 @@ import { useRouter } from "next/navigation";
 import { Plus, Video, Presentation, FileText, DollarSign, Swords, BookOpen, Quote, File, Table2, type LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { MATERIAL_META, type MaterialKind, type OfferingMaterial } from "@/lib/offeringMaterials";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import {
+  ACCESS_LEVELS,
+  ACCESS_LEVEL_META,
+  JOURNEY_STAGES,
+  JOURNEY_STAGE_META,
+  MATERIAL_META,
+  type AccessLevel,
+  type JourneyStage,
+  type MaterialKind,
+  type OfferingMaterial,
+} from "@/lib/offeringMaterials";
+
+// The two CR-3 tag dropdowns — colour-coded options, never a gray <select>.
+const STAGE_OPTIONS: ColorOption[] = JOURNEY_STAGES.map((s) => ({
+  value: s,
+  label: JOURNEY_STAGE_META[s].label,
+  color: JOURNEY_STAGE_META[s].color,
+  icon: JOURNEY_STAGE_META[s].icon,
+}));
+const ACCESS_OPTIONS: ColorOption[] = ACCESS_LEVELS.map((l) => ({
+  value: l,
+  label: ACCESS_LEVEL_META[l].label,
+  color: ACCESS_LEVEL_META[l].color,
+  icon: ACCESS_LEVEL_META[l].icon,
+}));
 
 // Every material type gets its own icon + colour + a short label, so the picker
 // reads as a clean, symmetric 3×3 grid of colour-coded tiles (Suren).
@@ -38,12 +63,16 @@ export function AddMaterialButton({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<MaterialKind>("video");
+  const [journeyStage, setJourneyStage] = useState<JourneyStage>("awareness");
+  const [accessLevel, setAccessLevel] = useState<AccessLevel>("client_facing");
   const [label, setLabel] = useState("");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
 
   function reset() {
     setKind("video");
+    setJourneyStage("awareness");
+    setAccessLevel("client_facing");
     setLabel("");
     setUrl("");
   }
@@ -56,12 +85,23 @@ export function AddMaterialButton({
     setBusy(true);
     try {
       const next: OfferingMaterial[] = [
-        ...materials.map((m) => ({ id: m.id, kind: m.kind, label: m.label, url: m.url })),
+        // Preserve the existing materials' tags verbatim — untagged legacy
+        // materials stay untagged rather than being silently re-tagged.
+        ...materials.map((m) => ({
+          id: m.id,
+          kind: m.kind,
+          label: m.label,
+          url: m.url,
+          journeyStage: m.journeyStage,
+          accessLevel: m.accessLevel,
+        })),
         {
           id: "",
           kind,
           label: label.trim() || MATERIAL_META[kind].label,
           url: url.trim(),
+          journeyStage,
+          accessLevel,
         },
       ];
       const res = await fetch(`/api/offerings/${offeringId}`, {
@@ -141,6 +181,36 @@ export function AddMaterialButton({
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* CR-3: every material carries its buyer's-journey stage + who may
+              see it. Two colour-coded dropdowns, defaulting to the most common
+              pairing (awareness + client facing). */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
+                Buyer&apos;s journey stage
+              </label>
+              <ColorSelect
+                value={journeyStage}
+                options={STAGE_OPTIONS}
+                onChange={(v) => setJourneyStage(v as JourneyStage)}
+                ariaLabel="Buyer's journey stage"
+                minWidth={0}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
+                Access level
+              </label>
+              <ColorSelect
+                value={accessLevel}
+                options={ACCESS_OPTIONS}
+                onChange={(v) => setAccessLevel(v as AccessLevel)}
+                ariaLabel="Access level"
+                minWidth={0}
+              />
             </div>
           </div>
 

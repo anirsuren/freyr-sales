@@ -398,7 +398,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
             const selected = size === f.key;
             const meta =
               f.key === "all"
-                ? { color: "#4B5563", bg: "rgba(75,85,99,0.09)" }
+                ? { color: "#0071E3", bg: "rgba(0,113,227,0.10)" }
                 : SIZE_TIER_META[f.key];
             return (
               <button

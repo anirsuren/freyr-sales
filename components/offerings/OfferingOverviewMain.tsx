@@ -4,60 +4,24 @@ import {
   BookOpen,
   ChevronRight,
   DollarSign,
-  ExternalLink,
-  File,
-  FileText,
   FolderOpen,
   KeyRound,
   Layers,
-  Presentation,
-  Quote,
   ReceiptText,
-  Swords,
-  Table2,
-  Video,
 } from "lucide-react";
 import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
+import { MaterialsSection } from "@/components/offerings/MaterialsSection";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { formatMoney } from "@/lib/pipeline";
 import { VIZ_SERIES } from "@/components/charts/Charts";
-import {
-  MATERIAL_META,
-  type MaterialKind,
-  type Offering,
-  hydrateOffering,
-} from "@/lib/offerings";
+import { type Offering, hydrateOffering } from "@/lib/offerings";
 import type { OfferingReport } from "@/lib/revenue";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
 import { formatDate } from "@/lib/utils";
-
-const MATERIAL_ICON: Record<MaterialKind, typeof Video> = {
-  video: Video,
-  presentation: Presentation,
-  whitepaper: FileText,
-  pricing: DollarSign,
-  competition: Swords,
-  case_study: BookOpen,
-  reference: Quote,
-  one_pager: File,
-  datasheet: Table2,
-};
-
-const KIND_ORDER: MaterialKind[] = [
-  "video",
-  "presentation",
-  "whitepaper",
-  "pricing",
-  "case_study",
-  "reference",
-  "competition",
-  "one_pager",
-  "datasheet",
-];
 
 function SectionHeading({
   icon: Icon,
@@ -314,34 +278,7 @@ export function OfferingOverviewMain({
         {o.materials.length === 0 ? (
           <p className="mt-5 pl-11 text-[13px] text-text-tertiary">No sales materials have been added.</p>
         ) : (
-          <div className="mt-5 ml-11 border-y border-border-light divide-y divide-border-light">
-            {KIND_ORDER.flatMap((kind) =>
-              o.materials
-                .filter((material) => material.kind === kind)
-                .map((material) => {
-                  const Icon = MATERIAL_ICON[kind];
-                  return (
-                    <a
-                      key={material.id}
-                      href={material.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex min-h-[64px] items-center gap-3 px-1 py-3 hover:bg-blue-light/30 transition-colors"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
-                        <Icon size={16} strokeWidth={1.8} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">{material.label}</span>
-                        <span className="mt-0.5 block text-[11px] text-text-tertiary">{MATERIAL_META[kind].label}</span>
-                      </span>
-                      <span className="hidden shrink-0 text-[11px] font-medium text-text-tertiary lg:block">Open asset</span>
-                      <ExternalLink size={14} strokeWidth={1.7} className="shrink-0 text-text-tertiary group-hover:text-blue-primary" />
-                    </a>
-                  );
-                })
-            )}
-          </div>
+          <MaterialsSection materials={o.materials} />
         )}
       </section>
 

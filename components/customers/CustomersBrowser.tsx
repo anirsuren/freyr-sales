@@ -390,9 +390,9 @@ export function CustomersBrowser({
             onChange={setHealthFilter}
             minWidth={140}
             options={[
-              { value: "all", label: "All health" },
+              { value: "all", label: "All health", color: "#0071E3" },
               { value: "healthy", label: "Healthy", color: HEALTH_COLOR.healthy.color },
-              { value: "watch", label: "Watch", color: HEALTH_COLOR.watch.color },
+              { value: "watch", label: "Watch", color: "#EAB308" },
               { value: "at_risk", label: "At risk", color: HEALTH_COLOR.at_risk.color },
             ]}
           />

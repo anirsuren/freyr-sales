@@ -49,13 +49,13 @@ const ROLE_STYLES: { test: RegExp; bg: string; color: string }[] = [
   { test: /exec|c-?level|ceo|coo|cfo|founder|chief/i, bg: "rgba(124,58,237,0.10)", color: "#6D28D9" }, // violet — leadership
   { test: /regulatory|reg\b|ra\b/i, bg: "rgba(0,113,227,0.10)", color: "#0040A0" }, // blue — regulatory
   { test: /medical|clinical|scientific/i, bg: "rgba(5,150,105,0.12)", color: "#047857" }, // emerald — medical
-  { test: /quality|qa|cmc|manufactur/i, bg: "rgba(217,119,6,0.12)", color: "#B45309" }, // amber — quality
+  { test: /quality|qa|cmc|manufactur/i, bg: "rgba(249,115,22,0.12)", color: "#EA580C" }, // clean orange — quality (no brown-amber, Suren)
   { test: /complian|legal|audit/i, bg: "rgba(225,29,72,0.10)", color: "#BE123C" }, // rose — compliance
   { test: /commercial|market|sales|business/i, bg: "rgba(2,132,199,0.12)", color: "#0369A1" }, // sky — commercial
 ];
 function roleStyle(role: string): { bg: string; color: string } {
   const hit = ROLE_STYLES.find((s) => s.test.test(role));
-  return hit ?? { bg: "rgba(100,116,139,0.12)", color: "#475569" }; // slate default
+  return hit ?? { bg: "rgba(13,148,136,0.12)", color: "#0D9488" }; // teal default — never gray
 }
 
 export function ContactsBrowser({
@@ -163,15 +163,17 @@ export function ContactsBrowser({
       {/* Title + filters (incl. a compact search) on one row — no standalone
           search bar eating a whole row (Suren). */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
-        <div className="min-w-0">
+        {/* Title block keeps its width; the toolbar wraps instead — the
+            subtitle was being crushed into a 4-line sliver. */}
+        <div className="shrink-0">
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
             Contacts
           </h1>
-          <p className="text-[14px] text-text-secondary mt-0.5">
+          <p className="text-[14px] text-text-secondary mt-0.5 whitespace-nowrap">
             Decision-makers across your accounts.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        <div className="flex items-center justify-end gap-2 flex-wrap min-w-0">
           <div className="relative w-[190px]">
             <Search size={15} strokeWidth={1.6} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
             <input

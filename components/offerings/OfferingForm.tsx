@@ -7,13 +7,40 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { CustomerType, Market, OfferingCategory } from "@/lib/offerings";
-import { MATERIAL_META, type MaterialKind } from "@/lib/offeringMaterials";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import {
+  ACCESS_LEVELS,
+  ACCESS_LEVEL_META,
+  JOURNEY_STAGES,
+  JOURNEY_STAGE_META,
+  MATERIAL_META,
+  type AccessLevel,
+  type JourneyStage,
+  type MaterialKind,
+} from "@/lib/offeringMaterials";
 
 interface MaterialRow {
   kind: MaterialKind;
   label: string;
   url: string;
+  journeyStage?: JourneyStage;
+  accessLevel?: AccessLevel;
 }
+
+// CR-3 tag dropdowns for each material row — colour-coded, matching the
+// AddMaterialButton popup so tagging feels the same everywhere.
+const STAGE_OPTIONS: ColorOption[] = JOURNEY_STAGES.map((s) => ({
+  value: s,
+  label: JOURNEY_STAGE_META[s].label,
+  color: JOURNEY_STAGE_META[s].color,
+  icon: JOURNEY_STAGE_META[s].icon,
+}));
+const ACCESS_OPTIONS: ColorOption[] = ACCESS_LEVELS.map((l) => ({
+  value: l,
+  label: ACCESS_LEVEL_META[l].label,
+  color: ACCESS_LEVEL_META[l].color,
+  icon: ACCESS_LEVEL_META[l].icon,
+}));
 
 // A material link a rep pastes as a bare domain ("example.com/deck.pdf") would
 // render as a relative href and 404 on click. Give it a scheme; leave full URLs
@@ -140,7 +167,13 @@ export function OfferingForm({
   const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
   const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
   const [materials, setMaterials] = useState<MaterialRow[]>(
-    initial?.materials ?? []
+    // Legacy rows without CR-3 tags get the default pairing here, visibly —
+    // what the dropdowns show is exactly what saving will persist.
+    (initial?.materials ?? []).map((m) => ({
+      ...m,
+      journeyStage: m.journeyStage ?? "awareness",
+      accessLevel: m.accessLevel ?? "client_facing",
+    }))
   );
 
   function toggle(list: string[], id: string) {
@@ -463,7 +496,16 @@ export function OfferingForm({
           <button
             type="button"
             onClick={() =>
-              setMaterials((l) => [...l, { kind: "video", label: "", url: "" }])
+              setMaterials((l) => [
+                ...l,
+                {
+                  kind: "video",
+                  label: "",
+                  url: "",
+                  journeyStage: "awareness",
+                  accessLevel: "client_facing",
+                },
+              ])
             }
             className="inline-flex items-center gap-1 text-[13px] font-semibold text-blue-primary hover:bg-blue-light rounded-md px-2 py-1"
           >
@@ -516,6 +558,32 @@ export function OfferingForm({
               }
               placeholder="https://…"
               className="flex-1 min-w-[180px] h-9 rounded-md border border-border px-3 text-[13px] focus:outline-none focus:shadow-input-focus"
+            />
+            <ColorSelect
+              value={m.journeyStage ?? "awareness"}
+              options={STAGE_OPTIONS}
+              onChange={(v) =>
+                setMaterials((l) =>
+                  l.map((x, j) =>
+                    j === i ? { ...x, journeyStage: v as JourneyStage } : x
+                  )
+                )
+              }
+              ariaLabel="Buyer's journey stage"
+              minWidth={168}
+            />
+            <ColorSelect
+              value={m.accessLevel ?? "client_facing"}
+              options={ACCESS_OPTIONS}
+              onChange={(v) =>
+                setMaterials((l) =>
+                  l.map((x, j) =>
+                    j === i ? { ...x, accessLevel: v as AccessLevel } : x
+                  )
+                )
+              }
+              ariaLabel="Access level"
+              minWidth={148}
             />
             <button
               type="button"

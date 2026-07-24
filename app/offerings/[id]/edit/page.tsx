@@ -57,6 +57,8 @@ export default async function EditOfferingPage({
             kind: m.kind,
             label: m.label,
             url: m.url,
+            journeyStage: m.journeyStage,
+            accessLevel: m.accessLevel,
           })),
         }}
         customerTypes={listCustomerTypes()}

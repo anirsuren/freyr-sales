@@ -37,13 +37,15 @@ export const STAGE_PROBABILITY: Record<Stage, number> = {
 };
 
 // One palette for stages everywhere (leaderboard bars, donuts, value charts).
+// Stage colours re-spread across the hue wheel so no two stages read alike in
+// a donut (Suren: teal vs sky vs green were indistinguishable). Amber → blue →
+// violet → green → red follows the funnel from cold to won-adjacent to lost.
 export const STAGE_COLOR: Record<Stage, string> = {
-  // No gray anywhere in a graph (Suren) — Prospect gets a real teal.
-  Prospect: "#14B8A6",
-  Engaged: "#36A8F5",
-  Qualified: "#5E5CE6",
-  "Meeting Booked": "#34C759",
-  "Closed Lost": "#FF3B30",
+  Prospect: "#F59E0B",
+  Engaged: "#0071E3",
+  Qualified: "#7C3AED",
+  "Meeting Booked": "#16A34A",
+  "Closed Lost": "#EF4444",
 };
 
 // The advancing (still-open) stages, in funnel order.

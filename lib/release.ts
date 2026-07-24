@@ -11,6 +11,10 @@ import type { DataMode } from "./dataMode";
 export const RELEASE_MODE: "all" | "offerings" =
   process.env.NEXT_PUBLIC_RELEASE_MODE === "offerings" ? "offerings" : "all";
 
+// Visibility follows the MODE, never the person (Suren): mock mode is the
+// end-goal demo — everything under construction shows, for anyone who flips
+// to it. Real/live mode is the current released app — Offerings only. As
+// modules finish, they graduate from mock into real.
 export function isOfferingsOnly(dataMode: DataMode): boolean {
   return dataMode === "live" || RELEASE_MODE === "offerings";
 }

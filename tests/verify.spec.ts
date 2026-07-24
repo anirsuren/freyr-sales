@@ -441,16 +441,18 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("33 — settings tabs: profile, team, notifications, integrations", async ({
     page,
   }) => {
-    await page.goto(`${BASE}/settings`);
+    // Settings now opens on the Workspace section with titled+subtitled tabs
+    // (post-auth restructure) — land on Profile directly, match tabs by prefix.
+    await page.goto(`${BASE}/settings?tab=profile`);
     const main = page.locator("main");
     await expect(
       main.getByRole("button", { name: "Save profile" })
     ).toBeVisible();
-    await main.getByRole("tab", { name: "Team", exact: true }).click();
+    await main.getByRole("tab", { name: /^Team/ }).click();
     await expect(page.getByText("Mark Miller")).toBeVisible();
-    await main.getByRole("tab", { name: "Notifications", exact: true }).click();
+    await main.getByRole("tab", { name: /^Notifications/ }).click();
     await expect(page.getByRole("switch").first()).toBeVisible();
-    await main.getByRole("tab", { name: "Integrations", exact: true }).click();
+    await main.getByRole("tab", { name: /^Integrations/ }).click();
     await expect(page.getByText(/Anthropic/).first()).toBeVisible();
   });
 
@@ -4764,8 +4766,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("320 — an unclassified customer can be classified from the Offerings tab (V55)", async ({
     page,
+    request,
   }) => {
-    // cust-012 (Orion Vaccines) is unclassified in the seed.
+    // The seed now ships cust-012 (Orion Vaccines) classified — clear it first
+    // so the real unclassified → one-click-tile flow runs; classifying it back
+    // to Biologics - Mid size restores the seeded state.
+    await request.patch(`${BASE}/api/customers/cust-012`, {
+      data: { customer_type: "" },
+    });
     await page.goto(`${BASE}/customers/cust-012`);
     await page.getByRole("tab", { name: "Offerings" }).click();
     await expect(page.getByText("What type of customer is this?")).toBeVisible();
@@ -4811,14 +4819,21 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("322 — marking an offering as already-using moves it out of the pitch list (V55)", async ({
     page,
+    request,
   }) => {
+    // Self-healing: pin cust-004 to its seeded adoption first so the counts
+    // below are deterministic even if an earlier run leaked state.
+    await request.patch(`${BASE}/api/customers/cust-004`, {
+      data: { offerings_in_use: ["of-001", "of-023"] },
+    });
     await page.goto(`${BASE}/customers/cust-004`);
     await page.getByRole("tab", { name: "Offerings" }).click();
     await expect(page.getByText(/already using\s*2/i).first()).toBeVisible();
-    // Freya.Submit (of-005) sits in the opportunities list → mark it in use
+    // Freya.Submit (of-005) sits in the opportunities list → add it to the
+    // account (the pitch-row button is now "Add to account")
     await page
       .getByTestId("cust-offering-of-005")
-      .getByRole("button", { name: /Mark as already using/ })
+      .getByRole("button", { name: /Add to account/ })
       .click();
     await expect(page.getByText(/already using\s*3/i).first()).toBeVisible();
     await expect(
@@ -4842,24 +4857,27 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // Lena Vogt (cont-004) @ Helix — classified Pharmaceutical - Large.
     await page.goto(`${BASE}/contacts/cont-004`);
     await expect(page.getByText("Offerings for Lena")).toBeVisible();
-    // her "Regulatory Strategy / Submissions / Compliance" skills flag strong matches
-    await expect(page.getByText("Strong match").first()).toBeVisible();
+    const outreach = page.getByTestId("contact-outreach");
+    // her "Regulatory Strategy / Submissions" skills explain WHY each offering
+    // fits — the panel flags "Relevant to <matched keywords>" per row
+    await expect(outreach.getByText(/Relevant to/).first()).toBeVisible();
+    // the three on-demand actions (LinkedIn draft / email pitch / AI voice)
     await expect(
-      page.getByTestId("contact-outreach").getByText(/matches:/).first()
+      outreach.getByRole("button", { name: /LinkedIn/ }).first()
     ).toBeVisible();
-    // the three on-demand actions
-    await expect(
-      page.getByRole("button", { name: /LinkedIn message/ })
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: /Email message/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /AI voice call/ })).toBeVisible();
+    await expect(outreach.getByRole("button", { name: /Email/ })).toBeVisible();
+    await expect(outreach.getByRole("button", { name: /AI voice/ })).toBeVisible();
   });
 
   test("324 — on-demand LinkedIn draft is offering-grounded and char-budgeted (V56)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/contacts/cont-004`);
-    await page.getByRole("button", { name: /LinkedIn message/ }).click();
+    await page
+      .getByTestId("contact-outreach")
+      .getByRole("button", { name: /LinkedIn/ })
+      .first()
+      .click();
     await expect(page.getByText("Message Lena")).toBeVisible();
     await page.getByRole("button", { name: /Generate LinkedIn note/ }).click();
     const box = page.getByLabel("Generated message");

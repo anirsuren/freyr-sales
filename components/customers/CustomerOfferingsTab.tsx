@@ -29,7 +29,51 @@ import { VIZ } from "@/components/charts/palette";
 import { formatMoney } from "@/lib/pipeline";
 import { formatDate } from "@/lib/utils";
 import { REVENUE_TYPES, REVENUE_TYPE_META } from "@/lib/revenue";
+import {
+  ACCESS_LEVEL_META,
+  JOURNEY_STAGE_META,
+  asAccessLevel,
+  asJourneyStage,
+} from "@/lib/offeringMaterials";
 import type { OfferingUsage, OfferingRevenueLine, RevenueType } from "@/lib/types";
+
+// Compact CR-3 tag pills inside a material chip: journey stage + access level,
+// each colour + icon (standing rule — no gray chips). Untagged materials render
+// no pill at all, so legacy runtime data never shows a broken tag.
+function MaterialTagPills({
+  journeyStage,
+  accessLevel,
+}: {
+  journeyStage?: string;
+  accessLevel?: string;
+}) {
+  const stage = asJourneyStage(journeyStage);
+  const level = asAccessLevel(accessLevel);
+  if (!stage && !level) return null;
+  return (
+    <>
+      {[
+        stage ? JOURNEY_STAGE_META[stage] : null,
+        level ? ACCESS_LEVEL_META[level] : null,
+      ]
+        .filter((meta): meta is NonNullable<typeof meta> => !!meta)
+        .map((meta) => {
+          const Icon = meta.icon;
+          return (
+            <span
+              key={meta.label}
+              title={meta.label}
+              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-semibold leading-none"
+              style={{ background: `${meta.color}14`, color: meta.color }}
+            >
+              <Icon size={9} strokeWidth={2.2} />
+              {meta.short}
+            </span>
+          );
+        })}
+    </>
+  );
+}
 
 // One colour per revenue type — shared by the donut and its legend so the
 // "already using" revenue reads as a real chart, not a plain list (Suren:
@@ -88,7 +132,14 @@ export type TabOffering = {
   availability: string;
   poc: string;
   description: string;
-  materials: { id: string; kind: string; label: string; url: string }[];
+  materials: {
+    id: string;
+    kind: string;
+    label: string;
+    url: string;
+    journeyStage?: string;
+    accessLevel?: string;
+  }[];
 };
 
 // Suren's customer⇄offering link (Jul 3 dictation): classify the customer
@@ -646,6 +697,10 @@ export function CustomerOfferingsTab({
                     {m.kind}
                   </span>
                   {m.label}
+                  <MaterialTagPills
+                    journeyStage={m.journeyStage}
+                    accessLevel={m.accessLevel}
+                  />
                   <ExternalLink size={11} strokeWidth={1.8} />
                 </a>
               ))}

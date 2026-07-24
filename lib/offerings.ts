@@ -7,7 +7,19 @@ import { getDataMode } from "./dataMode";
 import { hasSupabase } from "./env";
 import { createClient } from "@supabase/supabase-js";
 import type { OfferingMaterial } from "./offeringMaterials";
-export { MATERIAL_META, type MaterialKind, type OfferingMaterial } from "./offeringMaterials";
+export {
+  MATERIAL_META,
+  JOURNEY_STAGES,
+  JOURNEY_STAGE_META,
+  ACCESS_LEVELS,
+  ACCESS_LEVEL_META,
+  asJourneyStage,
+  asAccessLevel,
+  type MaterialKind,
+  type JourneyStage,
+  type AccessLevel,
+  type OfferingMaterial,
+} from "./offeringMaterials";
 
 export type CustomerFamily =
   | "Pharmaceutical"
@@ -320,10 +332,13 @@ function seedOfferings(): Offering[] {
       future_availability: "Version 1",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
+      // Every seeded material carries its buyer's-journey stage + access level
+      // (CR-3): overviews open the conversation (awareness), references and
+      // case studies prove it (evaluation) — all safe to share with a client.
       materials: [
-        { id: "m-001", kind: "video", label: "Freya.Register overview", url: FREYR_URL.resources },
-        { id: "m-002", kind: "reference", label: "Customer reference call", url: FREYR_URL.insights },
-        { id: "m-003", kind: "case_study", label: "Cutting registration cycle time", url: FREYR_URL.insights },
+        { id: "m-001", kind: "video", label: "Freya.Register overview", url: FREYR_URL.resources, journeyStage: "awareness", accessLevel: "client_facing" },
+        { id: "m-002", kind: "reference", label: "Customer reference call", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "client_facing" },
+        { id: "m-003", kind: "case_study", label: "Cutting registration cycle time", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "client_facing" },
       ],
     }),
     off("of-002", MODULE, "Freya.Intelligence", "", {
@@ -393,11 +408,14 @@ function seedOfferings(): Offering[] {
       future_availability: "Pilot Available Now",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
+      // CR-3 tags: the demo + whitepaper introduce the story (awareness),
+      // pricing closes it (decision), and the competitive battle card is
+      // evaluation ammunition for reps only (internal only).
       materials: [
-        { id: "m-012a", kind: "video", label: "Via Agents demo", url: FREYR_URL.resources },
-        { id: "m-012b", kind: "whitepaper", label: "Post-approval change automation", url: FREYR_URL.insights },
-        { id: "m-012c", kind: "pricing", label: "Register stack pricing", url: FREYR_URL.contact },
-        { id: "m-012d", kind: "competition", label: "Freya vs. legacy RIM vendors", url: FREYR_URL.insights },
+        { id: "m-012a", kind: "video", label: "Via Agents demo", url: FREYR_URL.resources, journeyStage: "awareness", accessLevel: "client_facing" },
+        { id: "m-012b", kind: "whitepaper", label: "Post-approval change automation", url: FREYR_URL.insights, journeyStage: "awareness", accessLevel: "client_facing" },
+        { id: "m-012c", kind: "pricing", label: "Register stack pricing", url: FREYR_URL.contact, journeyStage: "decision", accessLevel: "client_facing" },
+        { id: "m-012d", kind: "competition", label: "Freya vs. legacy RIM vendors", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "internal_only" },
       ],
     }),
     off("of-013", PLATFORM_TYPE, "Freya.Agents", "", {

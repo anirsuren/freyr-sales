@@ -14,12 +14,15 @@ export const VIZ = {
   slate: "#A855F7",
   rose: "#F43F5E",
 };
+// Categorical series ordered for MAX contrast between neighbours (Suren: the
+// teal/blue/green trio was unreadable side by side). Every adjacent pair jumps
+// across the hue wheel — blue → orange → violet → green → rose → cyan.
 export const VIZ_SERIES = [
   VIZ.blue,
-  VIZ.teal,
-  VIZ.indigo,
-  VIZ.green,
   VIZ.amber,
-  VIZ.sky,
   VIZ.slate,
+  VIZ.green,
+  VIZ.rose,
+  VIZ.teal,
+  VIZ.sky,
 ];
