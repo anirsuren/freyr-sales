@@ -23,7 +23,12 @@ function safeNext(): string {
   return "/dashboard";
 }
 
-export function SupabaseLoginForm() {
+export function SupabaseLoginForm({
+  joinDomainLabel = null,
+}: {
+  /** e.g. "@freyrsolutions.com" — company domains that join without an invite. */
+  joinDomainLabel?: string | null;
+} = {}) {
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -171,8 +176,9 @@ export function SupabaseLoginForm() {
           />
         </label>
         <p className="-mt-2 text-[11px] text-text-tertiary">
-          Use any valid email address—the exact address that was invited. We
-          will send a confirmation link before you can sign in.
+          {joinDomainLabel
+            ? `Your ${joinDomainLabel} address gets in automatically — no invitation needed. We'll send a confirmation link before you can sign in.`
+            : "Use any valid email address—the exact address that was invited. We will send a confirmation link before you can sign in."}
         </p>
         <label className="block text-[12px] font-semibold text-text-secondary">
           Password

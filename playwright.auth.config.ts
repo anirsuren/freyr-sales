@@ -22,6 +22,7 @@ export default defineConfig({
       AUTH_COOKIE_SECRET,
       AUTH_MODE: "supabase",
       AUTH_PUBLIC_ORIGIN: BASE_URL,
+      AUTO_APPROVE_EMAIL_DOMAINS: "freyrsolutions.com",
       DATA_MODE_LOCKED: "1",
       DEFAULT_DATA_MODE: "mock",
       FREYR_WORKSPACE_ID: "00000000-0000-4000-8000-000000000001",

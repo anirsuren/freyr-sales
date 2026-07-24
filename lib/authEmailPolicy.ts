@@ -59,3 +59,30 @@ export function isValidAuthEmail(
 ): boolean {
   return normalizeAuthEmail(value) !== null;
 }
+
+/**
+ * Company domains whose members join the workspace without an invitation
+ * (Suren: everyone with a Freyr email "technically already has an account" —
+ * they just set a password). Comma-separated in AUTO_APPROVE_EMAIL_DOMAINS;
+ * empty means invitation-only, unchanged.
+ */
+export function autoApproveEmailDomains(): string[] {
+  return (process.env.AUTO_APPROVE_EMAIL_DOMAINS || "")
+    .split(",")
+    .map((domain) => domain.trim().toLowerCase().replace(/^@/, ""))
+    .filter(Boolean);
+}
+
+/**
+ * True when a VERIFIED email belongs to an auto-join company domain. Callers
+ * must only pass provider-verified addresses — the domain is the credential
+ * here, so an unverified address must never reach this check.
+ */
+export function isAutoApprovedEmail(
+  value: string | null | undefined
+): boolean {
+  const email = normalizeAuthEmail(value);
+  if (!email) return false;
+  const domain = email.slice(email.lastIndexOf("@") + 1);
+  return autoApproveEmailDomains().includes(domain);
+}

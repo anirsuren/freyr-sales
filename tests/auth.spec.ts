@@ -78,6 +78,22 @@ test("unauthenticated pages redirect to login without exposing the page", async 
   await expect(page.getByRole("heading", { name: "Good morning, Anir" })).toHaveCount(0);
 });
 
+test("the login page advertises Freyr-domain auto-join (no invitation)", async ({
+  page,
+}) => {
+  // AUTO_APPROVE_EMAIL_DOMAINS=freyrsolutions.com in this harness: colleagues
+  // must be told their company email IS their account — the invitation-only
+  // copy would read as a locked door (Suren: seamless, SSO-like onboarding).
+  await page.goto("/login");
+  await expect(
+    page.getByText(/@freyrsolutions\.com email is already your account/)
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Freyr colleagues join automatically/)
+  ).toBeVisible();
+  await expect(page.getByText(/invitation-only/)).toHaveCount(0);
+});
+
 test("unauthenticated APIs fail closed", async ({ request }) => {
   const response = await request.get("/api/customers");
   expect(response.status()).toBe(401);
@@ -126,10 +142,11 @@ test("the login, registration, and session-establishment endpoints remain public
   await page.goto("/login");
   await expect(page.getByRole("button", { name: "Sign in securely" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
+  // With AUTO_APPROVE_EMAIL_DOMAINS configured, the email hint explains the
+  // company-domain fast path instead of the invitation-only wording.
   await expect(
-    page.getByText(/Use (?:any )?valid email address/i)
+    page.getByText(/@freyrsolutions\.com address gets in automatically/i)
   ).toBeVisible();
-  await expect(page.getByText(/@freyrsolutions\.com work email/i)).toHaveCount(0);
 
   const registration = await request.post("/api/auth/register", {
     data: {

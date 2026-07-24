@@ -6,6 +6,7 @@ import {
   providerForAuthMode,
   type WorkspaceRole,
 } from "./accessControl";
+import { isAutoApprovedEmail } from "./authEmailPolicy";
 import { authUrl } from "./authOrigin";
 import { sendTransactionalEmail, type EmailResult } from "./email";
 
@@ -259,18 +260,28 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
   }
 
   const bootstrapOwner = isBootstrapOwner(user);
-  const role: WorkspaceRole | null = bootstrapOwner ? "admin" : invitedRole;
+  // Company-domain auto-join (Suren): a colleague signing in with a VERIFIED
+  // company email already belongs here — the domain itself is the invitation.
+  // They activate immediately as a sales member; provider sign-in only
+  // completes after email confirmation, so the address is trusted.
+  const domainMember =
+    !bootstrapOwner && !invitedRole && isAutoApprovedEmail(email);
+  const role: WorkspaceRole | null = bootstrapOwner
+    ? "admin"
+    : invitedRole ?? (domainMember ? "sales" : null);
   if (role) {
-    // Bootstrap ownership is tied to an explicitly configured verified email.
-    // Every ordinary invited member must use the inviter-selected canonical
-    // name; an old invitation without display_name is not allowed to fall back
-    // to mutable Supabase profile metadata.
-    const canonicalName = bootstrapOwner
-      ? user.name.trim().replace(/\s+/g, " ")
-      : invitedDisplayName || "";
+    // Bootstrap ownership and domain auto-join are tied to a verified email,
+    // so the member's own registered name is canonical. Every ordinary invited
+    // member must use the inviter-selected canonical name; an old invitation
+    // without display_name is not allowed to fall back to mutable Supabase
+    // profile metadata.
+    const canonicalName =
+      bootstrapOwner || domainMember
+        ? user.name.trim().replace(/\s+/g, " ")
+        : invitedDisplayName || "";
     if (canonicalName.length < 2 || canonicalName.length > 120) {
       throw new Error(
-        bootstrapOwner
+        bootstrapOwner || domainMember
           ? "A valid canonical member name is required."
           : "This invitation is missing the teammate’s canonical full name. Ask an admin to send it again."
       );

@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { SupabaseLoginForm } from "@/components/auth/SupabaseLoginForm";
 import { configuredAuthOrigin } from "@/lib/authOrigin";
+import { autoApproveEmailDomains } from "@/lib/authEmailPolicy";
 
 export const metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
@@ -28,6 +29,10 @@ export default function LoginPage() {
   );
   const authenticationReady =
     entra || alb || (supabase && supabaseConfigured) || localDevelopment;
+  // Company-domain auto-join: colleagues on these domains don't need an
+  // invitation — say so up front instead of the invitation-only copy.
+  const joinDomains = autoApproveEmailDomains();
+  const joinDomainLabel = joinDomains.map((d) => `@${d}`).join(" or ");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface px-6">
@@ -38,6 +43,8 @@ export default function LoginPage() {
           <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
             {!authenticationReady
               ? "Authentication is not fully configured. No workspace data is available until an administrator completes the secure login setup."
+              : supabase && joinDomains.length > 0
+              ? `Work at Freyr? Your ${joinDomainLabel} email is already your account — create it, set a password, confirm the email, and you're in. No invitation needed.`
               : supabase
               ? "Sign in with the exact email address your workspace owner invited. New accounts require both that invitation and email confirmation before any sales data is visible."
               : "Sign in with your Freyr corporate identity. Access and permissions are managed by IT."}
@@ -54,7 +61,7 @@ export default function LoginPage() {
               configure Supabase and the authentication cookie secret.
             </div>
           ) : supabase ? (
-            <SupabaseLoginForm />
+            <SupabaseLoginForm joinDomainLabel={joinDomainLabel || null} />
           ) : entra ? (
             <a href="/.auth/login/aad" className="w-full h-11 rounded-lg bg-blue-primary text-white font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-blue-hover transition-colors">
               <ShieldCheck size={18} /> Continue with Microsoft
@@ -73,6 +80,8 @@ export default function LoginPage() {
         <p className="mt-5 text-center text-[11px] leading-relaxed text-text-tertiary">
           {!authenticationReady
             ? "The application is locked. Customer and sales data remain inaccessible."
+            : supabase && joinDomains.length > 0
+            ? `Freyr colleagues join automatically with a confirmed ${joinDomainLabel} email. Everyone else needs an invitation.`
             : supabase
             ? "Authentication is provided by Supabase. Workspace access is invitation-only."
             : authMode

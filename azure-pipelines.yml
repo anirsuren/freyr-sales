@@ -187,6 +187,7 @@ stages:
                   | set_env("AUTH_MODE"; "supabase")
                   | set_env("AUTH_PUBLIC_ORIGIN"; "https://freyrsales.dev.freyrapps.com")
                   | set_env("ACCESS_CONTROL_MODE"; "approval")
+                  | set_env("AUTO_APPROVE_EMAIL_DOMAINS"; "freyrsolutions.com")
                   | set_env("DEFAULT_DATA_MODE"; "mock")
                   | set_env("DATA_MODE_LOCKED"; "0")
                   | del(
