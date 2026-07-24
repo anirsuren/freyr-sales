@@ -69,6 +69,25 @@ stages:
                 TAG=$(echo "$(Build.SourceVersion)" | cut -c1-7)
                 IMAGE="$(ECR_REGISTRY)/$(ECR_REPO)"
 
+                # Derive the application secret ARN from the live task
+                # definition (the initial AWS setup registered it there). The
+                # previous revision referenced an APP_SECRETS_ARN pipeline
+                # variable that was never added to the freyr-sales-ci group,
+                # which broke every deploy with an empty SecretId.
+                APP_SECRET_ARN=$(
+                  aws ecs describe-task-definition \
+                    --task-definition "$(TASK_FAMILY)" \
+                    --query 'taskDefinition.containerDefinitions[0].secrets[0].valueFrom' \
+                    --output text 2>/dev/null \
+                  | sed -E 's/:[^:]*::$//' || true
+                )
+                if [ -z "$APP_SECRET_ARN" ] || [ "$APP_SECRET_ARN" = "None" ]; then
+                  echo "Deployment blocked: could not derive the application secret ARN from the $(TASK_FAMILY) task definition."
+                  echo "Attach the Secrets Manager secret to the task definition once, or add APP_SECRETS_ARN to the freyr-sales-ci variable group."
+                  exit 1
+                fi
+                echo "Using application secret: $APP_SECRET_ARN"
+
                 REQUIRED_SECRET_KEYS='[
                   "NEXT_PUBLIC_SUPABASE_URL",
                   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -80,7 +99,7 @@ stages:
                 ]'
                 MISSING_SECRET_KEYS=$(
                   aws secretsmanager get-secret-value \
-                    --secret-id "$(APP_SECRETS_ARN)" \
+                    --secret-id "$APP_SECRET_ARN" \
                     --query SecretString \
                     --output text \
                   | jq -r --argjson required "$REQUIRED_SECRET_KEYS" '
@@ -121,7 +140,7 @@ stages:
                 echo "$TD" | jq \
                   --arg IMG "$IMAGE:$TAG" \
                   --arg VER "$(Build.SourceVersion)" \
-                  --arg SECRET_ARN "$(APP_SECRETS_ARN)" '
+                  --arg SECRET_ARN "$APP_SECRET_ARN" '
                   def set_env($name; $value):
                     .containerDefinitions[0].environment = (
                       ((.containerDefinitions[0].environment // [])
@@ -150,7 +169,7 @@ stages:
                   | set_env("AUTH_PUBLIC_ORIGIN"; "https://freyrsales.dev.freyrapps.com")
                   | set_env("ACCESS_CONTROL_MODE"; "approval")
                   | set_env("DEFAULT_DATA_MODE"; "mock")
-                  | set_env("DATA_MODE_LOCKED"; "1")
+                  | set_env("DATA_MODE_LOCKED"; "0")
                   | del(
                       .taskDefinitionArn,
                       .revision,
