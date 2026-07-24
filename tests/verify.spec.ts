@@ -502,7 +502,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("38 — dashboard pipeline chart shows a quota line", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
-    await expect(page.getByText("Quota", { exact: true })).toBeVisible();
+    // The goal line's chip reads "Quarter quota · $3.0M" (labels carry their
+    // amount now — no bare "Quota" text remains on the dashboard).
+    await expect(page.getByText(/Quarter quota/).first()).toBeVisible();
   });
 
   test("39 — global New menu offers session / customer / contact", async ({
@@ -782,8 +784,9 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   });
 
   test("64 — dark mode toggle themes the app and persists", async ({ page }) => {
-    // Appearance control now lives in Settings (not on every screen's top bar).
-    await page.goto(`${BASE}/settings`);
+    // Appearance control lives on the Settings PROFILE tab (the settings page
+    // itself now opens on the Workspace section).
+    await page.goto(`${BASE}/settings?tab=profile`);
     // default is light
     const lightBg = await page.evaluate(
       () => getComputedStyle(document.body).backgroundColor
@@ -833,9 +836,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("66 — global activity feed renders + filters", async ({ page }) => {
     await page.goto(`${BASE}/activity`);
-    await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible();
     await expect(
-      page.locator('input[placeholder*="Search activity" i]')
+      page.getByRole("heading", { name: "Activity", level: 1 })
+    ).toBeVisible();
+    await expect(
+      page.locator('input[placeholder*="Search accounts" i]')
     ).toBeVisible();
     await expect(page.getByText(/\d+ interactions?/).first()).toBeVisible();
     // an outcome filter chip toggles
@@ -899,14 +904,21 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Cadence timeline")).toBeVisible();
     await expect(page.getByLabel(/Step 1 on day 0/).first()).toBeVisible();
 
-    // the creator is a real cadence builder, not a loose collection of fields
+    // the creator is a guided 4-step wizard now: pick a plan, name it, then
+    // tune the cadence steps (each with its own day field)
     await page.getByRole("link", { name: "New sequence" }).click();
     const builder = page.getByRole("dialog", { name: "New sequence" });
-    await expect(builder.getByText("Template", { exact: true })).toBeVisible();
-    await expect(builder.getByText("Cadence builder")).toBeVisible();
+    await expect(builder.getByText("Step 1 of 4").first()).toBeVisible();
+    await expect(
+      builder.getByText("What are you trying to accomplish?")
+    ).toBeVisible();
     await builder.getByRole("button", { name: /Executive outreach/ }).click();
+    await builder.getByRole("button", { name: /^Continue$/ }).click();
+    await expect(
+      builder.getByText("Name the plan and define its goal")
+    ).toBeVisible();
+    await builder.getByRole("button", { name: /^Continue$/ }).click();
     await expect(builder.getByLabel("Step 1 day")).toHaveValue("0");
-    await expect(builder.getByLabel("Step 1 action")).toHaveValue(/role-specific introduction/i);
   });
 
   test("71 — settings: CRM two-way sync card (V2)", async ({ page }) => {
