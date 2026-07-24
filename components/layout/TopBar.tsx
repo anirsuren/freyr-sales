@@ -12,6 +12,7 @@ import {
   type AppNotification,
   type NotificationType,
 } from "@/lib/notifications";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
 const NOTIF_ICON: Record<NotificationType, typeof Bell> = {
   review: ClipboardCheck,
@@ -55,6 +56,7 @@ export function TopBar({
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     if (offeringsOnly) return;
@@ -324,9 +326,9 @@ export function TopBar({
             onClick={() => setUserOpen((o) => !o)}
             className="flex items-center gap-2 group rounded-full hover:bg-surface transition-colors py-1 pl-1 pr-2"
           >
-            <Avatar name="Suren Dheen" className="w-8 h-8 text-[12px]" />
+            <Avatar name={currentUser.name} className="w-8 h-8 text-[12px]" />
             <span className="text-[14px] font-medium text-text-primary hidden md:block">
-              Suren Dheen
+              {currentUser.name}
             </span>
             <ChevronDown size={16} strokeWidth={1.5} className="text-text-tertiary" />
           </button>
@@ -337,13 +339,13 @@ export function TopBar({
               className="absolute right-0 mt-2 w-[248px] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden"
             >
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-border-light">
-                  <Avatar name="Suren Dheen" className="w-9 h-9 text-[13px]" />
+                  <Avatar name={currentUser.name} className="w-9 h-9 text-[13px]" />
                   <div className="min-w-0">
                     <p className="text-[14px] font-semibold text-text-primary leading-tight">
-                      Suren Dheen
+                      {currentUser.name}
                     </p>
-                    <p className="text-[12px] text-text-secondary leading-tight">
-                      Senior Sales Rep · Freyr
+                    <p className="text-[12px] text-text-secondary leading-tight truncate">
+                      {currentUser.email || currentUser.title}
                     </p>
                   </div>
                 </div>

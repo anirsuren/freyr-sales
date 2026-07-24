@@ -6,6 +6,8 @@ import { Sparkles, ArrowUp, X, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { firstNameForUser } from "@/lib/userIdentity";
 
 type Entity = { name: string; id: string; kind: "company" | "contact" };
 
@@ -181,6 +183,8 @@ export function AgentDock({
   onHide: () => void;
   pathname: string;
 }) {
+  const currentUser = useCurrentUser();
+  const firstName = firstNameForUser(currentUser);
   const label = pageLabel(pathname);
   const [subject, setSubject] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -310,8 +314,8 @@ export function AgentDock({
 
   const suggestions = suggestionsFor(label);
   const greeting = subject
-    ? `Hi Suren — I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
-    : `Hi Suren — I'm on **${label}** with you. Ask me anything, or pick a starting point below.`;
+    ? `Hi ${firstName} — I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
+    : `Hi ${firstName} — I'm on **${label}** with you. Ask me anything, or pick a starting point below.`;
 
   return (
     <>

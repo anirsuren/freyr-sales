@@ -43,6 +43,8 @@ import { AccountAttentionPreview } from "@/components/dashboard/AccountAttention
 import { DashboardMoreActions } from "@/components/dashboard/DashboardMoreActions";
 import { HoverCard } from "@/components/ui/HoverCard";
 import type { RecommendedService } from "@/lib/types";
+import { getCurrentUser } from "@/lib/currentUser";
+import { firstNameForUser } from "@/lib/userIdentity";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -62,6 +64,7 @@ export default async function DashboardPage({
   searchParams?: Promise<{ range?: string }>;
 }) {
   const query = await searchParams;
+  const currentUser = await getCurrentUser();
   const db = getDb();
   const [customers, allSessions, allInteractionsRaw, contacts, agentPrefs] =
     await Promise.all([
@@ -982,7 +985,7 @@ export default async function DashboardPage({
 
   return (
     <DashboardToggle
-      title="Good morning, Suren"
+      title={`Good morning, ${firstNameForUser(currentUser)}`}
       overview={overview}
       analytics={analytics}
       showViewToggle={false}
@@ -998,7 +1001,7 @@ export default async function DashboardPage({
             <WeeklyDigest
               kpis={kpis.map((k) => ({ label: k.label, value: k.value }))}
               period={range === "all" ? "all time" : `last ${range}`}
-              recipient="anirudhsuren@gmail.com"
+              recipient={currentUser.email || "your account email"}
             />
             <DashboardExport rows={exportRows} />
           </DashboardMoreActions>

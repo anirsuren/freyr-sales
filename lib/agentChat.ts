@@ -276,7 +276,8 @@ export function parseWhen(msg: string): { iso: string; label: string } {
 function makeDraft(
   account: Customer,
   ctx: ChatContext,
-  opts: { length?: "short" | "normal"; tone?: "warm" | "formal"; lead?: string } = {}
+  opts: { length?: "short" | "normal"; tone?: "warm" | "formal"; lead?: string } = {},
+  repName = "Anir Suren"
 ): ChatReply {
   const snap = snapshot(account, ctx);
   const ct = snap.contacts[0];
@@ -285,15 +286,15 @@ function makeDraft(
   if (opts.length === "short") {
     body =
       `Subject: Quick question on your submission timeline\n\n` +
-      `Hi ${fn} — Freyr helps clinical-stage teams hit FDA/EMA timelines without adding headcount. Worth a quick call this week?\n\nBest,\nSuren Dheen · Freyr`;
+      `Hi ${fn} — Freyr helps clinical-stage teams hit FDA/EMA timelines without adding headcount. Worth a quick call this week?\n\nBest,\n${repName} · Freyr`;
   } else if (opts.tone === "formal") {
     body =
       `Subject: Supporting ${account.company_name}'s regulatory submissions\n\n` +
-      `Dear ${ct?.full_name || "there"},\n\nFreyr's regulatory team supports clinical-stage organizations in meeting FDA and EMA submission timelines without additional headcount. I would welcome a brief call to determine whether this aligns with your near-term objectives.\n\nKind regards,\nSuren Dheen · Freyr`;
+      `Dear ${ct?.full_name || "there"},\n\nFreyr's regulatory team supports clinical-stage organizations in meeting FDA and EMA submission timelines without additional headcount. I would welcome a brief call to determine whether this aligns with your near-term objectives.\n\nKind regards,\n${repName} · Freyr`;
   } else {
     body =
       `Subject: A quick idea for your upcoming milestones\n\n` +
-      `Hi ${fn},\n\nFreyr's regulatory team helps clinical-stage teams hit FDA/EMA submission timelines without adding headcount.${snap.cooling ? " It's been a little while since we connected, so it felt worth a short note." : ""} Worth a 20-minute call to see if it fits your near-term plans?\n\nBest,\nSuren Dheen · Freyr`;
+      `Hi ${fn},\n\nFreyr's regulatory team helps clinical-stage teams hit FDA/EMA timelines without adding headcount.${snap.cooling ? " It's been a little while since we connected, so it felt worth a short note." : ""} Worth a 20-minute call to see if it fits your near-term plans?\n\nBest,\n${repName} · Freyr`;
   }
   return {
     text:
@@ -340,8 +341,10 @@ function criterionAccount(
 export function answerAgentChat(
   message: string,
   ctx: ChatContext,
-  history: ChatTurn[] = []
+  history: ChatTurn[] = [],
+  userName = "Anir Suren"
 ): ChatReply {
+  const userFirstName = userName.trim().split(/\s+/)[0] || "there";
   const m = message.toLowerCase().trim();
   const account = findAccount(message, ctx.customers);
 
@@ -433,7 +436,10 @@ export function answerAgentChat(
         suggestions: ctx.customers.slice(0, 3).map((c) => `Draft an email to ${c.company_name}`),
       };
     }
-    const body = extractDraft(lastAgent) || extractDraft(makeDraft(t, ctx, {}).text) || "";
+    const body =
+      extractDraft(lastAgent) ||
+      extractDraft(makeDraft(t, ctx, {}, userName).text) ||
+      "";
     return {
       text: "",
       suggestions: [],
@@ -499,8 +505,8 @@ export function answerAgentChat(
     return {
       text: vary(
         [
-          "Hi Suren — I'm your sales agent. Ask me where to focus, who's cooling or at-risk, or to draft outreach. And I can actually do things for you: save a draft onto an account, set a follow-up, or log a call. I never send anything without your OK. What do you want to do?",
-          "Hey Suren. I read your pipeline and act on it — I'll draft and save outreach, set follow-ups, log your calls, and flag what's slipping. Everything waits for your sign-off. Where do you want to start?",
+          `Hi ${userFirstName} — I'm your sales agent. Ask me where to focus, who's cooling or at-risk, or to draft outreach. And I can actually do things for you: save a draft onto an account, set a follow-up, or log a call. I never send anything without your OK. What do you want to do?`,
+          `Hey ${userFirstName}. I read your pipeline and act on it — I'll draft and save outreach, set follow-ups, log your calls, and flag what's slipping. Everything waits for your sign-off. Where do you want to start?`,
         ],
         history
       ),
@@ -560,7 +566,7 @@ export function answerAgentChat(
           : wantsWarm
           ? "Warmer version:"
           : "Done — here it is:",
-      });
+      }, userName);
     }
   }
 
@@ -607,7 +613,7 @@ export function answerAgentChat(
         tone,
         length,
         lead: `Drafting to ${namedContactForAction.full_name} at ${contactAcct.company_name} — review before anything goes out:`,
-      });
+      }, userName);
     }
     if (!acct) {
       // No name, but a criterion ("a cooling account", "my biggest deal")? Pick
@@ -618,7 +624,7 @@ export function answerAgentChat(
           tone,
           length,
           lead: `Going with ${crit.customer.company_name} — your ${crit.label}. Here's a draft to review before anything goes out:`,
-        });
+        }, userName);
       }
       return {
         text:
@@ -626,7 +632,7 @@ export function answerAgentChat(
         suggestions: ctx.customers.slice(0, 3).map((c) => `Draft an email to ${c.company_name}`),
       };
     }
-    return makeDraft(acct, ctx, { tone, length });
+    return makeDraft(acct, ctx, { tone, length }, userName);
   }
 
   // --- account detail (summary, contact, email, stage, value — anything about an

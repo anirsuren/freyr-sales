@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDataMode } from "@/lib/dataMode";
 import { isApprovalGateEnabled } from "@/lib/accessControl";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata: Metadata = {
   metadataBase: new URL("http://localhost:3001"),
@@ -14,11 +15,13 @@ export const metadata: Metadata = {
     "AI sales intelligence for Freyr Solutions — prospect research, matched services, and ready-to-send pitches for regulatory-affairs sales.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const currentUser = await getCurrentUser();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -34,6 +37,7 @@ export default function RootLayout({
         <AppShell
           dataMode={getDataMode()}
           approvalEnabled={isApprovalGateEnabled()}
+          currentUser={currentUser}
         >
           {children}
         </AppShell>

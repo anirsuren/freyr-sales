@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
 import { getDataMode } from "@/lib/dataMode";
 import { hasEmail } from "@/lib/env";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import {
+  DEFAULT_LOCAL_USER_IDENTITY,
+  GENERIC_USER_IDENTITY,
+} from "@/lib/userIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +16,15 @@ export const dynamic = "force-dynamic";
 // interaction so it shows on the Activity feed + account timeline. Real SMTP
 // activates with mail credentials; mock mode records the intent.
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const principal = await authenticatedRequestPrincipal(req);
+  const actorName =
+    principal?.name.trim() ||
+    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+      ? DEFAULT_LOCAL_USER_IDENTITY.name
+      : GENERIC_USER_IDENTITY.name);
   const body = await req.json().catch(() => ({}));
   const subject = String(body.subject || "").trim();
   const to = String(body.to || "").trim();
@@ -66,7 +77,7 @@ export async function POST(
       ? `Email scheduled (“${subject}”) for ${scheduleAt}`
       : `Email sent: “${subject}”`,
     follow_up_date: null,
-    logged_by: "Suren Dheen",
+    logged_by: actorName,
   });
 
   const customer = await db.customers.get(session.customer_id);

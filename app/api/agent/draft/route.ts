@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { agentAnswer } from "@/lib/claude";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import {
+  DEFAULT_LOCAL_USER_IDENTITY,
+  GENERIC_USER_IDENTITY,
+} from "@/lib/userIdentity";
 import type { RecommendedService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +14,13 @@ export const dynamic = "force-dynamic";
 // compliance gate — Claude when ANTHROPIC_API_KEY is set (grounded in the
 // account), a deterministic template otherwise. Mock-first; the human still
 // approves before anything sends.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const principal = await authenticatedRequestPrincipal(req);
+  const senderName =
+    principal?.name.trim() ||
+    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+      ? DEFAULT_LOCAL_USER_IDENTITY.name
+      : GENERIC_USER_IDENTITY.name);
   const body = await req.json().catch(() => ({}));
   const customerId = String(body.customerId || "");
   const variant = Math.max(0, Number(body.variant) || 0);
@@ -58,17 +69,17 @@ export async function POST(req: Request) {
     warm: {
       greet: `Hi ${firstName},`,
       cta: `Worth a 20-minute call to see if it fits your near-term milestones?`,
-      signoff: `Best,\nSuren Dheen · Freyr`,
+      signoff: `Best,\n${senderName} · Freyr`,
     },
     formal: {
       greet: `Dear ${firstName},`,
       cta: `Would you be open to a 20-minute call to assess fit against ${co}'s upcoming milestones?`,
-      signoff: `Kind regards,\nSuren Dheen\nFreyr`,
+      signoff: `Kind regards,\n${senderName}\nFreyr`,
     },
     brief: {
       greet: `Hi ${firstName},`,
       cta: `Worth 20 minutes this week?`,
-      signoff: `— Suren Dheen, Freyr`,
+      signoff: `— ${senderName}, Freyr`,
     },
   };
   const angle = ANGLES[variant % ANGLES.length];
@@ -96,7 +107,7 @@ export async function POST(req: Request) {
     .join("\n");
   const llm = await agentAnswer(
     "You are Freyr's AI sales agent writing a concise re-engagement email (under " +
-      "110 words) from Suren Dheen. Match the requested tone. Ground it ONLY in " +
+      `110 words) from ${senderName}. Match the requested tone. Ground it ONLY in ` +
       "the facts. Return exactly:\nSubject: <subject>\n<blank line>\n<body>. No preamble.",
     facts
   );

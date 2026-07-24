@@ -32,8 +32,8 @@ export default async function ActivityPage() {
     // as the source of the activity.
     owner:
       i.logged_by === "Freyr Agent"
-        ? custById[i.customer_id]?.owner || "Suren Dheen"
-        : i.logged_by || custById[i.customer_id]?.owner || "Suren Dheen",
+        ? custById[i.customer_id]?.owner || "Anir Suren"
+        : i.logged_by || custById[i.customer_id]?.owner || "Anir Suren",
     source: i.logged_by === "Freyr Agent" ? "Agent-assisted" : "Logged manually",
   }));
 

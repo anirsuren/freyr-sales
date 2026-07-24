@@ -1,8 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
 import { getSequence } from "@/lib/sequences";
+import {
+  DEFAULT_LOCAL_USER_IDENTITY,
+  GENERIC_USER_IDENTITY,
+} from "@/lib/userIdentity";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const principal = await authenticatedRequestPrincipal(request);
+  const actorName =
+    principal?.name.trim() ||
+    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+      ? DEFAULT_LOCAL_USER_IDENTITY.name
+      : GENERIC_USER_IDENTITY.name);
   const body = await request.json().catch(() => ({}));
   const sequenceId = String(body.sequenceId || "");
   const customerIds = Array.isArray(body.customerIds)
@@ -32,7 +43,7 @@ export async function POST(request: Request) {
       customer_id: customerId,
       sequence_id: sequenceId,
       step_index: 0,
-      enrolled_by: "Suren Dheen",
+      enrolled_by: actorName,
     });
     const contact = contacts.find((item) => item.customer_id === customerId);
     if (contact) {
@@ -43,7 +54,7 @@ export async function POST(request: Request) {
         outcome: "in_progress",
         notes: `Enrolled ${customer.company_name} in the “${sequence.name}” sequence`,
         follow_up_date: null,
-        logged_by: "Suren Dheen",
+        logged_by: actorName,
       });
     }
     created++;

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createCampaign, listCampaigns } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { descSnippet, FREYR_CONTEXT } from "@/lib/outreach";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import {
+  DEFAULT_LOCAL_USER_IDENTITY,
+  GENERIC_USER_IDENTITY,
+} from "@/lib/userIdentity";
 import type { CampaignObjective } from "@/lib/campaigns";
 
 export async function GET() {
@@ -9,9 +14,14 @@ export async function GET() {
 }
 
 // Create a campaign. When subject/body are omitted, drafts starter content
-// from the selected offering (the rep edits before queuing — Suren: "people
-// can edit it and then make it a campaign content").
+// from the selected offering; the rep can edit it before queuing.
 export async function POST(req: NextRequest) {
+  const principal = await authenticatedRequestPrincipal(req);
+  const senderName =
+    principal?.name.trim() ||
+    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+      ? DEFAULT_LOCAL_USER_IDENTITY.name
+      : GENERIC_USER_IDENTITY.name);
   let body: {
     name?: string;
     offeringId?: string;
@@ -65,7 +75,7 @@ export async function POST(req: NextRequest) {
         `Would next week work for a quick call?`,
         ``,
         `Best,`,
-        `Suren Dheen`,
+        senderName,
         `Freyr Solutions`,
       ].join("\n");
   }
@@ -86,7 +96,7 @@ export async function POST(req: NextRequest) {
       ? body.recipientContactIds.filter((x): x is string => typeof x === "string")
       : [],
     objective: body.objective,
-    owner: body.owner,
+    owner: senderName,
     audience_summary: body.audienceSummary,
     scheduled_at: body.scheduledAt || null,
   });

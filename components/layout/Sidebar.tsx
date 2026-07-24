@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import type { DataMode } from "@/lib/dataMode";
 import { getHomePath, isOfferingsOnly, isReleased } from "@/lib/release";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
 // One flat, scannable list — no section headers, no scrolling. Reference/tool
 // pages (Knowledge base, Service catalog, Recordings) live in the account menu;
@@ -93,6 +94,7 @@ export function Sidebar({
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
+  const currentUser = useCurrentUser();
 
   // restore persisted collapse state after mount (avoids hydration mismatch)
   useEffect(() => {
@@ -255,17 +257,19 @@ export function Sidebar({
         {!offeringsOnly && (
         <Link
           href="/settings?tab=profile"
-          title={collapsed ? "Suren Dheen — profile" : undefined}
+          title={collapsed ? `${currentUser.name} — profile` : undefined}
           className={cn(
             "flex items-center gap-3 py-2 rounded-md transition-colors hover:bg-surface",
             collapsed ? "justify-center px-0" : "px-3"
           )}
         >
-          <Avatar name="Suren Dheen" className="w-8 h-8 text-[12px] shrink-0" />
+          <Avatar name={currentUser.name} className="w-8 h-8 text-[12px] shrink-0" />
           {!collapsed && (
             <div className="leading-tight min-w-0">
-              <p className="text-[13px] text-text-primary font-medium truncate">Suren Dheen</p>
-              <p className="text-[11px] text-text-tertiary">Senior Sales Rep</p>
+              <p className="text-[13px] text-text-primary font-medium truncate">{currentUser.name}</p>
+              <p className="text-[11px] text-text-tertiary truncate">
+                {currentUser.email || currentUser.title}
+              </p>
             </div>
           )}
         </Link>

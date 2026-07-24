@@ -29,7 +29,7 @@ export const SEQUENCES: Sequence[] = [
     description:
       "7-step outreach for a VP / Head of Regulatory at clinical-stage biopharma.",
     status: "active",
-    owner: "Suren Dheen",
+    owner: "Anir Suren",
     created_at: CREATED,
     steps: [
       { day: 0, channel: "email", label: "Intro email — submission-timeline angle" },
@@ -46,7 +46,7 @@ export const SEQUENCES: Sequence[] = [
     name: "Re-engagement",
     description: "Revive a stalled account after no response.",
     status: "active",
-    owner: "Suren Dheen",
+    owner: "Anir Suren",
     created_at: CREATED,
     steps: [
       { day: 0, channel: "email", label: "Pattern-interrupt email — new regulatory signal" },
@@ -60,7 +60,7 @@ export const SEQUENCES: Sequence[] = [
     name: "Post-meeting follow-up",
     description: "After a booked meeting, drive to the next concrete step.",
     status: "active",
-    owner: "Suren Dheen",
+    owner: "Anir Suren",
     created_at: CREATED,
     steps: [
       { day: 0, channel: "email", label: "Recap + proposed next step" },
@@ -124,7 +124,7 @@ export function createSequence(data: {
     description: data.description.trim(),
     steps: data.steps.map((step) => ({ ...step })),
     status: "active",
-    owner: data.owner || "Suren Dheen",
+    owner: data.owner || "Anir Suren",
     created_at: new Date().toISOString(),
   };
   store().sequences.unshift(sequence);

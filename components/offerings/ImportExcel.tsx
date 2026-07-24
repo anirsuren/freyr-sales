@@ -69,7 +69,7 @@ export function ImportExcel() {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        title="Import offerings from Suren's Excel sheet"
+        title="Import offerings from Excel"
         className="inline-flex items-center justify-center gap-1.5 text-[13px] font-medium rounded-md px-2.5 py-2 bg-white border border-border-light text-text-secondary hover:bg-surface hover:text-text-primary transition-colors disabled:opacity-60"
       >
         <Upload size={14} strokeWidth={1.8} />

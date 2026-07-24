@@ -305,8 +305,8 @@ export default async function DealDetailPage({
         <Card>
           <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Owner</p>
           <div className="flex items-center gap-2 mt-2">
-            <Avatar name="Suren Dheen" className="w-6 h-6 text-[10px]" tooltip="Owner: Suren Dheen — that's you" />
-            <span className="text-[14px] text-text-primary">Suren Dheen</span>
+            <Avatar name="Anir Suren" className="w-6 h-6 text-[10px]" tooltip="Owner: Anir Suren — that's you" />
+            <span className="text-[14px] text-text-primary">Anir Suren</span>
           </div>
           <p className="text-[11px] text-text-tertiary mt-1">Who&apos;s running this deal — that&apos;s you.</p>
         </Card>

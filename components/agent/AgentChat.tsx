@@ -15,6 +15,8 @@ import {
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { firstNameForUser } from "@/lib/userIdentity";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number };
 type Convo = { id: string; title: string; messages: Msg[]; updated: number };
@@ -220,6 +222,8 @@ function ThinkingDots() {
 }
 
 export function AgentChat() {
+  const currentUser = useCurrentUser();
+  const firstName = firstNameForUser(currentUser);
   const [convos, setConvos] = useState<Convo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -443,7 +447,7 @@ export function AgentChat() {
               className="text-[26px] font-semibold text-text-primary tracking-[-0.01em] rise-in"
               style={{ animationDelay: "60ms" }}
             >
-              Hey Suren — what do you want to work on?
+              Hey {firstName} — what do you want to work on?
             </h1>
             <p
               className="text-[14px] text-text-secondary mt-2 text-center max-w-[520px] rise-in"

@@ -17,11 +17,12 @@ function sign(payload: Record<string, unknown>): string {
 
 function appSession(
   exp = Math.floor(Date.now() / 1000) + 3600,
-  email = "owner@freyrsolutions.com"
+  email = "owner@freyrsolutions.com",
+  name = "Auth Test User"
 ): string {
   return sign({
     id: SUBJECT,
-    name: "Auth Test User",
+    name,
     email,
     roles: [],
     exp,
@@ -71,7 +72,7 @@ test("unauthenticated pages redirect to login without exposing the page", async 
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
   await expect(page.getByRole("heading", { name: "Sales Intelligence" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Good morning, Suren" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Good morning, Anir" })).toHaveCount(0);
 });
 
 test("unauthenticated APIs fail closed", async ({ request }) => {
@@ -174,6 +175,53 @@ test("a valid signed session and approved access grant unlock the app", async ({
 
   const response = await context.request.get("/api/customers");
   expect(response.ok()).toBeTruthy();
+});
+
+test("the verified session identity replaces stale demo profile data", async ({
+  context,
+  page,
+}) => {
+  await setAuthCookies(context, {
+    session: appSession(
+      Math.floor(Date.now() / 1000) + 3600,
+      "owner@freyrsolutions.com",
+      "Auth Test User"
+    ),
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "freyr_profile",
+      JSON.stringify({
+        name: "Wrong Demo User",
+        email: "wrong@example.com",
+        title: "Wrong title",
+      })
+    );
+  });
+
+  await page.goto("/dashboard");
+  await expect(
+    page.locator("aside").getByText("Auth Test User", { exact: true })
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await expect(
+    page.getByRole("menu", { name: "Account menu" }).getByText(
+      "owner@freyrsolutions.com",
+      { exact: true }
+    )
+  ).toBeVisible();
+
+  await page.goto("/settings?tab=profile");
+  await expect(page.getByLabel("Full name")).toHaveValue("Auth Test User");
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue(
+    "owner@freyrsolutions.com"
+  );
+  await expect(page.getByLabel("Full name")).toHaveAttribute("readonly", "");
+  await expect(page.getByLabel("Email", { exact: true })).toHaveAttribute(
+    "readonly",
+    ""
+  );
+  await expect(page.getByText("Wrong Demo User")).toHaveCount(0);
 });
 
 test("authentication alone never bypasses workspace approval", async ({

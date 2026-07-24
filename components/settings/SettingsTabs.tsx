@@ -42,6 +42,7 @@ import {
   saveHoverPreference,
   useHoverPreference,
 } from "@/lib/hoverPreferences";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
 const TABS = [
   { key: "workspace", label: "Workspace", description: "Data and behavior", icon: Settings2 },
@@ -95,7 +96,7 @@ type AccessDirectory = {
 // (Dana Whitfield @ NovaGene, Owen Bradley @ Northwind), which read as if our
 // prospects were on staff.
 const DEFAULT_TEAM: Member[] = [
-  { name: "Suren Dheen", email: "suren.dheen@freyrsolutions.com", role: "Admin", you: true },
+  { name: "Anir Suren", email: "anir.s@freyrsolutions.com", role: "Admin", you: true },
   { name: "Mark Miller", email: "mark.miller@freyrsolutions.com", role: "Manager" },
   { name: "Priya Nair", email: "priya.nair@freyrsolutions.com", role: "Rep" },
   { name: "Diego Alvarez", email: "diego.alvarez@freyrsolutions.com", role: "Rep" },
@@ -173,6 +174,8 @@ export function SettingsTabs({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const currentUser = useCurrentUser();
+  const profileStorageKey = `freyr_profile:${currentUser.id}`;
   const requestedTab = searchParams.get("tab");
   const [tab, setTab] = useState(
     requestedTab && TABS.some((item) => item.key === requestedTab) ? requestedTab : "workspace"
@@ -202,10 +205,10 @@ export function SettingsTabs({
   }
 
   const [profile, setProfile] = useState({
-    name: initialDataMode === "mock" ? "Suren Dheen" : "",
-    title: initialDataMode === "mock" ? "Senior Sales Rep" : "",
-    email: initialDataMode === "mock" ? "suren.dheen@freyrsolutions.com" : "",
-    signature: initialDataMode === "mock" ? "Suren Dheen\nFreyr Solutions" : "",
+    name: currentUser.name,
+    title: currentUser.title,
+    email: currentUser.email || "",
+    signature: `${currentUser.name}\nFreyr Solutions`,
   });
   const [invite, setInvite] = useState({ name: "", email: "", role: "Rep" });
   const [notifs, setNotifs] = useState<Record<string, boolean>>({
@@ -214,7 +217,13 @@ export function SettingsTabs({
     rottingDeal: true,
     weeklyDigest: false,
   });
-  const [role, setRole] = useState("Admin");
+  const authenticatedRoleLabel =
+    currentUser.role === "admin"
+      ? "Admin"
+      : currentUser.role === "editor"
+        ? "Manager"
+        : "Rep";
+  const [role, setRole] = useState(authenticatedRoleLabel);
   const [sso, setSso] = useState({
     provider: "Azure AD",
     connected: authConfig.approvalEnabled,
@@ -222,7 +231,20 @@ export function SettingsTabs({
     twoFactor: true,
   });
   const [connectors, setConnectors] = useState<Record<string, boolean>>({});
-  const [accessDirectory, setAccessDirectory] = useState<AccessDirectory>(MOCK_ACCESS);
+  const [accessDirectory, setAccessDirectory] = useState<AccessDirectory>(() => ({
+    ...MOCK_ACCESS,
+    members: MOCK_ACCESS.members.map((member, index) =>
+      index === 0
+        ? {
+            ...member,
+            id: currentUser.id,
+            name: currentUser.name,
+            email: currentUser.email,
+            role: currentUser.role,
+          }
+        : member
+    ),
+  }));
   const [accessBusy, setAccessBusy] = useState<string | null>(null);
 
   const activeTab = TABS.find((item) => item.key === tab) || TABS[0];
@@ -250,18 +272,42 @@ export function SettingsTabs({
   // hydrate from localStorage
   useEffect(() => {
     try {
-      const p = localStorage.getItem("freyr_profile");
-      if (p && initialDataMode === "mock") setProfile((s) => ({ ...s, ...JSON.parse(p) }));
+      const p = localStorage.getItem(profileStorageKey);
+      if (p) {
+        const saved = JSON.parse(p) as { title?: unknown; signature?: unknown };
+        setProfile((existing) => ({
+          ...existing,
+          title: typeof saved.title === "string" ? saved.title : existing.title,
+          signature:
+            typeof saved.signature === "string"
+              ? saved.signature
+              : existing.signature,
+          // Identity always comes from the verified server session.
+          name: currentUser.name,
+          email: currentUser.email || "",
+        }));
+      }
       const n = localStorage.getItem("freyr_notifs");
       if (n) setNotifs((s) => ({ ...s, ...JSON.parse(n) }));
       const r = localStorage.getItem("freyr_role");
-      if (r && initialDataMode === "mock") setRole(r);
+      if (r && initialDataMode === "mock" && !authConfig.approvalEnabled) {
+        setRole(r);
+      } else {
+        setRole(authenticatedRoleLabel);
+      }
       const s = localStorage.getItem("freyr_sso");
       if (s && initialDataMode === "mock") setSso((v) => ({ ...v, ...JSON.parse(s) }));
       const cn = localStorage.getItem("freyr_connectors");
       if (cn) setConnectors(JSON.parse(cn));
     } catch {}
-  }, [initialDataMode]);
+  }, [
+    currentUser.email,
+    currentUser.name,
+    authConfig.approvalEnabled,
+    authenticatedRoleLabel,
+    initialDataMode,
+    profileStorageKey,
+  ]);
 
   useEffect(() => {
     refreshAccessDirectory();
@@ -269,10 +315,18 @@ export function SettingsTabs({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authConfig.approvalEnabled]);
 
-  const canInvite = role === "Admin";
-  const canSecurity = role === "Admin";
+  const canInvite = authConfig.approvalEnabled
+    ? currentUser.role === "admin"
+    : role === "Admin";
+  const canSecurity = authConfig.approvalEnabled
+    ? currentUser.role === "admin"
+    : role === "Admin";
 
   function selectRole(r: string) {
+    if (authConfig.approvalEnabled) {
+      toast("Your role is managed by workspace access");
+      return;
+    }
     setRole(r);
     try {
       localStorage.setItem("freyr_role", r);
@@ -289,7 +343,10 @@ export function SettingsTabs({
 
   function saveProfile() {
     try {
-      localStorage.setItem("freyr_profile", JSON.stringify(profile));
+      localStorage.setItem(
+        profileStorageKey,
+        JSON.stringify({ title: profile.title, signature: profile.signature })
+      );
     } catch {}
     toast("Profile saved");
   }
@@ -635,7 +692,7 @@ export function SettingsTabs({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
                 <span className="block text-[13px] font-medium text-text-primary mb-1.5">Full name</span>
-                <Input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
+                <Input value={profile.name} readOnly aria-readonly="true" />
               </label>
               <label className="block">
                 <span className="block text-[13px] font-medium text-text-primary mb-1.5">Title</span>
@@ -644,7 +701,7 @@ export function SettingsTabs({
             </div>
             <label className="block">
               <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email</span>
-              <Input type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
+              <Input type="email" value={profile.email} readOnly aria-readonly="true" />
             </label>
             <label className="block">
               <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email signature</span>

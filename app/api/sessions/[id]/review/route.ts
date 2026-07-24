@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import {
+  DEFAULT_LOCAL_USER_IDENTITY,
+  GENERIC_USER_IDENTITY,
+} from "@/lib/userIdentity";
 import type { ReviewStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +20,15 @@ const ACTION_TO_STATUS: Record<string, ReviewStatus> = {
 // draft -> in_review -> approved / changes_requested, recording the reviewer
 // and an optional note. Gates the "Send to CRM" action client-side.
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const principal = await authenticatedRequestPrincipal(req);
+  const actorName =
+    principal?.name.trim() ||
+    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+      ? DEFAULT_LOCAL_USER_IDENTITY.name
+      : GENERIC_USER_IDENTITY.name);
   const body = await req.json().catch(() => ({}));
   const status = ACTION_TO_STATUS[String(body.action)];
   if (!status) {
@@ -31,7 +42,7 @@ export async function POST(
   }
 
   const reviewer =
-    status === "in_review" ? null : String(body.reviewer || "Suren Dheen");
+    status === "in_review" ? null : actorName;
   const updated = await db.pitchSessions.update((await params).id, {
     review_status: status,
     reviewer,

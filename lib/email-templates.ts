@@ -39,5 +39,5 @@ export function fillTemplate(
   return text
     .replace(/\{\{company\}\}/g, vars.company || "your team")
     .replace(/\{\{contact\}\}/g, (vars.contact || "there").split(" ")[0])
-    .replace(/\{\{rep\}\}/g, vars.rep || "Suren Dheen");
+    .replace(/\{\{rep\}\}/g, vars.rep || "Anir Suren");
 }

@@ -176,7 +176,7 @@ function seed(): MockStore {
       // days ago, with a comfortably-upcoming follow-up (~3 weeks out so it
       // stays in the future as the demo date drifts) — not months overdue.
       follow_up_date: iso(-21).slice(0, 10),
-      logged_by: "Suren Dheen",
+      logged_by: "Anir Suren",
       created_at: isoAt(5, "int-001"),
     },
   ];
@@ -342,7 +342,7 @@ function seed(): MockStore {
         outcome: s.outcome,
         notes: s.note || null,
         follow_up_date: s.follow ? iso(-s.follow) : null,
-        logged_by: "Suren Dheen",
+        logged_by: "Anir Suren",
         created_at: isoAt(Math.max(0, s.days - 1), `int-${s.id}`),
       });
     }
@@ -428,7 +428,7 @@ function seed(): MockStore {
       id: "snip-seed-001",
       title: "Submission-timeline intro",
       subject: "Hitting your submission timeline",
-      body: `Hi there,\n\nFreyr's regulatory submission team helps clinical-stage teams hit FDA/EMA timelines without adding headcount. Worth a 20-minute call to see if it fits your near-term milestones?\n\nBest,\nSuren Dheen · Freyr`,
+      body: `Hi there,\n\nFreyr's regulatory submission team helps clinical-stage teams hit FDA/EMA timelines without adding headcount. Worth a 20-minute call to see if it fits your near-term milestones?\n\nBest,\nAnir Suren · Freyr`,
       uses: 4,
       created_at: iso(3),
     },

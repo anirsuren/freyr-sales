@@ -11,6 +11,8 @@ import { isOfferingsOnly } from "@/lib/release";
 import { useHoverPreference } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
+import { CurrentUserProvider } from "@/components/auth/CurrentUserProvider";
+import type { UserIdentity } from "@/lib/userIdentity";
 
 const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
 
@@ -21,10 +23,12 @@ export function AppShell({
   children,
   dataMode,
   approvalEnabled,
+  currentUser,
 }: {
   children: React.ReactNode;
   dataMode: DataMode;
   approvalEnabled: boolean;
+  currentUser: UserIdentity;
 }) {
   const pathname = usePathname() || "";
   const router = useRouter();
@@ -141,7 +145,11 @@ export function AppShell({
     pathname === "/access-pending" ||
     /^\/customers\/[^/]+\/report$/.test(pathname)
   ) {
-    return <>{children}</>;
+    return (
+      <CurrentUserProvider user={currentUser}>
+        {children}
+      </CurrentUserProvider>
+    );
   }
 
   const isSessionDetail =
@@ -151,72 +159,74 @@ export function AppShell({
     isSessionDetail || pathname === "/recordings" || pathname === "/agent";
 
   return (
-    <ToastProvider>
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-blue-primary focus:text-white focus:text-[14px] focus:font-semibold focus:shadow-card"
-      >
-        Skip to content
-      </a>
-      <div className="flex min-h-screen bg-white">
-        {/* mobile drawer backdrop */}
-        {mobileNavOpen && (
-          <div
-            className="fixed inset-0 z-[55] bg-black/30 lg:hidden"
-            onClick={() => setMobileNavOpen(false)}
+    <CurrentUserProvider user={currentUser}>
+      <ToastProvider>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-blue-primary focus:text-white focus:text-[14px] focus:font-semibold focus:shadow-card"
+        >
+          Skip to content
+        </a>
+        <div className="flex min-h-screen bg-white">
+          {/* mobile drawer backdrop */}
+          {mobileNavOpen && (
+            <div
+              className="fixed inset-0 z-[55] bg-black/30 lg:hidden"
+              onClick={() => setMobileNavOpen(false)}
+            />
+          )}
+          <Sidebar
+            dataMode={dataMode}
+            mobileOpen={mobileNavOpen}
+            onMobileClose={() => setMobileNavOpen(false)}
+          />
+          <div className="flex-1 min-w-0 flex flex-col h-screen">
+            <TopBar
+              offeringsOnly={offeringsOnly}
+              onMenuClick={() => setMobileNavOpen(true)}
+              onAgentToggle={toggleAgent}
+              agentActive={agentOpen && !agentHidden}
+            />
+            {fullBleed ? (
+              // key=pathname re-mounts so full-bleed pages (session detail, agent,
+              // recordings) also fade in on navigation (Suren: "no animation when
+              // I click on a session"). Opacity-only — safe for fixed descendants.
+              <main
+                key={pathname}
+                id="main-content"
+                data-tour="page-content"
+                tabIndex={-1}
+                className="flex-1 min-w-0 overflow-hidden page-in"
+              >
+                {children}
+              </main>
+            ) : (
+              <main
+                id="main-content"
+                data-tour="page-content"
+                tabIndex={-1}
+                className="flex-1 min-w-0 overflow-y-auto"
+              >
+                {/* key=pathname re-mounts on navigation so every page fades/rises
+                    in — one place fixes "no animation when I click X" everywhere
+                    (Suren, repeatedly). Full-bleed pages animate separately. */}
+                <div key={pathname} className="p-8 page-in">{children}</div>
+              </main>
+            )}
+          </div>
+        </div>
+        {!offeringsOnly && (
+          <AgentDock
+            open={agentOpen}
+            onOpenChange={setAgentOpen}
+            hidden={agentHidden}
+            onHide={hideAgent}
+            pathname={pathname}
           />
         )}
-        <Sidebar
-          dataMode={dataMode}
-          mobileOpen={mobileNavOpen}
-          onMobileClose={() => setMobileNavOpen(false)}
-        />
-        <div className="flex-1 min-w-0 flex flex-col h-screen">
-          <TopBar
-            offeringsOnly={offeringsOnly}
-            onMenuClick={() => setMobileNavOpen(true)}
-            onAgentToggle={toggleAgent}
-            agentActive={agentOpen && !agentHidden}
-          />
-          {fullBleed ? (
-            // key=pathname re-mounts so full-bleed pages (session detail, agent,
-            // recordings) also fade in on navigation (Suren: "no animation when
-            // I click on a session"). Opacity-only — safe for fixed descendants.
-            <main
-              key={pathname}
-              id="main-content"
-              data-tour="page-content"
-              tabIndex={-1}
-              className="flex-1 min-w-0 overflow-hidden page-in"
-            >
-              {children}
-            </main>
-          ) : (
-            <main
-              id="main-content"
-              data-tour="page-content"
-              tabIndex={-1}
-              className="flex-1 min-w-0 overflow-y-auto"
-            >
-              {/* key=pathname re-mounts on navigation so every page fades/rises
-                  in — one place fixes "no animation when I click X" everywhere
-                  (Suren, repeatedly). Full-bleed pages animate separately. */}
-              <div key={pathname} className="p-8 page-in">{children}</div>
-            </main>
-          )}
-        </div>
-      </div>
-      {!offeringsOnly && (
-        <AgentDock
-          open={agentOpen}
-          onOpenChange={setAgentOpen}
-          hidden={agentHidden}
-          onHide={hideAgent}
-          pathname={pathname}
-        />
-      )}
-      <ProductTourProvider offeringsOnly={offeringsOnly} />
-      <AutoTruncationTooltip />
-    </ToastProvider>
+        <ProductTourProvider offeringsOnly={offeringsOnly} />
+        <AutoTruncationTooltip />
+      </ToastProvider>
+    </CurrentUserProvider>
   );
 }

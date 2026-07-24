@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb, type Db } from "@/lib/db";
 import { nextBestActions, focusActions, DRAFTABLE } from "@/lib/agent";
 import { buildDeals, formatMoney, ROTTING_DAYS } from "@/lib/pipeline";
@@ -13,6 +13,11 @@ import {
 } from "@/lib/agentChat";
 import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
 import { offeringsAnswer } from "@/lib/offeringsAgent";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import {
+  DEFAULT_LOCAL_USER_IDENTITY,
+  GENERIC_USER_IDENTITY,
+} from "@/lib/userIdentity";
 import type { Contact, PitchSession } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +30,13 @@ export const dynamic = "force-dynamic";
 // - For conversation, Claude is the primary voice when ANTHROPIC_API_KEY is set
 //   (it gets the live facts + full history as real message turns); otherwise the
 //   deterministic brain answers so the chat is never silent.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const principal = await authenticatedRequestPrincipal(req);
+  const actorName =
+    principal?.name.trim() ||
+    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+      ? DEFAULT_LOCAL_USER_IDENTITY.name
+      : GENERIC_USER_IDENTITY.name);
   const body = await req.json().catch(() => ({}));
   const message = String(body.message || "").trim();
   if (!message) {
@@ -78,7 +89,7 @@ export async function POST(req: Request) {
     })),
   };
 
-  const base = answerAgentChat(message, ctx, history);
+  const base = answerAgentChat(message, ctx, history, actorName);
 
   // Factual offerings questions ("what offerings do we have", "tell me about
   // Freya Register", "offerings in Europe") are answered straight from the
@@ -115,7 +126,13 @@ export async function POST(req: Request) {
       });
     }
     if (action) {
-      const result = await executeAction(db, action, contacts, history);
+      const result = await executeAction(
+        db,
+        action,
+        contacts,
+        history,
+        actorName
+      );
       return NextResponse.json({
         ok: true,
         reply: result.reply,
@@ -142,17 +159,17 @@ export async function POST(req: Request) {
   // -----------------------------------------------------------------------
   const facts = buildFacts(ctx, deals, needsApproval, runs);
   const agentSystem =
-    "You are Freyr's AI sales agent for Suren Dheen, a senior rep/CEO in regulatory life-sciences. " +
+    `You are Freyr's AI sales agent for the signed-in user (${actorName}) in regulatory life-sciences. ` +
     "You are a sharp, decisive sales partner: warm, concise, plain English, NO jargon. " +
     "Reply in the SAME language the user writes in (Spanish in → Spanish out, etc.). " +
-    "You are HUMAN-LED: you draft, prep, and recommend; Suren approves everything. You NEVER claim to have " +
+    "You are HUMAN-LED: you draft, prep, and recommend; the signed-in user approves everything. You NEVER claim to have " +
     "sent an email, made a call, or contacted anyone. The only real writes you make are saving a draft, " +
-    "setting a follow-up, and logging a touch the rep ALREADY had — each waits for Suren. " +
+    "setting a follow-up, and logging a touch the rep ALREADY had — each waits for the signed-in user. " +
     "Ground every number, name, email, and figure ONLY in the data below or in tool results — never invent. " +
     "Use your tools: get_account_detail for depth on a named account, list_accounts to filter the book, " +
     "save_draft / set_followup / log_touch to take a real action, show_pitch to surface a prepared pitch. " +
     "When asked to draft/re-engage/reach out, WRITE the full draft yourself (a 'Subject:' line + 3–5 short " +
-    "sentences signed 'Suren Dheen · Freyr'), show it, then offer to save it — don't ask permission first, " +
+    `sentences signed '${actorName} · Freyr'), show it, then offer to save it — don't ask permission first, ` +
     "and never use bracketed placeholders like [First Name]. If the rep names an account you don't have, " +
     "say so plainly. Keep non-draft answers to 2–5 sentences.\n\n" +
     "LIVE PIPELINE (your grounding — full book):\n" +
@@ -298,7 +315,8 @@ export async function POST(req: Request) {
           body: String(input?.body || ""),
         },
         contacts,
-        history
+        history,
+        actorName
       );
       return { content: result.reply, did: "save_draft" };
     }
@@ -317,7 +335,8 @@ export async function POST(req: Request) {
           label: when.label,
         },
         contacts,
-        history
+        history,
+        actorName
       );
       return { content: result.reply, did: "set_followup" };
     }
@@ -340,7 +359,8 @@ export async function POST(req: Request) {
           outcome,
         },
         contacts,
-        history
+        history,
+        actorName
       );
       return { content: result.reply, did: "log_touch" };
     }
@@ -370,7 +390,7 @@ export async function POST(req: Request) {
 
 // Tools the live agent can call. Reads (detail/list/pitch) keep it grounded;
 // writes (draft/follow-up/log) are the only real side effects, and every one is
-// human-led — saved for Suren to review, never sent.
+// human-led — saved for the signed-in user to review, never sent.
 const AGENT_TOOLS: AgentToolDef[] = [
   {
     name: "get_account_detail",
@@ -407,7 +427,7 @@ const AGENT_TOOLS: AgentToolDef[] = [
   {
     name: "save_draft",
     description:
-      "Save an outreach draft onto an account's timeline for Suren to review and send. NEVER sends. Provide the full draft body including a 'Subject:' line.",
+      "Save an outreach draft onto an account's timeline for the signed-in user to review and send. NEVER sends. Provide the full draft body including a 'Subject:' line.",
     input_schema: {
       type: "object",
       properties: {
@@ -488,7 +508,8 @@ async function executeAction(
   db: Db,
   action: Exclude<ChatAction, { type: "show_pitch" }>,
   contacts: Contact[],
-  history: ChatTurn[]
+  history: ChatTurn[],
+  actorName: string
 ): Promise<{ reply: string; suggestions: string[] }> {
   const contact = contacts.find((c) => c.customer_id === action.customerId);
   const contactId = contact?.id || "";
@@ -569,7 +590,7 @@ async function executeAction(
     outcome: action.outcome,
     notes: action.notes,
     follow_up_date: null,
-    logged_by: "Suren Dheen",
+    logged_by: actorName,
   });
   await db.agentRuns.create({
     kind: "act",

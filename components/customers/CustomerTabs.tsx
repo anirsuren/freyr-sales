@@ -108,7 +108,7 @@ const NOTE_KIND_META: Record<
   note: { label: "Note", icon: FileText, color: "#8E98A8" },
 };
 
-const TEAM = ["Suren Dheen", "Mark Miller", "Priya Nair", "Diego Alvarez"];
+const TEAM = ["Anir Suren", "Mark Miller", "Priya Nair", "Diego Alvarez"];
 const SERVICE_TAG_COLORS = ["#0071E3", "#19C3B1", "#7C3AED", "#E11D48", "#D97706"];
 
 const DELIVERABLES = [
@@ -221,7 +221,7 @@ export function CustomerTabs({
     value: "",
     offering: "",
     contact: "",
-    owner: customer.owner || "Suren Dheen",
+    owner: customer.owner || "Anir Suren",
     close_date: "",
     next_step: "",
     notes: "",
@@ -428,7 +428,7 @@ export function CustomerTabs({
       value: "",
       offering: "",
       contact: "",
-      owner: customer.owner || "Suren Dheen",
+      owner: customer.owner || "Anir Suren",
       close_date: "",
       next_step: "",
       notes: "",

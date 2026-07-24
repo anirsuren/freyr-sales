@@ -298,7 +298,7 @@ export function PitchWorkspace({
     setComposeTemplate(id);
     const t = EMAIL_TEMPLATES.find((x) => x.id === id);
     if (!t) return;
-    const vars = { company: companyName, contact: recipientName, rep: "Suren Dheen" };
+    const vars = { company: companyName, contact: recipientName, rep: "Anir Suren" };
     setComposeSubject(fillTemplate(t.subject, vars));
     setComposeBody(fillTemplate(t.body, vars));
   }

@@ -92,14 +92,14 @@ export interface Deal {
 
 // Rep roster. A deal's owner is the account owner when assigned, otherwise a
 // stable derived rep so "My deals / Team" filtering always has data.
-export const REPS = ["Suren Dheen", "Mark Miller", "Priya Nair", "Diego Alvarez"];
-export const CURRENT_REP = "Suren Dheen";
+export const REPS = ["Anir Suren", "Mark Miller", "Priya Nair", "Diego Alvarez"];
+export const CURRENT_REP = "Anir Suren";
 
 // The full sales floor (Suren: "put like 20 reps, it has to look full"). The
 // first four are the real, deal-owning reps; the rest fill out the org so the
 // team charts read like a real enterprise sales team rather than a demo of four.
 export const SALES_TEAM = [
-  "Suren Dheen",
+  "Anir Suren",
   "Diego Alvarez",
   "Priya Nair",
   "Mark Miller",

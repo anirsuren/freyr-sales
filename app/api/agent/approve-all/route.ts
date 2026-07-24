@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
 import { notifyTelegram } from "@/lib/telegram";
+import {
+  DEFAULT_LOCAL_USER_IDENTITY,
+  GENERIC_USER_IDENTITY,
+} from "@/lib/userIdentity";
 import type { AgentRunStep } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -9,9 +14,13 @@ export const dynamic = "force-dynamic";
 // every pitch currently in compliance review, recording the reviewer and a
 // transparent agent run. Mirrors the per-session approve so the audit trail is
 // identical — just batched.
-export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  const reviewer = String(body.reviewer || "Suren Dheen");
+export async function POST(req: NextRequest) {
+  const principal = await authenticatedRequestPrincipal(req);
+  const reviewer =
+    principal?.name.trim() ||
+    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+      ? DEFAULT_LOCAL_USER_IDENTITY.name
+      : GENERIC_USER_IDENTITY.name);
 
   const db = getDb();
   const [sessions, customers] = await Promise.all([

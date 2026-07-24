@@ -24,7 +24,6 @@ const PHOTOS: Record<string, string> = {
   "dr. hana kim": "/avatars/hana-kim.png",
   "hana kim": "/avatars/hana-kim.png",
   // Reps / internal team
-  "suren dheen": "/avatars/suren-dheen.png",
   "mark miller": "/avatars/mark-miller.png",
   "priya nair": "/avatars/priya-nair.png",
   "diego alvarez": "/avatars/diego-alvarez.png",
@@ -58,7 +57,7 @@ export function Avatar({
 }: {
   name: string;
   className?: string;
-  // When set, hovering the avatar explains who it is (e.g. "Owner: Suren Dheen").
+  // When set, hovering the avatar explains who it is (e.g. "Owner: Anir Suren").
   // Pass `true` to use the name itself; pass a string for a custom label.
   tooltip?: string | boolean;
 }) {

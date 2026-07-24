@@ -1,5 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import {
+  DEFAULT_LOCAL_USER_IDENTITY,
+  GENERIC_USER_IDENTITY,
+} from "@/lib/userIdentity";
 import type {
   AccountNote,
   AccountAttachment,
@@ -18,9 +23,15 @@ function uid(prefix: string): string {
 // PATCH: assign owner (#55), set competitor (#59), append a note or
 // attachment (#60). All persist via the mock/Supabase customer update.
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const principal = await authenticatedRequestPrincipal(req);
+  const actorName =
+    principal?.name.trim() ||
+    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+      ? DEFAULT_LOCAL_USER_IDENTITY.name
+      : GENERIC_USER_IDENTITY.name);
   const db = getDb();
   const customer = await db.customers.get((await params).id);
   if (!customer) {
@@ -36,7 +47,7 @@ export async function PATCH(
   if (typeof body.owner === "string") patch.owner = body.owner || null;
   if (typeof body.competitor === "string")
     patch.competitor = body.competitor.trim() || null;
-  // Customer analysis fields (Suren's Jun 27 ask) — set on approval.
+  // Customer analysis fields — set on approval.
   if (typeof body.customer_type === "string")
     patch.customer_type = body.customer_type.trim() || null;
   if (typeof body.ownership === "string")
@@ -57,7 +68,7 @@ export async function PATCH(
       ? current
       : [...current, body.addOfferingInUse];
   }
-  // Commercial detail per in-use offering (Suren's Jul 5 dictation): revenue
+  // Commercial detail per in-use offering: revenue
   // lines keyed by offering. Sanitized so bad input can't corrupt the store.
   if (Array.isArray(body.offering_usage)) {
     const RT = ["annual", "project", "annual_service", "license"];
@@ -93,7 +104,7 @@ export async function PATCH(
     const KINDS = ["call", "email", "meeting", "note"];
     const note: AccountNote = {
       id: uid("note"),
-      author: String(n.author || "Suren Dheen"),
+      author: actorName,
       body: String(n.body).trim().slice(0, 2000),
       created_at: new Date().toISOString(),
       kind: KINDS.includes(n.kind) ? n.kind : "note",
@@ -103,7 +114,7 @@ export async function PATCH(
     patch.notes_log = [note, ...(customer.notes_log || [])];
 
     // A logged call/email/meeting is a real interaction — record it so it shows
-    // on the timeline and (with a follow-up) lands in Tasks (Suren, #96).
+    // on the timeline and (with a follow-up) lands in Tasks.
     if (note.kind !== "note") {
       const contacts = await db.contacts.list((await params).id);
       const contactId = contacts[0]?.id;

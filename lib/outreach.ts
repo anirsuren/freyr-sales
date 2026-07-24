@@ -159,7 +159,7 @@ export function generateMessageTemplate(input: OutreachInput): OutreachDraft {
     `Would next week work for a quick call?`,
     ``,
     `Best,`,
-    `Suren Dheen`,
+    `Anir Suren`,
     `Freyr Solutions`,
   ].join("\n");
   return { kind, subject, message, source: "template" };

@@ -524,7 +524,7 @@ export function buildActDraft(
   },
   contact: { full_name?: string | null; job_title?: string | null } | null,
   dueLabel: string,
-  rep = "Suren Dheen"
+  rep = "Anir Suren"
 ): { title: string; body: string } {
   const company = customer.company_name;
   const industry = customer.industry || null;

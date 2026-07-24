@@ -278,7 +278,7 @@ export function RecordingsWorkspace() {
     if (!body) return;
     const next = [
       ...comments,
-      { id: `c-${Date.now()}`, sec: Math.round(cur), body, author: "Suren Dheen" },
+      { id: `c-${Date.now()}`, sec: Math.round(cur), body, author: "Anir Suren" },
     ].sort((a, b) => a.sec - b.sec);
     setComments(next);
     try {

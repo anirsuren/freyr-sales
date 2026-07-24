@@ -365,7 +365,7 @@ export function CampaignsView({
           name,
           offeringId,
           objective,
-          owner: "Suren Dheen",
+          owner: "Anir Suren",
           audienceSummary: `${picked.size} contacts across ${selectedCompanies} accounts`,
           scheduledAt: scheduleMode === "later" ? scheduledAt : null,
           recipientContactIds: Array.from(picked),
@@ -495,8 +495,8 @@ export function CampaignsView({
             <div className="mt-6 rounded-md border border-border-light bg-surface/50 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Campaign owner</p>
               <div className="mt-2 flex items-center gap-2">
-                <Avatar name="Suren Dheen" className="h-7 w-7 text-[9px]" />
-                <span className="text-[12px] font-semibold text-text-primary">Suren Dheen</span>
+                <Avatar name="Anir Suren" className="h-7 w-7 text-[9px]" />
+                <span className="text-[12px] font-semibold text-text-primary">Anir Suren</span>
               </div>
             </div>
           </aside>
@@ -528,7 +528,7 @@ export function CampaignsView({
                   </div>
                 </div>
                 <div className="mt-5 grid grid-cols-3 gap-3">
-                  {[{ icon: Target, label: "Goal", value: selectedObjective.label }, { icon: Package, label: "Offering", value: selectedOffering?.name || "Not selected" }, { icon: null, label: "Owner", value: "Suren Dheen" }].map((item) => (
+                  {[{ icon: Target, label: "Goal", value: selectedObjective.label }, { icon: Package, label: "Offering", value: selectedOffering?.name || "Not selected" }, { icon: null, label: "Owner", value: "Anir Suren" }].map((item) => (
                     <div key={item.label} className="rounded-md border border-border-light bg-surface/35 p-3">
                       {item.icon ? <item.icon size={14} className="text-blue-primary" /> : <Avatar name={item.value} className="h-7 w-7 text-[9px]" />}
                       <p className="mt-2 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">{item.label}</p>
@@ -611,7 +611,7 @@ export function CampaignsView({
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div className="rounded-md border border-border-light p-4">
                     <h4 className="text-[12.5px] font-semibold text-text-primary">Campaign summary</h4>
-                    <dl className="mt-3 space-y-2.5 text-[11.5px]"><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Objective</dt><dd className="font-medium text-text-primary">{selectedObjective.label}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Offering</dt><dd className="max-w-[220px] truncate font-medium text-text-primary">{selectedOffering?.name}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Audience</dt><dd className="font-medium text-text-primary">{picked.size} contacts · {selectedCompanies} accounts</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Owner</dt><dd className="font-medium text-text-primary">Suren Dheen</dd></div></dl>
+                    <dl className="mt-3 space-y-2.5 text-[11.5px]"><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Objective</dt><dd className="font-medium text-text-primary">{selectedObjective.label}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Offering</dt><dd className="max-w-[220px] truncate font-medium text-text-primary">{selectedOffering?.name}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Audience</dt><dd className="font-medium text-text-primary">{picked.size} contacts · {selectedCompanies} accounts</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Owner</dt><dd className="font-medium text-text-primary">Anir Suren</dd></div></dl>
                   </div>
                   <div className="rounded-md border border-border-light p-4">
                     <h4 className="flex items-center gap-2 text-[12.5px] font-semibold text-text-primary"><ShieldCheck size={15} className="text-success" /> Readiness checks</h4>

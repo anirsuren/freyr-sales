@@ -2993,7 +2993,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
         message: "go ahead and send it",
         history: [
           { role: "user", text: "draft an email to Helix Biologics" },
-          { role: "agent", text: "Subject: A quick idea\n\nHi there...\n\nSuren Dheen · Freyr" },
+          { role: "agent", text: "Subject: A quick idea\n\nHi there...\n\nAnir Suren · Freyr" },
         ],
       },
     });
@@ -5277,8 +5277,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
     await page.getByRole("tab", { name: "Activity" }).click();
     await expect(page.getByRole("img", { name: "Megan Ruiz" }).first()).toBeVisible();
-    await expect(page.getByRole("img", { name: "Suren Dheen" }).last()).toBeVisible();
-    await expect(page.getByText("Logged by Suren Dheen")).toBeVisible();
+    await expect(page.getByRole("img", { name: "Anir Suren" }).last()).toBeVisible();
+    await expect(page.getByText("Logged by Anir Suren")).toBeVisible();
   });
 
   test("343 — dashboard metrics and priority rows explain their data on hover (V64)", async ({

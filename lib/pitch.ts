@@ -76,7 +76,7 @@ export function buildAccountPitch(p: {
     `For a team at ${company}'s stage that usually means faster, lower-risk submissions and less load on your internal RA group. ` +
     `We've supported 5,000+ regulatory submissions globally, with former FDA and EMA reviewers on the team.\n\n` +
     `Would a 20-minute call next week make sense to see if it fits your near-term milestones?\n\n` +
-    `Best,\nSuren Dheen · Freyr`;
+    `Best,\nAnir Suren · Freyr`;
 
   const pitch_5min_script =
     `Hi ${fn}, thanks for taking a few minutes. I'll be quick.\n\n` +
@@ -87,7 +87,7 @@ export function buildAccountPitch(p: {
     `I'm not trying to sell you anything today — I'd just like 20 minutes to show you how we've handled ${service.toLowerCase()} for teams in a similar spot. Would next week work?`;
 
   const pitch_call_script = {
-    opener: `Hi, is this ${contactName || "the regulatory lead"}? Great — this is Suren from Freyr. I know I'm catching you cold, so I'll be brief.`,
+    opener: `Hi, is this ${contactName || "the regulatory lead"}? Great — this is Anir from Freyr. I know I'm catching you cold, so I'll be brief.`,
     value_prop: `We help pharma and biotech teams with regulatory submissions globally — FDA, EMA, and 120+ agencies. Specifically, we ${hook}.`,
     permission_question: `I had a specific thought about ${company}'s ${service.toLowerCase()} — do you have 90 seconds, or is this a bad time?`,
     if_bad_time_voicemail: `No problem — I'll send a short email. We've helped similar teams move submissions faster without adding headcount; if that's useful, worth a look. Thanks ${fn}.`,
