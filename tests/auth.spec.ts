@@ -218,7 +218,10 @@ test("the verified session identity replaces stale demo profile data", async ({
   await expect(page.getByLabel("Email", { exact: true })).toHaveValue(
     "owner@freyrsolutions.com"
   );
-  await expect(page.getByLabel("Full name")).toHaveAttribute("readonly", "");
+  // The name is editable — members rename themselves via the server-verified
+  // profile API (the canonical directory write; nothing client-trusted). The
+  // email remains identity-managed and locked.
+  await expect(page.getByLabel("Full name")).toBeEditable();
   await expect(page.getByLabel("Email", { exact: true })).toHaveAttribute(
     "readonly",
     ""

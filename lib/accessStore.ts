@@ -638,12 +638,13 @@ export async function reviewAccessRequest(
 export async function updateWorkspaceMember(
   workspace: string,
   memberId: string,
-  patch: { role?: WorkspaceRole; active?: boolean }
+  patch: { role?: WorkspaceRole; active?: boolean; displayName?: string }
 ) {
   const client = adminClient();
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.role) update.app_role = patch.role;
   if (typeof patch.active === "boolean") update.active = patch.active;
+  if (patch.displayName) update.display_name = patch.displayName;
   const result = await client
     .from("app_users")
     .update(update)

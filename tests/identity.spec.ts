@@ -361,10 +361,10 @@ test.describe("verified signed identities", () => {
 
       await page.goto("/settings?tab=profile");
       await expect(page.getByLabel("Full name")).toHaveValue(identity.name);
-      await expect(page.getByLabel("Full name")).toHaveAttribute(
-        "readonly",
-        ""
-      );
+      // Editable by design: members rename themselves through the
+      // server-verified profile API (canonical directory write). Email stays
+      // identity-managed and locked.
+      await expect(page.getByLabel("Full name")).toBeEditable();
       await expect(page.getByLabel("Email", { exact: true })).toHaveValue(
         identity.email
       );

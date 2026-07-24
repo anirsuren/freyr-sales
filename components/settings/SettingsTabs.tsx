@@ -453,14 +453,39 @@ export function SettingsTabs({
     } catch {}
   }
 
-  function saveProfile() {
+  async function saveProfile() {
     try {
       localStorage.setItem(
         profileStorageKey,
         JSON.stringify({ title: profile.title, signature: profile.signature })
       );
     } catch {}
-    toast("Profile saved");
+    const nextName = profile.name.trim();
+    if (!nextName || nextName === currentUser.name) {
+      toast("Profile saved");
+      return;
+    }
+    // The display name is workspace identity, not a local preference — write it
+    // through to the directory so it changes everywhere, for everyone.
+    try {
+      const res = await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nextName }),
+      });
+      if (res.ok) {
+        toast("Profile saved — your name is updated everywhere");
+        router.refresh();
+      } else if (res.status === 404) {
+        // Local/demo workspace without sign-in — nothing server-side to update.
+        toast("Profile saved");
+      } else {
+        const data = await res.json().catch(() => null);
+        toast(data?.error || "Couldn't update your name. Try again.", "error");
+      }
+    } catch {
+      toast("Couldn't update your name. Try again.", "error");
+    }
   }
   async function addMember() {
     if (!canInvite) {
@@ -845,7 +870,10 @@ export function SettingsTabs({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
                 <span className="block text-[13px] font-medium text-text-primary mb-1.5">Full name</span>
-                <Input value={profile.name} readOnly aria-readonly="true" />
+                <Input
+                  value={profile.name}
+                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                />
               </label>
               <label className="block">
                 <span className="block text-[13px] font-medium text-text-primary mb-1.5">Title</span>
