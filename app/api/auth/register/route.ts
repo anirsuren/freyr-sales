@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import {
-  allowedAuthEmailDomains,
-  isAllowedAuthEmail,
-} from "@/lib/authEmailPolicy";
+import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
 import { authUrl } from "@/lib/authOrigin";
 
 type RegistrationRequest = {
@@ -26,8 +23,7 @@ export async function POST(request: NextRequest) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const domains = allowedAuthEmailDomains();
-  if (!url || !anonKey || domains.length === 0) {
+  if (!url || !anonKey) {
     return json({ error: "Account registration is not configured." }, 503);
   }
 
@@ -38,14 +34,11 @@ export async function POST(request: NextRequest) {
     return json({ error: "Invalid request." }, 400);
   }
 
-  const email = body.email?.trim().toLowerCase();
+  const email = normalizeAuthEmail(body.email);
   const password = body.password || "";
   const name = body.name?.trim();
-  if (!email || !isAllowedAuthEmail(email, domains)) {
-    return json(
-      { error: `Use your @${domains[0]} company email.` },
-      403
-    );
+  if (!email) {
+    return json({ error: "Enter a valid email address." }, 400);
   }
   if (!name || name.length > 120) {
     return json({ error: "Enter your full name." }, 400);
@@ -83,6 +76,6 @@ export async function POST(request: NextRequest) {
   return json({
     ok: true,
     message:
-      "Check your company inbox to confirm your account, then sign in.",
+      "Check your inbox to confirm your account, then sign in.",
   });
 }

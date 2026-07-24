@@ -4,7 +4,6 @@ import { getServiceStatus } from "@/lib/env";
 import { getDataMode } from "@/lib/dataMode";
 import { initializeLiveOfferings } from "@/lib/offerings";
 import { verifyAccessControlStorage } from "@/lib/accessStore";
-import { allowedAuthEmailDomains } from "@/lib/authEmailPolicy";
 import { configuredAuthOrigin } from "@/lib/authOrigin";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +14,6 @@ export async function GET() {
   const authMode = process.env.AUTH_MODE;
   const cookieSecret = process.env.AUTH_COOKIE_SECRET;
   const sessionSecret = process.env.AUTH_SESSION_SECRET;
-  const allowedEmailDomains = allowedAuthEmailDomains();
   const authOrigin = configuredAuthOrigin();
   const authSecretsConfigured =
     !!cookieSecret &&
@@ -31,7 +29,6 @@ export async function GET() {
     (authMode === "supabase" &&
       !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
       !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-      allowedEmailDomains.length > 0 &&
       !!authOrigin &&
       authSecretsConfigured);
   const approvalRequired =

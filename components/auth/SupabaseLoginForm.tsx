@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Loader2, LockKeyhole, UserPlus } from "lucide-react";
+import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
 
 type Mode = "signin" | "request";
 
@@ -22,7 +23,7 @@ function safeNext(): string {
   return "/dashboard";
 }
 
-export function SupabaseLoginForm({ allowedDomain }: { allowedDomain: string }) {
+export function SupabaseLoginForm() {
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -76,10 +77,8 @@ export function SupabaseLoginForm({ allowedDomain }: { allowedDomain: string }) 
     setMessage(null);
     try {
       if (!supabase) throw new Error("Sign-in is not configured yet.");
-      const normalizedEmail = email.trim().toLowerCase();
-      if (!normalizedEmail.endsWith(`@${allowedDomain}`)) {
-        throw new Error(`Use your @${allowedDomain} company email.`);
-      }
+      const normalizedEmail = normalizeAuthEmail(email);
+      if (!normalizedEmail) throw new Error("Enter a valid email address.");
       if (mode === "request") {
         const response = await fetch("/api/auth/register", {
           method: "POST",
@@ -100,7 +99,7 @@ export function SupabaseLoginForm({ allowedDomain }: { allowedDomain: string }) 
         setPassword("");
         setMessage(
           body.message ||
-            "Check your company inbox to confirm your account, then sign in."
+            "Check your inbox to confirm your account, then sign in."
         );
       } else {
         const { data, error: signInError } =
@@ -163,8 +162,8 @@ export function SupabaseLoginForm({ allowedDomain }: { allowedDomain: string }) 
           />
         </label>
         <p className="-mt-2 text-[11px] text-text-tertiary">
-          Use your @{allowedDomain} work email. We will send a confirmation
-          link before you can sign in.
+          Use any valid email address—the exact address that was invited. We
+          will send a confirmation link before you can sign in.
         </p>
         <label className="block text-[12px] font-semibold text-text-secondary">
           Password

@@ -21,7 +21,6 @@ export default defineConfig({
       AGENT_FORCE_MOCK: "1",
       AUTH_COOKIE_SECRET,
       AUTH_MODE: "supabase",
-      AUTH_ALLOWED_EMAIL_DOMAINS: "freyrsolutions.com",
       AUTH_PUBLIC_ORIGIN: BASE_URL,
       DATA_MODE_LOCKED: "1",
       DEFAULT_DATA_MODE: "mock",

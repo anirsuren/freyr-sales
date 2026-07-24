@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from "./auth";
+import { normalizeAuthEmail } from "./authEmailPolicy";
 
 export const ACCESS_COOKIE = "freyr_access";
 // Keep authorization short-lived so a suspension or role change takes effect
@@ -114,8 +115,7 @@ export function providerForAuthMode(): "entra" | "aws-alb" | "supabase" {
 }
 
 export function normalizedEmail(value: string | null | undefined): string | null {
-  const email = value?.trim().toLowerCase();
-  return email && email.includes("@") ? email : null;
+  return normalizeAuthEmail(value);
 }
 
 export function isBootstrapOwner(user: AuthenticatedUser): boolean {

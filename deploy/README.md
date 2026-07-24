@@ -31,12 +31,14 @@ Required before production traffic:
 7. Set the target-group health path to `/api/health` and enable deployment
    rollback/circuit breaker.
 8. Apply every SQL migration in filename order, from
-   `001_initial_schema.sql` through `008_user_onboarding_state.sql`, to the
+   `001_initial_schema.sql` through the migration numbered `009`, to the
    approved Supabase/PostgreSQL service before starting the live task.
    Migration 006 is required for provider-aware Supabase identities, and
-   migration 007 provides the company-domain auth hook. Migration 008 stores
-   versioned product-tour progress for each approved workspace member. The
-   offering catalog is hydrated from its durable row when each ECS task starts.
+   migration 007 introduces the original auth hook. Migration 008 stores
+   versioned product-tour progress for each approved workspace member, and
+   migration 009 replaces the original domain policy with an invite-only auth
+   hook. The offering catalog is hydrated from its durable row when each ECS
+   task starts.
 9. Store all provider and database credentials in AWS Secrets Manager and rotate
    any value previously pasted into chat.
 10. Run a live-mode smoke test after deploy. Use a separate mock-configured demo
@@ -58,12 +60,14 @@ deploying:
    project.
 3. Configure production SMTP so confirmation messages are sent from the
    approved Freyr sender instead of the development mail service.
-4. Apply migrations `001` through `008` in order. Migration `007` creates the
-   exact-domain guard function. In **Authentication → Auth Hooks**, configure
-   **Before User Created** to use the Postgres function
-   `public.freyr_before_user_created`. This prevents the public Supabase signup
-   API from creating outside-domain Auth rows. Migration `008` creates the
-   service-role-only, per-user product-tour state table.
+4. Apply migrations `001` through `009` in order. Migration `008` creates the
+   service-role-only, per-user product-tour state table. Migration `009`
+   replaces the earlier domain guard with an invitation check. In
+   **Authentication → Auth Hooks**, configure **Before User Created** to use the
+   Postgres function `public.freyr_before_user_created`. The hook allows any
+   syntactically valid email domain only when that exact normalized address has
+   a pending, unexpired workspace invitation. This prevents the public Supabase
+   signup API from bypassing the application's invitation check.
 
 The JSON secret referenced by `APP_SECRETS_ARN` must contain all of these keys:
 
@@ -86,31 +90,40 @@ build, because Next.js embeds those public values in the login page. Never add
 `SUPABASE_SERVICE_ROLE_KEY` to build arguments; it belongs only in the ECS task
 secret bindings.
 
-The task environment must set `AUTH_MODE=supabase` and
-`ACCESS_CONTROL_MODE=approval`, plus
-`AUTH_ALLOWED_EMAIL_DOMAINS=freyrsolutions.com` and
+The task environment must set `AUTH_MODE=supabase`,
+`ACCESS_CONTROL_MODE=approval`, and
 `AUTH_PUBLIC_ORIGIN=https://freyrsales.dev.freyrapps.com`. The public origin is
 the fixed, browser-facing HTTPS origin used for authentication redirects and
-email callbacks; never derive it from proxy headers. Domain comparison is exact
-and case-insensitive; subdomains and lookalike suffixes are rejected. The
-application fails its production health check when required authentication
-configuration is absent or the approval tables/migration are not reachable.
+email callbacks; never derive it from proxy headers. Email domains are not an
+authorization boundary: the exact normalized address must match a pending,
+unexpired invitation. The application fails its production health check when
+required authentication configuration is absent or the approval
+tables/migration are not reachable.
 
 ### First-owner bootstrap
 
-`OWNER_EMAILS` is a temporary bootstrap mechanism, not an ongoing owner group:
+`OWNER_EMAILS` is a temporary bootstrap mechanism, not an ongoing owner group.
+Because migration 009 also protects the public Supabase signup API, seed the
+first invitation before the owner signs up:
 
-1. Deploy with only the intended first owner's exact email in `OWNER_EMAILS`.
-2. Have that owner sign up, click the Supabase confirmation email, and sign in.
-3. Verify an active `app_users` row exists for `FREYR_WORKSPACE_ID` with
+1. Choose the permanent `FREYR_WORKSPACE_ID`, apply the migrations, and
+   upsert that UUID into `workspaces`.
+2. Insert a pending, unexpired `workspace_invitations` row for the intended
+   owner's exact normalized email with `app_role = 'admin'`. `invited_by` may
+   be null for this one bootstrap record.
+3. Deploy with only that same exact email in `OWNER_EMAILS`.
+4. Have the owner sign up with the invited address, click the Supabase
+   confirmation email, and sign in.
+5. Verify an active `app_users` row exists for `FREYR_WORKSPACE_ID` with
    `auth_provider = 'supabase'` and `app_role = 'admin'`.
-4. Set the existing `OWNER_EMAILS` JSON secret value to an empty string and
+6. Set the existing `OWNER_EMAILS` JSON secret value to an empty string and
    replace the ECS tasks. Keep the JSON key present because the task definition
    references it.
 
-After bootstrap, owners should invite or approve every additional user from
-**Settings → Access**. A person who can authenticate but has not been approved
-sees the access-pending page and receives no application data.
+After bootstrap, owners must invite every additional user from **Settings →
+Team**. The invitation may use any valid email domain and expires after 14
+days. A person without a matching live invitation cannot create an account or
+receive an application access grant.
 
 ## Access-control settings
 
@@ -122,12 +135,11 @@ Invite-only access uses these deployment settings:
 - `ACCESS_CONTROL_MODE=approval`: keep enabled after migrations, identity
   configuration, service-role access, and the cookie secret are verified.
 
-Unknown identities create an access request and see no application data.
-An owner approves or rejects the request in Settings → Access. Owners can also
-pre-approve an identity by creating a 14-day invitation in Settings → Team.
-Catalog editors may maintain offerings and sales materials but cannot manage
-workspace access or security. Sales reps can view offerings and use them in
-pitches without editing the catalog.
+Unknown identities receive no application access grant. An owner grants access
+by creating a 14-day invitation for the exact email in Settings → Team; email
+domain alone never grants access. Catalog editors may maintain offerings and
+sales materials but cannot manage workspace access or security. Sales reps can
+view offerings and use them in pitches without editing the catalog.
 
 The current sales-demo task sets `DEFAULT_DATA_MODE=mock` and
 `DATA_MODE_LOCKED=0`. It opens with the complete sample workspace and allows

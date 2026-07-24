@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { SupabaseLoginForm } from "@/components/auth/SupabaseLoginForm";
-import { allowedAuthEmailDomains } from "@/lib/authEmailPolicy";
 import { configuredAuthOrigin } from "@/lib/authOrigin";
 
 export const metadata = { title: "Sign in" };
@@ -17,12 +16,10 @@ export default function LoginPage() {
     !authMode && process.env.NODE_ENV !== "production";
   const cookieSecret = process.env.AUTH_COOKIE_SECRET;
   const sessionSecret = process.env.AUTH_SESSION_SECRET;
-  const allowedEmailDomains = allowedAuthEmailDomains();
   const supabaseConfigured = !!(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
     process.env.SUPABASE_SERVICE_ROLE_KEY &&
-    allowedEmailDomains.length > 0 &&
     !!configuredAuthOrigin() &&
     (process.env.NODE_ENV !== "production" || process.env.FREYR_WORKSPACE_ID) &&
     cookieSecret &&
@@ -42,7 +39,7 @@ export default function LoginPage() {
             {!authenticationReady
               ? "Authentication is not fully configured. No workspace data is available until an administrator completes the secure login setup."
               : supabase
-              ? `Sign in to the protected Freyr workspace with your @${allowedEmailDomains[0]} email. New accounts require email confirmation and owner approval before any sales data is visible.`
+              ? "Sign in with the exact email address your workspace owner invited. New accounts require email confirmation and an invitation or owner approval before any sales data is visible."
               : "Sign in with your Freyr corporate identity. Access and permissions are managed by IT."}
           </p>
         </div>
@@ -57,7 +54,7 @@ export default function LoginPage() {
               configure Supabase and the authentication cookie secret.
             </div>
           ) : supabase ? (
-            <SupabaseLoginForm allowedDomain={allowedEmailDomains[0]} />
+            <SupabaseLoginForm />
           ) : entra ? (
             <a href="/.auth/login/aad" className="w-full h-11 rounded-lg bg-blue-primary text-white font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-blue-hover transition-colors">
               <ShieldCheck size={18} /> Continue with Microsoft

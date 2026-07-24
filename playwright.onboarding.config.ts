@@ -20,7 +20,6 @@ export default defineConfig({
     env: {
       ACCESS_CONTROL_MODE: "approval",
       AGENT_FORCE_MOCK: "1",
-      AUTH_ALLOWED_EMAIL_DOMAINS: "freyrsolutions.com",
       AUTH_COOKIE_SECRET,
       AUTH_MODE: "supabase",
       AUTH_PUBLIC_ORIGIN: `http://127.0.0.1:${PORT}`,

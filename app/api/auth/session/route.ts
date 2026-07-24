@@ -6,10 +6,7 @@ import {
   requestUsesHttps,
   signAppSession,
 } from "@/lib/appSession";
-import {
-  allowedAuthEmailDomains,
-  isAllowedAuthEmail,
-} from "@/lib/authEmailPolicy";
+import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
 import {
   ACCESS_COOKIE,
   ACCESS_TTL_SECONDS,
@@ -56,15 +53,10 @@ export async function POST(request: NextRequest) {
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }
-  const domains = allowedAuthEmailDomains();
-  if (domains.length === 0 || !isAllowedAuthEmail(user.email, domains)) {
+  const email = normalizeAuthEmail(user.email);
+  if (!email) {
     return NextResponse.json(
-      {
-        error:
-          domains.length > 0
-            ? `Use your @${domains[0]} company email.`
-            : "Company email access is not configured.",
-      },
+      { error: "Your account does not have a valid email address." },
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }
@@ -73,9 +65,9 @@ export async function POST(request: NextRequest) {
     name:
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||
-      user.email?.split("@")[0] ||
+      email.split("@")[0] ||
       "Freyr user",
-    email: user.email || null,
+    email,
     roles: Array.isArray(user.app_metadata?.roles)
       ? user.app_metadata.roles.map(String)
       : [],

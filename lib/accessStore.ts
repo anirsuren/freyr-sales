@@ -6,7 +6,6 @@ import {
   providerForAuthMode,
   type WorkspaceRole,
 } from "./accessControl";
-import { isAllowedAuthEmail } from "./authEmailPolicy";
 
 export type AccessMember = {
   id: string;
@@ -139,8 +138,8 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
   const workspace = await workspaceId(client);
   const provider = providerForAuthMode();
   const email = normalizedEmail(user.email);
-  if (provider === "supabase" && !isAllowedAuthEmail(email)) {
-    throw new Error("A permitted company email is required.");
+  if (provider === "supabase" && !email) {
+    throw new Error("A valid email address is required.");
   }
   const existing = await activeUser(client, workspace, provider, user.id);
 
@@ -210,7 +209,9 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
           accepted_by: inserted.data.id,
           accepted_at: new Date().toISOString(),
         })
-        .eq("id", invitationId);
+        .eq("id", invitationId)
+        .eq("status", "pending")
+        .gt("expires_at", new Date().toISOString());
     }
     return { status: "approved", workspaceId: workspace, userId: inserted.data.id, role };
   }
@@ -302,12 +303,6 @@ export async function inviteWorkspaceUser(
 ) {
   const email = normalizedEmail(emailValue);
   if (!email) throw new Error("Enter a valid email address.");
-  if (
-    process.env.AUTH_MODE === "supabase" &&
-    !isAllowedAuthEmail(email)
-  ) {
-    throw new Error("Invite a permitted company email address.");
-  }
   const client = adminClient();
   const result = await client.from("workspace_invitations").upsert(
     {
@@ -316,6 +311,8 @@ export async function inviteWorkspaceUser(
       app_role: role,
       status: "pending",
       invited_by: actorId,
+      accepted_by: null,
+      accepted_at: null,
       expires_at: new Date(Date.now() + 14 * 86400000).toISOString(),
     },
     { onConflict: "workspace_id,email" }
@@ -343,9 +340,9 @@ export async function reviewAccessRequest(
   if (decision === "approve") {
     if (
       request.data.auth_provider === "supabase" &&
-      !isAllowedAuthEmail(request.data.email)
+      !normalizedEmail(request.data.email)
     ) {
-      throw new Error("This request does not use a permitted company email.");
+      throw new Error("This request does not use a valid email address.");
     }
     const existing = await client
       .from("app_users")

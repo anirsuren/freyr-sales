@@ -1,46 +1,61 @@
-function normalizeDomain(value: string): string | null {
-  const domain = value.trim().toLowerCase().replace(/^@/, "").replace(/\.$/, "");
-  return /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/.test(domain)
-    ? domain
-    : null;
-}
+const LOCAL_PART = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/i;
+const DOMAIN_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
 
-export function allowedAuthEmailDomains(
-  value = process.env.AUTH_ALLOWED_EMAIL_DOMAINS
-): string[] {
-  return Array.from(
-    new Set(
-      (value || "")
-        .split(",")
-        .map(normalizeDomain)
-        .filter((domain): domain is string => !!domain)
-    )
-  );
-}
-
-export function authEmailDomain(
+/**
+ * Normalize and validate an ordinary, deliverable-looking email address.
+ *
+ * Authentication remains invitation-only; this function deliberately does not
+ * restrict which company or domain an administrator may invite.
+ */
+export function normalizeAuthEmail(
   value: string | null | undefined
 ): string | null {
-  const email = value?.trim().toLowerCase();
-  if (!email) return null;
+  if (typeof value !== "string") return null;
+
+  const email = value.trim().toLowerCase();
+  if (
+    !email ||
+    email.length > 254 ||
+    /[\s\u0000-\u001f\u007f]/.test(email)
+  ) {
+    return null;
+  }
+
   const separator = email.indexOf("@");
   if (
     separator <= 0 ||
     separator !== email.lastIndexOf("@") ||
-    separator === email.length - 1 ||
-    /\s/.test(email.slice(0, separator))
+    separator === email.length - 1
   ) {
     return null;
   }
+
+  const local = email.slice(0, separator);
   const domain = email.slice(separator + 1);
-  if (domain.endsWith(".")) return null;
-  return normalizeDomain(domain);
+  if (
+    local.length > 64 ||
+    !LOCAL_PART.test(local) ||
+    local.startsWith(".") ||
+    local.endsWith(".") ||
+    local.includes("..") ||
+    domain.length > 253
+  ) {
+    return null;
+  }
+
+  const labels = domain.split(".");
+  if (
+    labels.length < 2 ||
+    labels.some((label) => !DOMAIN_LABEL.test(label))
+  ) {
+    return null;
+  }
+
+  return email;
 }
 
-export function isAllowedAuthEmail(
-  value: string | null | undefined,
-  domains = allowedAuthEmailDomains()
+export function isValidAuthEmail(
+  value: string | null | undefined
 ): boolean {
-  const domain = authEmailDomain(value);
-  return !!domain && domains.includes(domain);
+  return normalizeAuthEmail(value) !== null;
 }

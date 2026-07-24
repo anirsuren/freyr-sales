@@ -684,14 +684,14 @@ export function SettingsTabs({
                 <h2 className="flex items-center gap-2 text-[14px] font-semibold text-text-primary">
                   <UserPlus size={16} className="text-blue-primary" /> Invite a teammate
                 </h2>
-                <p className="mt-1 text-[11.5px] text-text-secondary">Only workspace owners can create invitations. An invite expires after 14 days.</p>
+                <p className="mt-1 text-[11.5px] text-text-secondary">Invite any valid email address. Only workspace owners can create invitations, and each invite expires after 14 days.</p>
               </div>
               <span className="rounded-md bg-success/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-success">Invite only</span>
             </div>
             <div className="mt-4 grid grid-cols-[minmax(260px,1fr)_180px_auto] items-end gap-3">
               <label>
                 <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Work email</span>
-                <Input type="email" placeholder="name@freyrsolutions.com" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
+                <Input type="email" placeholder="name@company.com" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
               </label>
               <label>
                 <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Starting role</span>

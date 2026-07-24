@@ -30,12 +30,13 @@ function appSession(
 
 function accessGrant(
   exp = Math.floor(Date.now() / 1000) + 3600,
-  workspaceId = WORKSPACE_ID
+  workspaceId = WORKSPACE_ID,
+  email = "owner@freyrsolutions.com"
 ): string {
   return sign({
     sub: SUBJECT,
     userId: "auth-test-app-user",
-    email: "owner@freyrsolutions.com",
+    email,
     role: "admin",
     workspaceId,
     exp,
@@ -122,22 +123,18 @@ test("the login, registration, and session-establishment endpoints remain public
   await expect(page.getByRole("button", { name: "Sign in securely" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
   await expect(
-    page.getByText("Use your @freyrsolutions.com work email.", {
-      exact: false,
-    })
+    page.getByText(/Use (?:any )?valid email address/i)
   ).toBeVisible();
+  await expect(page.getByText(/@freyrsolutions\.com work email/i)).toHaveCount(0);
 
   const registration = await request.post("/api/auth/register", {
     data: {
-      name: "Outside User",
-      email: "outside@example.com",
+      name: "Malformed User",
+      email: "outside@@example.com",
       password: "test-password-123",
     },
   });
-  expect(registration.status()).toBe(403);
-  expect(await registration.json()).toMatchObject({
-    error: "Use your @freyrsolutions.com company email.",
-  });
+  expect(registration.status()).toBe(400);
 
   const response = await request.post("/api/auth/session", { data: {} });
   expect(response.status()).toBe(400);
@@ -223,28 +220,51 @@ test("expired or tampered sessions are rejected", async ({ context }) => {
   expect((await context.request.get("/api/customers")).status()).toBe(401);
 });
 
-test("a correctly signed session from outside the exact company domain is rejected", async ({
+test("a valid external email with an approved access grant unlocks the app", async ({
   context,
 }) => {
+  const email = "advisor@partner.org";
+  const expiration = Math.floor(Date.now() / 1000) + 3600;
   await setAuthCookies(context, {
-    session: appSession(
-      Math.floor(Date.now() / 1000) + 3600,
-      "owner@sub.freyrsolutions.com"
-    ),
+    session: appSession(expiration, email),
+    access: accessGrant(expiration, WORKSPACE_ID, email),
   });
-  expect((await context.request.get("/api/customers")).status()).toBe(401);
+  expect((await context.request.get("/api/customers")).status()).toBe(200);
 });
 
-test("registration rejects malformed and lookalike company domains", async ({
+test("a valid external email without an access grant remains blocked", async ({
+  context,
+}) => {
+  await context.addCookies([
+    {
+      name: "freyr_session",
+      value: appSession(
+        Math.floor(Date.now() / 1000) + 3600,
+        "advisor@partner.org"
+      ),
+      url: BASE_URL,
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  const response = await context.request.get("/api/customers");
+  expect(response.status()).toBe(403);
+  expect(await response.json()).toMatchObject({
+    error: "Workspace owner approval required",
+  });
+});
+
+test("registration rejects malformed email addresses", async ({
   request,
 }) => {
   const rejected = [
-    "owner@sub.freyrsolutions.com",
-    "owner@evilfreyrsolutions.com",
-    "owner@freyrsolutions.com.evil",
+    "ownerfreyrsolutions.com",
+    "@freyrsolutions.com",
+    "owner@",
     "owner@@freyrsolutions.com",
     "owner @freyrsolutions.com",
     "owner@freyrsolutions.com.",
+    "owner@example.com extra",
   ];
   for (const email of rejected) {
     const response = await request.post("/api/auth/register", {
@@ -254,7 +274,7 @@ test("registration rejects malformed and lookalike company domains", async ({
         password: "test-password-123",
       },
     });
-    expect(response.status(), email).toBe(403);
+    expect(response.status(), email).toBe(400);
   }
 });
 
