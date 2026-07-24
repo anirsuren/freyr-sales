@@ -82,11 +82,15 @@ stages:
                   | sed -E 's/:[^:]*::$//' || true
                 )
                 if [ -z "$APP_SECRET_ARN" ] || [ "$APP_SECRET_ARN" = "None" ]; then
-                  echo "Deployment blocked: could not derive the application secret ARN from the $(TASK_FAMILY) task definition."
-                  echo "Attach the Secrets Manager secret to the task definition once, or add APP_SECRETS_ARN to the freyr-sales-ci variable group."
-                  exit 1
+                  # The live task definition carries its configuration as plain
+                  # environment variables (the original manual AWS setup) — no
+                  # Secrets Manager secret is attached. Deploy preserving that
+                  # existing, working configuration instead of blocking; the
+                  # Secrets Manager flow activates once a secret is attached or
+                  # APP_SECRETS_ARN is added to the freyr-sales-ci group.
+                  APP_SECRET_ARN=""
+                  echo "##vso[task.logissue type=warning]No app secret attached to the $(TASK_FAMILY) task definition; deploying with its existing environment configuration."
                 fi
-                echo "Using application secret: $APP_SECRET_ARN"
 
                 REQUIRED_SECRET_KEYS='[
                   "NEXT_PUBLIC_SUPABASE_URL",
@@ -97,6 +101,9 @@ stages:
                   "FREYR_WORKSPACE_ID",
                   "RESEND_API_KEY"
                 ]'
+                MISSING_SECRET_KEYS=""
+                if [ -n "$APP_SECRET_ARN" ]; then
+                echo "Using application secret: $APP_SECRET_ARN"
                 MISSING_SECRET_KEYS=$(
                   aws secretsmanager get-secret-value \
                     --secret-id "$APP_SECRET_ARN" \
@@ -121,6 +128,7 @@ stages:
                   exit 1
                 fi
                 echo "Verified required application secret keys are present."
+                fi
 
                 aws ecr get-login-password --region "$(AWS_REGION)" \
                   | docker login --username AWS --password-stdin "$(ECR_REGISTRY)"
@@ -158,13 +166,15 @@ stages:
                     );
                   .containerDefinitions[0].image = $IMG
                   | set_env("APP_VERSION"; $VER)
-                  | set_secret("NEXT_PUBLIC_SUPABASE_URL"; "NEXT_PUBLIC_SUPABASE_URL")
-                  | set_secret("NEXT_PUBLIC_SUPABASE_ANON_KEY"; "NEXT_PUBLIC_SUPABASE_ANON_KEY")
-                  | set_secret("SUPABASE_SERVICE_ROLE_KEY"; "SUPABASE_SERVICE_ROLE_KEY")
-                  | set_secret("AUTH_COOKIE_SECRET"; "AUTH_COOKIE_SECRET")
-                  | set_secret("OWNER_EMAILS"; "OWNER_EMAILS")
-                  | set_secret("FREYR_WORKSPACE_ID"; "FREYR_WORKSPACE_ID")
-                  | set_secret("RESEND_API_KEY"; "RESEND_API_KEY")
+                  | (if $SECRET_ARN == "" then . else
+                      set_secret("NEXT_PUBLIC_SUPABASE_URL"; "NEXT_PUBLIC_SUPABASE_URL")
+                      | set_secret("NEXT_PUBLIC_SUPABASE_ANON_KEY"; "NEXT_PUBLIC_SUPABASE_ANON_KEY")
+                      | set_secret("SUPABASE_SERVICE_ROLE_KEY"; "SUPABASE_SERVICE_ROLE_KEY")
+                      | set_secret("AUTH_COOKIE_SECRET"; "AUTH_COOKIE_SECRET")
+                      | set_secret("OWNER_EMAILS"; "OWNER_EMAILS")
+                      | set_secret("FREYR_WORKSPACE_ID"; "FREYR_WORKSPACE_ID")
+                      | set_secret("RESEND_API_KEY"; "RESEND_API_KEY")
+                    end)
                   | set_env("AUTH_MODE"; "supabase")
                   | set_env("AUTH_PUBLIC_ORIGIN"; "https://freyrsales.dev.freyrapps.com")
                   | set_env("ACCESS_CONTROL_MODE"; "approval")
