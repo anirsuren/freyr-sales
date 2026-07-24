@@ -21,14 +21,15 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
 import { Term } from "@/components/ui/Tooltip";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { stageKey } from "@/lib/glossary";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 import { cn } from "@/lib/utils";
 import {
   STAGES,
   STAGE_TO_OUTCOME,
   STAGE_PROBABILITY,
   ROTTING_DAYS,
-  CURRENT_REP,
   formatMoney,
   type Deal,
   type Stage,
@@ -60,8 +61,19 @@ const EMPTY_ADD = {
   stage: "Prospect" as Stage,
 };
 
+function ownedByCurrentUser(
+  deal: Deal,
+  memberId: string | null | undefined
+): boolean {
+  return !!deal.ownerUserId && !!memberId && deal.ownerUserId === memberId;
+}
+
 export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   const { toast } = useToast();
+  const currentUser = useCurrentUser();
+  const currentRepName = currentUser.name;
+  const wipStorageKey = userScopedStorageKey(WIP_KEY, currentUser.id);
+  const viewsStorageKey = userScopedStorageKey(VIEWS_KEY, currentUser.id);
   const [deals, setDeals] = useState<Deal[]>(initial);
   const [q, setQ] = useState("");
   const [size, setSize] = useState("all");
@@ -76,16 +88,18 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   // Persist deal limits while keeping the sales stages in their canonical order.
   const [wip, setWip] = useState<Record<string, number>>({});
   useEffect(() => {
+    setWip({});
+    setSavedViews([]);
     try {
       // Remove the retired custom-column preference so an accidentally moved
       // layout cannot return after a reload or an older tab refreshes.
       localStorage.removeItem("freyr.pipeline.order.v1");
-      const w = localStorage.getItem(WIP_KEY);
+      const w = localStorage.getItem(wipStorageKey);
       if (w) setWip(JSON.parse(w));
-      const v = localStorage.getItem(VIEWS_KEY);
+      const v = localStorage.getItem(viewsStorageKey);
       if (v) setSavedViews(JSON.parse(v));
     } catch {}
-  }, []);
+  }, [viewsStorageKey, wipStorageKey]);
 
   function applyView(v: SavedView) {
     setQ(v.q);
@@ -99,7 +113,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     const next = [...savedViews.filter((s) => s.name !== name), { name, q, size, mine }];
     setSavedViews(next);
     try {
-      localStorage.setItem(VIEWS_KEY, JSON.stringify(next));
+      localStorage.setItem(viewsStorageKey, JSON.stringify(next));
     } catch {}
     setViewName("");
     setShowSaveView(false);
@@ -113,7 +127,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     else next[stage] = n;
     setWip(next);
     try {
-      localStorage.setItem(WIP_KEY, JSON.stringify(next));
+      localStorage.setItem(wipStorageKey, JSON.stringify(next));
     } catch {}
   }
 
@@ -134,6 +148,26 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   // Per-card agent hint (V9) — one-click re-engage on cooling deals.
   const [reengaging, setReengaging] = useState<string | null>(null);
   const [reengaged, setReengaged] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setDeals(initial);
+    setQ("");
+    setSize("all");
+    setMine(false);
+    setViewsOpen(false);
+    setShowSaveView(false);
+    setViewName("");
+    setEditingId(null);
+    setEditVal("");
+    setSelectMode(false);
+    setSelected(new Set());
+    setBulkStage("Qualified");
+    setShowAdd(false);
+    setAddForm(EMPTY_ADD);
+    setManualSeq(0);
+    setReengaging(null);
+    setReengaged(new Set());
+  }, [currentUser.id, initial]);
 
   async function reengage(d: Deal) {
     setReengaging(d.sessionId);
@@ -162,18 +196,20 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
       deals.filter(
         (d) =>
           (size === "all" || d.sizeTier === size) &&
-          (!mine || d.owner === CURRENT_REP) &&
+          (!mine ||
+            ownedByCurrentUser(d, currentUser.memberId)) &&
           (!q ||
             d.company.toLowerCase().includes(q.toLowerCase()) ||
             d.contactName.toLowerCase().includes(q.toLowerCase()))
       ),
-    [deals, q, size, mine]
+    [currentUser.memberId, deals, q, size, mine]
   );
 
   const sizeCounts = useMemo(() => {
     const matching = deals.filter(
       (deal) =>
-        (!mine || deal.owner === CURRENT_REP) &&
+        (!mine ||
+          ownedByCurrentUser(deal, currentUser.memberId)) &&
         (!q ||
           deal.company.toLowerCase().includes(q.toLowerCase()) ||
           deal.contactName.toLowerCase().includes(q.toLowerCase()))
@@ -186,7 +222,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
       },
       { all: 0, large: 0, mid: 0, small: 0 }
     );
-  }, [deals, mine, q]);
+  }, [currentUser.memberId, deals, mine, q]);
 
   const byStage = useMemo(() => {
     const map: Record<string, Deal[]> = {};
@@ -265,7 +301,8 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
       stage: addForm.stage,
       lastActivity: new Date().toISOString(),
       staleDays: 0,
-      owner: CURRENT_REP,
+      owner: currentRepName,
+      ownerUserId: currentUser.memberId || null,
       createdAt: new Date().toISOString(),
     };
     setDeals((ds) => [deal, ...ds]);

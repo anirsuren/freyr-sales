@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { OUTCOME_META } from "@/lib/utils";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
+import { getDataMode } from "@/lib/dataMode";
 import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+  isWorkflowOwnerOrManager,
+  verifiedWorkflowActor,
+} from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -14,23 +15,51 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const principal = await authenticatedRequestPrincipal(req);
-  const actorName =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  const [actorName, actor] = await Promise.all([
+    authenticatedRequestActorName(req),
+    verifiedWorkflowActor(req),
+  ]);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const db = getDb();
 
   const session = await db.pitchSessions.get((await params).id);
-  const customerId = body.customer_id || session?.customer_id;
-  const contactId = body.contact_id || session?.contact_id;
+  if (!session) {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+  // The route identifies the pitch session, so its CRM links are authoritative.
+  // Caller-supplied customer/contact ids could otherwise create an interaction
+  // attached to unrelated records while claiming this pitch session.
+  const customerId = session.customer_id;
+  const contactId = session.contact_id;
 
   if (!body.outcome || !customerId || !contactId) {
     return NextResponse.json(
-      { error: "outcome, customer_id and contact_id are required" },
+      { error: "outcome is required" },
       { status: 400 }
+    );
+  }
+
+  const customer = await db.customers.get(customerId);
+  if (!customer) {
+    return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  }
+  if (
+    getDataMode() === "live" &&
+    !isWorkflowOwnerOrManager(
+      actor,
+      customer.owner_user_id,
+      customer.owner
+    )
+  ) {
+    return NextResponse.json(
+      { error: "You can log outcomes only for accounts assigned to you." },
+      { status: 403 }
     );
   }
 
@@ -44,7 +73,6 @@ export async function POST(
     logged_by: actorName,
   });
 
-  const customer = await db.customers.get(customerId);
   const contact = await db.contacts.get(contactId);
   const label = OUTCOME_META[body.outcome]?.label || body.outcome;
   notifyTelegram(

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendTelegram } from "@/lib/telegram";
 import { hasTelegram } from "@/lib/env";
+import { canManageReviewQueue } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,12 @@ export const dynamic = "force-dynamic";
 // Email delivery (SMTP) is pending; when a Telegram bot is configured the
 // digest is delivered there, otherwise we report that no channel is wired.
 export async function POST(req: Request) {
+  if (!(await canManageReviewQueue())) {
+    return NextResponse.json(
+      { ok: false, error: "Manager access is required to send a workspace digest." },
+      { status: 403 }
+    );
+  }
   let text = "";
   try {
     const body = await req.json();

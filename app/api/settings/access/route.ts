@@ -33,8 +33,15 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const role: WorkspaceRole = ROLES.has(body.role) ? body.role : "sales";
   try {
+    let invitationDelivery = null;
     if (body.action === "invite") {
-      await inviteWorkspaceUser(grant.workspaceId, grant.userId, body.email || "", role);
+      invitationDelivery = await inviteWorkspaceUser(
+        grant.workspaceId,
+        grant.userId,
+        body.name || "",
+        body.email || "",
+        role
+      );
     } else if (body.action === "approve" || body.action === "reject") {
       await reviewAccessRequest(
         grant.workspaceId,
@@ -57,6 +64,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({
       ok: true,
+      invitationDelivery,
       directory: await listWorkspaceAccess(grant.workspaceId),
     });
   } catch (error) {

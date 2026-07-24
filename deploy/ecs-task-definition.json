@@ -20,7 +20,7 @@
         { "name": "AUTH_PUBLIC_ORIGIN", "value": "https://freyrsales.dev.freyrapps.com" },
         { "name": "ACCESS_CONTROL_MODE", "value": "approval" },
         { "name": "DEFAULT_DATA_MODE", "value": "mock" },
-        { "name": "DATA_MODE_LOCKED", "value": "0" }
+        { "name": "DATA_MODE_LOCKED", "value": "1" }
       ],
       "secrets": [
         { "name": "ANTHROPIC_API_KEY", "valueFrom": "${APP_SECRETS_ARN}:ANTHROPIC_API_KEY::" },

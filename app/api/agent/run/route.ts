@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { playRunSteps } from "@/lib/agent";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,14 @@ export const dynamic = "force-dynamic";
 // the compliance gate, so it's the transparent log of an end-to-end play:
 // research → match → draft → approved → sent. Mock-first; with ANTHROPIC_API_KEY
 // the steps would be real LLM calls.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const customerId = String(body.customerId || "");
   const subject = body.subject ? String(body.subject).slice(0, 200) : "";
@@ -39,6 +47,8 @@ export async function POST(req: Request) {
 
   await db.agentRuns.create({
     kind: "play",
+    created_by_user_id: actor.userId,
+    created_by: actor.name,
     title: `Ran a full outreach play for ${customer.company_name}`,
     customer_id: customerId,
     company: customer.company_name,

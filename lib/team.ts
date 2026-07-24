@@ -35,9 +35,9 @@ export function repPhone(name: string): string {
 }
 
 // Deep-link straight into a Microsoft Teams chat with this teammate.
-export function teamsChatUrl(name: string): string {
+export function teamsChatUrl(name: string, verifiedEmail?: string | null): string {
   return `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(
-    repEmail(name)
+    verifiedEmail?.trim() || repEmail(name)
   )}`;
 }
 
@@ -53,13 +53,13 @@ const TITLES = [
 // Suren shows as "Senior Sales Rep" in the sidebar; Mark Miller is the manager
 // (matches Settings › Team). Everyone else gets a stable sales title.
 export function repTitle(name: string): string {
-  if (name === "Anir Suren") return "Senior Sales Rep";
+  if (name === "Suren Dheen") return "Senior Sales Rep";
   if (name === "Mark Miller") return "Regional Sales Manager";
   return TITLES[hashName(name) % TITLES.length];
 }
 
 export function repRole(name: string): "Admin" | "Manager" | "Rep" {
-  if (name === "Anir Suren") return "Admin";
+  if (name === "Suren Dheen") return "Admin";
   if (name === "Mark Miller") return "Manager";
   return "Rep";
 }

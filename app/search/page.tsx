@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getRecent, type RecentItem } from "@/lib/recent";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
 type Result = { type: string; label: string; sublabel: string; href: string };
 
@@ -53,6 +54,7 @@ export default function SearchPage() {
 }
 
 function SearchInner() {
+  const currentUser = useCurrentUser();
   const params = useSearchParams();
   const router = useRouter();
   const [q, setQ] = useState(params.get("q") || "");
@@ -60,7 +62,7 @@ function SearchInner() {
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState<RecentItem[]>([]);
 
-  useEffect(() => setRecent(getRecent()), []);
+  useEffect(() => setRecent(getRecent(currentUser.id)), [currentUser.id]);
 
   useEffect(() => {
     const term = q.trim();

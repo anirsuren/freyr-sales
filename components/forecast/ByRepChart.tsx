@@ -9,11 +9,15 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
-import { formatMoney, CURRENT_REP } from "@/lib/pipeline";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { formatMoney } from "@/lib/pipeline";
 import { VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 
 export type ByRep = {
+  identityKey: string;
+  memberId: string | null;
   name: string;
+  slug: string;
   weighted: number;
   open: number;
   pct: number;
@@ -51,10 +55,8 @@ const SORTS: ColorOption[] = [
   },
 ];
 
-const slugify = (s: string) =>
-  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
 export function ByRepChart({ reps }: { reps: ByRep[] }) {
+  const currentUser = useCurrentUser();
   const [sort, setSort] = useState("weighted");
   const sorted = [...reps].sort((a, b) => {
     if (sort === "name") return a.name.localeCompare(b.name);
@@ -63,7 +65,13 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
     return b.weighted - a.weighted;
   });
   const max = Math.max(...reps.map((r) => r.weighted), 1);
-  const yourRank = sorted.findIndex((r) => r.name === CURRENT_REP) + 1;
+  const yourRank =
+    sorted.findIndex(
+      (r) =>
+        !!r.memberId &&
+        !!currentUser.memberId &&
+        r.memberId === currentUser.memberId
+    ) + 1;
 
   return (
     <Card>
@@ -88,9 +96,11 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
 
       <div className="flex items-stretch justify-between gap-1.5 h-[240px]">
         {sorted.map((r, i) => {
-          const you = r.name === CURRENT_REP;
+          const you =
+            !!r.memberId &&
+            !!currentUser.memberId &&
+            r.memberId === currentUser.memberId;
           const first = r.name.split(" ")[0];
-          const slug = slugify(r.name);
           const color = you ? VIZ.blue : VIZ_SERIES[i % VIZ_SERIES.length];
           const barH = Math.max((r.weighted / max) * 140, 6);
           const hover = (
@@ -157,8 +167,8 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
           );
           return (
             <Link
-              key={r.name}
-              href={`/analytics/reps/${slug}`}
+              key={r.identityKey}
+              href={`/analytics/reps/${r.slug}`}
               className={`group flex-1 min-w-0 h-full flex flex-col items-center gap-1.5 pt-1 rounded-lg transition-colors ${
                 you ? "bg-blue-light/60 ring-1 ring-blue-primary/30" : ""
               }`}

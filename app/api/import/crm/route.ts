@@ -1,5 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getDataMode } from "@/lib/dataMode";
+import {
+  memberAssignmentResponse,
+  verifiedOwnerAssignment,
+  type VerifiedOwnerAssignment,
+} from "@/lib/memberAssignments";
+import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { isAdmin } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
@@ -32,8 +39,18 @@ function parseCsv(input: string): string[][] {
 
 const normalize = (value: string) => value.trim().toLowerCase().replace(/[\s-]+/g, "_");
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+  const liveScope =
+    getDataMode() === "live"
+      ? await verifiedRequestMemberScope(request)
+      : null;
+  if (getDataMode() === "live" && !liveScope) {
+    return NextResponse.json(
+      { error: "Verified workspace access is required for imports." },
+      { status: 403 }
+    );
+  }
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "Choose a CSV file." }, { status: 400 });
@@ -55,21 +72,44 @@ export async function POST(request: Request) {
   let skipped = 0;
   const errors: string[] = [];
   const value = (row: string[], key: string) => row[headers.indexOf(key)]?.trim() || "";
+  const ownerCache = new Map<string, Promise<VerifiedOwnerAssignment>>();
+  const resolveOwner = (owner: string) => {
+    const key = owner.toLocaleLowerCase();
+    let pending = ownerCache.get(key);
+    if (!pending) {
+      pending = verifiedOwnerAssignment(request, { owner });
+      ownerCache.set(key, pending);
+    }
+    return pending;
+  };
 
   for (const [offset, row] of rows.slice(1).entries()) {
     const line = offset + 2;
     const companyName = value(row, "company_name");
     if (!companyName) { skipped++; errors.push(`Row ${line}: company_name is empty.`); continue; }
     try {
-      let customer = await db.customers.findByName(companyName);
+      const rawOwner = value(row, "owner");
+      const assignment = rawOwner
+        ? await resolveOwner(rawOwner)
+        : {
+            owner: null,
+            owner_user_id: null,
+            workspace_id: liveScope?.workspaceId,
+          };
+      let customer = await db.customers.findByName(
+        companyName,
+        liveScope?.workspaceId
+      );
       const customerPatch = {
         company_name: companyName,
+        workspace_id: assignment.workspace_id || null,
         website_url: value(row, "website_url") || null,
         industry: value(row, "industry") || null,
         geography: value(row, "geography") || null,
         size_tier: (["small", "mid", "large"].includes(value(row, "size_tier").toLowerCase())
           ? value(row, "size_tier").toLowerCase() : null) as "small" | "mid" | "large" | null,
-        owner: value(row, "owner") || null,
+        owner: assignment.owner,
+        owner_user_id: assignment.owner_user_id,
       };
       if (customer) customer = (await db.customers.update(customer.id, customerPatch)) || customer;
       else { customer = await db.customers.create(customerPatch); customers++; }
@@ -88,6 +128,17 @@ export async function POST(request: Request) {
         contacts++;
       }
     } catch (error) {
+      const assignmentError = memberAssignmentResponse(error);
+      if (assignmentError) {
+        skipped++;
+        errors.push(
+          `Row ${line}: ${
+            ((await assignmentError.json()) as { error?: string }).error ||
+            "invalid owner"
+          }`
+        );
+        continue;
+      }
       skipped++;
       errors.push(`Row ${line}: ${error instanceof Error ? error.message : "import failed"}`);
     }

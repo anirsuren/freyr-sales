@@ -13,9 +13,11 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useToast } from "@/components/ui/Toast";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { cn, formatDateTime, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
 import { toCSV, downloadCSV } from "@/lib/csv";
-import { REPS } from "@/lib/pipeline";
+import { repOptionsFor } from "@/lib/pipeline";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { HoverCard } from "@/components/ui/HoverCard";
 import type { Customer } from "@/lib/types";
@@ -134,11 +136,19 @@ function HealthBar({ health }: { health: AccountHealth }) {
 
 export function CustomersBrowser({
   customers,
+  includeDemoTeam,
 }: {
   customers: EnrichedCustomer[];
+  includeDemoTeam: boolean;
 }) {
   const { toast } = useToast();
   const router = useRouter();
+  const currentUser = useCurrentUser();
+  const ownerOptions = repOptionsFor(currentUser.name, includeDemoTeam);
+  const perPageStorageKey = userScopedStorageKey(
+    "freyr.customers.perPage",
+    currentUser.id
+  );
   const [query, setQuery] = useState("");
   const [healthFilter, setHealthFilter] = useState("all");
   const [sort, setSort] = useState("recent");
@@ -149,15 +159,17 @@ export function CustomersBrowser({
   // grid) instead of a cramped 8.
   const [perPage, setPerPage] = useState(12);
   useEffect(() => {
-    const v = Number(localStorage.getItem("freyr.customers.perPage"));
+    setPerPage(12);
+    setPage(1);
+    const v = Number(localStorage.getItem(perPageStorageKey));
     if (v && [8, 12, 24, 48].includes(v)) setPerPage(v);
-  }, []);
+  }, [perPageStorageKey]);
   function changePerPage(v: string) {
     const n = Number(v);
     setPerPage(n);
     setPage(1);
     try {
-      localStorage.setItem("freyr.customers.perPage", String(n));
+      localStorage.setItem(perPageStorageKey, String(n));
     } catch {}
   }
   const PER_PAGE = perPage;
@@ -165,9 +177,22 @@ export function CustomersBrowser({
   // bulk actions (V4 #7)
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkOwner, setBulkOwner] = useState(REPS[0]);
+  const [bulkOwner, setBulkOwner] = useState(currentUser.name);
   const [assigning, setAssigning] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+
+  useEffect(() => {
+    setQuery("");
+    setHealthFilter("all");
+    setSort("recent");
+    setView("grid");
+    setPage(1);
+    setSelectMode(false);
+    setSelected(new Set());
+    setBulkOwner(currentUser.name);
+    setAssigning(false);
+    setAnalyzing(false);
+  }, [currentUser.id, currentUser.name]);
 
   function toggleSel(id: string) {
     setSelected((s) => {
@@ -259,17 +284,36 @@ export function CustomersBrowser({
     if (!ids.length) return;
     setAssigning(true);
     try {
-      await Promise.all(
+      const results = await Promise.all(
         ids.map((id) =>
           fetch(`/api/customers/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ owner: bulkOwner }),
-          }).catch(() => {})
+            body: JSON.stringify({
+              owner: bulkOwner,
+              owner_user_id:
+                bulkOwner === currentUser.name
+                  ? currentUser.memberId || undefined
+                  : undefined,
+            }),
+          }).catch(() => null)
         )
       );
-      toast(`Assigned ${ids.length} account${ids.length === 1 ? "" : "s"} to ${bulkOwner}`);
-      setSelected(new Set());
+      const assigned = results.filter((response) => response?.ok).length;
+      if (assigned) {
+        toast(
+          `Assigned ${assigned} account${assigned === 1 ? "" : "s"} to ${bulkOwner}`
+        );
+      }
+      if (assigned !== ids.length) {
+        toast(
+          `${ids.length - assigned} account${
+            ids.length - assigned === 1 ? "" : "s"
+          } could not be reassigned.`,
+          "error"
+        );
+      }
+      if (assigned === ids.length) setSelected(new Set());
     } finally {
       setAssigning(false);
     }
@@ -440,7 +484,7 @@ export function CustomersBrowser({
               onChange={(e) => setBulkOwner(e.target.value)}
               className="bg-white border border-border rounded-md px-2 py-1.5 text-[13px] outline-none focus:border-blue-primary"
             >
-              {REPS.map((r) => (
+              {ownerOptions.map((r) => (
                 <option key={r} value={r}>
                   {r}
                 </option>

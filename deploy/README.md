@@ -6,8 +6,9 @@ pipeline verifies every commit and publishes an immutable container image.
 Required before production traffic:
 
 1. Give Anir access to the `Freyr-Sales` Azure DevOps project/repository.
-2. Create an Azure DevOps Docker service connection named by
-   `AWS_ECR_DOCKER_SERVICE_CONNECTION` with push-only access to the ECR repo.
+2. Create an Azure DevOps AWS service connection named `freyr-sales-aws`. Its
+   role needs ECR push access plus permission to read/register ECS task
+   definitions and update the configured ECS service.
 3. Render `ecs-task-definition.json` with the account's ECS roles, ECR image,
    region, and a Secrets Manager JSON secret ARN. Never place credentials in
    pipeline variables or chat.
@@ -31,18 +32,22 @@ Required before production traffic:
 7. Set the target-group health path to `/api/health` and enable deployment
    rollback/circuit breaker.
 8. Apply every SQL migration in filename order, from
-   `001_initial_schema.sql` through the migration numbered `009`, to the
+   `001_initial_schema.sql` through the migration numbered `012`, to the
    approved Supabase/PostgreSQL service before starting the live task.
    Migration 006 is required for provider-aware Supabase identities, and
    migration 007 introduces the original auth hook. Migration 008 stores
    versioned product-tour progress for each approved workspace member, and
    migration 009 replaces the original domain policy with an invite-only auth
-   hook. The offering catalog is hydrated from its durable row when each ECS
-   task starts.
+   hook. Migration 010 adds stable member IDs to record ownership, and
+   migration 012 makes the inviter-selected full name the member’s canonical
+   audit identity. The offering catalog is hydrated from its durable row when
+   each ECS task starts.
 9. Store all provider and database credentials in AWS Secrets Manager and rotate
    any value previously pasted into chat.
-10. Run a live-mode smoke test after deploy. Use a separate mock-configured demo
-    task or local environment for demonstrations.
+10. Run an authenticated mock-mode smoke test after deploying the current AWS
+    sales-demo release. Before a business-data launch, deploy a separately
+    reviewed live-mode task definition and run the live-mode smoke test against
+    that release.
 
 ## Supabase authentication setup
 
@@ -60,14 +65,16 @@ deploying:
    project.
 3. Configure production SMTP so confirmation messages are sent from the
    approved Freyr sender instead of the development mail service.
-4. Apply migrations `001` through `009` in order. Migration `008` creates the
+4. Apply migrations `001` through `012` in order. Migration `008` creates the
    service-role-only, per-user product-tour state table. Migration `009`
    replaces the earlier domain guard with an invitation check. In
    **Authentication → Auth Hooks**, configure **Before User Created** to use the
    Postgres function `public.freyr_before_user_created`. The hook allows any
    syntactically valid email domain only when that exact normalized address has
    a pending, unexpired workspace invitation. This prevents the public Supabase
-   signup API from bypassing the application's invitation check.
+   signup API from bypassing the application's invitation check. Migrations
+   `010` through `012` add stable ownership, agent-run creator IDs, and
+   inviter-controlled canonical names.
 
 The JSON secret referenced by `APP_SECRETS_ARN` must contain all of these keys:
 
@@ -83,6 +90,13 @@ The JSON secret referenced by `APP_SECRETS_ARN` must contain all of these keys:
   Keep it stable across deployments and task replacements.
 - `OWNER_EMAILS`: a comma-separated bootstrap allowlist. Initially set it to
   the exact verified email address(es) that may create the first administrator.
+- `RESEND_API_KEY`: the server-only Resend key used for workspace invitations.
+  Invitation delivery is transactional and remains active while the UI is
+  showing mock data.
+
+The optional `EMAIL_FROM` task environment variable may override the default
+`Freyr <sales@freyrsolutions.com>` sender. Whichever address is used must be
+verified with the email provider before inviting users.
 
 The Azure DevOps variable group must also provide
 `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to the container
@@ -122,8 +136,9 @@ first invitation before the owner signs up:
 
 After bootstrap, owners must invite every additional user from **Settings →
 Team**. The invitation may use any valid email domain and expires after 14
-days. A person without a matching live invitation cannot create an account or
-receive an application access grant.
+days. The application emails the recipient a prefilled signup link through
+Resend. A person without a matching live invitation cannot create an account
+or receive an application access grant.
 
 ## Access-control settings
 
@@ -141,12 +156,19 @@ domain alone never grants access. Catalog editors may maintain offerings and
 sales materials but cannot manage workspace access or security. Sales reps can
 view offerings and use them in pitches without editing the catalog.
 
-The current sales-demo task sets `DEFAULT_DATA_MODE=mock` and
-`DATA_MODE_LOCKED=0`. It opens with the complete sample workspace and allows
-the Settings toggle to switch between mock and the clean Supabase-backed real
-workspace. Before a production launch, use a separate task definition with
-`DEFAULT_DATA_MODE=live` and `DATA_MODE_LOCKED=1` so every task uses the same
-deployment-controlled mode.
+## Data-mode release policy
+
+The current AWS sales-demo task deliberately sets `DEFAULT_DATA_MODE=mock` and
+`DATA_MODE_LOCKED=1`. Authentication, verified-email signup, invitations, and
+per-user onboarding remain real, while the CRM records shown in the product are
+the complete sample workspace. Settings keeps Mock Mode visible for product-tour
+guidance, labels it as deployment controlled, and does not allow a browser to
+switch the running service to live data.
+
+For a business-data launch, use a separate reviewed task definition with
+`DEFAULT_DATA_MODE=live` and `DATA_MODE_LOCKED=1`. Do not unlock data mode on a
+shared or multi-task ECS service: every task and every signed-in browser must
+resolve the same deployment-controlled mode.
 
 The deployment stage builds and pushes the immutable commit image, registers a
 new revision of the existing task family, updates the configured existing ECS

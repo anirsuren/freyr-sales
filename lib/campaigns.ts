@@ -21,6 +21,8 @@ export interface Campaign {
   recipient_contact_ids: string[];
   objective: CampaignObjective;
   owner: string;
+  owner_user_id: string | null;
+  workspace_id: string | null;
   audience_summary: string;
   scheduled_at: string | null;
   status: CampaignStatus;
@@ -60,7 +62,9 @@ function seedCampaigns(): Campaign[] {
         "cont-012",
       ],
       objective: "awareness",
-      owner: "Anir Suren",
+      owner: "Suren Dheen",
+      owner_user_id: null,
+      workspace_id: null,
       audience_summary: "Regulatory leaders at biopharma accounts",
       scheduled_at: null,
       status: "sent",
@@ -86,7 +90,9 @@ function seedCampaigns(): Campaign[] {
         "cont-011",
       ],
       objective: "pipeline",
-      owner: "Anir Suren",
+      owner: "Suren Dheen",
+      owner_user_id: null,
+      workspace_id: null,
       audience_summary: "Regulatory intelligence prospects",
       scheduled_at: null,
       status: "queued",
@@ -106,7 +112,9 @@ function seedCampaigns(): Campaign[] {
       body: "Draft — pick the labeling offering to ground this, then tighten the hook before queueing.",
       recipient_contact_ids: ["cont-008", "cont-004", "cont-010"],
       objective: "pipeline",
-      owner: "Anir Suren",
+      owner: "Suren Dheen",
+      owner_user_id: null,
+      workspace_id: null,
       audience_summary: "Labeling and compliance stakeholders",
       scheduled_at: null,
       status: "draft",
@@ -153,6 +161,8 @@ export function createCampaign(data: {
   recipient_contact_ids: string[];
   objective?: CampaignObjective;
   owner?: string;
+  owner_user_id?: string | null;
+  workspace_id?: string | null;
   audience_summary?: string;
   scheduled_at?: string | null;
 }): Campaign {
@@ -165,7 +175,9 @@ export function createCampaign(data: {
     body: data.body,
     recipient_contact_ids: data.recipient_contact_ids,
     objective: data.objective || "pipeline",
-    owner: data.owner || "Anir Suren",
+    owner: data.owner?.trim() || "Unassigned",
+    owner_user_id: data.owner_user_id || null,
+    workspace_id: data.workspace_id || null,
     audience_summary: data.audience_summary || "Selected contacts",
     scheduled_at: data.scheduled_at || null,
     status: "draft",

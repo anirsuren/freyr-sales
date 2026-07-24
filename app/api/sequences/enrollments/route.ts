@@ -1,27 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
 import { getSequence } from "@/lib/sequences";
+import { getDataMode } from "@/lib/dataMode";
 import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+  isWorkflowOwnerOrManager,
+  verifiedWorkflowActor,
+} from "@/lib/workflowAuthorization";
 
 export async function POST(request: NextRequest) {
-  const principal = await authenticatedRequestPrincipal(request);
-  const actorName =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  const [actorName, actor] = await Promise.all([
+    authenticatedRequestActorName(request),
+    verifiedWorkflowActor(request),
+  ]);
+  if (!actor) {
+    return NextResponse.json(
+      { ok: false, error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await request.json().catch(() => ({}));
   const sequenceId = String(body.sequenceId || "");
-  const customerIds = Array.isArray(body.customerIds)
+  const customerIds: string[] = Array.isArray(body.customerIds)
     ? body.customerIds.map(String)
     : [];
   const sequence = getSequence(sequenceId);
   if (!sequence || !customerIds.length) {
     return NextResponse.json({ ok: false, error: "Choose a sequence and at least one account." }, { status: 400 });
+  }
+  if (
+    getDataMode() === "live" &&
+    ((sequence.workspace_id && sequence.workspace_id !== actor.workspaceId) ||
+      !isWorkflowOwnerOrManager(
+        actor,
+        sequence.owner_user_id,
+        sequence.owner
+      ))
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "You can enroll accounts only in sequences you own." },
+      { status: 403 }
+    );
   }
   const db = getDb();
   const [customers, contacts, existing] = await Promise.all([
@@ -30,6 +49,28 @@ export async function POST(request: NextRequest) {
     db.sequenceEnrollments.list(),
   ]);
   const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+  if (
+    getDataMode() === "live" &&
+    customerIds.some((customerId) => {
+      const customer = customerById.get(customerId);
+      return (
+        !customer ||
+        !isWorkflowOwnerOrManager(
+          actor,
+          customer.owner_user_id,
+          customer.owner
+        )
+      );
+    })
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "You can enroll only accounts assigned to you.",
+      },
+      { status: 403 }
+    );
+  }
   const enrolled = new Set(
     existing
       .filter((item) => item.sequence_id === sequenceId)
@@ -62,13 +103,56 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true, enrolled: created });
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
+  const actor = await verifiedWorkflowActor(request);
+  if (!actor) {
+    return NextResponse.json(
+      { ok: false, error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await request.json().catch(() => ({}));
   const enrollmentId = String(body.enrollmentId || "");
   if (!enrollmentId) {
     return NextResponse.json({ ok: false, error: "Enrollment is required." }, { status: 400 });
   }
-  const removed = await getDb().sequenceEnrollments.remove(enrollmentId);
+  const db = getDb();
+  const enrollment = await db.sequenceEnrollments.get(enrollmentId);
+  if (!enrollment) {
+    return NextResponse.json(
+      { ok: false, error: "Enrollment not found." },
+      { status: 404 }
+    );
+  }
+  const [sequence, customer] = await Promise.all([
+    Promise.resolve(getSequence(enrollment.sequence_id)),
+    db.customers.get(enrollment.customer_id),
+  ]);
+  if (
+    getDataMode() === "live" &&
+    (!sequence ||
+      !customer ||
+      (sequence.workspace_id && sequence.workspace_id !== actor.workspaceId) ||
+      !isWorkflowOwnerOrManager(
+        actor,
+        sequence.owner_user_id,
+        sequence.owner
+      ) ||
+      !isWorkflowOwnerOrManager(
+        actor,
+        customer.owner_user_id,
+        customer.owner
+      ))
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "You can remove only enrollments for your own accounts and sequences.",
+      },
+      { status: 403 }
+    );
+  }
+  const removed = await db.sequenceEnrollments.remove(enrollmentId);
   return NextResponse.json(
     removed ? { ok: true } : { ok: false, error: "Enrollment not found." },
     { status: removed ? 200 : 404 }

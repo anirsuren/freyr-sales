@@ -5,6 +5,7 @@ import { buildWeeklyReview } from "@/lib/agent";
 import { narrateReview } from "@/lib/claude";
 import { buildDeals, formatMoney } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
+import { canManageReviewQueue } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,12 @@ export const dynamic = "force-dynamic";
 // configured channel (Telegram/email, mock when no key). Print/PDF is handled
 // client-side; this is the "email it" path.
 export async function POST() {
+  if (!(await canManageReviewQueue())) {
+    return NextResponse.json(
+      { error: "Manager access is required to share the workspace review." },
+      { status: 403 }
+    );
+  }
   const db = getDb();
   const [sessions, customers, contacts, interactions, runs] = await Promise.all([
     db.pitchSessions.list(),

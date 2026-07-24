@@ -4,6 +4,7 @@ import { buildDeals, formatMoney, STAGES, STAGE_COLOR, type Stage } from "@/lib/
 import { accountHealth, accountHealthSeries } from "@/lib/health";
 import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import type { TipItem } from "@/components/charts/Charts";
+import { getDataMode } from "@/lib/dataMode";
 
 export const metadata = { title: "Customers" };
 export const dynamic = "force-dynamic";
@@ -114,7 +115,10 @@ export default async function CustomersPage() {
 
   return (
     <div>
-      <CustomersBrowser customers={enriched} />
+      <CustomersBrowser
+        customers={enriched}
+        includeDemoTeam={getDataMode() === "mock"}
+      />
     </div>
   );
 }

@@ -4,8 +4,6 @@
 import {
   buildDeals,
   ROTTING_DAYS,
-  ownerFor,
-  CURRENT_REP,
   formatMoney,
   type Deal,
 } from "./pipeline";
@@ -524,7 +522,7 @@ export function buildActDraft(
   },
   contact: { full_name?: string | null; job_title?: string | null } | null,
   dueLabel: string,
-  rep = "Anir Suren"
+  rep: string
 ): { title: string; body: string } {
   const company = customer.company_name;
   const industry = customer.industry || null;
@@ -1062,7 +1060,9 @@ export interface FocusPrefs {
 export function focusActions(
   actions: AgentAction[],
   customers: Customer[],
-  prefs: FocusPrefs | null | undefined
+  prefs: FocusPrefs | null | undefined,
+  _currentRepName: string,
+  currentMemberId?: string | null
 ): { actions: AgentAction[]; hidden: number } {
   if (!prefs || (!prefs.focus_industry && !prefs.only_mine)) {
     return { actions, hidden: 0 };
@@ -1071,7 +1071,11 @@ export function focusActions(
   const keep = actions.filter((a) => {
     const c = custById[a.customerId];
     if (prefs.focus_industry && c?.industry !== prefs.focus_industry) return false;
-    if (prefs.only_mine && ownerFor(c) !== CURRENT_REP) return false;
+    if (
+      prefs.only_mine &&
+      (!currentMemberId || c?.owner_user_id !== currentMemberId)
+    )
+      return false;
     return true;
   });
   return { actions: keep, hidden: actions.length - keep.length };

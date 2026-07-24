@@ -15,6 +15,7 @@ import type {
   AgentPrefs,
   DraftSnippet,
   AgentChatMessage,
+  WorkspaceMemberScope,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -28,11 +29,19 @@ interface MockStore {
   interactions: Interaction[];
   agentRuns: AgentRun[];
   sequenceEnrollments: SequenceEnrollment[];
-  agentPrefs: AgentPrefs;
-  draftSnippets: DraftSnippet[];
-  agentChats: AgentChatMessage[];
+  agentPrefs: ScopedAgentPrefs[];
+  draftSnippets: ScopedDraftSnippet[];
+  agentChats: ScopedAgentChatMessage[];
   freyrKb: FreyrKb;
 }
+
+type ScopeColumns = {
+  workspace_id: string;
+  user_id: string;
+};
+type ScopedAgentPrefs = AgentPrefs & ScopeColumns;
+type ScopedDraftSnippet = DraftSnippet & ScopeColumns;
+type ScopedAgentChatMessage = AgentChatMessage & ScopeColumns;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -176,7 +185,7 @@ function seed(): MockStore {
       // days ago, with a comfortably-upcoming follow-up (~3 weeks out so it
       // stays in the future as the demo date drifts) — not months overdue.
       follow_up_date: iso(-21).slice(0, 10),
-      logged_by: "Anir Suren",
+      logged_by: "Suren Dheen",
       created_at: isoAt(5, "int-001"),
     },
   ];
@@ -307,6 +316,7 @@ function seed(): MockStore {
       contactTitle: s.title,
       service: s.service,
       context: s.csum,
+      repName: "Suren Dheen",
     });
     pitchSessions.push({
       id: sid,
@@ -342,7 +352,7 @@ function seed(): MockStore {
         outcome: s.outcome,
         notes: s.note || null,
         follow_up_date: s.follow ? iso(-s.follow) : null,
-        logged_by: "Anir Suren",
+        logged_by: "Suren Dheen",
         created_at: isoAt(Math.max(0, s.days - 1), `int-${s.id}`),
       });
     }
@@ -407,33 +417,6 @@ function seed(): MockStore {
     },
   ];
 
-  const agentPrefs: AgentPrefs = {
-    id: "prefs-001",
-    focus_industry: null,
-    only_mine: false,
-    autopilot_reengage: true,
-    autopilot_stabilize: true,
-    autopilot_max_value: null,
-    draft_tone: "warm",
-    autopilot_cadence: "off",
-    autopilot_last_run: null,
-    digest_cadence: "off",
-    digest_last_sent: null,
-    updated_at: iso(0),
-  };
-
-  // A seeded snippet so the library reads as live and "Insert" works on day one.
-  const draftSnippets: DraftSnippet[] = [
-    {
-      id: "snip-seed-001",
-      title: "Submission-timeline intro",
-      subject: "Hitting your submission timeline",
-      body: `Hi there,\n\nFreyr's regulatory submission team helps clinical-stage teams hit FDA/EMA timelines without adding headcount. Worth a 20-minute call to see if it fits your near-term milestones?\n\nBest,\nAnir Suren · Freyr`,
-      uses: 4,
-      created_at: iso(3),
-    },
-  ];
-
   return {
     customers,
     contacts,
@@ -441,8 +424,10 @@ function seed(): MockStore {
     interactions,
     agentRuns,
     sequenceEnrollments,
-    agentPrefs,
-    draftSnippets,
+    // Private defaults are cloned lazily for each verified member. They must not
+    // be shared merely because two people use the same mock workspace process.
+    agentPrefs: [],
+    draftSnippets: [],
     agentChats: [],
     freyrKb,
   };
@@ -455,7 +440,7 @@ function seed(): MockStore {
 // doesn't treat it as a source change (which would loop the dev server), and
 // it's DISABLED under the test flag so the Playwright suite always sees a fresh
 // seed. Bump SCHEMA_VERSION whenever the seed shape changes to auto-reseed.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 
@@ -495,6 +480,56 @@ if (!globalThis.__FREYR_MOCK_STORE__) {
   globalThis.__FREYR_MOCK_STORE__ = store;
 }
 
+function inScope(
+  record: ScopeColumns,
+  scope: WorkspaceMemberScope
+): boolean {
+  return (
+    record.workspace_id === scope.workspaceId &&
+    record.user_id === scope.userId
+  );
+}
+
+function ensurePersonalDefaults(scope: WorkspaceMemberScope): ScopedAgentPrefs {
+  const existing = store.agentPrefs.find((prefs) => inScope(prefs, scope));
+  if (existing) return existing;
+
+  const scopeColumns: ScopeColumns = {
+    workspace_id: scope.workspaceId,
+    user_id: scope.userId,
+  };
+  const prefs: ScopedAgentPrefs = {
+    ...scopeColumns,
+    id: uuidv4(),
+    focus_industry: null,
+    only_mine: false,
+    autopilot_reengage: true,
+    autopilot_stabilize: true,
+    autopilot_max_value: null,
+    draft_tone: "warm",
+    autopilot_cadence: "off",
+    autopilot_last_run: null,
+    digest_cadence: "off",
+    digest_last_sent: null,
+    updated_at: new Date().toISOString(),
+  };
+  // Clone the starter for this member. Deleting it later does not make it
+  // reappear because the member's preferences remain as the seed marker.
+  const starter: ScopedDraftSnippet = {
+    ...scopeColumns,
+    id: uuidv4(),
+    title: "Submission-timeline intro",
+    subject: "Hitting your submission timeline",
+    body: `Hi there,\n\nFreyr's regulatory submission team helps clinical-stage teams hit FDA/EMA timelines without adding headcount. Worth a 20-minute call to see if it fits your near-term milestones?\n\nBest,\nFreyr Solutions`,
+    uses: 4,
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  };
+  store.agentPrefs.push(prefs);
+  store.draftSnippets.push(starter);
+  persist();
+  return prefs;
+}
+
 // ---------------------------------------------------------------------------
 // CRUD operations matching the Supabase adapter signatures exactly.
 // ---------------------------------------------------------------------------
@@ -507,9 +542,11 @@ export const mockDb = {
       ),
     get: async (id: string) =>
       store.customers.find((c) => c.id === id) || null,
-    findByName: async (name: string) =>
+    findByName: async (name: string, workspaceId?: string) =>
       store.customers.find(
-        (c) => c.company_name.toLowerCase() === name.toLowerCase()
+        (c) =>
+          c.company_name.toLowerCase() === name.toLowerCase() &&
+          (!workspaceId || !c.workspace_id || c.workspace_id === workspaceId)
       ) || null,
     create: async (data: Partial<Customer>) => {
       const record: Customer = {
@@ -677,75 +714,128 @@ export const mockDb = {
     },
   },
   agentPrefs: {
-    get: async () => store.agentPrefs,
-    update: async (data: Partial<AgentPrefs>) => {
-      store.agentPrefs = {
-        ...store.agentPrefs,
+    get: async (scope: WorkspaceMemberScope) =>
+      ensurePersonalDefaults(scope),
+    update: async (
+      scope: WorkspaceMemberScope,
+      data: Partial<AgentPrefs>
+    ) => {
+      const current = ensurePersonalDefaults(scope);
+      const index = store.agentPrefs.findIndex((prefs) =>
+        inScope(prefs, scope)
+      );
+      store.agentPrefs[index] = {
+        ...current,
         ...data,
+        workspace_id: scope.workspaceId,
+        user_id: scope.userId,
         updated_at: new Date().toISOString(),
       };
       persist();
-      return store.agentPrefs;
+      return store.agentPrefs[index];
     },
   },
   draftSnippets: {
-    list: async () =>
-      [...store.draftSnippets].sort(
+    list: async (scope: WorkspaceMemberScope) => {
+      ensurePersonalDefaults(scope);
+      return store.draftSnippets
+        .filter((snippet) => inScope(snippet, scope))
+        .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ),
-    create: async (data: Partial<DraftSnippet>) => {
-      const record: DraftSnippet = {
+        );
+    },
+    create: async (
+      scope: WorkspaceMemberScope,
+      data: Partial<DraftSnippet>
+    ) => {
+      ensurePersonalDefaults(scope);
+      const record: ScopedDraftSnippet = {
         ...(data as DraftSnippet),
+        workspace_id: scope.workspaceId,
+        user_id: scope.userId,
         id: data.id || uuidv4(),
         created_at: new Date().toISOString(),
       };
       store.draftSnippets.unshift(record);
+      persist();
       return record;
     },
-    update: async (id: string, data: Partial<DraftSnippet>) => {
-      const idx = store.draftSnippets.findIndex((s) => s.id === id);
+    update: async (
+      scope: WorkspaceMemberScope,
+      id: string,
+      data: Partial<DraftSnippet>
+    ) => {
+      ensurePersonalDefaults(scope);
+      const idx = store.draftSnippets.findIndex(
+        (snippet) => snippet.id === id && inScope(snippet, scope)
+      );
       if (idx === -1) return null;
-      store.draftSnippets[idx] = { ...store.draftSnippets[idx], ...data };
+      store.draftSnippets[idx] = {
+        ...store.draftSnippets[idx],
+        ...data,
+        workspace_id: scope.workspaceId,
+        user_id: scope.userId,
+      };
+      persist();
       return store.draftSnippets[idx];
     },
-    bumpUse: async (id: string) => {
-      const idx = store.draftSnippets.findIndex((s) => s.id === id);
+    bumpUse: async (scope: WorkspaceMemberScope, id: string) => {
+      ensurePersonalDefaults(scope);
+      const idx = store.draftSnippets.findIndex(
+        (snippet) => snippet.id === id && inScope(snippet, scope)
+      );
       if (idx === -1) return null;
       store.draftSnippets[idx] = {
         ...store.draftSnippets[idx],
         uses: (store.draftSnippets[idx].uses || 0) + 1,
       };
+      persist();
       return store.draftSnippets[idx];
     },
-    remove: async (id: string) => {
+    remove: async (scope: WorkspaceMemberScope, id: string) => {
+      ensurePersonalDefaults(scope);
       const before = store.draftSnippets.length;
-      store.draftSnippets = store.draftSnippets.filter((s) => s.id !== id);
+      store.draftSnippets = store.draftSnippets.filter(
+        (snippet) => snippet.id !== id || !inScope(snippet, scope)
+      );
+      persist();
       return store.draftSnippets.length < before;
     },
   },
   agentChats: {
-    list: async (customerId: string) =>
+    list: async (scope: WorkspaceMemberScope, customerId: string) =>
       store.agentChats
-        .filter((m) => m.customer_id === customerId)
+        .filter(
+          (message) =>
+            message.customer_id === customerId && inScope(message, scope)
+        )
         .sort(
           (a, b) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         ),
-    create: async (data: Partial<AgentChatMessage>) => {
-      const record: AgentChatMessage = {
+    create: async (
+      scope: WorkspaceMemberScope,
+      data: Partial<AgentChatMessage>
+    ) => {
+      const record: ScopedAgentChatMessage = {
         ...(data as AgentChatMessage),
+        workspace_id: scope.workspaceId,
+        user_id: scope.userId,
         id: data.id || uuidv4(),
         created_at: new Date().toISOString(),
       };
       store.agentChats.push(record);
+      persist();
       return record;
     },
-    clear: async (customerId: string) => {
+    clear: async (scope: WorkspaceMemberScope, customerId: string) => {
       const before = store.agentChats.length;
       store.agentChats = store.agentChats.filter(
-        (m) => m.customer_id !== customerId
+        (message) =>
+          message.customer_id !== customerId || !inScope(message, scope)
       );
+      persist();
       return before - store.agentChats.length;
     },
   },

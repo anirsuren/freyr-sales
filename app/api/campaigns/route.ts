@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createCampaign, listCampaigns } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { descSnippet, FREYR_CONTEXT } from "@/lib/outreach";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
-import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import type { CampaignObjective } from "@/lib/campaigns";
 
 export async function GET() {
@@ -16,12 +12,14 @@ export async function GET() {
 // Create a campaign. When subject/body are omitted, drafts starter content
 // from the selected offering; the rep can edit it before queuing.
 export async function POST(req: NextRequest) {
-  const principal = await authenticatedRequestPrincipal(req);
-  const senderName =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { ok: false, error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  const senderName = actor.name;
   let body: {
     name?: string;
     offeringId?: string;
@@ -97,6 +95,8 @@ export async function POST(req: NextRequest) {
       : [],
     objective: body.objective,
     owner: senderName,
+    owner_user_id: actor.userId,
+    workspace_id: actor.workspaceId,
     audience_summary: body.audienceSummary,
     scheduled_at: body.scheduledAt || null,
   });

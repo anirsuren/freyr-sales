@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
 import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+  memberAssignmentResponse,
+  verifiedOwnerAssignment,
+} from "@/lib/memberAssignments";
+import { getDataMode } from "@/lib/dataMode";
+import {
+  isWorkflowOwnerOrManager,
+  verifiedWorkflowActor,
+} from "@/lib/workflowAuthorization";
 import type {
   AccountNote,
   AccountAttachment,
@@ -26,12 +31,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const principal = await authenticatedRequestPrincipal(req);
-  const actorName =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  const actorName = await authenticatedRequestActorName(req);
   const db = getDb();
   const customer = await db.customers.get((await params).id);
   if (!customer) {
@@ -43,8 +43,68 @@ export async function PATCH(
     body = await req.json();
   } catch {}
 
+  if (getDataMode() === "live") {
+    const actor = await verifiedWorkflowActor(req);
+    if (!actor) {
+      return NextResponse.json(
+        { error: "Verified workspace access required." },
+        { status: 403 }
+      );
+    }
+    const hasRecordedOwner =
+      !!customer.owner_user_id || !!customer.owner?.trim();
+    if (
+      hasRecordedOwner &&
+      !isWorkflowOwnerOrManager(
+        actor,
+        customer.owner_user_id,
+        customer.owner
+      )
+    ) {
+      return NextResponse.json(
+        { error: "You can update only accounts assigned to you." },
+        { status: 403 }
+      );
+    }
+  }
+
   const patch: Partial<Customer> = {};
-  if (typeof body.owner === "string") patch.owner = body.owner || null;
+  if (
+    typeof body.owner === "string" ||
+    typeof body.owner_user_id === "string"
+  ) {
+    try {
+      const assignment = await verifiedOwnerAssignment(req, {
+        owner: body.owner,
+        ownerUserId: body.owner_user_id,
+        currentOwner: customer.owner,
+        currentOwnerUserId: customer.owner_user_id,
+      });
+      if (
+        assignment.workspace_id &&
+        customer.workspace_id &&
+        customer.workspace_id !== assignment.workspace_id
+      ) {
+        return NextResponse.json(
+          { error: "Customer not found" },
+          { status: 404 }
+        );
+      }
+      patch.owner = assignment.owner;
+      patch.owner_user_id = assignment.owner_user_id;
+      if (assignment.workspace_id) {
+        patch.workspace_id = assignment.workspace_id;
+      }
+    } catch (error) {
+      return (
+        memberAssignmentResponse(error) ||
+        NextResponse.json(
+          { error: "Could not verify the selected owner." },
+          { status: 503 }
+        )
+      );
+    }
+  }
   if (typeof body.competitor === "string")
     patch.competitor = body.competitor.trim() || null;
   // Customer analysis fields — set on approval.
@@ -146,6 +206,43 @@ export async function PATCH(
     const d = body.addDeal;
     const str = (v: unknown, max = 200) =>
       v ? String(v).trim().slice(0, max) || null : null;
+    let dealOwner: Pick<AccountDeal, "owner" | "owner_user_id"> = {
+      owner: null,
+      owner_user_id: null,
+    };
+    if (d.owner != null || d.owner_user_id != null) {
+      try {
+        const assignment = await verifiedOwnerAssignment(req, {
+          owner: d.owner,
+          ownerUserId: d.owner_user_id,
+        });
+        if (
+          assignment.workspace_id &&
+          customer.workspace_id &&
+          customer.workspace_id !== assignment.workspace_id
+        ) {
+          return NextResponse.json(
+            { error: "Customer not found" },
+            { status: 404 }
+          );
+        }
+        dealOwner = {
+          owner: assignment.owner,
+          owner_user_id: assignment.owner_user_id,
+        };
+        if (assignment.workspace_id) {
+          patch.workspace_id = assignment.workspace_id;
+        }
+      } catch (error) {
+        return (
+          memberAssignmentResponse(error) ||
+          NextResponse.json(
+            { error: "Could not verify the selected deal owner." },
+            { status: 503 }
+          )
+        );
+      }
+    }
     const deal: AccountDeal = {
       id: uid("deal"),
       name: String(d.name).trim().slice(0, 160),
@@ -154,7 +251,7 @@ export async function PATCH(
       created_at: new Date().toISOString(),
       offering: str(d.offering),
       contact: str(d.contact),
-      owner: str(d.owner),
+      ...dealOwner,
       close_date: str(d.close_date, 40),
       next_step: str(d.next_step, 300),
       notes: str(d.notes, 1000),

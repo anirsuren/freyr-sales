@@ -32,6 +32,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import type { DataMode } from "@/lib/dataMode";
 import { getHomePath, isOfferingsOnly, isReleased } from "@/lib/release";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 
 // One flat, scannable list — no section headers, no scrolling. Reference/tool
 // pages (Knowledge base, Service catalog, Recordings) live in the account menu;
@@ -95,13 +96,15 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
   const currentUser = useCurrentUser();
+  const collapseStorageKey = userScopedStorageKey(COLLAPSE_KEY, currentUser.id);
 
   // restore persisted collapse state after mount (avoids hydration mismatch)
   useEffect(() => {
+    setCollapsed(false);
     try {
-      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+      setCollapsed(localStorage.getItem(collapseStorageKey) === "1");
     } catch {}
-  }, []);
+  }, [collapseStorageKey]);
 
   // live count of everything needing the rep — approvals + sent-back reworks
   // (V9 agent inbox badge, #69)
@@ -124,7 +127,7 @@ export function Sidebar({
     setCollapsed((c) => {
       const next = !c;
       try {
-        localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+        localStorage.setItem(collapseStorageKey, next ? "1" : "0");
       } catch {}
       return next;
     });

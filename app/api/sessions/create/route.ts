@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { scrapeCustomerWebsite } from "@/lib/firecrawl";
 import { scrapeLinkedInProfile } from "@/lib/apify";
@@ -10,13 +11,26 @@ import {
 import { notifyTelegram } from "@/lib/telegram";
 import { getDataMode } from "@/lib/dataMode";
 import { hasAnthropic, hasApify, hasFirecrawl } from "@/lib/env";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
+import { verifiedRequestMemberScope } from "@/lib/memberScope";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 // Core pipeline. Streams Server-Sent Events so the loading page can show
 // real-time step progress, then emits the final session id on completion.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const senderName = await authenticatedRequestActorName(req);
+  const liveScope =
+    getDataMode() === "live"
+      ? await verifiedRequestMemberScope(req)
+      : null;
+  if (getDataMode() === "live" && !liveScope) {
+    return Response.json(
+      { error: "Verified workspace access is required to create a session." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const {
     companyName,
@@ -117,10 +131,16 @@ export async function POST(req: Request) {
         });
 
         // Upsert customer
-        let customer = await db.customers.findByName(companyName);
+        let customer = await db.customers.findByName(
+          companyName,
+          liveScope?.workspaceId
+        );
         if (!customer) {
           customer = await db.customers.create({
             company_name: companyName,
+            workspace_id: liveScope?.workspaceId || null,
+            owner: liveScope ? senderName : null,
+            owner_user_id: liveScope?.userId || null,
             website_url: websiteUrl || null,
             raw_scrape: scrapeText || null,
             size_tier: custClass.size_tier,
@@ -131,6 +151,11 @@ export async function POST(req: Request) {
         } else {
           customer =
             (await db.customers.update(customer.id, {
+              workspace_id: liveScope?.workspaceId || customer.workspace_id,
+              owner: customer.owner || (liveScope ? senderName : null),
+              owner_user_id:
+                customer.owner_user_id ||
+                (!customer.owner && liveScope ? liveScope.userId : null),
               website_url: websiteUrl || customer.website_url,
               raw_scrape: scrapeText || customer.raw_scrape,
               size_tier: custClass.size_tier,
@@ -183,6 +208,7 @@ export async function POST(req: Request) {
           contactProfile: profile,
           customerSummary: custClass.enrichment_summary,
           freyrKb: kb.structured_kb,
+          senderName,
         });
         send({
           step: "pitches",

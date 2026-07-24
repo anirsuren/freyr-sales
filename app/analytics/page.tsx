@@ -12,6 +12,8 @@ import {
   buildRepStats,
   pipelineGrowthSeries,
   pipelineGrowthPointDeals,
+  repIdentityForDeal,
+  salesTeamFor,
   STAGES,
   formatMoney,
 } from "@/lib/pipeline";
@@ -19,6 +21,7 @@ import { OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import { getDataMode } from "@/lib/dataMode";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BarChart3 } from "lucide-react";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata = { title: "Analytics" };
 export const dynamic = "force-dynamic";
@@ -31,6 +34,7 @@ export default async function AnalyticsPage({
   searchParams?: Promise<{ range?: string }>;
 }) {
   const query = await searchParams;
+  const currentUser = await getCurrentUser();
   const db = getDb();
   const dataMode = getDataMode();
   const [allSessions, customers, contacts, allInteractions] = await Promise.all([
@@ -102,11 +106,12 @@ export default async function AnalyticsPage({
   // four real deal-owners use their actual numbers; the rest of the roster gets
   // a deterministic mock forecast so the leaderboard is full and every row can
   // expand into real graphs without a click-through.
-  const actualOwners = Array.from(new Set(fullDeals.map((deal) => deal.owner)));
+  const actualOwners = fullDeals.map(repIdentityForDeal);
   const reps: RepStat[] = buildRepStats(deals, {
     rangeDays: days,
     includeSynthetic: dataMode !== "live",
     actualOwners,
+    roster: salesTeamFor(currentUser),
   });
   const stages = STAGES.map((stage) => {
     const ds = deals.filter((d) => d.stage === stage);
@@ -169,8 +174,9 @@ export default async function AnalyticsPage({
     Record<string, { company: string; contact: string; value: number }[]>
   > = {};
   for (const d of deals) {
-    (repStageDeals[d.owner] ||= {});
-    (repStageDeals[d.owner][d.stage] ||= []).push({
+    const repKey = repIdentityForDeal(d).key;
+    (repStageDeals[repKey] ||= {});
+    (repStageDeals[repKey][d.stage] ||= []).push({
       company: d.company,
       contact: d.contactName,
       value: d.value,

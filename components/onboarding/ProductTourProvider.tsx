@@ -261,8 +261,18 @@ export function ProductTourProvider({
   }, []);
 
   useEffect(() => {
-    if (enabled && phase === "idle") void loadOnboarding();
-  }, [enabled, loadOnboarding, phase]);
+    // Durable tour state is an authenticated feature. The unauthenticated
+    // local/demo shell must not repeatedly call a protected endpoint and fill
+    // the console with expected 401s. Explicit launch requests still attempt
+    // to load, which keeps the control useful in authenticated environments.
+    if (
+      enabled &&
+      phase === "idle" &&
+      (autoStart || startRequest !== null)
+    ) {
+      void loadOnboarding();
+    }
+  }, [autoStart, enabled, loadOnboarding, phase, startRequest]);
 
   // Immediately after login, the durable access grant and onboarding store can
   // become available a fraction of a second after the app shell mounts. Retry a

@@ -17,6 +17,7 @@ import {
 } from "@/lib/offerings";
 import { buildDeals } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
+import { getDataMode } from "@/lib/dataMode";
 
 export const metadata = { title: "Customer" };
 export const dynamic = "force-dynamic";
@@ -162,6 +163,7 @@ export default async function CustomerDetailPage({
         sessions={sessions}
         interactions={interactions}
         agentRuns={agentRuns}
+        includeDemoTeam={getDataMode() === "mock"}
         offeringsCatalog={{
           typeOptions: customerTypes.map((t) => t.name),
           applicable: applicableRich,

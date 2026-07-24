@@ -29,10 +29,12 @@ function roleFromClaims(user: AuthenticatedUser): UserIdentityRole {
 
 function identityFromPrincipal(
   principal: AuthenticatedUser,
-  role: UserIdentityRole
+  role: UserIdentityRole,
+  memberId: string | null = null
 ): UserIdentity {
   return {
     id: principal.id,
+    memberId,
     name: principal.name.trim() || "Freyr user",
     email: principal.email?.trim() || null,
     role,
@@ -63,13 +65,20 @@ export async function getCurrentUser(): Promise<UserIdentity> {
 
   if (principal) {
     let role = roleFromClaims(principal);
+    let memberId: string | null = null;
     if (isApprovalGateEnabled()) {
       const grant = await verifyAccessGrant(
         cookieStore.get(ACCESS_COOKIE)?.value
       );
-      if (grant?.sub === principal.id) role = grant.role;
+      if (grant?.sub === principal.id) {
+        role = grant.role;
+        memberId = grant.userId;
+        if (grant.displayName) {
+          principal.name = grant.displayName;
+        }
+      }
     }
-    return identityFromPrincipal(principal, role);
+    return identityFromPrincipal(principal, role, memberId);
   }
 
   // The named demo identity is appropriate only for an unauthenticated local

@@ -7,9 +7,15 @@ import {
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { buildDeals, buildRepStats, formatMoney } from "@/lib/pipeline";
 import {
-  repSlug,
+  buildDeals,
+  buildRepStats,
+  formatMoney,
+  isCurrentRep,
+  repOwnsDeal,
+  salesTeamFor,
+} from "@/lib/pipeline";
+import {
   repPhone,
   teamsChatUrl,
   repTitle,
@@ -22,6 +28,7 @@ import {
 import { TeamRoster, type RosterRep } from "@/components/team/TeamRoster";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getDataMode } from "@/lib/dataMode";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata = { title: "Team" };
 export const dynamic = "force-dynamic";
@@ -57,6 +64,7 @@ export default async function TeamPage() {
   if (getDataMode() === "live") {
     return <EmptyState icon={Users} title="No teammates yet" description="Invite your first teammate from Settings to build the sales workspace." />;
   }
+  const currentUser = await getCurrentUser();
   const db = getDb();
   const [sessions, customers, contacts, interactions] = await Promise.all([
     db.pitchSessions.list(),
@@ -65,7 +73,9 @@ export default async function TeamPage() {
     db.interactions.list(),
   ]);
   const deals = buildDeals(sessions, customers, contacts, interactions);
-  const stats = buildRepStats(deals);
+  const stats = buildRepStats(deals, {
+    roster: salesTeamFor(currentUser),
+  });
 
   const totalPipeline = stats.reduce((s, r) => s + r.openValue, 0);
   const totalWeighted = stats.reduce((s, r) => s + r.weighted, 0);
@@ -73,12 +83,13 @@ export default async function TeamPage() {
   const totalOpen = stats.reduce((s, r) => s + r.openCount, 0);
 
   const reps: RosterRep[] = stats.map((r) => {
+    const you = isCurrentRep(r, currentUser.memberId);
     // The actual open deals behind each stage — real ones for the four deal-
     // owning reps, deterministic representatives for the synthetic roster — so
     // hovering a donut slice / a rep row shows company + contact + value, not
     // just the aggregate (Suren: "every graph has to tell me who").
     const repRealDeals = deals.filter(
-      (d) => d.owner === r.name && d.stage !== "Closed Lost"
+      (d) => repOwnsDeal(r, d) && d.stage !== "Closed Lost"
     );
     const stageDeals: Record<
       string,
@@ -96,13 +107,25 @@ export default async function TeamPage() {
           : synthStageDeals(r.name, sv.stage, sv.value, customers, contacts);
     }
     return {
+      identityKey: r.key,
       name: r.name,
-      slug: repSlug(r.name),
-      title: repTitle(r.name),
-      role: repRole(r.name),
+      you,
+      slug: r.slug,
+      title: you ? currentUser.title : repTitle(r.name),
+      role:
+        you
+          ? currentUser.role === "admin"
+            ? "Admin"
+            : currentUser.role === "editor"
+              ? "Manager"
+              : "Rep"
+          : repRole(r.name),
       region: repRegion(r.name),
       phone: repPhone(r.name),
-      teamsUrl: teamsChatUrl(r.name),
+      teamsUrl: teamsChatUrl(
+        r.name,
+        you ? currentUser.email : null
+      ),
       openValue: r.openValue,
       weighted: r.weighted,
       openCount: r.openCount,

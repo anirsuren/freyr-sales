@@ -27,13 +27,16 @@ import {
   STAGES,
   STAGE_COLOR,
   STAGE_PROBABILITY,
-  SALES_TEAM,
+  isCurrentRep,
+  repOwnsDeal,
+  salesTeamFor,
   repForecast,
   formatMoney,
 } from "@/lib/pipeline";
 import { getDataMode } from "@/lib/dataMode";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateTime } from "@/lib/utils";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata = { title: "Forecast" };
 export const dynamic = "force-dynamic";
@@ -64,6 +67,7 @@ function synthDealsForRep(
 }
 
 export default async function ForecastPage() {
+  const currentUser = await getCurrentUser();
   const db = getDb();
   const [sessions, customers, contacts, interactions] = await Promise.all([
     db.pitchSessions.list(),
@@ -144,28 +148,35 @@ export default async function ForecastPage() {
   // The whole sales floor (Suren: 20 reps, "it has to look full"). Reps who own
   // real deals use those numbers; the rest of the roster gets a deterministic
   // mock forecast so every teammate has a full, believable pipeline.
-  const byRep = SALES_TEAM.map((name) => {
+  const byRep = salesTeamFor(currentUser).map((rep) => {
     const realOpen = open
-      .filter((d) => d.owner === name)
+      .filter((d) => repOwnsDeal(rep, d))
       .reduce((s, d) => s + d.value, 0);
     const realWeighted = deals
-      .filter((d) => d.owner === name)
+      .filter((d) => repOwnsDeal(rep, d))
       .reduce((s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0), 0);
-    const synth = repForecast(name);
-    const weighted = realWeighted > 0 ? realWeighted : synth.weighted;
-    const repOpen = realOpen > 0 ? realOpen : synth.open;
+    const synth = repForecast(rep.name);
+    const isCurrentUser = isCurrentRep(rep, currentUser.memberId);
+    const weighted =
+      realWeighted > 0 ? realWeighted : isCurrentUser ? 0 : synth.weighted;
+    const repOpen = realOpen > 0 ? realOpen : isCurrentUser ? 0 : synth.open;
     // This rep's actual open deals — so hovering their bar shows what they're
     // working, not just the total (Suren). Synthetic reps have none.
     const realRepDeals = deals
-      .filter((d) => d.owner === name && d.stage !== "Closed Lost")
+      .filter((d) => repOwnsDeal(rep, d) && d.stage !== "Closed Lost")
       .sort((a, b) => b.value - a.value)
       .map((d) => ({ company: d.company, contact: d.contactName, value: d.value }));
     const repDeals =
       realRepDeals.length > 0
         ? realRepDeals
-        : synthDealsForRep(name, repOpen, customers, contacts);
+        : isCurrentUser
+          ? []
+          : synthDealsForRep(rep.name, repOpen, customers, contacts);
     return {
-      name,
+      identityKey: rep.key,
+      memberId: rep.memberId,
+      name: rep.name,
+      slug: rep.slug,
       open: repOpen,
       weighted,
       pct: Math.round((weighted / QUOTA) * 100),

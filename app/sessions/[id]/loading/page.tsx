@@ -8,25 +8,34 @@ import {
   PIPELINE_STEPS,
   StepStatus,
 } from "@/components/sessions/ProgressTracker";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 
 export default function SessionLoadingPage() {
   const router = useRouter();
+  const currentUser = useCurrentUser();
+  const intakePayloadKey = userScopedStorageKey(
+    "freyr_intake_payload",
+    currentUser.id
+  );
   const [statuses, setStatuses] = useState<Record<string, StepStatus>>({});
   const [error, setError] = useState("");
-  const started = useRef(false);
+  const startedForKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
+    if (startedForKey.current === intakePayloadKey) return;
+    startedForKey.current = intakePayloadKey;
+    setStatuses({});
+    setError("");
 
     const raw =
       typeof window !== "undefined"
-        ? sessionStorage.getItem("freyr_intake_payload")
+        ? sessionStorage.getItem(intakePayloadKey)
         : null;
 
     // Direct visit with no pending pipeline (e.g. deep link) — just show steps.
     if (!raw) return;
-    sessionStorage.removeItem("freyr_intake_payload");
+    sessionStorage.removeItem(intakePayloadKey);
 
     let cancelled = false;
 
@@ -93,7 +102,7 @@ export default function SessionLoadingPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [intakePayloadKey, router]);
 
   return (
     <div className="max-w-[560px] mx-auto pt-10">

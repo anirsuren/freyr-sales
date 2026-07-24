@@ -10,21 +10,25 @@ export type RecentItem = {
 const KEY = "freyr.recent.v1";
 const CAP = 8;
 
-export function getRecent(): RecentItem[] {
+function keyFor(userId: string) {
+  return `${KEY}:${encodeURIComponent(userId)}`;
+}
+
+export function getRecent(userId: string): RecentItem[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
+    return JSON.parse(localStorage.getItem(keyFor(userId)) || "[]");
   } catch {
     return [];
   }
 }
 
-export function pushRecent(item: RecentItem) {
+export function pushRecent(item: RecentItem, userId: string) {
   if (!item.label || !item.href) return;
   try {
-    const next = [item, ...getRecent().filter((r) => r.href !== item.href)].slice(
+    const next = [item, ...getRecent(userId).filter((r) => r.href !== item.href)].slice(
       0,
       CAP
     );
-    localStorage.setItem(KEY, JSON.stringify(next));
+    localStorage.setItem(keyFor(userId), JSON.stringify(next));
   } catch {}
 }

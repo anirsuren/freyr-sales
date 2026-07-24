@@ -22,19 +22,18 @@ import { ChartInspector, type ChartRecord } from "@/components/charts/ChartInspe
 import {
   buildDeals,
   buildRepStats,
+  isCurrentRep,
+  repOwnsDeal,
   STAGE_COLOR,
   STAGE_PROBABILITY,
-  SALES_TEAM,
-  CURRENT_REP,
+  salesTeamFor,
   formatMoney,
 } from "@/lib/pipeline";
 import { repTitle, repRegion, repQuota, repWonFY } from "@/lib/team";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata = { title: "Rep" };
 export const dynamic = "force-dynamic";
-
-const slugify = (s: string) =>
-  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 const ago = (days: number) =>
   days <= 0 ? "Today" : days === 1 ? "Yesterday" : `${days}d ago`;
@@ -54,8 +53,20 @@ export default async function RepPage({
   params: Promise<{ slug: string }>;
 }) {
   const slug = (await params).slug;
-  const name = SALES_TEAM.find((r) => slugify(r) === slug);
-  if (!name) {
+  const currentUser = await getCurrentUser();
+  const db = getDb();
+  const [sessions, customers, contacts, interactions] = await Promise.all([
+    db.pitchSessions.list(),
+    db.customers.list(),
+    db.contacts.list(),
+    db.interactions.list(),
+  ]);
+  const allDeals = buildDeals(sessions, customers, contacts, interactions);
+  const ranked = buildRepStats(allDeals, {
+    roster: salesTeamFor(currentUser),
+  }); // sorted by open pipeline desc
+  const me = ranked.find((rep) => rep.slug === slug);
+  if (!me) {
     return (
       <EmptyState
         icon={SearchX}
@@ -74,20 +85,10 @@ export default async function RepPage({
       />
     );
   }
-
-  const db = getDb();
-  const [sessions, customers, contacts, interactions] = await Promise.all([
-    db.pitchSessions.list(),
-    db.customers.list(),
-    db.contacts.list(),
-    db.interactions.list(),
-  ]);
-  const allDeals = buildDeals(sessions, customers, contacts, interactions);
-  const ranked = buildRepStats(allDeals); // sorted by open pipeline desc
-  const rank = ranked.findIndex((r) => r.name === name) + 1;
-  const me = ranked.find((r) => r.name === name)!;
-  const myDeals = allDeals.filter((d) => d.owner === name);
-  const isYou = name === CURRENT_REP;
+  const name = me.name;
+  const rank = ranked.findIndex((rep) => rep.key === me.key) + 1;
+  const myDeals = allDeals.filter((deal) => repOwnsDeal(me, deal));
+  const isYou = isCurrentRep(me, currentUser.memberId);
 
   // Name pools so every chart point can name the WHO/WHICH behind it (Suren:
   // "you can't just say 7 — which deals?"). Real deals name themselves; the rest
@@ -139,7 +140,7 @@ export default async function RepPage({
   };
 
   const region = repRegion(name);
-  const title = repTitle(name);
+  const title = isYou ? currentUser.title : repTitle(name);
   const quota = repQuota(name);
   const wonFY = repWonFY(name);
   const attain = Math.round((wonFY / quota) * 100);

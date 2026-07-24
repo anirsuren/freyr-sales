@@ -13,11 +13,10 @@ import {
 } from "@/lib/agentChat";
 import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
 import { offeringsAnswer } from "@/lib/offeringsAgent";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
 import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+  verifiedWorkflowActor,
+  type VerifiedWorkflowActor,
+} from "@/lib/workflowAuthorization";
 import type { Contact, PitchSession } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -31,12 +30,18 @@ export const dynamic = "force-dynamic";
 //   (it gets the live facts + full history as real message turns); otherwise the
 //   deterministic brain answers so the chat is never silent.
 export async function POST(req: NextRequest) {
-  const principal = await authenticatedRequestPrincipal(req);
-  const actorName =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  const scope = {
+    workspaceId: actor.workspaceId,
+    userId: actor.userId,
+  };
+  const actorName = actor.name;
   const body = await req.json().catch(() => ({}));
   const message = String(body.message || "").trim();
   if (!message) {
@@ -61,13 +66,15 @@ export async function POST(req: NextRequest) {
       db.contacts.list(),
       db.interactions.list(),
       db.agentRuns.list(),
-      db.agentPrefs.get(),
+      db.agentPrefs.get(scope),
     ]);
   const deals = buildDeals(sessions, customers, contacts, interactions);
   const { actions } = focusActions(
     nextBestActions({ sessions, customers, contacts, interactions }),
     customers,
-    prefs
+    prefs,
+    actorName,
+    scope.userId
   );
   const needsApproval = actions.filter((a) => !DRAFTABLE.includes(a.kind)).length;
   const companyById = Object.fromEntries(
@@ -131,7 +138,7 @@ export async function POST(req: NextRequest) {
         action,
         contacts,
         history,
-        actorName
+        actor
       );
       return NextResponse.json({
         ok: true,
@@ -316,7 +323,7 @@ export async function POST(req: NextRequest) {
         },
         contacts,
         history,
-        actorName
+        actor
       );
       return { content: result.reply, did: "save_draft" };
     }
@@ -336,7 +343,7 @@ export async function POST(req: NextRequest) {
         },
         contacts,
         history,
-        actorName
+        actor
       );
       return { content: result.reply, did: "set_followup" };
     }
@@ -360,7 +367,7 @@ export async function POST(req: NextRequest) {
         },
         contacts,
         history,
-        actorName
+        actor
       );
       return { content: result.reply, did: "log_touch" };
     }
@@ -509,7 +516,7 @@ async function executeAction(
   action: Exclude<ChatAction, { type: "show_pitch" }>,
   contacts: Contact[],
   history: ChatTurn[],
-  actorName: string
+  actor: Pick<VerifiedWorkflowActor, "userId" | "name">
 ): Promise<{ reply: string; suggestions: string[] }> {
   const contact = contacts.find((c) => c.customer_id === action.customerId);
   const contactId = contact?.id || "";
@@ -523,10 +530,12 @@ async function executeAction(
       outcome: "in_progress",
       notes: `✍️ Draft outreach (NOT sent — saved for your review):\n\n${draft}`,
       follow_up_date: null,
-      logged_by: "Agent",
+      logged_by: "Freyr Agent",
     });
     await db.agentRuns.create({
       kind: "act",
+      created_by_user_id: actor.userId,
+      created_by: actor.name,
       title: `Saved a draft for ${action.company}`,
       customer_id: action.customerId,
       company: action.company,
@@ -557,10 +566,12 @@ async function executeAction(
       outcome: "in_progress",
       notes: `Follow-up reminder set by the agent (${action.label}).`,
       follow_up_date: action.when,
-      logged_by: "Agent",
+      logged_by: "Freyr Agent",
     });
     await db.agentRuns.create({
       kind: "act",
+      created_by_user_id: actor.userId,
+      created_by: actor.name,
       title: `Set a follow-up with ${action.company}`,
       customer_id: action.customerId,
       company: action.company,
@@ -590,10 +601,12 @@ async function executeAction(
     outcome: action.outcome,
     notes: action.notes,
     follow_up_date: null,
-    logged_by: actorName,
+    logged_by: actor.name,
   });
   await db.agentRuns.create({
     kind: "act",
+    created_by_user_id: actor.userId,
+    created_by: actor.name,
     title: `Logged a touch on ${action.company}`,
     customer_id: action.customerId,
     company: action.company,

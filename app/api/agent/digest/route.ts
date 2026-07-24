@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { nextBestActions, buildDigest } from "@/lib/agent";
 import { narrateDigest } from "@/lib/claude";
+import { canManageReviewQueue } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,12 @@ export async function GET() {
 }
 
 export async function POST() {
+  if (!(await canManageReviewQueue())) {
+    return NextResponse.json(
+      { error: "Manager access is required to send the workspace digest." },
+      { status: 403 }
+    );
+  }
   const d = await compute();
   const line = (await narrateDigest(d)) || d.didSummary;
   notifyTelegram(

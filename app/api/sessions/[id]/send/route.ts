@@ -4,11 +4,15 @@ import { notifyTelegram } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
 import { getDataMode } from "@/lib/dataMode";
 import { hasEmail } from "@/lib/env";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
 import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+  approvedPitchEmail,
+  isDeliverableEmail,
+  matchesApprovedPitchEmail,
+} from "@/lib/approvedPitchEmail";
+import {
+  isWorkflowOwnerOrManager,
+  verifiedWorkflowActor,
+} from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -19,25 +23,81 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const principal = await authenticatedRequestPrincipal(req);
-  const actorName =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
-  const subject = String(body.subject || "").trim();
-  const to = String(body.to || "").trim();
+  const requestedRecipient = String(body.to || "").trim();
   const scheduleAt = body.scheduleAt ? String(body.scheduleAt) : null;
 
-  if (!subject || !to) {
+  const db = getDb();
+  const session = await db.pitchSessions.get((await params).id);
+  if (!session) {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+  if (session.review_status !== "approved") {
     return NextResponse.json(
-      { error: "subject and recipient are required" },
+      { error: "This pitch must be approved before it can be sent." },
+      { status: 409 }
+    );
+  }
+
+  const [customer, contact] = await Promise.all([
+    db.customers.get(session.customer_id),
+    db.contacts.get(session.contact_id),
+  ]);
+  if (!customer || !contact) {
+    return NextResponse.json(
+      { error: "The pitch account or contact was not found." },
+      { status: 404 }
+    );
+  }
+  if (
+    getDataMode() === "live" &&
+    !isWorkflowOwnerOrManager(
+      actor,
+      customer.owner_user_id,
+      customer.owner
+    )
+  ) {
+    return NextResponse.json(
+      { error: "You can send pitches only for accounts assigned to you." },
+      { status: 403 }
+    );
+  }
+
+  const recipient = String(contact.email || "").trim();
+  if (!isDeliverableEmail(recipient)) {
+    return NextResponse.json(
+      { error: "The session contact does not have a valid email address." },
       { status: 400 }
     );
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-    return NextResponse.json({ error: "A valid recipient email is required" }, { status: 400 });
+  if (
+    requestedRecipient &&
+    requestedRecipient.toLowerCase() !== recipient.toLowerCase()
+  ) {
+    return NextResponse.json(
+      { error: "The recipient must match the contact on this pitch." },
+      { status: 400 }
+    );
+  }
+  const approved = approvedPitchEmail(session.pitch_email, body.subject);
+  if (
+    !approved ||
+    !matchesApprovedPitchEmail(approved, body.subject, body.body)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "The email no longer matches the approved pitch. Save the changes and submit it for approval again.",
+      },
+      { status: 409 }
+    );
   }
   if (getDataMode() === "live" && (!hasEmail() || scheduleAt)) {
     return NextResponse.json(
@@ -46,19 +106,13 @@ export async function POST(
     );
   }
 
-  const db = getDb();
-  const session = await db.pitchSessions.get((await params).id);
-  if (!session) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
-  }
-
   // Deliver immediately via the configured channel (mock when no key).
   let channel: string | undefined;
   if (!scheduleAt) {
     const sent = await sendEmail({
-      to,
-      subject,
-      body: String(body.body || ""),
+      to: recipient,
+      subject: approved.subject,
+      body: approved.body,
     });
     if (!sent.ok || (getDataMode() === "live" && sent.skipped)) {
       return NextResponse.json({ error: sent.error || "Email was not sent." }, { status: 502 });
@@ -74,17 +128,16 @@ export async function POST(
     contact_id: session.contact_id,
     outcome: "in_progress",
     notes: scheduleAt
-      ? `Email scheduled (“${subject}”) for ${scheduleAt}`
-      : `Email sent: “${subject}”`,
+      ? `Email scheduled (“${approved.subject}”) for ${scheduleAt}`
+      : `Email sent: “${approved.subject}”`,
     follow_up_date: null,
-    logged_by: actorName,
+    logged_by: actor.name,
   });
 
-  const customer = await db.customers.get(session.customer_id);
   notifyTelegram(
     `✉️ <b>${scheduleAt ? "Email scheduled" : "Email sent"}</b>\n${
-      customer?.company_name || "Account"
-    } · to ${to}\n“${subject}”`
+      customer.company_name
+    } · to ${recipient}\n“${approved.subject}”`
   );
 
   return NextResponse.json({ ok: true, scheduled: !!scheduleAt, channel });

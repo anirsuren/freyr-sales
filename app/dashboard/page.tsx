@@ -44,6 +44,7 @@ import { DashboardMoreActions } from "@/components/dashboard/DashboardMoreAction
 import { HoverCard } from "@/components/ui/HoverCard";
 import type { RecommendedService } from "@/lib/types";
 import { getCurrentUser } from "@/lib/currentUser";
+import { requireServerMemberScope } from "@/lib/memberScope";
 import { firstNameForUser } from "@/lib/userIdentity";
 
 export const metadata = { title: "Dashboard" };
@@ -64,7 +65,10 @@ export default async function DashboardPage({
   searchParams?: Promise<{ range?: string }>;
 }) {
   const query = await searchParams;
-  const currentUser = await getCurrentUser();
+  const [currentUser, scope] = await Promise.all([
+    getCurrentUser(),
+    requireServerMemberScope(),
+  ]);
   const db = getDb();
   const [customers, allSessions, allInteractionsRaw, contacts, agentPrefs] =
     await Promise.all([
@@ -72,7 +76,7 @@ export default async function DashboardPage({
       db.pitchSessions.list(),
       db.interactions.list(),
       db.contacts.list(),
-      db.agentPrefs.get(),
+      db.agentPrefs.get(scope),
     ]);
 
   // Default to a bounded window (30d) so the vs-previous-period change shows on
@@ -114,7 +118,9 @@ export default async function DashboardPage({
       interactions: allInteractionsRaw,
     }),
     customers,
-    agentPrefs
+    agentPrefs,
+    currentUser.name,
+    scope.userId
   ).actions.slice(0, 4);
 
   const customerById = Object.fromEntries(customers.map((c) => [c.id, c]));

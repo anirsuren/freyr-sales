@@ -268,7 +268,7 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
 // Mock pitches (Section 8.3 fallback)
 // ---------------------------------------------------------------------------
 export const MOCK_PITCHES: PitchOutput = {
-  pitch_5min_script: `Hi Dr. Mehta, I'm Anir Suren from Freyr Solutions — I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
+  pitch_5min_script: `Hi Dr. Mehta, I'm Suren Dheen from Freyr Solutions — I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
 
 With your NDA submission coming up later this year and two compounds in Phase 2, you're entering the period where regulatory execution either accelerates or stalls your timeline. Freyr has completed over 5,000 regulatory submissions globally, and our team includes former FDA and EMA reviewers — people who know exactly what the agency expects to see.
 
@@ -297,12 +297,12 @@ Happy to show you a quick example of how we've handled similar NDA submissions f
 
 Would a 20-minute call next week make sense?
 
-Anir Suren
+Suren Dheen
 Freyr Solutions`,
   },
   pitch_call_script: {
     opener:
-      "Hi, is this Dr. Priya Mehta? Great — this is Anir Suren from Freyr Solutions. I know you're not expecting my call, so I'll be brief.",
+      "Hi, is this Dr. Priya Mehta? Great — this is Suren Dheen from Freyr Solutions. I know you're not expecting my call, so I'll be brief.",
     value_prop:
       "We support pharmaceutical and biotech companies with regulatory submissions globally — FDA, EMA, and 120+ other agencies. We've completed over 5,000 submissions and our team includes former FDA CDER reviewers.",
     permission_question:
@@ -911,20 +911,29 @@ export interface PitchInput {
   contactProfile: any;
   customerSummary: string;
   freyrKb: any;
+  senderName: string;
+}
+
+function pitchesForSender(senderName: string): PitchOutput {
+  const safeName = senderName.trim() || "Freyr representative";
+  return JSON.parse(
+    JSON.stringify(MOCK_PITCHES).replaceAll("Suren Dheen", safeName)
+  ) as PitchOutput;
 }
 
 export async function generatePitches(
   input: PitchInput
 ): Promise<PitchOutput> {
-  if (!client) return MOCK_PITCHES;
+  if (!client) return pitchesForSender(input.senderName);
 
   const c = input.contactProfile || {};
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 4000,
-    system: `You are writing sales pitch materials for a Freyr Solutions sales representative.
+    system: `You are writing sales pitch materials for ${input.senderName}, a Freyr Solutions sales representative.
 Write in a professional but human voice. Be specific to this customer and contact —
 no generic phrases. Use Freyr's own language and proof points where relevant.
+Write every first-person introduction and signature as ${input.senderName}; never substitute another salesperson.
 Return ONLY valid JSON.`,
     messages: [
       {
@@ -962,7 +971,7 @@ Generate three pitch formats. Return JSON:
   try {
     return parseJson<PitchOutput>(textFrom(response));
   } catch {
-    return MOCK_PITCHES;
+    return pitchesForSender(input.senderName);
   }
 }
 
@@ -981,6 +990,7 @@ export async function generateOutreachWithClaude(input: {
   freyrContext: string;
   extra: string;
   linkedinLimit: number;
+  senderName: string;
 }): Promise<{ subject?: string; message: string } | null> {
   if (!client) return null;
   const isLi = input.kind === "linkedin";
@@ -995,7 +1005,7 @@ Pitching this offering (use its substance, don't just name-drop):
 ${input.materials.length ? `- Supporting materials we can share: ${input.materials.join("; ")}` : ""}
 ${input.extra ? `Rep's added context: ${input.extra}` : ""}
 
-Rules: personal to their role, no fluff, one clear ask, no placeholder brackets, sign as "Anir Suren, Freyr Solutions"${isLi ? `, and the whole note MUST be under ${input.linkedinLimit} characters` : ""}.
+Rules: personal to their role, no fluff, one clear ask, no placeholder brackets, sign as "${input.senderName}, Freyr Solutions"${isLi ? `, and the whole note MUST be under ${input.linkedinLimit} characters` : ""}.
 Return ONLY JSON: {"subject": ${isLi ? "null" : '"..."'}, "message": "..."}`;
   try {
     const response = await client.messages.create({

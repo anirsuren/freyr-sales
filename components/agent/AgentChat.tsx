@@ -16,12 +16,13 @@ import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
-import { firstNameForUser } from "@/lib/userIdentity";
+import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number };
 type Convo = { id: string; title: string; messages: Msg[]; updated: number };
 
 const KEY = "freyr.agent.conversations";
+const EMPTY_CONVOS: Convo[] = [];
 
 const STARTERS = [
   "What should I focus on today?",
@@ -35,16 +36,16 @@ const STARTERS = [
   "Draft a re-engagement for a cooling account",
 ];
 
-function load(): Convo[] {
+function load(storageKey: string): Convo[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
+    return JSON.parse(localStorage.getItem(storageKey) || "[]");
   } catch {
     return [];
   }
 }
-function save(c: Convo[]) {
+function save(storageKey: string, c: Convo[]) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(c.slice(0, 50)));
+    localStorage.setItem(storageKey, JSON.stringify(c.slice(0, 50)));
   } catch {}
 }
 function uid() {
@@ -224,7 +225,9 @@ function ThinkingDots() {
 export function AgentChat() {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
+  const storageKey = userScopedStorageKey(KEY, currentUser.id);
   const [convos, setConvos] = useState<Convo[]>([]);
+  const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -236,10 +239,27 @@ export function AgentChat() {
     atRisk: number;
   } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const activeUserIdRef = useRef(currentUser.id);
 
   useEffect(() => {
-    setConvos(load());
-  }, []);
+    activeUserIdRef.current = currentUser.id;
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    setLoadedStorageKey(null);
+    setConvos(load(storageKey));
+    setLoadedStorageKey(storageKey);
+    setActiveId(null);
+    setInput("");
+    setSending(false);
+    setSuggestions(STARTERS);
+    setTypingTs(null);
+    setSummary(null);
+    return () => {
+      activeUserIdRef.current = "";
+      requestControllerRef.current?.abort();
+    };
+  }, [currentUser.id, storageKey]);
 
   // Proactive greeting: what's on the rep's plate (deterministic, no LLM call).
   useEffect(() => {
@@ -253,9 +273,11 @@ export function AgentChat() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUser.id]);
 
-  const active = convos.find((c) => c.id === activeId) || null;
+  const visibleConvos =
+    loadedStorageKey === storageKey ? convos : EMPTY_CONVOS;
+  const active = visibleConvos.find((c) => c.id === activeId) || null;
 
   const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -269,7 +291,8 @@ export function AgentChat() {
   const send = useCallback(
     async (raw: string) => {
       const text = raw.trim();
-      if (!text || sending) return;
+      if (!text || sending || loadedStorageKey !== storageKey) return;
+      const requestUserId = currentUser.id;
       setInput("");
 
       // start or continue a conversation — decide the id synchronously so the
@@ -294,18 +317,19 @@ export function AgentChat() {
               }
             : c
         );
-        save(next);
+        save(storageKey, next);
         return next;
       });
       setSending(true);
 
       // Never let a slow or hung request freeze the composer — bail after 45s.
       const controller = new AbortController();
+      requestControllerRef.current = controller;
       const timer = setTimeout(() => controller.abort(), 45000);
       try {
         // Send the conversation so far so follow-ups ("make it shorter") have context.
         const prior =
-          convos.find((c) => c.id === id)?.messages.map((mm) => ({ role: mm.role, text: mm.text })) ||
+          visibleConvos.find((c) => c.id === id)?.messages.map((mm) => ({ role: mm.role, text: mm.text })) ||
           [];
         const res = await fetch("/api/agent/converse", {
           method: "POST",
@@ -314,6 +338,7 @@ export function AgentChat() {
           signal: controller.signal,
         });
         const data = await res.json();
+        if (activeUserIdRef.current !== requestUserId) return;
         const reply: string = data.reply || "Sorry — I couldn't answer that one.";
         if (Array.isArray(data.suggestions) && data.suggestions.length)
           setSuggestions(data.suggestions);
@@ -328,11 +353,12 @@ export function AgentChat() {
                 }
               : c
           );
-          save(next);
+          save(storageKey, next);
           return next;
         });
         setTypingTs(replyTs); // animate this reply in with a typewriter reveal
       } catch {
+        if (activeUserIdRef.current !== requestUserId) return;
         setConvos((prev) => {
           const next = prev.map((c) =>
             c.id === id
@@ -343,15 +369,25 @@ export function AgentChat() {
                 }
               : c
           );
-          save(next);
+          save(storageKey, next);
           return next;
         });
       } finally {
         clearTimeout(timer);
-        setSending(false);
+        if (requestControllerRef.current === controller) {
+          requestControllerRef.current = null;
+        }
+        if (activeUserIdRef.current === requestUserId) setSending(false);
       }
     },
-    [activeId, sending, convos]
+    [
+      activeId,
+      sending,
+      visibleConvos,
+      currentUser.id,
+      loadedStorageKey,
+      storageKey,
+    ]
   );
 
   function newChat() {
@@ -363,7 +399,7 @@ export function AgentChat() {
   function remove(id: string) {
     setConvos((prev) => {
       const next = prev.filter((c) => c.id !== id);
-      save(next);
+      save(storageKey, next);
       return next;
     });
     if (activeId === id) setActiveId(null);
@@ -383,7 +419,7 @@ export function AgentChat() {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-2">
-          {convos.length === 0 ? (
+          {visibleConvos.length === 0 ? (
             <p className="px-2 py-3 text-[12px] text-text-tertiary">
               No conversations yet. Ask the agent anything to start.
             </p>
@@ -393,7 +429,7 @@ export function AgentChat() {
                 Recent
               </p>
               <ul className="space-y-0.5">
-                {convos.map((c) => (
+                {visibleConvos.map((c) => (
                   <li key={c.id} className="group relative">
                     <button
                       onClick={() => setActiveId(c.id)}

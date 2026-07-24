@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { PIPELINE_STEPS } from "@/components/sessions/ProgressTracker";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 
 type Recent = {
   companyName: string;
@@ -18,6 +20,15 @@ type Recent = {
   contactName: string;
   contactEmail: string;
   linkedinUrl: string;
+};
+
+const EMPTY_FORM = {
+  companyName: "",
+  websiteUrl: "",
+  contactName: "",
+  contactEmail: "",
+  linkedinUrl: "",
+  additionalContext: "",
 };
 
 // Sample "recent prospects" shown before the rep has researched anyone. These
@@ -100,16 +111,19 @@ function parseBulk(text: string): Recent[] {
 }
 
 export default function IntakePage() {
+  const currentUser = useCurrentUser();
+  const recentProspectsKey = userScopedStorageKey(
+    "freyr.recentProspects",
+    currentUser.id
+  );
+  const bulkQueueKey = userScopedStorageKey("freyr.bulkQueue", currentUser.id);
+  const intakePayloadKey = userScopedStorageKey(
+    "freyr_intake_payload",
+    currentUser.id
+  );
   const router = useRouter();
   const { toast } = useToast();
-  const [form, setForm] = useState({
-    companyName: "",
-    websiteUrl: "",
-    contactName: "",
-    contactEmail: "",
-    linkedinUrl: "",
-    additionalContext: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -124,6 +138,11 @@ export default function IntakePage() {
   // on the customer page deep-links here with the company + primary contact), so
   // a rep can start a pitch in one click instead of re-typing it.
   useEffect(() => {
+    setForm(EMPTY_FORM);
+    setTouched({});
+    setSubmitted(false);
+    auto.current = {};
+    setAutoFlags({});
     try {
       const sp = new URLSearchParams(window.location.search);
       const company = sp.get("company");
@@ -138,11 +157,12 @@ export default function IntakePage() {
         }));
       }
     } catch {}
-  }, []);
+  }, [currentUser.id]);
 
   // recent prospects (#71)
   const [recents, setRecents] = useState<Recent[]>([]);
   useEffect(() => {
+    setRecents([]);
     let active = true;
     fetch("/api/settings/data-mode")
       .then((response) => response.json())
@@ -150,18 +170,23 @@ export default function IntakePage() {
         if (!active) return;
         if (data.mode !== "mock") { setRecents([]); return; }
         try {
-          const raw = localStorage.getItem("freyr.recentProspects");
+          const raw = localStorage.getItem(recentProspectsKey);
           setRecents(raw ? JSON.parse(raw) : SEED_RECENTS);
         } catch { setRecents(SEED_RECENTS); }
       })
       .catch(() => setRecents([]));
     return () => { active = false; };
-  }, []);
+  }, [recentProspectsKey]);
 
   // bulk intake (#73)
   const [showBulk, setShowBulk] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const parsed = useMemo(() => parseBulk(bulkText), [bulkText]);
+
+  useEffect(() => {
+    setShowBulk(false);
+    setBulkText("");
+  }, [currentUser.id]);
 
   function update(key: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -222,10 +247,10 @@ export default function IntakePage() {
   function queueBulk() {
     const n = parsed.length;
     try {
-      const raw = localStorage.getItem("freyr.bulkQueue");
+      const raw = localStorage.getItem(bulkQueueKey);
       const prev = raw ? JSON.parse(raw) : [];
       localStorage.setItem(
-        "freyr.bulkQueue",
+        bulkQueueKey,
         JSON.stringify([...parsed, ...prev].slice(0, 100))
       );
     } catch {}
@@ -281,9 +306,9 @@ export default function IntakePage() {
           (r) => r.companyName.toLowerCase() !== entry.companyName.toLowerCase()
         ),
       ].slice(0, 5);
-      localStorage.setItem("freyr.recentProspects", JSON.stringify(deduped));
+      localStorage.setItem(recentProspectsKey, JSON.stringify(deduped));
     } catch {}
-    sessionStorage.setItem("freyr_intake_payload", JSON.stringify(form));
+    sessionStorage.setItem(intakePayloadKey, JSON.stringify(form));
     router.push("/sessions/new/loading");
   }
 

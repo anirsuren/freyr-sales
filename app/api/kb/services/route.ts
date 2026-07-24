@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { isAdmin } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,12 @@ function splitList(v: unknown): string[] {
 
 // Add a service to the knowledge base catalog.
 export async function POST(req: Request) {
+  if (!(await isAdmin())) {
+    return NextResponse.json(
+      { error: "Admin access is required to manage knowledge-base services." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const db = getDb();
   const kb = await db.freyrKb.get();
@@ -35,6 +42,12 @@ export async function POST(req: Request) {
 
 // Edit a service by index.
 export async function PATCH(req: Request) {
+  if (!(await isAdmin())) {
+    return NextResponse.json(
+      { error: "Admin access is required to manage knowledge-base services." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const db = getDb();
   const kb = await db.freyrKb.get();
@@ -54,6 +67,12 @@ export async function PATCH(req: Request) {
 
 // Remove a service by index.
 export async function DELETE(req: Request) {
+  if (!(await isAdmin())) {
+    return NextResponse.json(
+      { error: "Admin access is required to manage knowledge-base services." },
+      { status: 403 }
+    );
+  }
   const idx = Number(new URL(req.url).searchParams.get("index"));
   const db = getDb();
   const kb = await db.freyrKb.get();
@@ -65,4 +84,3 @@ export async function DELETE(req: Request) {
   await db.freyrKb.update({ structured_kb: { ...sk, services } });
   return NextResponse.json({ ok: true });
 }
-

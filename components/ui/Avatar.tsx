@@ -24,6 +24,7 @@ const PHOTOS: Record<string, string> = {
   "dr. hana kim": "/avatars/hana-kim.png",
   "hana kim": "/avatars/hana-kim.png",
   // Reps / internal team
+  "suren dheen": "/avatars/suren-dheen.png",
   "mark miller": "/avatars/mark-miller.png",
   "priya nair": "/avatars/priya-nair.png",
   "diego alvarez": "/avatars/diego-alvarez.png",

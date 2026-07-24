@@ -1,21 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { nextBestActions, focusActions, DRAFTABLE } from "@/lib/agent";
 import { buildDeals, ROTTING_DAYS, formatMoney } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
+import { verifiedRequestMemberScope } from "@/lib/memberScope";
 
 export const dynamic = "force-dynamic";
 
 // Lightweight, deterministic snapshot of what's on the rep's plate — used by the
 // agent's empty state to greet them proactively. No LLM call (no credits).
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const scope = await verifiedRequestMemberScope(request);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  const actorName = await authenticatedRequestActorName(request);
   const db = getDb();
   const [sessions, customers, contacts, interactions, prefs] = await Promise.all([
     db.pitchSessions.list(),
     db.customers.list(),
     db.contacts.list(),
     db.interactions.list(),
-    db.agentPrefs.get(),
+    db.agentPrefs.get(scope),
   ]);
   const deals = buildDeals(sessions, customers, contacts, interactions);
   const open = deals.filter((d) => d.stage !== "Closed Lost");
@@ -24,7 +34,9 @@ export async function GET() {
   const { actions } = focusActions(
     nextBestActions({ sessions, customers, contacts, interactions }),
     customers,
-    prefs
+    prefs,
+    actorName,
+    scope.userId
   );
   const needsApproval = actions.filter((a) => !DRAFTABLE.includes(a.kind)).length;
   const atRisk = customers.filter(

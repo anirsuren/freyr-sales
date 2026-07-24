@@ -1,35 +1,59 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { answerAccountQuestion, type AccountContext } from "@/lib/agent";
 import { agentAnswer } from "@/lib/claude";
+import { verifiedRequestMemberScope } from "@/lib/memberScope";
 
 export const dynamic = "force-dynamic";
 
 // Per-account agent chat (V9 #45). GET returns the persisted thread; POST answers
 // the question (Claude when keyed, deterministic otherwise) AND persists both the
 // rep's message and the agent's reply, so the conversation survives navigation.
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const { searchParams } = new URL(req.url);
   const customerId = String(searchParams.get("customerId") || "");
   if (!customerId) {
     return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
   }
   const db = getDb();
-  return NextResponse.json({ messages: await db.agentChats.list(customerId) });
+  return NextResponse.json({
+    messages: await db.agentChats.list(scope, customerId),
+  });
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const customerId = String(body.customerId || "");
   if (!customerId) {
     return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
   }
   const db = getDb();
-  await db.agentChats.clear(customerId);
+  await db.agentChats.clear(scope, customerId);
   return NextResponse.json({ ok: true });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const customerId = String(body.customerId || "");
   const question = String(body.question || "").trim();
@@ -39,7 +63,11 @@ export async function POST(req: Request) {
   }
 
   const db = getDb();
-  await db.agentChats.create({ customer_id: customerId, role: "me", text: question });
+  await db.agentChats.create(scope, {
+    customer_id: customerId,
+    role: "me",
+    text: question,
+  });
 
   const grounded = answerAccountQuestion(question, context);
   const system =
@@ -66,7 +94,7 @@ export async function POST(req: Request) {
   const answer = llm || grounded;
   const source: "claude" | "mock" = llm ? "claude" : "mock";
 
-  await db.agentChats.create({
+  await db.agentChats.create(scope, {
     customer_id: customerId,
     role: "agent",
     text: answer,

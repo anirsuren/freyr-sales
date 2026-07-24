@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
+import {
+  isWorkflowManager,
+  isWorkflowOwner,
+  verifiedWorkflowActor,
+} from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +13,7 @@ export const dynamic = "force-dynamic";
 // agent created and marks the run reverted, so a rep stays in control of
 // anything the agent did without approval. Human-approved sends aren't undoable
 // here (the play already went out); only act / autopilot runs are.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const runId = String(body.runId || "");
   if (!runId) {
@@ -19,6 +24,22 @@ export async function POST(req: Request) {
   const run = await db.agentRuns.get(runId);
   if (!run) {
     return NextResponse.json({ error: "Run not found" }, { status: 404 });
+  }
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  if (
+    !isWorkflowManager(actor) &&
+    !isWorkflowOwner(actor, run.created_by_user_id, run.created_by)
+  ) {
+    return NextResponse.json(
+      { error: "Only the person who created this run or a manager can undo it." },
+      { status: 403 }
+    );
   }
   if (run.kind === "play") {
     return NextResponse.json(

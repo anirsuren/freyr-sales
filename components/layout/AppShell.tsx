@@ -12,7 +12,10 @@ import { useHoverPreference } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
 import { CurrentUserProvider } from "@/components/auth/CurrentUserProvider";
-import type { UserIdentity } from "@/lib/userIdentity";
+import {
+  userScopedStorageKey,
+  type UserIdentity,
+} from "@/lib/userIdentity";
 
 const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
 
@@ -42,6 +45,10 @@ export function AppShell({
     !pathname.startsWith("/offerings/");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const hoverPreference = useHoverPreference();
+  const agentHiddenStorageKey = userScopedStorageKey(
+    AGENT_HIDDEN_KEY,
+    currentUser.id
+  );
 
   // CSS-only tooltips read the same preference as the interactive chart and
   // hover-card components. Keeping it on <html> also lets the off switch hide
@@ -56,23 +63,35 @@ export function AppShell({
   // (bubble dismissed) persists, and the top-bar spark button brings it back.
   const [agentOpen, setAgentOpen] = useState(false);
   const [agentHidden, setAgentHidden] = useState(false);
+  const [loadedAgentHiddenKey, setLoadedAgentHiddenKey] = useState<
+    string | null
+  >(null);
   useEffect(() => {
-    try {
-      setAgentHidden(localStorage.getItem(AGENT_HIDDEN_KEY) === "1");
-    } catch {}
-  }, []);
-  function toggleAgent() {
+    setLoadedAgentHiddenKey(null);
+    setAgentOpen(false);
     setAgentHidden(false);
     try {
-      localStorage.removeItem(AGENT_HIDDEN_KEY);
+      setAgentHidden(localStorage.getItem(agentHiddenStorageKey) === "1");
+    } catch {}
+    setLoadedAgentHiddenKey(agentHiddenStorageKey);
+  }, [agentHiddenStorageKey]);
+  const agentStateReady = loadedAgentHiddenKey === agentHiddenStorageKey;
+  const visibleAgentOpen = agentStateReady && agentOpen;
+  const visibleAgentHidden = !agentStateReady || agentHidden;
+  function toggleAgent() {
+    if (!agentStateReady) return;
+    setAgentHidden(false);
+    try {
+      localStorage.removeItem(agentHiddenStorageKey);
     } catch {}
     setAgentOpen((o) => !o);
   }
   function hideAgent() {
+    if (!agentStateReady) return;
     setAgentOpen(false);
     setAgentHidden(true);
     try {
-      localStorage.setItem(AGENT_HIDDEN_KEY, "1");
+      localStorage.setItem(agentHiddenStorageKey, "1");
     } catch {}
   }
 
@@ -185,7 +204,7 @@ export function AppShell({
               offeringsOnly={offeringsOnly}
               onMenuClick={() => setMobileNavOpen(true)}
               onAgentToggle={toggleAgent}
-              agentActive={agentOpen && !agentHidden}
+              agentActive={visibleAgentOpen && !visibleAgentHidden}
             />
             {fullBleed ? (
               // key=pathname re-mounts so full-bleed pages (session detail, agent,
@@ -217,14 +236,17 @@ export function AppShell({
         </div>
         {!offeringsOnly && (
           <AgentDock
-            open={agentOpen}
+            open={visibleAgentOpen}
             onOpenChange={setAgentOpen}
-            hidden={agentHidden}
+            hidden={visibleAgentHidden}
             onHide={hideAgent}
             pathname={pathname}
           />
         )}
-        <ProductTourProvider offeringsOnly={offeringsOnly} />
+        <ProductTourProvider
+          offeringsOnly={offeringsOnly}
+          autoStart={approvalEnabled}
+        />
         <AutoTruncationTooltip />
       </ToastProvider>
     </CurrentUserProvider>

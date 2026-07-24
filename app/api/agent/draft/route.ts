@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { agentAnswer } from "@/lib/claude";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
-import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
+import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import type { RecommendedService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +12,14 @@ export const dynamic = "force-dynamic";
 // account), a deterministic template otherwise. Mock-first; the human still
 // approves before anything sends.
 export async function POST(req: NextRequest) {
-  const principal = await authenticatedRequestPrincipal(req);
-  const senderName =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  const senderName = await authenticatedRequestActorName(req);
   const body = await req.json().catch(() => ({}));
   const customerId = String(body.customerId || "");
   const variant = Math.max(0, Number(body.variant) || 0);
@@ -30,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
   // Tone: explicit request wins; otherwise fall back to the rep's pinned default.
-  const prefs = await db.agentPrefs.get();
+  const prefs = await db.agentPrefs.get(scope);
   const tone = ["formal", "warm", "brief"].includes(String(body.tone))
     ? String(body.tone)
     : prefs?.draft_tone || "warm";

@@ -13,6 +13,7 @@ import {
   type NotificationType,
 } from "@/lib/notifications";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 
 const NOTIF_ICON: Record<NotificationType, typeof Bell> = {
   review: ClipboardCheck,
@@ -54,12 +55,27 @@ export function TopBar({
   const [helpOpen, setHelpOpen] = useState(false);
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [loadedNotificationKey, setLoadedNotificationKey] = useState<
+    string | null
+  >(null);
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const currentUser = useCurrentUser();
+  const notificationReadKey = userScopedStorageKey(
+    NOTIF_READ_KEY,
+    currentUser.id
+  );
 
   useEffect(() => {
-    if (offeringsOnly) return;
+    setLoadedNotificationKey(null);
+    setNotifs([]);
+    setReadIds(new Set());
+    setNotifOpen(false);
+    setUserOpen(false);
+    if (offeringsOnly) {
+      setLoadedNotificationKey(notificationReadKey);
+      return;
+    }
     let on = true;
     const load = () =>
       fetch("/api/notifications", { cache: "no-store" })
@@ -72,27 +88,36 @@ export function TopBar({
     const timer = window.setInterval(load, 15_000);
     window.addEventListener("focus", load);
     try {
-      const raw = localStorage.getItem(NOTIF_READ_KEY);
+      const raw = localStorage.getItem(notificationReadKey);
       if (raw) setReadIds(new Set(JSON.parse(raw)));
     } catch {}
+    setLoadedNotificationKey(notificationReadKey);
     return () => {
       on = false;
       window.clearInterval(timer);
       window.removeEventListener("focus", load);
     };
-  }, [offeringsOnly]);
+  }, [notificationReadKey, offeringsOnly]);
 
-  const unread = notifs.filter((n) => !readIds.has(n.id)).length;
+  const notificationStateReady =
+    loadedNotificationKey === notificationReadKey;
+  const visibleNotifs = notificationStateReady ? notifs : [];
+  const visibleReadIds = notificationStateReady ? readIds : new Set<string>();
+  const unread = visibleNotifs.filter((n) => !visibleReadIds.has(n.id)).length;
   const newItems = offeringsOnly
     ? NEW_ITEMS.filter((item) => item.href.startsWith("/offerings"))
     : NEW_ITEMS;
 
   function markRead(id: string) {
+    if (!notificationStateReady) return;
     setReadIds((prev) => {
       const next = new Set(prev);
       next.add(id);
       try {
-        localStorage.setItem(NOTIF_READ_KEY, JSON.stringify(Array.from(next)));
+        localStorage.setItem(
+          notificationReadKey,
+          JSON.stringify(Array.from(next))
+        );
       } catch {}
       return next;
     });
@@ -264,9 +289,9 @@ export function TopBar({
                   </span>
                 </div>
                 <ul className="max-h-[340px] overflow-y-auto">
-                  {notifs.slice(0, 5).map((n) => {
+                  {visibleNotifs.slice(0, 5).map((n) => {
                     const Icon = NOTIF_ICON[n.type] || Bell;
-                    const isRead = readIds.has(n.id);
+                    const isRead = visibleReadIds.has(n.id);
                     return (
                       <li key={n.id} className="border-b border-border-light last:border-0">
                         <Link
@@ -291,7 +316,7 @@ export function TopBar({
                       </li>
                     );
                   })}
-                  {notifs.length === 0 && (
+                  {visibleNotifs.length === 0 && (
                     <li className="px-4 py-6 text-[13px] text-text-secondary text-center">
                       You&apos;re all caught up.
                     </li>

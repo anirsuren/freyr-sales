@@ -78,6 +78,7 @@ export interface OutreachInput {
   contact: Contact;
   customer: Customer | null;
   offering: Offering;
+  senderName: string;
   extra?: string; // anything the rep adds ("met at DIA", "focus the EU angle")
 }
 
@@ -121,7 +122,7 @@ export function descSnippet(o: Offering, max = 180): string {
 }
 
 export function generateMessageTemplate(input: OutreachInput): OutreachDraft {
-  const { contact, customer, offering, kind } = input;
+  const { contact, customer, offering, kind, senderName } = input;
   const first = firstName(contact.full_name);
   const company = customer?.company_name || "your team";
   const title = contact.job_title || "your regulatory work";
@@ -159,7 +160,7 @@ export function generateMessageTemplate(input: OutreachInput): OutreachDraft {
     `Would next week work for a quick call?`,
     ``,
     `Best,`,
-    `Anir Suren`,
+    senderName,
     `Freyr Solutions`,
   ].join("\n");
   return { kind, subject, message, source: "template" };
@@ -188,6 +189,7 @@ export async function generateMessage(
       freyrContext: FREYR_CONTEXT,
       extra: input.extra || "",
       linkedinLimit: LINKEDIN_LIMIT,
+      senderName: input.senderName,
     });
     if (out) {
       return {

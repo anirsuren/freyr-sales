@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import {
@@ -10,6 +10,7 @@ import {
   openValueByAccount,
 } from "@/lib/agent";
 import { buildDeals } from "@/lib/pipeline";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,18 @@ export const dynamic = "force-dynamic";
 // rep stated, scopes the agent's next-best-actions to that goal's intent, then
 // works them — handling the safe (draftable) ones and escalating anything that
 // needs human approval. Records a transparent "plan" run. Mock-first.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  const scope = {
+    workspaceId: actor.workspaceId,
+    userId: actor.userId,
+  };
   const body = await req.json().catch(() => ({}));
   const goal = String(body.goal || "").trim();
   if (!goal) {
@@ -35,14 +47,16 @@ export async function POST(req: Request) {
     db.customers.list(),
     db.contacts.list(),
     db.interactions.list(),
-    db.agentPrefs.get(),
+    db.agentPrefs.get(scope),
   ]);
 
   const kinds = goalActionKinds(goal); // null = all kinds
   const { actions: focused } = focusActions(
     nextBestActions({ sessions, customers, contacts, interactions }),
     customers,
-    prefs
+    prefs,
+    actor.name,
+    scope.userId
   );
   const actions = focused.filter((a) => !kinds || kinds.includes(a.kind));
 
@@ -136,6 +150,8 @@ export async function POST(req: Request) {
   const steerNote = instruction ? ` Steer: "${instruction}".` : "";
   await db.agentRuns.create({
     kind: "plan",
+    created_by_user_id: actor.userId,
+    created_by: actor.name,
     title: `Worked on: ${goal}`,
     customer_id: null,
     company: null,

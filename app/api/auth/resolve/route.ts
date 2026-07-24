@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
       sub: principal.id,
       userId: access.userId,
       email: principal.email,
+      displayName: access.displayName,
       role: access.role,
       workspaceId: access.workspaceId,
     });

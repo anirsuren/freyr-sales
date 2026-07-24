@@ -20,10 +20,12 @@ import { formatMoney } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
 
 export type RosterRep = {
+  identityKey: string;
   name: string;
   slug: string;
   title: string;
   role: "Admin" | "Manager" | "Rep";
+  you?: boolean;
   region: string;
   phone: string;
   teamsUrl: string;
@@ -163,7 +165,9 @@ function PipelineInspector({
       <div className="flex items-center gap-3 border-b border-border-light pb-2.5">
         <Avatar name={rep.name} className="h-9 w-9 shrink-0 text-[11px]" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13.5px] font-semibold text-text-primary">{rep.name}</p>
+          <p className="truncate text-[13.5px] font-semibold text-text-primary">
+            {rep.name}{rep.you ? " · you" : ""}
+          </p>
           <p className="truncate text-[10.5px] text-text-tertiary">{selected ? STAGE_DETAIL[selected.stage] : `${rep.openCount} open deals by stage`}</p>
         </div>
         <div className="shrink-0 text-right">
@@ -253,7 +257,9 @@ function ActivityInspector({ rep }: { rep: RosterRep }) {
         <Avatar name={rep.name} className="h-9 w-9 shrink-0 text-[11px]" />
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Sales activity · last 10 weeks</p>
-          <h3 className="mt-0.5 truncate text-[14px] font-semibold text-text-primary">{rep.name}</h3>
+          <h3 className="mt-0.5 truncate text-[14px] font-semibold text-text-primary">
+            {rep.name}{rep.you ? " · you" : ""}
+          </h3>
         </div>
       </div>
 
@@ -363,7 +369,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             const trendSum = r.trend.reduce((s, x) => s + x, 0);
             return (
               <HoverExpandCard
-                key={r.name}
+                key={r.identityKey}
                 summary={
                   <>
                     <div className="flex items-center gap-3">
@@ -495,7 +501,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                 const pct = Math.round((r.wonFY / r.quota) * 100);
                 const ac = attainColor(pct);
                 return (
-                  <tr key={r.name} className="hover:bg-surface transition-colors">
+                  <tr key={r.identityKey} className="hover:bg-surface transition-colors">
                     <td className="px-5 py-3.5">
                       {/* Row hover popover (Suren: "on the rows page there's no
                           pop-up like the grid") — the rep's mix + headline stats. */}

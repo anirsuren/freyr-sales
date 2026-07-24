@@ -87,19 +87,21 @@ export interface Deal {
   lastActivity: string;
   staleDays: number;
   owner: string;
+  ownerUserId?: string | null;
   createdAt: string;
 }
 
-// Rep roster. A deal's owner is the account owner when assigned, otherwise a
-// stable derived rep so "My deals / Team" filtering always has data.
-export const REPS = ["Anir Suren", "Mark Miller", "Priya Nair", "Diego Alvarez"];
-export const CURRENT_REP = "Anir Suren";
+// Demo roster used only to give ownerless mock records a stable owner. The
+// signed-in person is deliberately not encoded here: "you" must always come
+// from the verified session, and a new user must never inherit another user's
+// identity just because they opened the same demo workspace.
+export const REPS = ["Suren Dheen", "Mark Miller", "Priya Nair", "Diego Alvarez"];
 
 // The full sales floor (Suren: "put like 20 reps, it has to look full"). The
 // first four are the real, deal-owning reps; the rest fill out the org so the
 // team charts read like a real enterprise sales team rather than a demo of four.
 export const SALES_TEAM = [
-  "Anir Suren",
+  "Suren Dheen",
   "Diego Alvarez",
   "Priya Nair",
   "Mark Miller",
@@ -121,6 +123,8 @@ export const SALES_TEAM = [
   "Leo Santos",
 ];
 
+/** Include the verified current user in mock analytics without relabelling any
+ * existing teammate or seeded record as that user. */
 // Stable hash of a name → deterministic pseudo-random, so a rep's synthetic
 // figures never change between renders (no Math.random in a server component).
 function hashName(s: string): number {
@@ -130,6 +134,129 @@ function hashName(s: string): number {
     h = Math.imul(h, 16777619) >>> 0;
   }
   return h;
+}
+
+export type RepIdentity = {
+  /** Stable UI/data key. Member-backed rows use app_users.id; legacy/demo rows
+   * deliberately live in a separate namespace. */
+  key: string;
+  name: string;
+  memberId: string | null;
+  source: "current" | "member" | "demo" | "legacy";
+  slug: string;
+};
+
+function canonicalRepName(name: string): string {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+function legacyRepKey(name: string): string {
+  return `legacy:${canonicalRepName(name).toLocaleLowerCase()}`;
+}
+
+function routeSlug(name: string, key: string): string {
+  const base =
+    canonicalRepName(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "rep";
+  return `${base}--${hashName(key).toString(36)}`;
+}
+
+function identity(
+  nameValue: string,
+  memberId: string | null,
+  source: RepIdentity["source"],
+  fallbackCurrentId?: string | null
+): RepIdentity {
+  const name = canonicalRepName(nameValue) || "Unassigned";
+  const key = memberId
+    ? `member:${memberId}`
+    : source === "current"
+      ? `current:${fallbackCurrentId || "unknown"}`
+      : legacyRepKey(name);
+  return {
+    key,
+    name,
+    memberId,
+    source,
+    slug: routeSlug(name, key),
+  };
+}
+
+/** Include the verified current member as a distinct roster entry. A matching
+ * display name never replaces the seeded/demo entry: those records have no
+ * stable member id and must remain separate history. */
+export function salesTeamFor(currentUser?: {
+  id?: string | null;
+  memberId?: string | null;
+  name?: string | null;
+} | null): RepIdentity[] {
+  const demo = SALES_TEAM.map((name) => identity(name, null, "demo"));
+  const currentName = currentUser?.name?.trim();
+  if (!currentName) return demo;
+  return [
+    identity(
+      currentName,
+      currentUser?.memberId?.trim() || null,
+      "current",
+      currentUser?.id
+    ),
+    ...demo,
+  ];
+}
+
+/** Resolve the durable rep identity carried by a deal. Name-only records stay
+ * in the legacy namespace even when a signed member later chooses that name. */
+export function repIdentityForDeal(
+  deal: Pick<Deal, "owner" | "ownerUserId">
+): RepIdentity {
+  return identity(
+    deal.owner || "Unassigned",
+    deal.ownerUserId?.trim() || null,
+    deal.ownerUserId ? "member" : "legacy"
+  );
+}
+
+export function repOwnsDeal(
+  rep: Pick<RepIdentity, "key" | "memberId">,
+  deal: Pick<Deal, "owner" | "ownerUserId">
+): boolean {
+  if (rep.memberId) {
+    return !!deal.ownerUserId && deal.ownerUserId === rep.memberId;
+  }
+  return !deal.ownerUserId && rep.key === legacyRepKey(deal.owner || "Unassigned");
+}
+
+export function isCurrentRep(
+  rep: Pick<RepIdentity, "memberId">,
+  currentMemberId: string | null | undefined
+): boolean {
+  return (
+    !!rep.memberId &&
+    !!currentMemberId &&
+    rep.memberId === currentMemberId
+  );
+}
+
+function uniqueRepIdentities(entries: RepIdentity[]): RepIdentity[] {
+  const seen = new Set<string>();
+  return entries.filter((entry) => {
+    if (seen.has(entry.key)) return false;
+    seen.add(entry.key);
+    return true;
+  });
+}
+
+/** Owner choices put the current user first. Seeded teammates are available
+ * only on explicit mock surfaces, never as assignable owners in live data. */
+export function repOptionsFor(
+  currentUserName?: string | null,
+  includeDemoTeam = false
+): string[] {
+  const name = currentUserName?.trim();
+  if (!includeDemoTeam) return name ? [name] : [];
+  return name ? [name, ...REPS.filter((rep) => rep !== name)] : [...REPS];
 }
 
 // A teammate's realistic quarter forecast. Reps who own real deals use those;
@@ -148,7 +275,11 @@ export function repForecast(name: string): { open: number; weighted: number; dea
 }
 
 export type RepStat = {
+  key: string;
   name: string;
+  memberId: string | null;
+  source: RepIdentity["source"];
+  slug: string;
   deals: number;
   openCount: number;
   openValue: number;
@@ -167,25 +298,43 @@ export function buildRepStats(
   options: {
     rangeDays?: number;
     includeSynthetic?: boolean;
-    actualOwners?: string[];
+    actualOwners?: RepIdentity[];
+    roster?: RepIdentity[];
   } = {}
 ): RepStat[] {
   const includeSynthetic = options.includeSynthetic !== false;
-  const actualOwners = new Set(options.actualOwners ?? deals.map((d) => d.owner));
+  const actualOwners = uniqueRepIdentities(
+    options.actualOwners ?? deals.map(repIdentityForDeal)
+  );
+  const actualOwnerKeys = new Set(actualOwners.map((rep) => rep.key));
+  const configuredRoster =
+    options.roster ?? SALES_TEAM.map((name) => identity(name, null, "demo"));
   const roster = includeSynthetic
-    ? SALES_TEAM
-    : Array.from(actualOwners).sort((a, b) => a.localeCompare(b));
+    ? uniqueRepIdentities([...configuredRoster, ...actualOwners])
+    : uniqueRepIdentities([
+        ...configuredRoster.filter(
+          (rep) => rep.source === "current" || rep.source === "member"
+        ),
+        ...actualOwners,
+      ]).sort((a, b) => a.name.localeCompare(b.name));
 
-  return roster.map((name): RepStat => {
-    const rd = deals.filter((d) => d.owner === name);
+  return roster.map((rep): RepStat => {
+    const name = rep.name;
+    const rd = deals.filter((deal) => repOwnsDeal(rep, deal));
     const open = rd.filter((d) => d.stage !== "Closed Lost");
-    if (rd.length > 0 || actualOwners.has(name)) {
+    if (
+      rd.length > 0 ||
+      actualOwnerKeys.has(rep.key) ||
+      rep.source === "current" ||
+      rep.source === "member"
+    ) {
       const openValue = open.reduce((s, d) => s + d.value, 0);
       const weighted = open.reduce(
         (s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0),
         0
       );
       return {
+        ...rep,
         name,
         deals: rd.length,
         openCount: open.length,
@@ -261,6 +410,7 @@ export function buildRepStats(
       .filter((s) => s.stage === "Qualified" || s.stage === "Meeting Booked")
       .reduce((a, s) => a + s.count, 0);
     return {
+      ...rep,
       name,
       deals: openCount + closedOwned,
       openCount,
@@ -277,6 +427,10 @@ export function buildRepStats(
 export function ownerFor(customer: Customer | undefined): string {
   if (customer?.owner) return customer.owner;
   const id = customer?.id || "";
+  // Stable synthetic owners exist only for the explicit demo fixtures. Live or
+  // newly-created accounts must remain unassigned instead of silently becoming
+  // Suren's (or another seeded teammate's) account.
+  if (!/^cust-\d+$/.test(id)) return "Unassigned";
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   return REPS[h % REPS.length];
@@ -331,6 +485,7 @@ export function buildDeals(
       lastActivity,
       staleDays: Math.max(0, staleDays),
       owner: ownerFor(customer),
+      ownerUserId: customer?.owner_user_id || null,
       createdAt: s.created_at,
     };
   });

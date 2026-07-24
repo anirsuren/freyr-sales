@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }
-  const principal = {
+  const assertedPrincipal = {
     id: user.id,
     name:
       user.user_metadata?.full_name ||
@@ -73,33 +73,42 @@ export async function POST(request: NextRequest) {
       : [],
   };
 
-  let token: string;
+  let access: Awaited<ReturnType<typeof resolveWorkspaceAccess>>;
   try {
-    token = await signAppSession(principal);
+    access = await resolveWorkspaceAccess(assertedPrincipal);
   } catch {
     return NextResponse.json(
-      { error: "Sign-in is not fully configured." },
+      { error: "Authentication service unavailable." },
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
 
+  // Once a subject has joined the workspace, its canonical directory name is
+  // the identity used throughout the app. Supabase user metadata is editable
+  // by the account holder and therefore cannot be trusted for attribution.
+  const principal =
+    access.status === "approved"
+      ? { ...assertedPrincipal, name: access.displayName }
+      : assertedPrincipal;
+
+  let token: string;
   let accessGrantToken: string | null = null;
-  let approved = false;
+  const approved = access.status === "approved";
   try {
-    const access = await resolveWorkspaceAccess(principal);
+    token = await signAppSession(principal);
     if (access.status === "approved") {
       accessGrantToken = await signAccessGrant({
         sub: principal.id,
         userId: access.userId,
         email: principal.email,
+        displayName: access.displayName,
         role: access.role,
         workspaceId: access.workspaceId,
       });
-      approved = true;
     }
   } catch {
     return NextResponse.json(
-      { error: "Authentication service unavailable." },
+      { error: "Sign-in is not fully configured." },
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }

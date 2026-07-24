@@ -43,6 +43,10 @@ import {
   useHoverPreference,
 } from "@/lib/hoverPreferences";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import {
+  userScopedStorageKey,
+  type UserIdentity,
+} from "@/lib/userIdentity";
 
 const TABS = [
   { key: "workspace", label: "Workspace", description: "Data and behavior", icon: Settings2 },
@@ -72,7 +76,7 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
   { cap: "Approve pitches for send", admin: true, manager: true, rep: false },
   { cap: "Edit offerings & sales materials", admin: true, manager: true, rep: false },
   { cap: "Invite or approve teammates", admin: true, manager: false, rep: false },
-  { cap: "Configure SSO & security", admin: true, manager: false, rep: false },
+  { cap: "Configure authentication & security", admin: true, manager: false, rep: false },
 ];
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -89,21 +93,27 @@ type AccessRole = "admin" | "editor" | "sales";
 type AccessDirectory = {
   members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; lastSeenAt: string | null }[];
   requests: { id: string; name: string; email: string | null; requestedRole: AccessRole; requestedAt: string }[];
-  invitations: { id: string; email: string; role: AccessRole; expiresAt: string }[];
+  invitations: {
+    id: string;
+    name?: string | null;
+    email: string;
+    role: AccessRole;
+    expiresAt: string;
+  }[];
 };
 // The real sales team — mirrors REPS in lib/pipeline.ts (the reps who own deals
 // across Forecast/Analytics). Was accidentally seeded with customer CONTACTS
 // (Dana Whitfield @ NovaGene, Owen Bradley @ Northwind), which read as if our
 // prospects were on staff.
-const DEFAULT_TEAM: Member[] = [
-  { name: "Anir Suren", email: "anir.s@freyrsolutions.com", role: "Admin", you: true },
+const MOCK_TEAMMATES: Member[] = [
+  { name: "Suren Dheen", email: "suren.dheen@freyrsolutions.com", role: "Admin" },
   { name: "Mark Miller", email: "mark.miller@freyrsolutions.com", role: "Manager" },
   { name: "Priya Nair", email: "priya.nair@freyrsolutions.com", role: "Rep" },
   { name: "Diego Alvarez", email: "diego.alvarez@freyrsolutions.com", role: "Rep" },
 ];
 
 const MOCK_ACCESS: AccessDirectory = {
-  members: DEFAULT_TEAM.map((member, index) => ({
+  members: MOCK_TEAMMATES.map((member, index) => ({
     id: `member-${index + 1}`,
     name: member.name,
     email: member.email,
@@ -123,6 +133,41 @@ const MOCK_ACCESS: AccessDirectory = {
   invitations: [],
 };
 
+const DEFAULT_NOTIFICATIONS: Record<string, boolean> = {
+  newSession: true,
+  outcomeLogged: true,
+  rottingDeal: true,
+  weeklyDigest: false,
+};
+
+function initialAccessDirectory(
+  currentUser: UserIdentity,
+  approvalEnabled: boolean
+): AccessDirectory {
+  return {
+    ...(approvalEnabled
+      ? { members: [], requests: [], invitations: [] }
+      : MOCK_ACCESS),
+    members: [
+      {
+        id: currentUser.id,
+        name: currentUser.name,
+        email: currentUser.email,
+        role: currentUser.role,
+        active: true,
+        lastSeenAt: new Date().toISOString(),
+      },
+      ...(approvalEnabled
+        ? []
+        : MOCK_ACCESS.members.filter(
+            (member) =>
+              member.id !== currentUser.id &&
+              member.email?.toLowerCase() !== currentUser.email?.toLowerCase()
+          )),
+    ],
+  };
+}
+
 const NOTIFS = [
   { key: "newSession", label: "New session created", desc: "When a teammate generates a pitch session." },
   { key: "outcomeLogged", label: "Outcome logged", desc: "When an interaction outcome is recorded." },
@@ -134,20 +179,26 @@ function Toggle({
   on,
   onClick,
   label = "Toggle setting",
+  disabled = false,
 }: {
   on: boolean;
   onClick: () => void;
   label?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      disabled={disabled}
       role="switch"
       aria-checked={on}
+      aria-disabled={disabled}
       aria-label={label}
       className={cn(
         "w-10 h-6 rounded-full transition-colors relative shrink-0",
-        on ? "bg-blue-primary" : "bg-border"
+        on ? "bg-blue-primary" : "bg-border",
+        disabled && "cursor-not-allowed opacity-60"
       )}
     >
       <span
@@ -164,18 +215,30 @@ export function SettingsTabs({
   services,
   crmCounts,
   initialDataMode,
+  initialDataModeLocked,
   authConfig,
 }: {
   services: Record<string, boolean>;
   crmCounts: { companies: number; contacts: number; deals: number };
   initialDataMode: "mock" | "live";
+  initialDataModeLocked: boolean;
   authConfig: { authMode: string; approvalEnabled: boolean };
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const currentUser = useCurrentUser();
-  const profileStorageKey = `freyr_profile:${currentUser.id}`;
+  const profileStorageKey = userScopedStorageKey(
+    "freyr_profile",
+    currentUser.id
+  );
+  const notifStorageKey = userScopedStorageKey("freyr_notifs", currentUser.id);
+  const roleStorageKey = userScopedStorageKey("freyr_role", currentUser.id);
+  const ssoStorageKey = userScopedStorageKey("freyr_sso", currentUser.id);
+  const connectorStorageKey = userScopedStorageKey(
+    "freyr_connectors",
+    currentUser.id
+  );
   const requestedTab = searchParams.get("tab");
   const [tab, setTab] = useState(
     requestedTab && TABS.some((item) => item.key === requestedTab) ? requestedTab : "workspace"
@@ -185,6 +248,10 @@ export function SettingsTabs({
   const hoverPreference = useHoverPreference();
 
   async function changeDataMode(mode: "mock" | "live") {
+    if (initialDataModeLocked) {
+      toast("Workspace data mode is controlled by this deployment");
+      return;
+    }
     if (mode === dataMode || modeBusy) return;
     setModeBusy(true);
     try {
@@ -211,12 +278,9 @@ export function SettingsTabs({
     signature: `${currentUser.name}\nFreyr Solutions`,
   });
   const [invite, setInvite] = useState({ name: "", email: "", role: "Rep" });
-  const [notifs, setNotifs] = useState<Record<string, boolean>>({
-    newSession: true,
-    outcomeLogged: true,
-    rottingDeal: true,
-    weeklyDigest: false,
-  });
+  const [notifs, setNotifs] = useState<Record<string, boolean>>(
+    DEFAULT_NOTIFICATIONS
+  );
   const authenticatedRoleLabel =
     currentUser.role === "admin"
       ? "Admin"
@@ -226,51 +290,72 @@ export function SettingsTabs({
   const [role, setRole] = useState(authenticatedRoleLabel);
   const [sso, setSso] = useState({
     provider: "Azure AD",
-    connected: authConfig.approvalEnabled,
-    enforce: authConfig.approvalEnabled,
-    twoFactor: true,
+    connected: false,
+    enforce: false,
+    twoFactor: false,
   });
   const [connectors, setConnectors] = useState<Record<string, boolean>>({});
-  const [accessDirectory, setAccessDirectory] = useState<AccessDirectory>(() => ({
-    ...MOCK_ACCESS,
-    members: MOCK_ACCESS.members.map((member, index) =>
-      index === 0
-        ? {
-            ...member,
-            id: currentUser.id,
-            name: currentUser.name,
-            email: currentUser.email,
-            role: currentUser.role,
-          }
-        : member
-    ),
-  }));
+  const [accessDirectory, setAccessDirectory] = useState<AccessDirectory>(() =>
+    initialAccessDirectory(currentUser, authConfig.approvalEnabled)
+  );
   const [accessBusy, setAccessBusy] = useState<string | null>(null);
+  const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
 
   const activeTab = TABS.find((item) => item.key === tab) || TABS[0];
-
-  async function refreshAccessDirectory() {
-    if (!authConfig.approvalEnabled) return;
-    try {
-      const response = await fetch("/api/settings/access", { cache: "no-store" });
-      if (!response.ok) throw new Error("Access directory unavailable");
-      setAccessDirectory(await response.json());
-    } catch {
-      toast("Couldn't load workspace access", "error");
-    }
-  }
+  const isLocalAuth = authConfig.authMode === "local";
+  const authProviderLabel =
+    authConfig.authMode === "supabase"
+      ? "Supabase email/password"
+      : authConfig.authMode === "entra"
+        ? "Microsoft Entra"
+        : authConfig.authMode === "aws-alb"
+          ? "AWS ALB OIDC"
+          : "Local demo";
+  const authProviderDetail =
+    authConfig.authMode === "supabase"
+      ? "Verified email required"
+      : isLocalAuth
+        ? "No production identity"
+        : "Single sign-on configured";
+  const signInMethod =
+    authConfig.authMode === "supabase" ? "Email + password" : "Single sign-on";
+  const identityVerification =
+    authConfig.authMode === "supabase"
+      ? "Verified email required"
+      : "Identity provider managed";
 
   function toggleConnector(key: string, name: string) {
     const next = { ...connectors, [key]: !connectors[key] };
     setConnectors(next);
     try {
-      localStorage.setItem("freyr_connectors", JSON.stringify(next));
+      localStorage.setItem(connectorStorageKey, JSON.stringify(next));
     } catch {}
     toast(next[key] ? `Connected ${name}` : `Disconnected ${name}`);
   }
 
   // hydrate from localStorage
   useEffect(() => {
+    setHydratedUserId(null);
+    setProfile({
+      name: currentUser.name,
+      title: currentUser.title,
+      email: currentUser.email || "",
+      signature: `${currentUser.name}\nFreyr Solutions`,
+    });
+    setInvite({ name: "", email: "", role: "Rep" });
+    setNotifs({ ...DEFAULT_NOTIFICATIONS });
+    setRole(authenticatedRoleLabel);
+    setSso({
+      provider: "Azure AD",
+      connected: false,
+      enforce: false,
+      twoFactor: false,
+    });
+    setConnectors({});
+    setAccessDirectory(
+      initialAccessDirectory(currentUser, authConfig.approvalEnabled)
+    );
+    setAccessBusy(null);
     try {
       const p = localStorage.getItem(profileStorageKey);
       if (p) {
@@ -287,33 +372,60 @@ export function SettingsTabs({
           email: currentUser.email || "",
         }));
       }
-      const n = localStorage.getItem("freyr_notifs");
+      const n = localStorage.getItem(notifStorageKey);
       if (n) setNotifs((s) => ({ ...s, ...JSON.parse(n) }));
-      const r = localStorage.getItem("freyr_role");
+      const r = localStorage.getItem(roleStorageKey);
       if (r && initialDataMode === "mock" && !authConfig.approvalEnabled) {
         setRole(r);
       } else {
         setRole(authenticatedRoleLabel);
       }
-      const s = localStorage.getItem("freyr_sso");
-      if (s && initialDataMode === "mock") setSso((v) => ({ ...v, ...JSON.parse(s) }));
-      const cn = localStorage.getItem("freyr_connectors");
+      const s = localStorage.getItem(ssoStorageKey);
+      if (s && initialDataMode === "mock" && isLocalAuth) {
+        setSso((v) => ({ ...v, ...JSON.parse(s) }));
+      }
+      const cn = localStorage.getItem(connectorStorageKey);
       if (cn) setConnectors(JSON.parse(cn));
-    } catch {}
+    } catch {
+      // Invalid data in one account's browser storage must not preserve values
+      // from the previously signed-in account.
+    } finally {
+      setHydratedUserId(currentUser.id);
+    }
   }, [
+    currentUser,
+    currentUser.id,
     currentUser.email,
     currentUser.name,
+    currentUser.role,
+    currentUser.title,
     authConfig.approvalEnabled,
     authenticatedRoleLabel,
     initialDataMode,
+    isLocalAuth,
     profileStorageKey,
+    notifStorageKey,
+    roleStorageKey,
+    ssoStorageKey,
+    connectorStorageKey,
   ]);
 
   useEffect(() => {
-    refreshAccessDirectory();
-    // The production directory is refreshed when the approval gate becomes active.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authConfig.approvalEnabled]);
+    if (!authConfig.approvalEnabled) return;
+    let active = true;
+    fetch("/api/settings/access", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Access directory unavailable");
+        const directory = await response.json();
+        if (active) setAccessDirectory(directory);
+      })
+      .catch(() => {
+        if (active) toast("Couldn't load workspace access", "error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [authConfig.approvalEnabled, currentUser.id, toast]);
 
   const canInvite = authConfig.approvalEnabled
     ? currentUser.role === "admin"
@@ -329,7 +441,7 @@ export function SettingsTabs({
     }
     setRole(r);
     try {
-      localStorage.setItem("freyr_role", r);
+      localStorage.setItem(roleStorageKey, r);
     } catch {}
     toast(`You're now acting as ${r}`);
   }
@@ -337,7 +449,7 @@ export function SettingsTabs({
     const next = { ...sso, ...patch };
     setSso(next);
     try {
-      localStorage.setItem("freyr_sso", JSON.stringify(next));
+      localStorage.setItem(ssoStorageKey, JSON.stringify(next));
     } catch {}
   }
 
@@ -355,8 +467,8 @@ export function SettingsTabs({
       toast("Reps can't invite teammates — ask an admin or manager", "error");
       return;
     }
-    if (!invite.email) {
-      toast("Email is required", "error");
+    if (!invite.name.trim() || !invite.email) {
+      toast("Full name and email are required", "error");
       return;
     }
     const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Manager" ? "editor" : "sales";
@@ -366,22 +478,46 @@ export function SettingsTabs({
         const response = await fetch("/api/settings/access", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "invite", email: invite.email, role: accessRole }),
+          body: JSON.stringify({
+            action: "invite",
+            name: invite.name.trim(),
+            email: invite.email,
+            role: accessRole,
+          }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Invite failed");
         setAccessDirectory(data.directory);
+        const delivery = data.invitationDelivery?.emailResult as
+          | { ok?: boolean; skipped?: boolean; error?: string }
+          | undefined;
+        if (delivery?.ok && !delivery.skipped) {
+          toast(`Invitation emailed to ${invite.email}`);
+        } else {
+          toast(
+            delivery?.error
+              ? `Invitation created, but email failed: ${delivery.error}`
+              : "Invitation created, but email delivery is not configured",
+            "error"
+          );
+        }
       } else {
         setAccessDirectory((directory) => ({
           ...directory,
           invitations: [
-            { id: `invite-${Date.now()}`, email: invite.email.toLowerCase(), role: accessRole, expiresAt: new Date(Date.now() + 14 * 86400000).toISOString() },
+            {
+              id: `invite-${Date.now()}`,
+              name: invite.name.trim(),
+              email: invite.email.toLowerCase(),
+              role: accessRole,
+              expiresAt: new Date(Date.now() + 14 * 86400000).toISOString(),
+            },
             ...directory.invitations,
           ],
         }));
+        toast(`Demo invitation created for ${invite.email}`);
       }
       setInvite({ name: "", email: "", role: "Rep" });
-      toast(`Invitation created for ${invite.email}`);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Invite failed", "error");
     } finally {
@@ -428,9 +564,11 @@ export function SettingsTabs({
     const next = { ...notifs, [key]: !notifs[key] };
     setNotifs(next);
     try {
-      localStorage.setItem("freyr_notifs", JSON.stringify(next));
+      localStorage.setItem(notifStorageKey, JSON.stringify(next));
     } catch {}
   }
+
+  if (hydratedUserId !== currentUser.id) return null;
 
   return (
     <div className="grid max-w-[1280px] grid-cols-[220px_minmax(0,1fr)] gap-7">
@@ -502,8 +640,8 @@ export function SettingsTabs({
               },
               {
                 label: "Identity provider",
-                value: authConfig.authMode === "entra" ? "Microsoft Entra" : authConfig.authMode === "aws-alb" ? "AWS OIDC" : "Local demo",
-                detail: authConfig.authMode === "local" ? "No production identity" : "Single sign-on configured",
+                value: authProviderLabel,
+                detail: authProviderDetail,
                 icon: ShieldCheck,
                 color: "text-violet-600 bg-violet-50",
               },
@@ -525,7 +663,21 @@ export function SettingsTabs({
           </div>
           <Card className="px-5 py-4" data-tour="settings-data-mode">
             <div className="flex items-center justify-between gap-6">
-              <h2 className="text-[15px] font-semibold text-text-primary">Workspace data</h2>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[15px] font-semibold text-text-primary">Workspace data</h2>
+                  {initialDataModeLocked && (
+                    <span className="rounded-md bg-blue-light px-2 py-1 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-blue-primary">
+                      Deployment controlled
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-[11.5px] text-text-secondary">
+                  {initialDataModeLocked
+                    ? `This release is locked to ${dataMode === "mock" ? "Mock Mode" : "Real Mode"} for every signed-in user.`
+                    : "Choose whether this browser uses sample records or the connected workspace."}
+                </p>
+              </div>
               <div className="flex items-center gap-3" aria-label="Workspace data mode">
                 <span
                   className={cn(
@@ -540,6 +692,7 @@ export function SettingsTabs({
                 <Toggle
                   on={dataMode === "mock"}
                   onClick={() => changeDataMode(dataMode === "mock" ? "live" : "mock")}
+                  disabled={initialDataModeLocked || modeBusy}
                   label="Switch between real mode and mock mode"
                 />
                 <span
@@ -745,7 +898,18 @@ export function SettingsTabs({
               </div>
               <span className="rounded-md bg-success/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-success">Invite only</span>
             </div>
-            <div className="mt-4 grid grid-cols-[minmax(260px,1fr)_180px_auto] items-end gap-3">
+            <div className="mt-4 grid grid-cols-[minmax(180px,0.8fr)_minmax(240px,1fr)_160px_auto] items-end gap-3">
+              <label>
+                <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Full name</span>
+                <Input
+                  autoComplete="name"
+                  placeholder="Teammate’s name"
+                  value={invite.name}
+                  onChange={(e) =>
+                    setInvite({ ...invite, name: e.target.value })
+                  }
+                />
+              </label>
               <label>
                 <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Work email</span>
                 <Input type="email" placeholder="name@company.com" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
@@ -840,7 +1004,23 @@ export function SettingsTabs({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3"><h2 className="text-[14px] font-semibold text-text-primary">Invite-only workspace</h2><span className={cn("rounded-md px-2 py-1 text-[10px] font-semibold", authConfig.approvalEnabled ? "bg-success/10 text-success" : "bg-warning/10 text-warning")}>{authConfig.approvalEnabled ? "Enforced" : "Ready to enable"}</span></div>
                   <p className="mt-1 text-[11.5px] leading-relaxed text-text-secondary">Authentication verifies identity. Workspace approval independently controls whether that identity can see any Freyr data.</p>
-                  <div className="mt-3 flex items-center gap-4 text-[10.5px] font-medium text-text-tertiary"><span className="inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-success" /> SSO required</span><span className="inline-flex items-center gap-1.5"><UserCheck size={13} className="text-success" /> Owner approval</span><span className="inline-flex items-center gap-1.5"><Database size={13} className="text-success" /> Server-only database</span></div>
+                  <div className="mt-3 flex items-center gap-4 text-[10.5px] font-medium text-text-tertiary">
+                    <span className="inline-flex items-center gap-1.5">
+                      <ShieldCheck size={13} className={isLocalAuth ? "text-warning" : "text-success"} />
+                      {authConfig.authMode === "supabase"
+                        ? "Verified email required"
+                        : isLocalAuth
+                          ? "Local demo identity"
+                          : "Single sign-on required"}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <UserCheck size={13} className={authConfig.approvalEnabled ? "text-success" : "text-warning"} />
+                      {authConfig.approvalEnabled ? "Invitation required" : "Approval gate off"}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Database size={13} className="text-success" /> Server-only database
+                    </span>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -853,7 +1033,7 @@ export function SettingsTabs({
 
           <Card className="overflow-hidden p-0">
             <div className="flex items-center justify-between border-b border-border-light px-5 py-3.5">
-              <div><h2 className="text-[14px] font-semibold text-text-primary">Access requests</h2><p className="text-[11px] text-text-tertiary">Every uninvited identity waits here for an owner decision.</p></div>
+              <div><h2 className="text-[14px] font-semibold text-text-primary">Access requests</h2><p className="text-[11px] text-text-tertiary">Any identity awaiting an admin decision appears here.</p></div>
               <span className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", accessDirectory.requests.length ? "bg-warning/10 text-warning" : "bg-success/10 text-success")}>{accessDirectory.requests.length ? `${accessDirectory.requests.length} pending` : "Queue clear"}</span>
             </div>
             {accessDirectory.requests.length ? (
@@ -940,88 +1120,152 @@ export function SettingsTabs({
             </table>
           </Card>
 
-          <Card>
-            <h2 className="text-[15px] font-semibold text-text-primary mb-4 flex items-center gap-2">
-              <Lock size={18} strokeWidth={1.75} className="text-blue-primary" />
-              SSO &amp; security
-            </h2>
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
-              <select
-                aria-label="SSO provider"
-                value={sso.provider}
-                onChange={(e) => updateSso({ provider: e.target.value })}
-                disabled={!canSecurity}
-                className="bg-surface border border-border rounded-md px-3 py-2 text-[14px] outline-none focus:border-blue-primary disabled:opacity-50"
-              >
-                {SSO_PROVIDERS.map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </select>
-              <Button
-                variant={sso.connected ? "secondary" : "primary"}
-                disabled={!canSecurity || authConfig.approvalEnabled}
-                onClick={() => {
-                  updateSso({ connected: !sso.connected });
-                  toast(
-                    sso.connected
-                      ? `Disconnected ${sso.provider}`
-                      : `Connected ${sso.provider} SSO`
-                  );
-                }}
-                className="px-4 py-2 text-[13px]"
-              >
-                {authConfig.approvalEnabled ? "Managed by deployment" : sso.connected ? "Disconnect" : "Connect"}
-              </Button>
-              {sso.connected && (
-                <span
-                  className="inline-flex items-center gap-1.5 text-[13px] font-medium"
-                  style={{ color: "#1A7A35" }}
-                >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#34C759" }} />
-                  Connected
+          {isLocalAuth ? (
+            <Card>
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                    <Lock size={18} strokeWidth={1.75} className="text-blue-primary" />
+                    SSO &amp; security
+                  </h2>
+                  <p className="mt-1 text-[11.5px] text-text-secondary">
+                    Browser-only controls for previewing the local demo. They do not configure a deployment.
+                  </p>
+                </div>
+                <span className="rounded-md bg-warning/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-warning">
+                  Demo only
                 </span>
+              </div>
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <select
+                  aria-label="SSO provider"
+                  value={sso.provider}
+                  onChange={(e) => updateSso({ provider: e.target.value })}
+                  disabled={!canSecurity}
+                  className="bg-surface border border-border rounded-md px-3 py-2 text-[14px] outline-none focus:border-blue-primary disabled:opacity-50"
+                >
+                  {SSO_PROVIDERS.map((p) => (
+                    <option key={p}>{p}</option>
+                  ))}
+                </select>
+                <Button
+                  variant={sso.connected ? "secondary" : "primary"}
+                  disabled={!canSecurity}
+                  onClick={() => {
+                    updateSso({ connected: !sso.connected });
+                    toast(
+                      sso.connected
+                        ? `Disconnected ${sso.provider}`
+                        : `Connected ${sso.provider} SSO`
+                    );
+                  }}
+                  className="px-4 py-2 text-[13px]"
+                >
+                  {sso.connected ? "Disconnect" : "Connect"}
+                </Button>
+                {sso.connected && (
+                  <span
+                    className="inline-flex items-center gap-1.5 text-[13px] font-medium"
+                    style={{ color: "#1A7A35" }}
+                  >
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#34C759" }} />
+                    Connected
+                  </span>
+                )}
+              </div>
+              <ul className="divide-y divide-border-light border-t border-border-light">
+                <li className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <p className="text-[14px] font-medium text-text-primary">Enforce SSO for all members</p>
+                    <p className="text-[13px] text-text-secondary">Preview how an SSO-only workspace would appear.</p>
+                  </div>
+                  <Toggle
+                    on={sso.enforce}
+                    onClick={() =>
+                      canSecurity
+                        ? updateSso({ enforce: !sso.enforce })
+                        : toast("Only admins can configure security", "error")
+                    }
+                  />
+                </li>
+                <li className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <p className="text-[14px] font-medium text-text-primary">Require two-factor authentication</p>
+                    <p className="text-[13px] text-text-secondary">Preview a second-factor policy in this browser.</p>
+                  </div>
+                  <Toggle
+                    on={sso.twoFactor}
+                    onClick={() =>
+                      canSecurity
+                        ? updateSso({ twoFactor: !sso.twoFactor })
+                        : toast("Only admins can configure security", "error")
+                    }
+                  />
+                </li>
+              </ul>
+              {!canSecurity && (
+                <p className="text-[12px] text-text-tertiary mt-3">
+                  Only admins can use the demo security controls. Switch your role above.
+                </p>
               )}
-            </div>
-            <ul className="divide-y divide-border-light border-t border-border-light">
-              <li className="flex items-center justify-between gap-4 py-3">
+            </Card>
+          ) : (
+            <Card>
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[14px] font-medium text-text-primary">Enforce SSO for all members</p>
-                  <p className="text-[13px] text-text-secondary">Members must sign in through your identity provider.</p>
+                  <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                    <Lock size={18} strokeWidth={1.75} className="text-blue-primary" />
+                    Authentication &amp; security
+                  </h2>
+                  <p className="mt-1 text-[11.5px] text-text-secondary">
+                    Read-only deployment policy for this workspace.
+                  </p>
                 </div>
-                <Toggle
-                  on={authConfig.approvalEnabled || sso.enforce}
-                  onClick={() =>
-                    authConfig.approvalEnabled
-                      ? toast("SSO enforcement is managed by deployment")
-                      : canSecurity
-                      ? updateSso({ enforce: !sso.enforce })
-                      : toast("Only admins can configure security", "error")
-                  }
-                />
-              </li>
-              <li className="flex items-center justify-between gap-4 py-3">
-                <div>
-                  <p className="text-[14px] font-medium text-text-primary">Require two-factor authentication</p>
-                  <p className="text-[13px] text-text-secondary">Adds a second factor for non-SSO sign-ins.</p>
-                </div>
-                <Toggle
-                  on={sso.twoFactor}
-                  onClick={() =>
-                    authConfig.approvalEnabled
-                      ? toast("Two-factor policy is managed by your identity provider")
-                      : canSecurity
-                      ? updateSso({ twoFactor: !sso.twoFactor })
-                      : toast("Only admins can configure security", "error")
-                  }
-                />
-              </li>
-            </ul>
-            {!canSecurity && (
-              <p className="text-[12px] text-text-tertiary mt-3">
-                Only admins can configure SSO &amp; security. Switch your role above.
+                <span className="rounded-md bg-blue-light px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-blue-primary">
+                  Managed by deployment
+                </span>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 overflow-hidden rounded-md border border-border-light">
+                {[
+                  {
+                    label: "Identity provider",
+                    value:
+                      authConfig.authMode === "supabase"
+                        ? "Supabase Auth"
+                        : authProviderLabel,
+                  },
+                  { label: "Sign-in method", value: signInMethod },
+                  {
+                    label: "Identity verification",
+                    value: identityVerification,
+                  },
+                  {
+                    label: "Workspace access",
+                    value: authConfig.approvalEnabled
+                      ? "Invite only"
+                      : "Approval gate not enforced",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="border-b border-r border-border-light px-4 py-3 last:border-b-0"
+                  >
+                    <dt className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      {item.label}
+                    </dt>
+                    <dd className="mt-1 text-[13px] font-semibold text-text-primary">
+                      {item.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-3 text-[11.5px] leading-relaxed text-text-secondary">
+                {authConfig.authMode === "supabase"
+                  ? "Users must receive an invitation, create their own password, and confirm their email before they can access Freyr."
+                  : "Sign-in policy is enforced by the configured identity provider before workspace approval is evaluated."}
               </p>
-            )}
-          </Card>
+            </Card>
+          )}
         </div>
       )}
 

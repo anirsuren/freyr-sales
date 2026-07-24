@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mail, CalendarClock } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
+
+const DIGEST_SUBSCRIPTION_KEY = "freyr.digest.weekly";
 
 export function WeeklyDigest({
   kpis,
@@ -17,15 +21,33 @@ export function WeeklyDigest({
   recipient: string;
 }) {
   const { toast } = useToast();
+  const currentUser = useCurrentUser();
+  const subscriptionStorageKey = userScopedStorageKey(
+    DIGEST_SUBSCRIPTION_KEY,
+    currentUser.id
+  );
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
+  const activeUserIdRef = useRef(currentUser.id);
 
   useEffect(() => {
+    activeUserIdRef.current = currentUser.id;
+    setLoadedStorageKey(null);
+    setOpen(false);
+    setSending(false);
+    setSubscribed(false);
     try {
-      setSubscribed(localStorage.getItem("freyr.digest.weekly") === "1");
+      setSubscribed(localStorage.getItem(subscriptionStorageKey) === "1");
     } catch {}
-  }, []);
+    setLoadedStorageKey(subscriptionStorageKey);
+    return () => {
+      activeUserIdRef.current = "";
+    };
+  }, [currentUser.id, subscriptionStorageKey]);
+  const identityReady = loadedStorageKey === subscriptionStorageKey;
+  const visibleSubscribed = identityReady && subscribed;
 
   const lines = [
     `📊 Freyr weekly digest — ${period}`,
@@ -37,6 +59,8 @@ export function WeeklyDigest({
   const text = lines.join("\n");
 
   async function send() {
+    if (!identityReady) return;
+    const requestUserId = currentUser.id;
     setSending(true);
     try {
       const res = await fetch("/api/digest", {
@@ -45,21 +69,25 @@ export function WeeklyDigest({
         body: JSON.stringify({ text }),
       });
       const data = await res.json();
+      if (activeUserIdRef.current !== requestUserId) return;
       if (data.ok) toast(`Summary sent via ${data.channel}`);
       else if (data.skipped) toast(data.message || "No delivery channel configured");
       else toast(data.error || "Could not send digest");
     } catch {
-      toast("Could not send digest");
+      if (activeUserIdRef.current === requestUserId) {
+        toast("Could not send digest");
+      }
     } finally {
-      setSending(false);
+      if (activeUserIdRef.current === requestUserId) setSending(false);
     }
   }
 
   function toggleSub() {
-    const v = !subscribed;
+    if (!identityReady) return;
+    const v = !visibleSubscribed;
     setSubscribed(v);
     try {
-      localStorage.setItem("freyr.digest.weekly", v ? "1" : "0");
+      localStorage.setItem(subscriptionStorageKey, v ? "1" : "0");
     } catch {}
     toast(v ? "Subscribed — weekly summary every Monday 8am" : "Weekly summary off");
   }
@@ -67,14 +95,21 @@ export function WeeklyDigest({
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (identityReady) setOpen(true);
+        }}
+        disabled={!identityReady}
         className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
       >
         <Mail size={15} strokeWidth={1.8} />
         Email me a summary
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Email a summary">
+      <Modal
+        open={identityReady && open}
+        onClose={() => setOpen(false)}
+        title="Email a summary"
+      >
         <p className="text-[13px] text-text-secondary mb-3">
           A snapshot of this dashboard, delivered to{" "}
           <span className="font-medium text-text-primary">{recipient}</span>.
@@ -100,10 +135,10 @@ export function WeeklyDigest({
 
         <button
           onClick={toggleSub}
-          aria-pressed={subscribed}
+          aria-pressed={visibleSubscribed}
           className={cn(
             "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-[13px] mb-4 transition-colors",
-            subscribed
+            visibleSubscribed
               ? "border-blue-primary bg-blue-light text-blue-primary"
               : "border-border text-text-secondary hover:bg-surface"
           )}
@@ -115,13 +150,13 @@ export function WeeklyDigest({
           <span
             className={cn(
               "w-9 h-5 rounded-full relative transition-colors shrink-0",
-              subscribed ? "bg-blue-primary" : "bg-border"
+              visibleSubscribed ? "bg-blue-primary" : "bg-border"
             )}
           >
             <span
               className={cn(
                 "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all",
-                subscribed ? "left-[18px]" : "left-0.5"
+                visibleSubscribed ? "left-[18px]" : "left-0.5"
               )}
             />
           </span>

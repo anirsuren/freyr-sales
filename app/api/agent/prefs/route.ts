@@ -1,17 +1,32 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import type { AgentPrefs } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 // Agent preferences (V9 #25). The standing memory the agent's autopilot respects
 // on every run. GET reads them; PUT updates the pinned ones. Mock-first.
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const scope = await verifiedRequestMemberScope(request);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const db = getDb();
-  return NextResponse.json({ prefs: await db.agentPrefs.get() });
+  return NextResponse.json({ prefs: await db.agentPrefs.get(scope) });
 }
 
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const patch: Partial<AgentPrefs> = {};
   if ("focus_industry" in body) {
@@ -53,6 +68,6 @@ export async function PUT(req: Request) {
       : null;
 
   const db = getDb();
-  const prefs = await db.agentPrefs.update(patch);
+  const prefs = await db.agentPrefs.update(scope, patch);
   return NextResponse.json({ ok: true, prefs });
 }

@@ -1,7 +1,10 @@
 import type { AuthenticatedUser } from "./auth";
 import { normalizeAuthEmail } from "./authEmailPolicy";
 
-export const ACCESS_COOKIE = "freyr_access";
+// Version the cookie whenever its identity semantics change. This release adds
+// the canonical workspace display name, so accepting a pre-release grant could
+// briefly resurrect the old hard-coded/profile-derived identity after deploy.
+export const ACCESS_COOKIE = "freyr_access_v2";
 // Keep authorization short-lived so a suspension or role change takes effect
 // promptly. The longer login session remains valid and can obtain a fresh grant
 // through /api/auth/resolve.
@@ -12,6 +15,9 @@ export type AccessGrant = {
   sub: string;
   userId: string;
   email: string | null;
+  /** Canonical app_users display name. Provider profile metadata is mutable and
+   * must not be the audit identity once workspace access has been approved. */
+  displayName: string;
   role: WorkspaceRole;
   workspaceId: string;
   exp: number;
@@ -95,6 +101,9 @@ export async function verifyAccessGrant(
       !payload.userId ||
       typeof payload.workspaceId !== "string" ||
       !payload.workspaceId ||
+      typeof payload.displayName !== "string" ||
+      payload.displayName.trim().length < 2 ||
+      payload.displayName.length > 120 ||
       !["sales", "editor", "admin"].includes(payload.role) ||
       typeof payload.exp !== "number" ||
       !Number.isFinite(payload.exp) ||

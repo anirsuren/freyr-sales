@@ -8,6 +8,7 @@ import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
 
 const AUTH_COOKIES = [
   ACCESS_COOKIE,
+  "freyr_access",
   APP_SESSION_COOKIE,
   "AWSELBAuthSessionCookie",
   "AWSELBAuthSessionCookie-0",

@@ -1,15 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { getSequence } from "@/lib/sequences";
 import type { AgentRunStep } from "@/lib/types";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
 // Sequences agent surface (V9 #15). The agent enrolls one or more accounts into
 // a sequence as part of a play — persisted, so they show on Sequences and the
 // account timeline. Mock-first; dedupes against existing enrollments.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const sequenceId = String(body.sequenceId || "reengage");
   const ids: string[] = Array.isArray(body.customerIds)
@@ -70,6 +78,8 @@ export async function POST(req: Request) {
   if (enrolled.length) {
     await db.agentRuns.create({
       kind: "act",
+      created_by_user_id: actor.userId,
+      created_by: actor.name,
       title: `Enrolled ${enrolled.length} account${
         enrolled.length === 1 ? "" : "s"
       } in “${seq.name}”`,

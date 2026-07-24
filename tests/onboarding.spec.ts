@@ -95,6 +95,7 @@ function accessGrant(subject: string, grantSubject = subject): string {
     sub: grantSubject,
     userId: `app-${subject}`,
     email: `${subject}@freyrsolutions.com`,
+    displayName: "Onboarding Test User",
     role: "admin",
     workspaceId: WORKSPACE_ID,
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -115,7 +116,7 @@ async function setAuthCookies(
       sameSite: "Lax",
     },
     {
-      name: "freyr_access",
+      name: "freyr_access_v2",
       value: accessGrant(subject, grantSubject),
       url: BASE_URL,
       httpOnly: true,

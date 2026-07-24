@@ -27,6 +27,7 @@ import {
   ROTTING_DAYS,
 } from "@/lib/pipeline";
 import type { RecommendedService } from "@/lib/types";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata = { title: "Deal" };
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export default async function DealDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const id = (await params).id;
+  const currentUser = await getCurrentUser();
   const db = getDb();
   const session = await db.pitchSessions.get(id);
   if (!session) {
@@ -74,6 +76,11 @@ export default async function DealDetailPage({
     (d) => d.sessionId === id
   );
   const stage = deal?.stage || "Prospect";
+  const owner = deal?.owner || "Unassigned";
+  const isCurrentOwner =
+    !!deal?.ownerUserId &&
+    !!currentUser.memberId &&
+    deal.ownerUserId === currentUser.memberId;
   const value = deal?.value || 0;
   const staleDays = deal?.staleDays ?? 0;
   const rotting = staleDays > ROTTING_DAYS && stage !== "Closed Lost";
@@ -305,10 +312,22 @@ export default async function DealDetailPage({
         <Card>
           <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Owner</p>
           <div className="flex items-center gap-2 mt-2">
-            <Avatar name="Anir Suren" className="w-6 h-6 text-[10px]" tooltip="Owner: Anir Suren — that's you" />
-            <span className="text-[14px] text-text-primary">Anir Suren</span>
+            <Avatar
+              name={owner}
+              className="w-6 h-6 text-[10px]"
+              tooltip={`Owner: ${owner}${isCurrentOwner ? " — that's you" : ""}`}
+            />
+            <span className="text-[14px] text-text-primary">
+              {owner}{isCurrentOwner ? " · you" : ""}
+            </span>
           </div>
-          <p className="text-[11px] text-text-tertiary mt-1">Who&apos;s running this deal — that&apos;s you.</p>
+          <p className="text-[11px] text-text-tertiary mt-1">
+            {isCurrentOwner
+              ? "You're running this deal."
+              : owner === "Unassigned"
+                ? "No teammate owns this deal yet."
+                : `${owner} is running this deal.`}
+          </p>
         </Card>
         <Card>
           <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Last activity</p>

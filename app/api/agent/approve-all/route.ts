@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
 import { notifyTelegram } from "@/lib/telegram";
-import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+import { canManageReviewQueue } from "@/lib/role";
 import type { AgentRunStep } from "@/lib/types";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +12,20 @@ export const dynamic = "force-dynamic";
 // transparent agent run. Mirrors the per-session approve so the audit trail is
 // identical — just batched.
 export async function POST(req: NextRequest) {
-  const principal = await authenticatedRequestPrincipal(req);
-  const reviewer =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  if (!(await canManageReviewQueue())) {
+    return NextResponse.json(
+      { error: "Manager access is required to approve the review queue." },
+      { status: 403 }
+    );
+  }
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  const reviewer = actor.name;
 
   const db = getDb();
   const [sessions, customers] = await Promise.all([
@@ -48,6 +53,8 @@ export async function POST(req: NextRequest) {
   if (pending.length) {
     await db.agentRuns.create({
       kind: "act",
+      created_by_user_id: actor.userId,
+      created_by: actor.name,
       title: `Approved ${pending.length} pitch${pending.length === 1 ? "" : "es"} in bulk`,
       customer_id: null,
       company: null,

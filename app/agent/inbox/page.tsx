@@ -13,18 +13,24 @@ import { AutopilotPanel } from "@/components/agent/AutopilotPanel";
 import { InboxBulkActions } from "@/components/agent/InboxBulkActions";
 import { ReworkActions } from "@/components/agent/ReworkActions";
 import { nextBestActions, DRAFTABLE, focusActions } from "@/lib/agent";
+import { getCurrentUser } from "@/lib/currentUser";
+import { requireServerMemberScope } from "@/lib/memberScope";
 
 export const metadata = { title: "Agent Inbox" };
 export const dynamic = "force-dynamic";
 
 export default async function AgentInboxPage() {
+  const [currentUser, scope] = await Promise.all([
+    getCurrentUser(),
+    requireServerMemberScope(),
+  ]);
   const db = getDb();
   const [sessions, customers, contacts, interactions, prefs] = await Promise.all([
     db.pitchSessions.list(),
     db.customers.list(),
     db.contacts.list(),
     db.interactions.list(),
-    db.agentPrefs.get(),
+    db.agentPrefs.get(scope),
   ]);
   const lenses = [
     prefs?.focus_industry || null,
@@ -34,7 +40,9 @@ export default async function AgentInboxPage() {
   const { actions } = focusActions(
     nextBestActions({ sessions, customers, contacts, interactions }),
     customers,
-    prefs
+    prefs,
+    currentUser.name,
+    scope.userId
   );
   const needsApproval = actions.filter((a) => !DRAFTABLE.includes(a.kind));
   const canHandle = actions.filter((a) => DRAFTABLE.includes(a.kind));

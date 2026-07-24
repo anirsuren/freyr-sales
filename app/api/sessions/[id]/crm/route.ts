@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { getDataMode } from "@/lib/dataMode";
-import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
-import {
-  DEFAULT_LOCAL_USER_IDENTITY,
-  GENERIC_USER_IDENTITY,
-} from "@/lib/userIdentity";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +18,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const principal = await authenticatedRequestPrincipal(req);
-  const actorName =
-    principal?.name.trim() ||
-    (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-      ? DEFAULT_LOCAL_USER_IDENTITY.name
-      : GENERIC_USER_IDENTITY.name);
+  const actorName = await authenticatedRequestActorName(req);
   const body = await req.json().catch(() => ({}));
   const targetKey = String(body.target || "hubspot");
   const target = TARGETS[targetKey] || "CRM";

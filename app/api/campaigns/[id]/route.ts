@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCampaign, updateCampaign } from "@/lib/campaigns";
 import { hasEmail } from "@/lib/env";
+import {
+  isWorkflowOwnerOrAdmin,
+  verifiedWorkflowActor,
+} from "@/lib/workflowAuthorization";
 
 export async function GET(
   _req: NextRequest,
@@ -19,6 +23,39 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const id = (await params).id;
+  const existing = getCampaign(id);
+  if (!existing)
+    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { ok: false, error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  if (
+    existing.workspace_id &&
+    existing.workspace_id !== actor.workspaceId
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "Not found" },
+      { status: 404 }
+    );
+  }
+  if (
+    !isWorkflowOwnerOrAdmin(
+      actor,
+      existing.owner_user_id,
+      existing.owner
+    )
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "Only the campaign owner or an admin can change it." },
+      { status: 403 }
+    );
+  }
+
   let body: any = {};
   try {
     body = await req.json();
@@ -41,7 +78,7 @@ export async function PATCH(
     patch.queued_at = new Date().toISOString();
   }
 
-  const campaign = updateCampaign((await params).id, patch);
+  const campaign = updateCampaign(id, patch);
   if (!campaign)
     return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
   return NextResponse.json({

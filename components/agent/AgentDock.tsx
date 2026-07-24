@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
-import { firstNameForUser } from "@/lib/userIdentity";
+import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 
 type Entity = { name: string; id: string; kind: "company" | "contact" };
 
@@ -185,6 +185,7 @@ export function AgentDock({
 }) {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
+  const threadStorageKey = userScopedStorageKey(THREAD_KEY, currentUser.id);
   const label = pageLabel(pathname);
   const [subject, setSubject] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -192,8 +193,10 @@ export function AgentDock({
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [entities, setEntities] = useState<Entity[]>([]);
+  const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeUserIdRef = useRef(currentUser.id);
 
   // Load the name→id index once so the assistant's answers can render company
   // logos and headshots inline (Suren, #92). Longest names first so multi-word
@@ -238,17 +241,30 @@ export function AgentDock({
   }, [onOpenChange]);
 
   useEffect(() => {
+    activeUserIdRef.current = currentUser.id;
+    setHydratedStorageKey(null);
+    setMsgs([]);
+    setInput("");
+    setBusy(false);
+    setPending(null);
     try {
-      const raw = localStorage.getItem(THREAD_KEY);
-      if (raw) setMsgs(JSON.parse(raw));
+      const raw = localStorage.getItem(threadStorageKey);
+      setMsgs(raw ? JSON.parse(raw) : []);
     } catch {}
-  }, []);
+    setHydratedStorageKey(threadStorageKey);
+    return () => {
+      activeUserIdRef.current = "";
+    };
+  }, [currentUser.id, threadStorageKey]);
 
   useEffect(() => {
+    if (hydratedStorageKey !== threadStorageKey) return;
     try {
-      localStorage.setItem(THREAD_KEY, JSON.stringify(msgs.slice(-40)));
+      localStorage.setItem(threadStorageKey, JSON.stringify(msgs.slice(-40)));
     } catch {}
-  }, [msgs]);
+  }, [hydratedStorageKey, msgs, threadStorageKey]);
+
+  const visibleMsgs = hydratedStorageKey === threadStorageKey ? msgs : [];
 
   // Read what's on screen (the page's H1) so the assistant knows the record.
   useEffect(() => {
@@ -278,7 +294,8 @@ export function AgentDock({
 
   async function ask(q?: string) {
     const text = (q ?? input).trim();
-    if (!text || busy) return;
+    if (!text || busy || hydratedStorageKey !== threadStorageKey) return;
+    const requestUserId = currentUser.id;
     setInput("");
     setBusy(true);
     setMsgs((m) => [...m, { role: "me", text }]);
@@ -299,14 +316,16 @@ export function AgentDock({
         body: JSON.stringify({ question: text, pageLabel: label, subject, path: pathname, pageContext }),
       });
       const data = await res.json();
+      if (activeUserIdRef.current !== requestUserId) return;
       setMsgs((m) => [
         ...m,
         { role: "agent", text: data.answer || "I couldn't answer that just now." },
       ]);
     } catch {
+      if (activeUserIdRef.current !== requestUserId) return;
       setMsgs((m) => [...m, { role: "agent", text: "I couldn't reach the agent just now." }]);
     } finally {
-      setBusy(false);
+      if (activeUserIdRef.current === requestUserId) setBusy(false);
     }
   }
 
@@ -349,7 +368,7 @@ export function AgentDock({
             <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-surface text-text-primary px-3.5 py-2.5 text-[13px] leading-relaxed">
               {renderRich(greeting, entities)}
             </div>
-            {msgs.map((m, i) => (
+            {visibleMsgs.map((m, i) => (
               <div
                 key={i}
                 className={cn(
@@ -371,7 +390,7 @@ export function AgentDock({
 
           {/* Suggestions (only before the first exchange) + input */}
           <div className="px-3 pb-3 pt-2 border-t border-border-light shrink-0">
-            {msgs.length === 0 && (
+            {visibleMsgs.length === 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2.5">
                 {suggestions.map((s) => (
                   <button

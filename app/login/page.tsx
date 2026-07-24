@@ -39,7 +39,7 @@ export default function LoginPage() {
             {!authenticationReady
               ? "Authentication is not fully configured. No workspace data is available until an administrator completes the secure login setup."
               : supabase
-              ? "Sign in with the exact email address your workspace owner invited. New accounts require email confirmation and an invitation or owner approval before any sales data is visible."
+              ? "Sign in with the exact email address your workspace owner invited. New accounts require both that invitation and email confirmation before any sales data is visible."
               : "Sign in with your Freyr corporate identity. Access and permissions are managed by IT."}
           </p>
         </div>
@@ -74,7 +74,7 @@ export default function LoginPage() {
           {!authenticationReady
             ? "The application is locked. Customer and sales data remain inaccessible."
             : supabase
-            ? "Authentication is provided by Supabase. Workspace access is invite- or owner-approved."
+            ? "Authentication is provided by Supabase. Workspace access is invitation-only."
             : authMode
             ? "Protected by Freyr single sign-on. Do not share credentials."
             : "Local development only — production must set AUTH_MODE=aws-alb."}

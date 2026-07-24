@@ -2,10 +2,9 @@ import { cookies, headers } from "next/headers";
 import { hasAppRole, parseAlbOidcPrincipal, parseEasyAuthPrincipal } from "./auth";
 import { ACCESS_COOKIE, isApprovalGateEnabled, verifyAccessGrant } from "./accessControl";
 
-// Two user types for the Offerings module (Suren's change #4): an admin who can
-// edit/update data, and a sales (regular) user who can only view it. Mock-first:
-// the active role lives in a cookie that an in-app switcher flips. Wiring this to
-// real per-user logins is a later step.
+// Workspace roles come from the signed access grant in every protected
+// deployment. The browser-only role switch remains available solely in the
+// unauthenticated local demo harness.
 export type Role = "admin" | "editor" | "sales";
 
 export async function getRole(): Promise<Role> {
@@ -46,6 +45,14 @@ export async function isAdmin(): Promise<boolean> {
 }
 
 export async function canManageOfferings(): Promise<boolean> {
+  const role = await getRole();
+  return role === "admin" || role === "editor";
+}
+
+/** Compliance queue and workspace-wide outreach actions are manager-level.
+ * Individual sales reps may submit their own work, but cannot approve or send
+ * the entire workspace queue. */
+export async function canManageReviewQueue(): Promise<boolean> {
   const role = await getRole();
   return role === "admin" || role === "editor";
 }

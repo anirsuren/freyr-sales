@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Loader2, LockKeyhole, UserPlus } from "lucide-react";
 import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
@@ -31,6 +31,15 @@ export function SupabaseLoginForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invitedEmail = normalizeAuthEmail(params.get("email"));
+    const invitedName = params.get("name")?.trim();
+    if (invitedEmail) setEmail(invitedEmail);
+    if (invitedName && invitedName.length <= 120) setName(invitedName);
+    if (params.get("mode") === "request") setMode("request");
+  }, []);
 
   const supabase = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -29,6 +29,8 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { DonutChart } from "@/components/charts/Charts";
 import { useToast } from "@/components/ui/Toast";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 import {
   RECORDINGS,
   transcriptFor,
@@ -239,6 +241,7 @@ function CoachChat({ rec }: { rec: Recording }) {
 /* ---------------- Workspace ---------------- */
 export function RecordingsWorkspace() {
   const { toast } = useToast();
+  const currentUser = useCurrentUser();
   const [selectedId, setSelectedId] = useState(RECORDINGS[0].id);
   const [tab, setTab] = useState("summary");
   const [q, setQ] = useState("");
@@ -257,6 +260,10 @@ export function RecordingsWorkspace() {
   const [fileName, setFileName] = useState("");
 
   const rec = RECORDINGS.find((r) => r.id === selectedId) || RECORDINGS[0];
+  const commentsStorageKey = userScopedStorageKey(
+    `freyr.rec.comments.${selectedId}`,
+    currentUser.id
+  );
   const total = toSec(rec.duration);
   const transcript = useMemo(() => transcriptFor(rec), [rec]);
   const segments = useMemo<TalkSegment[]>(() => talkSegments(rec), [rec]);
@@ -265,25 +272,30 @@ export function RecordingsWorkspace() {
   // load pinned comments for the selected call
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(`freyr.rec.comments.${selectedId}`);
+      const raw = localStorage.getItem(commentsStorageKey);
       setComments(raw ? JSON.parse(raw) : []);
     } catch {
       setComments([]);
     }
     setCommentDraft("");
-  }, [selectedId]);
+  }, [commentsStorageKey, selectedId]);
 
   function addComment() {
     const body = commentDraft.trim();
     if (!body) return;
     const next = [
       ...comments,
-      { id: `c-${Date.now()}`, sec: Math.round(cur), body, author: "Anir Suren" },
+      {
+        id: `c-${Date.now()}`,
+        sec: Math.round(cur),
+        body,
+        author: currentUser.name,
+      },
     ].sort((a, b) => a.sec - b.sec);
     setComments(next);
     try {
       localStorage.setItem(
-        `freyr.rec.comments.${selectedId}`,
+        commentsStorageKey,
         JSON.stringify(next)
       );
     } catch {}

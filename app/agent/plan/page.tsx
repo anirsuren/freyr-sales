@@ -15,6 +15,8 @@ import {
   autopilotDue,
   cadenceDue,
 } from "@/lib/agent";
+import { getCurrentUser } from "@/lib/currentUser";
+import { requireServerMemberScope } from "@/lib/memberScope";
 
 export const metadata = { title: "Goals" };
 export const dynamic = "force-dynamic";
@@ -22,6 +24,10 @@ export const dynamic = "force-dynamic";
 // The goal-driven workspace: set a goal, preview the plan, see what the agent
 // did. Lives alongside the chat (the conversational front door at /agent).
 export default async function AgentGoalsPage() {
+  const [currentUser, scope] = await Promise.all([
+    getCurrentUser(),
+    requireServerMemberScope(),
+  ]);
   const db = getDb();
   const [sessions, customers, contacts, interactions, runs, prefs] =
     await Promise.all([
@@ -30,12 +36,14 @@ export default async function AgentGoalsPage() {
       db.contacts.list(),
       db.interactions.list(),
       db.agentRuns.list(),
-      db.agentPrefs.get(),
+      db.agentPrefs.get(scope),
     ]);
   const { actions } = focusActions(
     nextBestActions({ sessions, customers, contacts, interactions }),
     customers,
-    prefs
+    prefs,
+    currentUser.name,
+    scope.userId
   );
   const digest = buildDigest({ runs, actions });
   const narrated = await narrateDigest(digest);

@@ -6,6 +6,8 @@ import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { KPI_EVENT, KPI_STORE } from "./KpiCustomize";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 
 export type KpiDetail = {
   label: string;
@@ -47,19 +49,21 @@ export function DashboardKpis({
   kpis: KpiItem[];
   comparable: boolean;
 }) {
+  const currentUser = useCurrentUser();
+  const kpiStorageKey = userScopedStorageKey(KPI_STORE, currentUser.id);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const sync = () => {
       try {
-        const raw = localStorage.getItem(KPI_STORE);
+        const raw = localStorage.getItem(kpiStorageKey);
         setHidden(raw ? new Set(JSON.parse(raw)) : new Set());
       } catch {}
     };
     sync();
     window.addEventListener(KPI_EVENT, sync);
     return () => window.removeEventListener(KPI_EVENT, sync);
-  }, []);
+  }, [kpiStorageKey]);
 
   const shown = kpis.filter((k) => !hidden.has(k.key));
 

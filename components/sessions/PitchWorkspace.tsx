@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Copy,
@@ -39,6 +39,7 @@ import type {
 } from "@/lib/types";
 
 import { REVIEW_META } from "@/lib/review";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
 const CRM_TARGETS = [
   { key: "hubspot", label: "HubSpot" },
@@ -179,6 +180,7 @@ export function PitchWorkspace({
   recipientName?: string;
   companyName?: string;
 }) {
+  const currentUser = useCurrentUser();
   const { toast } = useToast();
   const router = useRouter();
   const email0 = useMemo(() => asEmail(pitchEmail), [pitchEmail]);
@@ -221,6 +223,45 @@ export function PitchWorkspace({
   // "the user should edit it themselves… where's the save button, it can't go
   // up there." Editing is the primary interaction; regenerate is gone.
   const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    // Clear private compose state and unsaved edits if authentication changes
+    // while this client workspace remains mounted.
+    setActive("5min");
+    setCrmOpen(false);
+    setMoreOpen(false);
+    setHistoryOpen(false);
+    setVersions([]);
+    setVersionsLoading(false);
+    setDuplicating(false);
+    setPushing(false);
+    setReviewStatus(initialReviewStatus || "draft");
+    setReviewNote(initialReviewNote || null);
+    setReviewing(false);
+    setComposeOpen(false);
+    setComposeSubject("");
+    setComposeBody("");
+    setComposeTemplate("");
+    setScheduleOn(false);
+    setScheduleAt("");
+    setSendingEmail(false);
+    setScript(pitch5min || "");
+    setSubjects(email0.subject_lines || []);
+    setEmailBody(email0.body || "");
+    setPhoneText(initialPhone(pitchCall));
+    setSelectedSubject(email0.subject_lines?.[0] || "");
+    setCopied(false);
+    setSaving(false);
+    setDirty(false);
+  }, [
+    currentUser.id,
+    email0,
+    initialReviewNote,
+    initialReviewStatus,
+    pitch5min,
+    pitchCall,
+    sessionId,
+  ]);
 
   const briefText = accountBrief
     ? `${accountBrief.summary}\n\n${accountBrief.facts
@@ -267,8 +308,17 @@ export function PitchWorkspace({
         }),
       });
       const data = await res.json();
-      if (data.ok) setDirty(false);
-      toast(data.ok ? "Pitch saved" : data.error || "Couldn't save", data.ok ? "success" : "error");
+      if (data.ok) {
+        setDirty(false);
+        setReviewStatus(data.review_status || "draft");
+        setReviewNote(null);
+      }
+      toast(
+        data.ok
+          ? "Pitch saved — submit the updated copy for approval"
+          : data.error || "Couldn't save",
+        data.ok ? "success" : "error"
+      );
     } catch {
       toast("Couldn't save", "error");
     } finally {
@@ -298,7 +348,11 @@ export function PitchWorkspace({
     setComposeTemplate(id);
     const t = EMAIL_TEMPLATES.find((x) => x.id === id);
     if (!t) return;
-    const vars = { company: companyName, contact: recipientName, rep: "Anir Suren" };
+    const vars = {
+      company: companyName,
+      contact: recipientName,
+      rep: currentUser.name,
+    };
     setComposeSubject(fillTemplate(t.subject, vars));
     setComposeBody(fillTemplate(t.body, vars));
   }
@@ -414,7 +468,7 @@ export function PitchWorkspace({
     setHistoryOpen(false);
     setDirty(false);
     try {
-      await fetch(`/api/sessions/${sessionId}/pitch`, {
+      const res = await fetch(`/api/sessions/${sessionId}/pitch`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -424,7 +478,11 @@ export function PitchWorkspace({
           source: "restore",
         }),
       });
-      toast("Version restored");
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Restore failed");
+      setReviewStatus(data.review_status || "draft");
+      setReviewNote(null);
+      toast("Version restored — submit it for approval");
     } catch {
       toast("Restored locally — couldn't persist", "error");
     }

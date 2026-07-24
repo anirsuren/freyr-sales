@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -29,6 +29,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { DonutChart, LineChart, VIZ, type TipItem } from "@/components/charts/Charts";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { formatDateTime, cn } from "@/lib/utils";
 import type { Campaign, CampaignObjective } from "@/lib/campaigns";
 
@@ -264,6 +265,7 @@ export function CampaignsView({
   offerings: MiniOffering[];
   contacts: MiniContact[];
 }) {
+  const currentUser = useCurrentUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -287,6 +289,26 @@ export function CampaignsView({
   const [scheduleMode, setScheduleMode] = useState<"draft" | "now" | "later">("draft");
   const [scheduledAt, setScheduledAt] = useState("");
   const [busy, setBusy] = useState(false);
+  const initialOfferingId = offerings[0]?.id || "";
+
+  useEffect(() => {
+    // A signed-in user can change without this client tree necessarily
+    // remounting. Never carry another user's in-progress campaign draft into
+    // the new session.
+    setComposing(false);
+    setComposerStep(0);
+    setName("");
+    setOfferingId(initialOfferingId);
+    setObjective("pipeline");
+    setSubject("");
+    setBody("");
+    setPicked(new Set());
+    setAudienceQuery("");
+    setRoleFilter("all");
+    setScheduleMode("draft");
+    setScheduledAt("");
+    setBusy(false);
+  }, [currentUser.id, initialOfferingId]);
 
   const roles = useMemo(
     () => Array.from(new Set(emailable.map((contact) => contact.role))).sort(),
@@ -365,7 +387,6 @@ export function CampaignsView({
           name,
           offeringId,
           objective,
-          owner: "Anir Suren",
           audienceSummary: `${picked.size} contacts across ${selectedCompanies} accounts`,
           scheduledAt: scheduleMode === "later" ? scheduledAt : null,
           recipientContactIds: Array.from(picked),
@@ -495,8 +516,10 @@ export function CampaignsView({
             <div className="mt-6 rounded-md border border-border-light bg-surface/50 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Campaign owner</p>
               <div className="mt-2 flex items-center gap-2">
-                <Avatar name="Anir Suren" className="h-7 w-7 text-[9px]" />
-                <span className="text-[12px] font-semibold text-text-primary">Anir Suren</span>
+                <Avatar name={currentUser.name} className="h-7 w-7 text-[9px]" />
+                <span className="text-[12px] font-semibold text-text-primary">
+                  {currentUser.name}
+                </span>
               </div>
             </div>
           </aside>
@@ -528,7 +551,7 @@ export function CampaignsView({
                   </div>
                 </div>
                 <div className="mt-5 grid grid-cols-3 gap-3">
-                  {[{ icon: Target, label: "Goal", value: selectedObjective.label }, { icon: Package, label: "Offering", value: selectedOffering?.name || "Not selected" }, { icon: null, label: "Owner", value: "Anir Suren" }].map((item) => (
+                  {[{ icon: Target, label: "Goal", value: selectedObjective.label }, { icon: Package, label: "Offering", value: selectedOffering?.name || "Not selected" }, { icon: null, label: "Owner", value: currentUser.name }].map((item) => (
                     <div key={item.label} className="rounded-md border border-border-light bg-surface/35 p-3">
                       {item.icon ? <item.icon size={14} className="text-blue-primary" /> : <Avatar name={item.value} className="h-7 w-7 text-[9px]" />}
                       <p className="mt-2 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">{item.label}</p>
@@ -611,7 +634,7 @@ export function CampaignsView({
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div className="rounded-md border border-border-light p-4">
                     <h4 className="text-[12.5px] font-semibold text-text-primary">Campaign summary</h4>
-                    <dl className="mt-3 space-y-2.5 text-[11.5px]"><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Objective</dt><dd className="font-medium text-text-primary">{selectedObjective.label}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Offering</dt><dd className="max-w-[220px] truncate font-medium text-text-primary">{selectedOffering?.name}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Audience</dt><dd className="font-medium text-text-primary">{picked.size} contacts · {selectedCompanies} accounts</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Owner</dt><dd className="font-medium text-text-primary">Anir Suren</dd></div></dl>
+                    <dl className="mt-3 space-y-2.5 text-[11.5px]"><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Objective</dt><dd className="font-medium text-text-primary">{selectedObjective.label}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Offering</dt><dd className="max-w-[220px] truncate font-medium text-text-primary">{selectedOffering?.name}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Audience</dt><dd className="font-medium text-text-primary">{picked.size} contacts · {selectedCompanies} accounts</dd></div><div className="flex justify-between gap-3"><dt className="text-text-tertiary">Owner</dt><dd className="font-medium text-text-primary">{currentUser.name}</dd></div></dl>
                   </div>
                   <div className="rounded-md border border-border-light p-4">
                     <h4 className="flex items-center gap-2 text-[12.5px] font-semibold text-text-primary"><ShieldCheck size={15} className="text-success" /> Readiness checks</h4>

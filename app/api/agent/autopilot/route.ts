@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import {
@@ -7,7 +7,8 @@ import {
   autopilotRunSteps,
   openValueByAccount,
 } from "@/lib/agent";
-import { ownerFor, CURRENT_REP, buildDeals } from "@/lib/pipeline";
+import { buildDeals } from "@/lib/pipeline";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +16,25 @@ export const dynamic = "force-dynamic";
 // every draftable action (re-engage / stabilize / follow-up) by logging the
 // prepared step to the timeline, and ESCALATES human-gated actions
 // (approve / send) instead of acting on them. Returns a transparent report.
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const actor = await verifiedWorkflowActor(request);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  const scope = {
+    workspaceId: actor.workspaceId,
+    userId: actor.userId,
+  };
   const db = getDb();
   const [sessions, customers, contacts, interactions, prefs] = await Promise.all([
     db.pitchSessions.list(),
     db.customers.list(),
     db.contacts.list(),
     db.interactions.list(),
-    db.agentPrefs.get(),
+    db.agentPrefs.get(scope),
   ]);
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
   // Respect the rep's pinned preferences (V9 #25/#27): focus industry, "my
@@ -36,7 +48,11 @@ export async function POST() {
   const inFocus = (customerId: string) => {
     const c = custById[customerId];
     if (prefs?.focus_industry && c?.industry !== prefs.focus_industry) return false;
-    if (prefs?.only_mine && ownerFor(c) !== CURRENT_REP) return false;
+    if (
+      prefs?.only_mine &&
+      c?.owner_user_id !== scope.userId
+    )
+      return false;
     return true;
   };
   // High-value guardrail (#75): escalate (never auto-handle) draftable actions on
@@ -101,6 +117,8 @@ export async function POST() {
   if (handled.length || escalated.length) {
     const run = await db.agentRuns.create({
       kind: "autopilot",
+      created_by_user_id: actor.userId,
+      created_by: actor.name,
       title: "Autopilot drafted your queue",
       customer_id: null,
       company: null,

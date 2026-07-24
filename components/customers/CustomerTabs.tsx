@@ -48,6 +48,7 @@ import {
   type CustomerDealRowData,
 } from "@/components/customers/CustomerDealRow";
 import { useToast } from "@/components/ui/Toast";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import { AreaChart, DonutChart, DonutLegend, LineChart, Sparkline, type TipItem } from "@/components/charts/Charts";
 import {
@@ -57,7 +58,7 @@ import {
   STAGES,
   STAGE_PROBABILITY,
   STAGE_COLOR,
-  REPS,
+  repOptionsFor,
 } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries, HEALTH_COLOR } from "@/lib/health";
 import { HealthBadge } from "@/components/ui/HealthBadge";
@@ -108,7 +109,6 @@ const NOTE_KIND_META: Record<
   note: { label: "Note", icon: FileText, color: "#8E98A8" },
 };
 
-const TEAM = ["Anir Suren", "Mark Miller", "Priya Nair", "Diego Alvarez"];
 const SERVICE_TAG_COLORS = ["#0071E3", "#19C3B1", "#7C3AED", "#E11D48", "#D97706"];
 
 const DELIVERABLES = [
@@ -149,12 +149,14 @@ export function CustomerTabs({
   interactions,
   agentRuns = [],
   offeringsCatalog,
+  includeDemoTeam,
 }: {
   customer: Customer;
   contacts: Contact[];
   sessions: PitchSession[];
   interactions: Interaction[];
   agentRuns?: AgentRun[];
+  includeDemoTeam: boolean;
   // Customer⇄offering link (Suren, Jul 3): the master-list type options + the
   // offerings applicable to this customer's type + the ones already in use,
   // serialized by the server page for the Offerings tab.
@@ -165,6 +167,11 @@ export function CustomerTabs({
   };
 }) {
   const { toast } = useToast();
+  const currentUser = useCurrentUser();
+  const ownerOptions = repOptionsFor(currentUser.name, includeDemoTeam);
+  const defaultDealOwner = includeDemoTeam
+    ? customer.owner || currentUser.name
+    : currentUser.name;
   const [tab, setTabState] = useState("overview");
   // Persist the active tab in the URL (?tab=) so it's always clear which tab
   // you're on AND browser-back from a deal/session returns to the SAME tab, not
@@ -189,9 +196,8 @@ export function CustomerTabs({
     } catch {}
   }, []);
   // editable account fields (#55 owner, #59 competitor, #60 notes/attachments).
-  // Default to the deterministic rep the pipeline + report already attribute this
-  // account to (ownerFor), so it never reads a bare "Unassigned" — every account
-  // shows a consistent owner across the app until a rep changes it.
+  // Seeded demo accounts keep their deterministic sample owner. Live and newly
+  // created accounts remain unassigned until a real teammate claims them.
   const [owner, setOwner] = useState(customer.owner || ownerFor(customer));
   const [competitor, setCompetitor] = useState(customer.competitor || "");
   const [editingComp, setEditingComp] = useState(false);
@@ -221,11 +227,47 @@ export function CustomerTabs({
     value: "",
     offering: "",
     contact: "",
-    owner: customer.owner || "Anir Suren",
+    owner: defaultDealOwner,
     close_date: "",
     next_step: "",
     notes: "",
   });
+  useEffect(() => {
+    setTabState("overview");
+    setOwner(customer.owner || ownerFor(customer));
+    setCompetitor(customer.competitor || "");
+    setEditingComp(false);
+    setCompDraft(customer.competitor || "");
+    setNoteDraft("");
+    setNoteKind("note");
+    setNoteNext("");
+    setNoteFollow("");
+    setNoteModalOpen(false);
+    setAttName("");
+    setAttUrl("");
+    setBusy(false);
+    setAskOpen(false);
+    setShowDeal(false);
+    setDealForm({
+      name: "",
+      stage: "Prospect",
+      value: "",
+      offering: "",
+      contact: "",
+      owner: defaultDealOwner,
+      close_date: "",
+      next_step: "",
+      notes: "",
+    });
+  }, [
+    customer,
+    currentUser.id,
+    currentUser.name,
+    defaultDealOwner,
+    customer.competitor,
+    customer.id,
+    customer.owner,
+  ]);
   const sessionDeals = useMemo(
     () => buildDeals(sessions, [customer], contacts, interactions),
     [sessions, customer, contacts, interactions]
@@ -393,6 +435,10 @@ export function CustomerTabs({
         body: JSON.stringify(payload),
       });
       const data = await res.json();
+      if (!res.ok) {
+        toast(data?.error || "Could not save — try again", "error");
+        return null;
+      }
       if (data?.customer) {
         setNotes(data.customer.notes_log || []);
         setAtts(data.customer.attachments || []);
@@ -409,7 +455,7 @@ export function CustomerTabs({
     const name = dealForm.name.trim();
     if (!name) return;
     setBusy(true);
-    await patchCustomer({
+    const updated = await patchCustomer({
       addDeal: {
         name,
         stage: dealForm.stage,
@@ -417,18 +463,26 @@ export function CustomerTabs({
         offering: dealForm.offering,
         contact: dealForm.contact,
         owner: dealForm.owner,
+        owner_user_id:
+          dealForm.owner === currentUser.name
+            ? currentUser.memberId || undefined
+            : undefined,
         close_date: dealForm.close_date,
         next_step: dealForm.next_step,
         notes: dealForm.notes,
       },
     });
+    if (!updated) {
+      setBusy(false);
+      return;
+    }
     setDealForm({
       name: "",
       stage: "Prospect",
       value: "",
       offering: "",
       contact: "",
-      owner: customer.owner || "Anir Suren",
+      owner: defaultDealOwner,
       close_date: "",
       next_step: "",
       notes: "",
@@ -438,9 +492,20 @@ export function CustomerTabs({
     toast(`Added deal “${name}”`);
   }
 
-  function assignOwner(v: string) {
+  async function assignOwner(v: string) {
+    const previous = owner;
     setOwner(v);
-    patchCustomer({ owner: v });
+    const updated = await patchCustomer({
+      owner: v,
+      owner_user_id:
+        v && v === currentUser.name
+          ? currentUser.memberId || undefined
+          : undefined,
+    });
+    if (!updated) {
+      setOwner(previous);
+      return;
+    }
     toast(v ? `Owner set to ${v}` : "Owner cleared");
   }
 
@@ -1870,7 +1935,7 @@ export function CustomerTabs({
               </label>
               <PeopleSelect
                 value={owner}
-                options={TEAM}
+                options={ownerOptions}
                 onChange={assignOwner}
                 placeholder="Unassigned"
                 ariaLabel="Account owner"
@@ -2067,7 +2132,7 @@ export function CustomerTabs({
                   onChange={(e) => set("owner", e.target.value)}
                   className={fld}
                 >
-                  {REPS.map((r) => (
+                  {ownerOptions.map((r) => (
                     <option key={r} value={r}>
                       {r}
                     </option>

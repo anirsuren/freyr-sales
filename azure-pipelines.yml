@@ -38,6 +38,18 @@ stages:
             displayName: Smoke tests
           - script: npm run test:auth
             displayName: Authentication boundary tests
+          - script: npm run test:onboarding
+            displayName: Onboarding tour tests
+          - script: npm run test:real
+            displayName: Live-mode boundary tests
+          - script: npx playwright test tests/identity.spec.ts tests/personal-data-isolation.spec.ts tests/email-delivery.spec.ts --config=playwright.auth.config.ts --reporter=list
+            displayName: Identity, private-data, and invitation-delivery tests
+          - script: npx playwright test tests/authz-guardrails.spec.ts --config=playwright.auth.config.ts --reporter=list
+            displayName: Authorization guardrail tests
+          - script: npx playwright test tests/member-assignment.spec.ts --config=playwright.assignment.config.ts --reporter=list
+            displayName: Stable ownership tests
+          - script: npx playwright test tests/workspace-scope.spec.ts --config=playwright.workspace.config.ts --reporter=list
+            displayName: Workspace isolation tests
 
   - stage: Deploy
     dependsOn: Verify
@@ -56,6 +68,40 @@ stages:
 
                 TAG=$(echo "$(Build.SourceVersion)" | cut -c1-7)
                 IMAGE="$(ECR_REGISTRY)/$(ECR_REPO)"
+
+                REQUIRED_SECRET_KEYS='[
+                  "NEXT_PUBLIC_SUPABASE_URL",
+                  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+                  "SUPABASE_SERVICE_ROLE_KEY",
+                  "AUTH_COOKIE_SECRET",
+                  "OWNER_EMAILS",
+                  "FREYR_WORKSPACE_ID",
+                  "RESEND_API_KEY"
+                ]'
+                MISSING_SECRET_KEYS=$(
+                  aws secretsmanager get-secret-value \
+                    --secret-id "$(APP_SECRETS_ARN)" \
+                    --query SecretString \
+                    --output text \
+                  | jq -r --argjson required "$REQUIRED_SECRET_KEYS" '
+                      if type != "object" then
+                        error("Application SecretString must be a JSON object")
+                      else
+                        . as $secret
+                        | $required[]
+                        | . as $key
+                        | select(($secret | has($key)) | not)
+                      end
+                    '
+                )
+                if [ -n "$MISSING_SECRET_KEYS" ]; then
+                  echo "Deployment blocked: application secret is missing required JSON keys:"
+                  while IFS= read -r key; do
+                    echo " - $key"
+                  done <<< "$MISSING_SECRET_KEYS"
+                  exit 1
+                fi
+                echo "Verified required application secret keys are present."
 
                 aws ecr get-login-password --region "$(AWS_REGION)" \
                   | docker login --username AWS --password-stdin "$(ECR_REGISTRY)"
@@ -99,11 +145,12 @@ stages:
                   | set_secret("AUTH_COOKIE_SECRET"; "AUTH_COOKIE_SECRET")
                   | set_secret("OWNER_EMAILS"; "OWNER_EMAILS")
                   | set_secret("FREYR_WORKSPACE_ID"; "FREYR_WORKSPACE_ID")
+                  | set_secret("RESEND_API_KEY"; "RESEND_API_KEY")
                   | set_env("AUTH_MODE"; "supabase")
                   | set_env("AUTH_PUBLIC_ORIGIN"; "https://freyrsales.dev.freyrapps.com")
                   | set_env("ACCESS_CONTROL_MODE"; "approval")
                   | set_env("DEFAULT_DATA_MODE"; "mock")
-                  | set_env("DATA_MODE_LOCKED"; "0")
+                  | set_env("DATA_MODE_LOCKED"; "1")
                   | del(
                       .taskDefinitionArn,
                       .revision,

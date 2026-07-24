@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { SlidersHorizontal, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 
 // The KPI "Customize" + "vs range" controls, lifted OUT of the KPI section into
 // the dashboard header row (next to Digest / Export CSV) — Suren didn't want them
@@ -19,15 +21,19 @@ export function KpiCustomize({
   comparable: boolean;
   rangeLabel: string;
 }) {
+  const currentUser = useCurrentUser();
+  const kpiStorageKey = userScopedStorageKey(KPI_STORE, currentUser.id);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    setHidden(new Set());
+    setOpen(false);
     try {
-      const raw = localStorage.getItem(KPI_STORE);
+      const raw = localStorage.getItem(kpiStorageKey);
       if (raw) setHidden(new Set(JSON.parse(raw)));
     } catch {}
-  }, []);
+  }, [kpiStorageKey]);
 
   function broadcast() {
     window.dispatchEvent(new Event(KPI_EVENT));
@@ -39,7 +45,7 @@ export function KpiCustomize({
     if (next.size >= kpis.length) return; // never hide all
     setHidden(next);
     try {
-      localStorage.setItem(KPI_STORE, JSON.stringify(Array.from(next)));
+      localStorage.setItem(kpiStorageKey, JSON.stringify(Array.from(next)));
     } catch {}
     broadcast();
   }

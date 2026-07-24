@@ -2,11 +2,18 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { crawlFreyrWebsite } from "@/lib/firecrawl";
 import { extractKnowledgeBase } from "@/lib/claude";
+import { isAdmin } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 export async function POST() {
+  if (!(await isAdmin())) {
+    return NextResponse.json(
+      { error: "Admin access is required to rebuild the knowledge base." },
+      { status: 403 }
+    );
+  }
   try {
     const db = getDb();
     const pages = await crawlFreyrWebsite();

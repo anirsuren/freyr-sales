@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { getSequence, CHANNEL_LABEL } from "@/lib/sequences";
 import type { AgentRunStep, SequenceEnrollment } from "@/lib/types";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,14 @@ export const dynamic = "force-dynamic";
 // account timeline, and marks the sequence complete at the last step. Accepts a
 // single enrollmentId, or { sequenceId, all: true } to advance every active
 // enrollment in a sequence. Mock-first; persisted so progress survives.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const db = getDb();
   const [enrollments, customers, contacts] = await Promise.all([
@@ -69,6 +77,8 @@ export async function POST(req: Request) {
   if (advanced) {
     await db.agentRuns.create({
       kind: "act",
+      created_by_user_id: actor.userId,
+      created_by: actor.name,
       title: `Advanced ${advanced} sequence step${advanced === 1 ? "" : "s"}`,
       customer_id:
         targets.length === 1 ? targets[0].customer_id : null,

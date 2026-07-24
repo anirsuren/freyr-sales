@@ -1,13 +1,46 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSequence, removeSequence, updateSequence, type SequenceStep } from "@/lib/sequences";
+import {
+  isWorkflowOwnerOrAdmin,
+  verifiedWorkflowActor,
+} from "@/lib/workflowAuthorization";
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const id = (await params).id;
-  if (!getSequence(id)) {
+  const existing = getSequence(id);
+  if (!existing) {
     return NextResponse.json({ ok: false, error: "Sequence not found." }, { status: 404 });
+  }
+  const actor = await verifiedWorkflowActor(request);
+  if (!actor) {
+    return NextResponse.json(
+      { ok: false, error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  if (
+    existing.workspace_id &&
+    existing.workspace_id !== actor.workspaceId
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "Sequence not found." },
+      { status: 404 }
+    );
+  }
+  if (
+    !isWorkflowOwnerOrAdmin(
+      actor,
+      existing.owner_user_id,
+      existing.owner
+    )
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "Only the sequence owner or an admin can change it." },
+      { status: 403 }
+    );
   }
   const body = await request.json().catch(() => ({}));
   const steps = Array.isArray(body.steps)
@@ -30,10 +63,46 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const removed = removeSequence((await params).id);
+  const id = (await params).id;
+  const existing = getSequence(id);
+  if (!existing) {
+    return NextResponse.json(
+      { ok: false, error: "Sequence not found." },
+      { status: 404 }
+    );
+  }
+  const actor = await verifiedWorkflowActor(request);
+  if (!actor) {
+    return NextResponse.json(
+      { ok: false, error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
+  if (
+    existing.workspace_id &&
+    existing.workspace_id !== actor.workspaceId
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "Sequence not found." },
+      { status: 404 }
+    );
+  }
+  if (
+    !isWorkflowOwnerOrAdmin(
+      actor,
+      existing.owner_user_id,
+      existing.owner
+    )
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "Only the sequence owner or an admin can delete it." },
+      { status: 403 }
+    );
+  }
+  const removed = removeSequence(id);
   return NextResponse.json(
     removed ? { ok: true } : { ok: false, error: "Sequence not found." },
     { status: removed ? 200 : 404 }

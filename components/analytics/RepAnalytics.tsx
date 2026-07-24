@@ -7,11 +7,11 @@ import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { DonutChart, BarChart } from "@/components/charts/Charts";
 import { cn } from "@/lib/utils";
 import {
   formatMoney,
-  CURRENT_REP,
   STAGE_PROBABILITY,
   type RepStat,
   type Stage,
@@ -25,9 +25,6 @@ const RANGES = [
   { k: "90d", l: "90D", name: "Last 90 days" },
   { k: "all", l: "All", name: "All time" },
 ];
-
-const slugify = (s: string) =>
-  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 type StageDeal = { company: string; contact: string; value: number };
 
@@ -190,13 +187,14 @@ export function RepAnalytics({
 }: {
   reps: RepStat[];
   range: string;
-  // The deals behind each rep's stage, keyed rep name → stage → deals, so the
+  // The deals behind each rep's stage, keyed stable rep identity → stage → deals, so the
   // per-rep charts can show WHO's in each bar/segment on hover (Suren).
   repStageDeals?: Record<
     string,
     Record<string, { company: string; contact: string; value: number }[]>
   >;
 }) {
+  const currentUser = useCurrentUser();
   const [open, setOpen] = useState<string | null>(null);
   const rangeName = RANGES.find((item) => item.k === range)?.name ?? "All time";
   const rangeContext =
@@ -274,9 +272,11 @@ export function RepAnalytics({
         // other reps, expand any of them inline").
         <div className="max-h-[620px] overflow-y-auto -mx-2 px-2 divide-y divide-border-light">
           {reps.map((rep, i) => {
-            const isOpen = open === rep.name;
-            const you = rep.name === CURRENT_REP;
-            const slug = slugify(rep.name);
+            const isOpen = open === rep.key;
+            const you =
+              !!rep.memberId &&
+              !!currentUser.memberId &&
+              rep.memberId === currentUser.memberId;
             const kpis = [
               { label: "Weighted", value: formatMoney(rep.weighted) },
               { label: "Avg deal", value: formatMoney(rep.avgDeal) },
@@ -291,10 +291,10 @@ export function RepAnalytics({
               { label: "Meetings", value: String(rep.meetings), pct: Math.round((rep.meetings / teamMax.meetings) * 100), color: "#B45309" },
             ];
             return (
-              <div key={rep.name}>
+              <div key={rep.key}>
                 {/* Collapsed row — click to expand */}
                 <button
-                  onClick={() => setOpen(isOpen ? null : rep.name)}
+                  onClick={() => setOpen(isOpen ? null : rep.key)}
                   aria-expanded={isOpen}
                   className={cn(
                     "w-full text-left flex items-center gap-4 py-3.5 rounded-xl px-2 -mx-2 transition-colors",
@@ -323,7 +323,7 @@ export function RepAnalytics({
                     </p>
                     <RepPipelineBar
                       rep={rep}
-                      stageDeals={repStageDeals?.[rep.name]}
+                      stageDeals={repStageDeals?.[rep.key]}
                     />
                   </div>
 
@@ -405,7 +405,7 @@ export function RepAnalytics({
                               color: s.color,
                               // WHO's in this stage for this rep — logo + company
                               // + contact + value (Suren: every graph shows who).
-                              tip: (repStageDeals?.[rep.name]?.[s.stage] ?? []).map((d) => ({
+                              tip: (repStageDeals?.[rep.key]?.[s.stage] ?? []).map((d) => ({
                                 logo: d.company,
                                 name: d.company,
                                 sub: d.contact,
@@ -463,7 +463,7 @@ export function RepAnalytics({
 
                       <div className="flex justify-end">
                         <Link
-                          href={`/analytics/reps/${slug}`}
+                        href={`/analytics/reps/${rep.slug}`}
                           className="inline-flex items-center justify-center gap-1.5 text-[12.5px] font-semibold px-4 py-2 rounded-lg bg-blue-primary text-white hover:bg-blue-hover transition-colors"
                         >
                           Open {rep.name.split(" ")[0]}&apos;s full page

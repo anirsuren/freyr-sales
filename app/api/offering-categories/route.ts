@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   listOfferingCategories,
   createOfferingCategory,
   commitOfferingsChange,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import {
+  memberAssignmentResponse,
+  verifiedOwnerAssignment,
+} from "@/lib/memberAssignments";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +16,7 @@ export async function GET() {
   return NextResponse.json({ offeringCategories: listOfferingCategories() });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   if (!(await canManageOfferings()))
     return NextResponse.json(
       { error: "View only — admin access required" },
@@ -26,15 +30,25 @@ export async function POST(req: Request) {
     );
   }
   try {
+    const assignment =
+      body.owner != null || body.owner_user_id != null
+        ? await verifiedOwnerAssignment(req, {
+            owner: body.owner,
+            ownerUserId: body.owner_user_id,
+          })
+        : null;
     const offeringCategory = await commitOfferingsChange(() =>
       createOfferingCategory({
         name: String(body.name),
         description: body.description != null ? String(body.description) : "",
-        owner: body.owner != null ? String(body.owner) : "",
+        owner: assignment?.owner || "",
+        owner_user_id: assignment?.owner_user_id || null,
       })
     );
     return NextResponse.json({ ok: true, offeringCategory });
   } catch (error) {
+    const assignmentError = memberAssignmentResponse(error);
+    if (assignmentError) return assignmentError;
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Offering category save failed" },
       { status: 503 }

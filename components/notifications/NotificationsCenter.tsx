@@ -14,6 +14,8 @@ import {
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 import {
   NOTIF_READ_KEY as READ_KEY,
   type AppNotification,
@@ -34,10 +36,11 @@ const TONE: Record<NotificationType, string> = {
   followup: "bg-blue-light text-blue-primary",
   voice: "bg-success/15 text-success",
 };
+const EMPTY_READ_SET = new Set<string>();
 
-function readSet(): Set<string> {
+function readSet(storageKey: string): Set<string> {
   try {
-    const raw = localStorage.getItem(READ_KEY);
+    const raw = localStorage.getItem(storageKey);
     return new Set(raw ? JSON.parse(raw) : []);
   } catch {
     return new Set();
@@ -45,21 +48,30 @@ function readSet(): Set<string> {
 }
 
 export function NotificationsCenter({ items }: { items: AppNotification[] }) {
+  const currentUser = useCurrentUser();
+  const readStorageKey = userScopedStorageKey(READ_KEY, currentUser.id);
   const [read, setRead] = useState<Set<string>>(new Set());
+  const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
   useEffect(() => {
-    setRead(readSet());
-  }, []);
+    setLoadedStorageKey(null);
+    setRead(readSet(readStorageKey));
+    setFilter("all");
+    setLoadedStorageKey(readStorageKey);
+  }, [readStorageKey]);
 
   function persist(next: Set<string>) {
+    if (loadedStorageKey !== readStorageKey) return;
     setRead(new Set(next));
     try {
-      localStorage.setItem(READ_KEY, JSON.stringify(Array.from(next)));
+      localStorage.setItem(readStorageKey, JSON.stringify(Array.from(next)));
     } catch {}
   }
   function markOne(id: string) {
-    const next = new Set(read);
+    const next = new Set(
+      loadedStorageKey === readStorageKey ? read : new Set<string>()
+    );
     next.add(id);
     persist(next);
   }
@@ -67,11 +79,16 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
     persist(new Set(items.map((i) => i.id)));
   }
 
+  const visibleRead =
+    loadedStorageKey === readStorageKey ? read : EMPTY_READ_SET;
   const unreadCount = useMemo(
-    () => items.filter((i) => !read.has(i.id)).length,
-    [items, read]
+    () => items.filter((i) => !visibleRead.has(i.id)).length,
+    [items, visibleRead]
   );
-  const shown = filter === "unread" ? items.filter((i) => !read.has(i.id)) : items;
+  const shown =
+    filter === "unread"
+      ? items.filter((i) => !visibleRead.has(i.id))
+      : items;
 
   return (
     <div className="max-w-[760px]">
@@ -113,7 +130,7 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
         <div className="space-y-2.5">
           {shown.map((n) => {
             const Icon = ICON[n.type];
-            const isRead = read.has(n.id);
+            const isRead = visibleRead.has(n.id);
             return (
               <Link key={n.id} href={n.href} onClick={() => markOne(n.id)}>
                 <Card

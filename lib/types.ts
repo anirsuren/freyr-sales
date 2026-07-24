@@ -42,6 +42,10 @@ export interface AccountDeal {
   offering?: string | null;
   contact?: string | null;
   owner?: string | null;
+  // Stable workspace-member attribution for new writes. `owner` remains as a
+  // denormalized display label so historical records and existing UI continue
+  // to render while identity-sensitive comparisons use this id when present.
+  owner_user_id?: string | null;
   close_date?: string | null;
   next_step?: string | null;
   notes?: string | null;
@@ -59,6 +63,8 @@ export interface Customer {
   created_at: string;
   last_enriched_at: string;
   owner?: string | null;
+  owner_user_id?: string | null;
+  workspace_id?: string | null;
   competitor?: string | null;
   notes_log?: AccountNote[];
   attachments?: AccountAttachment[];
@@ -202,6 +208,10 @@ export interface AgentRunStep {
 export interface AgentRun {
   id: string;
   kind: AgentRunKind;
+  // Signed workspace member that created this run. The display label is kept
+  // for readable history; authorization uses the stable app_users id.
+  created_by_user_id?: string | null;
+  created_by?: string | null;
   title: string;
   customer_id: string | null;
   company: string | null;
@@ -215,6 +225,14 @@ export interface AgentRun {
   // The actual draft the agent produced (email/plan) so "Draft it for me" shows
   // real, readable output and the run page can display it — not just a log line.
   draft?: { title: string; body: string } | null;
+}
+
+// Personal agent state is always addressed through a verified workspace member.
+// Keeping both ids in one required value prevents a caller from accidentally
+// reading the first/global preference row or another rep's private drafts/chat.
+export interface WorkspaceMemberScope {
+  workspaceId: string;
+  userId: string;
 }
 
 // Per-account agent chat (V9 #45) — the "Ask the agent" thread, persisted so the

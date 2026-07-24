@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { buildDeals } from "@/lib/pipeline";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
-import { getDataMode } from "@/lib/dataMode";
+import { getDataMode, isDataModeLocked } from "@/lib/dataMode";
 import { isApprovalGateEnabled } from "@/lib/accessControl";
 
 export const metadata = { title: "Settings" };
@@ -37,6 +37,7 @@ export default async function SettingsPage() {
         services={services}
         crmCounts={crmCounts}
         initialDataMode={getDataMode()}
+        initialDataModeLocked={isDataModeLocked()}
         authConfig={{
           authMode: process.env.AUTH_MODE || "local",
           approvalEnabled: isApprovalGateEnabled(),

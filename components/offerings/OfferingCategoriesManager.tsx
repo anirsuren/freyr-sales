@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingCategory } from "@/lib/offerings";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
 const FIELD =
   "w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
@@ -26,6 +27,7 @@ export function OfferingCategoriesManager({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const currentUser = useCurrentUser();
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -49,7 +51,15 @@ export function OfferingCategoriesManager({
       const res = await fetch("/api/offering-categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, owner }),
+        body: JSON.stringify({
+          name,
+          description,
+          owner,
+          owner_user_id:
+            owner.trim() === currentUser.name
+              ? currentUser.memberId || undefined
+              : undefined,
+        }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -88,6 +98,10 @@ export function OfferingCategoriesManager({
           name: editName,
           description: editDesc,
           owner: editOwner,
+          owner_user_id:
+            editOwner.trim() === currentUser.name
+              ? currentUser.memberId || undefined
+              : undefined,
         }),
       });
       const data = await res.json();

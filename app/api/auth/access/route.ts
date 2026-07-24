@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       sub: principal.id,
       userId: access.userId,
       email: principal.email,
+      displayName: access.displayName,
       role: access.role,
       workspaceId: access.workspaceId,
     });

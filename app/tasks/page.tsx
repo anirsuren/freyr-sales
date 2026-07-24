@@ -3,18 +3,24 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { TasksWorkspace } from "@/components/tasks/TasksWorkspace";
 import { nextBestActions, focusActions } from "@/lib/agent";
 import type { RecommendedService } from "@/lib/types";
+import { getCurrentUser } from "@/lib/currentUser";
+import { requireServerMemberScope } from "@/lib/memberScope";
 
 export const metadata = { title: "Tasks" };
 export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
+  const [currentUser, scope] = await Promise.all([
+    getCurrentUser(),
+    requireServerMemberScope(),
+  ]);
   const db = getDb();
   const [sessions, customers, contacts, interactions, agentPrefs] = await Promise.all([
     db.pitchSessions.list(),
     db.customers.list(),
     db.contacts.list(),
     db.interactions.list(),
-    db.agentPrefs.get(),
+    db.agentPrefs.get(scope),
   ]);
 
   const custById = Object.fromEntries(customers.map((customer) => [customer.id, customer]));
@@ -56,7 +62,9 @@ export default async function TasksPage() {
   const agentActions = focusActions(
     nextBestActions({ sessions, customers, contacts, interactions }),
     customers,
-    agentPrefs
+    agentPrefs,
+    currentUser.name,
+    scope.userId
   ).actions.slice(0, 4);
 
   const now = new Date();

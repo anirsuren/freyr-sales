@@ -50,6 +50,7 @@ export interface OfferingCategory {
   name: string;
   description: string;
   owner: string; // the offering owner accountable for this category
+  owner_user_id?: string | null;
 }
 
 export interface Offering {
@@ -612,6 +613,10 @@ function catalogClient() {
   );
 }
 
+// `offering_catalog_state` is deliberately a single deployment-wide document
+// (migration 003 has no workspace_id). This Freyr deployment is hard-bound to
+// one FREYR_WORKSPACE_ID; converting the app to multi-workspace hosting must
+// first add a workspace column/key rather than reusing this singleton adapter.
 export async function persistLiveOfferings(): Promise<void> {
   if (getDataMode() !== "live") return;
   if (!hasSupabase()) {
@@ -804,6 +809,7 @@ export function createOfferingCategory(data: {
   name: string;
   description?: string;
   owner?: string;
+  owner_user_id?: string | null;
 }): OfferingCategory {
   const name = String(data.name || "").trim();
   // Dedupe by name (like offering types) — re-adding an existing category
@@ -814,6 +820,8 @@ export function createOfferingCategory(data: {
   if (existing) {
     if (data.description != null) existing.description = data.description.trim();
     if (data.owner != null) existing.owner = data.owner.trim();
+    if (data.owner_user_id !== undefined)
+      existing.owner_user_id = data.owner_user_id;
     return existing;
   }
   const record: OfferingCategory = {
@@ -821,6 +829,7 @@ export function createOfferingCategory(data: {
     name,
     description: (data.description || "").trim(),
     owner: (data.owner || "").trim(),
+    owner_user_id: data.owner_user_id || null,
   };
   activeStore().offeringCategories.push(record);
   return record;

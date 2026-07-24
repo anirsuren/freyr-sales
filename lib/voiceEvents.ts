@@ -16,6 +16,7 @@ export type VoiceLifecycleStatus =
 
 export interface StoredVoiceConversation {
   id: string;
+  workspace_id: string | null;
   conversation_id: string | null;
   call_sid: string | null;
   agent_id: string;
@@ -57,6 +58,33 @@ const normPhone = (phone: string) => phone.replace(/\D/g, "").slice(-10);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function configuredVoiceWorkspaceId(): string {
+  const workspace = process.env.FREYR_WORKSPACE_ID?.trim();
+  if (!workspace) {
+    throw new Error(
+      "FREYR_WORKSPACE_ID is required for live voice conversation access."
+    );
+  }
+  return workspace;
+}
+
+function memoryVoiceWorkspaceId(): string | null {
+  if (getDataMode() === "mock") return null;
+  const configured = process.env.FREYR_WORKSPACE_ID?.trim();
+  if (configured) return configured;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "FREYR_WORKSPACE_ID is required for live voice conversation access."
+    );
+  }
+  return "local-live-workspace";
+}
+
+function inMemoryVoiceScope(record: StoredVoiceConversation): boolean {
+  const workspace = memoryVoiceWorkspaceId();
+  return workspace === null || record.workspace_id === workspace;
+}
+
 function memoryStore(): VoiceEventStore {
   const g = globalThis as typeof globalThis & {
     __freyrMockVoiceEvents?: VoiceEventStore;
@@ -80,6 +108,10 @@ function defaultRecord(patch: VoicePatch): StoredVoiceConversation {
   const now = new Date().toISOString();
   return {
     id: patch.id || randomUUID(),
+    workspace_id:
+      getDataMode() === "mock"
+        ? patch.workspace_id || null
+        : memoryVoiceWorkspaceId(),
     conversation_id: patch.conversation_id || null,
     call_sid: patch.call_sid || null,
     agent_id: patch.agent_id,
@@ -116,20 +148,25 @@ async function findExisting(
 ): Promise<StoredVoiceConversation | null> {
   if (hasSupabase()) {
     const supabase = supabaseClient();
+    const workspace = configuredVoiceWorkspaceId();
     if (conversationId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("voice_conversations")
         .select("*")
         .eq("conversation_id", conversationId)
+        .eq("workspace_id", workspace)
         .maybeSingle();
+      if (error) throw new Error(error.message);
       if (data) return data as StoredVoiceConversation;
     }
     if (callSid) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("voice_conversations")
         .select("*")
         .eq("call_sid", callSid)
+        .eq("workspace_id", workspace)
         .maybeSingle();
+      if (error) throw new Error(error.message);
       if (data) return data as StoredVoiceConversation;
     }
     return null;
@@ -137,8 +174,9 @@ async function findExisting(
   return (
     Array.from(memoryStore().records.values()).find(
       (record) =>
-        (!!conversationId && record.conversation_id === conversationId) ||
-        (!!callSid && record.call_sid === callSid)
+        inMemoryVoiceScope(record) &&
+        ((!!conversationId && record.conversation_id === conversationId) ||
+          (!!callSid && record.call_sid === callSid))
     ) || null
   );
 }
@@ -147,7 +185,7 @@ export async function upsertVoiceConversation(
   patch: VoicePatch
 ): Promise<StoredVoiceConversation> {
   const existing = await findExisting(patch.conversation_id, patch.call_sid);
-  const merged = defaultRecord({
+  let merged = defaultRecord({
     ...(existing || {}),
     ...patch,
     id: existing?.id || patch.id,
@@ -160,13 +198,49 @@ export async function upsertVoiceConversation(
     updated_at: new Date().toISOString(),
   });
 
+  if (getDataMode() === "live") {
+    const db = getDb();
+    const contact = merged.contact_id
+      ? await db.contacts.get(merged.contact_id)
+      : null;
+    if (merged.contact_id && !contact) {
+      throw new Error(
+        "Voice conversation contact is outside the configured workspace."
+      );
+    }
+    const customerId = merged.customer_id || contact?.customer_id || null;
+    const customer = customerId ? await db.customers.get(customerId) : null;
+    if (customerId && !customer) {
+      throw new Error(
+        "Voice conversation customer is outside the configured workspace."
+      );
+    }
+    if (contact && customerId && contact.customer_id !== customerId) {
+      throw new Error(
+        "Voice conversation contact does not belong to the workspace customer."
+      );
+    }
+    merged = { ...merged, customer_id: customerId };
+  }
+
   if (hasSupabase()) {
     const supabase = supabaseClient();
+    const workspace = configuredVoiceWorkspaceId();
+    const scoped = { ...merged, workspace_id: workspace };
     const query = existing
-      ? supabase.from("voice_conversations").update(merged).eq("id", existing.id)
-      : supabase.from("voice_conversations").insert(merged);
-    const { data, error } = await query.select().single();
+      ? supabase
+          .from("voice_conversations")
+          .update(scoped)
+          .eq("id", existing.id)
+          .eq("workspace_id", workspace)
+      : supabase.from("voice_conversations").insert(scoped);
+    const { data, error } = await query.select().maybeSingle();
     if (error) throw new Error(error.message);
+    if (!data) {
+      throw new Error(
+        "Voice conversation is not available in the configured workspace."
+      );
+    }
     return data as StoredVoiceConversation;
   }
 
@@ -178,15 +252,18 @@ export async function listStoredVoiceConversations(
   limit = 100
 ): Promise<StoredVoiceConversation[]> {
   if (hasSupabase()) {
+    const workspace = configuredVoiceWorkspaceId();
     const { data, error } = await supabaseClient()
       .from("voice_conversations")
       .select("*")
+      .eq("workspace_id", workspace)
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) throw new Error(error.message);
     return (data || []) as StoredVoiceConversation[];
   }
   return Array.from(memoryStore().records.values())
+    .filter((record) => inMemoryVoiceScope(record))
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, limit);
 }
@@ -197,14 +274,18 @@ export async function getStoredVoiceConversation(
   const found = await findExisting(conversationId, null);
   if (found) return found;
   if (hasSupabase() && UUID_PATTERN.test(conversationId)) {
-    const { data } = await supabaseClient()
+    const workspace = configuredVoiceWorkspaceId();
+    const { data, error } = await supabaseClient()
       .from("voice_conversations")
       .select("*")
       .eq("id", conversationId)
+      .eq("workspace_id", workspace)
       .maybeSingle();
+    if (error) throw new Error(error.message);
     return (data as StoredVoiceConversation) || null;
   }
-  return memoryStore().records.get(conversationId) || null;
+  const record = memoryStore().records.get(conversationId) || null;
+  return record && inMemoryVoiceScope(record) ? record : null;
 }
 
 export function mapElevenLabsStatus(status?: string): VoiceLifecycleStatus {
@@ -321,9 +402,9 @@ export async function ingestElevenLabsConversation(
         ? "inbound"
         : "outbound",
     status,
-    contact_id: contact?.id || vars.contact_id || undefined,
+    contact_id: contact?.id || undefined,
     contact_name: contact?.full_name || vars.contact_name || undefined,
-    customer_id: customer?.id || vars.customer_id || undefined,
+    customer_id: customer?.id || undefined,
     company: customer?.company_name || vars.company || undefined,
     external_number: external || undefined,
     offering_id: vars.offering_id || undefined,

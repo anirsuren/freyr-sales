@@ -277,7 +277,7 @@ function makeDraft(
   account: Customer,
   ctx: ChatContext,
   opts: { length?: "short" | "normal"; tone?: "warm" | "formal"; lead?: string } = {},
-  repName = "Anir Suren"
+  repName = "Freyr representative"
 ): ChatReply {
   const snap = snapshot(account, ctx);
   const ct = snap.contacts[0];
@@ -342,7 +342,7 @@ export function answerAgentChat(
   message: string,
   ctx: ChatContext,
   history: ChatTurn[] = [],
-  userName = "Anir Suren"
+  userName = "Freyr user"
 ): ChatReply {
   const userFirstName = userName.trim().split(/\s+/)[0] || "there";
   const m = message.toLowerCase().trim();

@@ -227,7 +227,10 @@ export async function placeOrQueueCall(opts: {
   const line = numberForCategory(category);
   const phoneId = line?.phone_number_id || process.env.ELEVENLABS_PHONE_NUMBER_ID;
   const live =
-    hasElevenLabs() && process.env.AGENT_FORCE_MOCK !== "1" && !!phoneId;
+    getDataMode() === "live" &&
+    hasElevenLabs() &&
+    process.env.AGENT_FORCE_MOCK !== "1" &&
+    !!phoneId;
 
   const entry: VoiceCall = {
     id: uid(),

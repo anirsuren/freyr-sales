@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { actRunSteps, buildActDraft } from "@/lib/agent";
 import type { AgentActionKind } from "@/lib/agent";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,14 @@ const VERB: Record<string, string> = {
   followup: "drafted the follow-up email",
 };
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const kind = String(body.kind || "");
   const customerId = String(body.customerId || "");
@@ -49,7 +57,8 @@ export async function POST(req: Request) {
     kind as AgentActionKind,
     customer,
     contact,
-    dueLabel
+    dueLabel,
+    actor.name
   );
 
   if (!contactId) {
@@ -70,6 +79,8 @@ export async function POST(req: Request) {
 
   const run = await db.agentRuns.create({
     kind: "act",
+    created_by_user_id: actor.userId,
+    created_by: actor.name,
     title: `Agent ${verb} for ${customer.company_name}`,
     customer_id: customerId,
     company: customer.company_name,

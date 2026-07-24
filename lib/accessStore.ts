@@ -6,6 +6,8 @@ import {
   providerForAuthMode,
   type WorkspaceRole,
 } from "./accessControl";
+import { authUrl } from "./authOrigin";
+import { sendTransactionalEmail, type EmailResult } from "./email";
 
 export type AccessMember = {
   id: string;
@@ -26,9 +28,16 @@ export type AccessRequestRecord = {
 
 export type InvitationRecord = {
   id: string;
+  name: string | null;
   email: string;
   role: WorkspaceRole;
   expiresAt: string;
+};
+
+export type InvitationDelivery = {
+  email: string;
+  expiresAt: string;
+  emailResult: EmailResult;
 };
 
 export type AccessDirectory = {
@@ -39,7 +48,13 @@ export type AccessDirectory = {
 };
 
 type ResolvedAccess =
-  | { status: "approved"; workspaceId: string; userId: string; role: WorkspaceRole }
+  | {
+      status: "approved";
+      workspaceId: string;
+      userId: string;
+      role: WorkspaceRole;
+      displayName: string;
+    }
   | { status: "pending"; workspaceId: string };
 
 function adminClient(): SupabaseClient {
@@ -55,7 +70,15 @@ function adminClient(): SupabaseClient {
 
 export async function verifyAccessControlStorage(): Promise<void> {
   const client = adminClient();
-  const [users, requests, invitations] = await Promise.all([
+  const [
+    users,
+    requests,
+    invitations,
+    customerOwnership,
+    offeringOwnership,
+    runAttribution,
+  ] =
+    await Promise.all([
     client
       .from("app_users")
       .select("id, auth_provider, entra_object_id, active")
@@ -66,10 +89,29 @@ export async function verifyAccessControlStorage(): Promise<void> {
       .limit(1),
     client
       .from("workspace_invitations")
-      .select("id, email, status")
+      .select("id, display_name, email, status")
+      .limit(1),
+    client
+      .from("customers")
+      .select("id, workspace_id, owner_user_id")
+      .limit(1),
+    client
+      .from("offering_categories")
+      .select("id, workspace_id, owner_user_id")
+      .limit(1),
+    client
+      .from("agent_runs")
+      .select("id, workspace_id, created_by_user_id")
       .limit(1),
   ]);
-  for (const result of [users, requests, invitations]) {
+  for (const result of [
+    users,
+    requests,
+    invitations,
+    customerOwnership,
+    offeringOwnership,
+    runAttribution,
+  ]) {
     if (result.error) throw new Error(result.error.message);
   }
 }
@@ -124,13 +166,18 @@ async function activeUser(
 ) {
   const result = await client
     .from("app_users")
-    .select("id, app_role, active")
+    .select("id, display_name, app_role, active")
     .eq("workspace_id", workspace)
     .eq("auth_provider", provider)
     .eq("entra_object_id", subject)
     .maybeSingle();
   if (result.error) throw new Error(result.error.message);
-  return result.data as { id: string; app_role: WorkspaceRole; active: boolean } | null;
+  return result.data as {
+    id: string;
+    display_name: string;
+    app_role: WorkspaceRole;
+    active: boolean;
+  } | null;
 }
 
 export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<ResolvedAccess> {
@@ -144,12 +191,32 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
   const existing = await activeUser(client, workspace, provider, user.id);
 
   if (existing?.active) {
-    await client.from("app_users").update({ last_seen_at: new Date().toISOString() }).eq("id", existing.id);
-    return { status: "approved", workspaceId: workspace, userId: existing.id, role: existing.app_role };
+    const synced = await client
+      .from("app_users")
+      .update({
+        // The provider subject and verified email identify this account. Do not
+        // overwrite the workspace's canonical display name from mutable
+        // Supabase user metadata on every login; otherwise a member can rename
+        // themselves to another teammate and poison authorship/audit labels.
+        email,
+        last_seen_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id)
+      .eq("workspace_id", workspace)
+      .eq("auth_provider", provider)
+      .eq("entra_object_id", user.id);
+    if (synced.error) throw new Error(synced.error.message);
+    return {
+      status: "approved",
+      workspaceId: workspace,
+      userId: existing.id,
+      role: existing.app_role,
+      displayName: existing.display_name,
+    };
   }
 
   if (existing && !existing.active) {
-    await client.from("access_requests").upsert(
+    const requested = await client.from("access_requests").upsert(
       {
         workspace_id: workspace,
         auth_provider: provider,
@@ -162,58 +229,124 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
       },
       { onConflict: "workspace_id,auth_provider,provider_subject" }
     );
+    if (requested.error) throw new Error(requested.error.message);
     return { status: "pending", workspaceId: workspace };
   }
 
+  const now = new Date().toISOString();
   let invitedRole: WorkspaceRole | null = null;
   let invitationId: string | null = null;
+  let invitedDisplayName: string | null = null;
   if (email) {
     const invitation = await client
       .from("workspace_invitations")
-      .select("id, app_role")
+      .select("id, display_name, app_role")
       .eq("workspace_id", workspace)
       .eq("status", "pending")
-      .ilike("email", email)
-      .gt("expires_at", new Date().toISOString())
+      // Invitation addresses are normalized before storage. Exact matching is
+      // required here: ILIKE would treat valid email characters such as "%"
+      // and "_" as wildcards and could grant the wrong invitation.
+      .eq("email", email)
+      .gt("expires_at", now)
       .maybeSingle();
     if (invitation.error) throw new Error(invitation.error.message);
     invitedRole = (invitation.data?.app_role as WorkspaceRole | undefined) || null;
     invitationId = invitation.data?.id || null;
+    invitedDisplayName =
+      typeof invitation.data?.display_name === "string"
+        ? invitation.data.display_name.trim()
+        : null;
   }
 
-  const role: WorkspaceRole | null = isBootstrapOwner(user) ? "admin" : invitedRole;
+  const bootstrapOwner = isBootstrapOwner(user);
+  const role: WorkspaceRole | null = bootstrapOwner ? "admin" : invitedRole;
   if (role) {
+    // Bootstrap ownership is tied to an explicitly configured verified email.
+    // Every ordinary invited member must use the inviter-selected canonical
+    // name; an old invitation without display_name is not allowed to fall back
+    // to mutable Supabase profile metadata.
+    const canonicalName = bootstrapOwner
+      ? user.name.trim().replace(/\s+/g, " ")
+      : invitedDisplayName || "";
+    if (canonicalName.length < 2 || canonicalName.length > 120) {
+      throw new Error(
+        bootstrapOwner
+          ? "A valid canonical member name is required."
+          : "This invitation is missing the teammate’s canonical full name. Ask an admin to send it again."
+      );
+    }
     const inserted = await client
       .from("app_users")
       .insert({
         workspace_id: workspace,
         entra_object_id: user.id,
         email,
-        display_name: user.name,
+        display_name: canonicalName,
         app_role: role,
         auth_provider: provider,
-        active: true,
-        approved_at: new Date().toISOString(),
-        last_seen_at: new Date().toISOString(),
+        // Keep a newly invited member inactive until this request atomically
+        // wins the pending-invitation update below. Concurrent requests cannot
+        // both turn one invitation into active memberships.
+        active: !invitationId,
+        approved_at: invitationId ? null : now,
+        last_seen_at: invitationId ? null : now,
       })
-      .select("id")
+      .select("id, display_name")
       .single();
     if (inserted.error || !inserted.data?.id) {
       throw new Error(inserted.error?.message || "Could not activate user.");
     }
+    let activated = inserted.data;
     if (invitationId) {
-      await client
+      const accepted = await client
         .from("workspace_invitations")
         .update({
           status: "accepted",
           accepted_by: inserted.data.id,
-          accepted_at: new Date().toISOString(),
+          accepted_at: now,
         })
         .eq("id", invitationId)
+        .eq("workspace_id", workspace)
         .eq("status", "pending")
-        .gt("expires_at", new Date().toISOString());
+        .gt("expires_at", now)
+        .select("id")
+        .maybeSingle();
+      if (accepted.error || !accepted.data?.id) {
+        const rolledBack = await client
+          .from("app_users")
+          .delete()
+          .eq("id", inserted.data.id)
+          .eq("workspace_id", workspace)
+          .eq("active", false);
+        if (rolledBack.error) throw new Error(rolledBack.error.message);
+        throw new Error(
+          accepted.error?.message || "Invitation is no longer available."
+        );
+      }
+      const active = await client
+        .from("app_users")
+        .update({
+          active: true,
+          approved_at: now,
+          last_seen_at: now,
+        })
+        .eq("id", inserted.data.id)
+        .eq("workspace_id", workspace)
+        .eq("active", false)
+        .select("id, display_name")
+        .maybeSingle();
+      if (active.error || !active.data?.id) {
+        throw new Error(active.error?.message || "Could not activate user.");
+      }
+      activated = active.data;
     }
-    return { status: "approved", workspaceId: workspace, userId: inserted.data.id, role };
+    return {
+      status: "approved",
+      workspaceId: workspace,
+      userId: activated.id,
+      role,
+      displayName: activated.display_name,
+    };
   }
 
   const priorRequest = await client
@@ -261,7 +394,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
       .order("created_at"),
     client
       .from("workspace_invitations")
-      .select("id, email, app_role, expires_at")
+      .select("id, display_name, email, app_role, expires_at")
       .eq("workspace_id", workspace)
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
@@ -288,6 +421,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
     })),
     invitations: (invitations.data || []).map((item) => ({
       id: item.id,
+      name: item.display_name || null,
       email: item.email,
       role: item.app_role as WorkspaceRole,
       expiresAt: item.expires_at,
@@ -298,26 +432,54 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
 export async function inviteWorkspaceUser(
   workspace: string,
   actorId: string,
+  nameValue: string,
   emailValue: string,
   role: WorkspaceRole
-) {
+): Promise<InvitationDelivery> {
+  const name = nameValue.trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 120) {
+    throw new Error("Enter the teammate’s full name.");
+  }
   const email = normalizedEmail(emailValue);
   if (!email) throw new Error("Enter a valid email address.");
   const client = adminClient();
+  const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString();
   const result = await client.from("workspace_invitations").upsert(
     {
       workspace_id: workspace,
+      display_name: name,
       email,
       app_role: role,
       status: "pending",
       invited_by: actorId,
       accepted_by: null,
       accepted_at: null,
-      expires_at: new Date(Date.now() + 14 * 86400000).toISOString(),
+      expires_at: expiresAt,
     },
     { onConflict: "workspace_id,email" }
   );
   if (result.error) throw new Error(result.error.message);
+
+  const invitationUrl = authUrl("/login");
+  invitationUrl.searchParams.set("name", name);
+  invitationUrl.searchParams.set("email", email);
+  invitationUrl.searchParams.set("mode", "request");
+  const emailResult = await sendTransactionalEmail({
+    to: email,
+    subject: "You’re invited to Freyr Sales Intelligence",
+    body: [
+      `Hi ${name},`,
+      "",
+      "You’ve been invited to the Freyr Sales Intelligence workspace.",
+      "",
+      "Create your account using the exact email address that received this invitation:",
+      invitationUrl.toString(),
+      "",
+      "This invitation expires in 14 days.",
+    ].join("\n"),
+  });
+
+  return { email, expiresAt, emailResult };
 }
 
 export async function reviewAccessRequest(
@@ -338,15 +500,16 @@ export async function reviewAccessRequest(
   if (request.error || !request.data) throw new Error(request.error?.message || "Request not found.");
   const now = new Date().toISOString();
   if (decision === "approve") {
+    const requestEmail = normalizedEmail(request.data.email);
     if (
       request.data.auth_provider === "supabase" &&
-      !normalizedEmail(request.data.email)
+      !requestEmail
     ) {
       throw new Error("This request does not use a valid email address.");
     }
     const existing = await client
       .from("app_users")
-      .select("id, auth_provider")
+      .select("id, auth_provider, display_name")
       .eq("workspace_id", request.data.workspace_id)
       .eq("entra_object_id", request.data.provider_subject)
       .maybeSingle();
@@ -354,14 +517,56 @@ export async function reviewAccessRequest(
     if (existing.data && existing.data.auth_provider !== request.data.auth_provider) {
       throw new Error("Identity already belongs to another authentication provider.");
     }
+    let canonicalName =
+      typeof existing.data?.display_name === "string"
+        ? existing.data.display_name.trim()
+        : request.data.display_name.trim();
+    let approvedRole = role;
+    let invitationId: string | null = null;
+
+    // A Supabase profile name is user-editable. For a new workspace member,
+    // take both the name and role from the owner's invitation rather than from
+    // a pending access request. A previously suspended member keeps the
+    // canonical name already stored in app_users.
+    if (request.data.auth_provider === "supabase" && !existing.data) {
+      if (!requestEmail) {
+        throw new Error("This request does not use a valid email address.");
+      }
+      const invitation = await client
+        .from("workspace_invitations")
+        .select("id, display_name, app_role")
+        .eq("workspace_id", workspace)
+        .eq("status", "pending")
+        .eq("email", requestEmail)
+        .gt("expires_at", now)
+        .maybeSingle();
+      if (invitation.error) throw new Error(invitation.error.message);
+      canonicalName =
+        typeof invitation.data?.display_name === "string"
+          ? invitation.data.display_name.trim()
+          : "";
+      if (!invitation.data?.id || !canonicalName) {
+        throw new Error(
+          "Invite this exact email address with the teammate’s full name before approving access."
+        );
+      }
+      invitationId = invitation.data.id;
+      approvedRole = invitation.data.app_role as WorkspaceRole;
+    }
+    if (canonicalName.length < 2 || canonicalName.length > 120) {
+      throw new Error("A valid canonical member name is required.");
+    }
     const values = {
-      email: request.data.email,
-      display_name: request.data.display_name,
-      app_role: role,
+      email:
+        request.data.auth_provider === "supabase"
+          ? requestEmail
+          : request.data.email,
+      display_name: canonicalName,
+      app_role: approvedRole,
       auth_provider: request.data.auth_provider,
-      active: true,
+      active: !invitationId,
       approved_by: actorId,
-      approved_at: now,
+      approved_at: invitationId ? null : now,
     };
     const user = existing.data
       ? await client
@@ -380,6 +585,46 @@ export async function reviewAccessRequest(
         }).select("id").single();
     if (user.error || !user.data?.id) {
       throw new Error(user.error?.message || "Could not approve user.");
+    }
+    if (invitationId) {
+      const accepted = await client
+        .from("workspace_invitations")
+        .update({
+          status: "accepted",
+          accepted_by: user.data.id,
+          accepted_at: now,
+        })
+        .eq("id", invitationId)
+        .eq("workspace_id", workspace)
+        .eq("status", "pending")
+        .gt("expires_at", now)
+        .select("id")
+        .maybeSingle();
+      if (accepted.error || !accepted.data?.id) {
+        const rolledBack = await client
+          .from("app_users")
+          .delete()
+          .eq("id", user.data.id)
+          .eq("workspace_id", workspace)
+          .eq("active", false);
+        if (rolledBack.error) throw new Error(rolledBack.error.message);
+        throw new Error(
+          accepted.error?.message || "Invitation is no longer available."
+        );
+      }
+      const activated = await client
+        .from("app_users")
+        .update({ active: true, approved_at: now })
+        .eq("id", user.data.id)
+        .eq("workspace_id", workspace)
+        .eq("active", false)
+        .select("id")
+        .maybeSingle();
+      if (activated.error || !activated.data?.id) {
+        throw new Error(
+          activated.error?.message || "Could not activate user."
+        );
+      }
     }
   }
   const reviewed = await client

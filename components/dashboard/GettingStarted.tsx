@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X, ArrowRight, Rocket } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { userScopedStorageKey } from "@/lib/userIdentity";
 
 // Setup steps for a brand-new workspace. Each is a real link to where the
 // work actually happens — outcome-worded, no fake "check it off yourself"
@@ -60,20 +62,23 @@ const STEPS = [
 const DISMISS_KEY = "freyr.onboarding.dismissed.v1";
 
 export function GettingStarted({ established }: { established: boolean }) {
-  const [mounted, setMounted] = useState(false);
+  const currentUser = useCurrentUser();
+  const dismissStorageKey = userScopedStorageKey(DISMISS_KEY, currentUser.id);
+  const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    setDismissed(false);
     try {
-      setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
+      setDismissed(localStorage.getItem(dismissStorageKey) === "1");
     } catch {}
-    setMounted(true);
-  }, []);
+    setLoadedStorageKey(dismissStorageKey);
+  }, [dismissStorageKey]);
 
   function dismiss() {
     setDismissed(true);
     try {
-      localStorage.setItem(DISMISS_KEY, "1");
+      localStorage.setItem(dismissStorageKey, "1");
     } catch {}
   }
 
@@ -82,7 +87,7 @@ export function GettingStarted({ established }: { established: boolean }) {
   // sitting next to live pipeline) — so it steps aside and the agent's
   // recommendations lead. Also hidden once the user dismisses it.
   // avoid hydration flicker before we can read localStorage
-  if (!mounted || established || dismissed) return null;
+  if (loadedStorageKey !== dismissStorageKey || established || dismissed) return null;
 
   return (
     <Card>

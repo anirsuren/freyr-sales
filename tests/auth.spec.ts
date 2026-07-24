@@ -32,12 +32,14 @@ function appSession(
 function accessGrant(
   exp = Math.floor(Date.now() / 1000) + 3600,
   workspaceId = WORKSPACE_ID,
-  email = "owner@freyrsolutions.com"
+  email = "owner@freyrsolutions.com",
+  displayName = "Auth Test User"
 ): string {
   return sign({
     sub: SUBJECT,
     userId: "auth-test-app-user",
     email,
+    displayName,
     role: "admin",
     workspaceId,
     exp,
@@ -57,7 +59,7 @@ async function setAuthCookies(
       sameSite: "Lax",
     },
     {
-      name: "freyr_access",
+      name: "freyr_access_v2",
       value: options.access ?? accessGrant(),
       url: BASE_URL,
       httpOnly: true,
@@ -224,6 +226,35 @@ test("the verified session identity replaces stale demo profile data", async ({
   await expect(page.getByText("Wrong Demo User")).toHaveCount(0);
 });
 
+test("the canonical workspace name overrides mutable provider metadata", async ({
+  context,
+  page,
+}) => {
+  const expiration = Math.floor(Date.now() / 1000) + 3600;
+  await setAuthCookies(context, {
+    session: appSession(
+      expiration,
+      "owner@freyrsolutions.com",
+      "Suren Dheen"
+    ),
+    access: accessGrant(
+      expiration,
+      WORKSPACE_ID,
+      "owner@freyrsolutions.com",
+      "Anir Suren"
+    ),
+  });
+
+  await page.goto("/dashboard");
+  const sidebar = page.locator("aside");
+  await expect(
+    sidebar.getByText("Anir Suren", { exact: true })
+  ).toBeVisible();
+  await expect(
+    sidebar.getByText("Suren Dheen", { exact: true })
+  ).toHaveCount(0);
+});
+
 test("authentication alone never bypasses workspace approval", async ({
   context,
 }) => {
@@ -241,6 +272,22 @@ test("authentication alone never bypasses workspace approval", async ({
   expect(await response.json()).toMatchObject({
     error: "Workspace owner approval required",
   });
+});
+
+test("v2 access grants without a canonical display name are rejected", async ({
+  context,
+}) => {
+  await setAuthCookies(context, {
+    access: sign({
+      sub: SUBJECT,
+      userId: "auth-test-app-user",
+      email: "owner@freyrsolutions.com",
+      role: "admin",
+      workspaceId: WORKSPACE_ID,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    }),
+  });
+  expect((await context.request.get("/api/customers")).status()).toBe(403);
 });
 
 test("an approval grant from another workspace is rejected", async ({
@@ -336,7 +383,7 @@ test("logout clears both authentication and access cookies", async ({
 
   const cookies = await context.cookies();
   expect(cookies.some((cookie) => cookie.name === "freyr_session")).toBeFalsy();
-  expect(cookies.some((cookie) => cookie.name === "freyr_access")).toBeFalsy();
+  expect(cookies.some((cookie) => cookie.name === "freyr_access_v2")).toBeFalsy();
 
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);

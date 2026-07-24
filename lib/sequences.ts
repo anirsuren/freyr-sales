@@ -17,6 +17,8 @@ export interface Sequence {
   steps: SequenceStep[];
   status: "active" | "paused";
   owner: string;
+  owner_user_id: string | null;
+  workspace_id: string | null;
   created_at: string;
 }
 
@@ -29,7 +31,9 @@ export const SEQUENCES: Sequence[] = [
     description:
       "7-step outreach for a VP / Head of Regulatory at clinical-stage biopharma.",
     status: "active",
-    owner: "Anir Suren",
+    owner: "Suren Dheen",
+    owner_user_id: null,
+    workspace_id: null,
     created_at: CREATED,
     steps: [
       { day: 0, channel: "email", label: "Intro email — submission-timeline angle" },
@@ -46,7 +50,9 @@ export const SEQUENCES: Sequence[] = [
     name: "Re-engagement",
     description: "Revive a stalled account after no response.",
     status: "active",
-    owner: "Anir Suren",
+    owner: "Suren Dheen",
+    owner_user_id: null,
+    workspace_id: null,
     created_at: CREATED,
     steps: [
       { day: 0, channel: "email", label: "Pattern-interrupt email — new regulatory signal" },
@@ -60,7 +66,9 @@ export const SEQUENCES: Sequence[] = [
     name: "Post-meeting follow-up",
     description: "After a booked meeting, drive to the next concrete step.",
     status: "active",
-    owner: "Anir Suren",
+    owner: "Suren Dheen",
+    owner_user_id: null,
+    workspace_id: null,
     created_at: CREATED,
     steps: [
       { day: 0, channel: "email", label: "Recap + proposed next step" },
@@ -117,6 +125,8 @@ export function createSequence(data: {
   description: string;
   steps: SequenceStep[];
   owner?: string;
+  owner_user_id?: string | null;
+  workspace_id?: string | null;
 }) {
   const sequence: Sequence = {
     id: `seq-${Date.now().toString(36)}-${nextId++}`,
@@ -124,7 +134,9 @@ export function createSequence(data: {
     description: data.description.trim(),
     steps: data.steps.map((step) => ({ ...step })),
     status: "active",
-    owner: data.owner || "Anir Suren",
+    owner: data.owner?.trim() || "Unassigned",
+    owner_user_id: data.owner_user_id || null,
+    workspace_id: data.workspace_id || null,
     created_at: new Date().toISOString(),
   };
   store().sequences.unshift(sequence);

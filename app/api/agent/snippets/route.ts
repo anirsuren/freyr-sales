@@ -1,16 +1,33 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { verifiedRequestMemberScope } from "@/lib/memberScope";
 
 export const dynamic = "force-dynamic";
 
 // Draft library (V9 #39). The rep's reusable outreach snippets — saved from the
 // agent's drafts and dropped into future plays. Mock-first.
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const scope = await verifiedRequestMemberScope(request);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const db = getDb();
-  return NextResponse.json({ snippets: await db.draftSnippets.list() });
+  return NextResponse.json({
+    snippets: await db.draftSnippets.list(scope),
+  });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const subject = String(body.subject || "").trim();
   const text = String(body.body || "").trim();
@@ -19,7 +36,7 @@ export async function POST(req: Request) {
   }
   const title = String(body.title || subject || "Untitled snippet").slice(0, 80);
   const db = getDb();
-  const snippet = await db.draftSnippets.create({
+  const snippet = await db.draftSnippets.create(scope, {
     title,
     subject: subject.slice(0, 200),
     body: text.slice(0, 4000),
@@ -28,7 +45,14 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, snippet });
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const id = String(body.id || "");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
@@ -37,18 +61,25 @@ export async function PATCH(req: Request) {
   if ("subject" in body) patch.subject = String(body.subject).slice(0, 200);
   if ("body" in body) patch.body = String(body.body).slice(0, 4000);
   const db = getDb();
-  const snippet = await db.draftSnippets.update(id, patch);
+  const snippet = await db.draftSnippets.update(scope, id, patch);
   if (!snippet) {
     return NextResponse.json({ error: "Snippet not found" }, { status: 404 });
   }
   return NextResponse.json({ ok: true, snippet });
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const id = String(body.id || "");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   const db = getDb();
-  const removed = await db.draftSnippets.remove(id);
+  const removed = await db.draftSnippets.remove(scope, id);
   return NextResponse.json({ ok: removed });
 }

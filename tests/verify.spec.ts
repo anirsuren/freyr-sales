@@ -990,7 +990,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("76 — dashboard hides the setup checklist once the workspace is in use (V3)", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
-    await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening), Suren/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening), Anir/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: "What needs your attention" })).toBeVisible();
     // Established workspace (real pitch sessions exist) — no contradictory
     // "0 of 5 complete / run your first pitch session" checklist next to a
@@ -5277,8 +5277,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
     await page.getByRole("tab", { name: "Activity" }).click();
     await expect(page.getByRole("img", { name: "Megan Ruiz" }).first()).toBeVisible();
-    await expect(page.getByRole("img", { name: "Anir Suren" }).last()).toBeVisible();
-    await expect(page.getByText("Logged by Anir Suren")).toBeVisible();
+    await expect(page.getByRole("img", { name: "Suren Dheen" }).last()).toBeVisible();
+    await expect(page.getByText("Logged by Suren Dheen")).toBeVisible();
   });
 
   test("343 — dashboard metrics and priority rows explain their data on hover (V64)", async ({

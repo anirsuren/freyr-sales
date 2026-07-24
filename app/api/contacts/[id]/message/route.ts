@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getOffering } from "@/lib/offerings";
 import { generateMessage, type MessageKind } from "@/lib/outreach";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
 
 // On-demand outreach draft for a contact (Suren, Jul 3): the rep picks the
 // message type (LinkedIn / email) + the offering to sell; we generate a
@@ -10,6 +11,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const senderName = await authenticatedRequestActorName(req);
   let body: { kind?: string; offeringId?: string; extra?: string } = {};
   try {
     body = await req.json();
@@ -41,6 +43,7 @@ export async function POST(
     contact,
     customer,
     offering,
+    senderName,
     extra: body.extra,
   });
   return NextResponse.json({ ok: true, draft });

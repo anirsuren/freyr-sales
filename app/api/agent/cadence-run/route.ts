@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { getSequence, CHANNEL_LABEL } from "@/lib/sequences";
 import { buildDeals, ROTTING_DAYS } from "@/lib/pipeline";
 import type { AgentRunStep } from "@/lib/types";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,14 @@ export const dynamic = "force-dynamic";
 // ENROLLS every cooling account not yet in the sequence, then ADVANCES everyone
 // already enrolled who is due a touch — logging each step and recording a single
 // transparent agent run. The full re-engagement motion in one click. Mock-first.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) {
+    return NextResponse.json(
+      { error: "Verified workspace access required." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const sequenceId = String(body.sequenceId || "reengage");
   const seq = getSequence(sequenceId);
@@ -121,6 +129,8 @@ export async function POST(req: Request) {
   if (advanced || enrolled) {
     const run = await db.agentRuns.create({
       kind: "plan",
+      created_by_user_id: actor.userId,
+      created_by: actor.name,
       title: `Ran the ${seq.name} sequence`,
       customer_id: null,
       company: null,

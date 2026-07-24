@@ -170,7 +170,12 @@ export async function middleware(request: NextRequest) {
     pathname !== "/offerings" &&
     !pathname.startsWith("/offerings/")
   ) {
-    const response = NextResponse.redirect(authUrl("/offerings"));
+    // A configured deployment always uses the fixed public auth origin. The
+    // only origin-less path allowed this far is the unauthenticated local-dev
+    // harness, where redirecting on the current loopback origin is safe.
+    const response = NextResponse.redirect(
+      authOrigin ? authUrl("/offerings") : new URL("/offerings", request.url)
+    );
     securityHeaders(response, requestId);
     return response;
   }
