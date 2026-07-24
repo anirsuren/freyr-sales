@@ -842,7 +842,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(
       page.locator('input[placeholder*="Search accounts" i]')
     ).toBeVisible();
-    await expect(page.getByText(/\d+ interactions?/).first()).toBeVisible();
+    // The counter reads "Showing N of M" now (plain English, no jargon)
+    await expect(page.getByText(/Showing \d+ of \d+/).first()).toBeVisible();
     // an outcome filter chip toggles
     const all = page.getByRole("button", { name: "All outcomes", exact: true });
     await expect(all).toBeVisible();
