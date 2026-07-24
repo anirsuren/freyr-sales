@@ -66,6 +66,15 @@ stages:
               inlineScript: |
                 set -euo pipefail
 
+                # Preflight: fail loud and early if the AWS credentials stored
+                # in the freyr-sales-aws service connection are expired or
+                # invalid (temporary session tokens die quietly and every call
+                # below would fail with confusing errors otherwise).
+                if ! aws sts get-caller-identity > /dev/null 2>&1; then
+                  echo "##vso[task.logissue type=error]The AWS credentials in the freyr-sales-aws service connection are expired or invalid. Refresh them: Azure DevOps > Project Settings > Service connections > freyr-sales-aws (use long-lived IAM CI credentials, not session tokens)."
+                  exit 1
+                fi
+
                 TAG=$(echo "$(Build.SourceVersion)" | cut -c1-7)
                 IMAGE="$(ECR_REGISTRY)/$(ECR_REPO)"
 
