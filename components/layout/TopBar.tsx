@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, FlaskConical, Rocket, Check } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, FlaskConical, Rocket } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
@@ -421,50 +421,50 @@ export function TopBar({
                   </div>
                 </div>
                 {/* Quick mock/real switch (Suren: "instead of going to settings
-                    every time"). Mock = the end-goal demo, Real = what's
-                    released today. Hidden only when the deployment locks it. */}
+                    every time" — and it "has to be a toggle"). One segmented
+                    toggle, active half lit in its color, caption explains the
+                    current mode. Hidden only when the deployment locks it. */}
                 {dataMode && !modeLocked && (
-                  <div className="p-1.5 border-b border-border-light">
-                    <p className="px-2.5 pt-1 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <div className="px-3 py-2.5 border-b border-border-light">
+                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
                       Viewing
                     </p>
-                    {(
-                      [
-                        { mode: "mock", icon: FlaskConical, label: "Mock mode", sub: "The full vision, with demo data", color: "#7C3AED" },
-                        { mode: "live", icon: Rocket, label: "Real mode", sub: "Only what's released today", color: "#16A34A" },
-                      ] as const
-                    ).map((m) => {
-                      const MIcon = m.icon;
-                      const active = dataMode === m.mode;
-                      return (
-                        <button
-                          key={m.mode}
-                          role="menuitem"
-                          disabled={modeBusy}
-                          onClick={() => switchMode(m.mode)}
-                          className={cn(
-                            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors",
-                            !active && "hover:bg-surface",
-                            modeBusy && "opacity-60"
-                          )}
-                          style={active ? { background: `${m.color}0D` } : undefined}
-                        >
-                          <span
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                            style={{ background: `${m.color}14`, color: m.color }}
+                    <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface p-1">
+                      {(
+                        [
+                          { mode: "mock", icon: FlaskConical, label: "Mock", color: "#7C3AED" },
+                          { mode: "live", icon: Rocket, label: "Real", color: "#16A34A" },
+                        ] as const
+                      ).map((m) => {
+                        const MIcon = m.icon;
+                        const active = dataMode === m.mode;
+                        return (
+                          <button
+                            key={m.mode}
+                            role="menuitemradio"
+                            aria-checked={active}
+                            disabled={modeBusy}
+                            onClick={() => switchMode(m.mode)}
+                            className={cn(
+                              "flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1.5 text-[12.5px] font-semibold transition-all",
+                              active
+                                ? "bg-white shadow-sm"
+                                : "text-text-secondary hover:text-text-primary",
+                              modeBusy && "opacity-60"
+                            )}
+                            style={active ? { color: m.color } : undefined}
                           >
-                            <MIcon size={15} strokeWidth={1.8} />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className={cn("block text-[13px] text-text-primary", active ? "font-semibold" : "font-medium")}>
-                              {m.label}
-                            </span>
-                            <span className="block text-[11.5px] text-text-secondary leading-snug">{m.sub}</span>
-                          </span>
-                          {active && <Check size={15} strokeWidth={2.4} style={{ color: m.color }} className="shrink-0" />}
-                        </button>
-                      );
-                    })}
+                            <MIcon size={13} strokeWidth={2.1} />
+                            {m.label} mode
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-text-secondary">
+                      {dataMode === "mock"
+                        ? "The full vision, with demo data"
+                        : "Only what's released today"}
+                    </p>
                   </div>
                 )}
                 <div className="p-1.5">

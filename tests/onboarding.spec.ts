@@ -53,8 +53,11 @@ function catalogTourRoute(step: number): string {
 }
 
 async function expectTourRoute(page: Page, step: number) {
+  // Slow CI agents: cold hydration + the provider's retry backoff can push the
+  // tour's first navigation past the default 5s poll window (this exact poll
+  // timed out on the hosted agent while passing locally).
   await expect
-    .poll(() => new URL(page.url()).pathname)
+    .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
     .toBe(adminTourRoute(step));
 }
 
