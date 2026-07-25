@@ -388,19 +388,21 @@ export function ContactsBrowser({
               const isSel = selected.has(c.id);
               const row = (
                 <>
-                  {selectMode && (
-                    <span className="text-blue-primary shrink-0">
-                      {isSel ? (
-                        <CheckSquare size={17} strokeWidth={1.8} />
-                      ) : (
-                        <Square size={17} strokeWidth={1.8} className="text-text-tertiary" />
-                      )}
-                    </span>
-                  )}
-                  <Avatar name={c.name} className="w-9 h-9 text-[13px] shrink-0" />
+                  <span className="flex items-center gap-3">
+                    {selectMode && (
+                      <span className="text-blue-primary shrink-0">
+                        {isSel ? (
+                          <CheckSquare size={17} strokeWidth={1.8} />
+                        ) : (
+                          <Square size={17} strokeWidth={1.8} className="text-text-tertiary" />
+                        )}
+                      </span>
+                    )}
+                    <Avatar name={c.name} className="w-9 h-9 text-[13px] shrink-0" />
+                  </span>
                   {/* Identity reads top-down: name, role, then how to reach
                       them (Anir: "the email should go right under the role"). */}
-                  <div className="min-w-0 w-[38%] sm:w-[30%]">
+                  <div className="min-w-0">
                     <p className="text-[13.5px] font-semibold text-text-primary truncate">
                       {c.name}
                     </p>
@@ -415,7 +417,7 @@ export function ContactsBrowser({
                   {c.companyId && !selectMode ? (
                     <Link
                       href={`/customers/${c.companyId}`}
-                      className="relative z-10 hidden sm:flex items-center gap-2 min-w-0 flex-1 group/company"
+                      className="relative z-10 hidden sm:flex items-center gap-2 min-w-0 group/company"
                     >
                       <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
                       <span className="text-[13px] text-text-secondary group-hover/company:text-blue-primary truncate">
@@ -423,7 +425,7 @@ export function ContactsBrowser({
                       </span>
                     </Link>
                   ) : (
-                    <div className="hidden sm:flex items-center gap-2 min-w-0 flex-1">
+                    <div className="hidden sm:flex items-center gap-2 min-w-0">
                       <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
                       <span className="text-[13px] text-text-secondary truncate">
                         {c.company}
@@ -431,7 +433,7 @@ export function ContactsBrowser({
                     </div>
                   )}
                   {c.phone && (
-                    <span className="hidden lg:flex items-center gap-1.5 text-[12px] text-text-secondary tnum w-[17%] min-w-0">
+                    <span className="hidden lg:flex items-center gap-1.5 text-[12px] text-text-secondary tnum min-w-0">
                       <PhoneCall size={12} strokeWidth={1.6} className="shrink-0" />
                       <span className="truncate">{c.phone}</span>
                     </span>
@@ -443,13 +445,23 @@ export function ContactsBrowser({
                       label={c.role}
                       bg={roleStyle(c.role).bg}
                       color={roleStyle(c.role).color}
-                      className="!normal-case tracking-normal shrink-0 hidden md:inline-flex ml-auto"
+                      className="!normal-case tracking-normal shrink-0 hidden md:inline-flex justify-self-start"
                     />
                   )}
                 </>
               );
+              // A real grid, not a flex row: every cell got its width from the
+              // one before it, so phone numbers and tags drifted left and
+              // right down the list (Anir: "a phone number should be in one
+              // straight line down"). Fixed tracks make each column a column.
               const rowClass =
-                "w-full text-left flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface active:bg-blue-light/50";
+                "w-full text-left grid items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface active:bg-blue-light/50 " +
+                // columns appear as the breakpoints reveal their cells:
+                // avatar | identity | company | phone (lg) | role tag (md)
+                "grid-cols-[auto_minmax(0,1fr)] " +
+                "sm:grid-cols-[auto_minmax(0,1.4fr)_minmax(0,1fr)] " +
+                "md:grid-cols-[auto_minmax(0,1.4fr)_minmax(0,1fr)_150px] " +
+                "lg:grid-cols-[auto_minmax(0,1.4fr)_minmax(0,1fr)_170px_150px]";
               return selectMode ? (
                 <button
                   key={c.id}
