@@ -6,6 +6,7 @@ import { Search, Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, 
 import { Card } from "@/components/ui/Card";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { FILTER_PALETTE as CATEGORY_ACCENTS } from "@/components/offerings/filterPalette";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
@@ -265,10 +266,16 @@ export function ContactsBrowser({
           the voice-agent run INLINE (Suren: "select a bunch of contacts, then
           for every offering category there's a voice agent you select and
           run") — no popup blocking the list. */}
+      {/* Selection bar — a quiet card, not a loud blue banner. The old bar
+          shouted every control at once (grayed-out buttons included) before a
+          single contact was ticked, which read as pressure with no explanation
+          (Anir, Jul 25: "that blue thing at the top… I get very overwhelmed").
+          Now: at zero selected it says what to do in one line; the actions
+          appear only once there is something to act on. */}
       {selectMode && (
-        <div className="mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light">
+        <div className="mb-4 rounded-lg border border-border-light bg-white px-4 py-2.5 shadow-card">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-[13px] font-semibold text-blue-primary tnum">
+            <span className="inline-flex items-center rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-semibold text-blue-primary tnum">
               {selected.size} selected
             </span>
             <button
@@ -285,58 +292,59 @@ export function ContactsBrowser({
                 ? "Clear all"
                 : `Select all (${view.length})`}
             </button>
-            <div className="flex flex-wrap items-center gap-2 ml-auto">
-              {voiceCategories.length > 0 && (
-                <>
-                  <select
-                    aria-label="Voice agent category"
-                    value={voiceCategory}
-                    onChange={(e) => setVoiceCategory(e.target.value)}
-                    className="text-[12.5px] font-medium bg-white border border-border-light rounded-md px-2.5 py-1.5 outline-none focus:border-blue-primary max-w-[280px]"
-                  >
-                    {voiceCategories.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={runVoiceAgent}
-                    disabled={voiceBusy || selected.size === 0}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md border border-blue-primary text-blue-primary hover:bg-white transition-colors disabled:opacity-50"
-                  >
-                    <PhoneCall size={15} strokeWidth={1.8} />
-                    {voiceBusy
-                      ? "Queuing…"
-                      : `Run voice agent${selected.size ? ` (${selected.size})` : ""}`}
-                  </button>
-                </>
-              )}
-              <button
-                onClick={exportSelected}
-                disabled={selected.size === 0}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50"
-              >
-                <Download size={15} strokeWidth={1.8} />
-                Export selected
-              </button>
-              <button
-                onClick={() => {
-                  setSelected(new Set());
-                  setSelectMode(false);
-                }}
-                aria-label="Done selecting"
-                className="text-text-tertiary hover:text-text-primary"
-              >
-                <X size={16} strokeWidth={1.8} />
-              </button>
-            </div>
+            {selected.size === 0 ? (
+              <span className="text-[12.5px] text-text-tertiary">
+                Tick the contacts you want, then call or export them.
+              </span>
+            ) : (
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                {voiceCategories.length > 0 && (
+                  <>
+                    <ColorSelect
+                      value={voiceCategory}
+                      onChange={setVoiceCategory}
+                      ariaLabel="Voice agent category"
+                      minWidth={210}
+                      options={voiceCategories.map((c, i) => ({
+                        value: c,
+                        label: c,
+                        color: CATEGORY_ACCENTS[i % CATEGORY_ACCENTS.length],
+                      }))}
+                    />
+                    <button
+                      onClick={runVoiceAgent}
+                      disabled={voiceBusy}
+                      className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md border border-blue-primary text-blue-primary hover:bg-blue-light/50 transition-colors disabled:opacity-50"
+                    >
+                      <PhoneCall size={15} strokeWidth={1.8} />
+                      {voiceBusy ? "Queuing…" : `Call ${selected.size}`}
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={exportSelected}
+                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+                >
+                  <Download size={15} strokeWidth={1.8} />
+                  Export {selected.size}
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setSelected(new Set());
+                setSelectMode(false);
+              }}
+              aria-label="Done selecting"
+              className={selected.size === 0 ? "ml-auto text-text-tertiary hover:text-text-primary" : "text-text-tertiary hover:text-text-primary"}
+            >
+              <X size={16} strokeWidth={1.8} />
+            </button>
           </div>
-          {voiceCategories.length > 0 && (
-            <p className="text-[11.5px] text-text-secondary mt-1.5">
-              The {voiceCategory} agent calls each selected contact about that
-              category&apos;s offerings — calls queue until a phone number is
-              connected, nothing dials silently.
+          {selected.size > 0 && voiceCategories.length > 0 && (
+            <p className="mt-1.5 text-[11.5px] text-text-tertiary">
+              The {voiceCategory} agent calls each selected contact — calls
+              queue until a phone number is connected, nothing dials silently.
             </p>
           )}
         </div>

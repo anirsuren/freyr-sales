@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
@@ -512,11 +513,23 @@ export function OfferingsBrowser({
           ariaLabel="Filter by customer type"
           options={[
             { value: "", label: "All customer types" },
-            ...customerTypes.map((c) => ({
-              value: c.id,
-              label: c.name,
-              color: familyColor((c as { family?: string }).family || c.name),
-            })),
+            // Colour says the FAMILY, the icon says the SIZE — the list used
+            // to encode only family, so Small/Mid/Large read identically
+            // (Anir, Jul 25: "you only have it color-coded by the category…
+            // not by the size").
+            ...customerTypes.map((c) => {
+              const size = String((c as { size?: string }).size || "");
+              return {
+                value: c.id,
+                label: c.name,
+                color: familyColor((c as { family?: string }).family || c.name),
+                icon: size.includes("Small")
+                  ? Store
+                  : size.includes("Mid")
+                    ? Building
+                    : BuildingLarge,
+              };
+            }),
           ]}
         />
         <ColorSelect
@@ -576,18 +589,19 @@ export function OfferingsBrowser({
         <div className="flex items-center gap-3">
           {/* Sort — a display control, so it lives here with view + export rather
               than wrapping onto a lonely second line under the filters. */}
-          <select
+          <ColorSelect
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            aria-label="Sort offerings"
-            className="h-9 rounded-lg border border-border-light bg-white px-2.5 text-[12px] font-medium text-text-secondary transition-shadow focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
-          >
-            <option value="default">Recommended</option>
-            <option value="name">Name (A–Z)</option>
-            <option value="category">By category</option>
-            <option value="type">By type</option>
-            <option value="mapped">Most complete first</option>
-          </select>
+            onChange={setSort}
+            ariaLabel="Sort offerings"
+            minWidth={190}
+            options={[
+              { value: "default", label: "Recommended", color: "#0071E3", icon: SortSpark },
+              { value: "name", label: "Name (A–Z)", color: "#7C3AED", icon: ArrowDownAZ },
+              { value: "category", label: "By category", color: "#0F6E56", icon: SortLayers },
+              { value: "type", label: "By type", color: "#B45309", icon: SortPackage },
+              { value: "mapped", label: "Most complete first", color: "#059669", icon: SortComplete },
+            ]}
+          />
           {/* Tile vs Grid view toggle (Suren's live-meeting ask) */}
           <div
             role="group"
@@ -678,15 +692,15 @@ export function OfferingsBrowser({
             {/* table-fixed + explicit widths so all six columns fit the card —
                 auto layout let "Availability" grab all the slack and shoved the
                 last two columns off-screen behind a horizontal scroll. */}
-            <table className="w-full min-w-[860px] table-fixed text-[13px] border-collapse">
+            <table className="w-full min-w-[1080px] table-fixed text-[13px] border-collapse">
               <thead>
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="px-4 py-2.5 w-[23%]">Offering</th>
-                  <th className="px-4 py-2.5 w-[19%]">Category</th>
-                  <th className="px-4 py-2.5 w-[16%]">Type</th>
-                  <th className="px-4 py-2.5 w-[15%]">Availability</th>
-                  <th className="px-4 py-2.5 w-[17%]">Who it&apos;s for</th>
-                  <th className="px-4 py-2.5 w-[10%]">Materials</th>
+                  <th className="px-4 py-2.5 w-[26%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[21%]">Category</th>
+                  <th className="px-4 py-2.5 w-[15%]">Type</th>
+                  <th className="px-4 py-2.5 w-[12%]">Availability</th>
+                  <th className="px-4 py-2.5 w-[18%]">Who it&apos;s for</th>
+                  <th className="px-4 py-2.5 w-[8%]">Materials</th>
                 </tr>
               </thead>
               <tbody>
@@ -717,25 +731,33 @@ export function OfferingsBrowser({
                   return (
                     <tr
                       key={o.id}
-                      className="border-b border-border-light last:border-0 align-top hover:bg-surface/50 transition-colors"
+                      className="border-b border-border-light last:border-0 align-middle hover:bg-surface/50 transition-colors"
                     >
                       <td className="px-4 py-3">
                         <Link
                           href={`/offerings/${o.id}`}
-                          className="font-semibold text-text-primary hover:text-blue-primary"
+                          className="group/name flex items-center gap-2.5"
                         >
-                          {o.offering_name}
-                        </Link>
-                        {o.poc && (
-                          <span className="block text-[11px] text-text-tertiary mt-0.5">
-                            POC: {o.poc}
+                          <OfferingIcon
+                            name={o.offering_name}
+                            className="h-8 w-8 shrink-0"
+                          />
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-text-primary group-hover/name:text-blue-primary">
+                              {o.offering_name}
+                            </span>
+                            {o.poc && (
+                              <span className="block text-[11px] text-text-tertiary mt-0.5">
+                                POC: {o.poc}
+                              </span>
+                            )}
                           </span>
-                        )}
+                        </Link>
                       </td>
                       <td className="px-4 py-3">
                         {o.offering_category && catColor ? (
                           <span
-                            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                             style={{ color: catColor, background: `${catColor}14` }}
                           >
                             <span
@@ -751,7 +773,7 @@ export function OfferingsBrowser({
                       <td className="px-4 py-3">
                         {o.offering_type && typeColor ? (
                           <span
-                            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                             style={{ color: typeColor, background: `${typeColor}14` }}
                           >
                             <span
@@ -785,7 +807,7 @@ export function OfferingsBrowser({
                               {famList.map((f) => (
                                 <span
                                   key={f}
-                                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                                  className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
                                   style={{
                                     color: familyColor(f),
                                     background: `${familyColor(f)}14`,

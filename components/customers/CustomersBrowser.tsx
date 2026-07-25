@@ -402,10 +402,12 @@ export function CustomersBrowser({
             onChange={setSort}
             minWidth={185}
             options={[
-              { value: "recent", label: "Newest", icon: CalendarClock },
-              { value: "company", label: "Company A–Z", icon: ArrowDownAZ },
-              { value: "size", label: "Opportunity", icon: Target },
-              { value: "health", label: "Health (at-risk first)", icon: HeartPulse },
+              // Icons alone rendered as a gray list — every option needs its
+              // colour (standing rule: chips and dropdowns are never gray).
+              { value: "recent", label: "Newest", icon: CalendarClock, color: "#B45309" },
+              { value: "company", label: "Company A–Z", icon: ArrowDownAZ, color: "#0071E3" },
+              { value: "size", label: "Opportunity", icon: Target, color: "#7C3AED" },
+              { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },
             ] satisfies ColorOption[]}
           />
           <ColorSelect
