@@ -96,10 +96,18 @@ SET_KEYS=""
 add_key() {
   local name="$1" value="$2"
   [ -n "$value" ] || return 0
+  # ECS rejects a task definition where the same name exists in BOTH secrets[]
+  # and environment[] ("The secret name must be unique and not shared…").
+  # The live task def already carries ANTHROPIC_API_KEY as a Secrets Manager
+  # reference, so when a key is passed explicitly, the explicit value wins and
+  # the same-name secret reference is dropped from the new revision.
   TD=$(echo "$TD" | jq --arg n "$name" --arg v "$value" '
     .containerDefinitions[0].environment = (
       ((.containerDefinitions[0].environment // []) | map(select(.name != $n)))
       + [{name: $n, value: $v}]
+    )
+    | .containerDefinitions[0].secrets = (
+      (.containerDefinitions[0].secrets // []) | map(select(.name != $n))
     )')
   SET_KEYS="$SET_KEYS $name"
 }
