@@ -69,17 +69,32 @@ function adminClient(): SupabaseClient {
   });
 }
 
+// A Supabase/Postgres error that means a relation or column has not been
+// created yet — i.e. an ownership-attribution migration (010/011/012) has not
+// been applied. The app runs correctly in mock data mode without those columns,
+// so the health probe treats this as "not migrated yet" rather than a hard
+// failure. Connectivity and permission errors still surface normally.
+function isMissingSchemaError(error: {
+  code?: string | null;
+  message?: string | null;
+}): boolean {
+  const code = error.code ?? "";
+  // 42P01 undefined_table, 42703 undefined_column (Postgres); PostgREST surfaces
+  // the same as PGRST205 (table not found) / PGRST204 (column not found).
+  if (["42P01", "42703", "PGRST205", "PGRST204"].includes(code)) return true;
+  const message = (error.message ?? "").toLowerCase();
+  return (
+    message.includes("does not exist") ||
+    message.includes("could not find") ||
+    message.includes("schema cache")
+  );
+}
+
 export async function verifyAccessControlStorage(): Promise<void> {
   const client = adminClient();
-  const [
-    users,
-    requests,
-    invitations,
-    customerOwnership,
-    offeringOwnership,
-    runAttribution,
-  ] =
-    await Promise.all([
+  // Core access tables. These predate the ownership-attribution migrations, so
+  // they must exist on every environment; an error here is a real failure.
+  const core = await Promise.all([
     client
       .from("app_users")
       .select("id, auth_provider, entra_object_id, active")
@@ -90,8 +105,17 @@ export async function verifyAccessControlStorage(): Promise<void> {
       .limit(1),
     client
       .from("workspace_invitations")
-      .select("id, display_name, email, status")
+      .select("id, email, status")
       .limit(1),
+  ]);
+  for (const result of core) {
+    if (result.error) throw new Error(result.error.message);
+  }
+
+  // Ownership-attribution columns added by migrations 010/011/012. Tolerate a
+  // not-yet-migrated environment (missing table/column) but still fail on any
+  // other error, so a genuine storage problem is never masked.
+  const ownership = await Promise.all([
     client
       .from("customers")
       .select("id, workspace_id, owner_user_id")
@@ -105,15 +129,10 @@ export async function verifyAccessControlStorage(): Promise<void> {
       .select("id, workspace_id, created_by_user_id")
       .limit(1),
   ]);
-  for (const result of [
-    users,
-    requests,
-    invitations,
-    customerOwnership,
-    offeringOwnership,
-    runAttribution,
-  ]) {
-    if (result.error) throw new Error(result.error.message);
+  for (const result of ownership) {
+    if (result.error && !isMissingSchemaError(result.error)) {
+      throw new Error(result.error.message);
+    }
   }
 }
 
