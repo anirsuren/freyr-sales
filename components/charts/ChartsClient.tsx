@@ -583,12 +583,12 @@ function donutSyncSubscribe(id: string, fn: (i: number | null) => void) {
   };
 }
 
-function donutSyncBroadcast(id: string, i: number | null) {
+export function donutSyncBroadcast(id: string, i: number | null) {
   donutSyncBus.get(id)?.forEach((fn) => fn(i));
 }
 
 /** Subscribe to a sync channel; returns the currently-lit index. */
-function useDonutSync(syncId: string | undefined): number | null {
+export function useDonutSync(syncId: string | undefined): number | null {
   const [linked, setLinked] = useState<number | null>(null);
   useEffect(() => {
     if (!syncId) return;
@@ -1301,10 +1301,19 @@ export function DonutLegend({
             onMouseEnter={syncId ? () => donutSyncBroadcast(syncId, i) : undefined}
             onMouseLeave={syncId ? () => donutSyncBroadcast(syncId, null) : undefined}
             className={cn(
-              "col-span-full grid grid-cols-subgrid items-center rounded-md px-1.5 py-[3px] text-[12.5px] transition-colors",
+              "col-span-full grid grid-cols-subgrid items-center rounded-md px-1.5 py-[3px] text-[12.5px] transition-all duration-150",
               syncId && "cursor-pointer",
-              linked === i && "bg-surface"
+              // A faint gray wash was not a response (Anir: "the pop isn't
+              // enough… it should pop like the pie chart does"). The row now
+              // takes the series colour and lifts, matching the slice that
+              // thickens on the other side.
+              linked === i && "scale-[1.015] shadow-[0_2px_10px_rgba(0,0,0,0.07)]"
             )}
+            style={
+              linked === i
+                ? { background: `${it.color}1F`, boxShadow: `inset 0 0 0 1px ${it.color}59` }
+                : undefined
+            }
           >
             {pill ? (
               // The coloured company tag (Anir: "you just need to show the

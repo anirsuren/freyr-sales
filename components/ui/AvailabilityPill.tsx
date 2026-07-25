@@ -50,7 +50,7 @@ export function AvailabilityPill({
   return (
     <Tooltip label={tip}>
       <span
-        className={`inline-flex items-center gap-1 font-semibold rounded-full cursor-help whitespace-nowrap ${pad}`}
+        className={`inline-flex items-center gap-1 font-semibold rounded-full cursor-pointer whitespace-nowrap ${pad}`}
         style={{ background: s.bg, color: s.color }}
       >
         <Icon size={size === "sm" ? 10 : 12} strokeWidth={2.3} />

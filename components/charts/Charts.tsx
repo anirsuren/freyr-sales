@@ -11,5 +11,7 @@ export {
   Sparkline,
   Legend,
   DonutLegend,
+  donutSyncBroadcast,
+  useDonutSync,
 } from "./ChartsClient";
 export type { TipItem } from "./ChartsClient";

@@ -29,7 +29,7 @@ export function HealthBadge({
     <Tooltip label={label}>
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.04em] px-2 py-0.5 rounded-full tnum cursor-help",
+          "inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.04em] px-2 py-0.5 rounded-full tnum cursor-pointer",
           className
         )}
         style={{ background: c.bg, color: c.color }}
@@ -80,7 +80,7 @@ export function HealthBar({
         </span>
       }
     >
-      <span className={cn("block w-full cursor-help", className)}>
+      <span className={cn("block w-full cursor-pointer", className)}>
         {showLabel && (
           <span className="flex items-baseline justify-between mb-1">
             <span

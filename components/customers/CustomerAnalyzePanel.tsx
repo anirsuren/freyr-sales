@@ -312,7 +312,7 @@ export function CustomerAnalyzePanel({
         </div>
       }
     >
-      <span className="w-6 h-6 rounded-full flex items-center justify-center text-text-tertiary hover:text-blue-primary hover:bg-blue-light/50 transition-colors cursor-help">
+      <span className="w-6 h-6 rounded-full flex items-center justify-center text-text-tertiary hover:text-blue-primary hover:bg-blue-light/50 transition-colors cursor-pointer">
         <Info size={15} strokeWidth={1.9} />
       </span>
     </HoverCard>

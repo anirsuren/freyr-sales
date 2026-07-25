@@ -239,7 +239,7 @@ function PipelineBarInspector({ rep }: { rep: RosterRep }) {
       content={<PipelineInspector rep={rep} focusedStage={focusedStage} />}
     >
       <div
-        className="group flex h-5 items-center rounded-full cursor-help"
+        className="group flex h-5 items-center rounded-full cursor-pointer"
         aria-label={`${rep.name} open pipeline: ${formatMoney(rep.openValue)}`}
       >
         <div className="flex h-2.5 w-full origin-center overflow-hidden rounded-full bg-surface transition-transform duration-150 group-hover:scale-y-[1.35] group-hover:shadow-[0_3px_9px_rgba(0,0,0,0.12)]">
@@ -321,7 +321,7 @@ function ActivityTrendInspector({ rep }: { rep: RosterRep }) {
   return (
     <HoverCard side="top" width={360} content={<ActivityInspector rep={rep} />}>
       <div
-        className="group w-[100px] cursor-help rounded-md p-1 transition-all hover:bg-blue-light/45 hover:shadow-[0_3px_10px_rgba(10,115,232,0.12)]"
+        className="group w-[100px] cursor-pointer rounded-md p-1 transition-all hover:bg-blue-light/45 hover:shadow-[0_3px_10px_rgba(10,115,232,0.12)]"
         aria-label={`${rep.name} activity over the last 10 weeks`}
         tabIndex={0}
       >

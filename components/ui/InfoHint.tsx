@@ -11,7 +11,7 @@ export function InfoHint({ text, className }: { text: string; className?: string
         type="button"
         aria-label={text}
         className={cn(
-          "inline-flex h-4 w-4 items-center justify-center rounded text-text-tertiary outline-none cursor-help",
+          "inline-flex h-4 w-4 items-center justify-center rounded text-text-tertiary outline-none cursor-pointer",
           "hover:text-blue-primary focus-visible:text-blue-primary focus-visible:ring-2 focus-visible:ring-blue-primary/25"
         )}
       >

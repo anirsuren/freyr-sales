@@ -59,7 +59,7 @@ export function SizeBadge({ tier }: { tier: string | null }) {
         bg={meta.bg}
         color={meta.color}
         icon={meta.icon}
-        className="cursor-help"
+        className="cursor-pointer"
       />
     </Tooltip>
   );

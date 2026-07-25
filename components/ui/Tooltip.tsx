@@ -199,7 +199,7 @@ export function Term({
       <span
         tabIndex={0}
         className={cn(
-          "outline-none cursor-help",
+          "outline-none cursor-pointer",
           underline &&
             "underline decoration-dotted decoration-text-tertiary/60 underline-offset-[3px] hover:decoration-blue-primary focus:decoration-blue-primary",
           className

@@ -5,7 +5,10 @@ import Link from "next/link";
 import { Wallet, Briefcase, Target, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HoverCard } from "@/components/ui/HoverCard";
-import { BarChart, DonutChart, DonutLegend, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { BarChart, DonutChart, DonutLegend, VIZ, VIZ_SERIES,
+  donutSyncBroadcast,
+  useDonutSync,
+} from "@/components/charts/Charts";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -55,6 +58,7 @@ export function AnalyticsView({
 }) {
   // Which segment is expanded, e.g. "stage:Prospect" / "outcome:Interested".
   const [open, setOpen] = useState<string | null>(null);
+  const linkedOutcome = useDonutSync("dash-outcomes");
   const toggle = (k: string) => setOpen((v) => (v === k ? null : k));
   const interactive = !!stageDeals && !!outcomeContacts;
 
@@ -294,20 +298,35 @@ export function AnalyticsView({
             />
             {interactive ? (
               <div className="flex-1 min-w-0 space-y-1.5">
-                {outcomes.map((o) => {
+                {outcomes.map((o, oi) => {
                   const k = `outcome:${o.label}`;
                   const active = open === k;
                   const total = outcomes.reduce((t, x) => t + x.count, 0) || 1;
                   const pct = Math.round((o.count / total) * 100);
+                  // Hovering the donut slice lights THIS row and vice versa,
+                  // and a lit row takes the slice's own colour rather than a
+                  // gray wash (Anir: "the pop isn't enough").
+                  const lit = linkedOutcome === oi;
                   return (
                     <button
                       key={o.label}
                       onClick={() => toggle(k)}
+                      onMouseEnter={() => donutSyncBroadcast("dash-outcomes", oi)}
+                      onMouseLeave={() => donutSyncBroadcast("dash-outcomes", null)}
                       // Count sits RIGHT AFTER the tag, then the % and a share bar
                       // fill the space, chevron trails at the end (Suren).
-                      className={`w-full flex items-center gap-2.5 text-left rounded-lg px-2.5 py-2 transition-colors ${
-                        active ? "bg-blue-light" : "hover:bg-surface"
+                      className={`w-full flex items-center gap-2.5 text-left rounded-lg px-2.5 py-2 transition-all duration-150 ${
+                        active
+                          ? "bg-blue-light"
+                          : lit
+                            ? "scale-[1.015] shadow-[0_2px_10px_rgba(0,0,0,0.07)]"
+                            : "hover:bg-surface"
                       }`}
+                      style={
+                        !active && lit
+                          ? { background: `${o.color}1F`, boxShadow: `inset 0 0 0 1px ${o.color}59` }
+                          : undefined
+                      }
                     >
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: o.color }} />
                       <span className="text-[13px] text-text-secondary truncate">{o.label}</span>

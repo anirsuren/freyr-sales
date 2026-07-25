@@ -54,7 +54,7 @@ function RepPipelineBar({
   return (
     <div
       data-testid="rep-pipeline-stage-bar"
-      className="group mt-2 flex h-5 max-w-[440px] cursor-help items-center rounded-full"
+      className="group mt-2 flex h-5 max-w-[440px] cursor-pointer items-center rounded-full"
       aria-label={`${rep.name} open pipeline composition`}
     >
       <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface transition-all duration-150 group-hover:h-4 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.14)]">

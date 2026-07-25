@@ -127,7 +127,7 @@ export default async function PipelinePage() {
                 <Icon size={16} strokeWidth={1.9} />
               </span>
               <Tooltip label={s.def} side="bottom" align="left">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary cursor-help">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary cursor-pointer">
                   {s.label}
                 </span>
               </Tooltip>

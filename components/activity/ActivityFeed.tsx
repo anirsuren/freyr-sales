@@ -622,7 +622,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                         </div>
 
                         <Tooltip label={note} side="bottom" align="left">
-                          <div className="flex cursor-help items-start gap-2 text-[11px] leading-[1.45] text-text-secondary">
+                          <div className="flex cursor-pointer items-start gap-2 text-[11px] leading-[1.45] text-text-secondary">
                             {item.source === "Agent-assisted" ? (
                               <Sparkles size={14} strokeWidth={1.8} className="mt-0.5 shrink-0 text-blue-primary" />
                             ) : (
@@ -655,7 +655,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                           <span className="min-w-0">
                             <span className="block truncate text-[10.5px] font-semibold text-text-secondary">{item.owner}</span>
                             <Tooltip label={formatDateTime(item.created_at)} side="bottom" align="right">
-                              <span className="mt-0.5 inline-flex cursor-help items-center gap-1 text-[9.5px] text-text-tertiary tnum">
+                              <span className="mt-0.5 inline-flex cursor-pointer items-center gap-1 text-[9.5px] text-text-tertiary tnum">
                                 <Clock3 size={11} strokeWidth={1.8} />
                                 {timeOnly(item.created_at)}
                               </span>

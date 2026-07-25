@@ -179,7 +179,7 @@ export default async function DealDetailPage({
                   <Tooltip label={GLOSSARY[stageKey(s)]?.def} side="bottom">
                     <span
                       className={cn(
-                        "px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap cursor-help",
+                        "px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap cursor-pointer",
                         current
                           ? s === "Closed Lost"
                             ? "bg-error text-white"

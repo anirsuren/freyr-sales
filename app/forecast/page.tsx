@@ -336,7 +336,7 @@ export default async function ForecastPage() {
             {(() => {
               const maxV = Math.max(...byStage.map((s) => s.value), 1);
               return (
-                <div data-stage-plot className="flex items-end justify-center gap-2.5">
+                <div data-stage-plot className="flex items-end justify-center gap-4">
                   {byStage.map((s, i) => {
                     const color = STAGE_COLOR[s.stage];
                     const barPx = Math.max((s.value / maxV) * 108, 4);
@@ -403,7 +403,7 @@ export default async function ForecastPage() {
                     return (
                       <div
                         key={s.stage}
-                        className="group flex w-[66px] shrink-0 flex-col items-center"
+                        className="group flex w-[104px] shrink-0 flex-col items-center"
                       >
                         <span className="text-[12px] font-semibold text-text-primary tnum mb-1.5">
                           {formatMoney(s.weighted)}

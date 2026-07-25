@@ -82,7 +82,7 @@ function Signal({ tier }: { tier: string | null }) {
     : "Company size hasn't been set for this account yet.";
   return (
     <Tooltip label={label} side="bottom" align="left">
-      <span className="inline-flex items-center gap-1.5 cursor-help">
+      <span className="inline-flex items-center gap-1.5 cursor-pointer">
         <span className="flex items-end gap-0.5 h-3.5">
           {[1, 2, 3].map((b) => (
             <span
