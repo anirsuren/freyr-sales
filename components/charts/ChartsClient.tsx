@@ -140,18 +140,17 @@ function PortalTip({
     top: currentAnchor.y,
     bottom: currentAnchor.y,
   };
-  // Measure from the HOVERED POINT, not the chart's outer box. Anchoring to
-  // the whole card pushed the popup to the card's top edge — on a tall chart
-  // that put it far from the cursor, and on a card near the top of the screen
-  // it went off-viewport entirely (Anir, Jul 25: "i cant see popup on the
-  // graph"). The point is what the rep is looking at, so the card sits next
-  // to it.
+  // Two rules, both earned the hard way. (1) The card follows the CURSOR
+  // horizontally — anchored to the chart's centre it sat far from the point
+  // being read, and near the viewport top it left the screen entirely (Anir:
+  // "i cant see popup on the graph"). (2) Vertically it sits OUTSIDE the
+  // chart box — above when there's room, else below — because a card that
+  // covers the plot hides the very data being hovered (the older standing
+  // rule the verify suite pins). Viewport clamping keeps it on-screen always.
   const rooms = {
-    top: Math.max(0, currentAnchor.y - 8),
-    bottom: Math.max(0, vh - currentAnchor.y - 8),
+    top: Math.max(0, chartRect.top - 8),
+    bottom: Math.max(0, vh - chartRect.bottom - 8),
   };
-  // Prefer above the point; drop below only when there genuinely isn't room,
-  // so the card never covers the value being read.
   const placement = rooms.top >= 120 || rooms.top >= rooms.bottom ? "top" : "bottom";
   const verticalRoom = placement === "top" ? rooms.top : rooms.bottom;
   const maxHeight = Math.max(48, verticalRoom - sideGap);
@@ -161,8 +160,8 @@ function PortalTip({
   );
   const top =
     placement === "top"
-      ? currentAnchor.y - sideGap
-      : currentAnchor.y + sideGap;
+      ? chartRect.top - sideGap
+      : chartRect.bottom + sideGap;
   return createPortal(
     <div
       role="tooltip"

@@ -68,6 +68,7 @@ export function HealthBar({
 
   return (
     <Tooltip
+      className="block w-full"
       label={
         <span>
           {base}
@@ -79,7 +80,7 @@ export function HealthBar({
         </span>
       }
     >
-      <span className={cn("block cursor-help", className)}>
+      <span className={cn("block w-full cursor-help", className)}>
         {showLabel && (
           <span className="flex items-baseline justify-between mb-1">
             <span

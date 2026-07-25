@@ -96,7 +96,7 @@ function compactMoney(n: number): string {
 // Colour-code each customer segment by its family so the picker reads at a
 // glance (Suren: "the colors need to be color-coded"). Bio Pharmaceutical is
 // checked before Pharmaceutical since it contains that word.
-function segmentColor(type: string): string {
+export function segmentColor(type: string): string {
   const t = type.toLowerCase();
   // Family colours (match the offering page): Pharma = blue, Biologics = rose,
   // Bio Pharmaceutical = violet (Suren: "pharmaceutical blue, biologics red…").

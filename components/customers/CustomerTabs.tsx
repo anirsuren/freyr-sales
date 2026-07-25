@@ -69,6 +69,16 @@ import { AccountBriefing } from "@/components/agent/AccountBriefing";
 import { TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
 import { GeographyText } from "@/components/ui/GeographyText";
 import { AttributeTag } from "@/components/ui/AttributeTag";
+import { segmentColor } from "@/components/customers/CustomerOfferingsTab";
+
+// Curated industry colours — meaning over hash roulette (Anir: biotech in
+// green "doesn't really go"). Unknown industries fall back to blue.
+const INDUSTRY_COLOR: Record<string, string> = {
+  Pharmaceutical: "#0071E3",
+  Biotechnology: "#7C3AED",
+  "Medical Device": "#0891B2",
+  "Consumer Health": "#E11D48",
+};
 import { flagForGeography } from "@/lib/countryFlags";
 import type {
   Customer,
@@ -640,6 +650,7 @@ export function CustomerTabs({
                         icon={Building2}
                         label="Industry"
                         className="mt-0.5"
+                        color={INDUSTRY_COLOR[customer.industry] || "#0071E3"}
                       />
                     ) : (
                       <p className="text-[14px] text-text-primary">—</p>
@@ -657,6 +668,7 @@ export function CustomerTabs({
                         icon={MapPin}
                         label="Geography"
                         className="mt-0.5"
+                        color="#0891B2"
                       />
                     ) : (
                       <p className="text-[14px] text-text-primary">—</p>
@@ -682,22 +694,19 @@ export function CustomerTabs({
                   scan on either (Anir, Jul 25: "you should have tags for the
                   customer type and the customer size"). Each is its own tag,
                   each with its own stable colour. */}
-              {(customer.customer_type || customer.size_tier) && (
+              {/* No standalone size tag here: the header badge already says
+                  the size, and a second copy in a hash-picked colour read as a
+                  random red pill (Anir: "why the fuck is it there?"). The
+                  classified customer type carries family+size in one tag,
+                  coloured by its family. */}
+              {customer.customer_type && (
                 <div className="flex flex-wrap items-center gap-2 mb-4">
-                  {customer.customer_type && (
-                    <AttributeTag
-                      value={customer.customer_type}
-                      icon={Briefcase}
-                      label="Customer type"
-                    />
-                  )}
-                  {customer.size_tier && (
-                    <AttributeTag
-                      value={SIZE_TIER_LABEL[customer.size_tier] || customer.size_tier}
-                      icon={Users}
-                      label="Size"
-                    />
-                  )}
+                  <AttributeTag
+                    value={customer.customer_type}
+                    icon={Briefcase}
+                    label="Customer type"
+                    color={segmentColor(customer.customer_type)}
+                  />
                 </div>
               )}
               <p className="text-[14px] text-text-secondary leading-relaxed">
@@ -759,14 +768,12 @@ export function CustomerTabs({
                     <DonutLegend items={outcomeMix} />
                   </div>
                 ) : (
-                  <div className="flex flex-1 items-center gap-3 rounded-md border border-dashed border-border bg-surface/45 px-4 py-4">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
-                      <CalendarClock size={17} strokeWidth={1.8} />
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2.5 rounded-md border border-dashed border-border bg-surface/45 px-6 py-8 text-center">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                      <CalendarClock size={18} strokeWidth={1.8} />
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-semibold text-text-primary">No activity yet</p>
-                      <p className="mt-0.5 text-[11.5px] text-text-tertiary">The first call, email, meeting, or note will build this account&apos;s outcome mix.</p>
-                    </div>
+                    <p className="text-[13px] font-semibold text-text-primary">No activity yet</p>
+                    <p className="max-w-[300px] text-[11.5px] leading-relaxed text-text-tertiary">The first call, email, meeting, or note will build this account&apos;s outcome mix.</p>
                   </div>
                 )}
               </Card>

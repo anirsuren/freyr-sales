@@ -295,6 +295,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const pink = await page.evaluate(() => {
       const out: string[] = [];
       document.querySelectorAll("*").forEach((el) => {
+        // Guard the page and its big surfaces (cards, panels) against warm
+        // tints — the bug this test was written for. Small elements are data
+        // viz: violet legend dots and proportion bars are deliberate series
+        // colours (never-gray rule), not a background tint.
+        const rect = (el as Element).getBoundingClientRect();
+        if (rect.width * rect.height < 10000) return;
         const b = getComputedStyle(el as Element).backgroundColor;
         const m = b.match(/(\d+), (\d+), (\d+)/);
         if (!m) return;
@@ -1081,10 +1087,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("82 — contacts: bulk select + export selected (V4)", async ({ page }) => {
     await page.goto(`${BASE}/contacts`);
     await page.getByRole("button", { name: "Select", exact: true }).click();
-    await page.getByRole("button", { name: /^Select / }).first().click();
+    // Redesigned bar (Jul 25): quiet card, actions appear only once something
+    // is selected, and the button carries the count ("Export 11").
+    await page.getByRole("button", { name: /^Select all/ }).click();
     await expect(page.getByText(/\d+ selected/)).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Export selected" })
+      page.getByRole("button", { name: /Export \d+/ })
     ).toBeVisible();
   });
 
@@ -3593,14 +3601,16 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   });
 
   test("256 — offerings sort is deep-linkable (V23)", async ({ page }) => {
-    const sortSel = 'select[aria-label="Sort offerings"]';
+    // Sort is the app-wide colour-coded dropdown now (a button, not a native
+    // <select>) — the deep-link contract is the same, asserted via its label.
+    const sortBtn = page.getByRole("button", { name: "Sort offerings" });
     await page.goto(`${BASE}/offerings?sort=name`);
-    await expect(page.locator(sortSel)).toHaveValue("name");
+    await expect(sortBtn).toContainText("Name (A–Z)");
     await page.goto(`${BASE}/offerings?sort=type`);
-    await expect(page.locator(sortSel)).toHaveValue("type");
+    await expect(sortBtn).toContainText("By type");
     // an unknown sort value falls back to catalog order
     await page.goto(`${BASE}/offerings?sort=bogus`);
-    await expect(page.locator(sortSel)).toHaveValue("default");
+    await expect(sortBtn).toContainText("Recommended");
   });
 
   test("257 — offering detail shows completeness status at a glance (V24)", async ({
@@ -4959,11 +4969,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // the bulk bar appears immediately with Select all — no one-by-one clicking
     await page.getByRole("button", { name: /Select all \(11\)/ }).click();
     await expect(page.getByText("11 selected")).toBeVisible();
-    // category + run live INLINE in the bar (no modal)
-    await page
-      .getByLabel("Voice agent category")
-      .selectOption("Labeling and Artwork");
-    await page.getByRole("button", { name: /Run voice agent \(11\)/ }).click();
+    // category + run live INLINE in the bar (no modal). The picker is the
+    // app-wide colour-coded dropdown now, not a native <select>.
+    await page.getByLabel("Voice agent category").click();
+    await page.getByRole("option", { name: "Labeling and Artwork" }).click();
+    await page.getByRole("button", { name: /Call 11/ }).click();
     await expect(page.getByText(/Queued 11 calls/)).toBeVisible();
   });
 

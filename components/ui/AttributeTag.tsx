@@ -37,6 +37,7 @@ export function AttributeTag({
   label,
   prefix,
   className,
+  color: explicitColor,
 }: {
   value: string;
   icon?: LucideIcon;
@@ -45,8 +46,14 @@ export function AttributeTag({
   /** Rendered before the text, e.g. a country flag. */
   prefix?: string | null;
   className?: string;
+  /** Semantic colour override. The hash fallback is only for values with no
+   *  meaning of their own — hashed colours landed rose on "Small" while the
+   *  header badge said the same word in green (Anir: "why is it red there,
+   *  but next to the name it's green?"). When a fact HAS a colour system,
+   *  pass it in. */
+  color?: string;
 }) {
-  const color = attributeColor(value);
+  const color = explicitColor || attributeColor(value);
   return (
     <span
       className={cn(
