@@ -9,7 +9,9 @@ import {
   Layers,
   Building2,
   Globe,
+  type LucideIcon,
 } from "lucide-react";
+import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -122,11 +124,14 @@ export default async function OfferingDetailPage({
     if (f.includes("pharma")) return "#0071E3"; // blue
     return "#8E98A8";
   };
-  const sizeStyle = (size: string): { bg: string; color: string } => {
+  // One size system app-wide (SizeBadge's). The old local palette painted
+  // small in sky and mid in cyan — two blues nobody can tell apart (Anir:
+  // "small and mid-sized, literally the same color").
+  const sizeStyle = (size: string): { bg: string; color: string; icon: LucideIcon } => {
     const s = size.toLowerCase();
-    if (s.includes("small")) return { bg: "rgba(2,132,199,0.12)", color: "#0369A1" }; // sky
-    if (s.includes("large")) return { bg: "rgba(5,150,105,0.14)", color: "#047857" }; // emerald
-    return { bg: "rgba(8,145,178,0.12)", color: "#0891B2" }; // mid — cyan, matches SizeBadge
+    if (s.includes("small")) return SIZE_TIER_META.small;
+    if (s.includes("large")) return SIZE_TIER_META.large;
+    return SIZE_TIER_META.mid;
   };
 
   return (
@@ -378,10 +383,10 @@ export default async function OfferingDetailPage({
                                 }}
                                 className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
                               >
-                                <span
-                                  className="w-1.5 h-1.5 rounded-full"
-                                  style={{ background: sizeStyle(c.size).color }}
-                                />
+                                {(() => {
+                                  const TierIcon = sizeStyle(c.size).icon;
+                                  return <TierIcon size={11} strokeWidth={2.2} aria-hidden="true" />;
+                                })()}
                                 {c.size}
                               </Link>
                             </Tooltip>

@@ -1245,6 +1245,7 @@ export function DonutLegend({
   syncId,
   bars = true,
   pill = false,
+  showValues = true,
 }: {
   items: { label: string; color: string; value: number }[];
   total?: number;
@@ -1258,6 +1259,9 @@ export function DonutLegend({
   bars?: boolean;
   /** Label as a colour-tinted tag instead of dot + plain text. */
   pill?: boolean;
+  /** Drop the absolute value, keeping just the share — for legends sitting
+   *  above a table that already lists the same numbers. */
+  showValues?: boolean;
 }) {
   const sum = (total ?? items.reduce((s, x) => s + x.value, 0)) || 1;
   const linked = useDonutSync(syncId);
@@ -1267,10 +1271,16 @@ export function DonutLegend({
     // aligned — it doesn't make sense for them not to be").
     <div
       className={cn(
-        "flex-1 min-w-0 grid items-center gap-x-2 gap-y-1",
+        "min-w-0 grid items-center gap-x-2 gap-y-1",
+        // Without bars the row shouldn't stretch: a flex-1 legend shoved the
+        // values to the far edge and left a canyon of white space in between
+        // (Anir: "so much empty space there").
+        bars ? "flex-1" : "w-fit",
         bars
           ? "grid-cols-[auto_minmax(0,1fr)_auto_auto_minmax(44px,1.1fr)]"
-          : "grid-cols-[auto_minmax(0,1fr)_auto_auto]",
+          : showValues
+            ? "grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+            : "grid-cols-[auto_minmax(0,1fr)_auto]",
         className
       )}
     >
@@ -1311,9 +1321,11 @@ export function DonutLegend({
                 <span className="text-text-secondary min-w-0 break-normal">{it.label}</span>
               </>
             )}
-            <span className="justify-self-end font-semibold text-text-primary tnum">
-              {format ? fmt(format, it.value) : it.value}
-            </span>
+            {showValues && (
+              <span className="justify-self-end font-semibold text-text-primary tnum">
+                {format ? fmt(format, it.value) : it.value}
+              </span>
+            )}
             <span className="justify-self-end text-text-tertiary tnum text-[11px]">
               {pct}%
             </span>

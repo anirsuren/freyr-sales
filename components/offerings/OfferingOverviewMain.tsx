@@ -34,6 +34,7 @@ function SectionHeading({
   description: string;
   action?: React.ReactNode;
 }) {
+
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex min-w-0 items-start gap-3">
@@ -74,6 +75,33 @@ export function OfferingOverviewMain({
   const topCustomerShare = report.totalRevenue
     ? Math.round(((report.customers[0]?.revenue || 0) / report.totalRevenue) * 100)
     : 0;
+
+  // Slice sets for the two commercial donuts.
+  const customerSegments = report.customers.map((customer, index) => ({
+    label: customer.name,
+    value: customer.revenue,
+    color: VIZ_SERIES[index % VIZ_SERIES.length],
+  }));
+  const REV_TYPE_COLOR: Record<string, string> = {
+    annual: "#0071E3",
+    project: "#7C3AED",
+    annual_service: "#0F766E",
+    license: "#059669",
+  };
+  const typeTotals = new Map<string, number>();
+  for (const customer of report.customers)
+    for (const line of customer.lines)
+      typeTotals.set(
+        line.revenue_type,
+        (typeTotals.get(line.revenue_type) || 0) + line.amount
+      );
+  const typeSegments = [...typeTotals.entries()]
+    .filter(([, value]) => value > 0)
+    .map(([type, value]) => ({
+      label: REVENUE_TYPE_META[type as keyof typeof REVENUE_TYPE_META]?.short || type,
+      value,
+      color: REV_TYPE_COLOR[type] || "#0071E3",
+    }));
 
   return (
     <div className="min-w-0">
@@ -152,36 +180,59 @@ export function OfferingOverviewMain({
               ))}
             </div>
 
-            {/* Revenue share as a picture — a table column of percentages
-                isn't a share until you can SEE the split (Anir: "you
-                definitely need a pie chart here"). Hovering a legend row
-                lights its slice and vice versa. */}
-            <div className="mt-5 flex items-center gap-5">
-              <DonutChart
-                syncId="offering-commercial"
-                segments={report.customers.map((customer, index) => ({
-                  label: customer.name,
-                  value: customer.revenue,
-                  color: VIZ_SERIES[index % VIZ_SERIES.length],
-                }))}
-                size={118}
-                thickness={14}
-                format="money"
-                centerLabel={formatMoney(report.totalRevenue)}
-                centerSub="booked"
-              />
-              <div className="flex-1 min-w-0">
-                <DonutLegend
-                  syncId="offering-commercial"
-                  items={report.customers.map((customer, index) => ({
-                    label: customer.name,
-                    value: customer.revenue,
-                    color: VIZ_SERIES[index % VIZ_SERIES.length],
-                  }))}
-                  format="money"
-                  pill
-                  bars={false}
-                />
+            {/* Two balanced panels, not one pie marooned in white space
+                (Anir: "so much empty space… might as well have another chart
+                to the right"). The centre stays empty — the stat strip two
+                inches up already says $960K, and repeating it in a ring made
+                the number crowd its own edge. Legends carry the share only;
+                the table below is where the dollars live. */}
+            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-border-light px-4 py-4">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  Split by customer
+                </p>
+                <div className="flex items-center gap-4">
+                  <DonutChart
+                    syncId="offering-commercial"
+                    segments={customerSegments}
+                    size={112}
+                    thickness={13}
+                    format="money"
+                    centerLabel={String(report.customerCount)}
+                    centerSub={report.customerCount === 1 ? "account" : "accounts"}
+                  />
+                  <DonutLegend
+                    syncId="offering-commercial"
+                    items={customerSegments}
+                    pill
+                    bars={false}
+                    showValues={false}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border-light px-4 py-4">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  Split by revenue type
+                </p>
+                <div className="flex items-center gap-4">
+                  <DonutChart
+                    syncId="offering-types"
+                    segments={typeSegments}
+                    size={112}
+                    thickness={13}
+                    format="money"
+                    centerLabel={String(report.lineCount)}
+                    centerSub={report.lineCount === 1 ? "line" : "lines"}
+                  />
+                  <DonutLegend
+                    syncId="offering-types"
+                    items={typeSegments}
+                    pill
+                    bars={false}
+                    showValues={false}
+                  />
+                </div>
               </div>
             </div>
 
