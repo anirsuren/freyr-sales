@@ -90,7 +90,7 @@ export function CallAnalytics({
   const overallBand =
     overall >= 62 ? "Positive" : overall >= 45 ? "Neutral" : "Negative";
   const overallColor =
-    overall >= 62 ? "#1A7A35" : overall >= 45 ? "#B45309" : "#B02020";
+    overall >= 62 ? "#1A7A35" : overall >= 45 ? "#F59E0B" : "#B02020";
 
   // Talk ratio (words spoken).
   const words = (arr: Turn[]) =>
@@ -313,7 +313,7 @@ export function CallAnalytics({
                   centerLabel={`${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`}
                   centerSub="agent"
                 />
-                <DonutLegend items={talkRatio} className="max-w-[320px]" />
+                <DonutLegend items={talkRatio} className="max-w-[320px]" syncId="call-talk-a" />
               </div>
             }
           >
@@ -326,7 +326,7 @@ export function CallAnalytics({
                   centerLabel={`${Math.round((agentWords / Math.max(1, agentWords + contactWords)) * 100)}%`}
                   centerSub="agent"
                 />
-                <DonutLegend items={talkRatio} />
+                <DonutLegend items={talkRatio} syncId="call-talk-b" />
               </div>
             ) : (
               <p className="text-[13px] text-text-tertiary">Not enough dialogue to measure.</p>

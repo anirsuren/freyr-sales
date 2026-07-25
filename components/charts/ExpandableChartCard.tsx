@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentProps } from "react";
+import { useId } from "react";
 import {
   AreaChart,
   BarChart,
@@ -56,6 +57,8 @@ export function ExpandableChartCard({
   emptyText?: string;
   className?: string;
 }) {
+  // Links this card's donut to its legend so hovers travel both ways.
+  const donutSync = useId();
   const empty =
     (kind === "bar" && !(bar?.data?.length ?? 0)) ||
     (kind === "donut" && !(donut?.segments?.length ?? 0)) ||
@@ -99,10 +102,11 @@ export function ExpandableChartCard({
               >
                 <DonutChart
                   {...donut}
+                  syncId={donutSync}
                   size={expanded ? 220 : 140}
                   thickness={expanded ? 22 : 15}
                 />
-                {legend && <DonutLegend {...legend} />}
+                {legend && <DonutLegend {...legend} syncId={donutSync} />}
               </div>
             )}
             {kind === "area" && area && (

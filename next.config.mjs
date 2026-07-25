@@ -5,7 +5,10 @@ const nextConfig = {
   // Lets local audits use an isolated build cache so another running dev
   // server is never invalidated by type/build verification.
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  output: "standalone",
+  // Standalone packaging is for the Docker deploy. Isolated-distDir builds
+  // (the Playwright suite, local audits) serve via `next start`, which
+  // refuses standalone output — so only the real build gets it.
+  output: process.env.NEXT_DIST_DIR ? undefined : "standalone",
   outputFileTracingRoot: process.cwd(),
   // Disabled so the streaming pipeline effect on the loading page runs exactly
   // once in dev (React StrictMode double-invokes effects, which would fire the

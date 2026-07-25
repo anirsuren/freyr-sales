@@ -27,7 +27,8 @@ import { isOfferingsOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
 import { reportForOffering } from "@/lib/revenue";
 import { cn } from "@/lib/utils";
-import { getOffering, hydrateOffering, listOfferings } from "@/lib/offerings";
+import { getOffering, hydrateOffering, listOfferings, listOfferingTypes } from "@/lib/offerings";
+import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 
 export const dynamic = "force-dynamic";
 
@@ -125,7 +126,7 @@ export default async function OfferingDetailPage({
     const s = size.toLowerCase();
     if (s.includes("small")) return { bg: "rgba(2,132,199,0.12)", color: "#0369A1" }; // sky
     if (s.includes("large")) return { bg: "rgba(5,150,105,0.14)", color: "#047857" }; // emerald
-    return { bg: "rgba(217,119,6,0.15)", color: "#B45309" }; // mid — amber
+    return { bg: "rgba(8,145,178,0.12)", color: "#0891B2" }; // mid — cyan, matches SizeBadge
   };
 
   return (
@@ -161,11 +162,27 @@ export default async function OfferingDetailPage({
                 {o.offering_category}
               </Link>
             )}
-            {o.offering_type && (
-              <span className="inline-flex items-center gap-1 text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-2.5 py-1">
-                {o.offering_type}
-              </span>
-            )}
+            {o.offering_type && (() => {
+              const typeIndex = listOfferingTypes().findIndex(
+                (t) => t.name === o.offering_type
+              );
+              const typeColor =
+                typeIndex >= 0
+                  ? FILTER_PALETTE[(typeIndex + 3) % FILTER_PALETTE.length]
+                  : "#0071E3";
+              return (
+                <span
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1"
+                  style={{ color: typeColor, background: `${typeColor}14` }}
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: typeColor }}
+                  />
+                  {o.offering_type}
+                </span>
+              );
+            })()}
             <AvailabilityPill value={o.current_availability} />
             {!isMapped && (
               <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-tertiary bg-surface border border-border-light rounded-full px-2.5 py-1">

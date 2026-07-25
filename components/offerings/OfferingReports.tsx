@@ -260,6 +260,7 @@ export function OfferingReports({
           </p>
           <div className="flex items-center gap-4">
             <DonutChart
+              syncId="offering-revenue"
               segments={revenueSegments}
               size={126}
               thickness={15}
@@ -268,7 +269,13 @@ export function OfferingReports({
               centerSub="booked"
             />
             <div className="flex-1 min-w-0">
-              <DonutLegend items={revenueSegments} format="money" />
+              <DonutLegend
+                items={revenueSegments}
+                format="money"
+                syncId="offering-revenue"
+                pill
+                bars={false}
+              />
             </div>
           </div>
         </div>
@@ -283,7 +290,7 @@ export function OfferingReports({
               <span aria-hidden="true" />
             </div>
             <div className="divide-y divide-border-light">
-              {customerSummaries.map((customer) => {
+              {customerSummaries.map((customer, customerIndex) => {
                 const renewalStatus = customer.nextRenewal
                   ? lineStatus(customer.nextRenewal, now)
                   : null;
@@ -310,10 +317,15 @@ export function OfferingReports({
                         <strong className="font-semibold text-text-primary tnum">{formatMoney(customer.revenue)}</strong>
                         <span className="text-text-tertiary tnum">{customer.share}%</span>
                       </span>
+                      {/* Same colour as the customer's pie slice — the table
+                          restates the split, so the colours must agree. */}
                       <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-border-light">
                         <span
-                          className="block h-full rounded-full bg-blue-primary"
-                          style={{ width: `${customer.share}%` }}
+                          className="block h-full rounded-full"
+                          style={{
+                            width: `${customer.share}%`,
+                            background: VIZ_SERIES[customerIndex % VIZ_SERIES.length],
+                          }}
                         />
                       </span>
                     </span>

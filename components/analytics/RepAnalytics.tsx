@@ -288,7 +288,7 @@ export function RepAnalytics({
               { label: "Weighted", value: formatMoney(rep.weighted), pct: Math.round((rep.weighted / teamMax.weighted) * 100), color: "#0071E3" },
               { label: "Avg deal", value: formatMoney(rep.avgDeal), pct: Math.round((rep.avgDeal / teamMax.avgDeal) * 100), color: "#7C3AED" },
               { label: "Qualified+", value: String(rep.qualifiedPlus), pct: Math.round((rep.qualifiedPlus / teamMax.qualifiedPlus) * 100), color: "#1A7A35" },
-              { label: "Meetings", value: String(rep.meetings), pct: Math.round((rep.meetings / teamMax.meetings) * 100), color: "#B45309" },
+              { label: "Meetings", value: String(rep.meetings), pct: Math.round((rep.meetings / teamMax.meetings) * 100), color: "#F59E0B" },
             ];
             return (
               <div key={rep.key}>

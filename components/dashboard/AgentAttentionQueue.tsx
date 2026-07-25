@@ -51,7 +51,7 @@ const ACTION_META: Record<
   reengage: {
     label: "Deal cooling",
     icon: Flame,
-    color: "#B45309",
+    color: "#F59E0B",
     bg: "#FFF4E5",
   },
   stabilize: {
@@ -126,7 +126,7 @@ export function AgentAttentionQueue({ actions }: { actions: AttentionRow[] }) {
           const canAct = action.kind === "approve" || DRAFTABLE.includes(action.kind);
           const preview = ACTION_META[action.kind];
           const PreviewIcon = preview.icon;
-          const priorityColor = index === 0 ? "#B42318" : index === 1 ? "#B45309" : "#0057B8";
+          const priorityColor = index === 0 ? "#B42318" : index === 1 ? "#F59E0B" : "#0057B8";
           const priorityBg = index === 0 ? "#FEF3F2" : index === 1 ? "#FFF4E5" : "#EAF4FF";
           return (
             <HoverCard

@@ -398,12 +398,18 @@ export function ContactsBrowser({
                     </span>
                   )}
                   <Avatar name={c.name} className="w-9 h-9 text-[13px] shrink-0" />
-                  <div className="min-w-0 w-[38%] sm:w-[28%]">
+                  {/* Identity reads top-down: name, role, then how to reach
+                      them (Anir: "the email should go right under the role"). */}
+                  <div className="min-w-0 w-[38%] sm:w-[30%]">
                     <p className="text-[13.5px] font-semibold text-text-primary truncate">
                       {c.name}
                     </p>
                     <p className="text-[12px] text-text-tertiary truncate">
                       {c.title}
+                    </p>
+                    <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-tertiary min-w-0">
+                      <Mail size={11} strokeWidth={1.7} className="shrink-0" />
+                      <span className="truncate">{c.email}</span>
                     </p>
                   </div>
                   {c.companyId && !selectMode ? (
@@ -424,18 +430,22 @@ export function ContactsBrowser({
                       </span>
                     </div>
                   )}
+                  {c.phone && (
+                    <span className="hidden lg:flex items-center gap-1.5 text-[12px] text-text-secondary tnum w-[17%] min-w-0">
+                      <PhoneCall size={12} strokeWidth={1.6} className="shrink-0" />
+                      <span className="truncate">{c.phone}</span>
+                    </span>
+                  )}
+                  {/* The coloured role tag closes the row (Anir: "move the
+                      tag so it's to the right"). */}
                   {c.role && (
                     <Badge
                       label={c.role}
                       bg={roleStyle(c.role).bg}
                       color={roleStyle(c.role).color}
-                      className="!normal-case tracking-normal shrink-0 hidden md:inline-flex"
+                      className="!normal-case tracking-normal shrink-0 hidden md:inline-flex ml-auto"
                     />
                   )}
-                  <span className="hidden lg:flex items-center gap-1.5 text-[12px] text-text-tertiary w-[24%] min-w-0">
-                    <Mail size={12} strokeWidth={1.6} className="shrink-0" />
-                    <span className="truncate">{c.email}</span>
-                  </span>
                 </>
               );
               const rowClass =
@@ -595,13 +605,14 @@ export function ContactsBrowser({
                         </p>
                         <div className="flex items-center gap-3">
                           <DonutChart
+                            syncId={`contact-mix-${c.id}`}
                             segments={c.outcomeMix}
                             size={78}
                             thickness={10}
                             centerLabel={String(touches)}
                             centerSub="touches"
                           />
-                          <DonutLegend items={c.outcomeMix} />
+                          <DonutLegend items={c.outcomeMix} syncId={`contact-mix-${c.id}`} />
                         </div>
                       </div>
                     )}

@@ -147,7 +147,11 @@ export function CommandPalette({
   const setGoal = useCallback(
     (goal: string) => {
       onClose();
-      router.push(`/agent/plan?goal=${encodeURIComponent(goal)}`);
+      // A typed question opens a fresh agent CHAT with the question submitted
+      // (Anir: "press Enter, it should go to ask the agent — like Gemini").
+      // The goals workspace was landing people on a wall of drafts for
+      // "tell me about northwind" — wrong tool for a question.
+      router.push(`/agent?ask=${encodeURIComponent(goal)}`);
     },
     [onClose, router]
   );

@@ -36,6 +36,7 @@ import {
   asJourneyStage,
 } from "@/lib/offeringMaterials";
 import type { OfferingUsage, OfferingRevenueLine, RevenueType } from "@/lib/types";
+import { SIZE_TIER_META } from "@/components/ui/Badge";
 
 // Compact CR-3 tag pills inside a material chip: journey stage + access level,
 // each colour + icon (standing rule — no gray chips). Untagged materials render
@@ -833,14 +834,24 @@ export function CustomerOfferingsTab({
           {typeOptions.map((t) => {
             const parts = segmentParts(t);
             const family = segmentColor(t);
+            // Size chips use the SAME tier system as SizeBadge everywhere —
+            // per-segment hues made Small/Mid/Large "look very similar"
+            // (Anir). Icon + colour now identify the size at a glance.
+            const sizeKey = /small/i.test(parts.size)
+              ? "small"
+              : /large/i.test(parts.size)
+                ? "large"
+                : "mid";
+            const tier = SIZE_TIER_META[sizeKey];
+            const TierIcon = tier.icon;
             return (
               <button
                 key={t}
                 aria-label={t}
                 onClick={() => saveType(t)}
                 disabled={savingType}
-                className="flex min-h-[54px] items-center gap-2 rounded-lg border border-border-light px-3 py-3 text-[12.5px] font-medium text-text-primary hover:border-blue-primary hover:shadow-[0_2px_10px_rgba(0,113,227,0.10)] transition-all disabled:opacity-50 text-left active:scale-[0.98]"
-                style={{ borderLeft: `3px solid ${family}`, background: parts.bg }}
+                className="flex min-h-[54px] items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-3 text-[12.5px] font-medium text-text-primary hover:border-blue-primary hover:shadow-[0_2px_10px_rgba(0,113,227,0.10)] transition-all disabled:opacity-50 text-left active:scale-[0.98]"
+                style={{ borderLeft: `3px solid ${family}` }}
               >
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -848,9 +859,10 @@ export function CustomerOfferingsTab({
                 />
                 <span className="min-w-0 flex-1 leading-tight">{parts.family}</span>
                 <span
-                  className="shrink-0 rounded-md px-1.5 py-0.5 text-[9.5px] font-semibold"
-                  style={{ color: parts.color, background: `${parts.color}14` }}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[9.5px] font-semibold"
+                  style={{ color: tier.color, background: tier.bg }}
                 >
+                  <TierIcon size={10} strokeWidth={2.1} aria-hidden="true" />
                   {parts.size}
                 </span>
               </button>

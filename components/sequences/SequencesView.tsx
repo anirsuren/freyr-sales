@@ -260,7 +260,7 @@ export function SequencesView({
   const stats = [
     { icon: Zap, label: "Active sequences", value: String(activeCount), sub: "running" },
     { icon: Users, label: "Accounts enrolled", value: String(enrollments.length), sub: "across all plans" },
-    { icon: CalendarClock, label: "Due now", value: String(dueCount), sub: dueCount === 1 ? "touch to prep" : "touches to prep", color: "#D97706" },
+    { icon: CalendarClock, label: "Due now", value: String(dueCount), sub: dueCount === 1 ? "touch to prep" : "touches to prep", color: "#F59E0B" },
     { icon: CircleDotDashed, label: "Re-engage", value: String(candidateCount), sub: candidateCount === 1 ? "stalled account" : "stalled accounts", color: "#7C3AED" },
   ];
 

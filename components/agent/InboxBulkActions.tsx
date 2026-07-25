@@ -47,25 +47,9 @@ export function InboxBulkActions({
     [router, toast]
   );
 
-  // Keyboard triage (V9 #18): A = approve all, S = send all approved.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target as HTMLElement | null;
-      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-      if (t && t.isContentEditable) return;
-      const k = e.key.toLowerCase();
-      if (k === "a" && approveCount > 0 && busy === null) {
-        e.preventDefault();
-        run("approve");
-      } else if (k === "s" && sendCount > 0 && busy === null) {
-        e.preventDefault();
-        run("send");
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [approveCount, sendCount, busy, run]);
+  // No bare-letter hotkeys. "A = approve all / S = send all" fired real
+  // sends on a stray keypress (Anir: "Press it on accident. Remove that
+  // shit."). Approve/send are click-only; ⌘K remains the keyboard path.
 
   if (approveCount === 0 && sendCount === 0) return null;
 
@@ -91,24 +75,7 @@ export function InboxBulkActions({
           {busy === "send" ? "Sending…" : `Send all approved (${sendCount})`}
         </button>
       )}
-      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-text-tertiary ml-1">
-        {approveCount > 0 && (
-          <>
-            <kbd className="px-1.5 py-0.5 rounded border border-border-light bg-surface font-semibold">
-              A
-            </kbd>
-            approve
-          </>
-        )}
-        {sendCount > 0 && (
-          <>
-            <kbd className="px-1.5 py-0.5 rounded border border-border-light bg-surface font-semibold ml-1.5">
-              S
-            </kbd>
-            send
-          </>
-        )}
-      </span>
+
     </div>
   );
 }

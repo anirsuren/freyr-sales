@@ -136,9 +136,24 @@ export function CustomerCard({
             ) : (
               <span>No contacts yet</span>
             )}
-            {lastSessionDate && (
-              <span className="shrink-0">Last session {formatDateTime(lastSessionDate)}</span>
-            )}
+            <span className="flex items-center gap-2 shrink-0">
+              {/* Outcome lives with the person it happened with (Anir: "the
+                  outcome should be next to the name — it just looks awkward
+                  at the bottom"). */}
+              {lastOutcome ? (
+                <OutcomeBadge outcome={lastOutcome} />
+              ) : (
+                <Badge
+                  label="No outcome yet"
+                  bg="rgba(100,116,139,0.12)"
+                  color="#475569"
+                  icon={CircleDashed}
+                />
+              )}
+              {lastSessionDate && (
+                <span className="shrink-0">Last session {formatDateTime(lastSessionDate)}</span>
+              )}
+            </span>
           </div>
           {/* Health as a bar (Suren: "same progress bar as the row view, on the
               grid cards too"), coloured by band. */}
@@ -166,18 +181,6 @@ export function CustomerCard({
               </div>
             </div>
           )}
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            {lastOutcome ? (
-              <OutcomeBadge outcome={lastOutcome} />
-            ) : (
-              <Badge
-                label="No outcome yet"
-                bg="rgba(100,116,139,0.12)"
-                color="#475569"
-                icon={CircleDashed}
-              />
-            )}
-          </div>
         </>
       }
       extra={
@@ -191,6 +194,7 @@ export function CustomerCard({
               </p>
               <div className="flex items-center gap-3">
                 <DonutChart
+                  syncId={`cust-card-${customer.id}`}
                   segments={mix}
                   size={76}
                   thickness={10}
@@ -207,7 +211,7 @@ export function CustomerCard({
                   }
                 />
                 <div className="flex-1 min-w-0">
-                  <DonutLegend items={mix} format={hasPipeline ? "money" : "number"} />
+                  <DonutLegend items={mix} format={hasPipeline ? "money" : "number"} syncId={`cust-card-${customer.id}`} />
                 </div>
               </div>
             </div>

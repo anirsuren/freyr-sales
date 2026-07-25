@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useCallback, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -154,6 +154,8 @@ function parseChartSpec(raw: string): ChartSpec | null {
 // (Anir, Jul 25: "really good visualizations, not vibe-coded slop"). The
 // agent emits a small JSON spec; anything malformed renders as nothing.
 function ChatChart({ spec }: { spec: ChartSpec }) {
+  // Chart + legend hover in lockstep, same as every donut pair in the app.
+  const donutSync = useId();
   const series = spec.data.map((d, i) => ({
     label: d.label,
     value: d.value,
@@ -173,13 +175,14 @@ function ChatChart({ spec }: { spec: ChartSpec }) {
       {spec.type === "donut" && (
         <div className="flex items-center gap-5">
           <DonutChart
+            syncId={donutSync}
             segments={series}
             size={124}
             thickness={14}
             centerLabel={spec.center?.label ?? String(total)}
             centerSub={spec.center?.sub}
           />
-          <DonutLegend items={series} total={total} />
+          <DonutLegend items={series} total={total} syncId={donutSync} />
         </div>
       )}
       {spec.type === "area" && (
@@ -383,7 +386,7 @@ function ThinkingDots() {
   );
 }
 
-export function AgentChat() {
+export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
   const storageKey = userScopedStorageKey(KEY, currentUser.id);
@@ -556,6 +559,21 @@ export function AgentChat() {
     setSuggestions(STARTERS);
     setInput("");
   }
+
+  // Global-search Enter lands here with ?ask= — start a FRESH conversation
+  // and submit the question (Anir: "like Gemini... obviously create a new
+  // chat"). Consume once; newChat() commits before send() reads activeId.
+  const askConsumed = useRef(false);
+  useEffect(() => {
+    if (!initialAsk || askConsumed.current) return;
+    if (loadedStorageKey !== storageKey) return;
+    askConsumed.current = true;
+    newChat();
+    const t = setTimeout(() => send(initialAsk), 50);
+    window.history.replaceState(null, "", "/agent");
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAsk, loadedStorageKey, storageKey]);
 
   function remove(id: string) {
     setConvos((prev) => {

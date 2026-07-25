@@ -60,7 +60,7 @@ const ROLE_COLOR: Record<string, { bg: string; color: string }> = {
 // Attainment colour band — red under target, amber near, green ahead.
 function attainColor(pct: number): string {
   if (pct >= 50) return "#1A7A35";
-  if (pct >= 35) return "#B45309";
+  if (pct >= 35) return "#F59E0B";
   return "#B02020";
 }
 
@@ -110,6 +110,7 @@ function StageDonut({ rep, size = 82 }: { rep: RosterRep; size?: number }) {
   return (
     <div className="flex items-center gap-3">
       <DonutChart
+        syncId={`team-mix-${rep.name}`}
         segments={items}
         size={size}
         thickness={size > 78 ? 11 : 9}
@@ -117,7 +118,7 @@ function StageDonut({ rep, size = 82 }: { rep: RosterRep; size?: number }) {
         centerSub="deals"
         format="money"
       />
-      <DonutLegend items={items} format="money" />
+      <DonutLegend items={items} format="money" syncId={`team-mix-${rep.name}`} />
     </div>
   );
 }

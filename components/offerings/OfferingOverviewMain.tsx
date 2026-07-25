@@ -17,7 +17,7 @@ import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { formatMoney } from "@/lib/pipeline";
-import { VIZ_SERIES } from "@/components/charts/Charts";
+import { DonutChart, DonutLegend, VIZ_SERIES } from "@/components/charts/Charts";
 import { type Offering, hydrateOffering } from "@/lib/offerings";
 import type { OfferingReport } from "@/lib/revenue";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
@@ -152,6 +152,39 @@ export function OfferingOverviewMain({
               ))}
             </div>
 
+            {/* Revenue share as a picture — a table column of percentages
+                isn't a share until you can SEE the split (Anir: "you
+                definitely need a pie chart here"). Hovering a legend row
+                lights its slice and vice versa. */}
+            <div className="mt-5 flex items-center gap-5">
+              <DonutChart
+                syncId="offering-commercial"
+                segments={report.customers.map((customer, index) => ({
+                  label: customer.name,
+                  value: customer.revenue,
+                  color: VIZ_SERIES[index % VIZ_SERIES.length],
+                }))}
+                size={118}
+                thickness={14}
+                format="money"
+                centerLabel={formatMoney(report.totalRevenue)}
+                centerSub="booked"
+              />
+              <div className="flex-1 min-w-0">
+                <DonutLegend
+                  syncId="offering-commercial"
+                  items={report.customers.map((customer, index) => ({
+                    label: customer.name,
+                    value: customer.revenue,
+                    color: VIZ_SERIES[index % VIZ_SERIES.length],
+                  }))}
+                  format="money"
+                  pill
+                  bars={false}
+                />
+              </div>
+            </div>
+
             <div className="mt-5 overflow-hidden border-y border-border-light">
               <div className="grid grid-cols-[minmax(190px,1.45fr)_88px_70px_minmax(118px,.85fr)] gap-3 bg-surface/65 px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 <span>Customer account</span>
@@ -273,12 +306,23 @@ export function OfferingOverviewMain({
           icon={FolderOpen}
           title={`Sales materials (${o.materials.length})`}
           description="Seller-ready assets, ordered by the way they are typically used."
-          action={admin ? <AddMaterialButton offeringId={o.id} materials={o.materials} /> : null}
+          action={
+            admin && o.materials.length === 0 ? (
+              <AddMaterialButton offeringId={o.id} materials={o.materials} />
+            ) : null
+          }
         />
         {o.materials.length === 0 ? (
           <p className="mt-5 pl-11 text-[13px] text-text-tertiary">No sales materials have been added.</p>
         ) : (
-          <MaterialsSection materials={o.materials} />
+          <MaterialsSection
+            materials={o.materials}
+            action={
+              admin ? (
+                <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
+              ) : null
+            }
+          />
         )}
       </section>
 

@@ -273,6 +273,7 @@ export function AnalyticsView({
               empty top-and-bottom next to the taller Pipeline card (Suren). */}
           <div className="flex-1 flex items-center gap-6">
             <DonutChart
+              syncId="dash-outcomes"
               segments={outcomes.map((o) => ({
                 label: o.label,
                 value: o.count,
@@ -327,6 +328,7 @@ export function AnalyticsView({
               </div>
             ) : (
               <DonutLegend
+                syncId="dash-outcomes"
                 items={outcomes.map((o) => ({
                   label: o.label,
                   color: o.color,
@@ -494,6 +496,7 @@ export function AnalyticsView({
           {weightedByStage.length > 0 ? (
             <div className="flex-1 flex items-center gap-6">
               <DonutChart
+                syncId="dash-weighted"
                 segments={weightedByStage.map((s) => ({ label: s.label, value: s.value, color: s.color, tip: s.tip }))}
                 size={172}
                 thickness={18}
@@ -502,6 +505,7 @@ export function AnalyticsView({
                 centerSub="weighted"
               />
               <DonutLegend
+                syncId="dash-weighted"
                 items={weightedByStage.map((s) => ({ label: s.label, color: s.color, value: s.value }))}
                 format="money"
               />

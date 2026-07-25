@@ -356,13 +356,14 @@ export default async function VoicePage() {
                               outcome (photo + company), portaled so it can't be
                               clipped. The legend still carries the totals. */}
                           <DonutChart
+                            syncId={`voice-outcomes-${p.slug}`}
                             segments={pOutcomes}
                             size={82}
                             thickness={11}
                             centerLabel={String(pOutcomes.reduce((s, o) => s + o.value, 0))}
                             centerSub="calls"
                           />
-                          <DonutLegend items={pOutcomes} />
+                          <DonutLegend items={pOutcomes} syncId={`voice-outcomes-${p.slug}`} />
                         </div>
                       </div>
                     )}

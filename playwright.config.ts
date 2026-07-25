@@ -17,10 +17,18 @@ export default defineConfig({
     // deterministic output so assertions stay stable even when a real
     // ANTHROPIC_API_KEY is set on the dev box. Run the authoritative suite with
     // no live-key server already on :3001 so Playwright starts this one.
+    //
+    // Dev server on purpose. A prod-build server would kill the dev-only
+    // streaming lag (content briefly duplicated in the hidden `#S:n` slot,
+    // which trips Playwright strict mode under load — scoped .first()
+    // locators handle it), but a production build ENFORCES configured
+    // authentication (middleware + /api/health 503 by design), which this
+    // open-access suite must not weaken. Validate the deploy build
+    // separately with: NEXT_DIST_DIR=.next-test npm run build
     command: `AGENT_FORCE_MOCK=1 npm run dev -- --port ${PORT} --hostname 127.0.0.1`,
     env: { AGENT_FORCE_MOCK: "1" },
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: true,
-    timeout: 60000,
+    timeout: 120000,
   },
 });

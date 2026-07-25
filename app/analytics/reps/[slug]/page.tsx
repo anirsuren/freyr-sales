@@ -2,6 +2,8 @@ import Link from "next/link";
 import {
   SearchX,
   DollarSign,
+  Mail,
+  PhoneCall,
   Layers,
   Target,
   TrendingUp,
@@ -10,6 +12,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
+import { repEmail, repPhone, teamsChatUrl } from "@/lib/team";
+import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -145,7 +149,7 @@ export default async function RepPage({
   const quota = repQuota(name);
   const wonFY = repWonFY(name);
   const attain = Math.round((wonFY / quota) * 100);
-  const attainColor = attain >= 50 ? "#1A7A35" : attain >= 35 ? "#B45309" : "#B02020";
+  const attainColor = attain >= 50 ? "#1A7A35" : attain >= 35 ? "#F59E0B" : "#B02020";
 
   const tiles = [
     { label: "Open pipeline", value: formatMoney(me.openValue), sub: `${me.openCount} live deal${me.openCount === 1 ? "" : "s"}`, icon: DollarSign },
@@ -291,6 +295,32 @@ export default async function RepPage({
           <p className="text-[13px] text-text-secondary mt-0.5">
             {title} · {region} · {me.deals} deal{me.deals === 1 ? "" : "s"} owned
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]">
+            <a
+              href={`mailto:${repEmail(name)}`}
+              className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors"
+            >
+              <Mail size={13} strokeWidth={1.9} className="shrink-0" />
+              {repEmail(name)}
+            </a>
+            <a
+              href={`tel:${repPhone(name).replace(/[^+\d]/g, "")}`}
+              className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors tnum"
+            >
+              <PhoneCall size={13} strokeWidth={1.9} className="shrink-0" />
+              {repPhone(name)}
+            </a>
+            <a
+              href={teamsChatUrl(name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Message ${name.split(" ")[0]} on Teams`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1 text-[12px] font-semibold text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+            >
+              <TeamsIcon size={14} />
+              Teams
+            </a>
+          </div>
         </div>
       </div>
 

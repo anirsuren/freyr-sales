@@ -3,7 +3,7 @@ import { FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
-import { HealthBadge } from "@/components/ui/HealthBadge";
+import { HealthBar } from "@/components/ui/HealthBadge";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { NewSessionButton } from "@/components/sessions/NewSessionButton";
@@ -125,8 +125,12 @@ export default async function CustomerDetailPage({
             <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
               {customer.company_name}
             </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <HealthBadge health={health} />
+            <div className="flex items-center gap-3 mt-1.5">
+              {/* Health reads as a filled bar, here too (Anir: "we need a
+                  fucking bar here, a horizontal bar"). */}
+              <div className="w-[190px] shrink-0">
+                <HealthBar health={health} />
+              </div>
               <SizeBadge tier={customer.size_tier} />
               <span className="text-[13px] text-text-secondary">
                 {customer.industry}

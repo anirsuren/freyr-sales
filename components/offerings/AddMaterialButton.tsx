@@ -54,10 +54,13 @@ export function AddMaterialButton({
   offeringId,
   materials,
   variant = "link",
+  compact = false,
 }: {
   offeringId: string;
   materials: OfferingMaterial[];
   variant?: "link" | "button";
+  /** Icon-only "+" trigger for tight toolbars. */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -127,7 +130,18 @@ export function AddMaterialButton({
 
   return (
     <>
-      {variant === "button" ? (
+      {compact ? (
+        // Icon-only "+" — sellers know what it means next to the filter row
+        // (Anir: "you don't have to say Add material, just have a plus").
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Add material"
+          title="Add material"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+        >
+          <Plus size={16} strokeWidth={2.2} />
+        </button>
+      ) : variant === "button" ? (
         <button
           onClick={() => setOpen(true)}
           className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-blue-primary text-white hover:bg-blue-hover transition-colors"

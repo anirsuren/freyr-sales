@@ -336,7 +336,7 @@ export default async function ForecastPage() {
             {(() => {
               const maxV = Math.max(...byStage.map((s) => s.value), 1);
               return (
-                <div className="flex items-end justify-center gap-2.5">
+                <div data-stage-plot className="flex items-end justify-center gap-2.5">
                   {byStage.map((s, i) => {
                     const color = STAGE_COLOR[s.stage];
                     const barPx = Math.max((s.value / maxV) * 108, 4);
@@ -417,7 +417,8 @@ export default async function ForecastPage() {
                             width={240}
                             delayMs={0}
                             content={stageHover}
-                            className="w-full flex items-end justify-center"
+                            clearAncestor="[data-stage-plot]"
+                            className="w-full flex items-end justify-center cursor-pointer"
                           >
                             {/* Growth wrapper grows the whole column up from the
                                 baseline on load; hover-lift lives on the inner
@@ -486,6 +487,7 @@ export default async function ForecastPage() {
               return (
                 <div className="flex-1 flex items-center gap-3">
                   <DonutChart
+                    syncId="forecast-commit"
                     segments={segs}
                     size={126}
                     thickness={15}
@@ -494,7 +496,7 @@ export default async function ForecastPage() {
                     centerSub="commit"
                   />
                   <div className="flex-1 min-w-0">
-                    <DonutLegend items={segs} format="money" />
+                    <DonutLegend items={segs} format="money" syncId="forecast-commit" />
                   </div>
                 </div>
               );
@@ -674,7 +676,7 @@ export default async function ForecastPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-[minmax(220px,1.5fr)_110px_110px_minmax(135px,.85fr)_18px] gap-3 border-b border-border-light bg-surface/70 px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+          <div className="grid grid-cols-[minmax(220px,1.5fr)_110px_minmax(150px,1fr)_minmax(96px,.6fr)_18px] gap-3 border-b border-border-light bg-surface/70 px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
             <span>Opportunity</span>
             <span>Stage</span>
             <span>Contribution</span>
@@ -686,6 +688,15 @@ export default async function ForecastPage() {
             {priorityDeals.map((deal) => {
               const weighted = deal.value * (STAGE_PROBABILITY[deal.stage] ?? 0);
               const contribution = commit > 0 ? Math.round((weighted / commit) * 100) : 0;
+              // Bars scaled to the commit made every driver read as ~0 (Anir:
+              // "all of them are under 10% — graphs with no purpose"). Scale
+              // to the largest driver instead so the bars RANK the deals; the
+              // %-of-commit stays as text.
+              const maxDriverWeighted = Math.max(
+                ...priorityDeals.map((d) => d.value * (STAGE_PROBABILITY[d.stage] ?? 0)),
+                1
+              );
+              const barPct = Math.round((weighted / maxDriverWeighted) * 100);
               const stale = deal.staleDays > ROTTING_DAYS;
               return (
                 <HoverCard
@@ -694,30 +705,34 @@ export default async function ForecastPage() {
                   width={286}
                   content={
                     <div>
-                      <div className="flex items-center gap-2.5">
+                      {/* Adds what the row can't fit: full names, the odds
+                          math, and exactly how quiet the deal has gone — not a
+                          restatement of the visible numbers (Anir: "the
+                          pop-ups don't show me anything of value"). */}
+                      <div className="flex items-start gap-2.5">
                         <CompanyLogo name={deal.company} className="h-9 w-9 shrink-0 text-[8px]" />
                         <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-text-primary">{deal.company}</p>
-                          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
-                            <Avatar name={deal.contactName} className="h-4 w-4 text-[6px]" />
-                            <span className="truncate">{deal.contactName}</span>
-                            <span>·</span>
-                            <span className="truncate">{deal.service}</span>
+                          <p className="text-[13px] font-semibold leading-snug text-text-primary">{deal.company}</p>
+                          <div className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[10.5px] text-text-tertiary">
+                            <Avatar name={deal.contactName} className="mt-[1px] h-4 w-4 shrink-0 text-[6px]" />
+                            <span className="min-w-0 leading-snug break-normal">
+                              {deal.contactName} · {deal.service}
+                            </span>
                           </div>
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface px-2 py-2 text-center">
                         <div><p className="text-[12px] font-bold text-text-primary tnum">{formatMoney(deal.value)}</p><p className="text-[9px] text-text-tertiary">Full value</p></div>
-                        <div><p className="text-[12px] font-bold text-text-primary tnum">{formatMoney(weighted)}</p><p className="text-[9px] text-text-tertiary">Weighted</p></div>
-                        <div><p className="text-[12px] font-bold text-text-primary tnum">{contribution}%</p><p className="text-[9px] text-text-tertiary">Of commit</p></div>
+                        <div><p className="text-[12px] font-bold text-text-primary tnum">{Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}%</p><p className="text-[9px] text-text-tertiary">Odds of closing</p></div>
+                        <div><p className="text-[12px] font-bold text-text-primary tnum">{deal.staleDays}d</p><p className="text-[9px] text-text-tertiary">Since last touch</p></div>
                       </div>
-                      <p className="mt-2.5 text-[11px] leading-relaxed text-text-secondary">{stale ? `No logged activity for ${deal.staleDays} days. This deal is increasing forecast risk.` : `Recently active in ${deal.stage}. It is contributing ${formatMoney(weighted)} to the quarter commit.`}</p>
+                      <p className="mt-2.5 text-[11px] leading-relaxed text-text-secondary">{stale ? `No logged activity for ${deal.staleDays} days — the ${Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}% odds on ${formatMoney(deal.value)} are getting shakier. Reconnect before it slips out of commit.` : `The ${Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}% close-odds trim ${formatMoney(deal.value)} to ${formatMoney(weighted)} of realistic commit. Keep the momentum — book the next step.`}</p>
                     </div>
                   }
                 >
                 <Link
                   href={`/deals/${deal.sessionId}`}
-                  className="group grid min-h-[62px] grid-cols-[minmax(220px,1.5fr)_110px_110px_minmax(135px,.85fr)_18px] items-center gap-3 px-5 py-2.5 transition-colors hover:bg-surface/60"
+                  className="group grid min-h-[62px] grid-cols-[minmax(220px,1.5fr)_110px_minmax(150px,1fr)_minmax(96px,.6fr)_18px] items-center gap-3 px-5 py-2.5 transition-colors hover:bg-surface/60"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <CompanyLogo name={deal.company} className="h-8 w-8 shrink-0 text-[8px]" />
@@ -725,11 +740,14 @@ export default async function ForecastPage() {
                       <span className="block truncate text-[12.5px] font-semibold text-text-primary">
                         {deal.company}
                       </span>
-                      <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
-                        <Avatar name={deal.contactName} className="h-4 w-4 text-[6px]" />
-                        <span className="truncate">{deal.contactName}</span>
-                        <span>·</span>
-                        <span className="truncate">{deal.service}</span>
+                      <span className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[10.5px] text-text-tertiary">
+                        <Avatar name={deal.contactName} className="mt-[1px] h-4 w-4 shrink-0 text-[6px]" />
+                        {/* Wraps instead of truncating — "Dr. Arun P…" tells a
+                            rep nothing (Anir: "I can't even see the full name
+                            of the guy or the category"). */}
+                        <span className="min-w-0 leading-snug break-normal">
+                          {deal.contactName} · {deal.service}
+                        </span>
                       </span>
                     </span>
                   </span>
@@ -747,20 +765,37 @@ export default async function ForecastPage() {
                     {deal.stage === "Meeting Booked" ? "Meeting" : deal.stage}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[12.5px] font-semibold text-text-primary tnum">
-                      {formatMoney(weighted)}
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="text-[12.5px] font-semibold text-text-primary tnum">
+                        {formatMoney(weighted)}
+                      </span>
+                      <span className="text-[9.5px] text-text-tertiary tnum">
+                        {contribution}% of commit
+                      </span>
                     </span>
                     <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-surface">
                       <span
                         className="block h-full rounded-full bg-blue-primary"
-                        style={{ width: `${Math.max(contribution, 3)}%` }}
+                        style={{ width: `${Math.max(barPct, 3)}%` }}
                       />
                     </span>
                   </span>
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-1 text-[10.5px] text-text-secondary">
-                      <Clock3 size={11} className="shrink-0 text-text-tertiary" />
-                      {formatDateTime(deal.lastActivity)}
+                  {/* Date over time over staleness — one narrow stack instead
+                      of a wide one-liner (Anir: "would have saved a lot of
+                      space"). */}
+                  <span className="min-w-0 text-[10.5px] leading-snug">
+                    <span className="block text-text-secondary tnum">
+                      {new Date(deal.lastActivity).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <span className="block text-text-tertiary tnum">
+                      {new Date(deal.lastActivity).toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
                     </span>
                     <span
                       className={`mt-0.5 block text-[9.5px] font-medium ${

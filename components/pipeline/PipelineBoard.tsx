@@ -13,6 +13,12 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Sparkles,
+  Layers,
+  UserRound,
+  Building,
+  Building2,
+  Bookmark,
+  type LucideIcon,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SizeBadge, SIZE_TIER_META } from "@/components/ui/Badge";
@@ -45,6 +51,16 @@ const BUILTIN_VIEWS: SavedView[] = [
   { name: "Large deals", q: "", size: "large", mine: false },
   { name: "Mid-market", q: "", size: "mid", mine: false },
 ];
+
+// Colour + icon per view, same standard as every ColorSelect menu — the
+// plain-text list read as unfinished next to the rest of the app (Anir:
+// "make this dropdown a little good, please, like the rest").
+const VIEW_META: Record<string, { color: string; icon: LucideIcon }> = {
+  "All deals": { color: "#0071E3", icon: Layers },
+  "My deals": { color: "#7C3AED", icon: UserRound },
+  "Large deals": { color: "#047857", icon: Building2 },
+  "Mid-market": { color: "#0891B2", icon: Building },
+};
 
 const SIZE_FILTERS = [
   { key: "all", label: "All" },
@@ -341,16 +357,26 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 <p className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                   Built-in
                 </p>
-                {BUILTIN_VIEWS.map((v) => (
-                  <button
-                    key={v.name}
-                    role="menuitem"
-                    onClick={() => applyView(v)}
-                    className="w-full text-left px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
-                  >
-                    {v.name}
-                  </button>
-                ))}
+                {BUILTIN_VIEWS.map((v) => {
+                  const meta = VIEW_META[v.name] ?? { color: "#0071E3", icon: Layers };
+                  const ViewIcon = meta.icon;
+                  return (
+                    <button
+                      key={v.name}
+                      role="menuitem"
+                      onClick={() => applyView(v)}
+                      className="w-full flex items-center gap-2.5 text-left px-2.5 py-2 rounded-lg text-[13px] font-medium text-text-primary hover:bg-surface transition-colors"
+                    >
+                      <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+                        style={{ color: meta.color, background: `${meta.color}14` }}
+                      >
+                        <ViewIcon size={13} strokeWidth={2} />
+                      </span>
+                      {v.name}
+                    </button>
+                  );
+                })}
                 {savedViews.length > 0 && (
                   <>
                     <div className="h-px bg-border-light my-1" />
@@ -362,8 +388,11 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                         key={v.name}
                         role="menuitem"
                         onClick={() => applyView(v)}
-                        className="w-full text-left px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
+                        className="w-full flex items-center gap-2.5 text-left px-2.5 py-2 rounded-lg text-[13px] font-medium text-text-primary hover:bg-surface transition-colors"
                       >
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                          <Bookmark size={13} strokeWidth={2} />
+                        </span>
                         {v.name}
                       </button>
                     ))}

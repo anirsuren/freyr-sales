@@ -102,7 +102,14 @@ function TagPill({
 // The Sales materials list with the three multi-select filters (CR-2): file
 // format, buyer's-journey stage, and access level. Within a filter the picks
 // OR together; across filters they AND. No selection in a filter = show all.
-export function MaterialsSection({ materials }: { materials: OfferingMaterial[] }) {
+export function MaterialsSection({
+  materials,
+  action,
+}: {
+  materials: OfferingMaterial[];
+  /** Rendered at the right end of the filter row (the "+" add button). */
+  action?: React.ReactNode;
+}) {
   const [format, setFormat] = useState("");
   const [stage, setStage] = useState("");
   const [level, setLevel] = useState("");
@@ -173,6 +180,9 @@ export function MaterialsSection({ materials }: { materials: OfferingMaterial[] 
             })),
           ]}
         />
+        {/* Add lives on the same row as the filters (Anir: "put this filter
+            inline with the add button"). */}
+        {action && <div className="ml-auto">{action}</div>}
       </div>
 
       {/* Live count + one-click reset */}

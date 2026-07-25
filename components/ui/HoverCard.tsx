@@ -23,6 +23,7 @@ export function HoverCard({
   className,
   delayMs: delayOverride,
   anchor = "trigger",
+  clearAncestor,
 }: {
   children: React.ReactNode;
   content: React.ReactNode;
@@ -35,6 +36,10 @@ export function HoverCard({
   // Wide rows should open beside the pointer. Centering on a full-width row
   // can put the card hundreds of pixels away from what the user hovered.
   anchor?: "trigger" | "cursor";
+  /** CSS selector for an ancestor the popover must fully clear on top/bottom
+   *  placement. Charts pass their plot container so the card never lands on
+   *  the numbers (Anir: "it shouldn't cover the number ever"). */
+  clearAncestor?: string;
 }) {
   const [pos, setPos] = useState<{
     left: number;
@@ -89,12 +94,18 @@ export function HoverCard({
 
     // Center on the trigger, clamped inside the viewport.
     const left = Math.max(8, Math.min(vw - width - 8, r.left + r.width / 2 - width / 2));
+    // When a clear ancestor is named, the popover must sit fully above or
+    // below THAT box (the whole chart incl. its value labels), not just the
+    // hovered bar — so it can never cover the chart's numbers.
+    const clearRect = clearAncestor
+      ? el.closest(clearAncestor)?.getBoundingClientRect() ?? r
+      : r;
     // Honor the requested side, but flip when there's clearly no room.
-    const below = vh - r.bottom;
-    const above = r.top;
+    const below = vh - clearRect.bottom;
+    const above = clearRect.top;
     const wantBottom = side === "bottom" ? below >= 260 || below >= above : below > above && above < 260;
-    if (wantBottom) setPos({ left, top: r.bottom, placement: "bottom" });
-    else setPos({ left, bottom: vh - r.top, placement: "top" });
+    if (wantBottom) setPos({ left, top: clearRect.bottom + 6, placement: "bottom" });
+    else setPos({ left, bottom: vh - clearRect.top + 6, placement: "top" });
   }
 
   function show() {

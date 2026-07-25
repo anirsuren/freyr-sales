@@ -224,6 +224,7 @@ export function CustomerTabs({
     customer.attachments || []
   );
   const [attName, setAttName] = useState("");
+  const [attModalOpen, setAttModalOpen] = useState(false);
   const [attUrl, setAttUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
@@ -759,13 +760,14 @@ export function CustomerTabs({
                 {outcomeMix.length > 0 ? (
                   <div className="flex-1 flex items-center gap-5">
                     <DonutChart
+                      syncId="cust-outcomes-overview"
                       segments={outcomeMix}
                       size={140}
                       thickness={15}
                       centerLabel={String(interactions.length)}
                       centerSub="touches"
                     />
-                    <DonutLegend items={outcomeMix} />
+                    <DonutLegend items={outcomeMix} syncId="cust-outcomes-overview" />
                   </div>
                 ) : (
                   <div className="flex flex-1 flex-col items-center justify-center gap-2.5 rounded-md border border-dashed border-border bg-surface/45 px-6 py-8 text-center">
@@ -1089,6 +1091,7 @@ export function CustomerTabs({
                       {dealsByStage.length > 0 ? (
                         <div className="flex-1 flex items-center gap-4">
                           <DonutChart
+                            syncId="cust-deals-stage"
                             segments={dealsByStage.map((s) => ({ label: s.label, value: s.value, color: s.color, tip: s.tip }))}
                             size={132}
                             thickness={14}
@@ -1097,6 +1100,7 @@ export function CustomerTabs({
                             format="money"
                           />
                           <DonutLegend
+                            syncId="cust-deals-stage"
                             items={dealsByStage.map((s) => ({ label: s.label, value: s.value, color: s.color }))}
                             format="money"
                           />
@@ -1115,13 +1119,14 @@ export function CustomerTabs({
                       {outcomeMix.length > 0 ? (
                         <div className="flex-1 flex items-center gap-4">
                           <DonutChart
+                            syncId="cust-outcomes-analytics"
                             segments={outcomeMix}
                             size={132}
                             thickness={14}
                             centerLabel={String(interactions.length)}
                             centerSub="touches"
                           />
-                          <DonutLegend items={outcomeMix} />
+                          <DonutLegend items={outcomeMix} syncId="cust-outcomes-analytics" />
                         </div>
                       ) : (
                         <p className="flex-1 flex items-center text-[13px] text-text-tertiary">
@@ -1517,14 +1522,65 @@ export function CustomerTabs({
                   Call summaries, next steps, and internal context.
                 </p>
               </div>
-              <Button
-                onClick={() => setNoteModalOpen(true)}
-                className="px-3.5 py-2 text-[13px] shrink-0"
-              >
-                <Plus size={15} strokeWidth={2.2} />
-                Add note
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Attach is a button + popup, same as Add note — the
+                    always-open paste-a-link form read as clutter (Anir:
+                    "I would probably just have a button for that"). */}
+                <Button
+                  variant="secondary"
+                  onClick={() => setAttModalOpen(true)}
+                  className="px-3.5 py-2 text-[13px]"
+                >
+                  <Paperclip size={14} strokeWidth={1.8} />
+                  Attach
+                </Button>
+                <Button
+                  onClick={() => setNoteModalOpen(true)}
+                  className="px-3.5 py-2 text-[13px]"
+                >
+                  <Plus size={15} strokeWidth={2.2} />
+                  Add note
+                </Button>
+              </div>
             </div>
+
+            <Modal
+              open={attModalOpen}
+              onClose={() => setAttModalOpen(false)}
+              title="Attach a document"
+            >
+              <div className="space-y-3">
+                <p className="text-[12.5px] text-text-secondary">
+                  Paste a link to a document or reference (e.g. a contract or deck).
+                </p>
+                <input
+                  value={attName}
+                  onChange={(e) => setAttName(e.target.value)}
+                  placeholder="Name (e.g. MSA draft)"
+                  className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+                />
+                <input
+                  value={attUrl}
+                  onChange={(e) => setAttUrl(e.target.value)}
+                  placeholder="https://… (optional)"
+                  className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={async () => {
+                      await addAttachment();
+                      setAttModalOpen(false);
+                    }}
+                    loading={busy}
+                    disabled={!attName.trim()}
+                    className="px-4 py-2 text-[13px]"
+                  >
+                    <Paperclip size={15} strokeWidth={1.8} />
+                    Attach
+                  </Button>
+                </div>
+              </div>
+            </Modal>
 
             {notes.length === 0 ? (
               <Card className="py-10 flex flex-col items-center text-center">
@@ -1704,33 +1760,11 @@ export function CustomerTabs({
               <h3 className="text-[15px] font-semibold text-text-primary mb-1">
                 Attachments
               </h3>
-              <p className="text-[12px] text-text-tertiary mb-3">
-                Paste a link to a document or reference (e.g. a contract or deck).
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  value={attName}
-                  onChange={(e) => setAttName(e.target.value)}
-                  placeholder="Name (e.g. MSA draft)"
-                  className="flex-1 bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-                />
-                <input
-                  value={attUrl}
-                  onChange={(e) => setAttUrl(e.target.value)}
-                  placeholder="https://… (optional)"
-                  className="flex-1 bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-                />
-                <Button
-                  onClick={addAttachment}
-                  loading={busy}
-                  disabled={!attName.trim()}
-                  variant="secondary"
-                  className="px-3 py-2 text-[13px]"
-                >
-                  <Paperclip size={15} strokeWidth={1.8} />
-                  Attach
-                </Button>
-              </div>
+              {atts.length === 0 && (
+                <p className="text-[12px] text-text-tertiary">
+                  Nothing attached yet — use the Attach button above.
+                </p>
+              )}
               {atts.length > 0 && (
                 <ul className="mt-4 divide-y divide-border-light">
                   {atts.map((a) => (

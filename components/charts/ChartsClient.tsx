@@ -372,7 +372,7 @@ export function AreaChart({
 
   return (
     <div
-      className={cn("relative w-full", className)}
+      className={cn("relative w-full cursor-pointer", className)}
       style={{ height }}
       onMouseMove={onMove}
       onMouseLeave={() => {
@@ -555,6 +555,39 @@ export function AreaChart({
  */
 const SEGMENT_GAP = 2;
 
+// ---------------------------------------------------------------------------
+// Donut <-> legend linked hover. The chart and its legend are usually siblings
+// rendered from a SERVER component, so they can't share React state through a
+// parent. Instead both sides subscribe to a tiny module-level bus keyed by a
+// shared `syncId` string: hovering a legend row lights the matching slice, and
+// hovering a slice lights the row (Anir: "when I hover over the horizontal
+// bars, the green pie chart should also hover — they're interconnected").
+const donutSyncBus = new Map<string, Set<(i: number | null) => void>>();
+
+function donutSyncSubscribe(id: string, fn: (i: number | null) => void) {
+  let set = donutSyncBus.get(id);
+  if (!set) donutSyncBus.set(id, (set = new Set()));
+  set.add(fn);
+  return () => {
+    set!.delete(fn);
+    if (!set!.size) donutSyncBus.delete(id);
+  };
+}
+
+function donutSyncBroadcast(id: string, i: number | null) {
+  donutSyncBus.get(id)?.forEach((fn) => fn(i));
+}
+
+/** Subscribe to a sync channel; returns the currently-lit index. */
+function useDonutSync(syncId: string | undefined): number | null {
+  const [linked, setLinked] = useState<number | null>(null);
+  useEffect(() => {
+    if (!syncId) return;
+    return donutSyncSubscribe(syncId, setLinked);
+  }, [syncId]);
+  return syncId ? linked : null;
+}
+
 export function DonutChart({
   segments,
   size = 150,
@@ -562,6 +595,7 @@ export function DonutChart({
   centerLabel,
   centerSub,
   format,
+  syncId,
 }: {
   segments: {
     label: string;
@@ -574,8 +608,13 @@ export function DonutChart({
   centerLabel?: string;
   centerSub?: string;
   format?: Fmt;
+  /** Same string on this donut and its DonutLegend links their hovers. */
+  syncId?: string;
 }) {
   const { hover, show: showHover, clear: clearHover } = useChartHover();
+  const linked = useDonutSync(syncId);
+  // A slice is "lit" when the mouse is on it OR its legend row is hovered.
+  const lit = hover ?? linked;
   const [mouse, setMouse] = useState<ChartAnchor | null>(null);
   const rawTotal = segments.reduce((s, x) => s + x.value, 0);
   const total = rawTotal || 1;
@@ -653,24 +692,27 @@ export function DonutChart({
                 r={r}
                 fill="none"
                 stroke={s.color}
-                strokeWidth={hover === i ? hoverStroke : thickness}
+                strokeWidth={lit === i ? hoverStroke : thickness}
+                opacity={lit === null || lit === i ? 1 : 0.35}
                 strokeDasharray={fullCircle ? undefined : `${len} ${Math.max(0, c - len)}`}
                 strokeDashoffset={fullCircle ? undefined : -offset}
                 strokeLinecap="butt"
                 onMouseEnter={(e) => {
                   showHover(i);
                   positionTip(e);
+                  if (syncId) donutSyncBroadcast(syncId, i);
                 }}
                 onMouseMove={positionTip}
                 onMouseLeave={() => {
                   clearHover();
                   setMouse(null);
+                  if (syncId) donutSyncBroadcast(syncId, null);
                 }}
                 style={{
                   cursor: "pointer",
                   // Keep the arc geometry stable. Animating dash lengths caused
                   // square notches at segment endpoints as the sweep completed.
-                  transition: "stroke-width 120ms ease",
+                  transition: "stroke-width 120ms ease, opacity 150ms ease",
                 }}
               />
             );
@@ -795,7 +837,7 @@ export function BarChart({
       {data.map((d, i) => (
         <div
           key={i}
-          className="group/bar relative z-[1] flex h-full min-w-0 flex-col items-center rounded-md transition-colors hover:bg-surface/45"
+          className="group/bar relative z-[1] flex h-full min-w-0 cursor-pointer flex-col items-center rounded-md transition-colors hover:bg-surface/45"
           onMouseEnter={(e) => {
             showHover(i);
             setMouse(pointerAnchor(e));
@@ -913,7 +955,7 @@ export function LineChart({
 
   return (
     <div
-      className={cn("relative w-full", className)}
+      className={cn("relative w-full cursor-pointer", className)}
       onMouseMove={onMove}
       onMouseLeave={() => { clearHover(); setMouse(null); }}
     >
@@ -1129,7 +1171,7 @@ export function Sparkline({
 
   return (
     <div
-      className="relative w-full"
+      className={interactive ? "relative w-full cursor-pointer" : "relative w-full"}
       style={{ height }}
       onMouseMove={interactive ? onMove : undefined}
       onMouseLeave={interactive ? () => { clearHover(); setMouse(null); } : undefined}
@@ -1200,38 +1242,89 @@ export function DonutLegend({
   total,
   format,
   className,
+  syncId,
+  bars = true,
+  pill = false,
 }: {
   items: { label: string; color: string; value: number }[];
   total?: number;
   format?: Fmt;
   className?: string;
+  /** Same string on this legend and its DonutChart links their hovers. */
+  syncId?: string;
+  /** Hide the per-row share bar — for panels where a table right beside
+   *  already draws the same bar (Anir: "you don't have to show the progress
+   *  bar twice"). */
+  bars?: boolean;
+  /** Label as a colour-tinted tag instead of dot + plain text. */
+  pill?: boolean;
 }) {
   const sum = (total ?? items.reduce((s, x) => s + x.value, 0)) || 1;
+  const linked = useDonutSync(syncId);
   return (
-    <div className={cn("flex-1 min-w-0 space-y-2.5", className)}>
-      {items.map((it) => {
+    // One shared grid: label/value/% columns size to their widest row, so
+    // every share bar starts at the same x (Anir: "the bars have to be
+    // aligned — it doesn't make sense for them not to be").
+    <div
+      className={cn(
+        "flex-1 min-w-0 grid items-center gap-x-2 gap-y-1",
+        bars
+          ? "grid-cols-[auto_minmax(0,1fr)_auto_auto_minmax(44px,1.1fr)]"
+          : "grid-cols-[auto_minmax(0,1fr)_auto_auto]",
+        className
+      )}
+    >
+      {items.map((it, i) => {
         const pct = Math.round((it.value / sum) * 100);
         return (
-          <div key={it.label} className="flex items-center gap-2 text-[12.5px]">
-            <span
-              className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{ background: it.color }}
-            />
-            {/* Never truncate the label — a "Prosp…" tag is useless (Suren).
-                The share bar (flex-1) yields space instead. */}
-            <span className="text-text-secondary whitespace-nowrap shrink-0">{it.label}</span>
-            <span className="font-semibold text-text-primary tnum shrink-0">
+          <div
+            key={it.label}
+            onMouseEnter={syncId ? () => donutSyncBroadcast(syncId, i) : undefined}
+            onMouseLeave={syncId ? () => donutSyncBroadcast(syncId, null) : undefined}
+            className={cn(
+              "col-span-full grid grid-cols-subgrid items-center rounded-md px-1.5 py-[3px] text-[12.5px] transition-colors",
+              syncId && "cursor-pointer",
+              linked === i && "bg-surface"
+            )}
+          >
+            {pill ? (
+              // The coloured company tag (Anir: "you just need to show the
+              // tag — the blue and yellow tag that has the company name").
+              <span
+                className="col-span-2 inline-flex min-w-0 items-center gap-1.5 justify-self-start rounded-full px-2.5 py-1 text-[12px] font-semibold"
+                style={{ color: it.color, background: `${it.color}1A` }}
+              >
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: it.color }}
+                />
+                <span className="min-w-0 break-normal">{it.label}</span>
+              </span>
+            ) : (
+              <>
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ background: it.color }}
+                />
+                {/* Never truncate OR clip the label (Suren) — long names wrap
+                    at spaces; the share bar (flex-1) yields the rest. */}
+                <span className="text-text-secondary min-w-0 break-normal">{it.label}</span>
+              </>
+            )}
+            <span className="justify-self-end font-semibold text-text-primary tnum">
               {format ? fmt(format, it.value) : it.value}
             </span>
-            <span className="text-text-tertiary tnum text-[11px] shrink-0">
+            <span className="justify-self-end text-text-tertiary tnum text-[11px]">
               {pct}%
             </span>
-            <span className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden ml-1 min-w-[12px]">
-              <span
-                className="block h-full rounded-full transition-all"
-                style={{ width: `${Math.max(pct, 3)}%`, background: it.color }}
-              />
-            </span>
+            {bars && (
+              <span className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
+                <span
+                  className="block h-full rounded-full transition-all"
+                  style={{ width: `${Math.max(pct, 3)}%`, background: it.color }}
+                />
+              </span>
+            )}
           </div>
         );
       })}
