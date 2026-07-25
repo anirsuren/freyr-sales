@@ -757,14 +757,14 @@ export function OfferingsBrowser({
                       <td className="px-4 py-3">
                         {o.offering_category && catColor ? (
                           <span
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                            className="inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-0.5 text-[11.5px] font-semibold leading-snug"
                             style={{ color: catColor, background: `${catColor}14` }}
                           >
                             <span
-                              className="h-1.5 w-1.5 rounded-full"
+                              className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
                               style={{ background: catColor }}
                             />
-                            {o.offering_category}
+                            <span className="min-w-0">{o.offering_category}</span>
                           </span>
                         ) : (
                           <span className="text-text-secondary">{o.offering_category || "—"}</span>
@@ -773,14 +773,14 @@ export function OfferingsBrowser({
                       <td className="px-4 py-3">
                         {o.offering_type && typeColor ? (
                           <span
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                            className="inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-0.5 text-[11.5px] font-semibold leading-snug"
                             style={{ color: typeColor, background: `${typeColor}14` }}
                           >
                             <span
-                              className="h-1.5 w-1.5 rounded-full"
+                              className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
                               style={{ background: typeColor }}
                             />
-                            {o.offering_type}
+                            <span className="min-w-0">{o.offering_type}</span>
                           </span>
                         ) : (
                           <span className="text-text-secondary">{o.offering_type || "—"}</span>
