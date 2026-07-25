@@ -65,8 +65,18 @@ export async function POST(request: NextRequest) {
     },
   });
   if (error) {
+    // Supabase Auth runs a before-user-created hook that refuses addresses
+    // which are neither on an approved company domain nor invited. Say so:
+    // "try again shortly" sent people back to retry something that could never
+    // succeed. The hook keeps malformed, uninvited, expired, and revoked
+    // addresses indistinguishable, so this leaks nothing about who exists.
+    const blockedBySignupPolicy = error.status === 403;
     return json(
-      { error: "We could not create that account. Try again shortly." },
+      {
+        error: blockedBySignupPolicy
+          ? "That address can't create an account here. Use your company email, or ask a workspace owner to invite you."
+          : "We could not create that account. Try again shortly.",
+      },
       error.status && error.status >= 400 && error.status < 500
         ? error.status
         : 502

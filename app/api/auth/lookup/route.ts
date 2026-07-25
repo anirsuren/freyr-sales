@@ -18,8 +18,18 @@ import { isAutoApprovedEmail, normalizeAuthEmail } from "@/lib/authEmailPolicy";
  */
 type Step = "password" | "activate" | "invite-only";
 
-/** Storage budget for the whole lookup. Past this we answer from the address. */
-const LOOKUP_TIMEOUT_MS = 2500;
+/** Per-query storage budget. Past this we answer from the address alone. */
+const LOOKUP_TIMEOUT_MS = 4000;
+
+/** Rejects if a single storage round trip outruns its budget. */
+function withDeadline<T>(work: PromiseLike<T>): Promise<T> {
+  return Promise.race([
+    work,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("lookup timed out")), LOOKUP_TIMEOUT_MS)
+    ),
+  ]);
+}
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
@@ -70,20 +80,15 @@ export async function POST(request: NextRequest) {
   // The front door must answer quickly. If storage is slow or unreachable we
   // fall back to the address-only decision rather than leaving someone
   // watching a spinner — they can always still reach the password step.
-  const deadline = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("lookup timed out")), LOOKUP_TIMEOUT_MS)
-  );
-
   try {
-    const existing = await Promise.race([
+    const existing = await withDeadline(
       client
         .from("app_users")
         .select("id, display_name")
         .eq("email", email)
         .limit(1)
-        .maybeSingle(),
-      deadline,
-    ]);
+        .maybeSingle()
+    );
     if (existing.error) throw new Error(existing.error.message);
 
     if (existing.data?.id) {
@@ -99,16 +104,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Outside the company domain: only a live invitation opens the door.
-    const invitation = await Promise.race([
+    const invitation = await withDeadline(
       client
         .from("workspace_invitations")
         .select("display_name, status, expires_at")
         .eq("email", email)
         .eq("status", "pending")
         .limit(1)
-        .maybeSingle(),
-      deadline,
-    ]);
+        .maybeSingle()
+    );
     if (invitation.error) throw new Error(invitation.error.message);
 
     const invited =
