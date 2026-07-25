@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
 import { authUrl } from "@/lib/authOrigin";
+import { ensureCompanyDomainInvitation } from "@/lib/accessStore";
 
 type RegistrationRequest = {
   email?: string;
@@ -45,6 +46,17 @@ export async function POST(request: NextRequest) {
   }
   if (password.length < 8 || password.length > 128) {
     return json({ error: "Use a password between 8 and 128 characters." }, 400);
+  }
+
+  // Supabase Auth refuses to create an identity without a live invitation
+  // (migration 009), which predates company-domain auto-join. Record the
+  // entitlement the domain policy already implies before asking Auth to create
+  // the account, so a colleague is not rejected by a rule the product does not
+  // apply to them. Never fatal: if this fails, signUp reports the real problem.
+  try {
+    await ensureCompanyDomainInvitation(email, name);
+  } catch {
+    // Fall through — the signup attempt below surfaces the actionable error.
   }
 
   const supabase = createClient(url, anonKey, {

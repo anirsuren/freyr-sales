@@ -512,6 +512,68 @@ export async function inviteWorkspaceUser(
   return { email, expiresAt, emailResult };
 }
 
+/**
+ * Supabase Auth runs a before-user-created hook (migration 009) that refuses to
+ * create an identity unless a live invitation exists for the address. That hook
+ * predates company-domain auto-join, so a colleague the application happily
+ * admits was still rejected by the database with a bare 403.
+ *
+ * Rather than require a hand-applied schema change, record the invitation the
+ * domain policy already implies: if this address is on an approved company
+ * domain, it is entitled to join, so the server writes that entitlement down
+ * before signup. Nothing is granted that `resolveWorkspaceAccess` would not
+ * grant anyway, and the person still has to control the mailbox — Supabase
+ * emails a confirmation link before the account can sign in.
+ *
+ * Returns false for any address the domain policy does not cover; those still
+ * need a real invitation from a workspace owner.
+ */
+export async function ensureCompanyDomainInvitation(
+  emailValue: string,
+  nameValue: string
+): Promise<boolean> {
+  const email = normalizedEmail(emailValue);
+  if (!email || !isAutoApprovedEmail(email)) return false;
+
+  const client = adminClient();
+  const workspace = await workspaceId(client);
+
+  // Never overwrite a real invitation: a workspace owner may have invited this
+  // person as an editor or admin, and an upsert would silently demote them.
+  const existing = await client
+    .from("workspace_invitations")
+    .select("id, status, expires_at")
+    .eq("workspace_id", workspace)
+    .eq("email", email)
+    .maybeSingle();
+  if (existing.error) throw new Error(existing.error.message);
+  const live =
+    existing.data?.status === "pending" &&
+    !!existing.data.expires_at &&
+    new Date(existing.data.expires_at).getTime() > Date.now();
+  if (live) return true;
+
+  const name = nameValue.trim().replace(/\s+/g, " ").slice(0, 120);
+  const result = await client.from("workspace_invitations").upsert(
+    {
+      workspace_id: workspace,
+      display_name: name || email.slice(0, email.indexOf("@")),
+      email,
+      app_role: "sales" satisfies WorkspaceRole,
+      status: "pending",
+      invited_by: null,
+      accepted_by: null,
+      accepted_at: null,
+      // Short-lived on purpose: this stands in for the signup about to happen,
+      // not a standing invitation someone can sit on.
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+    },
+    { onConflict: "workspace_id,email" }
+  );
+  if (result.error) throw new Error(result.error.message);
+  return true;
+}
+
 export async function reviewAccessRequest(
   workspace: string,
   actorId: string,
