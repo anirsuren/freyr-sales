@@ -724,10 +724,37 @@ export function answerAgentChat(
   if (/\b(pipeline|forecast|open value|worth|how much|revenue|quota|deal value|in play|booked)\b/.test(m)) {
     const weighted = Math.round(openValue * 0.45);
     const top = topDeals.slice(0, 3).map((d) => `• ${acctLink(d.company, d.customerId)} — ${formatMoney(d.value)} (${d.stage})`);
+    // A real chart in the answer — the chat renders ```chart specs with the
+    // app's own components, so "what's my pipeline worth" SHOWS the shape of
+    // the number instead of only stating it.
+    const STAGE_CHART_COLOR: Record<string, string> = {
+      Prospect: "#F59E0B",
+      Engaged: "#0071E3",
+      Qualified: "#7C3AED",
+      "Meeting Booked": "#059669",
+    };
+    const byStage = ["Prospect", "Engaged", "Qualified", "Meeting Booked"]
+      .map((stage) => ({
+        label: stage.replace("Meeting Booked", "Meeting"),
+        value: open
+          .filter((d) => d.stage === stage)
+          .reduce((sum, d) => sum + d.value, 0),
+        color: STAGE_CHART_COLOR[stage],
+      }))
+      .filter((entry) => entry.value > 0);
+    const chart =
+      byStage.length > 1
+        ? `\n\n\`\`\`chart\n${JSON.stringify({
+            type: "bar",
+            title: "Open pipeline by stage",
+            format: "money",
+            data: byStage,
+          })}\n\`\`\``
+        : "";
     return {
       text:
         `You've got ${open.length} open deal${open.length === 1 ? "" : "s"} worth ${formatMoney(openValue)} (roughly ${formatMoney(weighted)} weighted by stage). ` +
-        `${cooling.length} ${cooling.length === 1 ? "is" : "are"} cooling and ${atRisk.length} account${atRisk.length === 1 ? " is" : "s are"} at-risk.\n\nBiggest open deals:\n${top.join("\n")}`,
+        `${cooling.length} ${cooling.length === 1 ? "is" : "are"} cooling and ${atRisk.length} account${atRisk.length === 1 ? " is" : "s are"} at-risk.\n\nBiggest open deals:\n${top.join("\n")}${chart}`,
       suggestions: ["Which deals are cooling?", "What are my biggest deals?", "What should I focus on today?"],
     };
   }

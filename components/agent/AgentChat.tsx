@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
+import { VIZ_SERIES } from "@/components/charts/palette";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
@@ -123,6 +125,77 @@ function renderInline(s: string, keyBase: string): ReactNode[] {
   return nodes;
 }
 
+type ChartSpec = {
+  type: "bar" | "donut" | "area";
+  title?: string;
+  unit?: string;
+  format?: "money" | "number" | "percent";
+  data: { label: string; value: number; color?: string }[];
+  center?: { label: string; sub?: string };
+};
+
+/** Parse a ```chart fenced block. Returns null on anything malformed — a chat
+ * message must never crash on a bad spec, it just renders without the chart. */
+function parseChartSpec(raw: string): ChartSpec | null {
+  try {
+    const spec = JSON.parse(raw) as ChartSpec;
+    if (!spec || !Array.isArray(spec.data) || spec.data.length === 0) return null;
+    if (spec.type !== "bar" && spec.type !== "donut" && spec.type !== "area") return null;
+    if (!spec.data.every((d) => typeof d.label === "string" && Number.isFinite(d.value)))
+      return null;
+    return spec;
+  } catch {
+    return null;
+  }
+}
+
+// A chart IN the conversation — the same polished components every page uses
+// (animated, portal-tooltipped, unit-labelled), not a hand-rolled sketch
+// (Anir, Jul 25: "really good visualizations, not vibe-coded slop"). The
+// agent emits a small JSON spec; anything malformed renders as nothing.
+function ChatChart({ spec }: { spec: ChartSpec }) {
+  const series = spec.data.map((d, i) => ({
+    label: d.label,
+    value: d.value,
+    color: d.color || VIZ_SERIES[i % VIZ_SERIES.length],
+  }));
+  const total = series.reduce((sum, d) => sum + d.value, 0);
+  return (
+    <div className="my-2.5 rounded-xl border border-border-light bg-white px-4 py-3.5">
+      {spec.title && (
+        <p className="mb-2.5 text-[12.5px] font-semibold text-text-primary">
+          {spec.title}
+        </p>
+      )}
+      {spec.type === "bar" && (
+        <BarChart data={series} height={170} format={spec.format || "number"} unit={spec.unit} />
+      )}
+      {spec.type === "donut" && (
+        <div className="flex items-center gap-5">
+          <DonutChart
+            segments={series}
+            size={124}
+            thickness={14}
+            centerLabel={spec.center?.label ?? String(total)}
+            centerSub={spec.center?.sub}
+          />
+          <DonutLegend items={series} total={total} />
+        </div>
+      )}
+      {spec.type === "area" && (
+        <AreaChart
+          data={series.map((d) => d.value)}
+          height={150}
+          format={spec.format || "number"}
+          unit={spec.unit}
+          xLabels={series.map((d) => d.label)}
+          className="w-full"
+        />
+      )}
+    </div>
+  );
+}
+
 function MarkdownText({ text }: { text: string }) {
   const lines = text.split("\n");
   const blocks: ReactNode[] = [];
@@ -139,23 +212,111 @@ function MarkdownText({ text }: { text: string }) {
       </ul>
     );
   };
-  lines.forEach((line, i) => {
+
+  const isTableRow = (l: string) => /^\s*\|.*\|\s*$/.test(l);
+  const isTableSep = (l: string) => /^\s*\|[\s\-:|]+\|\s*$/.test(l);
+  const splitRow = (l: string) =>
+    l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // ```chart fenced block → a real chart. An unclosed fence means the
+    // typewriter is mid-reveal — hide it until it finishes rather than
+    // flashing raw JSON.
+    const fence = line.trim().match(/^```(\w*)\s*$/);
+    if (fence) {
+      flush(`ul-${i}`);
+      let j = i + 1;
+      const body: string[] = [];
+      while (j < lines.length && !/^```\s*$/.test(lines[j].trim())) {
+        body.push(lines[j]);
+        j++;
+      }
+      const closed = j < lines.length;
+      if (!closed) break; // streaming: wait for the closing fence
+      if (fence[1] === "chart") {
+        const spec = parseChartSpec(body.join("\n"));
+        if (spec) blocks.push(<ChatChart key={`ch-${i}`} spec={spec} />);
+      } else {
+        blocks.push(
+          <pre
+            key={`code-${i}`}
+            className="my-2 overflow-x-auto rounded-lg bg-surface px-3 py-2 text-[12px] leading-relaxed"
+          >
+            {body.join("\n")}
+          </pre>
+        );
+      }
+      i = j + 1;
+      continue;
+    }
+
+    // Markdown table → a real table, cells still through renderInline so the
+    // company/contact pills keep working inside it (Anir: "make sure I can do
+    // tables… I like the tag for the company").
+    if (isTableRow(line) && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      flush(`ul-${i}`);
+      const header = splitRow(line);
+      const rows: string[][] = [];
+      let j = i + 2;
+      while (j < lines.length && isTableRow(lines[j])) {
+        rows.push(splitRow(lines[j]));
+        j++;
+      }
+      blocks.push(
+        <div key={`tbl-${i}`} className="my-2 overflow-x-auto rounded-lg border border-border-light">
+          <table className="w-full border-collapse text-[12.5px]">
+            <thead>
+              <tr className="bg-surface/70">
+                {header.map((h, hi) => (
+                  <th
+                    key={hi}
+                    className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary"
+                  >
+                    {renderInline(h, `th-${i}-${hi}`)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, ri) => (
+                <tr key={ri} className="border-t border-border-light">
+                  {r.map((c, ci) => (
+                    <td key={ci} className="px-3 py-2 align-middle">
+                      {renderInline(c, `td-${i}-${ri}-${ci}`)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      i = j;
+      continue;
+    }
+
     const bullet = line.match(/^\s*[-*•]\s+(.*)$/);
     if (bullet) {
       bullets.push(bullet[1]);
-      return;
+      i++;
+      continue;
     }
     flush(`ul-${i}`);
     if (line.trim() === "") {
       blocks.push(<div key={`sp-${i}`} className="h-2.5" />);
-      return;
+      i++;
+      continue;
     }
     blocks.push(
       <p key={`p-${i}`} className="whitespace-pre-wrap">
         {renderInline(line, `p-${i}`)}
       </p>
     );
-  });
+    i++;
+  }
   flush("ul-end");
   return <>{blocks}</>;
 }

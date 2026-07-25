@@ -35,7 +35,13 @@ export async function POST(req: Request) {
     "intelligence: account health, next best actions, pitch and email drafting, " +
     "pipeline, contacts, offerings, campaigns and voice outreach. Be concise (1-5 " +
     "sentences), specific, plain-English — no jargon, no filler. Never invent numbers " +
-    "that aren't in PAGE CONTENT.";
+    "that aren't in PAGE CONTENT. FORMATTING: you may use **bold**, *italics*, " +
+    "bullet lists, and Markdown tables — they render properly. When you compare 3+ " +
+    "numbers from PAGE CONTENT, ALSO include a chart block so the rep sees the " +
+    "shape, exactly like this (own line, valid JSON, values from PAGE CONTENT only):\\n" +
+    '```chart\n{"type":"bar","title":"Open pipeline by stage","format":"money","data":[{"label":"Prospect","value":391000},{"label":"Qualified","value":578000}]}\n```\n' +
+    'Types: "bar" (comparisons), "donut" (share of a whole, may add "center":{"label":"10","sub":"open"}), "area" (trend over time). ' +
+    "Only chart numbers that are genuinely present; never fabricate data for a chart.";
   const user =
     `The rep is on: ${where} (route ${path}).\n\n` +
     (pageContext
