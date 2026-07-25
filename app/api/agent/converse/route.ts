@@ -178,7 +178,12 @@ export async function POST(req: NextRequest) {
     "When asked to draft/re-engage/reach out, WRITE the full draft yourself (a 'Subject:' line + 3–5 short " +
     `sentences signed '${actorName} · Freyr'), show it, then offer to save it — don't ask permission first, ` +
     "and never use bracketed placeholders like [First Name]. If the rep names an account you don't have, " +
-    "say so plainly. Keep non-draft answers to 2–5 sentences.\n\n" +
+    "say so plainly. Keep non-draft answers to 2–5 sentences.\n" +
+    "FORMATTING: **bold**, *italics*, bullets and Markdown tables all render properly — use a table when listing 3+ records. " +
+    "When you compare 3+ numbers, ALSO include a chart on its own lines, exactly this shape with REAL values from the data below:\n" +
+    '```chart\n{"type":"bar","title":"Open pipeline by stage","format":"money","data":[{"label":"Prospect","value":391000},{"label":"Qualified","value":578000}]}\n```\n' +
+    'Chart types: "bar" (comparisons), "donut" (share of a whole — may add "center":{"label":"10","sub":"open"}), "area" (trend). ' +
+    "Never fabricate numbers for a chart; skip the chart if the data is not in your grounding.\n\n" +
     "LIVE PIPELINE (your grounding — full book):\n" +
     facts;
   const turns: { role: "user" | "assistant"; content: string }[] = [
