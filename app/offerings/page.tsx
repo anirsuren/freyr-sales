@@ -23,7 +23,6 @@ import {
   hydrateOffering,
 } from "@/lib/offerings";
 import { getRole } from "@/lib/role";
-import { RoleSwitcher } from "@/components/offerings/RoleSwitcher";
 import { ImportExcel } from "@/components/offerings/ImportExcel";
 import { OfferingsManageMenu } from "@/components/offerings/OfferingsManageMenu";
 import { NewOfferingButton } from "@/components/offerings/NewOfferingButton";
@@ -114,11 +113,14 @@ export default async function OfferingsPage() {
 
   return (
     <div>
+      {/* No "Viewing as" switcher in the header: it was a demo stand-in from
+          before real logins existed — with real accounts, whoever has a role
+          has that role (Anir, Jul 25). The downgrade-only preview plumbing
+          stays server-side if an admin tool ever wants it. */}
       <PageHeader
         title="Offerings"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <RoleSwitcher current={role} />
             <OfferingsManageMenu />
             {canEdit && <ImportExcel />}
             {canEdit && (

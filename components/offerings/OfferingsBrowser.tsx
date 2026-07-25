@@ -492,7 +492,7 @@ export function OfferingsBrowser({
     <div>
       {/* Filter bar */}
       <div className="rounded-xl border border-border-light bg-surface/50 p-2.5 mb-4 flex flex-wrap items-center gap-2.5">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative flex-1 min-w-[190px]">
           <Search
             size={16}
             strokeWidth={1.8}
@@ -509,7 +509,7 @@ export function OfferingsBrowser({
         <ColorSelect
           value={ctId}
           onChange={setCtId}
-          minWidth={186}
+          minWidth={150}
           ariaLabel="Filter by customer type"
           options={[
             { value: "", label: "All customer types" },
@@ -535,7 +535,7 @@ export function OfferingsBrowser({
         <ColorSelect
           value={catId}
           onChange={setCatId}
-          minWidth={186}
+          minWidth={150}
           ariaLabel="Filter by offering category"
           options={[
             { value: "", label: "All categories" },
@@ -549,7 +549,7 @@ export function OfferingsBrowser({
         <ColorSelect
           value={otId}
           onChange={setOtId}
-          minWidth={186}
+          minWidth={150}
           ariaLabel="Filter by offering type"
           options={[
             { value: "", label: "All offering types" },
@@ -580,20 +580,19 @@ export function OfferingsBrowser({
             <X size={14} strokeWidth={2} /> Clear
           </button>
         )}
-      </div>
+        {/* Sort, view and export live IN the filter bar — two stacked control
+            rows read as clutter (Anir, Jul 25: "everything should be on one
+            row, and it should look beautiful"). ml-auto keeps this display
+            cluster docked right; the bar wraps gracefully when narrow. */}
+        <div className="ml-auto flex items-center gap-2">
 
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <p className="text-[12px] text-text-tertiary tnum">
-          Showing {filtered.length} of {offerings.length} offerings
-        </p>
-        <div className="flex items-center gap-3">
           {/* Sort — a display control, so it lives here with view + export rather
               than wrapping onto a lonely second line under the filters. */}
           <ColorSelect
             value={sort}
             onChange={setSort}
             ariaLabel="Sort offerings"
-            minWidth={190}
+            minWidth={170}
             options={[
               { value: "default", label: "Recommended", color: "#0071E3", icon: SortSpark },
               { value: "name", label: "Name (A–Z)", color: "#7C3AED", icon: ArrowDownAZ },
@@ -640,13 +639,20 @@ export function OfferingsBrowser({
           {sorted.length > 0 && (
             <button
               onClick={exportCsv}
-              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary hover:text-blue-primary transition-colors"
+              aria-label="Export CSV"
+              title="Export CSV"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-light text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors"
             >
-              <Download size={14} strokeWidth={1.9} /> Export CSV
+              <Download size={15} strokeWidth={1.9} />
             </button>
           )}
         </div>
       </div>
+
+      <p className="mb-3 text-[12px] text-text-tertiary tnum">
+        Showing {filtered.length} of {offerings.length} offerings
+      </p>
+
 
       {offerings.length === 0 ? (
         <Card className="p-0">

@@ -147,12 +147,10 @@ export function TopBar({
   const visibleNotifs = notificationStateReady ? notifs : [];
   const visibleReadIds = notificationStateReady ? readIds : new Set<string>();
   const unread = visibleNotifs.filter((n) => !visibleReadIds.has(n.id)).length;
-  // offerings-only release: the Offering entry left the global menu (single
-  // entry point rule), so surface Import as the one create action instead of
-  // rendering an empty dropdown.
-  const newItems = offeringsOnly
-    ? NEW_ITEMS.filter((item) => item.href === "/import")
-    : NEW_ITEMS;
+  // offerings-only release: every remaining entry duplicates a control the
+  // offerings page already shows (Import), so the button is pure noise there
+  // (Anir, Jul 25: "this button is completely useless") — render nothing.
+  const newItems = offeringsOnly ? [] : NEW_ITEMS;
 
   function markRead(id: string) {
     if (!notificationStateReady) return;
