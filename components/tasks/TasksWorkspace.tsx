@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -65,6 +65,21 @@ export function TasksWorkspace({
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const queueRef = useRef<HTMLElement>(null);
+
+  /**
+   * Filtering to a short result set makes the page shorter than the current
+   * scroll offset, so the browser clamps you to the top and the queue you were
+   * reading is suddenly off-screen — with nothing left to scroll back down to
+   * (Anir, Jul 25: "it literally fucking moves me up… I can't even scroll
+   * down"). Re-anchor on the queue so the rows stay under the cursor.
+   */
+  function applyFilter(next: Filter) {
+    setFilter(next);
+    requestAnimationFrame(() => {
+      queueRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }
 
   const queue = useMemo(() => {
     const reviews = reviewTasks.map((task) => ({
@@ -170,7 +185,7 @@ export function TasksWorkspace({
         </section>
       )}
 
-      <section>
+      <section ref={queueRef} className="scroll-mt-24">
         <div className="flex items-center justify-between gap-4 mb-3">
           <div>
             <h2 className="text-[16px] font-semibold text-text-primary">Work queue</h2>
@@ -192,7 +207,7 @@ export function TasksWorkspace({
                 <button
                   key={item.key}
                   type="button"
-                  onClick={() => setFilter(item.key)}
+                  onClick={() => applyFilter(item.key)}
                   aria-pressed={filter === item.key}
                   className={cn(
                     "h-8 rounded-full px-3 text-[12px] font-semibold transition-all",

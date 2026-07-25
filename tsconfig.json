@@ -31,11 +31,12 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-assignment-test/types/**/*.ts",
     ".next-auth-test/types/**/*.ts",
     ".next-onboarding-test/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-assignment-test/types/**/*.ts"
+    ".next-local-preview/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

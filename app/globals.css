@@ -592,9 +592,13 @@ select:focus-visible,
 }
 
 /* Hover popover entrance — quick fade + tiny lift. */
+/* Pops OUT toward the reader — grows from slightly small to full size. The
+   old version only slid down from -4px, which on a big card read as the panel
+   settling/shrinking rather than opening (Anir, Jul 25: "it looks like it's
+   shrinking… it's supposed to get bigger"). */
 @keyframes hoverCardIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: scale(0.96) translateY(2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .hovercard-in {
   animation: hoverCardIn 0.13s ease-out both;

@@ -79,11 +79,15 @@ export default async function ReportsPage() {
       .filter((o) => o.category === c.label && o.revenue > 0)
       .map((o) => ({ name: o.name, value: formatMoney(o.revenue) })),
   }));
+  // Four contract types, four clearly different hues. blue/indigo were near
+  // twins and teal/green were the pair Anir called out as "so similar"; these
+  // sit a quarter-turn apart on the wheel so a glance at the Type column is
+  // enough (Anir, Jul 25: "it has to be distinct and easy").
   const TYPE_COLOR: Record<string, string> = {
-    annual: VIZ.blue,
-    project: VIZ.indigo,
-    annual_service: VIZ.teal,
-    license: VIZ.green,
+    annual: "#2563EB", // blue
+    project: "#7C3AED", // violet
+    annual_service: "#F59E0B", // amber
+    license: "#059669", // emerald
   };
   const typeSegments = report.byType.map((t) => ({
     label: t.label,
@@ -433,8 +437,18 @@ export default async function ReportsPage() {
                         <td className="px-5 py-3 text-[12.5px] text-text-secondary whitespace-nowrap">
                           {r.offering}
                         </td>
+                        {/* Each contract type carries its OWN colour — the same
+                            one the revenue-by-type donut uses — instead of every
+                            row reading identical blue (Anir, Jul 25: "we need
+                            proper color-coded tags here in the type column"). */}
                         <td className="px-5 py-3 whitespace-nowrap">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded px-2 py-0.5">
+                          <span
+                            className="inline-block text-[11px] font-semibold uppercase tracking-[0.04em] rounded px-2 py-0.5"
+                            style={{
+                              color: TYPE_COLOR[r.revenue_type] || VIZ.slate,
+                              background: `${TYPE_COLOR[r.revenue_type] || VIZ.slate}1A`,
+                            }}
+                          >
                             {REVENUE_TYPE_META[r.revenue_type].short}
                           </span>
                         </td>

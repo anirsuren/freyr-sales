@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, FlaskConical, Rocket } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { NotificationMark } from "@/components/notifications/NotificationMark";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
@@ -329,7 +330,6 @@ export function TopBar({
                 </div>
                 <ul className="max-h-[340px] overflow-y-auto">
                   {visibleNotifs.slice(0, 5).map((n) => {
-                    const Icon = NOTIF_ICON[n.type] || Bell;
                     const isRead = visibleReadIds.has(n.id);
                     return (
                       <li key={n.id} className="border-b border-border-light last:border-0">
@@ -341,9 +341,11 @@ export function TopBar({
                           }}
                           className="px-4 py-3 flex gap-3 hover:bg-surface transition-colors"
                         >
-                          <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                            <Icon size={16} strokeWidth={1.6} />
-                          </span>
+                          <NotificationMark
+                            type={n.type}
+                            company={n.company}
+                            person={n.person}
+                          />
                           <div className="min-w-0 flex-1">
                             <p className={cn("text-[13px] text-text-primary", isRead ? "font-medium" : "font-semibold")}>
                               {n.title}

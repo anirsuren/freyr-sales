@@ -1215,7 +1215,15 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("96 — account detail shows agent section (V7)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-002`);
-    await expect(page.getByRole("button", { name: "Let the agent work" })).toBeVisible();
+    // The "Let the agent work" entry point was removed — it named no outcome,
+    // so nobody pressed it (Anir, Jul 25). The section still has to be here,
+    // carried by the named per-suggestion actions.
+    await expect(
+      page.getByRole("heading", { name: "Agent" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Let the agent work" })
+    ).toHaveCount(0);
   });
 
   test("97 — agent run with compliance gate → approve → complete (V7)", async ({
@@ -1338,8 +1346,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText("Agent — next best action for this deal")
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Let the agent work/ }).first()
-    ).toBeVisible();
+      page.getByRole("button", { name: /Let the agent work/ })
+    ).toHaveCount(0);
   });
 
   test("106 — undo reverts an auto-handled agent run (V9)", async ({ page }) => {

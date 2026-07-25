@@ -25,6 +25,7 @@ import {
   repWonFY,
   repTrend,
 } from "@/lib/team";
+import { StatTile } from "@/components/ui/StatTile";
 import { TeamRoster, type RosterRep } from "@/components/team/TeamRoster";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getDataMode } from "@/lib/dataMode";
@@ -157,26 +158,14 @@ export default async function TeamPage() {
         subtitle="Your Freyr sales floor — message anyone on Teams or call them directly, and see what each rep is working."
       />
 
+      {/* The shared tile, same as Sequences: icon and label on one row, the
+          number under it. The old hand-rolled card pinned a fixed 132px height
+          and stranded the icon at the top, which is what made these read as
+          oddly tall (Anir, Jul 25). */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {rollup.map((k) => {
-          const Icon = k.icon;
-          return (
-            <Card key={k.label} className="h-[132px] flex flex-col justify-between">
-              <span className="w-9 h-9 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center">
-                <Icon size={18} strokeWidth={1.9} />
-              </span>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  {k.label}
-                </p>
-                <p className="text-[26px] font-bold text-text-primary leading-none tnum mt-1.5">
-                  {k.value}
-                </p>
-                <p className="text-[12px] text-text-tertiary mt-1.5 truncate">{k.sub}</p>
-              </div>
-            </Card>
-          );
-        })}
+        {rollup.map((k) => (
+          <StatTile key={k.label} {...k} />
+        ))}
       </section>
 
       <TeamRoster reps={reps} />

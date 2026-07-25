@@ -541,6 +541,13 @@ export function AreaChart({
   );
 }
 
+/**
+ * Hairline seam between donut segments, in user units of the arc. Big enough
+ * that neighbouring colours can never smear into each other at any size, small
+ * enough that the ring still reads as one continuous whole.
+ */
+const SEGMENT_GAP = 2;
+
 export function DonutChart({
   segments,
   size = 150,
@@ -607,8 +614,16 @@ export function DonutChart({
             strokeWidth={thickness}
           />
           {segments.map((s, i) => {
-            const len = (s.value / total) * c;
-            const fullCircle = len >= c - 0.01;
+            const rawLen = (s.value / total) * c;
+            const fullCircle = rawLen >= c - 0.01;
+            // Draw each arc a hair shorter than its true share so neighbours
+            // never touch. Butt caps alone still bled: sub-pixel rounding let
+            // the last segment paint over the first at 12 o'clock, and a 3%
+            // sliver ended up with its neighbour's colour smeared across it.
+            // The offset still advances by the true length, so proportions and
+            // every label stay exact — only the seam changes.
+            const gap = fullCircle ? 0 : Math.min(SEGMENT_GAP, rawLen * 0.4);
+            const len = Math.max(rawLen - gap, 0.5);
             const el = (
               <circle
                 key={i}
@@ -638,7 +653,7 @@ export function DonutChart({
                 }}
               />
             );
-            offset += len;
+            offset += rawLen;
             return el;
           })}
         </g>

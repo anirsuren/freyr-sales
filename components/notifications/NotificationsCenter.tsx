@@ -2,16 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  ClipboardCheck,
-  Flame,
-  Sparkles,
-  CalendarClock,
-  BellOff,
-  Check,
-  PhoneCall,
-} from "lucide-react";
+import { BellOff, Check } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { NotificationMark } from "@/components/notifications/NotificationMark";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -22,20 +15,6 @@ import {
   type NotificationType,
 } from "@/lib/notifications";
 
-const ICON: Record<NotificationType, typeof Flame> = {
-  review: ClipboardCheck,
-  rotting: Flame,
-  signal: Sparkles,
-  followup: CalendarClock,
-  voice: PhoneCall,
-};
-const TONE: Record<NotificationType, string> = {
-  review: "bg-blue-light text-blue-primary",
-  rotting: "bg-error/12 text-error",
-  signal: "bg-success/15 text-success",
-  followup: "bg-blue-light text-blue-primary",
-  voice: "bg-success/15 text-success",
-};
 const EMPTY_READ_SET = new Set<string>();
 
 function readSet(storageKey: string): Set<string> {
@@ -129,7 +108,6 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
       ) : (
         <div className="space-y-2.5">
           {shown.map((n) => {
-            const Icon = ICON[n.type];
             const isRead = visibleRead.has(n.id);
             return (
               <Link key={n.id} href={n.href} onClick={() => markOne(n.id)}>
@@ -139,14 +117,11 @@ export function NotificationsCenter({ items }: { items: AppNotification[] }) {
                     !isRead && "border-l-[3px] border-l-blue-primary"
                   )}
                 >
-                  <span
-                    className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                      TONE[n.type]
-                    )}
-                  >
-                    <Icon size={16} strokeWidth={1.8} />
-                  </span>
+                  <NotificationMark
+                    type={n.type}
+                    company={n.company}
+                    person={n.person}
+                  />
                   <div className="min-w-0 flex-1">
                     <p
                       className={cn(

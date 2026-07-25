@@ -582,15 +582,25 @@ export function PitchWorkspace({
                   : "Submit for review"}
               </button>
             ) : null}
-            {/* Compose & send email — locked until compliance clears it */}
+            {/* Compose & send email — locked until compliance clears it. A
+                locked control has to *look* locked: these read as ordinary
+                buttons before, so clicking them felt like nothing happened
+                (Anir, Jul 25: "these fucking buttons don't work"). They stay
+                clickable on purpose — the click is what explains the gate. */}
             <button
               onClick={openCompose}
+              aria-disabled={reviewStatus !== "approved"}
               title={
                 reviewStatus === "approved"
                   ? "Send this email"
-                  : "Unlocks after compliance approval"
+                  : "Locked — submit this pitch for review and get it approved first"
               }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors"
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[13px] font-medium transition-colors",
+                reviewStatus === "approved"
+                  ? "border-border-light text-text-secondary hover:bg-surface"
+                  : "border-dashed border-border text-text-tertiary bg-surface/60 cursor-not-allowed hover:bg-surface"
+              )}
             >
               {reviewStatus === "approved" ? (
                 <Mail size={15} strokeWidth={1.7} />
@@ -602,20 +612,29 @@ export function PitchWorkspace({
             {/* Send to CRM / sequence (#42) */}
             <div className="relative">
               <button
-                onClick={() => setCrmOpen((o) => !o)}
+                onClick={() => {
+                  // Say why, rather than opening a menu whose every item then
+                  // silently refuses. Same reasoning as Send email above.
+                  if (reviewStatus !== "approved") {
+                    toast("Needs compliance approval before sending", "error");
+                    return;
+                  }
+                  setCrmOpen((o) => !o);
+                }}
                 disabled={pushing}
                 aria-haspopup="menu"
                 aria-expanded={crmOpen}
+                aria-disabled={reviewStatus !== "approved"}
                 title={
                   reviewStatus === "approved"
                     ? "Push to your CRM or a sequence"
-                    : "Unlocks after compliance approval"
+                    : "Locked — submit this pitch for review and get it approved first"
                 }
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors disabled:opacity-50",
                   reviewStatus === "approved"
                     ? "bg-blue-primary text-white hover:bg-blue-hover"
-                    : "border border-border-light text-text-secondary hover:bg-surface"
+                    : "border border-dashed border-border text-text-tertiary bg-surface/60 cursor-not-allowed hover:bg-surface"
                 )}
               >
                 {reviewStatus === "approved" ? (

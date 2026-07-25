@@ -187,12 +187,23 @@ function PipelineInspector({
           const isFocused = selected?.stage === stage.stage;
           const share = Math.round((stage.value / total) * 100);
           return (
+            // The focused row is the whole point of hovering a segment, so it
+            // has to be unmissable: a wash of the stage's own colour plus a
+            // matching left rail. The old blue-light/35 tint was invisible
+            // (Anir, Jul 25: "that's not enough for me to see").
             <div
               key={stage.stage}
               className={cn(
-                "rounded-md px-2 py-1.5 transition-colors",
-                isFocused && "bg-blue-light/35"
+                "rounded-md py-1.5 pr-2 transition-colors border-l-[3px]",
+                isFocused
+                  ? "pl-[9px] font-medium"
+                  : "pl-[9px] border-l-transparent"
               )}
+              style={
+                isFocused
+                  ? { background: `${stage.color}22`, borderLeftColor: stage.color }
+                  : undefined
+              }
             >
               <div className="flex items-center gap-2 text-[10.5px]">
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: stage.color }} />
@@ -201,7 +212,10 @@ function PipelineInspector({
                 <span className="w-12 text-right font-semibold text-text-primary tnum">{share}%</span>
                 <span className="w-14 text-right text-text-secondary tnum">{formatMoney(stage.value)}</span>
               </div>
-              <div className="ml-4 mt-1 h-1 overflow-hidden rounded-full bg-surface">
+              {/* Starts at the dot, not indented past it — the dot hanging
+                  outside the bar's left edge is what made these rows read as
+                  misaligned. */}
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface">
                 <div className="h-full rounded-full" style={{ width: `${share}%`, background: stage.color }} />
               </div>
             </div>

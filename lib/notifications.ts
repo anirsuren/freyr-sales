@@ -16,6 +16,15 @@ export interface AppNotification {
   body: string;
   href: string;
   ts: string;
+  /**
+   * Who this alert is about. Carried alongside the copy so the bell and the
+   * notifications page can show the account's logo and the person's headshot
+   * instead of a generic icon — the same entity imagery used everywhere else
+   * (Anir, Jul 8: "everywhere there's a name of the company, you have the logo
+   * of the entity"). Resolved by name via CompanyLogo / Avatar.
+   */
+  company?: string;
+  person?: string;
 }
 
 export function buildNotifications(input: {
@@ -41,6 +50,7 @@ export function buildNotifications(input: {
         body: `${company} — review the pitch before it's sent.`,
         href: `/sessions/${s.id}`,
         ts: s.created_at,
+        company,
       });
     }
   }
@@ -56,6 +66,8 @@ export function buildNotifications(input: {
         body: `${d.company} — no activity in ${d.staleDays} days.`,
         href: `/deals/${d.sessionId}`,
         ts: d.lastActivity,
+        company: d.company,
+        person: d.contactName,
       });
     }
   }
@@ -71,6 +83,8 @@ export function buildNotifications(input: {
         body: `${company} — ${OUTCOME_META[i.outcome]?.label || i.outcome}.`,
         href: `/customers/${i.customer_id}`,
         ts: i.created_at,
+        company,
+        person: contactById[i.contact_id]?.full_name,
       });
     }
     if (i.follow_up_date) {
@@ -115,6 +129,8 @@ export function buildNotifications(input: {
         }.`,
         href: `/customers/${i.customer_id}`,
         ts: i.follow_up_date,
+        company,
+        person: contactName || undefined,
       });
     }
   }

@@ -9,7 +9,6 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { AgentActions } from "@/components/agent/AgentActions";
-import { AgentRunPanel } from "@/components/agent/AgentRunPanel";
 import { BriefingCard } from "@/components/agent/BriefingCard";
 import { nextBestActions, buildDealBriefing } from "@/lib/agent";
 import { formatDate, formatDateTime, cn } from "@/lib/utils";
@@ -361,12 +360,8 @@ export default async function DealDetailPage({
             Agent — next best action for this deal
             <InfoHint text="A 'play' is the agent doing the legwork for one clear next step — drafting the outreach and prepping you. You review and approve before anything is sent." />
           </h2>
-          {customer && (
-            <AgentRunPanel
-              customerId={customer.id}
-              company={customer.company_name}
-            />
-          )}
+          {/* "Let the agent work" removed — see CustomerTabs. The named
+              actions below carry their own meaning. */}
         </div>
         {dealAgentActions.length > 0 ? (
           <AgentActions actions={dealAgentActions} compact />

@@ -64,7 +64,6 @@ import { accountHealth, accountHealthSeries, HEALTH_COLOR } from "@/lib/health";
 import { HealthBadge } from "@/components/ui/HealthBadge";
 import { nextBestActions, weeklyOutcomeSummary } from "@/lib/agent";
 import { AgentActions } from "@/components/agent/AgentActions";
-import { AgentRunPanel } from "@/components/agent/AgentRunPanel";
 import { AgentRunHistory } from "@/components/agent/AgentRunHistory";
 import { AccountBriefing } from "@/components/agent/AccountBriefing";
 import { TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
@@ -1878,12 +1877,14 @@ export function CustomerTabs({
         </Card>
 
         <div>
+          {/* No "Let the agent work" button: nobody pressed it because nobody
+              could tell what it would do (Anir, Jul 25). The per-suggestion
+              actions below say exactly what they do, so they stand alone. */}
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary flex items-center gap-1.5">
               <Sparkles size={14} strokeWidth={1.8} className="text-blue-primary" />
               Agent
             </h3>
-            <AgentRunPanel customerId={customer.id} company={customer.company_name} />
           </div>
           {agentActions.length > 0 ? (
             <AgentActions actions={agentActions} compact />
