@@ -291,6 +291,15 @@ export interface AgentPrefs {
   // Daily-briefing schedule, same catch-up model.
   digest_cadence: AutopilotCadence;
   digest_last_sent: string | null;
+  // Who the rep is. The agent writes in their voice, so a name and a job title
+  // were never enough — everything it drafted read generically. The LinkedIn
+  // URL is what the rep pastes; the three fields under it are what the
+  // enrichment run fills in from that URL, and what the agent actually reads.
+  linkedin_url: string | null;
+  linkedin_headline: string | null; // "VP Regulatory Affairs at Freyr"
+  linkedin_about: string | null; // background paragraph, trimmed
+  linkedin_photo: string | null; // replaces the initials circle
+  linkedin_synced_at: string | null;
   updated_at: string;
 }
 

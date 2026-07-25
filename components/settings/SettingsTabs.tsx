@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   UserPlus,
@@ -282,6 +282,13 @@ export function SettingsTabs({
     // pull a real headshot instead of initials.
     linkedin: "",
   });
+  const [linkedinStatus, setLinkedinStatus] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
+  // Tracks the last URL we sent for enrichment so repeated saves don't re-run a
+  // scrape (and burn Apify credits) for a link that has not changed.
+  const savedLinkedinRef = useRef<string>("");
   const [invite, setInvite] = useState({ name: "", email: "", role: "Rep" });
   const [notifs, setNotifs] = useState<Record<string, boolean>>(
     DEFAULT_NOTIFICATIONS
@@ -467,6 +474,53 @@ export function SettingsTabs({
     } catch {}
   }
 
+  /**
+   * Turn the pasted LinkedIn URL into identity the agent can read. Runs as part
+   * of Save so there is no second button to discover — the rep pastes a link,
+   * saves, and the agent knows who they are.
+   */
+  async function syncLinkedIn() {
+    const url = profile.linkedin.trim();
+    if (url === (savedLinkedinRef.current || "")) return; // unchanged
+    savedLinkedinRef.current = url;
+    if (!url) {
+      setLinkedinStatus(null);
+      void fetch("/api/profile/linkedin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: "" }),
+      }).catch(() => {});
+      return;
+    }
+    setLinkedinStatus({ ok: true, message: "Reading your profile…" });
+    try {
+      const res = await fetch("/api/profile/linkedin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: url }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setLinkedinStatus({
+          ok: true,
+          message: data?.profile?.headline
+            ? `Got it — the agent now knows you as "${data.profile.headline}".`
+            : "Saved. The agent will use this when it writes as you.",
+        });
+      } else {
+        setLinkedinStatus({
+          ok: false,
+          message: data?.error || "Couldn't read that profile. Check the link.",
+        });
+      }
+    } catch {
+      setLinkedinStatus({
+        ok: false,
+        message: "Couldn't reach the profile service. Try saving again.",
+      });
+    }
+  }
+
   async function saveProfile() {
     try {
       localStorage.setItem(
@@ -478,6 +532,7 @@ export function SettingsTabs({
         })
       );
     } catch {}
+    void syncLinkedIn();
     const nextName = profile.name.trim();
     if (!nextName || nextName === currentUser.name) {
       toast("Profile saved");
@@ -934,6 +989,17 @@ export function SettingsTabs({
                 role and background, so what it writes sounds like you — and it
                 picks up your photo instead of your initials.
               </span>
+              {linkedinStatus && (
+                <span
+                  role="status"
+                  className={cn(
+                    "mt-1.5 block text-[12px] font-medium",
+                    linkedinStatus.ok ? "text-emerald-700" : "text-red-600"
+                  )}
+                >
+                  {linkedinStatus.message}
+                </span>
+              )}
             </label>
             <Button onClick={saveProfile}>Save profile</Button>
             <div className="pt-4 mt-1 border-t border-border-light">

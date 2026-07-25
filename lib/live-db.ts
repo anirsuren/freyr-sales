@@ -157,6 +157,11 @@ function ensurePrefs(scope: WorkspaceMemberScope): ScopedAgentPrefs {
     autopilot_last_run: null,
     digest_cadence: "off",
     digest_last_sent: null,
+    linkedin_url: null,
+    linkedin_headline: null,
+    linkedin_about: null,
+    linkedin_photo: null,
+    linkedin_synced_at: null,
     updated_at: now(),
   };
   store.prefs.push(prefs);

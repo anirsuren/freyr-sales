@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { agentAnswer } from "@/lib/claude";
+import { repIdentityBlock } from "@/lib/repIdentity";
 import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import type { RecommendedService } from "@/lib/types";
@@ -104,10 +105,18 @@ export async function POST(req: NextRequest) {
   ]
     .filter(Boolean)
     .join("\n");
+  // The email goes out over this rep's name, so the agent is told who they
+  // are. Without it a 20-year regulatory VP and a new SDR got word-for-word
+  // identical drafts.
+  const identity = repIdentityBlock(
+    { name: senderName, title: prefs?.linkedin_headline || null },
+    prefs
+  );
   const llm = await agentAnswer(
     "You are Freyr's AI sales agent writing a concise re-engagement email (under " +
       `110 words) from ${senderName}. Match the requested tone. Ground it ONLY in ` +
-      "the facts. Return exactly:\nSubject: <subject>\n<blank line>\n<body>. No preamble.",
+      "the facts. Return exactly:\nSubject: <subject>\n<blank line>\n<body>. No preamble." +
+      (identity ? `\n\n${identity}` : ""),
     facts
   );
 
