@@ -44,7 +44,7 @@ export default function LoginPage() {
             {!authenticationReady
               ? "Authentication is not fully configured. No workspace data is available until an administrator completes the secure login setup."
               : supabase && joinDomains.length > 0
-              ? `Work at Freyr? Your ${joinDomainLabel} email is already your account — create it, set a password, confirm the email, and you're in. No invitation needed.`
+              ? `Work at Freyr? Your ${joinDomainLabel} email is already your account — enter it below and set a password. No invitation needed.`
               : supabase
               ? "Sign in with the exact email address your workspace owner invited. New accounts require both that invitation and email confirmation before any sales data is visible."
               : "Sign in with your Freyr corporate identity. Access and permissions are managed by IT."}

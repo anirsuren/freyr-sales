@@ -11,6 +11,9 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
   "/api/health",
   "/api/auth/access",
+  // Decides whether the login page asks for a new password or an existing one.
+  // Must be reachable before anyone is signed in, like register and session.
+  "/api/auth/lookup",
   "/api/auth/register",
   "/api/auth/resolve",
   "/api/auth/session",

@@ -94,6 +94,25 @@ test("the login page advertises Freyr-domain auto-join (no invitation)", async (
   await expect(page.getByText(/invitation-only/)).toHaveCount(0);
 });
 
+test("a Freyr address is taken straight to setting a password", async ({ page }) => {
+  // The whole point of email-first: a first-time colleague types their work
+  // address and is asked for the one missing thing — a password. No tab to
+  // pick, no "create account" contradicting "you already have an account".
+  await page.goto("/login");
+  await page.getByLabel("Work email").fill("newjoiner@freyrsolutions.com");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await expect(page.getByText(/Your account is ready/i)).toBeVisible();
+  await expect(page.getByLabel("Choose a password")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Set password and continue" })
+  ).toBeVisible();
+  // The address stays visible with a way back, so a typo is never a dead end.
+  await expect(page.getByText("newjoiner@freyrsolutions.com")).toBeVisible();
+  await page.getByRole("button", { name: "Change" }).click();
+  await expect(page.getByLabel("Work email")).toBeVisible();
+});
+
 test("unauthenticated APIs fail closed", async ({ request }) => {
   const response = await request.get("/api/customers");
   expect(response.status()).toBe(401);
@@ -140,8 +159,10 @@ test("the login, registration, and session-establishment endpoints remain public
   request,
 }) => {
   await page.goto("/login");
-  await expect(page.getByRole("button", { name: "Sign in securely" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
+  // Email-first: a colleague is never asked to choose between "sign in" and
+  // "create account" — one address field decides for them.
+  await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create account" })).toHaveCount(0);
   // With AUTO_APPROVE_EMAIL_DOMAINS configured, the email hint explains the
   // company-domain fast path instead of the invitation-only wording.
   await expect(
