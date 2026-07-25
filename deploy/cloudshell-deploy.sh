@@ -29,8 +29,8 @@ TARBALL="https://codeload.github.com/anirsuren/freyr-sales/tar.gz/refs/heads/mai
 # Pinned to the release image that is already built and sitting in ECR, so the
 # common case skips the slow (~10 min) rebuild. If that image is ever missing,
 # the script rebuilds it from the same commit automatically.
-TAG="4d8a31c"
-SHA="4d8a31c72932649ddb6c8af1eb0ee25633193229"
+TAG="b83253d"
+SHA="b83253dc8274e62d7d98d47d230fce4199bf3e60"
 
 step() { printf '\n\033[1;34m== %s ==\033[0m\n' "$1"; }
 
