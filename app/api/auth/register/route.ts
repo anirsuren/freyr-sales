@@ -8,6 +8,7 @@ type RegistrationRequest = {
   email?: string;
   password?: string;
   name?: string;
+  linkedinUrl?: string;
 };
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -68,11 +69,22 @@ export async function POST(request: NextRequest) {
   } catch {
     return json({ error: "Account confirmation is not configured." }, 503);
   }
+  // Optional LinkedIn from onboarding. It rides in auth metadata because the
+  // workspace member row doesn't exist until the first approved sign-in — the
+  // session route copies it into agent_prefs then. Loosely validated here;
+  // the enrichment endpoint re-validates strictly before ever fetching it.
+  const linkedinUrl =
+    typeof body.linkedinUrl === "string" &&
+    body.linkedinUrl.length <= 300 &&
+    body.linkedinUrl.includes("linkedin.com/")
+      ? body.linkedinUrl.trim()
+      : undefined;
+
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name: name },
+      data: { full_name: name, ...(linkedinUrl ? { linkedin_url: linkedinUrl } : {}) },
       emailRedirectTo,
     },
   });

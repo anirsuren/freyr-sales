@@ -36,6 +36,9 @@ export function SupabaseLoginForm({
   joinDomainLabel?: string | null;
 } = {}) {
   const [step, setStep] = useState<Step>("email");
+  // Optional at activation — the agent writes in the rep's voice from day one
+  // when it knows who they are (Anir: "it should be in the onboarding").
+  const [linkedinUrl, setLinkedinUrl] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -134,6 +137,7 @@ export function SupabaseLoginForm({
             email: normalizedEmail,
             password,
             name: name.trim(),
+            linkedinUrl: linkedinUrl.trim() || undefined,
           }),
         });
         const body = (await response.json().catch(() => ({}))) as {
@@ -239,6 +243,23 @@ export function SupabaseLoginForm({
           <p className="-mt-2 text-[11px] text-text-tertiary">
             At least 8 characters. We&apos;ll email you a confirmation link before your
             first sign-in.
+          </p>
+          <label className="block text-[12px] font-semibold text-text-secondary">
+            LinkedIn profile <span className="font-normal text-text-tertiary">(optional)</span>
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              placeholder="https://www.linkedin.com/in/your-profile"
+              value={linkedinUrl}
+              onChange={(event) => setLinkedinUrl(event.target.value)}
+              className={inputClass}
+            />
+          </label>
+          <p className="-mt-2 text-[11px] text-text-tertiary">
+            The AI agent reads this to learn your role and background, so what it
+            drafts sounds like you — and it picks up your photo. You can add it
+            later in Settings.
           </p>
         </>
       )}

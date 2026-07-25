@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
 import { createClient } from "@supabase/supabase-js";
 import {
   APP_SESSION_COOKIE,
@@ -90,6 +91,30 @@ export async function POST(request: NextRequest) {
     access.status === "approved"
       ? { ...assertedPrincipal, name: access.displayName }
       : assertedPrincipal;
+
+  // Onboarding LinkedIn: the activate form stored the URL in auth metadata
+  // (no member row existed yet). Copy it into agent_prefs on the first
+  // approved sign-in so the agent knows who this rep is from day one — never
+  // overwriting a URL the rep has since set, and never blocking sign-in.
+  const onboardingLinkedin = user.user_metadata?.linkedin_url;
+  if (
+    access.status === "approved" &&
+    typeof onboardingLinkedin === "string" &&
+    onboardingLinkedin.includes("linkedin.com/")
+  ) {
+    try {
+      const scope = { workspaceId: access.workspaceId, userId: access.userId };
+      const db = getDb();
+      const prefs = await db.agentPrefs.get(scope);
+      if (!prefs?.linkedin_url) {
+        await db.agentPrefs.update(scope, {
+          linkedin_url: onboardingLinkedin.trim(),
+        });
+      }
+    } catch {
+      // Sign-in must never fail on a nice-to-have.
+    }
+  }
 
   let token: string;
   let accessGrantToken: string | null = null;
