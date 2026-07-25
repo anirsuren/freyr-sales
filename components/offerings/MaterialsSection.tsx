@@ -16,6 +16,7 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -98,119 +99,80 @@ function TagPill({
   );
 }
 
-// One chip in a multi-select filter row: selected = filled with the tag's
-// colour, unselected = white with the coloured border + icon.
-function FilterChip({
-  label,
-  color,
-  icon: Icon,
-  active,
-  onToggle,
-}: {
-  label: string;
-  color: string;
-  icon: LucideIcon;
-  active: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onToggle}
-      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold leading-none transition-colors"
-      style={
-        active
-          ? { background: color, borderColor: color, color: "#FFFFFF" }
-          : { background: "#FFFFFF", borderColor: `${color}66`, color }
-      }
-    >
-      <Icon size={11} strokeWidth={2.2} />
-      {label}
-    </button>
-  );
-}
-
-function toggled<T>(set: T[], value: T): T[] {
-  return set.includes(value) ? set.filter((v) => v !== value) : [...set, value];
-}
-
 // The Sales materials list with the three multi-select filters (CR-2): file
 // format, buyer's-journey stage, and access level. Within a filter the picks
 // OR together; across filters they AND. No selection in a filter = show all.
 export function MaterialsSection({ materials }: { materials: OfferingMaterial[] }) {
-  const [formats, setFormats] = useState<FormatBucket[]>([]);
-  const [stages, setStages] = useState<JourneyStage[]>([]);
-  const [levels, setLevels] = useState<AccessLevel[]>([]);
+  const [format, setFormat] = useState("");
+  const [stage, setStage] = useState("");
+  const [level, setLevel] = useState("");
 
-  const anyFilter = formats.length > 0 || stages.length > 0 || levels.length > 0;
+  const anyFilter = format !== "" || stage !== "" || level !== "";
   const visible = materials.filter((m) => {
-    if (formats.length > 0 && !formats.includes(bucketOf(m.kind))) return false;
-    if (stages.length > 0 && (!m.journeyStage || !stages.includes(m.journeyStage)))
-      return false;
-    if (levels.length > 0 && (!m.accessLevel || !levels.includes(m.accessLevel)))
-      return false;
+    if (format && bucketOf(m.kind) !== format) return false;
+    if (stage && m.journeyStage !== stage) return false;
+    if (level && m.accessLevel !== level) return false;
     return true;
   });
 
   const clear = () => {
-    setFormats([]);
-    setStages([]);
-    setLevels([]);
+    setFormat("");
+    setStage("");
+    setLevel("");
   };
-
-  const groupLabel =
-    "text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary";
 
   return (
     <div className="mt-5 ml-11">
-      {/* Filter bar — three compact chip-toggle groups */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5">
-        <div className="flex items-center gap-2">
-          <span className={groupLabel}>File format</span>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {FORMAT_BUCKETS.map((b) => (
-              <FilterChip
-                key={b}
-                label={FORMAT_META[b].label}
-                color={FORMAT_META[b].color}
-                icon={FORMAT_META[b].icon}
-                active={formats.includes(b)}
-                onToggle={() => setFormats((s) => toggled(s, b))}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={groupLabel}>Buyer&apos;s journey</span>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {JOURNEY_STAGES.map((s) => (
-              <FilterChip
-                key={s}
-                label={JOURNEY_STAGE_META[s].short}
-                color={JOURNEY_STAGE_META[s].color}
-                icon={JOURNEY_STAGE_META[s].icon}
-                active={stages.includes(s)}
-                onToggle={() => setStages((prev) => toggled(prev, s))}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={groupLabel}>Access level</span>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {ACCESS_LEVELS.map((l) => (
-              <FilterChip
-                key={l}
-                label={ACCESS_LEVEL_META[l].short}
-                color={ACCESS_LEVEL_META[l].color}
-                icon={ACCESS_LEVEL_META[l].icon}
-                active={levels.includes(l)}
-                onToggle={() => setLevels((prev) => toggled(prev, l))}
-              />
-            ))}
-          </div>
-        </div>
+      {/* One row of three compact dropdowns — the app-wide filter pattern.
+          Twelve loose chips across two-and-a-half wrapping rows read as chaos,
+          and "Access level" landed wherever the wrap dropped it (Anir, Jul 25:
+          "so disorganized… why is access level on the same row as that?"). */}
+      <div className="flex flex-wrap items-center gap-2">
+        <ColorSelect
+          value={format}
+          onChange={setFormat}
+          minWidth={150}
+          ariaLabel="Filter by file format"
+          options={[
+            { value: "", label: "All formats" },
+            ...FORMAT_BUCKETS.map((b) => ({
+              value: b,
+              label: FORMAT_META[b].label,
+              color: FORMAT_META[b].color,
+              icon: FORMAT_META[b].icon,
+            })),
+          ]}
+        />
+        <ColorSelect
+          value={stage}
+          onChange={setStage}
+          minWidth={170}
+          ariaLabel="Filter by buyer's journey stage"
+          options={[
+            { value: "", label: "All journey stages" },
+            ...JOURNEY_STAGES.map((s) => ({
+              value: s,
+              label: JOURNEY_STAGE_META[s].label,
+              color: JOURNEY_STAGE_META[s].color,
+              icon: JOURNEY_STAGE_META[s].icon,
+            })),
+          ]}
+        />
+        <ColorSelect
+          value={level}
+          onChange={setLevel}
+          minWidth={160}
+          ariaLabel="Filter by access level"
+          options={[
+            { value: "", label: "All access levels" },
+            ...ACCESS_LEVELS.map((l) => ({
+              value: l,
+              label: ACCESS_LEVEL_META[l].label,
+              color: ACCESS_LEVEL_META[l].color,
+              icon: ACCESS_LEVEL_META[l].icon,
+            })),
+          ]}
+        />
       </div>
 
       {/* Live count + one-click reset */}

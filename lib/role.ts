@@ -7,11 +7,30 @@ import { ACCESS_COOKIE, isApprovalGateEnabled, verifyAccessGrant } from "./acces
 // unauthenticated local demo harness.
 export type Role = "admin" | "editor" | "sales";
 
+// Higher number = more privilege. Used so "view as" can only ever DOWNGRADE.
+const ROLE_RANK: Record<Role, number> = { admin: 3, editor: 2, sales: 1 };
+
+/**
+ * "Viewing as" preview. An admin checking what the sales team sees is a real
+ * need, but in authenticated deployments the role came exclusively from the
+ * signed grant, so the switcher set its cookie and nothing changed — the
+ * buttons simply did not work (Anir, Jul 25). The preview cookie is honored
+ * only BELOW the authenticated role: it can never grant more than the session
+ * itself carries, so a sales user writing `freyr_view_role=admin` by hand
+ * still gets sales.
+ */
+function applyViewAs(base: Role, viewCookie: string | undefined): Role {
+  if (viewCookie !== "admin" && viewCookie !== "editor" && viewCookie !== "sales")
+    return base;
+  return ROLE_RANK[viewCookie] < ROLE_RANK[base] ? viewCookie : base;
+}
+
 export async function getRole(): Promise<Role> {
   const store = await cookies();
+  const viewAs = store.get("freyr_view_role")?.value;
   if (isApprovalGateEnabled()) {
     const grant = await verifyAccessGrant(store.get(ACCESS_COOKIE)?.value);
-    if (grant) return grant.role;
+    if (grant) return applyViewAs(grant.role, viewAs);
     // Protected deployments must never turn a missing or invalid grant into
     // administrator access.
     return "sales";
@@ -28,12 +47,18 @@ export async function getRole(): Promise<Role> {
           )
         : null;
   if (principal) {
-    if (hasAppRole(principal, "Platform-Admins")) return "admin";
-    if (hasAppRole(principal, "Offering-Editors")) return "editor";
+    if (hasAppRole(principal, "Platform-Admins"))
+      return applyViewAs("admin", viewAs);
+    if (hasAppRole(principal, "Offering-Editors"))
+      return applyViewAs("editor", viewAs);
     return "sales";
   }
 
-  if (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE) {
+  if (!process.env.AUTH_MODE) {
+    // Demo harness (no authentication configured): the switcher IS the role.
+    // This branch was dev-only (NODE_ENV check), which silently killed the
+    // switcher on the production demo deployment too — the third way those
+    // buttons did nothing.
     const role = store.get("freyr_role")?.value;
     return role === "sales" || role === "editor" ? role : "admin";
   }

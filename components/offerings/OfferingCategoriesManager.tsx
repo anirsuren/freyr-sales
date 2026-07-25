@@ -295,9 +295,9 @@ export function OfferingCategoriesManager({
                   ) : canEdit ? (
                     <button
                       onClick={() => startEdit(c)}
-                      className="inline-flex items-center gap-1 text-[12px] text-text-tertiary hover:text-blue-primary mt-1.5"
+                      className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-dashed border-blue-subtle px-2 py-1 text-[12px] font-semibold text-blue-primary hover:bg-blue-light/50 transition-colors"
                     >
-                      <UserRound size={12} strokeWidth={1.8} /> Assign an owner →
+                      <UserRound size={12} strokeWidth={2} /> Assign an owner
                     </button>
                   ) : null}
                   </div>

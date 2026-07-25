@@ -135,12 +135,16 @@ export function AddMaterialButton({
           <Plus size={14} strokeWidth={2.2} /> Add material
         </button>
       ) : (
+        // A short, calm trigger. The old link spelled out four formats in a
+        // sentence ("Add videos, presentations, white papers or pricing") and
+        // read as clutter — the popup's type grid already answers "what kind?"
+        // one click later (Anir, Jul 25: "I should be able to press Add, and
+        // then choose what type in a pop-up").
         <button
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-primary hover:underline"
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-lg border border-border-light text-blue-primary hover:bg-blue-light/50 hover:border-blue-subtle transition-colors"
         >
-          <Plus size={13} strokeWidth={2} /> Add videos, presentations, white papers
-          or pricing
+          <Plus size={14} strokeWidth={2.2} /> Add material
         </button>
       )}
 
