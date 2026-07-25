@@ -16,6 +16,7 @@ import {
   salesTeamFor,
 } from "@/lib/pipeline";
 import {
+  repEmail,
   repPhone,
   teamsChatUrl,
   repTitle,
@@ -122,6 +123,7 @@ export default async function TeamPage() {
               : "Rep"
           : repRole(r.name),
       region: repRegion(r.name),
+      email: (you && currentUser.email) || repEmail(r.name),
       phone: repPhone(r.name),
       teamsUrl: teamsChatUrl(
         r.name,

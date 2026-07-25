@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Phone, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
+import { Phone, Mail, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -27,6 +27,7 @@ export type RosterRep = {
   role: "Admin" | "Manager" | "Rep";
   you?: boolean;
   region: string;
+  email: string;
   phone: string;
   teamsUrl: string;
   openValue: number;
@@ -453,14 +454,28 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         (pipeline mix, activity, stage bars, stats) reveal on
                         hover (Suren: "everything below the quota bar should
                         only show when I hover"). */}
-                    <a
-                      href={tel(r.phone)}
-                      title={`Call ${r.phone}`}
-                      className="relative z-10 mt-4 inline-flex items-center gap-1.5 text-[12px] text-text-secondary hover:text-blue-primary transition-colors tnum w-fit"
-                    >
-                      <Phone size={12} strokeWidth={1.9} />
-                      {r.phone}
-                    </a>
+                    {/* Both ways to reach them, in both views — the card
+                        showed a number and no address at all (Anir: "the
+                        email doesn't show up… it has to show for both
+                        views"). */}
+                    <div className="relative z-10 mt-4 flex flex-col gap-1 w-fit">
+                      <a
+                        href={`mailto:${r.email}`}
+                        title={`Email ${r.name}`}
+                        className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary hover:text-blue-primary transition-colors w-fit"
+                      >
+                        <Mail size={12} strokeWidth={1.9} className="shrink-0" />
+                        <span className="truncate">{r.email}</span>
+                      </a>
+                      <a
+                        href={tel(r.phone)}
+                        title={`Call ${r.phone}`}
+                        className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary hover:text-blue-primary transition-colors tnum w-fit"
+                      >
+                        <Phone size={12} strokeWidth={1.9} className="shrink-0" />
+                        {r.phone}
+                      </a>
+                    </div>
                   </>
                 }
                 extra={
@@ -613,15 +628,25 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                       </HoverCard>
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <TeamsButton url={r.teamsUrl} name={r.name} />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <TeamsButton url={r.teamsUrl} name={r.name} />
+                          <a
+                            href={tel(r.phone)}
+                            title={`Call ${r.phone}`}
+                            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors tnum whitespace-nowrap"
+                          >
+                            <Phone size={13} strokeWidth={2} />
+                            {r.phone}
+                          </a>
+                        </div>
                         <a
-                          href={tel(r.phone)}
-                          title={`Call ${r.phone}`}
-                          className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors tnum whitespace-nowrap"
+                          href={`mailto:${r.email}`}
+                          title={`Email ${r.name}`}
+                          className="inline-flex items-center gap-1.5 text-[11.5px] text-text-tertiary hover:text-blue-primary transition-colors min-w-0"
                         >
-                          <Phone size={13} strokeWidth={2} />
-                          {r.phone}
+                          <Mail size={12} strokeWidth={1.8} className="shrink-0" />
+                          <span className="truncate">{r.email}</span>
                         </a>
                       </div>
                     </td>
