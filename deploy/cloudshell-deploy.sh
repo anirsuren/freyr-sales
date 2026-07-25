@@ -68,6 +68,55 @@ fi
 step "Registering the new task definition (new image + version + toggle; auth inherited)"
 TD=$(aws ecs describe-task-definition --task-definition "$FAMILY" \
   --query taskDefinition --output json)
+
+# --- Service keys -----------------------------------------------------------
+# The app is "mock-first": without ANTHROPIC_API_KEY the agent answers from
+# deterministic templates instead of calling Claude, which is why production
+# replies read as instant and identical. Supply a key on the SAME line as the
+# deploy and it is written into the task definition:
+#
+#   ANTHROPIC_API_KEY=sk-ant-... bash /tmp/deploy.sh
+#
+# Any of the keys below can be passed the same way, together or one at a time:
+#   ANTHROPIC_API_KEY   the agent's brain — the one that matters
+#   APIFY_API_TOKEN     LinkedIn/profile enrichment
+#   ELEVENLABS_API_KEY  voice agents
+#   FIRECRAWL_API_KEY   web research
+#   SUPABASE_SERVICE_ROLE_KEY / AUTH_COOKIE_SECRET / FREYR_WORKSPACE_ID
+#                       needed only to switch prod to real Supabase sign-in
+#
+# A key that is NOT supplied is left exactly as the live task definition has it,
+# so a routine redeploy never wipes a key that is already set. Nothing is ever
+# written to the repo — the value only exists in that one shell invocation.
+#
+# Hardening note: these land as plaintext env on the task definition, readable
+# by anyone with ecs:DescribeTaskDefinition. Moving them to Secrets Manager and
+# referencing them via `secrets[]` is the next step once a secret exists.
+SET_KEYS=""
+add_key() {
+  local name="$1" value="$2"
+  [ -n "$value" ] || return 0
+  TD=$(echo "$TD" | jq --arg n "$name" --arg v "$value" '
+    .containerDefinitions[0].environment = (
+      ((.containerDefinitions[0].environment // []) | map(select(.name != $n)))
+      + [{name: $n, value: $v}]
+    )')
+  SET_KEYS="$SET_KEYS $name"
+}
+add_key ANTHROPIC_API_KEY "${ANTHROPIC_API_KEY:-}"
+add_key APIFY_API_TOKEN "${APIFY_API_TOKEN:-}"
+add_key ELEVENLABS_API_KEY "${ELEVENLABS_API_KEY:-}"
+add_key FIRECRAWL_API_KEY "${FIRECRAWL_API_KEY:-}"
+add_key SUPABASE_SERVICE_ROLE_KEY "${SUPABASE_SERVICE_ROLE_KEY:-}"
+add_key AUTH_COOKIE_SECRET "${AUTH_COOKIE_SECRET:-}"
+add_key FREYR_WORKSPACE_ID "${FREYR_WORKSPACE_ID:-}"
+
+if [ -n "$SET_KEYS" ]; then
+  echo "Setting service keys:$SET_KEYS"
+else
+  echo "No keys supplied — keeping whatever the live task definition already has."
+fi
+
 echo "$TD" | jq \
   --arg IMG "$REGISTRY/$REPO:$TAG" \
   --arg VER "$SHA" '
@@ -104,6 +153,15 @@ step "Verifying the live site"
 sleep 8
 LIVE=$(curl -s https://freyrsales.dev.freyrapps.com/api/health || true)
 echo "$LIVE"
+# Say plainly whether the agent can actually reach Claude, because a healthy
+# deploy with no key still answers from templates and looks "not AI".
+if echo "$LIVE" | grep -q '"anthropic":true'; then
+  printf '\n\033[1;32mAgent: LIVE — connected to Claude.\033[0m\n'
+else
+  printf '\n\033[1;33mAgent: TEMPLATES ONLY — no ANTHROPIC_API_KEY on the task definition.\n'
+  printf 'Re-run with the key on the same line to switch the real agent on:\n'
+  printf '  ANTHROPIC_API_KEY=sk-ant-... bash /tmp/deploy.sh\033[0m\n'
+fi
 if echo "$LIVE" | grep -q "$SHA"; then
   printf '\n\033[1;32mDone — the site is now serving commit %s\033[0m\n' "$TAG"
 else
