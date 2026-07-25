@@ -813,12 +813,25 @@ export default async function DashboardPage({
                               <div className="flex items-center gap-3">
                                 <Avatar name={a.contact} className="h-10 w-10 shrink-0 text-[10px]" />
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate text-[13px] font-semibold text-text-primary">{a.contact}</p>
-                                  <p className="mt-0.5 truncate text-[10.5px] text-text-secondary">{activityContact?.job_title || "Role not set"}</p>
+                                  <p className="text-[13px] font-semibold text-text-primary">{a.contact}</p>
+                                  {/* Role + email — the card is where a rep decides
+                                      to reach out, so the address belongs here
+                                      (Anir: the hover card needs the email). */}
+                                  <p className="mt-0.5 text-[10.5px] text-text-secondary">
+                                    {activityContact?.job_title || "Role not set"}
+                                    {activityContact?.email ? ` · ${activityContact.email}` : ""}
+                                  </p>
+                                  {/* Full company name — never cut short. */}
                                   <div className="mt-0.5 flex items-center gap-1.5">
-                                    <CompanyLogo name={a.company} className="h-4 w-4 text-[6px]" />
-                                    <span className="truncate text-[10px] text-text-tertiary">{a.company} · {activityCustomer?.industry || "Industry not set"}</span>
+                                    <CompanyLogo name={a.company} className="h-4 w-4 shrink-0 text-[6px]" />
+                                    <span className="text-[10px] text-text-tertiary">{a.company} · {activityCustomer?.industry || "Industry not set"}</span>
                                   </div>
+                                  {activityCustomer?.owner && (
+                                    <div className="mt-1 flex items-center gap-1.5">
+                                      <Avatar name={activityCustomer.owner} className="h-4 w-4 shrink-0 text-[6px]" />
+                                      <span className="text-[10px] text-text-tertiary">Owner · {activityCustomer.owner}</span>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex flex-col items-end gap-1.5">
                                   <OutcomeBadge outcome={a.outcome} />

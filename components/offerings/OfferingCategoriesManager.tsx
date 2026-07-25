@@ -305,7 +305,8 @@ export function OfferingCategoriesManager({
                 <div className="flex items-center gap-1 shrink-0">
                   <Link
                     href={`/offerings?cat=${c.id}`}
-                    className="group inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-text-tertiary hover:text-blue-primary px-2 py-1"
+                    className="group inline-flex items-center gap-1 whitespace-nowrap rounded-full text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                    style={{ color: accent, background: `${accent}14` }}
                   >
                     {count} offering{count === 1 ? "" : "s"}
                     <ArrowRight

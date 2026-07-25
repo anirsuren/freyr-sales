@@ -282,8 +282,11 @@ export function CustomerTypesManager({
             <span className="text-right">Offerings</span>
           </div>
           <div className="divide-y divide-border-light">
-            {types.map((t) => {
+            {types.map((t, ti) => {
               const count = typeCounts[t.id] || 0;
+              // Same accent the filter dropdown gives this row, so the count
+              // pill reads in the row's own colour, never gray.
+              const accent = listAccent(ti);
               return (
                 <Link
                   key={t.id}
@@ -312,7 +315,10 @@ export function CustomerTypesManager({
                   <span className="text-[13px] text-text-secondary leading-relaxed">
                     {t.operational_focus}
                   </span>
-                  <span className="inline-flex items-center gap-1 self-center justify-self-start sm:justify-self-end whitespace-nowrap text-[11px] font-medium text-text-tertiary group-hover:text-blue-primary">
+                  <span
+                    className="inline-flex items-center gap-1 self-center justify-self-start sm:justify-self-end whitespace-nowrap rounded-full text-[11px] font-semibold px-2.5 py-1"
+                    style={{ color: accent, background: `${accent}14` }}
+                  >
                     {count} offering{count === 1 ? "" : "s"}
                     <ArrowRight
                       size={12}

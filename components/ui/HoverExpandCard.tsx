@@ -44,7 +44,10 @@ export function HoverExpandCard({
   const cardCls = cn(
     "absolute inset-x-0 top-0 block bg-white border border-border-light rounded-xl p-5 shadow-card origin-top transition-[transform,box-shadow,border-color] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]",
     enabled &&
-      "group-hover:scale-[1.03] group-hover:z-30 group-hover:border-blue-subtle group-hover:shadow-[0_28px_64px_-16px_rgba(0,0,0,0.30)] group-active:scale-[1.0]"
+      // Press-down on click: navigation from these cards had no feedback at
+      // all — snapping back to 1.0 reads as nothing (Anir, Jul 25: "there's no
+      // animation when I click"). 0.97 matches the app-wide button press.
+      "group-hover:scale-[1.03] group-hover:z-30 group-hover:border-blue-subtle group-hover:shadow-[0_28px_64px_-16px_rgba(0,0,0,0.30)] group-active:scale-[0.97] group-active:duration-75"
   );
 
   const body = (
