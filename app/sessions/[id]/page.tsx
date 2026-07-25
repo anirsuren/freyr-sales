@@ -8,6 +8,7 @@ import { EngagementRail } from "@/components/sessions/EngagementRail";
 import { RecordView } from "@/components/RecordView";
 import { SIZE_TIER_LABEL } from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
+import { geographyWithFlag } from "@/lib/countryFlags";
 
 export const metadata = { title: "Session" };
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export default async function SessionPage({
         summary: customer.enrichment_summary || "",
         facts: [
           { label: "Industry", value: customer.industry || "—" },
-          { label: "Geography", value: customer.geography || "—" },
+          { label: "Geography", value: geographyWithFlag(customer.geography) },
           {
             label: "Size",
             value: customer.size_tier

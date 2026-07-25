@@ -3,6 +3,7 @@ import { ReportToolbar } from "@/components/customers/ReportToolbar";
 import { buildDeals, formatMoney, ownerFor } from "@/lib/pipeline";
 import { formatDate, formatDateTime, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
+import { geographyWithFlag } from "@/lib/countryFlags";
 
 export const metadata = { title: "Account report" };
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ export default async function AccountReportPage({
 
   const facts = [
     { label: "Industry", value: customer.industry || "—" },
-    { label: "Geography", value: customer.geography || "—" },
+    { label: "Geography", value: geographyWithFlag(customer.geography) },
     {
       label: "Size",
       value: customer.size_tier

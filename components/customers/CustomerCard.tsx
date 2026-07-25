@@ -13,6 +13,7 @@ import {
 import { formatDateTime } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
+import { geographyWithFlag } from "@/lib/countryFlags";
 
 type MixSlice = { label: string; value: number; color: string; tip: TipItem[] };
 
@@ -57,7 +58,7 @@ export function CustomerCard({
   const facts: { label: string; value: string }[] = [
     { label: "Opportunity", value: opp },
     { label: "Offerings in use", value: String(offeringsCount) },
-    { label: "Region", value: customer.geography || "—" },
+    { label: "Region", value: geographyWithFlag(customer.geography) },
     { label: "Owner", value: customer.owner || "Unassigned" },
   ];
 

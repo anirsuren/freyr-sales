@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { SizeBadge, Badge } from "@/components/ui/Badge";
 import type { Customer, Contact, RecommendedService } from "@/lib/types";
+import { GeographyText } from "@/components/ui/GeographyText";
 
 function RelevanceDots({ score }: { score: number }) {
   // score is 0-10 → 5 dots
@@ -49,7 +50,7 @@ export function EnrichmentPanel({
           </div>
           <div className="flex gap-2">
             <dt className="text-text-tertiary w-20 shrink-0">Geography</dt>
-            <dd className="text-text-primary">{customer.geography || "—"}</dd>
+            <dd className="text-text-primary"><GeographyText geography={customer.geography} /></dd>
           </div>
         </dl>
         <p className="text-[14px] text-text-secondary leading-relaxed mt-3">

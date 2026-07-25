@@ -5,6 +5,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { SIZE_TIER_LABEL } from "@/lib/utils";
 import type { Customer, Contact, RecommendedService } from "@/lib/types";
+import { GeographyText } from "@/components/ui/GeographyText";
 
 function MatchBar({ pct }: { pct: number }) {
   return (
@@ -70,7 +71,7 @@ export function IntelligenceRail({
             Geography
           </p>
           <p className="text-[13px] font-medium text-text-primary">
-            {customer.geography || "—"}
+            <GeographyText geography={customer.geography} />
           </p>
         </div>
       </div>

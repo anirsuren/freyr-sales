@@ -67,6 +67,7 @@ import { AgentActions } from "@/components/agent/AgentActions";
 import { AgentRunHistory } from "@/components/agent/AgentRunHistory";
 import { AccountBriefing } from "@/components/agent/AccountBriefing";
 import { TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
+import { GeographyText } from "@/components/ui/GeographyText";
 import type {
   Customer,
   Contact,
@@ -638,7 +639,7 @@ export function CustomerTabs({
                   <MapPin size={16} className="text-text-tertiary mt-0.5" strokeWidth={1.5} />
                   <div>
                     <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Geography</p>
-                    <p className="text-[14px] text-text-primary">{customer.geography || "—"}</p>
+                    <p className="text-[14px] text-text-primary"><GeographyText geography={customer.geography} /></p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">

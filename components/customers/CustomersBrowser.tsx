@@ -22,6 +22,7 @@ import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { HoverCard } from "@/components/ui/HoverCard";
 import type { Customer } from "@/lib/types";
 import type { TipItem } from "@/components/charts/Charts";
+import { geographyWithFlag } from "@/lib/countryFlags";
 
 type EnrichedCustomer = Customer & {
   contact_count: number;
@@ -615,7 +616,7 @@ export function CustomersBrowser({
                                   {c.company_name}
                                 </p>
                                 <p className="text-[11.5px] text-text-tertiary truncate">
-                                  {[c.industry, c.geography].filter(Boolean).join(" · ") || "—"}
+                                  {[c.industry, geographyWithFlag(c.geography, "")].filter(Boolean).join(" · ") || "—"}
                                 </p>
                               </div>
                             </div>
