@@ -163,10 +163,10 @@ export function AgentActions({
                       className={compact ? "w-9 h-9 text-[12px]" : "w-10 h-10 text-[13px]"}
                     />
                     <span
-                      className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ring-2 ring-white"
-                      style={{ background: m.bg, color: m.color }}
+                      className="absolute -bottom-1.5 -right-1.5 flex h-[19px] w-[19px] items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-border-light"
+                      style={{ color: m.color }}
                     >
-                      <Icon size={10} strokeWidth={2.4} />
+                      <Icon size={11} strokeWidth={2.4} />
                     </span>
                   </span>
                 ) : (

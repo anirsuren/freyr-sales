@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, FlaskConical, Rocket } from "lucide-react";
@@ -150,7 +152,12 @@ export function TopBar({
   // offerings-only release: every remaining entry duplicates a control the
   // offerings page already shows (Import), so the button is pure noise there
   // (Anir, Jul 25: "this button is completely useless") — render nothing.
-  const newItems = offeringsOnly ? [] : NEW_ITEMS;
+  const pathname = usePathname();
+  // The offerings surface carries its own create/import controls — the global
+  // button there is a duplicate at best and a confusing second door at worst
+  // (Anir, twice today: "remove this new button").
+  const newItems =
+    offeringsOnly || pathname?.startsWith("/offerings") ? [] : NEW_ITEMS;
 
   function markRead(id: string) {
     if (!notificationStateReady) return;

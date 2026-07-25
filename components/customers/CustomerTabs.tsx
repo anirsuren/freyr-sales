@@ -111,7 +111,7 @@ const NOTE_KIND_META: Record<
   note: { label: "Note", icon: FileText, color: "#8E98A8" },
 };
 
-const SERVICE_TAG_COLORS = ["#0071E3", "#19C3B1", "#7C3AED", "#E11D48", "#D97706"];
+const SERVICE_TAG_COLORS = ["#0071E3", "#0D9488", "#7C3AED", "#E11D48", "#F59E0B"];
 
 const DELIVERABLES = [
   {
@@ -139,7 +139,7 @@ const DELIVERABLES = [
     label: "Slide Outline",
     icon: Presentation,
     ask: "Draft a slide outline for",
-    color: "#D97706",
+    color: "#F59E0B",
     bg: "rgba(217,119,6,0.07)",
   },
 ];

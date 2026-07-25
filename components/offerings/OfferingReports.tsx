@@ -64,7 +64,7 @@ const REVENUE_TYPE_STYLE: Record<
   annual: { color: "#0071E3", bg: "rgba(0,113,227,0.10)", icon: Repeat },
   project: { color: "#7C3AED", bg: "rgba(124,58,237,0.10)", icon: Briefcase },
   annual_service: { color: "#0F766E", bg: "rgba(15,118,110,0.10)", icon: Wrench },
-  license: { color: "#B45309", bg: "rgba(180,83,9,0.12)", icon: KeyRound },
+  license: { color: "#059669", bg: "rgba(5,150,105,0.12)", icon: KeyRound },
 };
 
 function TypePill({

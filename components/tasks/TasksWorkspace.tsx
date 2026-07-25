@@ -68,16 +68,21 @@ export function TasksWorkspace({
   const queueRef = useRef<HTMLElement>(null);
 
   /**
-   * Filtering to a short result set makes the page shorter than the current
-   * scroll offset, so the browser clamps you to the top and the queue you were
-   * reading is suddenly off-screen — with nothing left to scroll back down to
-   * (Anir, Jul 25: "it literally fucking moves me up… I can't even scroll
-   * down"). Re-anchor on the queue so the rows stay under the cursor.
+   * Filtering must not move the screen AT ALL. v1 of this fix re-anchored the
+   * queue with scrollIntoView — still a jump, still broke the flow (Anir: "it
+   * pushes my screen up, it ruins the flow"). Now the scroll position is
+   * captured before the filter applies and restored after paint, and the rows
+   * container reserves height (min-h below) so a one-row result can't shorten
+   * the page underneath the current scroll offset.
    */
   function applyFilter(next: Filter) {
+    const scroller =
+      (document.querySelector("main") as HTMLElement | null) ??
+      (document.scrollingElement as HTMLElement | null);
+    const y = scroller ? scroller.scrollTop : 0;
     setFilter(next);
     requestAnimationFrame(() => {
-      queueRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+      if (scroller) scroller.scrollTop = y;
     });
   }
 
@@ -224,7 +229,7 @@ export function TasksWorkspace({
           </div>
         </div>
 
-        <div className="rounded-lg border border-border overflow-hidden bg-white">
+        <div className="rounded-lg border border-border overflow-hidden bg-white min-h-[420px]">
           <div className="grid grid-cols-[120px_minmax(220px,1.1fr)_minmax(280px,1.4fr)_150px_40px] gap-4 items-center px-4 h-10 bg-surface border-b border-border text-[11px] font-semibold uppercase text-text-tertiary">
             <span>Type</span><span>Account / contact</span><span>Task</span><span>Due / status</span><span />
           </div>

@@ -404,7 +404,7 @@ export function CustomersBrowser({
             options={[
               // Icons alone rendered as a gray list — every option needs its
               // colour (standing rule: chips and dropdowns are never gray).
-              { value: "recent", label: "Newest", icon: CalendarClock, color: "#B45309" },
+              { value: "recent", label: "Newest", icon: CalendarClock, color: "#F59E0B" },
               { value: "company", label: "Company A–Z", icon: ArrowDownAZ, color: "#0071E3" },
               { value: "size", label: "Opportunity", icon: Target, color: "#7C3AED" },
               { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },

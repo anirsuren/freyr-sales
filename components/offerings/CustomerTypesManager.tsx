@@ -57,6 +57,7 @@ export function CustomerTypesManager({
   const router = useRouter();
   const { toast } = useToast();
   const [adding, setAdding] = useState(false);
+  const [addingMarket, setAddingMarket] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const [family, setFamily] = useState<CustomerFamily>("Pharmaceutical");
@@ -121,6 +122,7 @@ export function CustomerTypesManager({
       if (data.ok) {
         toast(`Added ${data.market.name}.`);
         setNewMarket("");
+        setAddingMarket(false);
         router.refresh();
       } else {
         toast(data.error || "Couldn't add the market.", "error");
@@ -334,11 +336,6 @@ export function CustomerTypesManager({
                     style={{ color: accent, background: `${accent}14` }}
                   >
                     {count} offering{count === 1 ? "" : "s"}
-                    <ArrowRight
-                      size={12}
-                      strokeWidth={2}
-                      className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
-                    />
                   </span>
                 </Link>
               );
@@ -445,20 +442,61 @@ export function CustomerTypesManager({
           })}
         </div>
         {canEdit && (
-          <div className="flex items-center gap-2 max-w-[420px]">
-            <input
-              className={`${FIELD} flex-1`}
-              value={newMarket}
-              onChange={(e) => setNewMarket(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addMarket()}
-              placeholder="Add a market (e.g. Canada)"
-            />
-            <Button variant="secondary" onClick={addMarket} loading={busy}>
-              Add
-            </Button>
-          </div>
+          <button
+            onClick={() => setAddingMarket(true)}
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-lg border border-dashed border-blue-subtle text-blue-primary hover:bg-blue-light/50 transition-colors"
+          >
+            <Plus size={14} strokeWidth={2.2} /> Add market
+          </button>
         )}
       </Card>
+
+      {/* Markets too: press Add, get a POPUP — a bare text box sitting in the
+          card read as clutter (Anir, Jul 25: "you press the plus button,
+          there's a pop-up, and then you add it"). The flag previews live as
+          you type, so a typo shows itself before saving. */}
+      <Modal
+        open={canEdit && addingMarket}
+        onClose={() => setAddingMarket(false)}
+        title="Add a market"
+      >
+        <div className="space-y-4 p-1">
+          <div>
+            <label className={LABEL}>Market</label>
+            <div className="relative">
+              <input
+                className={`${FIELD} pl-9`}
+                value={newMarket}
+                onChange={(e) => setNewMarket(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addMarket()}
+                placeholder="e.g. Canada"
+                autoFocus
+              />
+              <span
+                aria-hidden="true"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[15px]"
+              >
+                {flagForGeography(newMarket) || "🌐"}
+              </span>
+            </div>
+            <p className="mt-1.5 text-[12px] text-text-secondary">
+              Type a country or region — the flag appears when it&apos;s
+              recognised.
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={() => setAddingMarket(false)}
+              className="text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+            >
+              Cancel
+            </button>
+            <Button onClick={addMarket} loading={busy}>
+              Add market
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

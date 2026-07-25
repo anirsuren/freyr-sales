@@ -270,11 +270,6 @@ export function OfferingTypesManager({
                     style={{ color: accent, background: `${accent}14` }}
                   >
                     {count} offering{count === 1 ? "" : "s"}
-                    <ArrowRight
-                      size={12}
-                      strokeWidth={2}
-                      className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
-                    />
                   </Link>
                   {canEdit && (
                   <button

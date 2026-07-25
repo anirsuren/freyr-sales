@@ -39,7 +39,7 @@ const KIND_META: Record<MaterialKind, { icon: LucideIcon; color: string; short: 
   presentation: { icon: Presentation, color: "#0071E3", short: "Presentation" },
   whitepaper: { icon: FileText, color: "#7C3AED", short: "Whitepaper" },
   pricing: { icon: DollarSign, color: "#059669", short: "Pricing" },
-  competition: { icon: Swords, color: "#B45309", short: "Competition" },
+  competition: { icon: Swords, color: "#F97316", short: "Competition" },
   case_study: { icon: BookOpen, color: "#0F766E", short: "Case study" },
   reference: { icon: Quote, color: "#4F46E5", short: "Reference" },
   one_pager: { icon: File, color: "#0369A1", short: "One-pager" },

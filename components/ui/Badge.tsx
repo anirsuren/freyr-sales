@@ -44,7 +44,7 @@ export const SIZE_TIER_META: Record<
   { bg: string; color: string; icon: LucideIcon }
 > = {
   small: { bg: "rgba(5,150,105,0.12)", color: "#047857", icon: Home },
-  mid: { bg: "rgba(245,158,11,0.14)", color: "#B45309", icon: Building },
+  mid: { bg: "rgba(8,145,178,0.12)", color: "#0891B2", icon: Building },
   large: { bg: "rgba(124,58,237,0.12)", color: "#7C3AED", icon: Building2 },
 };
 

@@ -597,7 +597,7 @@ export function OfferingsBrowser({
               { value: "default", label: "Recommended", color: "#0071E3", icon: SortSpark },
               { value: "name", label: "Name (A–Z)", color: "#7C3AED", icon: ArrowDownAZ },
               { value: "category", label: "By category", color: "#0F6E56", icon: SortLayers },
-              { value: "type", label: "By type", color: "#B45309", icon: SortPackage },
+              { value: "type", label: "By type", color: "#F97316", icon: SortPackage },
               { value: "mapped", label: "Most complete first", color: "#059669", icon: SortComplete },
             ]}
           />
@@ -692,8 +692,9 @@ export function OfferingsBrowser({
         </Card>
       ) : view === "grid" ? (
         // Grid (compact table) view — Suren's live-meeting ask; mirrors his
-        // Excel so the whole catalog is scannable in rows.
-        <Card className="p-0 overflow-hidden">
+        // Excel so the whole catalog is scannable in rows. Keyed so switching
+        // views re-mounts with the shared fade/lift.
+        <Card key="grid-view" className="tab-panel p-0 overflow-hidden">
           <div className="overflow-x-auto">
             {/* table-fixed + explicit widths so all six columns fit the card —
                 auto layout let "Availability" grab all the slack and shoved the
@@ -878,7 +879,10 @@ export function OfferingsBrowser({
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+        <div
+          key="tile-view"
+          className="tab-panel grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch"
+        >
           {sorted.map((o, i) => renderCard(o, i))}
         </div>
       )}

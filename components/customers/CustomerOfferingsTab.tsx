@@ -103,7 +103,7 @@ function segmentColor(type: string): string {
   if (t.includes("bio pharma") || t.includes("biopharma")) return "#7C3AED"; // violet
   if (t.includes("biologic")) return "#E11D48"; // rose
   if (t.includes("pharma")) return "#0071E3"; // blue
-  if (t.includes("device")) return "#D97706"; // amber
+  if (t.includes("device")) return "#F59E0B"; // amber
   if (t.includes("consumer")) return "#0F9E8E"; // teal
   return "#8E98A8"; // slate
 }
@@ -118,7 +118,7 @@ function segmentParts(type: string) {
   if (key.includes("large")) {
     return { family, size, color: "#047857", bg: "rgba(5,150,105,0.08)" };
   }
-  return { family, size, color: "#B45309", bg: "rgba(217,119,6,0.08)" };
+  return { family, size, color: "#0891B2", bg: "rgba(8,145,178,0.08)" };
 }
 
 // One offering, serialized for this tab by the server page (materials carry a
