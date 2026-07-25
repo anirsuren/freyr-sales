@@ -1773,8 +1773,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     await page.getByRole("button", { name: "Draft it for me" }).first().click();
+    // .first(): the generated draft body can echo the same phrase, and a
+    // two-element match trips strict mode.
     await expect(
-      page.getByText(/edit before you\s+send/i)
+      page.getByText(/edit before you\s+send/i).first()
     ).toBeVisible({ timeout: 8000 });
     await expect(page.getByLabel("Draft body")).toBeVisible();
   });

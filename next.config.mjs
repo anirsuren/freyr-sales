@@ -14,6 +14,11 @@ const nextConfig = {
   // Types are guarded by `tsc --noEmit` and 86 Playwright tests; don't let
   // stylistic ESLint rules (no-explicit-any in mock adapters, etc.) block the
   // production build / Vercel deploy.
+  // The floating dev-tools bubble Next paints bottom-corner in dev is what
+  // read as a "weird transparent broken icon" on the tasks page (Anir,
+  // Jul 25) — it is Next's own UI, never ships to production, and Suren
+  // reviews the app on the dev server, so it has to go.
+  devIndicators: false,
   // Kill the App Router's 30s client-side page cache for dynamic pages.
   // Without this, saving on one page and navigating to another (e.g. submit
   // a pitch for review → open the Sessions list) showed a STALE cached copy
