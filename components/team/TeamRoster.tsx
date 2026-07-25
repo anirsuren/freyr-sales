@@ -102,6 +102,7 @@ function StageDonut({ rep, size = 82 }: { rep: RosterRep; size?: number }) {
     // logo, name, contact, and value, straight from the rep's stageDeals.
     tip: (rep.stageDeals?.[s.stage] ?? []).map((d) => ({
       logo: d.company,
+      avatar: d.contact,
       name: d.company,
       sub: d.contact,
       value: formatMoney(d.value),

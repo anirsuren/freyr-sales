@@ -148,6 +148,7 @@ export default async function CampaignDetailPage({
   // number (Suren: "add the logo, give me more info, I'm a sales agent").
   const recipientTip: TipItem[] = recipients.map((p) => ({
     logo: p.company,
+    avatar: p.name,
     name: p.name,
     sub: p.title || p.company,
   }));

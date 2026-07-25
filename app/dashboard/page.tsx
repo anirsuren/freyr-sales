@@ -280,12 +280,25 @@ export default async function DashboardPage({
     const cumulative: ReturnType<typeof pipelineGrowthPointDeals>[number] = [];
     return pipelineGrowthPointDeals(healthDeals).map((bucket) => {
       cumulative.push(...bucket);
+      // Dedupe: a deal present in two buckets was listed twice in the same
+      // tooltip (Anir saw Solvance and Aether doubled). And drop the
+      // "· Open deal added" tail — the tooltip heading already says these
+      // are the records at this point, so it was five identical words of
+      // noise stealing the row's width.
+      const seen = new Set<string>();
       return [...cumulative]
         .sort((a, b) => b.value - a.value)
+        .filter((deal) => {
+          const key = `${deal.company}|${deal.contact}|${deal.value}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
         .map((deal) => ({
           logo: deal.company,
+          avatar: deal.contact,
           name: deal.company,
-          sub: `${deal.contact} · Open deal added`,
+          sub: deal.contact,
           value: formatMoney(deal.value),
         }));
     });
@@ -540,6 +553,7 @@ export default async function DashboardPage({
     color: STAGE_COLOR[row.stage],
     tip: row.deals.map((deal) => ({
       logo: deal.company,
+      avatar: deal.contactName,
       name: deal.company,
       sub: `${deal.contactName} · ${Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}% close probability`,
       value: `${formatMoney(deal.value)} raw`,

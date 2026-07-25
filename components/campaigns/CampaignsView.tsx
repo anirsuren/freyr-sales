@@ -723,6 +723,7 @@ export function CampaignsView({
             // the trajectory line reveals who's on the list (logo + name).
             const recipTip: TipItem[] = recips.map((r) => ({
               logo: r.company,
+              avatar: r.name,
               name: r.name,
               sub: r.company,
             }));

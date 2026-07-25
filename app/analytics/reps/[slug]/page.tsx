@@ -126,6 +126,7 @@ export default async function RepPage({
     if (real.length)
       return real.map((d) => ({
         logo: d.company,
+        avatar: d.contactName,
         name: d.company,
         sub: `${d.contactName} · ${d.stage}`,
         value: formatMoney(d.value),
@@ -138,6 +139,7 @@ export default async function RepPage({
       return {
         logo: co,
         name: co,
+        avatar: cts[i] ?? undefined,
         sub: `${cts[i] ?? "Decision-maker"} · ${stage}`,
         value: formatMoney(Math.round((avg * jitter) / 5000) * 5000),
       };
@@ -203,7 +205,7 @@ export default async function RepPage({
   const activityTips = activity.map((n, i) => {
     const cos = pick(companyPool, `${name}-wk-${i}`, n);
     const cts = pick(contactPool, `${name}-wkc-${i}`, n);
-    return cos.map((co, j) => ({ logo: co, name: co, sub: cts[j] || "Touchpoint" }));
+    return cos.map((co, j) => ({ logo: co, avatar: cts[j] || undefined, name: co, sub: cts[j] || "Touchpoint" }));
   });
 
   // Biggest open accounts (real reps have real deals).

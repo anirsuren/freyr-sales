@@ -7,6 +7,7 @@ import { Download, Search, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -27,6 +28,24 @@ export interface SessionRow {
   outcome: string | null;
   review: ReviewStatus;
   date: string;
+  /** Everything a rep wants at a glance without opening the record. */
+  contactMeta?: {
+    email: string | null;
+    phone: string | null;
+    linkedin: string | null;
+    touches: number;
+    sessions: number;
+    lastTouch: string | null;
+  };
+  companyMeta?: {
+    industry: string | null;
+    sizeTier: string | null;
+    geography: string | null;
+    customerType: string | null;
+    contacts: number;
+    sessions: number;
+    summary: string | null;
+  };
 }
 
 const SORTS = [
@@ -188,29 +207,118 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                     className="hover:bg-surface active:bg-blue-light/50 transition-colors group cursor-pointer"
                   >
                     <td className="px-5 py-4">
-                      <Link
-                        href={`/customers/${r.customerId}`}
-                        className="group/company flex items-center gap-3"
+                      <HoverCard
+                        side="right"
+                        width={300}
+                        content={
+                          <div>
+                            <div className="flex items-center gap-2.5">
+                              <CompanyLogo name={r.company} className="h-10 w-10 shrink-0 text-[10px]" />
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-semibold leading-snug text-text-primary">{r.company}</p>
+                                <p className="text-[10.5px] text-text-tertiary">
+                                  {[r.companyMeta?.industry, r.companyMeta?.geography].filter(Boolean).join(" · ") || "Account"}
+                                </p>
+                              </div>
+                            </div>
+                            {r.companyMeta?.customerType && (
+                              <p className="mt-2 text-[11px] font-semibold text-blue-primary">
+                                {r.companyMeta.customerType}
+                              </p>
+                            )}
+                            {r.companyMeta?.summary && (
+                              <p className="mt-2 text-[11.5px] leading-relaxed text-text-secondary">
+                                {r.companyMeta.summary}
+                              </p>
+                            )}
+                            <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface px-2 py-2 text-center">
+                              <div>
+                                <p className="text-[12px] font-bold text-text-primary tnum">{r.companyMeta?.contacts ?? 0}</p>
+                                <p className="text-[9px] text-text-tertiary">Contacts</p>
+                              </div>
+                              <div>
+                                <p className="text-[12px] font-bold text-text-primary tnum">{r.companyMeta?.sessions ?? 0}</p>
+                                <p className="text-[9px] text-text-tertiary">Sessions</p>
+                              </div>
+                              <div>
+                                <p className="text-[12px] font-bold text-text-primary tnum uppercase">{r.companyMeta?.sizeTier || "—"}</p>
+                                <p className="text-[9px] text-text-tertiary">Size</p>
+                              </div>
+                            </div>
+                            <p className="mt-2.5 text-[11px] font-semibold text-blue-primary">Open the account →</p>
+                          </div>
+                        }
                       >
-                        <CompanyLogo name={r.company} className="w-8 h-8 text-[11px]" />
-                        <span className="text-[13px] font-semibold text-text-primary group-hover/company:text-blue-primary">
-                          {r.company}
-                        </span>
-                      </Link>
+                        <Link
+                          href={`/customers/${r.customerId}`}
+                          className="group/company flex items-center gap-3"
+                        >
+                          <CompanyLogo name={r.company} className="w-8 h-8 text-[11px]" />
+                          <span className="text-[13px] font-semibold text-text-primary group-hover/company:text-blue-primary">
+                            {r.company}
+                          </span>
+                        </Link>
+                      </HoverCard>
                     </td>
                     <td className="px-5 py-4">
-                      <Link
-                        href={`/contacts/${r.contactId}`}
-                        className="group/contact flex items-center gap-2.5"
-                      >
-                        <Avatar name={r.contact} className="w-7 h-7 text-[10px]" />
-                        <div>
-                          <div className="text-[13px] font-semibold text-text-primary group-hover/contact:text-blue-primary">
-                            {r.contact}
+                      <HoverCard
+                        side="right"
+                        width={300}
+                        content={
+                          <div>
+                            <div className="flex items-center gap-2.5">
+                              <Avatar name={r.contact} className="h-10 w-10 shrink-0 text-[11px]" />
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-semibold leading-snug text-text-primary">{r.contact}</p>
+                                <p className="text-[10.5px] text-text-tertiary">
+                                  {[r.title, r.company].filter(Boolean).join(" · ")}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-2.5 space-y-1 text-[11.5px]">
+                              {r.contactMeta?.email && (
+                                <p className="truncate text-text-secondary">{r.contactMeta.email}</p>
+                              )}
+                              {r.contactMeta?.phone && (
+                                <p className="text-text-secondary tnum">{r.contactMeta.phone}</p>
+                              )}
+                            </div>
+                            <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface px-2 py-2 text-center">
+                              <div>
+                                <p className="text-[12px] font-bold text-text-primary tnum">{r.contactMeta?.touches ?? 0}</p>
+                                <p className="text-[9px] text-text-tertiary">Touches</p>
+                              </div>
+                              <div>
+                                <p className="text-[12px] font-bold text-text-primary tnum">{r.contactMeta?.sessions ?? 0}</p>
+                                <p className="text-[9px] text-text-tertiary">Sessions</p>
+                              </div>
+                              <div>
+                                <p className="text-[12px] font-bold text-text-primary">{r.outcome ? OUTCOME_META[r.outcome]?.label || "—" : "—"}</p>
+                                <p className="text-[9px] text-text-tertiary">Last outcome</p>
+                              </div>
+                            </div>
+                            {r.contactMeta?.lastTouch && (
+                              <p className="mt-2 text-[10.5px] text-text-tertiary">
+                                Last touched {formatDateTime(r.contactMeta.lastTouch)}
+                              </p>
+                            )}
+                            <p className="mt-2.5 text-[11px] font-semibold text-blue-primary">Open the contact →</p>
                           </div>
-                          <div className="text-[11px] text-text-tertiary">{r.title}</div>
-                        </div>
-                      </Link>
+                        }
+                      >
+                        <Link
+                          href={`/contacts/${r.contactId}`}
+                          className="group/contact flex items-center gap-2.5"
+                        >
+                          <Avatar name={r.contact} className="w-7 h-7 text-[10px]" />
+                          <div>
+                            <div className="text-[13px] font-semibold text-text-primary group-hover/contact:text-blue-primary">
+                              {r.contact}
+                            </div>
+                            <div className="text-[11px] text-text-tertiary">{r.title}</div>
+                          </div>
+                        </Link>
+                      </HoverCard>
                     </td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">{r.service}</td>
                     <td className="px-5 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "—"}</td>

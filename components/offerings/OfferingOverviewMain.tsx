@@ -8,6 +8,7 @@ import {
   KeyRound,
   Layers,
   ReceiptText,
+  Building2,
 } from "lucide-react";
 import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
@@ -17,7 +18,7 @@ import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { formatMoney } from "@/lib/pipeline";
-import { DonutChart, DonutLegend, VIZ_SERIES } from "@/components/charts/Charts";
+import { DonutChart, DonutLegend, BarChart, VIZ_SERIES } from "@/components/charts/Charts";
 import { type Offering, hydrateOffering } from "@/lib/offerings";
 import type { OfferingReport } from "@/lib/revenue";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
@@ -76,32 +77,64 @@ export function OfferingOverviewMain({
     ? Math.round(((report.customers[0]?.revenue || 0) / report.totalRevenue) * 100)
     : 0;
 
-  // Slice sets for the two commercial donuts.
-  const customerSegments = report.customers.map((customer, index) => ({
-    label: customer.name,
-    value: customer.revenue,
-    color: VIZ_SERIES[index % VIZ_SERIES.length],
-  }));
+  // What this section shows must NOT be what the table under it already
+  // shows (Anir: "you're showing me exactly that right below it"). The
+  // customer split was a redraw of the table's own share column, so it's
+  // gone. These two are the facts the table can't tell you: what KIND of
+  // revenue this is, and how long it stays contracted.
   const REV_TYPE_COLOR: Record<string, string> = {
     annual: "#0071E3",
     project: "#7C3AED",
     annual_service: "#0F766E",
     license: "#059669",
   };
+  const allLines = report.customers.flatMap((customer) =>
+    customer.lines.map((line) => ({ customer: customer.name, line }))
+  );
   const typeTotals = new Map<string, number>();
-  for (const customer of report.customers)
-    for (const line of customer.lines)
-      typeTotals.set(
-        line.revenue_type,
-        (typeTotals.get(line.revenue_type) || 0) + line.amount
-      );
+  for (const { line } of allLines)
+    typeTotals.set(
+      line.revenue_type,
+      (typeTotals.get(line.revenue_type) || 0) + line.amount
+    );
   const typeSegments = [...typeTotals.entries()]
     .filter(([, value]) => value > 0)
     .map(([type, value]) => ({
       label: REVENUE_TYPE_META[type as keyof typeof REVENUE_TYPE_META]?.short || type,
       value,
       color: REV_TYPE_COLOR[type] || "#0071E3",
+      tip: allLines
+        .filter((entry) => entry.line.revenue_type === type)
+        .map((entry) => ({
+          logo: entry.customer,
+          name: entry.customer,
+          sub: entry.line.description || undefined,
+          value: formatMoney(entry.line.amount),
+        })),
     }));
+
+  const now = new Date();
+  const lineActiveAt = (line: (typeof allLines)[number]["line"], at: Date) => {
+    const time = at.getTime();
+    const start = line.start_date ? Date.parse(line.start_date) : -Infinity;
+    const end = line.end_date ? Date.parse(line.end_date) : Infinity;
+    return (Number.isNaN(start) || start <= time) && (Number.isNaN(end) || end >= time);
+  };
+  const outlook = Array.from({ length: 6 }, (_, index) => {
+    const month = new Date(now.getFullYear(), now.getMonth() + index, 1);
+    const live = allLines.filter((entry) => lineActiveAt(entry.line, month));
+    return {
+      label: month.toLocaleDateString("en-US", { month: "short" }),
+      value: live.reduce((sum, entry) => sum + entry.line.amount, 0),
+      color: "#0071E3",
+      tip: live.map((entry) => ({
+        logo: entry.customer,
+        name: entry.customer,
+        sub: REVENUE_TYPE_META[entry.line.revenue_type]?.short,
+        value: formatMoney(entry.line.amount),
+      })),
+    };
+  });
 
   return (
     <div className="min-w-0">
@@ -146,7 +179,7 @@ export function OfferingOverviewMain({
           </p>
         ) : (
           <div className="mt-5 pl-11">
-            <div className="grid grid-cols-3 divide-x divide-border-light border-y border-border-light">
+            <div className="grid grid-cols-2 divide-x divide-y divide-border-light border-y border-border-light lg:grid-cols-4 lg:divide-y-0">
               {[
                 {
                   label: "Booked revenue",
@@ -166,6 +199,12 @@ export function OfferingOverviewMain({
                   detail: "Projects, services, and licenses",
                   icon: ReceiptText,
                 },
+                {
+                  label: "Average account",
+                  value: formatMoney(avgRevenue),
+                  detail: `Top account holds ${topCustomerShare}%`,
+                  icon: Building2,
+                },
               ].map(({ label, value, detail, icon: Icon }) => (
                 <div key={label} className="flex min-w-0 items-center gap-3 px-4 py-3.5 first:pl-0">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
@@ -180,46 +219,18 @@ export function OfferingOverviewMain({
               ))}
             </div>
 
-            {/* Two balanced panels, not one pie marooned in white space
-                (Anir: "so much empty space… might as well have another chart
-                to the right"). The centre stays empty — the stat strip two
-                inches up already says $960K, and repeating it in a ring made
-                the number crowd its own edge. Legends carry the share only;
-                the table below is where the dollars live. */}
-            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Both panels add something the table below cannot: the KIND of
+                revenue, and how far out it stays under contract. */}
+            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
               <div className="rounded-xl border border-border-light px-4 py-4">
                 <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  Split by customer
-                </p>
-                <div className="flex items-center gap-4">
-                  <DonutChart
-                    syncId="offering-commercial"
-                    segments={customerSegments}
-                    size={112}
-                    thickness={13}
-                    format="money"
-                    centerLabel={String(report.customerCount)}
-                    centerSub={report.customerCount === 1 ? "account" : "accounts"}
-                  />
-                  <DonutLegend
-                    syncId="offering-commercial"
-                    items={customerSegments}
-                    pill
-                    bars={false}
-                    showValues={false}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border-light px-4 py-4">
-                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  Split by revenue type
+                  What kind of revenue
                 </p>
                 <div className="flex items-center gap-4">
                   <DonutChart
                     syncId="offering-types"
                     segments={typeSegments}
-                    size={112}
+                    size={108}
                     thickness={13}
                     format="money"
                     centerLabel={String(report.lineCount)}
@@ -233,6 +244,18 @@ export function OfferingOverviewMain({
                     showValues={false}
                   />
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-border-light px-4 py-4">
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    Still under contract
+                  </p>
+                  <p className="text-[10px] text-text-tertiary">
+                    Next six months
+                  </p>
+                </div>
+                <BarChart data={outlook} height={132} format="money" />
               </div>
             </div>
 
@@ -336,18 +359,6 @@ export function OfferingOverviewMain({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 divide-x divide-border-light border-b border-border-light">
-              {[
-                ["Average account", formatMoney(avgRevenue)],
-                ["Revenue per seat", report.totalLicenses ? formatMoney(revenuePerSeat) : "—"],
-                ["Top-account share", `${topCustomerShare}%`],
-              ].map(([label, value]) => (
-                <div key={label} className="min-w-0 px-3 py-3 first:pl-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">{label}</p>
-                  <p className="mt-0.5 text-[13.5px] font-bold text-text-primary tnum">{value}</p>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </section>

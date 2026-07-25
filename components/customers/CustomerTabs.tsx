@@ -980,6 +980,7 @@ export function CustomerTabs({
                   tip: ds.map(
                     (d): TipItem => ({
                       logo: d.company,
+                      avatar: d.contactName,
                       name: d.company,
                       sub: d.contactName,
                       value: formatMoney(d.value),
@@ -1024,6 +1025,7 @@ export function CustomerTabs({
                   .filter((deal) => new Date(deal.createdAt).getTime() <= end)
                   .map((deal) => ({
                     logo: deal.company,
+                    avatar: deal.contactName,
                     name: deal.company,
                     sub: [deal.contactName, deal.stage].filter(Boolean).join(" · "),
                     value: formatMoney(deal.value),

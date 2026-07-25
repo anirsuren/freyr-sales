@@ -71,6 +71,7 @@ export function AnalyticsView({
   const stageTip = (stage: string) =>
     (stageDeals?.[stage] ?? []).map((d) => ({
       logo: d.company,
+      avatar: d.contact,
       name: d.company,
       sub: d.contact,
       value: formatMoney(d.value),
@@ -178,6 +179,7 @@ export function AnalyticsView({
               // Breakdown: WHO is in this stage — logo + company + contact + value.
               tip: (stageDeals?.[s.stage] ?? []).map((d) => ({
                 logo: d.company,
+                avatar: d.contact,
                 name: d.company,
                 sub: d.contact,
                 value: formatMoney(d.value),

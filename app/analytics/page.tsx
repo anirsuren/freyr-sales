@@ -93,6 +93,7 @@ export default async function AnalyticsPage({
   const trendPointTips = pipelineGrowthPointDeals(deals).map((bucket) =>
     bucket.map((d) => ({
       logo: d.company,
+      avatar: d.contact,
       name: d.company,
       sub: d.contact,
       value: formatMoney(d.value),

@@ -169,6 +169,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
             <Link
               key={r.identityKey}
               href={`/analytics/reps/${r.slug}`}
+              data-rep-column
               className={`group flex-1 min-w-0 h-full flex flex-col items-center gap-1.5 pt-1 rounded-lg transition-colors ${
                 you ? "bg-blue-light/60 ring-1 ring-blue-primary/30" : ""
               }`}
@@ -196,6 +197,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                   width={240}
                   delayMs={0}
                   content={hover}
+                  clearAncestor="[data-rep-column]"
                   className="w-full flex justify-center shrink-0"
                 >
                   <div

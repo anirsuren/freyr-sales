@@ -274,7 +274,16 @@ function TipBreakdown({ items, label }: { items?: TipItem[]; label?: string }) {
       )}
       {items.slice(0, 5).map((t, j) => (
         <div key={j} className="flex items-center gap-2 text-[11px]">
-          {t.logo ? (
+          {/* Company AND person when both are known — a row about a deal
+              without the human's face reads half-anonymous (Anir: "you don't
+              have the profile picture of the person"). Overlapped, so two
+              images cost barely more width than one. */}
+          {t.logo && t.avatar ? (
+            <span className="flex shrink-0 items-center -space-x-1.5">
+              <CompanyLogo name={t.logo} className="w-[18px] h-[18px] text-[7px] ring-2 ring-white" />
+              <Avatar name={t.avatar} className="w-[18px] h-[18px] text-[7px] ring-2 ring-white" />
+            </span>
+          ) : t.logo ? (
             <CompanyLogo name={t.logo} className="w-[18px] h-[18px] text-[7px] shrink-0" />
           ) : t.avatar ? (
             <Avatar name={t.avatar} className="w-[18px] h-[18px] text-[7px] shrink-0" />

@@ -478,6 +478,7 @@ export default async function ForecastPage() {
                   // hovering a slice shows the actual deals driving it (Suren)
                   tip: s.deals.map((d) => ({
                     logo: d.company,
+                    avatar: d.contact,
                     name: d.company,
                     sub: d.contact,
                     value: formatMoney(d.value),
