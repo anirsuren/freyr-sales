@@ -49,7 +49,7 @@ import {
 } from "@/components/customers/CustomerDealRow";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
-import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR, SIZE_TIER_LABEL } from "@/lib/utils";
 import { AreaChart, DonutChart, DonutLegend, LineChart, Sparkline, type TipItem } from "@/components/charts/Charts";
 import {
   buildDeals,
@@ -61,13 +61,15 @@ import {
   repOptionsFor,
 } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries, HEALTH_COLOR } from "@/lib/health";
-import { HealthBadge } from "@/components/ui/HealthBadge";
+import { HealthBadge, HealthBar } from "@/components/ui/HealthBadge";
 import { nextBestActions, weeklyOutcomeSummary } from "@/lib/agent";
 import { AgentActions } from "@/components/agent/AgentActions";
 import { AgentRunHistory } from "@/components/agent/AgentRunHistory";
 import { AccountBriefing } from "@/components/agent/AccountBriefing";
 import { TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
 import { GeographyText } from "@/components/ui/GeographyText";
+import { AttributeTag } from "@/components/ui/AttributeTag";
+import { flagForGeography } from "@/lib/countryFlags";
 import type {
   Customer,
   Contact,
@@ -632,14 +634,33 @@ export function CustomerTabs({
                   <Building2 size={16} className="text-text-tertiary mt-0.5" strokeWidth={1.5} />
                   <div>
                     <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Industry</p>
-                    <p className="text-[14px] text-text-primary">{customer.industry || "—"}</p>
+                    {customer.industry ? (
+                      <AttributeTag
+                        value={customer.industry}
+                        icon={Building2}
+                        label="Industry"
+                        className="mt-0.5"
+                      />
+                    ) : (
+                      <p className="text-[14px] text-text-primary">—</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <MapPin size={16} className="text-text-tertiary mt-0.5" strokeWidth={1.5} />
                   <div>
                     <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Geography</p>
-                    <p className="text-[14px] text-text-primary"><GeographyText geography={customer.geography} /></p>
+                    {customer.geography ? (
+                      <AttributeTag
+                        value={customer.geography}
+                        prefix={flagForGeography(customer.geography)}
+                        icon={MapPin}
+                        label="Geography"
+                        className="mt-0.5"
+                      />
+                    ) : (
+                      <p className="text-[14px] text-text-primary">—</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
@@ -656,6 +677,29 @@ export function CustomerTabs({
                   </div>
                 </div>
               </div>
+              {/* Customer type and size are two different facts and were being
+                  joined into one string elsewhere, so a rep couldn't filter or
+                  scan on either (Anir, Jul 25: "you should have tags for the
+                  customer type and the customer size"). Each is its own tag,
+                  each with its own stable colour. */}
+              {(customer.customer_type || customer.size_tier) && (
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  {customer.customer_type && (
+                    <AttributeTag
+                      value={customer.customer_type}
+                      icon={Briefcase}
+                      label="Customer type"
+                    />
+                  )}
+                  {customer.size_tier && (
+                    <AttributeTag
+                      value={SIZE_TIER_LABEL[customer.size_tier] || customer.size_tier}
+                      icon={Users}
+                      label="Size"
+                    />
+                  )}
+                </div>
+              )}
               <p className="text-[14px] text-text-secondary leading-relaxed">
                 {customer.enrichment_summary}
               </p>
@@ -671,16 +715,13 @@ export function CustomerTabs({
                   <h3 className="text-[15px] font-semibold text-text-primary">
                     Relationship health
                   </h3>
-                  <span
-                    className="text-[12px] font-semibold tnum"
-                    style={{ color: HEALTH_COLOR[health.band].color }}
-                  >
-                    {health.score}/100 · {health.label}
-                  </span>
                 </div>
-                <p className="text-[12px] text-text-tertiary mb-4">
+                <p className="text-[12px] text-text-tertiary mb-3">
                   How this account&apos;s health has moved over the last 5 weeks.
                 </p>
+                {/* The score used to be a number you had to interpret. A filled
+                    bar says how far along the account is before you read it. */}
+                <HealthBar health={health} className="mb-4" />
                 <div className="flex-1 flex items-end min-h-[150px]">
                   <AreaChart
                     data={healthSeries.points}

@@ -140,24 +140,29 @@ function PortalTip({
     top: currentAnchor.y,
     bottom: currentAnchor.y,
   };
+  // Measure from the HOVERED POINT, not the chart's outer box. Anchoring to
+  // the whole card pushed the popup to the card's top edge — on a tall chart
+  // that put it far from the cursor, and on a card near the top of the screen
+  // it went off-viewport entirely (Anir, Jul 25: "i cant see popup on the
+  // graph"). The point is what the rep is looking at, so the card sits next
+  // to it.
   const rooms = {
-    top: Math.max(0, chartRect.top - 8),
-    bottom: Math.max(0, vh - chartRect.bottom - 8),
+    top: Math.max(0, currentAnchor.y - 8),
+    bottom: Math.max(0, vh - currentAnchor.y - 8),
   };
-  // Chart detail cards belong above their plot. Only fall below when the chart
-  // is effectively pinned to the top of the viewport and there is materially
-  // more usable room underneath. They never move into a side rail.
-  const placement =
-    rooms.top >= 56 || rooms.top >= rooms.bottom ? "top" : "bottom";
+  // Prefer above the point; drop below only when there genuinely isn't room,
+  // so the card never covers the value being read.
+  const placement = rooms.top >= 120 || rooms.top >= rooms.bottom ? "top" : "bottom";
   const verticalRoom = placement === "top" ? rooms.top : rooms.bottom;
   const maxHeight = Math.max(48, verticalRoom - sideGap);
   const left = Math.max(
     8,
     Math.min(vw - width - 8, currentAnchor.x - width / 2)
   );
-  const top = placement === "top"
-    ? chartRect.top - sideGap
-    : chartRect.bottom + sideGap;
+  const top =
+    placement === "top"
+      ? currentAnchor.y - sideGap
+      : currentAnchor.y + sideGap;
   return createPortal(
     <div
       role="tooltip"
@@ -222,7 +227,10 @@ function fmt(f: Fmt | undefined, v: number): string {
         const value = v / 1e3;
         return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}K`;
       }
-      return String(v);
+      // Never String(v) — an axis max computed as 7 * 1.1 is 7.700000000000001
+      // in IEEE-754 and printed exactly that, which is what Anir saw on the
+      // "Deals worked" chart. One decimal at most, and no trailing ".0".
+      return Number.isInteger(v) ? String(v) : String(Number(v.toFixed(1)));
     }
   }
 }
