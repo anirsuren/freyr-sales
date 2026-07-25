@@ -24,7 +24,7 @@ export function NewOfferingButton({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center justify-center text-[14px] font-semibold rounded-md px-5 py-2.5 bg-blue-primary text-white hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+        className="inline-flex shrink-0 items-center justify-center whitespace-nowrap text-[13px] font-semibold rounded-md px-4 py-2 bg-blue-primary text-white hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
       >
         <Plus size={15} strokeWidth={2.2} className="mr-1" />
         New offering

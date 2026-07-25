@@ -35,7 +35,10 @@ const NEW_ITEMS = [
   { icon: Sparkles, label: "Sales session", sub: "Research + generate a pitch", href: "/intake" },
   { icon: Building2, label: "Customer account", sub: "Add a company to track", href: "/intake" },
   { icon: UserPlus, label: "Contact", sub: "Add a buying-committee member", href: "/intake" },
-  { icon: Package, label: "Offering", sub: "Add to the offering repository", href: "/offerings/new" },
+  // No "Offering" here: the offerings page carries its own New offering button,
+  // and two identical entry points read as two different features (Anir,
+  // Jul 25: "there are two ways to press to go to new offering… just leave it
+  // to one"). — kept as the page-level CTA.
   { icon: Upload, label: "Import data", sub: "Load accounts, contacts, and offerings", href: "/import" },
 ];
 
@@ -144,8 +147,11 @@ export function TopBar({
   const visibleNotifs = notificationStateReady ? notifs : [];
   const visibleReadIds = notificationStateReady ? readIds : new Set<string>();
   const unread = visibleNotifs.filter((n) => !visibleReadIds.has(n.id)).length;
+  // offerings-only release: the Offering entry left the global menu (single
+  // entry point rule), so surface Import as the one create action instead of
+  // rendering an empty dropdown.
   const newItems = offeringsOnly
-    ? NEW_ITEMS.filter((item) => item.href.startsWith("/offerings"))
+    ? NEW_ITEMS.filter((item) => item.href === "/import")
     : NEW_ITEMS;
 
   function markRead(id: string) {

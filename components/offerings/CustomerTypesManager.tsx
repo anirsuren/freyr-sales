@@ -291,7 +291,7 @@ export function CustomerTypesManager({
                 <Link
                   key={t.id}
                   href={`/offerings?type=${t.id}`}
-                  className="grid grid-cols-1 sm:grid-cols-[110px_140px_120px_1fr_auto] gap-x-3 gap-y-1 px-4 py-3 items-baseline hover:bg-surface transition-colors group"
+                  className="grid grid-cols-1 sm:grid-cols-[110px_140px_120px_1fr_auto] gap-x-3 gap-y-1 px-4 py-3 items-center hover:bg-surface transition-colors group"
                 >
                   {(() => {
                     const sm = SIZE_META[t.size as CustomerSize] ?? SIZE_META.Large;

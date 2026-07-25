@@ -691,6 +691,22 @@ export function OfferingsBrowser({
               </thead>
               <tbody>
                 {sorted.map((o) => {
+                  // Grid rows were bare gray text while the tiles were fully
+                  // colour-coded — same data, two moods (Anir, Jul 25: "the
+                  // grid view doesn't have any colors, and it's really dry").
+                  // Colours derive from list order, matching the dropdowns.
+                  const catIndex = offeringCategories.findIndex(
+                    (c) => c.name === o.offering_category
+                  );
+                  const catColor =
+                    catIndex >= 0 ? FILTER_PALETTE[catIndex % FILTER_PALETTE.length] : null;
+                  const typeIndex = offeringTypes.findIndex(
+                    (t) => t.name === o.offering_type
+                  );
+                  const typeColor =
+                    typeIndex >= 0
+                      ? FILTER_PALETTE[(typeIndex + 3) % FILTER_PALETTE.length]
+                      : null;
                   const fams = Array.from(
                     new Set(o.customerTypes.map((c) => c.family as string))
                   );
@@ -716,11 +732,37 @@ export function OfferingsBrowser({
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">
-                        {o.offering_category || "—"}
+                      <td className="px-4 py-3">
+                        {o.offering_category && catColor ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                            style={{ color: catColor, background: `${catColor}14` }}
+                          >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: catColor }}
+                            />
+                            {o.offering_category}
+                          </span>
+                        ) : (
+                          <span className="text-text-secondary">{o.offering_category || "—"}</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">
-                        {o.offering_type || "—"}
+                      <td className="px-4 py-3">
+                        {o.offering_type && typeColor ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                            style={{ color: typeColor, background: `${typeColor}14` }}
+                          >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: typeColor }}
+                            />
+                            {o.offering_type}
+                          </span>
+                        ) : (
+                          <span className="text-text-secondary">{o.offering_type || "—"}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
                         {o.current_availability ? (
@@ -729,17 +771,43 @@ export function OfferingsBrowser({
                           "—"
                         )}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary">
-                        {famList.length
-                          ? whoForLabel(
-                              famList,
-                              o.customerTypes.length,
-                              customerTypes.length
-                            )
-                          : "—"}
+                      <td className="px-4 py-3">
+                        {famList.length ? (
+                          o.customerTypes.length === customerTypes.length ? (
+                            <span
+                              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                              style={{ color: "#0F6E56", background: "#0F6E5614" }}
+                            >
+                              All customer types
+                            </span>
+                          ) : (
+                            <span className="flex flex-wrap gap-1">
+                              {famList.map((f) => (
+                                <span
+                                  key={f}
+                                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                                  style={{
+                                    color: familyColor(f),
+                                    background: `${familyColor(f)}14`,
+                                  }}
+                                >
+                                  {f}
+                                </span>
+                              ))}
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-text-secondary">—</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-text-secondary tnum">
-                        {o.materials.length || "—"}
+                      <td className="px-4 py-3 tnum">
+                        {o.materials.length ? (
+                          <span className="inline-flex items-center rounded-full bg-blue-light px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary">
+                            {o.materials.length}
+                          </span>
+                        ) : (
+                          <span className="text-text-tertiary">—</span>
+                        )}
                       </td>
                     </tr>
                   );
