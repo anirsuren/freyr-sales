@@ -69,7 +69,13 @@ export function AgentActions({
         setDone((s) => new Set(s).add(a.id));
         setDrafts((d) => ({
           ...d,
-          [a.id]: { title: data.draft.title, body: data.draft.body, runId: data.runId },
+          [a.id]: {
+            title: data.draft.title,
+            body: data.draft.body,
+            runId: data.runId,
+            // Lets the modal offer tone chips + Rewrite against this account.
+            customerId: a.customerId,
+          },
         }));
         setViewing(a.id);
         toast("Draft ready — saved to the timeline and added to Tasks");

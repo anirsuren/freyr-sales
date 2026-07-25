@@ -390,14 +390,17 @@ export function AgentDock({
 
           {/* Suggestions (only before the first exchange) + input */}
           <div className="px-3 pb-3 pt-2 border-t border-border-light shrink-0">
+            {/* One row, scrolling sideways if tight — stacked rows of starters
+                read as a form, not shortcuts (Anir: "why are the pre-recorded
+                messages one in another row"). */}
             {visibleMsgs.length === 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2.5">
+              <div className="flex gap-1.5 mb-2.5 overflow-x-auto no-scrollbar">
                 {suggestions.map((s) => (
                   <button
                     key={s}
                     onClick={() => ask(s)}
                     disabled={busy}
-                    className="text-[12px] text-text-secondary border border-border-light rounded-full px-2.5 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors disabled:opacity-50"
+                    className="shrink-0 whitespace-nowrap text-[12px] text-text-secondary border border-border-light rounded-full px-2.5 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors disabled:opacity-50"
                   >
                     {s}
                   </button>

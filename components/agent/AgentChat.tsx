@@ -591,12 +591,12 @@ export function AgentChat() {
         <div className="border-t border-border-light px-4 py-3">
           <div className="max-w-[760px] mx-auto">
             {active && active.messages.length > 0 && suggestions.length > 0 && !sending && (
-              <div className="flex flex-wrap gap-2 mb-2.5">
+              <div className="flex gap-2 mb-2.5 overflow-x-auto no-scrollbar">
                 {suggestions.slice(0, 3).map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="text-[12px] text-text-secondary border border-border-light rounded-full px-3 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                    className="shrink-0 whitespace-nowrap text-[12px] text-text-secondary border border-border-light rounded-full px-3 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors"
                   >
                     {s}
                   </button>

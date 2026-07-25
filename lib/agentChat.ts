@@ -825,9 +825,10 @@ export function answerAgentChat(
     const body = picks.length
       ? picks
           .map((a, i) => {
-            const c = findAccount(a.title, ctx.customers);
-            const link = c ? ` · [open →](/customers/${c.id})` : "";
-            return `${i + 1}. ${a.title} — ${a.rationale}${link}`;
+            // No trailing "open →" link — the account name in the answer
+            // already renders as a clickable pill with its logo, so the extra
+            // button was noise (Anir, Jul 25: "fix that open button").
+            return `${i + 1}. ${a.title} — ${a.rationale}`;
           })
           .join("\n")
       : "Your book is quiet — nothing urgent. A good time to widen relationships on your bigger accounts.";

@@ -1226,18 +1226,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("97 — agent run with compliance gate → approve → complete (V7)", async ({
+  test("97 — Draft it for me opens the full draft editor (V7)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Let the agent work" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    // the run advances and pauses at the compliance gate
-    const approve = page.getByRole("button", { name: "Approve & send" });
-    await expect(approve).toBeVisible({ timeout: 8000 });
-    await approve.click();
-    await expect(page.getByText(/Agent play complete/)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
+    await page.getByRole("button", { name: "Draft it for me" }).first().click();
+    // The editor modal: editable body + the human gate (nothing auto-sends).
+    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 8000 });
+    await expect(page.getByLabel("Draft body")).toBeVisible({ timeout: 8000 });
+    await expect(
+      page.getByRole("button", { name: /Copy draft/ })
+    ).toBeVisible();
   });
 
   test("98 — agent autopilot works the queue + reports (V7)", async ({ page }) => {
@@ -1769,34 +1768,26 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(["mock", "claude"]).toContain(data.source);
   });
 
-  test("136 — the play shows the drafted email at the compliance gate (V9)", async ({
+  test("136 — the drafted email arrives ready for review (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Let the agent work" }).click();
+    await page.getByRole("button", { name: "Draft it for me" }).first().click();
     await expect(
-      page.getByText("Drafted email — edit before it sends")
+      page.getByText(/edit before you\s+send/i)
     ).toBeVisible({ timeout: 8000 });
-    await expect(
-      page.getByRole("button", { name: /Approve & send/ })
-    ).toBeVisible();
+    await expect(page.getByLabel("Draft body")).toBeVisible();
   });
 
   test("137 — rep can edit the agent's draft before send (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Let the agent work" }).click();
-    const subj = page.getByLabel("Draft subject");
-    await expect(subj).toBeVisible({ timeout: 8000 });
-    await subj.fill("Edited subject ABC123");
-    await page.getByRole("button", { name: /Approve & send/ }).click();
-    await expect(page.getByText(/Agent play complete/)).toBeVisible();
-    // the recorded run reflects the rep-edited subject
-    const data = await (
-      await page.request.get(`${BASE}/api/agent/runs`)
-    ).json();
-    expect(JSON.stringify(data.runs)).toContain("Edited subject ABC123");
+    await page.getByRole("button", { name: "Draft it for me" }).first().click();
+    const bodyEl = page.getByLabel("Draft body");
+    await expect(bodyEl).toBeVisible({ timeout: 8000 });
+    await bodyEl.fill("Edited body ABC123");
+    await expect(bodyEl).toHaveValue("Edited body ABC123");
   });
 
   test("138 — top-right account menu opens with working links (V9)", async ({
@@ -1826,12 +1817,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("139 — rewrite gives the rep a different draft (V9)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Let the agent work" }).click();
-    const subj = page.getByLabel("Draft subject");
-    await expect(subj).toBeVisible({ timeout: 8000 });
-    const first = await subj.inputValue();
+    await page.getByRole("button", { name: "Draft it for me" }).first().click();
+    const bodyEl = page.getByLabel("Draft body");
+    await expect(bodyEl).toBeVisible({ timeout: 8000 });
+    const first = await bodyEl.inputValue();
     await page.getByRole("button", { name: /Rewrite/ }).click();
-    await expect(subj).not.toHaveValue(first, { timeout: 8000 });
+    await expect(bodyEl).not.toHaveValue(first, { timeout: 8000 });
   });
 
   test("140 — draft variants are distinct (V9)", async ({ request }) => {
@@ -1864,11 +1855,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(formal.body).toMatch(/Dear|Kind regards/);
   });
 
-  test("142 — tone chips restyle the draft in the play (V9)", async ({
+  test("142 — tone chips restyle the draft in the editor (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Let the agent work" }).click();
+    await page.getByRole("button", { name: "Draft it for me" }).first().click();
     const bodyEl = page.getByLabel("Draft body");
     await expect(bodyEl).toBeVisible({ timeout: 8000 });
     await page.getByRole("button", { name: /^formal$/i }).click();
@@ -1978,14 +1969,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(created.snippet.title).toBeTruthy();
   });
 
-  test("150 — save + insert a snippet in the play (V9)", async ({ page }) => {
+  test("150 — save + insert a snippet in the editor (V9)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
-    await page.getByRole("button", { name: "Let the agent work" }).click();
+    await page.getByRole("button", { name: "Draft it for me" }).first().click();
     const bodyEl = page.getByLabel("Draft body");
     await expect(bodyEl).toBeVisible({ timeout: 8000 });
-    // save the current draft to the library
+    // save the current draft to the library — the button flips to Saved
     await page.getByRole("button", { name: /Save as snippet/ }).click();
-    await expect(page.getByText(/Saved to your snippet library/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
     // insert the seeded snippet → the body changes
     const before = await bodyEl.inputValue();
     await page
