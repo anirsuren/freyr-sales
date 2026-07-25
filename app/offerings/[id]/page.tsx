@@ -10,6 +10,7 @@ import {
   Building2,
   Globe,
   type LucideIcon,
+  CalendarClock,
 } from "lucide-react";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
@@ -27,6 +28,8 @@ import { canManageOfferings } from "@/lib/role";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
+import { formatMoney } from "@/lib/pipeline";
+import { REVENUE_TYPE_META } from "@/lib/revenue";
 import { reportForOffering } from "@/lib/revenue";
 import { cn } from "@/lib/utils";
 import { getOffering, hydrateOffering, listOfferings, listOfferingTypes } from "@/lib/offerings";
@@ -55,6 +58,43 @@ export default async function OfferingDetailPage({
 
   const tab = query?.tab === "reports" ? "reports" : "overview";
   const allCustomers = await getDb().customers.list();
+
+  // Contract lines for this offering, nearest expiry first — the rail's
+  // second card.
+  const nowMs = Date.now();
+  const renewalWatch = allCustomers
+    .flatMap((customer) =>
+      (customer.offering_usage || [])
+        .filter((usage) => usage.offering_id === raw.id)
+        .flatMap((usage) => usage.revenue_lines || [])
+        .filter((line) => !!line.end_date)
+        .map((line) => {
+          const ends = Date.parse(line.end_date as string);
+          const days = Math.ceil((ends - nowMs) / 86_400_000);
+          const tone =
+            days < 0
+              ? { color: "#B02020", bg: "rgba(176,32,32,0.10)" }
+              : days <= 90
+                ? { color: "#F59E0B", bg: "rgba(245,158,11,0.12)" }
+                : { color: "#1A7A35", bg: "rgba(26,122,53,0.10)" };
+          return {
+            id: line.id,
+            customer: customer.company_name,
+            customerId: customer.id,
+            label: line.description || REVENUE_TYPE_META[line.revenue_type].short,
+            when: new Date(ends).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            status: days < 0 ? "Expired" : days <= 90 ? `${days}d left` : "Active",
+            sortKey: ends,
+            tone,
+          };
+        })
+    )
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .slice(0, 5);
   const report = reportForOffering(allCustomers, o.id);
   const customerPickList = allCustomers.map((c) => ({
     id: c.id,
@@ -445,9 +485,52 @@ export default async function OfferingDetailPage({
                       href={`/customers/${c.id}?tab=offerings`}
                       className="group flex items-center gap-2.5"
                     >
-                      <CompanyLogo name={c.name} className="w-7 h-7 text-[10px] shrink-0" />
-                      <span className="text-[13.5px] font-medium text-text-primary truncate group-hover:text-blue-primary">
-                        {c.name}
+                      <CompanyLogo name={c.name} className="w-7 h-7 shrink-0 text-[10px]" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13.5px] font-medium leading-snug text-text-primary group-hover:text-blue-primary">
+                          {c.name}
+                        </span>
+                        <span className="block text-[10.5px] text-text-tertiary">
+                          {c.licenses ? `${c.licenses} seats · ` : ""}
+                          {c.lines.length} {c.lines.length === 1 ? "line" : "lines"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[12px] font-semibold text-text-primary tnum">
+                        {formatMoney(c.revenue)}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
+
+            {/* The rail ran out of content halfway down the page while the
+                left column kept going (Anir: "empty space on the bottom
+                right… add some more shit"). Renewals are the most useful
+                thing a seller can see here: what's expiring and when. */}
+            {renewalWatch.length > 0 && (
+              <SectionCard title="Renewal watch" icon={CalendarClock}>
+                <div className="space-y-3">
+                  {renewalWatch.map((item) => (
+                    <Link
+                      key={`${item.customerId}-${item.id}`}
+                      href={`/customers/${item.customerId}?tab=offerings`}
+                      className="group flex items-start gap-2.5"
+                    >
+                      <CompanyLogo name={item.customer} className="mt-0.5 h-7 w-7 shrink-0 text-[10px]" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-medium leading-snug text-text-primary group-hover:text-blue-primary">
+                          {item.customer}
+                        </span>
+                        <span className="block text-[10.5px] text-text-tertiary">
+                          {item.label} · {item.when}
+                        </span>
+                      </span>
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em]"
+                        style={{ color: item.tone.color, background: item.tone.bg }}
+                      >
+                        {item.status}
                       </span>
                     </Link>
                   ))}

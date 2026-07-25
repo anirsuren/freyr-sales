@@ -82,11 +82,14 @@ export function OfferingOverviewMain({
   // customer split was a redraw of the table's own share column, so it's
   // gone. These two are the facts the table can't tell you: what KIND of
   // revenue this is, and how long it stays contracted.
+  // One palette for the whole section. The type donut ran green/purple next
+  // to a blue/amber table — two colour systems inches apart (Anir: "match the
+  // colors, doesn't really make sense"). Both now walk VIZ_SERIES in order.
   const REV_TYPE_COLOR: Record<string, string> = {
-    annual: "#0071E3",
-    project: "#7C3AED",
-    annual_service: "#0F766E",
-    license: "#059669",
+    license: VIZ_SERIES[0],
+    project: VIZ_SERIES[1],
+    annual: VIZ_SERIES[2],
+    annual_service: VIZ_SERIES[3],
   };
   const allLines = report.customers.flatMap((customer) =>
     customer.lines.map((line) => ({ customer: customer.name, line }))
@@ -126,7 +129,7 @@ export function OfferingOverviewMain({
     return {
       label: month.toLocaleDateString("en-US", { month: "short" }),
       value: live.reduce((sum, entry) => sum + entry.line.amount, 0),
-      color: "#0071E3",
+      color: VIZ_SERIES[0],
       tip: live.map((entry) => ({
         logo: entry.customer,
         name: entry.customer,
@@ -404,8 +407,8 @@ export function OfferingOverviewMain({
               >
                 <OfferingIcon name={relatedOffering.offering_name} className="h-9 w-9 shrink-0" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">{relatedOffering.offering_name}</span>
-                  <span className="mt-0.5 block truncate text-[11px] text-text-tertiary">{relatedOffering.offering_category}</span>
+                  <span className="block text-[13.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">{relatedOffering.offering_name}</span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-text-tertiary">{relatedOffering.offering_category}</span>
                 </span>
                 <AvailabilityPill value={relatedOffering.current_availability} size="sm" />
                 <ChevronRight size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary group-hover:text-blue-primary" />
