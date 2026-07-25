@@ -591,6 +591,20 @@ export function DonutChart({
     .map((s) => `${s.label} ${Math.round((s.value / total) * 100)}%`)
     .join(", ");
   const compactCenter = size <= 90;
+  // Fit the centre total to the hole instead of hardcoding 24px. "$700K" at a
+  // fixed size sat right up against the ring (Anir, Jul 25: "the number 700k so
+  // big compared to the pie chart, damn near touching it"), and a longer label
+  // like "$1.25M" would have overlapped it outright. 0.62em is a good width
+  // estimate per character for bold tabular digits; the 0.82 keeps a margin
+  // between the text and the inner edge of the ring.
+  const innerWidth = Math.max(0, size - thickness * 2) * 0.82;
+  const naturalSize = compactCenter ? 20 : 24;
+  const centerLabelSize = centerLabel
+    ? Math.max(
+        11,
+        Math.min(naturalSize, innerWidth / (centerLabel.length * 0.62))
+      )
+    : naturalSize;
   const centerLabelY = size / 2 - (centerSub ? (compactCenter ? 7 : 8) : 0);
   const centerSubY = size / 2 + (compactCenter ? 14 : 16);
   function positionTip(event: React.MouseEvent<SVGCircleElement>) {
@@ -671,7 +685,7 @@ export function DonutChart({
             y={centerLabelY}
             textAnchor="middle"
             dominantBaseline="central"
-            fontSize={compactCenter ? 20 : 24}
+            fontSize={centerLabelSize}
             fontWeight="700"
             className="fill-current text-text-primary"
           >

@@ -217,7 +217,11 @@ function RevenueSection({
   }
 
   return (
-    <div className="mt-3 pt-3 border-t border-border-light">
+    // No rule under the title. A full-width divider directly below the offering
+    // name read as the end of the card, so the revenue panel underneath looked
+    // like a separate thing (Anir, Jul 25: "remove the line below the title, it
+    // throws me off — i think its over but its not"). Spacing carries the break.
+    <div className="mt-4">
       <div className="flex items-center justify-between mb-2.5">
         <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
           <DollarSign size={13} strokeWidth={2} className="text-success" />
@@ -237,12 +241,16 @@ function RevenueSection({
       {/* Chart, not a bare list (Suren: "expecting some sort of chart… a better
           distinction"): a donut of the revenue split with a one-column legend,
           the total called out in the centre. */}
+      {/* Legend column capped tighter too: at 420px the two bars ran the full
+          width of the card for a two-item split, which read as a chart in its
+          own right competing with the donut. The donut gets more room so the
+          centre total isn't pressed against the ring. */}
       {total > 0 && (
-        <div className="mb-2.5 grid max-w-[760px] grid-cols-[136px_minmax(0,420px)] items-center gap-5 rounded-xl border border-success/25 bg-success/[0.05] px-4 py-3">
+        <div className="mb-2.5 grid max-w-[620px] grid-cols-[150px_minmax(0,300px)] items-center gap-6 rounded-xl border border-success/25 bg-success/[0.05] px-4 py-4">
           <div className="flex justify-center">
             <DonutChart
-              size={118}
-              thickness={14}
+              size={132}
+              thickness={13}
               segments={byType.map((b) => ({
                 label: b.label,
                 value: b.value,
@@ -452,8 +460,12 @@ export function CustomerOfferingsTab({
   const [busyId, setBusyId] = useState<string | null>(null);
   // Local copy of the revenue lines so add/remove feels instant.
   const [usageState, setUsageState] = useState<OfferingUsage[]>(usage);
+  // Collapsed by default. Expanding every in-use offering on mount buried the
+  // "Opportunities to pitch" list under a stack of revenue panels, so the tab
+  // opened on detail nobody had asked for (Anir, Jul 25: "the individual
+  // offerings should not be open by default — if i want to see i can open it").
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    () => new Set(inUse.map((offering) => offering.id))
+    () => new Set<string>()
   );
 
   const inUseIds = useMemo(() => new Set(inUse.map((o) => o.id)), [inUse]);
@@ -684,24 +696,34 @@ export function CustomerOfferingsTab({
               None yet — add them on the offering and they&apos;ll show here.
             </p>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
+            /* Two per row on a wide card, one when narrow. Wrapping chips let a
+               long material title stretch most of the card and then reflow the
+               next chip onto its own ragged line, which read as a wall of text
+               (Anir, Jul 25: "sales material is ugly too… just one in a row
+               would be fine, or maybe 2"). A grid keeps the columns even, and
+               each title now truncates instead of setting the chip's width. */
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
               {o.materials.map((m) => (
                 <a
                   key={m.id}
                   href={m.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-1.5 text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                  title={m.label}
+                  className="group flex min-w-0 items-center gap-1.5 text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors"
                 >
-                  <span className="text-text-tertiary group-hover:text-blue-primary">
+                  <span className="shrink-0 text-text-tertiary group-hover:text-blue-primary">
                     {m.kind}
                   </span>
-                  {m.label}
+                  {/* Wraps inside its column rather than truncating — the
+                      standing rule is that a label is never cut off with "…".
+                      The two-column grid is what stops it running long. */}
+                  <span className="min-w-0 flex-1">{m.label}</span>
                   <MaterialTagPills
                     journeyStage={m.journeyStage}
                     accessLevel={m.accessLevel}
                   />
-                  <ExternalLink size={11} strokeWidth={1.8} />
+                  <ExternalLink size={11} strokeWidth={1.8} className="shrink-0" />
                 </a>
               ))}
             </div>
