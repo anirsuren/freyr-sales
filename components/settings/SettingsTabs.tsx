@@ -276,6 +276,11 @@ export function SettingsTabs({
     title: currentUser.title,
     email: currentUser.email || "",
     signature: `${currentUser.name}\nFreyr Solutions`,
+    // The agent writes in the rep's voice, so it needs to know who the rep
+    // actually is — role, seniority, background. The LinkedIn profile is the
+    // richest single source of that, and it is what the enrichment run reads to
+    // pull a real headshot instead of initials.
+    linkedin: "",
   });
   const [invite, setInvite] = useState({ name: "", email: "", role: "Rep" });
   const [notifs, setNotifs] = useState<Record<string, boolean>>(
@@ -341,6 +346,7 @@ export function SettingsTabs({
       title: currentUser.title,
       email: currentUser.email || "",
       signature: `${currentUser.name}\nFreyr Solutions`,
+      linkedin: "",
     });
     setInvite({ name: "", email: "", role: "Rep" });
     setNotifs({ ...DEFAULT_NOTIFICATIONS });
@@ -359,7 +365,11 @@ export function SettingsTabs({
     try {
       const p = localStorage.getItem(profileStorageKey);
       if (p) {
-        const saved = JSON.parse(p) as { title?: unknown; signature?: unknown };
+        const saved = JSON.parse(p) as {
+          title?: unknown;
+          signature?: unknown;
+          linkedin?: unknown;
+        };
         setProfile((existing) => ({
           ...existing,
           title: typeof saved.title === "string" ? saved.title : existing.title,
@@ -367,6 +377,10 @@ export function SettingsTabs({
             typeof saved.signature === "string"
               ? saved.signature
               : existing.signature,
+          linkedin:
+            typeof saved.linkedin === "string"
+              ? saved.linkedin
+              : existing.linkedin,
           // Identity always comes from the verified server session.
           name: currentUser.name,
           email: currentUser.email || "",
@@ -457,7 +471,11 @@ export function SettingsTabs({
     try {
       localStorage.setItem(
         profileStorageKey,
-        JSON.stringify({ title: profile.title, signature: profile.signature })
+        JSON.stringify({
+          title: profile.title,
+          signature: profile.signature,
+          linkedin: profile.linkedin,
+        })
       );
     } catch {}
     const nextName = profile.name.trim();
@@ -887,6 +905,35 @@ export function SettingsTabs({
             <label className="block">
               <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email signature</span>
               <Textarea className="min-h-[90px]" value={profile.signature} onChange={(e) => setProfile({ ...profile, signature: e.target.value })} />
+            </label>
+            {/* The agent drafts in the rep's own voice, so it has to know who
+                the rep is. LinkedIn is the one link that carries role, tenure
+                and background in a form the enrichment run can read — and it is
+                where the profile photo comes from, replacing the initials
+                circle (Anir, Jul 25: "the agent should know all about my
+                LinkedIn URL… that's how it pulls your profile picture too"). */}
+            <label className="block">
+              <span className="block text-[13px] font-medium text-text-primary mb-1.5">
+                LinkedIn profile
+              </span>
+              <Input
+                type="url"
+                inputMode="url"
+                placeholder="https://www.linkedin.com/in/your-profile"
+                value={profile.linkedin}
+                onChange={(e) =>
+                  setProfile({ ...profile, linkedin: e.target.value })
+                }
+                aria-describedby="linkedin-help"
+              />
+              <span
+                id="linkedin-help"
+                className="mt-1.5 block text-[12px] text-text-secondary"
+              >
+                Paste your LinkedIn address. The agent reads it to learn your
+                role and background, so what it writes sounds like you — and it
+                picks up your photo instead of your initials.
+              </span>
             </label>
             <Button onClick={saveProfile}>Save profile</Button>
             <div className="pt-4 mt-1 border-t border-border-light">
