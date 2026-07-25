@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, ArrowRight, X, Pill, Dna, FlaskConical, Store, Building, Building2, Globe2, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import type {
   CustomerType,
@@ -14,6 +15,7 @@ import type {
   CustomerSize,
 } from "@/lib/offerings";
 import { listAccent } from "./filterPalette";
+import { flagForGeography } from "@/lib/countryFlags";
 
 const FIELD =
   "w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
@@ -35,7 +37,7 @@ const FAMILY_META: Record<CustomerFamily, { color: string; icon: LucideIcon }> =
 };
 const SIZE_META: Record<CustomerSize, { color: string; icon: LucideIcon }> = {
   Small: { color: "#059669", icon: Store },
-  "Mid size": { color: "#F59E0B", icon: Building },
+  "Mid size": { color: "#0891B2", icon: Building },
   Large: { color: "#0071E3", icon: Building2 },
 };
 
@@ -188,8 +190,20 @@ export function CustomerTypesManager({
           )}
         </div>
 
-        {canEdit && adding && (
-          <div className="p-4 bg-surface/60 border-b border-border-light space-y-3">
+        <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
+          Grouped by family — each family shares a product type; revenue,
+          employees and focus vary by size.
+        </p>
+      </Card>
+
+      {/* Create in a POPUP — every add flow opens a modal (Anir, Jul 25:
+          "when I press Add customer type, it should be a pop-up"). */}
+      <Modal
+        open={canEdit && adding}
+        onClose={() => setAdding(false)}
+        title="Add a customer type"
+      >
+        <div className="space-y-4 p-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={LABEL}>Family</label>
@@ -243,16 +257,16 @@ export function CustomerTypesManager({
             <Button onClick={addType} loading={busy}>
               {typeExists ? "Update definition" : "Add customer type"}
             </Button>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={() => setAdding(false)}
+              className="text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+            >
+              Cancel
+            </button>
           </div>
-        )}
-
-        {adding ? null : (
-          <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
-            Grouped by family — each family shares a product type; revenue,
-            employees and focus vary by size.
-          </p>
-        )}
-      </Card>
+        </div>
+      </Modal>
 
       {/* Definitions, grouped by family */}
       {groups.map(({ fam, types }) => {
@@ -405,7 +419,11 @@ export function CustomerTypesManager({
                   className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1"
                   style={{ color: accent }}
                 >
-                  <Globe2 size={12} strokeWidth={2} />
+                  {flagForGeography(m.name) ? (
+                    <span aria-hidden="true">{flagForGeography(m.name)}</span>
+                  ) : (
+                    <Globe2 size={12} strokeWidth={2} />
+                  )}
                   {m.name}
                   <span className="text-[11px] tnum opacity-70">
                     {count}

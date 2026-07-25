@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, ArrowRight, X, Pencil, Package } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingType } from "@/lib/offerings";
 import { listAccent } from "./filterPalette";
@@ -138,40 +139,53 @@ export function OfferingTypesManager({
           )}
         </div>
 
-        {canEdit && adding && (
-          <div className="p-4 bg-surface/60 border-b border-border-light space-y-3">
-            <div>
-              <label className={LABEL}>Offering type</label>
-              <input
-                className={FIELD}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Freya - Module + Agent"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className={LABEL}>Description</label>
-              <textarea
-                className={`${FIELD} min-h-[72px] resize-y`}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What this offering type is — in plain English"
-              />
-            </div>
+        <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
+          The master list of offering types. Give each one a plain-English
+          description — offerings are grouped and filtered by these.
+        </p>
+      </Card>
+
+      {/* Create in a POPUP, not a form that shoves the list down — every create
+          flow in the app opens a modal (Anir, Jul 25: "whenever there's an add
+          button… it should always be a pop-up"). */}
+      <Modal
+        open={canEdit && adding}
+        onClose={() => setAdding(false)}
+        title="Add an offering type"
+      >
+        <div className="space-y-4 p-1">
+          <div>
+            <label className={LABEL}>Offering type</label>
+            <input
+              className={FIELD}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Freya - Module + Agent"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Description</label>
+            <textarea
+              className={`${FIELD} min-h-[88px] resize-y`}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What this offering type is — in plain English"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={() => setAdding(false)}
+              className="text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+            >
+              Cancel
+            </button>
             <Button onClick={addType} loading={busy}>
               Add offering type
             </Button>
           </div>
-        )}
-
-        {adding ? null : (
-          <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
-            The master list of offering types. Give each one a plain-English
-            description — offerings are grouped and filtered by these.
-          </p>
-        )}
-      </Card>
+        </div>
+      </Modal>
 
       {/* The list */}
       <Card className="p-0 overflow-hidden">

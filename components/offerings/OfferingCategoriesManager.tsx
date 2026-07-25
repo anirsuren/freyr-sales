@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, ArrowRight, X, Pencil, UserRound, Layers } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingCategory } from "@/lib/offerings";
@@ -159,49 +160,60 @@ export function OfferingCategoriesManager({
           )}
         </div>
 
-        {canEdit && adding && (
-          <div className="p-4 bg-surface/60 border-b border-border-light space-y-3">
-            <div>
-              <label className={LABEL}>Offering category</label>
-              <input
-                className={FIELD}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Global Regulatory Intelligence"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className={LABEL}>Description</label>
-              <textarea
-                className={`${FIELD} min-h-[72px] resize-y`}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What this category groups — in plain English"
-              />
-            </div>
-            <div>
-              <label className={LABEL}>Offering owner</label>
-              <input
-                className={FIELD}
-                value={owner}
-                onChange={(e) => setOwner(e.target.value)}
-                placeholder="Who owns this category of offerings"
-              />
-            </div>
+        <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
+          The master list of offering categories. Each groups related offerings
+          and has an owner — offerings are grouped and filtered by these.
+        </p>
+      </Card>
+
+      {/* Create in a POPUP — every add flow opens a modal (Anir, Jul 25). */}
+      <Modal
+        open={canEdit && adding}
+        onClose={() => setAdding(false)}
+        title="Add an offering category"
+      >
+        <div className="space-y-4 p-1">
+          <div>
+            <label className={LABEL}>Offering category</label>
+            <input
+              className={FIELD}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Global Regulatory Intelligence"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Description</label>
+            <textarea
+              className={`${FIELD} min-h-[88px] resize-y`}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What this category groups — in plain English"
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Offering owner</label>
+            <input
+              className={FIELD}
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              placeholder="Who owns this category of offerings"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={() => setAdding(false)}
+              className="text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+            >
+              Cancel
+            </button>
             <Button onClick={addCategory} loading={busy}>
               Add offering category
             </Button>
           </div>
-        )}
-
-        {adding ? null : (
-          <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
-            The master list of offering categories. Each groups related offerings
-            and has an owner — offerings are grouped and filtered by these.
-          </p>
-        )}
-      </Card>
+        </div>
+      </Modal>
 
       {/* The list */}
       <Card className="p-0 overflow-hidden">
