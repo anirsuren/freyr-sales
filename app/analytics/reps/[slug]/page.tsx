@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton } from "@/components/ui/BackButton";
 import { DonutChart, DonutLegend, BarChart, AreaChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { ChartInspector, type ChartRecord } from "@/components/charts/ChartInspector";
+import { ExpandableChartCard } from "@/components/charts/ExpandableChartCard";
 import {
   buildDeals,
   buildRepStats,
@@ -338,70 +339,89 @@ export default async function RepPage({
         </Card>
       </section>
 
-      {/* Pipeline value by stage + deals by stage */}
+      {/* Pipeline value by stage + deals by stage. Every chart card opens
+          full-size on click with the complete breakdown listed — a card chart
+          plus per-slice hovers was never enough to read the whole picture
+          (Anir, Jul 25: "I need the ability to open all these graphs"). */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <Card className="h-full flex flex-col">
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">Pipeline value by stage</h2>
-          <p className="text-[12px] text-text-tertiary mb-4">
-            Where {name.split(" ")[0]}&apos;s open dollars sit.
-          </p>
-          {valueByStage.length ? (
-            <BarChart data={valueByStage} height={190} format="money" />
-          ) : (
-            <p className="text-[13px] text-text-secondary">No open pipeline.</p>
-          )}
-        </Card>
-        <Card className="h-full flex flex-col">
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">Deals by stage</h2>
-          <p className="text-[12px] text-text-tertiary mb-4">How the book breaks down by count.</p>
-          <div className="flex-1 flex items-center gap-5">
-            <DonutChart
-              segments={dealsByStage}
-              size={140}
-              thickness={15}
-              centerLabel={String(me.openCount)}
-              centerSub="open"
-            />
-            <DonutLegend items={dealsByStage} total={me.openCount} />
-          </div>
-        </Card>
+        <ExpandableChartCard
+          className="h-full flex flex-col"
+          title="Pipeline value by stage"
+          subtitle={`Where ${name.split(" ")[0]}'s open dollars sit.`}
+          kind="bar"
+          bar={{ data: valueByStage, format: "money" }}
+          emptyText="No open pipeline."
+          rows={valueByStage.map((s) => ({
+            label: s.label,
+            value: formatMoney(s.value),
+            color: s.color,
+            percent: me.openValue > 0 ? (s.value / me.openValue) * 100 : 0,
+          }))}
+        />
+        <ExpandableChartCard
+          className="h-full flex flex-col"
+          title="Deals by stage"
+          subtitle="How the book breaks down by count."
+          kind="donut"
+          donut={{
+            segments: dealsByStage,
+            centerLabel: String(me.openCount),
+            centerSub: "open",
+          }}
+          legend={{ items: dealsByStage, total: me.openCount }}
+          rows={dealsByStage.map((s) => ({
+            label: s.label,
+            value: `${s.value} deal${s.value === 1 ? "" : "s"}`,
+            color: s.color,
+            percent: me.openCount > 0 ? (s.value / me.openCount) * 100 : 0,
+          }))}
+        />
       </section>
 
       {/* Outcome mix + activity trend */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <Card className="h-full flex flex-col">
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">Outcome mix</h2>
-          <p className="text-[12px] text-text-tertiary mb-4">
-            How {name.split(" ")[0]}&apos;s logged touches have landed.
-          </p>
-          <div className="flex-1 flex items-center gap-5">
-            <DonutChart
-              segments={outcomes}
-              size={140}
-              thickness={15}
-              centerLabel={String(totalTouches)}
-              centerSub="touches"
-            />
-            <DonutLegend items={outcomes} total={totalTouches} />
-          </div>
-        </Card>
-        <Card className="h-full flex flex-col">
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">Deals worked</h2>
-          <p className="text-[12px] text-text-tertiary mb-4">Weekly activity over the last 12 weeks.</p>
-          <div className="flex-1 flex items-end">
-            <AreaChart
-              data={activity}
-              height={180}
-              format="number"
-              unit="deals"
-              xLabels={activity.map((_, i) =>
-                i === activity.length - 1 ? "now" : `${activity.length - 1 - i}w ago`
-              )}
-              className="w-full"
-              pointTips={activityTips}
-            />
-          </div>
-        </Card>
+        <ExpandableChartCard
+          className="h-full flex flex-col"
+          title="Outcome mix"
+          subtitle={`How ${name.split(" ")[0]}'s logged touches have landed.`}
+          kind="donut"
+          donut={{
+            segments: outcomes,
+            centerLabel: String(totalTouches),
+            centerSub: "touches",
+          }}
+          legend={{ items: outcomes, total: totalTouches }}
+          rows={outcomes.map((o) => ({
+            label: o.label,
+            value: `${o.value} touch${o.value === 1 ? "" : "es"}`,
+            color: o.color,
+            percent: totalTouches > 0 ? (o.value / totalTouches) * 100 : 0,
+            sub: o.tip?.map((t) => t.name).join(", "),
+          }))}
+        />
+        <ExpandableChartCard
+          className="h-full flex flex-col"
+          title="Deals worked"
+          subtitle="Weekly activity over the last 12 weeks."
+          kind="area"
+          area={{
+            data: activity,
+            format: "number",
+            unit: "deals",
+            xLabels: activity.map((_, i) =>
+              i === activity.length - 1 ? "now" : `${activity.length - 1 - i}w ago`
+            ),
+            pointTips: activityTips,
+          }}
+          rows={activity
+            .map((n, i) => ({
+              label: i === activity.length - 1 ? "This week" : `${activity.length - 1 - i} weeks ago`,
+              value: `${n} deal${n === 1 ? "" : "s"}`,
+              percent: (n / Math.max(...activity)) * 100,
+              sub: activityTips[i]?.map((t) => t.name).join(", "),
+            }))
+            .reverse()}
+        />
       </section>
 
       {/* Biggest accounts + what's going cold — two agent questions side by
