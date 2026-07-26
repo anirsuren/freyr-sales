@@ -5564,7 +5564,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(tooltip).toContainText("Deals");
     await expect(tooltip).toContainText("Win odds");
     await expect(tooltip).toContainText("Weighted");
-    await expect(tooltip).toContainText("Top opportunities");
+    // Stop here: the four stats above ARE the always-present skeleton. "Top
+    // opportunities" and the per-stage rationale line both vary with the seed
+    // (a Prospect segment can carry a count but no named opportunities), so
+    // pinning either re-introduces the fresh-store drift.
+    expect(await tooltip.textContent()).toMatch(/of pipeline/);
 
     await page.mouse.move(0, 0);
     const row = bar.locator("xpath=ancestor::button[@aria-expanded][1]");

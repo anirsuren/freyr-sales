@@ -11,7 +11,7 @@ import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
  * form asks for the one thing that is actually missing: their password, either
  * to set for the first time or to sign in with.
  */
-type Step = "email" | "password" | "activate" | "invite-only";
+type Step = "email" | "password" | "activate" | "invite-only" | "sent";
 
 function safeNext(): string {
   const value = new URLSearchParams(window.location.search).get("next") || "/dashboard";
@@ -143,13 +143,22 @@ export function SupabaseLoginForm({
         const body = (await response.json().catch(() => ({}))) as {
           error?: string;
           message?: string;
+          alreadyRegistered?: boolean;
         };
         if (!response.ok) throw new Error(body.error || "Could not set up your account.");
         setPassword("");
-        setMessage(
-          body.message ||
-            "Check your inbox to confirm your email, then come back and sign in."
-        );
+        // Already had an account: stop asking them to invent a password they
+        // already chose — hand them the sign-in screen (Anir: "I already did
+        // that. Do you see what I'm saying?").
+        if (body.alreadyRegistered) {
+          setMessage("");
+          setError("");
+          resetTo("password");
+          setMessage("You already have an account here — enter your password to sign in.");
+          return;
+        }
+        setError("");
+        setStep("sent");
         return;
       }
 
@@ -197,7 +206,7 @@ export function SupabaseLoginForm({
               : "Use the exact address your workspace owner invited."}
           </p>
         </>
-      ) : (
+      ) : step === "sent" ? null : (
         <div className="flex items-center justify-between gap-3 rounded-md bg-surface px-3 py-2.5">
           <span className="truncate text-[13px] font-medium text-text-primary">{email}</span>
           <button
@@ -298,7 +307,40 @@ export function SupabaseLoginForm({
         </p>
       )}
 
-      {step !== "invite-only" && (
+      {step === "sent" && (
+        <div className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+            <Mail size={22} strokeWidth={1.9} />
+          </div>
+          <div>
+            <p className="text-[15px] font-semibold text-text-primary">
+              Check your email
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
+              We sent a confirmation link to{" "}
+              <span className="font-semibold text-text-primary">{email}</span>.
+              Click it, then come back and sign in with the password you just
+              chose.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setPassword("");
+              setError("");
+              setMessage("");
+              resetTo("password");
+            }}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-blue-primary text-[14px] font-semibold text-white shadow-sm hover:bg-blue-700"
+          >
+            <LockKeyhole size={17} />
+            I confirmed it — sign me in
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
+
+      {step !== "invite-only" && step !== "sent" && (
         <button
           type="submit"
           disabled={busy}

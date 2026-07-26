@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       ? body.linkedinUrl.trim()
       : undefined;
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -107,8 +107,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Supabase deliberately does NOT error when the address already has an
+  // account — it returns a user carrying no identities, so nobody can probe
+  // who is a member. To someone who genuinely already signed up that looked
+  // exactly like success, and the form re-rendered the same "choose a
+  // password" screen (Anir: "I already did that… it's making me set the
+  // password again"). Say so, and the form sends them to sign in.
+  if (
+    data?.user &&
+    Array.isArray(data.user.identities) &&
+    data.user.identities.length === 0
+  ) {
+    return json({ ok: true, alreadyRegistered: true, email });
+  }
+
   return json({
     ok: true,
+    email,
     message:
       "Check your inbox to confirm your account, then sign in.",
   });
