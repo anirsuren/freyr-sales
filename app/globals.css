@@ -482,7 +482,14 @@ select:focus-visible,
 }
 .chart-bar {
   transform-origin: bottom;
-  animation: chartBarGrow 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* `backwards`, not `both`. A forwards-filling animation keeps its last
+     keyframe applied forever and outranks the element's own inline style, so
+     the hover "pop" (a scaleY set in ChartsClient) would never render — the
+     reason bar hovers used to fall back to fading the OTHER bars instead.
+     `backwards` still holds the bar at scaleY(0) through its stagger delay,
+     then hands transform back so hover can animate it. The end state is
+     scaleY(1), i.e. identical to no transform, so nothing else moves. */
+  animation: chartBarGrow 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 /* Donuts sweep + settle in on mount. */
 @keyframes chartDonutIn {

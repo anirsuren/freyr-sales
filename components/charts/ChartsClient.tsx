@@ -801,17 +801,38 @@ export function BarChart({
   format,
   activeIndex = null,
   unit,
+  hideTipStats = false,
+  tipRecordsLabel = "Records behind this bar",
 }: {
   data: {
     label: string;
     value: number;
     color?: string;
+    // A second, smaller line under the bar's value — e.g. the raw count
+    // behind a percentage ("4 of 6"), so the bar shows both at rest.
+    caption?: string;
+    // Tip-only line naming what the headline number MEASURES, for the charts
+    // where the records listed below can't add up to it (an average, a
+    // probability-weighted figure). Suren added the rows up and got a
+    // different number — "it says 318K for engaged, but when I add up the
+    // records behind this bar it says like a million" — so any bar that isn't
+    // simply the sum of its rows now says so out loud. Replaces `caption` in
+    // the tooltip (they state the same fact; printing both wastes the space).
+    tipNote?: string;
     // Optional breakdown shown in the hover tooltip so it ADDS information
     // (who's in this bar) instead of just restating the label + total.
     tip?: TipItem[];
   }[];
   height?: number;
   format?: Fmt;
+  // Heading over the tooltip's record list. Override when the rows don't
+  // literally compose the bar — "records behind this bar" then reads as a
+  // promise the arithmetic doesn't keep.
+  tipRecordsLabel?: string;
+  // Drop the "Share of shown total" / "Rank" block from the hover tooltip.
+  // Meaningless on a two-bar rate chart (open vs reply), where it just
+  // restated the same % a third time (Anir: "you say 33% three times").
+  hideTipStats?: boolean;
   // When a caller has a "selected" bar (e.g. a stage drill-down is open), pass
   // its index so that bar stays lit + ringed while the rest dim (Suren: "when I
   // highlight one, show that its bar is highlighted").
@@ -827,6 +848,9 @@ export function BarChart({
   const ranked = [...data].sort((a, b) => b.value - a.value);
   // Hover wins over the externally-selected bar; otherwise the selected bar lit.
   const lit = hover ?? activeIndex;
+  // Two label lines need a taller value row, else the caption bleeds down into
+  // the plot and the bars stop sharing one baseline.
+  const hasCaption = data.some((d) => d.caption);
   return (
     <div
       className="relative grid w-full items-stretch gap-3"
@@ -865,39 +889,63 @@ export function BarChart({
                 <p className="mt-0.5 text-[17px] font-bold text-text-primary tnum">
                   {fmt(format, d.value)}{unit ? ` ${unit}` : ""}
                 </p>
+                {/* `tipNote` is the fuller sentence version of `caption` — one
+                    or the other, never both restating the same fact. */}
+                {(d.tipNote || d.caption) && (
+                  <p className="mt-0.5 text-[11.5px] text-text-secondary">
+                    {d.tipNote || d.caption}
+                  </p>
+                )}
               </div>
-              <div className="mt-2 rounded-md bg-surface px-2.5 py-2 text-[10.5px]">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-text-tertiary">Share of shown total</span>
-                  <span className="font-semibold text-text-primary tnum">
-                    {total ? Math.round((d.value / total) * 100) : 0}%
-                  </span>
+              {!hideTipStats && (
+                <div className="mt-2 rounded-md bg-surface px-2.5 py-2 text-[10.5px]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-text-tertiary">Share of shown total</span>
+                    <span className="font-semibold text-text-primary tnum">
+                      {total ? Math.round((d.value / total) * 100) : 0}%
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <span className="text-text-tertiary">Rank</span>
+                    <span className="font-semibold text-text-primary tnum">
+                      #{ranked.findIndex((item) => item === d) + 1} of {data.length}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1 flex items-center justify-between gap-3">
-                  <span className="text-text-tertiary">Rank</span>
-                  <span className="font-semibold text-text-primary tnum">
-                    #{ranked.findIndex((item) => item === d) + 1} of {data.length}
-                  </span>
-                </div>
-              </div>
-              <TipBreakdown items={d.tip} label="Records behind this bar" />
+              )}
+              <TipBreakdown items={d.tip} label={tipRecordsLabel} />
             </PortalTip>
           )}
           {/* A fixed value row and label row keep every plot baseline aligned. */}
-          <span className="flex h-5 shrink-0 items-start justify-center whitespace-nowrap px-1 text-[11px] font-semibold text-text-secondary tnum">
-            {fmt(format, d.value)}
-            {unit ? ` ${unit}` : ""}
+          <span
+            className={cn(
+              "flex shrink-0 flex-col items-center justify-start whitespace-nowrap px-1 leading-tight",
+              hasCaption ? "h-8" : "h-5"
+            )}
+          >
+            <span className="text-[11px] font-semibold text-text-secondary tnum">
+              {fmt(format, d.value)}
+              {unit ? ` ${unit}` : ""}
+            </span>
+            {d.caption && (
+              <span className="text-[9.5px] font-medium text-text-tertiary tnum">{d.caption}</span>
+            )}
           </span>
           <div className="flex min-h-0 w-full flex-1 items-end justify-center px-1.5">
             <div
-              className="chart-bar w-[72%] min-w-[14px] max-w-[88px] rounded-t-md transition-[opacity,filter,box-shadow,transform] group-hover/bar:brightness-105"
+              className="chart-bar w-[72%] min-w-[14px] max-w-[88px] rounded-t-md transition-[filter,box-shadow,transform] group-hover/bar:brightness-105"
               style={{
                 height: `${(d.value / max) * 100}%`,
                 minHeight: 4,
                 animationDelay: `${i * 45}ms`,
                 background: d.color || VIZ.blue,
-                opacity: lit === null || lit === i ? 1 : 0.4,
-                transform: activeIndex === i && hover === null ? "scaleY(1.02)" : undefined,
+                // Every bar keeps its FULL colour at all times. Fading the
+                // siblings to 0.4 read as damage, not emphasis (Suren: "I don't
+                // know why you're blurring the other ones out… it should just
+                // pop a little bit"). So the only hover change is the bar under
+                // the cursor lifting — the same idiom as the rep bars on the
+                // forecast page: a slight brightness lift plus a small rise.
+                transform: lit === i ? "scaleY(1.03)" : undefined,
                 transformOrigin: "bottom",
                 boxShadow:
                   activeIndex === i

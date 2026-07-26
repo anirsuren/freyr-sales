@@ -13,6 +13,12 @@ export const metadata: Metadata = {
   },
   description:
     "AI sales intelligence for Freyr Solutions — prospect research, matched services, and ready-to-send pitches for regulatory-affairs sales.",
+  // The Freyr "f" mark is the browser-tab icon too, so a pinned tab reads as
+  // Freyr at a glance (Anir, Jul 26: "you can put it as the favicon").
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default async function RootLayout({

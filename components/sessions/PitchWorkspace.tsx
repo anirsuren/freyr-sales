@@ -816,7 +816,7 @@ export function PitchWorkspace({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
                   Subject line
                   <span className="ml-1.5 font-normal normal-case tracking-normal text-text-tertiary">
-                    — pick the one to send
+                    — arrow through; the one showing is what sends
                   </span>
                 </p>
                 <SubjectLineCarousel

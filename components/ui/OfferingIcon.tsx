@@ -43,6 +43,49 @@ function hash(s: string): number {
   return h;
 }
 
+// The same glyph + hue an offering gets everywhere, exposed so text callouts of
+// a service (list columns, tags) can carry its icon and colour instead of
+// rendering as plain text (standing rule: category chips are colour + icon).
+export function offeringMark(name: string): {
+  icon: LucideIcon;
+  color: string;
+  light: string;
+} {
+  const key = name || "offering";
+  const [a, b] = GRADIENTS[hash(`${key}::hue`) % GRADIENTS.length];
+  return { icon: ICONS[hash(key) % ICONS.length], color: a, light: b };
+}
+
+// An inline service/offering chip: glyph + name in the offering's own colour.
+export function ServiceTag({
+  name,
+  className,
+}: {
+  name: string;
+  className?: string;
+}) {
+  if (!name || name === "—")
+    return <span className="text-[13px] text-text-tertiary">—</span>;
+  const { icon: Icon, color } = offeringMark(name);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-2.5 text-[12.5px] font-semibold leading-tight",
+        className
+      )}
+      style={{ backgroundColor: `${color}14`, color }}
+    >
+      <span
+        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-white"
+        style={{ backgroundColor: color }}
+      >
+        <Icon size={11} strokeWidth={2.2} />
+      </span>
+      {name}
+    </span>
+  );
+}
+
 export function OfferingIcon({
   name,
   className,

@@ -12,7 +12,11 @@ export const VIZ = {
   sky: "#0891B2", // cyan — clearly not blue
   teal: "#0D9488", // deep blue-green
   indigo: "#4F46E5",
-  green: "#65A30D", // yellow-green — reads apart from teal at any size
+  // A true green. #65A30D pulled this too far toward yellow chasing separation
+  // from teal, and the result read as murky olive on the campaign gauges (Anir,
+  // Jul 26: "why are you using that weird green color?"). #22C55E is a clean
+  // green that still sits ~30° off teal's blue-green and never looks drab.
+  green: "#22C55E",
   amber: "#F59E0B",
   // Was a gray (#8E98A8) — Suren: never gray in a graph. Now a real violet.
   slate: "#A855F7",

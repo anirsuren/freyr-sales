@@ -8,8 +8,13 @@ import {
   Package,
   SearchX,
   Clock,
+  Clock3,
   BarChart3,
   ArrowRight,
+  ThumbsDown,
+  PhoneMissed,
+  CalendarClock,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
@@ -32,11 +37,18 @@ export const dynamic = "force-dynamic";
 const fmtLen = (secs: number) =>
   `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
 
-const OUTCOME_META: Record<VoiceOutcome, { label: string; color: string; chip: string }> = {
-  interested: { label: "Interested", color: VIZ.green, chip: "text-success bg-success/10" },
-  follow_up: { label: "Follow-up", color: VIZ.blue, chip: "text-blue-primary bg-blue-light" },
-  no_answer: { label: "No answer", color: VIZ.amber, chip: "text-warning bg-warning/10" },
-  declined: { label: "Declined", color: "#FF3B30", chip: "text-error bg-error/10" },
+// Each call outcome owns a colour AND an icon — the status column used to paint
+// every dialed call the same green, so "declined" and "interested" looked
+// identical (Anir, Jul 26: "the status here is clearly not color-coded, and it
+// doesn't have icons").
+const OUTCOME_META: Record<
+  VoiceOutcome,
+  { label: string; color: string; chip: string; icon: LucideIcon }
+> = {
+  interested: { label: "Interested", color: VIZ.green, chip: "text-success bg-success/10", icon: ThumbsUp },
+  follow_up: { label: "Follow-up", color: VIZ.blue, chip: "text-blue-primary bg-blue-light", icon: CalendarClock },
+  no_answer: { label: "No answer", color: VIZ.amber, chip: "text-warning bg-warning/10", icon: PhoneMissed },
+  declined: { label: "Declined", color: "#FF3B30", chip: "text-error bg-error/10", icon: ThumbsDown },
 };
 const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer", "declined"];
 
@@ -653,20 +665,32 @@ export default async function VoiceAgentPage({
                         </Link>
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
-                        <span
-                          className={cn(
-                            "inline-flex text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
-                            isDialedVoiceCall(q.status)
-                              ? "text-success bg-success/10"
-                              : "text-warning bg-warning/10"
-                          )}
-                        >
-                          {isDialedVoiceCall(q.status)
-                            ? q.outcome
-                              ? q.outcome.replace("_", "-")
-                              : voiceCallStatusLabel(q.status)
-                            : voiceCallStatusLabel(q.status)}
-                        </span>
+                        {(() => {
+                          // Colour + icon come from the OUTCOME, not from "was it
+                          // dialed" — otherwise declined and interested read the
+                          // same. Calls with no outcome yet fall back to the
+                          // queue state's own amber/blue.
+                          const om =
+                            isDialedVoiceCall(q.status) && q.outcome
+                              ? OUTCOME_META[q.outcome as VoiceOutcome]
+                              : null;
+                          const Icon = om?.icon ?? Clock3;
+                          return (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
+                                om
+                                  ? om.chip
+                                  : isDialedVoiceCall(q.status)
+                                    ? "text-blue-primary bg-blue-light"
+                                    : "text-warning bg-warning/10"
+                              )}
+                            >
+                              <Icon size={11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
+                              {om ? om.label : voiceCallStatusLabel(q.status)}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
                         {q.duration_secs ? fmtLen(q.duration_secs) : "—"}

@@ -18,12 +18,16 @@ import {
   Package,
   ChevronRight,
   TrendingUp,
+  CalendarClock,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { offeringMark } from "@/components/ui/OfferingIcon";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DonutChart, LineChart, VIZ, type TipItem } from "@/components/charts/Charts";
@@ -53,11 +57,20 @@ type CampaignAudienceItem = {
   kind: "contact" | "company";
 };
 
-const OBJECTIVES: { value: CampaignObjective; label: string; detail: string }[] = [
-  { value: "pipeline", label: "Create pipeline", detail: "Start qualified sales conversations." },
-  { value: "awareness", label: "Build awareness", detail: "Introduce an offering to the right market." },
-  { value: "event_follow_up", label: "Follow up after an event", detail: "Continue a timely shared conversation." },
-  { value: "expansion", label: "Expand an account", detail: "Reach new stakeholders in existing customers." },
+// Each objective is a category, so it owns a colour and an icon — the picker
+// was a plain gray <select> and the summary card a bare label (Anir, Jul 26:
+// "different icons and colors for the objective").
+const OBJECTIVES: {
+  value: CampaignObjective;
+  label: string;
+  detail: string;
+  color: string;
+  icon: LucideIcon;
+}[] = [
+  { value: "pipeline", label: "Create pipeline", detail: "Start qualified sales conversations.", color: "#0071E3", icon: Target },
+  { value: "awareness", label: "Build awareness", detail: "Introduce an offering to the right market.", color: "#7C3AED", icon: Megaphone },
+  { value: "event_follow_up", label: "Follow up after an event", detail: "Continue a timely shared conversation.", color: "#EA580C", icon: CalendarClock },
+  { value: "expansion", label: "Expand an account", detail: "Reach new stakeholders in existing customers.", color: "#059669", icon: TrendingUp },
 ];
 
 const COMPOSER_STEPS = ["Setup", "Audience", "Message", "Review"];
@@ -330,6 +343,16 @@ export function CampaignsView({
   const selectedOffering = offerings.find((offering) => offering.id === offeringId);
   const selectedObjective = OBJECTIVES.find((item) => item.value === objective)!;
 
+  // Real per-step completion, so the rail's green ticks report what you've
+  // actually filled in rather than how far you happen to have clicked. Review
+  // is never "done" — it's done when the campaign is saved and the dialog closes.
+  const stepDone = [
+    name.trim().length > 0 && !!offeringId,
+    picked.size > 0,
+    subject.trim().length > 0 && body.trim().length >= 40,
+    false,
+  ];
+
   function reset() {
     setName("");
     setOfferingId(offerings[0]?.id || "");
@@ -483,30 +506,39 @@ export function CampaignsView({
             <ol className="space-y-1">
               {COMPOSER_STEPS.map((label, index) => (
                 <li key={label}>
+                  {/* Every step is reachable, forward or back. Locking the later
+                      steps until the current one validated meant you couldn't
+                      even look at what the flow asks for (Anir, Jul 26: "I should
+                      be able to click on step two, three, and four… obviously it
+                      won't let me submit, but I should at least see what's going
+                      on"). Sending still runs its own readiness checks. */}
                   <button
                     type="button"
-                    onClick={() => index < composerStep && setComposerStep(index)}
-                    disabled={index > composerStep}
+                    onClick={() => setComposerStep(index)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[12.5px] font-medium",
+                      "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors",
                       index === composerStep
                         ? "bg-blue-light text-blue-primary"
-                        : index < composerStep
-                        ? "text-text-primary hover:bg-surface"
-                        : "text-text-tertiary"
+                        : "text-text-primary hover:bg-surface"
                     )}
                   >
+                    {/* A green tick means the step is genuinely DONE, not merely
+                        walked past. Now that every step is clickable, keying the
+                        tick off "index < currentStep" marked Setup/Audience/
+                        Message complete the moment you clicked Review with
+                        nothing filled in (Anir, Jul 26: "it should only say a
+                        green check mark if I actually complete it"). */}
                     <span
                       className={cn(
                         "flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-bold",
-                        index < composerStep
+                        stepDone[index]
                           ? "border-success bg-success text-white"
                           : index === composerStep
                           ? "border-blue-primary bg-white text-blue-primary"
                           : "border-border bg-white text-text-tertiary"
                       )}
                     >
-                      {index < composerStep ? <Check size={12} /> : index + 1}
+                      {stepDone[index] ? <Check size={12} /> : index + 1}
                     </span>
                     {label}
                   </button>
@@ -524,7 +556,13 @@ export function CampaignsView({
             </div>
           </aside>
 
-          <div className="min-w-0">
+          {/* Fixed body height so the dialog stays the same size on every
+              step — Setup is short and Audience is long, so browsing the
+              rail made the whole modal jump around (Anir, Jul 26: "when I
+              click on different steps it's changing the dimension, so it's
+              annoying"). Overflow scrolls inside instead of resizing. */}
+          <div className="flex min-w-0 flex-col">
+            <div className="min-h-[430px] max-h-[min(58vh,560px)] overflow-y-auto pr-1">
             {composerStep === 0 && (
               <div>
                 <div className="mb-5">
@@ -538,26 +576,92 @@ export function CampaignsView({
                   </div>
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Objective</label>
-                    <select value={objective} onChange={(event) => setObjective(event.target.value as CampaignObjective)} aria-label="Campaign objective" className="h-10 w-full rounded-md border border-border bg-white px-3 text-[13px] outline-none focus:border-blue-primary">
-                      {OBJECTIVES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                    </select>
+                    <ColorSelect
+                      value={objective}
+                      ariaLabel="Campaign objective"
+                      className="w-full"
+                      onChange={(v) => setObjective(v as CampaignObjective)}
+                      options={OBJECTIVES.map<ColorOption>((item) => ({
+                        value: item.value,
+                        label: item.label,
+                        color: item.color,
+                        icon: item.icon,
+                        description: item.detail,
+                      }))}
+                    />
                     <p className="mt-1.5 text-[11px] text-text-tertiary">{selectedObjective.detail}</p>
                   </div>
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Offering to pitch</label>
-                    <select value={offeringId} onChange={(event) => setOfferingId(event.target.value)} aria-label="Campaign offering" className="h-10 w-full rounded-md border border-border bg-white px-3 text-[13px] outline-none focus:border-blue-primary">
-                      {offerings.map((offering) => <option key={offering.id} value={offering.id}>{offering.name}</option>)}
-                    </select>
+                    {/* Every offering carries its own glyph + hue app-wide, so the
+                        picker shows them here too instead of a gray text list. */}
+                    <ColorSelect
+                      value={offeringId}
+                      ariaLabel="Campaign offering"
+                      className="w-full"
+                      onChange={setOfferingId}
+                      options={offerings.map<ColorOption>((offering) => {
+                        const mark = offeringMark(offering.name);
+                        return {
+                          value: offering.id,
+                          label: offering.name,
+                          color: mark.color,
+                          icon: mark.icon,
+                        };
+                      })}
+                    />
                   </div>
                 </div>
+                {/* The three summary tiles echo the same colour + glyph as the
+                    pickers above them, so the choice you just made is legible at
+                    a glance instead of three identical blue icons. */}
                 <div className="mt-5 grid grid-cols-3 gap-3">
-                  {[{ icon: Target, label: "Goal", value: selectedObjective.label }, { icon: Package, label: "Offering", value: selectedOffering?.name || "Not selected" }, { icon: null, label: "Owner", value: currentUser.name }].map((item) => (
-                    <div key={item.label} className="rounded-md border border-border-light bg-surface/35 p-3">
-                      {item.icon ? <item.icon size={14} className="text-blue-primary" /> : <Avatar name={item.value} className="h-7 w-7 text-[9px]" />}
-                      <p className="mt-2 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">{item.label}</p>
-                      <p className="mt-0.5 truncate text-[11.5px] font-semibold text-text-primary">{item.value}</p>
-                    </div>
-                  ))}
+                  {[
+                    {
+                      label: "Goal",
+                      value: selectedObjective.label,
+                      color: selectedObjective.color,
+                      icon: selectedObjective.icon,
+                    },
+                    {
+                      label: "Offering",
+                      value: selectedOffering?.name || "Not selected",
+                      color: selectedOffering ? offeringMark(selectedOffering.name).color : "#8E98A8",
+                      icon: selectedOffering ? offeringMark(selectedOffering.name).icon : Package,
+                    },
+                    { label: "Owner", value: currentUser.name, color: null, icon: null },
+                  ].map((item) => {
+                    const ItemIcon = item.icon;
+                    return (
+                      <div
+                        key={item.label}
+                        className="rounded-md border p-3"
+                        style={
+                          item.color
+                            ? { borderColor: `${item.color}33`, background: `${item.color}0D` }
+                            : undefined
+                        }
+                      >
+                        {ItemIcon && item.color ? (
+                          <span
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-white"
+                            style={{ backgroundColor: item.color }}
+                          >
+                            <ItemIcon size={14} strokeWidth={2} />
+                          </span>
+                        ) : (
+                          <Avatar name={item.value} className="h-7 w-7 text-[9px]" />
+                        )}
+                        <p className="mt-2 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">{item.label}</p>
+                        <p
+                          className="mt-0.5 text-[11.5px] font-semibold"
+                          style={{ color: item.color || undefined }}
+                        >
+                          {item.value}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -651,7 +755,10 @@ export function CampaignsView({
                 </div>
               </div>
             )}
+            </div>
 
+            {/* Footer sits outside the scrolling body so Back/Continue stay put
+                at the same height on every step. */}
             <div className="mt-6 flex items-center justify-between border-t border-border-light pt-4">
               <Button variant="ghost" onClick={() => composerStep ? setComposerStep((step) => step - 1) : setComposing(false)} className="px-3"><ArrowLeft size={14} /> {composerStep ? "Back" : "Cancel"}</Button>
               {composerStep < 3 ? (

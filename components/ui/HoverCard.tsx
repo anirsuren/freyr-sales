@@ -24,6 +24,7 @@ export function HoverCard({
   delayMs: delayOverride,
   anchor = "trigger",
   clearAncestor,
+  tightAbove,
 }: {
   children: React.ReactNode;
   content: React.ReactNode;
@@ -40,6 +41,15 @@ export function HoverCard({
    *  placement. Charts pass their plot container so the card never lands on
    *  the numbers (Anir: "it shouldn't cover the number ever"). */
   clearAncestor?: string;
+  /** Opt-in (bar charts): on TOP placement, hug the trigger's own top edge and
+   *  lift the card this many extra pixels, instead of clearing the whole
+   *  `clearAncestor` box. A per-bar trigger then gets a per-bar height — a tall
+   *  bar's card sits high, a short bar's card drops down to meet it (Suren:
+   *  "it should be right above the number, not above a set amount"). The
+   *  lift is sized to clear that bar's own value label. `clearAncestor` still
+   *  governs the flip-below case, so the card never lands on the axis labels.
+   *  Omit it and placement is unchanged for every other caller. */
+  tightAbove?: number;
 }) {
   const [pos, setPos] = useState<{
     left: number;
@@ -100,12 +110,18 @@ export function HoverCard({
     const clearRect = clearAncestor
       ? el.closest(clearAncestor)?.getBoundingClientRect() ?? r
       : r;
+    // …unless the caller opted into hugging the trigger above (bar charts).
+    // Every column shares one clear ancestor, so clearing it parks every card
+    // at the same height no matter which bar you point at. Anchoring to the
+    // trigger — one bar — makes the card ride that bar's own top edge, lifted
+    // just enough to clear its value label.
+    const topAnchor = tightAbove != null ? r.top - tightAbove : clearRect.top;
     // Honor the requested side, but flip when there's clearly no room.
     const below = vh - clearRect.bottom;
-    const above = clearRect.top;
+    const above = topAnchor;
     const wantBottom = side === "bottom" ? below >= 260 || below >= above : below > above && above < 260;
     if (wantBottom) setPos({ left, top: clearRect.bottom + 6, placement: "bottom" });
-    else setPos({ left, bottom: vh - clearRect.top + 6, placement: "top" });
+    else setPos({ left, bottom: vh - topAnchor + 6, placement: "top" });
   }
 
   function show() {

@@ -80,6 +80,22 @@ export function AnalyticsView({
       sub: d.contact,
       value: formatMoney(d.value),
     }));
+  // The same deals, but priced at the SAME measure as the weighted chart they
+  // sit under, so the rows add up to the segment. Listing full open values
+  // under a probability-adjusted total is what Suren caught on the bar chart:
+  // "it says 318K for engaged, but when I add up the records behind this bar
+  // it says like a million". The open value stays on the second line so each
+  // row is still a recognisable deal, not a bare fraction of one.
+  const weightedStageTip = (stage: string) => {
+    const odds = STAGE_PROBABILITY[stage as keyof typeof STAGE_PROBABILITY] ?? 0;
+    return (stageDeals?.[stage] ?? []).map((d) => ({
+      logo: d.company,
+      avatar: d.contact,
+      name: d.company,
+      sub: `${d.contact} · ${formatMoney(d.value)} open`,
+      value: formatMoney(Math.round(d.value * odds)),
+    }));
+  };
   const weightedByStage = openStages
     .map((s, i) => ({
       label: s.stage,
@@ -87,7 +103,7 @@ export function AnalyticsView({
         s.value * (STAGE_PROBABILITY[s.stage as keyof typeof STAGE_PROBABILITY] ?? 0)
       ),
       color: VIZ_SERIES[i % VIZ_SERIES.length],
-      tip: stageTip(s.stage),
+      tip: weightedStageTip(s.stage),
     }))
     .filter((s) => s.value > 0);
   const totalWeighted = weightedByStage.reduce((t, x) => t + x.value, 0);
@@ -95,6 +111,15 @@ export function AnalyticsView({
     label: s.stage,
     value: s.count > 0 ? Math.round(s.value / s.count) : 0,
     color: VIZ_SERIES[i % VIZ_SERIES.length],
+    // An AVERAGE can never be the sum of the deals listed under it, so the bar
+    // says what it is at rest and the tooltip spells out the arithmetic in
+    // full — the count it averages over AND the stage total those deals do add
+    // up to. Nothing in the tip contradicts anything else in it.
+    caption: s.count > 0 ? `avg of ${s.count} deal${s.count === 1 ? "" : "s"}` : "no deals yet",
+    tipNote:
+      s.count > 0
+        ? `Average of ${s.count} deal${s.count === 1 ? "" : "s"} · ${formatMoney(s.value)} in this stage`
+        : "No deals in this stage yet",
     tip: stageTip(s.stage),
   }));
 
@@ -538,10 +563,17 @@ export function AnalyticsView({
         <Card className="h-full flex flex-col">
           <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
             Average Deal Size by Stage
-            <InfoHint text="The average open-deal value at each step — where the bigger deals sit in your process." />
+            <InfoHint text="The average open-deal value at each step — where the bigger deals sit in your process. Each bar is an average, so the deals listed on hover add up to the stage total shown there, not to the bar." />
           </h2>
           <div className="flex flex-1 items-end w-full">
-            <BarChart data={avgByStage} height={190} format="money" />
+            <BarChart
+              data={avgByStage}
+              height={190}
+              format="money"
+              // Not "records behind this bar" — these deals produce the bar's
+              // average, they don't add up to it.
+              tipRecordsLabel="Deals in this stage"
+            />
           </div>
         </Card>
       </div>

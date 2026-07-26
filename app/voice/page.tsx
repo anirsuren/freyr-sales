@@ -5,18 +5,28 @@ import {
   ListChecks,
   BarChart3,
   Clock,
+  Clock3,
   Timer,
   ThumbsUp,
+  ThumbsDown,
+  CalendarClock,
   Phone,
   PhoneIncoming,
   PhoneMissed,
+  PhoneOutgoing,
+  AudioLines,
+  Activity,
+  CheckCircle2,
+  XCircle,
+  BotOff,
   ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { voiceStatus, listVoiceQueue, isDialedVoiceCall, voiceCallStatusLabel, type VoiceOutcome } from "@/lib/voice";
+import { voiceStatus, listVoiceQueue, isDialedVoiceCall, voiceCallStatusLabel, type VoiceOutcome, type VoiceCallStatus } from "@/lib/voice";
 import { listConversations } from "@/lib/elevenlabs";
 import { syncConversations } from "@/lib/voiceSync";
 import { listOfferings } from "@/lib/offerings";
@@ -35,13 +45,33 @@ export const metadata = { title: "Voice agents" };
 export const dynamic = "force-dynamic";
 
 // One place to define how each call outcome renders — donut, legend, table.
-const OUTCOME_META: Record<VoiceOutcome, { label: string; color: string; chip: string }> = {
-  interested: { label: "Interested", color: "#34C759", chip: "text-success bg-success/10" },
-  follow_up: { label: "Follow-up", color: "#0071E3", chip: "text-blue-primary bg-blue-light" },
-  no_answer: { label: "No answer", color: "#FF9F0A", chip: "text-warning bg-warning/10" },
-  declined: { label: "Declined", color: "#FF3B30", chip: "text-error bg-error/10" },
+// Each outcome owns a colour AND an icon (Anir, Jul 26: "the status here is
+// clearly not color-coded, and it doesn't have icons").
+const OUTCOME_META: Record<
+  VoiceOutcome,
+  { label: string; color: string; chip: string; icon: LucideIcon }
+> = {
+  interested: { label: "Interested", color: "#34C759", chip: "text-success bg-success/10", icon: ThumbsUp },
+  follow_up: { label: "Follow-up", color: "#0071E3", chip: "text-blue-primary bg-blue-light", icon: CalendarClock },
+  no_answer: { label: "No answer", color: "#FF9F0A", chip: "text-warning bg-warning/10", icon: PhoneMissed },
+  declined: { label: "Declined", color: "#FF3B30", chip: "text-error bg-error/10", icon: ThumbsDown },
 };
 const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer", "declined"];
+
+// Every queue state gets its own colour + icon too. The status pill used to be
+// a dialed/not-dialed binary, so "Called", "Live call" and "Failed" all painted
+// the same green — one glance told you nothing. Labels stay in
+// voiceCallStatusLabel() so the wording is defined once.
+const STATUS_META: Record<VoiceCallStatus, { chip: string; icon: LucideIcon }> = {
+  called: { chip: "text-teal-700 bg-teal-50", icon: PhoneCall },
+  initiated: { chip: "text-violet-700 bg-violet-50", icon: PhoneOutgoing },
+  in_progress: { chip: "text-blue-primary bg-blue-light", icon: AudioLines },
+  analyzing: { chip: "text-indigo-700 bg-indigo-50", icon: Activity },
+  completed: { chip: "text-success bg-success/10", icon: CheckCircle2 },
+  failed: { chip: "text-error bg-error/10", icon: XCircle },
+  waiting_for_number: { chip: "text-warning bg-warning/10", icon: Clock3 },
+  no_agent: { chip: "text-rose-700 bg-rose-50", icon: BotOff },
+};
 
 const fmtLen = (secs: number) =>
   `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
@@ -189,6 +219,9 @@ export default async function VoicePage() {
   });
 
   const lineCount = Object.keys(status.numbers).length;
+  // Same pill on every persona card — a live line and a line still waiting for
+  // a number are different states, so each carries its own icon, not just a hue.
+  const LineStatusIcon = status.phoneConnected ? PhoneCall : Clock3;
   const tiles = [
     {
       label: "The calling team",
@@ -407,12 +440,13 @@ export default async function VoicePage() {
                       </span>
                       <span
                         className={cn(
-                          "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
+                          "inline-flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
                           status.phoneConnected
                             ? "text-success bg-success/10"
                             : "text-warning bg-warning/10"
                         )}
                       >
+                        <LineStatusIcon size={10} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
                         {status.phoneConnected ? "Live" : "Ready — awaiting number"}
                       </span>
                     </div>
@@ -556,22 +590,29 @@ export default async function VoicePage() {
                         {c.direction || "—"}
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
-                        <span
-                          className={cn(
-                            "inline-flex text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
+                        {(() => {
+                          // Three real states, three colours AND three icons —
+                          // a colour-only pill made a failed call read the same
+                          // as one still on the phone.
+                          const sm =
                             c.status === "done"
-                              ? "text-success bg-success/10"
+                              ? { label: "Finished", chip: "text-success bg-success/10", icon: CheckCircle2 }
                               : c.status === "failed"
-                              ? "text-error bg-error/10"
-                              : "text-blue-primary bg-blue-light"
-                          )}
-                        >
-                          {c.status === "done"
-                            ? "Finished"
-                            : c.status === "failed"
-                            ? "Failed"
-                            : "In progress"}
-                        </span>
+                                ? { label: "Failed", chip: "text-error bg-error/10", icon: XCircle }
+                                : { label: "In progress", chip: "text-blue-primary bg-blue-light", icon: AudioLines };
+                          const StatusIcon = sm.icon;
+                          return (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
+                                sm.chip
+                              )}
+                            >
+                              <StatusIcon size={11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
+                              {sm.label}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
                         {c.call_duration_secs ? fmtLen(c.call_duration_secs) : "—"}
@@ -648,6 +689,13 @@ export default async function VoicePage() {
                     // Clicking a contact opens their voice profile (who they are
                     // + every call + graphs), not straight into one transcript.
                     const href = `/voice/contact/${q.contact_id}`;
+                    // Status paints from the STATUS ITSELF (not a was-it-dialed
+                    // binary) and outcome from the OUTCOME — two columns, two
+                    // meanings, each with its own colour + icon.
+                    const statusMeta = STATUS_META[q.status];
+                    const StatusIcon = statusMeta.icon;
+                    const outcomeMeta = q.outcome ? OUTCOME_META[q.outcome] : null;
+                    const OutcomeIcon = outcomeMeta?.icon;
                     return (
                     <tr
                       key={q.id}
@@ -697,30 +745,23 @@ export default async function VoicePage() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5 transition-[transform,box-shadow] duration-200 group-hover:-translate-y-px group-hover:scale-[1.04] group-hover:shadow-sm",
-                            isDialedVoiceCall(q.status)
-                              ? "text-success bg-success/10"
-                              : q.status === "no_agent"
-                              ? "text-error bg-error/10"
-                              : "text-warning bg-warning/10"
+                            statusMeta.chip
                           )}
                         >
-                          {isDialedVoiceCall(q.status) ? (
-                            <PhoneCall size={11} strokeWidth={2.2} />
-                          ) : (
-                            <Clock size={11} strokeWidth={2.2} />
-                          )}
+                          <StatusIcon size={11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
                           {voiceCallStatusLabel(q.status)}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
-                        {q.outcome ? (
+                        {outcomeMeta && OutcomeIcon ? (
                           <span
                             className={cn(
-                              "inline-flex text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5 transition-[transform,box-shadow] duration-200 group-hover:-translate-y-px group-hover:scale-[1.04] group-hover:shadow-sm",
-                              OUTCOME_META[q.outcome].chip
+                              "inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5 transition-[transform,box-shadow] duration-200 group-hover:-translate-y-px group-hover:scale-[1.04] group-hover:shadow-sm",
+                              outcomeMeta.chip
                             )}
                           >
-                            {OUTCOME_META[q.outcome].label}
+                            <OutcomeIcon size={11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
+                            {outcomeMeta.label}
                           </span>
                         ) : (
                           <span className="text-[12.5px] text-text-tertiary">—</span>

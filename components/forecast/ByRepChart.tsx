@@ -191,13 +191,20 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                   {formatMoney(r.weighted)}
                 </span>
                 {/* Only the bar itself pops the breakdown — hovering the empty
-                    space above a short bar no longer triggers it (Suren). */}
+                    space above a short bar no longer triggers it (Suren).
+                    tightAbove anchors the card to THIS bar's top edge, lifted
+                    past its own $ label, so a tall bar's card sits high and a
+                    short bar's card drops down to meet it instead of every
+                    card parking above the whole graph (Suren). clearAncestor
+                    still applies if it ever has to flip below, so it lands
+                    under the column rather than on the rep's name. */}
                 <HoverCard
                   side="top"
                   width={240}
                   delayMs={0}
                   content={hover}
                   clearAncestor="[data-rep-column]"
+                  tightAbove={14}
                   className="w-full flex justify-center shrink-0"
                 >
                   <div

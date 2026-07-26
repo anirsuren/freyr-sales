@@ -3,6 +3,7 @@ import { FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
+import { IndustryTag } from "@/components/ui/IndustryTag";
 import { HealthBar } from "@/components/ui/HealthBadge";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
@@ -88,6 +89,9 @@ export default async function CustomerDetailPage({
     materials: o.materials.map((m) => ({
       id: m.id,
       kind: MATERIAL_META[m.kind]?.label || m.kind,
+      // The raw kind travels alongside its label so the tab can resolve the
+      // format glyph — the label alone can't be mapped back to an icon.
+      kindKey: m.kind,
       label: m.label,
       url: m.url,
       // CR-3 tags travel as raw values; the tab narrows them safely so
@@ -125,20 +129,28 @@ export default async function CustomerDetailPage({
             <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
               {customer.company_name}
             </h1>
-            <div className="flex items-center gap-3 mt-1.5">
-              {/* Health reads as a filled bar, here too (Anir: "we need a
-                  fucking bar here, a horizontal bar"). */}
-              <div className="w-[190px] shrink-0">
-                <HealthBar health={health} />
-              </div>
+            {/* Identity only, directly under the name: what this account IS —
+                its industry and its size, each a colour + icon chip. The health
+                bar used to sit here and read as clutter against the company name
+                (Anir, Jul 26: "the health bar looks really ugly next to the name
+                at the top"); health is a MEASURE, not an identity, so it moved
+                to its own labelled block on the right of the header. */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {customer.industry && <IndustryTag industry={customer.industry} />}
               <SizeBadge tier={customer.size_tier} />
-              <span className="text-[13px] text-text-secondary">
-                {customer.industry}
-              </span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          {/* Health gets its own labelled slot on the right — still the first
+              number you see, but read as a measure of the account rather than
+              part of its name. */}
+          <div className="hidden w-[200px] shrink-0 md:block">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Account health
+            </p>
+            <HealthBar health={health} />
+          </div>
           {/* Start a pitch session for THIS account — the button first explains
               what a session is (Suren #89), then prefills the intake with the
               company + primary contact. */}

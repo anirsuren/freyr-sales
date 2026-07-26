@@ -12,7 +12,6 @@ import {
   UsersRound,
   Settings,
   Plus,
-  Activity,
   ChartColumnBig,
   FileBarChart,
   Rss,
@@ -190,9 +189,17 @@ export function Sidebar({
         )}
       >
         <Link href={getHomePath(dataMode)} className="flex items-center gap-2.5" title="Freyr">
-          <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
-            <Activity size={18} strokeWidth={2.25} />
-          </span>
+          {/* The Freyr "f" mark, not a generic pulse glyph — the brand's own
+              letterform on the wordmark's blue (Anir, Jul 26: "it should just be
+              the F… you can put that instead of the logo"). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/freyr-mark.png"
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 rounded-lg"
+          />
           {!collapsed && (
             <span className="leading-none">
               <span className="block text-[18px] font-bold text-text-primary leading-none">

@@ -503,7 +503,17 @@ function seedOfferings(): Offering[] {
       market_ids: ALL_MKT,
     }),
     off("of-024", SERVICE, "Pharmacovigilance", "• PV Consulting\n• End-to-end ICSR Management\n• Aggregate Reporting\n• Literature Monitoring\n• QPPV and Local PV Services\n• Signal Management & Risk Management Plan\n• Safety Database Services & Solutions\n• PV Audit & Quality Assurance & Analysis\n• Medical Information Call Center Services", {
-      offering_category: "",
+      // The five service lines from of-024 to of-028 came off Sara's MPR list
+      // with no category, so they rendered a BLANK subcaption everywhere a
+      // category is shown (Suren, Jul 26, on Related offerings: "Why do some
+      // of these have a sub caption but some of them don't?"). Each is mapped
+      // to the closest of the six EXISTING categories rather than inventing
+      // new ones: Pharmacovigilance and Compliance/Audit/Validation are
+      // ongoing-compliance consulting → Regulatory Affairs; the medical
+      // writing / communication lines author and publish regulatory content →
+      // Submissions and Document Operations. Re-map here if Suren later wants
+      // dedicated PV / Medical Writing categories.
+      offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · PV team focus is on small & mid-sized companies; Current PV team size can't support multiple large clients without leveraging FreyrX - MSD is their only large client",
       poc: "Gurpreet Kaur",
@@ -511,7 +521,10 @@ function seedOfferings(): Offering[] {
       market_ids: ALL_MKT,
     }),
     off("of-025", SERVICE, "Medical Writing - Clinical", "• Regulatory Writing\n• Clinical Trial Consulting\n• Clinical Trial Audit & Monitoring\n• Quality Check & Medical Review of Regulatory Documents\n• Risk-Benefit Analysis\n• Clinical Data Transparency Initiative\n• Clinical Summaries & Overviews\n• Clinical Study Reports, IB, ICF, PLLR Support\n• Clinical Protocols, Design & Review\n• Scientific Advice & Briefing Packages\n• Clinical Investigation Plan (including PIP)", {
-      offering_category: "",
+      // Clinical summaries, CSRs, protocols and briefing packages are the
+      // authored documents a dossier is built from — same family as Publishing
+      // and Submissions Planning & Management.
+      offering_category: CAT_SUBMISSIONS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both",
       poc: "Seema Gurbani",
@@ -519,7 +532,9 @@ function seedOfferings(): Offering[] {
       market_ids: ALL_MKT,
     }),
     off("of-026", SERVICE, "Medical Writing - Non Clinical & Toxicology", "• Regulatory Toxicology (1. ADE/PDE/Determination/ Report Services 2. F-Value Reports for Child Resistant Packaging (CRP) 3. Toxicological Risk Assessment (TRA) of impurities, Extractables & Leachables 4. Environmental Risk Assessment (ERA) of medicinal products)\n• Scientific and Regulatory Review of Non-clinical Documents\n• Development and Review of Study Plans/Protocols for Non-clinical Studies\n• Non-clinical Development Strategy for Regulatory Submissions\n• Consultation on Non-clinical Issues in the Submissions\n• Consultation and Responses to Regulatory Queries\n• GLP Audits of Test Facilities\n• CRO Identification and Qualification for Non-clinical Regulatory Studies", {
-      offering_category: "",
+      // Non-clinical study plans, tox reports and query responses are written
+      // for the submission dossier — same family as its clinical counterpart.
+      offering_category: CAT_SUBMISSIONS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · SEND compilation & submission: No in-house capability currently",
       poc: "Jaiprakash Bhelonde",
@@ -527,7 +542,10 @@ function seedOfferings(): Offering[] {
       market_ids: ALL_MKT,
     }),
     off("of-027", SERVICE, "Compliance, Audit and Validation", "• End-to-end Regulatory Compliance Services\n• SOP Authoring & Gap Analysis of process with alignment to regulatory requirements\n• GxP Audit Services\n• CSV & CSA Validation Service Offerings\n• Building QMS", {
-      offering_category: "",
+      // GxP audits, SOP authoring, CSV/CSA validation and QMS build-out are
+      // the compliance-and-governance side of RA — the same consulting family
+      // as Regulatory Affairs Strategy's transformation/process work.
+      offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · CSV & CSA Validation Services: Provided through FreyrX in all markets",
       poc: "Anushta Chandrapalan",
@@ -535,7 +553,10 @@ function seedOfferings(): Offering[] {
       market_ids: ALL_MKT,
     }),
     off("of-028", SERVICE, "Medical & Scientific Communication", "• Medical Copywriting Services\n• Medical & Scientific Writing Services\n• Medical & Scientific Publication Services\n• Creative Scientific Design Studio\n• Promotional Regulatory Affairs (MLR Review etc.)\n• Ad Promo HA Submission & Consultation Services\n• Medical & Scientific Content Management", {
-      offering_category: "",
+      // Medical copywriting, publications and Ad Promo HA submissions are
+      // content authored, reviewed and filed — document operations, not a
+      // labeling or artwork deliverable.
+      offering_category: CAT_SUBMISSIONS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · Medical & Scientific Content Management: No in-house capability currently (no previous clients)",
       poc: "Padmaja Jagannathan",

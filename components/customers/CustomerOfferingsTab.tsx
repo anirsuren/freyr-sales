@@ -15,9 +15,11 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Paperclip,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Avatar } from "@/components/ui/Avatar";
@@ -32,8 +34,11 @@ import { REVENUE_TYPES, REVENUE_TYPE_META } from "@/lib/revenue";
 import {
   ACCESS_LEVEL_META,
   JOURNEY_STAGE_META,
+  MATERIAL_COLOR,
+  MATERIAL_ICON,
   asAccessLevel,
   asJourneyStage,
+  asMaterialKind,
 } from "@/lib/offeringMaterials";
 import type { OfferingUsage, OfferingRevenueLine, RevenueType } from "@/lib/types";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
@@ -109,17 +114,16 @@ export function segmentColor(type: string): string {
   return "#8E98A8"; // slate
 }
 
+// Size colours come from the one shared size palette (SIZE_TIER_META) rather
+// than a second local set — the same "Large" was green here and violet in the
+// badge, so one concept wore two colours depending on which card you looked at.
 function segmentParts(type: string) {
   const [family, ...sizeParts] = type.split(/\s+-\s+/);
   const size = sizeParts.join(" - ") || "Segment";
   const key = size.toLowerCase();
-  if (key.includes("small")) {
-    return { family, size, color: "#0369A1", bg: "rgba(2,132,199,0.08)" };
-  }
-  if (key.includes("large")) {
-    return { family, size, color: "#047857", bg: "rgba(5,150,105,0.08)" };
-  }
-  return { family, size, color: "#0891B2", bg: "rgba(8,145,178,0.08)" };
+  const tier = key.includes("small") ? "small" : key.includes("large") ? "large" : "mid";
+  const meta = SIZE_TIER_META[tier];
+  return { family, size, color: meta.color, bg: meta.bg };
 }
 
 // One offering, serialized for this tab by the server page (materials carry a
@@ -136,6 +140,8 @@ export type TabOffering = {
   materials: {
     id: string;
     kind: string;
+    /** Raw MaterialKind — resolves the format glyph; `kind` is its label. */
+    kindKey?: string;
     label: string;
     url: string;
     journeyStage?: string;
@@ -247,7 +253,11 @@ function RevenueSection({
           own right competing with the donut. The donut gets more room so the
           centre total isn't pressed against the ring. */}
       {total > 0 && (
-        <div className="mb-2.5 grid max-w-[620px] grid-cols-[150px_minmax(0,300px)] items-center gap-6 rounded-xl border border-success/25 bg-success/[0.05] px-4 py-4">
+        // Neutral card, not a green wash. Tinting the whole panel green made the
+        // revenue block read as an alert rather than a figure (Anir, Jul 26: "I
+        // don't know why you're doing the green background on the revenue card.
+        // It looks weird"). Colour now lives only in the donut and its legend.
+        <div className="mb-2.5 grid grid-cols-[150px_minmax(0,1fr)] items-center gap-6 rounded-xl border border-border-light bg-white px-4 py-4">
           <div className="flex justify-center">
             <DonutChart
               size={132}
@@ -263,28 +273,25 @@ function RevenueSection({
               format="money"
             />
           </div>
-          <ul className="min-w-0 space-y-2">
+          {/* Label, then the bar taking every spare pixel, then the money and
+              share pinned to the right edge. The bar used to sit under the row
+              at its own short width, which left a dead strip of white to the
+              right of "$220K / $480K" (Anir, Jul 26: "there should be something
+              to the right of the two lines… it's just empty white space"). */}
+          <ul className="min-w-0 space-y-2.5">
             {byType.map((b) => (
               <li
                 key={b.type}
-                className="min-w-0 text-[12.5px]"
+                className="grid min-w-0 grid-cols-[minmax(90px,auto)_minmax(40px,1fr)_auto] items-center gap-3 text-[12.5px]"
               >
-                <div className="flex items-center gap-2">
-                  <span className="flex min-w-0 items-center gap-1.5 text-text-secondary">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-sm"
-                      style={{ background: b.color }}
-                    />
-                    <span className="truncate">{b.label}</span>
-                  </span>
-                  <span className="ml-auto shrink-0 font-semibold text-text-primary tnum">
-                    {formatMoney(b.value)}
-                    <span className="ml-1 text-text-tertiary font-normal">
-                      {Math.round((b.value / total) * 100)}%
-                    </span>
-                  </span>
-                </div>
-                <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-white/80">
+                <span className="flex min-w-0 items-center gap-1.5 text-text-secondary">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                    style={{ background: b.color }}
+                  />
+                  <span>{b.label}</span>
+                </span>
+                <span className="block h-2 overflow-hidden rounded-full bg-surface">
                   <span
                     className="block h-full rounded-full"
                     style={{
@@ -292,6 +299,12 @@ function RevenueSection({
                       background: b.color,
                     }}
                   />
+                </span>
+                <span className="shrink-0 whitespace-nowrap font-semibold text-text-primary tnum">
+                  {formatMoney(b.value)}
+                  <span className="ml-1.5 font-normal text-text-tertiary">
+                    {Math.round((b.value / total) * 100)}%
+                  </span>
                 </span>
               </li>
             ))}
@@ -346,8 +359,12 @@ function RevenueSection({
         </ul>
       )}
 
-      {adding && (
-        <div className="bg-surface/60 rounded-lg p-3 space-y-2">
+      {/* Add revenue opens a dialog, not an inline form that shoves the card's
+          own content down the page (Anir, Jul 26: "when I press Add Revenue,
+          that should be a pop-up… anything that has an Add button should be a
+          pop-up"). Same fields, same save handler. */}
+      <Modal open={adding} onClose={reset} title="Add revenue">
+        <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               Revenue type
@@ -433,7 +450,7 @@ function RevenueSection({
             </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
@@ -697,36 +714,56 @@ export function CustomerOfferingsTab({
               None yet — add them on the offering and they&apos;ll show here.
             </p>
           ) : (
-            /* Two per row on a wide card, one when narrow. Wrapping chips let a
-               long material title stretch most of the card and then reflow the
-               next chip onto its own ragged line, which read as a wall of text
-               (Anir, Jul 25: "sales material is ugly too… just one in a row
-               would be fine, or maybe 2"). A grid keeps the columns even, and
-               each title now truncates instead of setting the chip's width. */
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
-              {o.materials.map((m) => (
-                <a
-                  key={m.id}
-                  href={m.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={m.label}
-                  className="group flex min-w-0 items-center gap-1.5 text-[12px] font-medium text-text-secondary bg-surface border border-border-light rounded-md px-2 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors"
-                >
-                  <span className="shrink-0 text-text-tertiary group-hover:text-blue-primary">
-                    {m.kind}
-                  </span>
-                  {/* Wraps inside its column rather than truncating — the
-                      standing rule is that a label is never cut off with "…".
-                      The two-column grid is what stops it running long. */}
-                  <span className="min-w-0 flex-1">{m.label}</span>
-                  <MaterialTagPills
-                    journeyStage={m.journeyStage}
-                    accessLevel={m.accessLevel}
-                  />
-                  <ExternalLink size={11} strokeWidth={1.8} className="shrink-0" />
-                </a>
-              ))}
+            /* One material per row. Two-up packed the titles, the format and
+               the CR-3 pills into half a card each and read as clutter (Anir,
+               Jul 26: "the sales material just looks horrible… it shouldn't be
+               a row with two; it should just be one row with one"). A full-width
+               row gives the title room, puts the format glyph up front, and
+               parks the tags on the right edge where they line up down the list. */
+            <div className="flex flex-col gap-1.5">
+              {o.materials.map((m) => {
+                const kind = asMaterialKind(m.kindKey);
+                const Icon = kind ? MATERIAL_ICON[kind] : Paperclip;
+                const tone = kind ? MATERIAL_COLOR[kind] : "#4F46E5";
+                return (
+                  <a
+                    key={m.id}
+                    href={m.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex min-w-0 items-center gap-2.5 rounded-lg border border-border-light bg-surface px-2.5 py-2 transition-colors hover:border-blue-subtle hover:bg-white"
+                  >
+                    {/* Format glyph in the format's own colour — a video, a deck
+                        and a case study are told apart before you read a word. */}
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white"
+                      style={{ backgroundColor: tone }}
+                    >
+                      <Icon size={13} strokeWidth={2} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">
+                        {m.label}
+                      </span>
+                      <span
+                        className="block text-[11px] font-medium leading-tight"
+                        style={{ color: tone }}
+                      >
+                        {m.kind}
+                      </span>
+                    </span>
+                    <MaterialTagPills
+                      journeyStage={m.journeyStage}
+                      accessLevel={m.accessLevel}
+                    />
+                    <ExternalLink
+                      size={12}
+                      strokeWidth={1.8}
+                      className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                    />
+                  </a>
+                );
+              })}
             </div>
           )}
           </>

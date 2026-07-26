@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Send, Sparkles, Plus, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { OUTCOME_META, formatDateTime, cn } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
 
@@ -107,18 +108,21 @@ export function EngagementRail({
           <div className="mt-3 space-y-3">
             <div>
               <label className={labelCls}>Outcome</label>
-              <select
-                className={fieldCls}
+              <ColorSelect
                 value={outcome}
-                onChange={(e) => setOutcome(e.target.value)}
-              >
-                <option value="">Select outcome…</option>
-                {DISPOSITIONS.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
+                ariaLabel="Outcome"
+                className="w-full"
+                onChange={setOutcome}
+                options={[
+                  { value: "", label: "Select outcome…" },
+                  ...DISPOSITIONS.map<ColorOption>((d) => ({
+                    value: d.value,
+                    label: d.label,
+                    color: OUTCOME_META[d.value]?.color,
+                    icon: OUTCOME_META[d.value]?.icon,
+                  })),
+                ]}
+              />
             </div>
             <div>
               <label className={labelCls}>Next step</label>

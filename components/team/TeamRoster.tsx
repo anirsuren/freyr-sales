@@ -17,6 +17,7 @@ import {
   VIZ,
 } from "@/components/charts/Charts";
 import { formatMoney } from "@/lib/pipeline";
+import { flagForGeography } from "@/lib/countryFlags";
 import { cn } from "@/lib/utils";
 
 export type RosterRep = {
@@ -408,7 +409,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           />
                         </div>
                         <p className="text-[12px] text-text-secondary truncate">
-                          {r.title} · {r.region}
+                          {r.title} · {flagForGeography(r.region) || ""} {r.region}
                         </p>
                       </div>
                       <span className="relative z-10">
@@ -517,7 +518,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             <thead>
               <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary border-b border-border-light bg-surface/50">
                 <th className="px-5 py-3">Rep</th>
-                <th className="px-5 py-3">Reach</th>
+                <th className="px-5 py-3">Contact</th>
                 <th className="px-5 py-3 w-[230px]">Open pipeline</th>
                 <th className="px-5 py-3 text-right">Weighted</th>
                 <th className="px-5 py-3 text-right">Open deals</th>
@@ -548,7 +549,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                   {r.name}
                                 </p>
                                 <p className="text-[11.5px] text-text-tertiary truncate">
-                                  {r.title} · {r.region}
+                                  {r.title} · {flagForGeography(r.region) || ""} {r.region}
                                 </p>
                               </div>
                             </div>
@@ -586,7 +587,15 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                 <div className="grid grid-cols-2 gap-1.5">
                                   {topOpenDeals(r).map((d, i) => (
                                     <div key={`${d.company}-${d.contact}-${i}`} className="flex min-w-0 items-center gap-2 rounded-md bg-surface/55 px-2 py-1.5">
-                                      <CompanyLogo name={d.company} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
+                                      {/* Company logo AND the contact's face —
+                                          the person was named in text with no
+                                          photo while the account got a mark
+                                          (Anir, Jul 26: "profile pictures,
+                                          hello"). Every person shows a face. */}
+                                      <span className="relative flex shrink-0 items-center">
+                                        <CompanyLogo name={d.company} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
+                                        <Avatar name={d.contact} className="-ml-1.5 h-[18px] w-[18px] shrink-0 text-[7px] ring-2 ring-white" />
+                                      </span>
                                       <span className="min-w-0 flex-1">
                                         <span className="block truncate text-[10.5px] font-medium text-text-primary">{d.company}</span>
                                         <span className="block truncate text-[9px] text-text-tertiary">{d.contact}</span>
@@ -621,7 +630,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                               <Badge label={r.role} bg={rc.bg} color={rc.color} className="!normal-case tracking-normal !text-[10px] !px-1.5 !py-0" />
                             </span>
                             <span className="block text-[12px] text-text-secondary truncate">
-                              {r.title} · {r.region}
+                              {r.title} · {flagForGeography(r.region) || ""} {r.region}
                             </span>
                           </span>
                         </Link>

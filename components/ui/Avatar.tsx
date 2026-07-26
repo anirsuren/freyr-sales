@@ -45,11 +45,44 @@ const PHOTOS: Record<string, string> = {
   "clara mendez": "/avatars/clara-mendez.png",
   "hannah schmidt": "/avatars/hannah-schmidt.png",
   "leo santos": "/avatars/leo-santos.png",
+  // Offering service-delivery POCs (lib/offerings.ts `poc`). IMPORTANT: these
+  // are AI-GENERATED STAND-IN PORTRAITS, not photographs of the real Freyr
+  // colleagues who hold these names — they exist so the UI never falls back to
+  // bare initials (Anir, Jul 26: "why does this not have a fucking profile
+  // picture?"). Swap each one for the person's real photo before this is shown
+  // to the colleague in question.
+  ragav: "/avatars/ragav.png",
+  "sathya k": "/avatars/sathya-k.png",
+  "harshvardhan gummadi": "/avatars/harshvardhan-gummadi.png",
+  "pranab gogoi": "/avatars/pranab-gogoi.png",
+  mukundh: "/avatars/mukundh.png",
+  "suresh modugu": "/avatars/suresh-modugu.png",
+  "aditi kalia": "/avatars/aditi-kalia.png",
+  "gurpreet kaur": "/avatars/gurpreet-kaur.png",
+  "seema gurbani": "/avatars/seema-gurbani.png",
+  "jaiprakash bhelonde": "/avatars/jaiprakash-bhelonde.png",
+  "anushta chandrapalan": "/avatars/anushta-chandrapalan.png",
+  "padmaja jagannathan": "/avatars/padmaja-jagannathan.png",
+  "vikrant mahajan": "/avatars/vikrant-mahajan.png",
+  // Joint POCs ("Mukundh / Suresh Modugu") resolve to the FIRST named person
+  // rather than showing a lone initial pair for two people.
+  "mukundh / suresh modugu": "/avatars/mukundh.png",
+  "sathya k / harshvardhan gummadi": "/avatars/sathya-k.png",
 };
 
 function photoFor(name: string): string | null {
   return PHOTOS[name.trim().toLowerCase()] || null;
 }
+
+// A word can only supply an initial if it STARTS with a letter or a digit.
+// Joint service-delivery POC names ("Mukundh / Suresh Modugu") used to render
+// "M/" on the offering owner card, because the slash was split off as its own
+// word and its first character became the second initial (Suren, Jul 26:
+// "why does this not have a fucking profile picture?"). Punctuation joiners
+// — "/", "&", "-", "|" — are now skipped, so "A / B" reads "AB". The range
+// covers ASCII plus Latin-1/Latin-Extended accents (Émile, Ünal); a name in a
+// script outside it falls back to the raw words rather than blanking out.
+const NAME_WORD = /^[A-Za-z0-9\u00C0-\u024F]/;
 
 export function Avatar({
   name,
@@ -63,10 +96,10 @@ export function Avatar({
   tooltip?: string | boolean;
 }) {
   const photo = photoFor(name);
+  const words = name.split(/\s+/).filter(Boolean);
+  const nameWords = words.filter((w) => NAME_WORD.test(w));
   const initials =
-    name
-      .split(/\s+/)
-      .filter(Boolean)
+    (nameWords.length ? nameWords : words)
       .slice(0, 2)
       .map((w) => w[0]?.toUpperCase())
       .join("") || "?";

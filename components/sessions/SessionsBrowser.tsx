@@ -7,12 +7,13 @@ import { Download, Search, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CalendarClock, ArrowDownWideNarrow } from "lucide-react";
-import { OUTCOME_META, formatDateTime } from "@/lib/utils";
+import { OUTCOME_META, formatDate, formatDateTime, formatTime } from "@/lib/utils";
 import { REVIEW_META } from "@/lib/review";
 import type { ReviewStatus } from "@/lib/types";
 import { toCSV, downloadCSV } from "@/lib/csv";
@@ -310,8 +311,14 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                           href={`/contacts/${r.contactId}`}
                           className="group/contact flex items-center gap-2.5"
                         >
-                          <Avatar name={r.contact} className="w-7 h-7 text-[10px]" />
-                          <div>
+                          <Avatar name={r.contact} className="w-7 h-7 shrink-0 text-[10px]" />
+                          {/* Exactly two lines: the name on one, the role on the
+                              next. The cell used to let both wrap, so a long
+                              name broke across three or four lines and the rows
+                              grew unevenly (Anir, Jul 26: "I want the contact to
+                              just have two lines"). The date column gives back
+                              the width this needs by stacking its time. */}
+                          <div className="whitespace-nowrap">
                             <div className="text-[13px] font-semibold text-text-primary group-hover/contact:text-blue-primary">
                               {r.contact}
                             </div>
@@ -320,7 +327,9 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                         </Link>
                       </HoverCard>
                     </td>
-                    <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">{r.service}</td>
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <ServiceTag name={r.service} />
+                    </td>
                     <td className="px-5 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "—"}</td>
                     <td className="px-5 py-4 whitespace-nowrap">
                       {(() => {
@@ -337,7 +346,15 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                         );
                       })()}
                     </td>
-                    <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">{formatDateTime(r.date)}</td>
+                    {/* Date over time, two short lines instead of one long one —
+                        "Jul 24, 2026 • 9:01 AM" claimed more width than any
+                        other column and starved the contact cell (Anir, Jul 26:
+                        "the date is taking up too much room… stack the time on
+                        top of the date or vice versa"). */}
+                    <td className="px-5 py-4 whitespace-nowrap tnum">
+                      <div className="text-[13px] text-text-secondary">{formatDate(r.date)}</div>
+                      <div className="text-[11px] text-text-tertiary">{formatTime(r.date)}</div>
+                    </td>
                     <td className="px-5 py-4 text-right">
                       <Link
                         href={`/sessions/${r.id}`}

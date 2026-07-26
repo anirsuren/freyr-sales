@@ -2,17 +2,11 @@
 
 import { useState } from "react";
 import {
-  BookOpen,
-  DollarSign,
   ExternalLink,
-  File,
   FileText,
   FilterX,
   Presentation,
-  Quote,
   Shapes,
-  Swords,
-  Table2,
   Video,
   type LucideIcon,
 } from "lucide-react";
@@ -22,24 +16,13 @@ import {
   ACCESS_LEVEL_META,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
+  MATERIAL_ICON,
   MATERIAL_META,
   type AccessLevel,
   type JourneyStage,
   type MaterialKind,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
-
-const MATERIAL_ICON: Record<MaterialKind, LucideIcon> = {
-  video: Video,
-  presentation: Presentation,
-  whitepaper: FileText,
-  pricing: DollarSign,
-  competition: Swords,
-  case_study: BookOpen,
-  reference: Quote,
-  one_pager: File,
-  datasheet: Table2,
-};
 
 const KIND_ORDER: MaterialKind[] = [
   "video",

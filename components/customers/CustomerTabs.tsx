@@ -71,14 +71,7 @@ import { GeographyText } from "@/components/ui/GeographyText";
 import { AttributeTag } from "@/components/ui/AttributeTag";
 import { segmentColor } from "@/components/customers/CustomerOfferingsTab";
 
-// Curated industry colours — meaning over hash roulette (Anir: biotech in
-// green "doesn't really go"). Unknown industries fall back to blue.
-const INDUSTRY_COLOR: Record<string, string> = {
-  Pharmaceutical: "#0071E3",
-  Biotechnology: "#7C3AED",
-  "Medical Device": "#0891B2",
-  "Consumer Health": "#E11D48",
-};
+import { industryMeta } from "@/components/ui/IndustryTag";
 import { flagForGeography } from "@/lib/countryFlags";
 import type {
   Customer,
@@ -648,10 +641,10 @@ export function CustomerTabs({
                     {customer.industry ? (
                       <AttributeTag
                         value={customer.industry}
-                        icon={Building2}
+                        icon={industryMeta(customer.industry).icon}
                         label="Industry"
                         className="mt-0.5"
-                        color={INDUSTRY_COLOR[customer.industry] || "#0071E3"}
+                        color={industryMeta(customer.industry).color}
                       />
                     ) : (
                       <p className="text-[14px] text-text-primary">—</p>
@@ -700,10 +693,17 @@ export function CustomerTabs({
                   random red pill (Anir: "why the fuck is it there?"). The
                   classified customer type carries family+size in one tag,
                   coloured by its family. */}
+              {/* The classified type is shown as its FAMILY only ("Pharmaceutical"),
+                  not the raw "Pharmaceutical - Large". The size half was already
+                  said by the LARGE badge in the header two inches above, so the
+                  full string repeated it (Anir, Jul 26: "why are you saying
+                  'pharmaceutical large'? You already have 'large' next to the
+                  health bar, and then you're saying it again"). One fact, one
+                  home: size = header badge, family = this tag. */}
               {customer.customer_type && (
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   <AttributeTag
-                    value={customer.customer_type}
+                    value={customer.customer_type.split(/\s+-\s+/)[0]}
                     icon={Briefcase}
                     label="Customer type"
                     color={segmentColor(customer.customer_type)}

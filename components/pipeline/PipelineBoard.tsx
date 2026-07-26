@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SizeBadge, SIZE_TIER_META } from "@/components/ui/Badge";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -50,16 +51,26 @@ const BUILTIN_VIEWS: SavedView[] = [
   { name: "My deals", q: "", size: "all", mine: true },
   { name: "Large deals", q: "", size: "large", mine: false },
   { name: "Mid-market", q: "", size: "mid", mine: false },
+  // Small was simply missing — you could jump to large and mid deals but never
+  // small ones (Anir, Jul 26: "I can't even sort by the small deals… I think
+  // you just forgot about it").
+  { name: "Small deals", q: "", size: "small", mine: false },
 ];
 
 // Colour + icon per view, same standard as every ColorSelect menu — the
 // plain-text list read as unfinished next to the rest of the app (Anir:
 // "make this dropdown a little good, please, like the rest").
+//
+// The three size views pull straight from SIZE_TIER_META so a "Large deals"
+// view always wears the same colour and glyph as the LARGE badge on the cards
+// it filters to — they had drifted apart (Anir: "the icons and the colors don't
+// even match with what you have currently").
 const VIEW_META: Record<string, { color: string; icon: LucideIcon }> = {
   "All deals": { color: "#0071E3", icon: Layers },
   "My deals": { color: "#7C3AED", icon: UserRound },
-  "Large deals": { color: "#047857", icon: Building2 },
-  "Mid-market": { color: "#0891B2", icon: Building },
+  "Large deals": SIZE_TIER_META.large,
+  "Mid-market": SIZE_TIER_META.mid,
+  "Small deals": SIZE_TIER_META.small,
 };
 
 const SIZE_FILTERS = [
@@ -422,41 +433,34 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
             className="w-full bg-surface border border-border rounded-md pl-9 pr-3 py-2 text-[13px] outline-none focus:border-blue-primary"
           />
         </div>
-        <div className="flex gap-2" aria-label="Filter deals by company size">
-          {SIZE_FILTERS.map((f) => {
-            const selected = size === f.key;
+        {/* Company size is one dropdown, not four chips. Four always-on buttons
+            ate most of the toolbar, squeezed the search box and pushed the
+            Team/My-deals control into wrapping onto two lines (Anir, Jul 26:
+            "choosing by company size should be in a dropdown, just like for
+            views, because it's just taking up a lot of space"). Each option
+            keeps its size colour + glyph and its live count. */}
+        <ColorSelect
+          value={size}
+          ariaLabel="Filter deals by company size"
+          minWidth={168}
+          onChange={setSize}
+          options={SIZE_FILTERS.map<ColorOption>((f) => {
             const meta =
               f.key === "all"
-                ? { color: "#0071E3", bg: "rgba(0,113,227,0.10)" }
+                ? { color: "#0071E3", icon: Layers }
                 : SIZE_TIER_META[f.key];
-            return (
-              <button
-                key={f.key}
-                onClick={() => setSize(f.key)}
-                aria-pressed={selected}
-                className="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-[12.5px] font-semibold transition-all hover:-translate-y-px"
-                style={{
-                  color: selected ? "#FFFFFF" : meta.color,
-                  background: selected ? meta.color : meta.bg,
-                  borderColor: selected ? meta.color : `${meta.color}30`,
-                  boxShadow: selected ? `0 2px 8px ${meta.color}30` : undefined,
-                }}
-              >
-                {selected ? (
-                  <Check size={12} strokeWidth={2.6} />
-                ) : (
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.color }} />
-                )}
-                {f.label}
-                <span className={cn("tnum", selected ? "text-white/75" : "opacity-60")}>
-                  {sizeCounts[f.key] || 0}
-                </span>
-              </button>
-            );
+            return {
+              value: f.key,
+              label: f.key === "all" ? "All sizes" : `${f.label} deals`,
+              color: meta.color,
+              icon: meta.icon,
+              badge: String(sizeCounts[f.key] || 0),
+              badgeColor: meta.color,
+            };
           })}
-        </div>
+        />
         <div className="flex items-center gap-2 sm:ml-auto">
-          <span className="text-[13px] text-text-secondary hidden lg:block">
+          <span className="hidden whitespace-nowrap text-[13px] text-text-secondary lg:block">
             <Term k="weighted" side="bottom">Weighted</Term>:{" "}
             <span className="font-semibold text-text-primary tnum">
               {formatMoney(weighted)}

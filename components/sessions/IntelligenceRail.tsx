@@ -3,7 +3,8 @@ import { History, GraduationCap } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
-import { SIZE_TIER_LABEL } from "@/lib/utils";
+import { SizeBadge } from "@/components/ui/Badge";
+import { IndustryTag } from "@/components/ui/IndustryTag";
 import type { Customer, Contact, RecommendedService } from "@/lib/types";
 import { GeographyText } from "@/components/ui/GeographyText";
 
@@ -52,16 +53,13 @@ export function IntelligenceRail({
             className="w-10 h-10 text-[13px] rounded-lg"
           />
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {customer.size_tier && (
-            <span className="bg-blue-light text-blue-primary text-[11px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-[0.04em]">
-              {SIZE_TIER_LABEL[customer.size_tier] || customer.size_tier}
-            </span>
-          )}
+        {/* Identity chips carry colour AND an icon — the industry used to be a
+            gray outline pill and the size a bare blue one (Anir, Jul 26: "there
+            are no icons or colors here"). */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {customer.size_tier && <SizeBadge tier={customer.size_tier} />}
           {customer.industry && (
-            <span className="bg-surface border border-border-light text-text-secondary text-[11px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-[0.04em]">
-              {customer.industry}
-            </span>
+            <IndustryTag industry={customer.industry} />
           )}
         </div>
         <div className="mt-4 pt-4 border-t border-border-light">

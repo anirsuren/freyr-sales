@@ -81,9 +81,40 @@ function codeToFlag(code: string): string {
  * Returning null (rather than a globe or a blank) lets callers render exactly
  * what they had before, so nothing shifts for "Unknown" or an empty field.
  */
+// Sales territories are not countries, so the country lookup below never
+// matched them and every rep's region rendered flagless (Anir, Jul 26: "you're
+// saying countries and regions etc, but you're not saying any flags"). Each
+// territory shows the flag of the country that anchors it; multi-country
+// territories (MEA, LATAM, APAC, Nordics) get a globe rather than pretending to
+// be one nation.
+const TERRITORY_FLAGS: Record<string, string> = {
+  dach: "🇩🇪", // Germany, Austria, Switzerland
+  "uk & ireland": "🇬🇧",
+  "uk and ireland": "🇬🇧",
+  "southern eu": "🇮🇹",
+  nordics: "🌍",
+  benelux: "🇳🇱",
+  iberia: "🇪🇸",
+  "na west": "🇺🇸",
+  "na east": "🇺🇸",
+  "north america": "🇺🇸",
+  latam: "🌎",
+  mea: "🌍",
+  emea: "🌍",
+  apac: "🌏",
+};
+
 export function flagForGeography(geography?: string | null): string | null {
   if (!geography) return null;
   const haystack = geography.toLowerCase();
+
+  // Territory names are checked first — "NA West" would otherwise never match,
+  // and a bare "Japan"/"China"/"India" territory still falls through to the
+  // country table below and gets its real flag.
+  for (const [territory, flag] of Object.entries(TERRITORY_FLAGS)) {
+    const escaped = territory.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp(`(^|[^a-z])${escaped}([^a-z]|$)`).test(haystack)) return flag;
+  }
 
   for (const name of SORTED_NAMES) {
     // Word-boundary match so "india" doesn't fire inside "indiana".

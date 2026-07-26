@@ -1,0 +1,40 @@
+import { Pill, Dna, Stethoscope, Leaf, FlaskConical, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// Industry is a category chip, so it carries a colour AND an icon everywhere it
+// appears (standing rule; Anir, Jul 26: "there are no icons or colors here").
+// Colours are curated rather than hashed — biotech in green "doesn't really go".
+// Unknown industries fall back to a blue flask instead of a gray outline pill.
+const INDUSTRY_META: Record<string, { color: string; icon: LucideIcon }> = {
+  Pharmaceutical: { color: "#0071E3", icon: Pill }, // blue
+  Biotechnology: { color: "#7C3AED", icon: Dna }, // violet
+  "Medical Device": { color: "#0891B2", icon: Stethoscope }, // cyan
+  "Consumer Health": { color: "#E11D48", icon: Leaf }, // rose
+};
+
+export function industryMeta(industry: string) {
+  return INDUSTRY_META[industry] || { color: "#0071E3", icon: FlaskConical };
+}
+
+export function IndustryTag({
+  industry,
+  className,
+}: {
+  industry: string;
+  className?: string;
+}) {
+  if (!industry) return null;
+  const { color, icon: Icon } = industryMeta(industry);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.03em]",
+        className
+      )}
+      style={{ backgroundColor: `${color}1F`, color }}
+    >
+      <Icon size={11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
+      {industry}
+    </span>
+  );
+}

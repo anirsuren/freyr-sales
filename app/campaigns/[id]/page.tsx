@@ -94,11 +94,13 @@ export default async function CampaignDetailPage({
       label: "Opened",
       value: openRate,
       color: VIZ.green,
+      // The bar shows the rate AND the raw count so nobody has to hover to
+      // learn how many people (Anir: "you have to say how many people
+      // actually opened it").
+      caption: `${campaign.opens} of ${sent}`,
       tip: [
         {
-          name: `${campaign.opens} recipients opened`,
-          sub: `${sent} emails delivered`,
-          value: `${openRate}%`,
+          name: `${campaign.opens} of ${sent} recipients opened`,
         },
       ],
     },
@@ -106,11 +108,10 @@ export default async function CampaignDetailPage({
       label: "Replied",
       value: replyRate,
       color: VIZ.indigo,
+      caption: `${campaign.replies} of ${sent}`,
       tip: [
         {
-          name: `${campaign.replies} recipients replied`,
-          sub: `${sent} emails delivered`,
-          value: `${replyRate}%`,
+          name: `${campaign.replies} of ${sent} recipients replied`,
         },
       ],
     },
@@ -330,11 +331,11 @@ export default async function CampaignDetailPage({
           description="How recipients are responding."
           className="h-full"
           expandedChildren={
-            <BarChart data={engagementBars} height={390} format="percent" />
+            <BarChart data={engagementBars} height={390} format="percent" hideTipStats />
           }
         >
           {sent > 0 ? (
-            <BarChart data={engagementBars} height={170} format="percent" />
+            <BarChart data={engagementBars} height={170} format="percent" hideTipStats />
           ) : (
             <p className="min-h-[170px] flex items-center text-[13px] text-text-secondary leading-relaxed">
               No engagement yet — send the blast and opens &amp; replies show up here.

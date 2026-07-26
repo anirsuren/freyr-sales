@@ -1,9 +1,18 @@
 import {
+  BookOpen,
+  DollarSign,
+  File,
+  FileText,
   Handshake,
   Lightbulb,
   Lock,
+  Presentation,
+  Quote,
   Scale,
+  Swords,
+  Table2,
   Users,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,6 +48,42 @@ export const MATERIAL_META: Record<MaterialKind, { label: string; plural: string
   one_pager: { label: "One-pager", plural: "One-pagers" },
   datasheet: { label: "Datasheet", plural: "Datasheets" },
 };
+
+// One glyph + colour per material kind, shared by every surface that lists
+// materials (the offering page and the customer's Offerings tab). Lives here so
+// the two can't drift — the customer tab had lost its icons entirely and was
+// printing the kind as bare text (Anir, Jul 26: "I don't know what happened to
+// the icons. You had icons before that had, like, if it was a video").
+export const MATERIAL_ICON: Record<MaterialKind, LucideIcon> = {
+  video: Video,
+  presentation: Presentation,
+  whitepaper: FileText,
+  pricing: DollarSign,
+  competition: Swords,
+  case_study: BookOpen,
+  reference: Quote,
+  one_pager: File,
+  datasheet: Table2,
+};
+
+// Colour follows the file-format bucket a kind rolls up into, so a deck, a
+// video and a written doc are instantly distinguishable in a list.
+export const MATERIAL_COLOR: Record<MaterialKind, string> = {
+  presentation: "#0071E3", // deck — blue
+  video: "#E11D48", // video — rose
+  whitepaper: "#7C3AED", // written — violet
+  case_study: "#7C3AED",
+  one_pager: "#7C3AED",
+  datasheet: "#7C3AED",
+  pricing: "#059669", // commercial — green
+  competition: "#D97706", // battle card — amber
+  reference: "#0891B2", // customer voice — cyan
+};
+
+// Narrow an untrusted string (legacy/imported rows) to a MaterialKind.
+export function asMaterialKind(v: string | undefined): MaterialKind | null {
+  return v && v in MATERIAL_META ? (v as MaterialKind) : null;
+}
 
 // Every tag pill is colour + icon (standing rule: no plain gray chips). `label`
 // is the full name for rows and dropdowns; `short` fits compact inline chips.

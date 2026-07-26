@@ -1,6 +1,15 @@
-import { Fragment } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Clock, Flame, BookOpen, Sparkles, SearchX, ArrowLeft } from "lucide-react";
+import { headers } from "next/headers";
+import {
+  ArrowUpRight,
+  Clock,
+  Flame,
+  BookOpen,
+  Sparkles,
+  SearchX,
+  ArrowLeft,
+  Handshake,
+} from "lucide-react";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { SizeBadge } from "@/components/ui/Badge";
@@ -10,26 +19,63 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { AgentActions } from "@/components/agent/AgentActions";
 import { BriefingCard } from "@/components/agent/BriefingCard";
+import { DealTimeline } from "@/components/deals/DealTimeline";
+import { DealSnapshot } from "@/components/deals/DealSnapshot";
+import {
+  daysSince,
+  medianDays,
+  stageEnteredAt,
+} from "@/components/deals/dealTime";
 import { nextBestActions, buildDealBriefing } from "@/lib/agent";
-import { formatDate, formatDateTime, cn } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { Tooltip } from "@/components/ui/Tooltip";
-import { DonutChart, BarChart, VIZ } from "@/components/charts/Charts";
-import { BackButton } from "@/components/ui/BackButton";
-import { GLOSSARY, stageKey } from "@/lib/glossary";
 import {
   buildDeals,
-  STAGES,
   STAGE_PROBABILITY,
   OUTCOME_TO_STAGE,
   formatMoney,
   ROTTING_DAYS,
+  type Stage,
 } from "@/lib/pipeline";
-import type { RecommendedService } from "@/lib/types";
+import type { Interaction, RecommendedService } from "@/lib/types";
 import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata = { title: "Deal" };
 export const dynamic = "force-dynamic";
+
+// Where "back" actually goes. Suren clicked a deal driver on the forecast page,
+// landed here, saw "Back to pipeline" and concluded the app had dumped him in
+// the pipeline: "I don't even know how I got to the pipeline… is that right?"
+// The request that renders this page carries the page he clicked FROM in its
+// Referer header (true for a hard load and for a client-side navigation), so we
+// can name the real destination instead of guessing one.
+const BACK_LABELS: [RegExp, string][] = [
+  [/^\/forecast/, "Back to the forecast"],
+  [/^\/pipeline/, "Back to the pipeline board"],
+  [/^\/customers/, "Back to the account"],
+  [/^\/analytics/, "Back to analytics"],
+  [/^\/agent/, "Back to the agent"],
+  [/^\/team/, "Back to the team"],
+  [/^\/tasks/, "Back to your tasks"],
+  [/^\/(dashboard)?$/, "Back to home"],
+];
+
+function backTarget(referer: string | null, host: string | null) {
+  const fallback = { href: "/pipeline", label: "Back to the pipeline board" };
+  if (!referer) return fallback;
+  let url: URL;
+  try {
+    url = new URL(referer);
+  } catch {
+    return fallback;
+  }
+  // Only ever offer a link back INTO this app.
+  if (host && url.host !== host) return fallback;
+  if (url.pathname.startsWith("/deals/")) return fallback;
+  const label = BACK_LABELS.find(([test]) => test.test(url.pathname))?.[1];
+  if (!label) return fallback;
+  return { href: `${url.pathname}${url.search}`, label };
+}
 
 export default async function DealDetailPage({
   params,
@@ -38,6 +84,11 @@ export default async function DealDetailPage({
 }) {
   const id = (await params).id;
   const currentUser = await getCurrentUser();
+  const requestHeaders = await headers();
+  const back = backTarget(
+    requestHeaders.get("referer"),
+    requestHeaders.get("host")
+  );
   const db = getDb();
   const session = await db.pitchSessions.get(id);
   if (!session) {
@@ -71,33 +122,64 @@ export default async function DealDetailPage({
       db.interactions.list(),
     ]);
 
-  const deal = buildDeals(sessions, customers, contacts, allInteractions).find(
-    (d) => d.sessionId === id
-  );
-  const stage = deal?.stage || "Prospect";
+  const allDeals = buildDeals(sessions, customers, contacts, allInteractions);
+  const deal = allDeals.find((d) => d.sessionId === id);
+  const stage: Stage = deal?.stage || "Prospect";
   const owner = deal?.owner || "Unassigned";
   const isCurrentOwner =
     !!deal?.ownerUserId &&
     !!currentUser.memberId &&
     deal.ownerUserId === currentUser.memberId;
   const value = deal?.value || 0;
-  const staleDays = deal?.staleDays ?? 0;
-  const rotting = staleDays > ROTTING_DAYS && stage !== "Closed Lost";
   const weighted = value * (STAGE_PROBABILITY[stage] ?? 0);
   const winProb = Math.round((STAGE_PROBABILITY[stage] ?? 0) * 100);
   const services = (session.recommended_services || []) as RecommendedService[];
   const nextStep = interactions.find((i) => i.follow_up_date)?.follow_up_date || null;
-  const stageIdx = STAGES.indexOf(stage as any);
   const lastActivityAt = interactions[0]?.created_at || null;
+  // One "now" for the whole page so the timeline and the snapshot can never
+  // disagree about what today is.
+  const nowIso = new Date().toISOString();
+  // Elapsed time is counted in CALENDAR days everywhere on this page. The
+  // pipeline's staleDays counts 24-hour blocks, which reads a day short next to
+  // a printed date — "Jul 23" sitting above "2 days ago" on Jul 26 is exactly
+  // the kind of mismatch Suren spots.
+  const quietDays = daysSince(lastActivityAt, nowIso) ?? deal?.staleDays ?? 0;
+  const rotting = quietDays > ROTTING_DAYS && stage !== "Closed Lost";
 
   // When the deal first reached each stage — so we can date the journey.
-  const stageDates: Partial<Record<string, string>> = { Prospect: session.created_at };
+  const stageDates: Record<string, string | undefined> = { Prospect: session.created_at };
   for (const it of [...interactions].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   )) {
     const st = OUTCOME_TO_STAGE[it.outcome];
     if (st && !stageDates[st]) stageDates[st] = it.created_at;
   }
+
+  // "Is this deal stalling?" — the question the old 4/5-stage donut couldn't
+  // answer. Days on the current stage, next to the median for the other open
+  // deals sitting on that same stage right now. Those are real deals from the
+  // same book: no invented benchmark, and when there are none we say so rather
+  // than inventing a "typical".
+  const stageStartedAt = stageEnteredAt(session.created_at, interactions);
+  const daysInStage = daysSince(stageStartedAt, nowIso) ?? 0;
+  const interactionsByContact = new Map<string, Interaction[]>();
+  for (const it of allInteractions) {
+    const list = interactionsByContact.get(it.contact_id);
+    if (list) list.push(it);
+    else interactionsByContact.set(it.contact_id, [it]);
+  }
+  const peers =
+    stage === "Closed Lost"
+      ? []
+      : allDeals.filter((d) => d.sessionId !== id && d.stage === stage);
+  const peerDaysList = peers.map(
+    (d) =>
+      daysSince(
+        stageEnteredAt(d.createdAt, interactionsByContact.get(d.contactId) ?? []),
+        nowIso
+      ) ?? 0
+  );
+  const peerDays = medianDays(peerDaysList);
 
   // Agent next-best-action for this deal (V9) — the agent works the pipeline too.
   const dealAgentActions = nextBestActions({
@@ -116,7 +198,7 @@ export default async function DealDetailPage({
     value: formatMoney(value),
     weighted: formatMoney(weighted),
     winProb: Math.round((STAGE_PROBABILITY[stage] ?? 0) * 100),
-    staleDays,
+    staleDays: quietDays,
     rotting,
     nextStep: nextStep ? formatDate(nextStep) : null,
     topAction: dealAgentActions[0]?.title,
@@ -124,12 +206,28 @@ export default async function DealDetailPage({
 
   return (
     <div>
-      <BackButton fallback="/pipeline" label="Back to pipeline" />
+      {/* The link names the page it actually returns to, not a guess. */}
+      <Link
+        href={back.href}
+        className="inline-flex items-center gap-1.5 -ml-1 mb-3 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors"
+      >
+        <ArrowLeft size={16} strokeWidth={1.8} />
+        {back.label}
+      </Link>
       <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-center gap-4">
-          <CompanyLogo name={customer?.company_name || "?"} className="w-12 h-12 text-[16px]" />
+        <div className="flex items-start gap-4">
+          <CompanyLogo
+            name={customer?.company_name || "?"}
+            className="w-12 h-12 text-[16px] mt-5"
+          />
           <div>
-            <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
+            {/* Says plainly what this page IS. Suren read the deal page as the
+                pipeline itself: "I don't even know how I got to the pipeline." */}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-blue-primary">
+              <Handshake size={12} strokeWidth={2.1} />
+              One deal
+            </span>
+            <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
               {customer?.company_name || "Deal"}
             </h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -145,6 +243,16 @@ export default async function DealDetailPage({
                 <InfoHint text="Knowledge base version — which snapshot of Freyr's services and positioning this pitch was built from." />
               </span>
             </div>
+            <p className="mt-1.5 text-[12.5px] text-text-secondary">
+              This page is one deal
+              {services[0]?.service_name ? ` — ${services[0].service_name} for ` : " with "}
+              {customer?.company_name || "this account"}. Every deal you&apos;re working sits on
+              the{" "}
+              <Link href="/pipeline" className="font-medium text-blue-primary hover:underline">
+                pipeline board
+              </Link>
+              .
+            </p>
           </div>
         </div>
         <Link
@@ -156,133 +264,33 @@ export default async function DealDetailPage({
         </Link>
       </div>
 
-      {/* Stage tracker — the deal's identity/visual read leads (Anir's audit);
-          the full pre-call brief follows right below, nothing removed. */}
-      <Card className="mb-6">
-        <div className="flex items-center gap-1.5 mb-3">
-          <h2 className="text-[13px] font-semibold text-text-primary">Deal stage</h2>
-          <InfoHint text="The deal's journey, left to right — from first contact (Prospect) to won (Meeting Booked) or lost (Closed Lost). The highlighted one is where it is now; dates show when it got there." />
-          <span className="text-[12px] text-text-tertiary">
-            — where this deal is in its journey, first contact to close
-          </span>
-        </div>
-        {/* Connectors flex to fill the width, so the tracker always fits — no
-            horizontal scroll (Suren: "why can I scroll… this is making me sad"). */}
-        <div className="flex items-start gap-2">
-          {STAGES.map((s, i) => {
-            const done = i < stageIdx;
-            const current = i === stageIdx;
-            const date = stageDates[s];
-            return (
-              <Fragment key={s}>
-                <div className="flex flex-col items-center gap-1 shrink-0">
-                  <Tooltip label={GLOSSARY[stageKey(s)]?.def} side="bottom">
-                    <span
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap cursor-pointer",
-                        current
-                          ? s === "Closed Lost"
-                            ? "bg-error text-white"
-                            : "bg-blue-primary text-white"
-                          : done
-                          ? "bg-blue-light text-blue-primary"
-                          : "bg-surface text-text-tertiary border border-border-light"
-                      )}
-                    >
-                      {s}
-                    </span>
-                  </Tooltip>
-                  <span className="text-[10px] text-text-tertiary tnum h-3.5">
-                    {date && i <= stageIdx ? formatDateTime(date) : ""}
-                  </span>
-                </div>
-                {i < STAGES.length - 1 && (
-                  <span className={cn("flex-1 h-px mt-3.5 min-w-[12px]", done ? "bg-blue-primary" : "bg-border-light")} />
-                )}
-              </Fragment>
-            );
-          })}
-        </div>
-      </Card>
+      {/* Stage tracker — reworked into a real timeline with a TODAY marker.
+          Suren: "it doesn't show me where today is… It said there was a meeting
+          booked on July 23rd, but it doesn't show me where today is relative.
+          That's a problem." */}
+      <DealTimeline
+        stage={stage}
+        stageDates={stageDates}
+        stageStartedAt={stageStartedAt}
+        nextStep={nextStep}
+        lastActivityAt={lastActivityAt}
+        nowIso={nowIso}
+      />
 
-      {/* Deal snapshot — three graphs a rep actually reads (Suren wanted graphs
-          on every deal: win chance, value at stake, and progress to close). */}
-      <Card className="mb-6">
-        <h2 className="text-[13px] font-semibold text-text-primary mb-1">Deal snapshot</h2>
-        <p className="text-[12px] text-text-tertiary mb-4">
-          Win chance, the value at stake, and how far this deal has come.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* 1 — Win chance */}
-          <div className="rounded-xl border border-border-light p-4 flex flex-col items-center">
-            <p className="self-start text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
-              Win chance
-            </p>
-            <DonutChart
-              segments={[
-                { label: "Win chance", value: winProb, color: VIZ.blue },
-                { label: "Remaining", value: Math.max(0, 100 - winProb), color: "#E5E5EA" },
-              ]}
-              size={124}
-              thickness={13}
-              centerLabel={`${winProb}%`}
-              centerSub="to close"
-            />
-            <p className="mt-2 text-[12px] text-text-secondary text-center">
-              Weighted to{" "}
-              <span className="font-semibold text-text-primary tnum">{formatMoney(weighted)}</span>
-            </p>
-          </div>
-
-          {/* 2 — Value at stake: full vs risk-adjusted */}
-          <div className="rounded-xl border border-border-light p-4 flex flex-col">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
-              Value at stake
-            </p>
-            <div className="flex-1">
-              <BarChart
-                data={[
-                  { label: "Open", value, color: VIZ.blue },
-                  { label: "Weighted", value: weighted, color: VIZ.green },
-                ]}
-                height={132}
-                format="money"
-              />
-            </div>
-            <p className="mt-1 text-[12px] text-text-secondary">Full value vs. risk-adjusted.</p>
-          </div>
-
-          {/* 3 — Pipeline progress */}
-          <div className="rounded-xl border border-border-light p-4 flex flex-col items-center">
-            <p className="self-start text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
-              Pipeline progress
-            </p>
-            <DonutChart
-              segments={[
-                {
-                  label: "Progress",
-                  value: Math.round(((stageIdx + 1) / STAGES.length) * 100),
-                  color: VIZ.indigo,
-                },
-                {
-                  label: "Remaining",
-                  value: 100 - Math.round(((stageIdx + 1) / STAGES.length) * 100),
-                  color: "#E5E5EA",
-                },
-              ]}
-              size={124}
-              thickness={13}
-              centerLabel={`${stageIdx + 1}/${STAGES.length}`}
-              centerSub="stage"
-            />
-            <p className="mt-2 text-[12px] text-text-secondary text-center">
-              <span className="font-semibold text-text-primary">{stage}</span>
-              {" · "}
-              {staleDays > 0 ? `${staleDays}d since touch` : "touched today"}
-            </p>
-          </div>
-        </div>
-      </Card>
+      {/* Deal snapshot — win chance, money at stake, and whether it's moving. */}
+      <DealSnapshot
+        company={customer?.company_name || "this account"}
+        contactName={contact?.full_name || null}
+        stage={stage}
+        winProb={winProb}
+        value={value}
+        weighted={weighted}
+        daysInStage={daysInStage}
+        stageStartedAt={stageStartedAt}
+        peerDays={peerDays}
+        peerCount={peers.length}
+        rottingDays={ROTTING_DAYS}
+      />
 
       {/* Pre-call deal briefing (#73) — after the visual identity read */}
       <div className="mb-6">
@@ -333,7 +341,7 @@ export default async function DealDetailPage({
           <div className="flex items-center gap-2 mt-2">
             {rotting ? (
               <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-error">
-                <Flame size={14} strokeWidth={1.75} /> {lastActivityAt ? formatDateTime(lastActivityAt) : "No activity"} · {staleDays}d quiet
+                <Flame size={14} strokeWidth={1.75} /> {lastActivityAt ? formatDateTime(lastActivityAt) : "No activity"} · {quietDays}d quiet
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-[13px] text-text-secondary">
@@ -343,7 +351,7 @@ export default async function DealDetailPage({
           </div>
           <p className="text-[11px] text-text-tertiary mt-1">
             {lastActivityAt
-              ? `Your most recent logged call, email, or note${staleDays > 0 ? ` — ${staleDays} day${staleDays === 1 ? "" : "s"} ago` : " — today"}.`
+              ? `Your most recent logged call, email, or note${quietDays > 0 ? ` — ${quietDays} day${quietDays === 1 ? "" : "s"} ago` : " — today"}.`
               : "No call, email, or note logged yet."}
           </p>
           {nextStep && (

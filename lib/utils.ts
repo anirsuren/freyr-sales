@@ -1,4 +1,14 @@
 import { format, parseISO, isValid } from "date-fns";
+import type { LucideIcon } from "lucide-react";
+import {
+  ThumbsUp,
+  ThumbsDown,
+  Timer,
+  CircleSlash,
+  CalendarCheck,
+  PhoneCall,
+  PhoneMissed,
+} from "lucide-react";
 
 // Lightweight classnames joiner (avoids pulling in clsx/tailwind-merge).
 export function cn(
@@ -15,6 +25,19 @@ export function formatDate(value: string | null | undefined): string {
     return format(d, "MMM d, yyyy");
   } catch {
     return "—";
+  }
+}
+
+// Just the clock part, for tables that stack the time under the date instead of
+// spending a whole extra column's width on "Jul 24, 2026 • 9:01 AM".
+export function formatTime(value: string | null | undefined): string {
+  if (!value) return "";
+  try {
+    const d = typeof value === "string" ? parseISO(value) : value;
+    if (!isValid(d)) return "";
+    return format(d, "h:mm a");
+  } catch {
+    return "";
   }
 }
 
@@ -66,42 +89,49 @@ export function formatPhone(value: string | null | undefined): string {
 // Human label + design-token classes for each interaction outcome (Section 11).
 export const OUTCOME_META: Record<
   string,
-  { label: string; bg: string; color: string }
+  { label: string; bg: string; color: string; icon: LucideIcon }
 > = {
   interested: {
     label: "Interested",
     bg: "rgba(52,199,89,0.12)",
     color: "#1A7A35",
+    icon: ThumbsUp,
   },
   not_interested: {
     label: "Not Interested",
     bg: "rgba(255,59,48,0.12)",
     color: "#B02020",
+    icon: ThumbsDown,
   },
   in_progress: {
     label: "In Progress",
     bg: "rgba(255,204,0,0.28)",
     color: "#705600",
+    icon: Timer,
   },
   no_response: {
     label: "No Response",
     bg: "rgba(142,142,147,0.12)",
     color: "#4A4A4A",
+    icon: CircleSlash,
   },
   meeting_booked: {
     label: "Meeting Booked",
     bg: "rgba(0,113,227,0.12)",
     color: "#0040A0",
+    icon: CalendarCheck,
   },
   ai_call_completed: {
     label: "AI Call Completed",
     bg: "rgba(0,113,227,0.12)",
     color: "#0040A0",
+    icon: PhoneCall,
   },
   ai_call_failed: {
     label: "AI Call Failed",
     bg: "rgba(255,59,48,0.12)",
     color: "#B02020",
+    icon: PhoneMissed,
   },
 };
 

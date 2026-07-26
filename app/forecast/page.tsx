@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
+import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { ForecastExport } from "@/components/forecast/ForecastExport";
@@ -735,21 +736,29 @@ export default async function ForecastPage() {
                   href={`/deals/${deal.sessionId}`}
                   className="group grid min-h-[62px] grid-cols-[minmax(220px,1.5fr)_110px_minmax(150px,1fr)_minmax(96px,.6fr)_18px] items-center gap-3 px-5 py-2.5 transition-colors hover:bg-surface/60"
                 >
+                  {/* Company, then the person, then what we're selling them —
+                      one fact per line. Sharing a line squeezed both (Anir:
+                      "you can just have the name of the person right below the
+                      company name… it kind of ruins the vibe and it's a space
+                      issue too"). Nothing here truncates. */}
                   <span className="flex min-w-0 items-center gap-2.5">
                     <CompanyLogo name={deal.company} className="h-8 w-8 shrink-0 text-[8px]" />
                     <span className="min-w-0">
-                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                      <span className="block text-[12.5px] font-semibold leading-snug text-text-primary">
                         {deal.company}
                       </span>
-                      <span className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[10.5px] text-text-tertiary">
+                      <span className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[11px] text-text-secondary">
                         <Avatar name={deal.contactName} className="mt-[1px] h-4 w-4 shrink-0 text-[6px]" />
                         {/* Wraps instead of truncating — "Dr. Arun P…" tells a
                             rep nothing (Anir: "I can't even see the full name
                             of the guy or the category"). */}
                         <span className="min-w-0 leading-snug break-normal">
-                          {deal.contactName} · {deal.service}
+                          {deal.contactName}
                         </span>
                       </span>
+                      {/* The offering carries its own colour + icon, same mark
+                          it wears everywhere else — never a gray afterthought. */}
+                      <ServiceTag name={deal.service} className="mt-1 max-w-full" />
                     </span>
                   </span>
                   <span
