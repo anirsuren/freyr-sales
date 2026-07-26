@@ -4,17 +4,23 @@ import { getDataMode } from "./dataMode";
 
 const live = () => getDataMode() === "live";
 
+// The AI agent is NOT a data-source question. Mock mode means "show seeded
+// accounts instead of the real book" — it should never have meant "answer
+// from canned templates instead of Claude", but one shared switch made it so
+// (Anir, Jul 25: "mock has nothing to do with shit"). The agent, its voice
+// personas and its research tools now follow the KEY, not the data mode.
+
 export const hasSupabase = () =>
   live() && !!(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-export const hasAnthropic = () => live() && !!process.env.ANTHROPIC_API_KEY;
+export const hasAnthropic = () => !!process.env.ANTHROPIC_API_KEY;
 
-export const hasFirecrawl = () => live() && !!process.env.FIRECRAWL_API_KEY;
+export const hasFirecrawl = () => !!process.env.FIRECRAWL_API_KEY;
 
-export const hasApify = () => live() && !!process.env.APIFY_API_TOKEN;
+export const hasApify = () => !!process.env.APIFY_API_TOKEN;
 
 export const hasTelegram = () => live() && !!process.env.TELEGRAM_BOT_TOKEN;
 
@@ -26,7 +32,7 @@ export const hasCrm = () =>
   live() && !!(process.env.HUBSPOT_ACCESS_TOKEN || process.env.SALESFORCE_CLIENT_ID);
 
 // ElevenLabs — the offering-category voice agents (Suren's Jul 3 ask).
-export const hasElevenLabs = () => live() && !!process.env.ELEVENLABS_API_KEY;
+export const hasElevenLabs = () => !!process.env.ELEVENLABS_API_KEY;
 
 // Convenience snapshot used by the /admin system-status panel.
 export function getServiceStatus() {
