@@ -136,7 +136,7 @@ echo "$TD" | jq \
     );
   .containerDefinitions[0].image = $IMG
   | set_env("APP_VERSION"; $VER)
-  | set_env("DEFAULT_DATA_MODE"; "mock")
+  | set_env("DEFAULT_DATA_MODE"; "live")
   | set_env("DATA_MODE_LOCKED"; "0")
   | set_env("AUTO_APPROVE_EMAIL_DOMAINS"; "freyrsolutions.com")
   | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
