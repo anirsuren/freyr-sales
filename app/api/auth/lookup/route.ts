@@ -99,6 +99,45 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // app_users only gains a row on the first APPROVED SIGN-IN — so someone
+    // who registered (and even confirmed) but never completed a sign-in has
+    // no row, and this lookup used to tell them to "choose a password" all
+    // over again (Anir, Jul 27: "I just chose a password… it still asked me
+    // to choose another"). Ask the auth store directly: if an auth account
+    // already exists for this address, the password they set is the one we
+    // want. Same information a sign-in attempt would reveal — nothing new
+    // leaks. Non-fatal on failure: worst case is the old behaviour.
+    try {
+      const authUsers = await withDeadline(
+        fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL!.replace(/\/$/, "")}` +
+            `/auth/v1/admin/users?filter=${encodeURIComponent(email)}&per_page=50`,
+          {
+            headers: {
+              apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+              Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+            cache: "no-store",
+          }
+        ).then(
+          (r) =>
+            r.json() as Promise<{ users?: { email?: string | null }[] }>
+        )
+      );
+      const hasAuthAccount = (authUsers.users ?? []).some(
+        (u) => normalizeAuthEmail(u.email) === email
+      );
+      if (hasAuthAccount) {
+        return json({
+          step: "password" satisfies Step,
+          domainMember,
+          name: null,
+        });
+      }
+    } catch {
+      // Fall through to the invitation/domain decision below.
+    }
+
     if (domainMember) {
       return json({ step: "activate" satisfies Step, domainMember, name: null });
     }

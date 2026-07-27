@@ -65,7 +65,12 @@ export async function POST(request: NextRequest) {
   });
   let emailRedirectTo: string;
   try {
-    emailRedirectTo = authUrl("/login").toString();
+    // The confirmation link lands on /auth/confirm, which exchanges the fresh
+    // Supabase session for the app cookie and continues into the product.
+    // It used to land on /login, which threw that session away and made
+    // people "sign in" to an account they'd created a minute earlier (Anir,
+    // Jul 27: "they should log in straight from the email").
+    emailRedirectTo = authUrl("/auth/confirm").toString();
   } catch {
     return json({ error: "Account confirmation is not configured." }, 503);
   }

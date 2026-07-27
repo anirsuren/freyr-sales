@@ -39,6 +39,7 @@ export function AppShell({
   const restrictedPath =
     offeringsOnly &&
     pathname !== "/login" &&
+    pathname !== "/auth/confirm" &&
     pathname !== "/settings" &&
     pathname !== "/onboarding" &&
     pathname !== "/offerings" &&
@@ -108,6 +109,11 @@ export function AppShell({
     if (
       !approvalEnabled ||
       pathname === "/login" ||
+      // The confirmation landing is BUSY signing the visitor in — its access
+      // check would 401 (cookies aren't set yet) and this watchdog would yank
+      // the browser to /login mid-exchange, stranding a freshly confirmed
+      // user at the sign-in form (exactly the loop Anir hit on Jul 27).
+      pathname === "/auth/confirm" ||
       pathname === "/access-pending"
     ) {
       return;
@@ -161,6 +167,7 @@ export function AppShell({
   // login + printable reports render chrome-free
   if (
     pathname === "/login" ||
+    pathname === "/auth/confirm" ||
     pathname === "/access-pending" ||
     /^\/customers\/[^/]+\/report$/.test(pathname)
   ) {

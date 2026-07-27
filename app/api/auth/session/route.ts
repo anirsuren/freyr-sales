@@ -77,7 +77,14 @@ export async function POST(request: NextRequest) {
   let access: Awaited<ReturnType<typeof resolveWorkspaceAccess>>;
   try {
     access = await resolveWorkspaceAccess(assertedPrincipal);
-  } catch {
+  } catch (caught) {
+    // The client only ever sees the generic message; the real reason must
+    // reach the server log or a 503 here is undiagnosable (it cost a full
+    // debugging round on Jul 27 to learn that nothing was being recorded).
+    console.error(
+      "[auth/session] resolveWorkspaceAccess failed:",
+      caught instanceof Error ? caught.message : caught
+    );
     return NextResponse.json(
       { error: "Authentication service unavailable." },
       { status: 503, headers: { "Cache-Control": "no-store" } }

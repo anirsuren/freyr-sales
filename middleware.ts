@@ -19,6 +19,10 @@ const PUBLIC_PATHS = new Set([
   "/api/auth/session",
   "/api/auth/logout",
   "/login",
+  // Where the confirmation email lands: it arrives carrying the fresh session
+  // in the URL fragment and exchanges it for the app cookie — by definition
+  // the visitor is not signed in yet.
+  "/auth/confirm",
   "/access-pending",
 ]);
 const PUBLIC_WEBHOOK_PATHS = new Set([

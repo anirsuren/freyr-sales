@@ -52,6 +52,32 @@ export function SupabaseLoginForm({
     const invitedName = params.get("name")?.trim();
     if (invitedEmail) setEmail(invitedEmail);
     if (invitedName && invitedName.length <= 120) setName(invitedName);
+
+    // /auth/confirm reports why it bounced someone here.
+    const confirm = params.get("confirm");
+    if (confirm === "link-expired") {
+      setError("That confirmation link expired. Enter your email and we'll send a fresh one.");
+    } else if (confirm === "link-invalid") {
+      setError("That confirmation link was already used or isn't valid. Sign in below.");
+    }
+
+    // Safety net: if Supabase ever redirects a confirmation here instead of
+    // /auth/confirm (e.g. a stale redirect allow-list), the session tokens
+    // arrive in the fragment. Finish the sign-in instead of dropping them —
+    // clicking the email must sign you in, never strand you at this form.
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const strayToken = hash.get("access_token");
+    if (strayToken) {
+      window.history.replaceState(null, "", window.location.pathname);
+      setBusy(true);
+      establishSession(strayToken).catch((caught) => {
+        setBusy(false);
+        setError(
+          caught instanceof Error ? caught.message : "Could not complete sign-in."
+        );
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const supabase = useMemo(() => {
@@ -167,7 +193,20 @@ export function SupabaseLoginForm({
         email: normalizedEmail,
         password,
       });
-      if (signInError) throw signInError;
+      if (signInError) {
+        // Say what's actually wrong: the password may be perfectly right and
+        // the account merely unconfirmed. Supabase's raw "Email not confirmed"
+        // gives no way forward, so offer one (the resend below).
+        if (/not confirmed/i.test(signInError.message)) {
+          setStep("sent");
+          setError(null);
+          setMessage(
+            "Your email isn't confirmed yet — the sign-in link is in your inbox. Need a new one? Resend below."
+          );
+          return;
+        }
+        throw signInError;
+      }
       if (!data.session?.access_token) {
         throw new Error("Could not establish a sign-in session.");
       }
@@ -307,6 +346,11 @@ export function SupabaseLoginForm({
         </p>
       )}
 
+      {/* No "I confirmed it" button. The email link itself signs you in and
+          lands in the product, so there is nothing to click here (Anir, Jul
+          27: "that button should not exist — they should log in straight from
+          the email"). This screen's only jobs: say where the link went, and
+          offer a fresh one if it never arrived. */}
       {step === "sent" && (
         <div className="space-y-4 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-light text-blue-primary">
@@ -317,25 +361,47 @@ export function SupabaseLoginForm({
               Check your email
             </p>
             <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-              We sent a confirmation link to{" "}
+              We sent a sign-in link to{" "}
               <span className="font-semibold text-text-primary">{email}</span>.
-              Click it, then come back and sign in with the password you just
-              chose.
+              Clicking it signs you in automatically — that&apos;s it.
             </p>
           </div>
           <button
             type="button"
+            disabled={busy}
+            onClick={async () => {
+              if (!supabase) return;
+              setBusy(true);
+              setError(null);
+              try {
+                const { error: resendError } = await supabase.auth.resend({
+                  type: "signup",
+                  email: normalizeAuthEmail(email) || email,
+                });
+                if (resendError) throw resendError;
+                setMessage("Sent — check your inbox for the newest email.");
+              } catch (caught) {
+                setError(
+                  caught instanceof Error ? caught.message : "Could not resend the email."
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border text-[13px] font-semibold text-text-secondary hover:bg-surface disabled:opacity-60"
+          >
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Mail size={15} />}
+            Didn&apos;t get it? Resend the email
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setPassword("");
-              setError("");
-              setMessage("");
-              resetTo("password");
+              resetTo("email");
             }}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-blue-primary text-[14px] font-semibold text-white shadow-sm hover:bg-blue-700"
+            className="text-[12px] font-semibold text-blue-primary hover:underline"
           >
-            <LockKeyhole size={17} />
-            I confirmed it — sign me in
-            <ArrowRight size={16} />
+            Wrong address? Start over
           </button>
         </div>
       )}
