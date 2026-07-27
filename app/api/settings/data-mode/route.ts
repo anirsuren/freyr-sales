@@ -6,23 +6,19 @@ import {
   setDataMode,
   type DataMode,
 } from "@/lib/dataMode";
-import { isAdmin } from "@/lib/role";
 export async function GET() {
   return NextResponse.json({ mode: getDataMode(), locked: isDataModeLocked() });
 }
 
-// Only an ADMIN may flip the mode. Sales users and offering owners live in
-// Real mode, full stop — the toggle confused test users, and Sudhir's rollout
-// plan asks for Mock mode to be removed for them entirely (Saras, Jul 27).
-// The mode is a server-wide switch, so an admin flipping it changes what
-// EVERYONE sees — which is exactly why it belongs to admins alone.
+// Every signed-in member can flip between Real (what's released today) and
+// Mock (the full vision with demo data) — the app is mid-build, so the team
+// needs both lenses (Anir, Jul 27: "every person needs a mock mode and real
+// mode. Because the application isn't done yet"). Real is the BOOT default,
+// so nobody lands in mock by accident. NOTE: the mode is still one
+// server-wide switch — flipping it changes what everyone sees until it is
+// flipped back; converting it to per-person state is queued before the
+// broader sales rollout.
 export async function POST(request: Request) {
-  if (!(await isAdmin())) {
-    return NextResponse.json(
-      { error: "Only a workspace admin can change the viewing mode." },
-      { status: 403 }
-    );
-  }
   if (isDataModeLocked()) {
     return NextResponse.json(
       { error: "Data mode is controlled by the deployment configuration." },

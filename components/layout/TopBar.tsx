@@ -437,10 +437,7 @@ export function TopBar({
                     every time" — and it "has to be a toggle"). One segmented
                     toggle, active half lit in its color, caption explains the
                     current mode. Hidden only when the deployment locks it. */}
-                {/* Admin-only: sales users and offering owners never see the
-                    Mock/Real choice — they are always in Real mode (Sudhir's
-                    rollout ask via Saras, Jul 27). */}
-                {dataMode && !modeLocked && currentUser.role === "admin" && (
+                {dataMode && !modeLocked && (
                   <div className="px-3 py-2.5 border-b border-border-light">
                     <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
                       Viewing
