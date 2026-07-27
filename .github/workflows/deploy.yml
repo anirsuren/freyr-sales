@@ -1,0 +1,121 @@
+# Push to main ‚Üí build ‚Üí deploy ‚Üí verify. The cloud replica of
+# deploy/cloudshell-deploy.sh, with the same non-negotiables:
+#   - the new task definition INHERITS the live auth/env verbatim (forcing
+#     auth env from CI once 503'd /api/health and ECS rolled the deploy back)
+#   - only the image, APP_VERSION, and the mode toggles change
+#   - keys are NEVER present in CI; they live on the task definition only
+# Auth is GitHub OIDC ‚Üí freyr-sales-github-deploy (created by
+# deploy/setup-github-oidc.sh). No stored credentials, nothing to expire.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  REGION: us-east-1
+  ACCOUNT: "602367507820"
+  REPO: freyr-sales
+  CLUSTER: freyr-sales-cluster
+  SERVICE: freyr-sales-svc
+  FAMILY: freyr-sales
+  HEALTH_URL: https://freyrsales.dev.freyrapps.com/api/health
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assume the deploy role (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::602367507820:role/freyr-sales-github-deploy
+          aws-region: us-east-1
+
+      - name: Resolve tags
+        id: meta
+        run: |
+          echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "registry=${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image (skipped if this commit is already in ECR)
+        run: |
+          set -euo pipefail
+          if aws ecr describe-images --repository-name "$REPO" \
+               --image-ids imageTag="${{ steps.meta.outputs.tag }}" --region "$REGION" >/dev/null 2>&1; then
+            echo "Image already present ‚Äî fast path."
+            exit 0
+          fi
+          TD=$(aws ecs describe-task-definition --task-definition "$FAMILY" --query taskDefinition --output json)
+          # NEXT_PUBLIC_* values ship to every browser ‚Äî they are not secrets.
+          PUB_URL=$(echo "$TD" | jq -r '.containerDefinitions[0].environment[]? | select(.name=="NEXT_PUBLIC_SUPABASE_URL") | .value // empty')
+          PUB_KEY=$(echo "$TD" | jq -r '.containerDefinitions[0].environment[]? | select(.name=="NEXT_PUBLIC_SUPABASE_ANON_KEY") | .value // empty')
+          aws ecr get-login-password --region "$REGION" \
+            | docker login --username AWS --password-stdin "${{ steps.meta.outputs.registry }}"
+          docker build --platform linux/amd64 \
+            ${PUB_URL:+--build-arg NEXT_PUBLIC_SUPABASE_URL="$PUB_URL"} \
+            ${PUB_KEY:+--build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$PUB_KEY"} \
+            -t "${{ steps.meta.outputs.registry }}/$REPO:${{ steps.meta.outputs.tag }}" \
+            -t "${{ steps.meta.outputs.registry }}/$REPO:latest" .
+          docker push "${{ steps.meta.outputs.registry }}/$REPO:${{ steps.meta.outputs.tag }}"
+          docker push "${{ steps.meta.outputs.registry }}/$REPO:latest"
+
+      - name: Register task definition (image + version only; auth inherited)
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition --task-definition "$FAMILY" \
+            --query taskDefinition --output json \
+          | jq --arg IMG "${{ steps.meta.outputs.registry }}/$REPO:${{ steps.meta.outputs.tag }}" \
+               --arg VER "${{ steps.meta.outputs.sha }}" '
+            def set_env($name; $value):
+              .containerDefinitions[0].environment = (
+                ((.containerDefinitions[0].environment // [])
+                  | map(select(.name != $name)))
+                + [{name: $name, value: $value}]
+              );
+            .containerDefinitions[0].image = $IMG
+            | set_env("APP_VERSION"; $VER)
+            | set_env("DEFAULT_DATA_MODE"; "mock")
+            | set_env("DATA_MODE_LOCKED"; "0")
+            | set_env("AUTO_APPROVE_EMAIL_DOMAINS"; "freyrsolutions.com")
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                  .compatibilities, .registeredAt, .registeredBy)
+          ' > taskdef.json
+          REV=$(aws ecs register-task-definition --cli-input-json file://taskdef.json \
+            --query taskDefinition.revision --output text)
+          echo "Registered $FAMILY:$REV"
+          echo "REV=$REV" >> "$GITHUB_ENV"
+
+      - name: Roll the service and wait for stability
+        run: |
+          set -euo pipefail
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
+            --task-definition "$FAMILY:$REV" --force-new-deployment \
+            --health-check-grace-period-seconds 180 >/dev/null
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
+      - name: Verify the live site serves this commit
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            LIVE=$(curl -s --max-time 15 "$HEALTH_URL" || true)
+            if echo "$LIVE" | grep -q "${{ steps.meta.outputs.sha }}"; then
+              echo "Live: $LIVE"
+              echo "Deployed ${{ steps.meta.outputs.tag }} and verified."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Rollout finished but the live version never flipped ‚Äî ECS likely rolled back. Last health: $LIVE"
+          exit 1
