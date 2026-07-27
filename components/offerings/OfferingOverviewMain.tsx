@@ -372,7 +372,10 @@ export function OfferingOverviewMain({
           title={`Sales materials (${o.materials.length})`}
           description="Seller-ready assets, ordered by the way they are typically used."
           action={
-            admin && o.materials.length === 0 ? (
+            /* Uploading assets is every member's job — offering owners join as
+               "sales" and must not need an admin to add their own materials
+               (Jul 27 call). Editing/deleting the offering stays admin-only. */
+            o.materials.length === 0 ? (
               <AddMaterialButton offeringId={o.id} materials={o.materials} />
             ) : null
           }
@@ -383,9 +386,7 @@ export function OfferingOverviewMain({
           <MaterialsSection
             materials={o.materials}
             action={
-              admin ? (
-                <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
-              ) : null
+              <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
             }
           />
         )}

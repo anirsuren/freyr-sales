@@ -10,7 +10,7 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
-import { ColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -93,22 +93,25 @@ export function MaterialsSection({
   /** Rendered at the right end of the filter row (the "+" add button). */
   action?: React.ReactNode;
 }) {
-  const [format, setFormat] = useState("");
-  const [stage, setStage] = useState("");
-  const [level, setLevel] = useState("");
+  // Arrays, not single strings: each filter now accepts ANY COMBINATION of
+  // its values (change-log row 3, Saras — "PPT and Video together"). Empty
+  // array = no restriction. Within a filter picks OR; across filters AND.
+  const [formats, setFormats] = useState<string[]>([]);
+  const [stages, setStages] = useState<string[]>([]);
+  const [levels, setLevels] = useState<string[]>([]);
 
-  const anyFilter = format !== "" || stage !== "" || level !== "";
+  const anyFilter = formats.length > 0 || stages.length > 0 || levels.length > 0;
   const visible = materials.filter((m) => {
-    if (format && bucketOf(m.kind) !== format) return false;
-    if (stage && m.journeyStage !== stage) return false;
-    if (level && m.accessLevel !== level) return false;
+    if (formats.length && !formats.includes(bucketOf(m.kind))) return false;
+    if (stages.length && !stages.includes(m.journeyStage ?? "")) return false;
+    if (levels.length && !levels.includes(m.accessLevel ?? "")) return false;
     return true;
   });
 
   const clear = () => {
-    setFormat("");
-    setStage("");
-    setLevel("");
+    setFormats([]);
+    setStages([]);
+    setLevels([]);
   };
 
   return (
@@ -118,13 +121,13 @@ export function MaterialsSection({
           and "Access level" landed wherever the wrap dropped it (Anir, Jul 25:
           "so disorganized… why is access level on the same row as that?"). */}
       <div className="flex flex-wrap items-center gap-2">
-        <ColorSelect
-          value={format}
-          onChange={setFormat}
+        <MultiColorSelect
+          values={formats}
+          onChange={setFormats}
           minWidth={150}
+          allLabel="All formats"
           ariaLabel="Filter by file format"
           options={[
-            { value: "", label: "All formats" },
             ...FORMAT_BUCKETS.map((b) => ({
               value: b,
               label: FORMAT_META[b].label,
@@ -133,13 +136,13 @@ export function MaterialsSection({
             })),
           ]}
         />
-        <ColorSelect
-          value={stage}
-          onChange={setStage}
+        <MultiColorSelect
+          values={stages}
+          onChange={setStages}
           minWidth={170}
+          allLabel="All journey stages"
           ariaLabel="Filter by buyer's journey stage"
           options={[
-            { value: "", label: "All journey stages" },
             ...JOURNEY_STAGES.map((s) => ({
               value: s,
               label: JOURNEY_STAGE_META[s].label,
@@ -148,13 +151,13 @@ export function MaterialsSection({
             })),
           ]}
         />
-        <ColorSelect
-          value={level}
-          onChange={setLevel}
+        <MultiColorSelect
+          values={levels}
+          onChange={setLevels}
           minWidth={160}
+          allLabel="All access levels"
           ariaLabel="Filter by access level"
           options={[
-            { value: "", label: "All access levels" },
             ...ACCESS_LEVELS.map((l) => ({
               value: l,
               label: ACCESS_LEVEL_META[l].label,

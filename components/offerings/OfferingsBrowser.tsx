@@ -26,7 +26,7 @@ import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { ColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -153,10 +153,12 @@ export function OfferingsBrowser({
     const s = params.get("status") || "";
     const so = params.get("sort") || "";
     setQ(params.get("q") ?? "");
-    setCtId(customerTypes.some((c) => c.id === t) ? t! : "");
+    const keep = (raw: string | null, ok: (id: string) => boolean) =>
+      (raw ?? "").split(",").filter((id) => id && ok(id)).join(",");
+    setCtId(keep(t, (id) => customerTypes.some((c) => c.id === id)));
     setMktId(markets.some((mm) => mm.id === m) ? m! : "");
-    setOtId(offeringTypes.some((tt) => tt.id === ot) ? ot! : "");
-    setCatId(offeringCategories.some((cc) => cc.id === cat) ? cat! : "");
+    setOtId(keep(ot, (id) => offeringTypes.some((tt) => tt.id === id)));
+    setCatId(keep(cat, (id) => offeringCategories.some((cc) => cc.id === id)));
     setStatus(["mapped", "unmapped"].includes(s) ? s : "");
     setSort(SORTS.includes(so) ? so : "default");
     setView(params.get("view") === "grid" ? "grid" : "tile");
@@ -176,20 +178,24 @@ export function OfferingsBrowser({
 
   // Offering type / category are strings on each offering; map the selected id
   // → its name.
-  const otName = otId
-    ? offeringTypes.find((t) => t.id === otId)?.name ?? ""
-    : "";
-  const catName = catId
-    ? offeringCategories.find((c) => c.id === catId)?.name ?? ""
-    : "";
+  // Filter states hold comma-separated ids so URL params, deep-link chips and
+  // single-value tests keep working unchanged — the UI reads/writes them as
+  // arrays (change-log row 5: any combination, OR within a filter).
+  const ctIds = ctId ? ctId.split(",") : [];
+  const otNames = otId
+    ? otId.split(",").map((id) => offeringTypes.find((t) => t.id === id)?.name ?? "")
+    : [];
+  const catNames = catId
+    ? catId.split(",").map((id) => offeringCategories.find((c) => c.id === id)?.name ?? "")
+    : [];
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return offerings.filter((o) => {
-      if (ctId && !o.customerTypes.some((c) => c.id === ctId)) return false;
+      if (ctIds.length && !o.customerTypes.some((c) => ctIds.includes(c.id))) return false;
       if (mktId && !o.markets.some((m) => m.id === mktId)) return false;
-      if (otName && o.offering_type !== otName) return false;
-      if (catName && o.offering_category !== catName) return false;
+      if (otNames.length && !otNames.includes(o.offering_type)) return false;
+      if (catNames.length && !catNames.includes(o.offering_category)) return false;
       if (status === "mapped" && !isMapped(o)) return false;
       if (status === "unmapped" && isMapped(o)) return false;
       // Search across what's actually on the card — name, type, category,
@@ -209,7 +215,7 @@ export function OfferingsBrowser({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerings, q, ctId, mktId, otName, catName, status]);
+  }, [offerings, q, ctId, mktId, otId, catId, status]);
   const sorted = useMemo(() => {
     const arr = [...filtered];
     if (sort === "name")
@@ -259,7 +265,7 @@ export function OfferingsBrowser({
       s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const parts = ["freyr-offerings"];
     const mkt = markets.find((m) => m.id === mktId);
-    const ct = customerTypes.find((c) => c.id === ctId);
+    const ct = customerTypes.find((c) => ctIds.includes(c.id));
     if (mkt) parts.push(slug(mkt.name));
     if (ct) parts.push(slug(ct.name));
     if (status) parts.push(status);
@@ -506,13 +512,13 @@ export function OfferingsBrowser({
             className={`${inputCls} w-full pl-9 pr-3`}
           />
         </div>
-        <ColorSelect
-          value={ctId}
-          onChange={setCtId}
+        <MultiColorSelect
+          values={ctIds}
+          onChange={(next) => setCtId(next.join(","))}
           minWidth={150}
+          allLabel="All customer types"
           ariaLabel="Filter by customer type"
           options={[
-            { value: "", label: "All customer types" },
             // Colour says the FAMILY, the icon says the SIZE — the list used
             // to encode only family, so Small/Mid/Large read identically
             // (Anir, Jul 25: "you only have it color-coded by the category…
@@ -532,13 +538,13 @@ export function OfferingsBrowser({
             }),
           ]}
         />
-        <ColorSelect
-          value={catId}
-          onChange={setCatId}
+        <MultiColorSelect
+          values={catId ? catId.split(",") : []}
+          onChange={(next) => setCatId(next.join(","))}
           minWidth={150}
+          allLabel="All categories"
           ariaLabel="Filter by offering category"
           options={[
-            { value: "", label: "All categories" },
             ...offeringCategories.map((c, i) => ({
               value: c.id,
               label: c.name,
@@ -546,13 +552,13 @@ export function OfferingsBrowser({
             })),
           ]}
         />
-        <ColorSelect
-          value={otId}
-          onChange={setOtId}
+        <MultiColorSelect
+          values={otId ? otId.split(",") : []}
+          onChange={(next) => setOtId(next.join(","))}
           minWidth={150}
+          allLabel="All offering types"
           ariaLabel="Filter by offering type"
           options={[
-            { value: "", label: "All offering types" },
             ...offeringTypes.map((t, i) => ({
               value: t.id,
               label: t.name,

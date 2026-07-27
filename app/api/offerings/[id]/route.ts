@@ -28,8 +28,17 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await canManageOfferings())) return FORBIDDEN;
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  // Sales-material uploads are open to every signed-in workspace member —
+  // offering owners (Eeswar first, for Freya.Register) join via domain
+  // auto-join as "sales" and must be able to upload their own assets without
+  // waiting for an admin grant (Jul 27 call: "all he would need right now is
+  // access to upload the materials on this page"). The middleware has already
+  // authenticated the request. Everything else about an offering — name,
+  // descriptions, mappings, delete — remains admin/editor only.
+  const materialsOnly =
+    Object.keys(body).length === 1 && Array.isArray(body.materials);
+  if (!materialsOnly && !(await canManageOfferings())) return FORBIDDEN;
   const { id } = await params;
   try {
     const offering = await commitOfferingsChange(() => updateOffering(id, body));

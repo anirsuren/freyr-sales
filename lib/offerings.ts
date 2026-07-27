@@ -613,7 +613,26 @@ if (!globalThis.__FREYR_OFFERINGS_STORE__) {
 // The catalog is approved Freyr master data, not demo CRM data. Keep a separate
 // live copy so edits never leak between modes, but seed both modes from the
 // master sheet. Live customers, contacts, sessions, and activity remain empty.
-const liveStore: OfferingsStore = globalThis.__FREYR_LIVE_OFFERINGS_STORE__ ?? seed();
+// The demo sales materials seeded on the core modules (fixed ids below) are
+// SAMPLE assets for mock mode only. Real mode must show exclusively what an
+// offering owner actually uploaded (Anir, Jul 27: "in real mode, why are there
+// sales materials? Everything has to be real") — Eeswar starts uploading the
+// genuine Freya.Register assets and Suren reviews that page this week.
+const DEMO_MATERIAL_IDS = new Set([
+  "m-001", "m-002", "m-003", // Freya.Register samples
+  "m-012a", "m-012b", "m-012c", "m-012d", // Register-stack samples
+]);
+function stripDemoMaterials(s: OfferingsStore): OfferingsStore {
+  for (const o of s.offerings) {
+    if (o.materials?.length) {
+      o.materials = o.materials.filter((m) => !DEMO_MATERIAL_IDS.has(m.id));
+    }
+  }
+  return s;
+}
+
+const liveStore: OfferingsStore =
+  globalThis.__FREYR_LIVE_OFFERINGS_STORE__ ?? stripDemoMaterials(seed());
 globalThis.__FREYR_LIVE_OFFERINGS_STORE__ = liveStore;
 // Back-fill collections added in a later build onto a store that an earlier build
 // already created (matters only for dev HMR; prod always starts fresh).
@@ -681,6 +700,13 @@ export async function initializeLiveOfferings(): Promise<void> {
       if (error) throw new Error(`Could not load the offering catalog: ${error.message}`);
       if (isOfferingsStore(data?.catalog)) {
         replaceStore(liveStore, data.catalog);
+        // Self-clean a catalog persisted before the demo-material strip: the
+        // prod document already carries the samples, so remove them here and
+        // write the cleaned catalog back once.
+        const before = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
+        stripDemoMaterials(liveStore);
+        const after = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
+        if (after !== before) await persistLiveOfferings();
         return;
       }
       await persistLiveOfferings();

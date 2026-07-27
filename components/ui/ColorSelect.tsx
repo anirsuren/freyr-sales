@@ -182,3 +182,162 @@ export function ColorSelect({
     </div>
   );
 }
+
+// Multi-select sibling of ColorSelect — checkboxes, stays open while picking,
+// OR within the filter (change-log rows 3 + 5, Saras: "multi-select with
+// checkboxes… so any user can choose any combination"). `values` empty = no
+// restriction ("All"). Same colour-dot/icon language as the single select.
+export function MultiColorSelect({
+  values,
+  options,
+  onChange,
+  allLabel,
+  className,
+  minWidth = 170,
+  ariaLabel,
+}: {
+  values: string[];
+  options: ColorOption[];
+  onChange: (next: string[]) => void;
+  /** Trigger + clear-row label when nothing is restricted, e.g. "All formats". */
+  allLabel: string;
+  className?: string;
+  minWidth?: number;
+  ariaLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const picked = options.filter((o) => values.includes(o.value));
+  const summary =
+    picked.length === 0
+      ? allLabel
+      : picked.length <= 2
+        ? picked.map((o) => o.label).join(", ")
+        : `${picked.length} selected`;
+
+  const toggle = (v: string) =>
+    onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+
+  return (
+    <div ref={ref} className={cn("relative", className)} style={{ minWidth }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        className="w-full h-10 flex items-center gap-2 px-3 text-[13px] bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow]"
+      >
+        {/* Stacked colour dots preview which families are active. */}
+        {picked.length > 0 ? (
+          <span className="flex shrink-0 items-center">
+            {picked.slice(0, 3).map((o, i) => (
+              <span
+                key={o.value}
+                className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-white", i > 0 && "-ml-1")}
+                style={{ background: o.color || "#C7CDD6" }}
+              />
+            ))}
+          </span>
+        ) : (
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-border" />
+        )}
+        <span className="flex-1 min-w-0 truncate text-left">{summary}</span>
+        {picked.length > 0 && (
+          <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-bold text-blue-primary tnum">
+            {picked.length}
+          </span>
+        )}
+        <ChevronDown
+          size={15}
+          strokeWidth={2}
+          className={cn("shrink-0 text-text-tertiary transition-transform duration-150", open && "rotate-180")}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-multiselectable="true"
+          aria-label={ariaLabel}
+          className="absolute right-0 z-40 mt-1.5 min-w-full w-max max-h-[300px] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in"
+          style={{ maxWidth: "min(360px, calc(100vw - 24px))" }}
+        >
+          {/* "All" clears every pick — reads as the unrestricted state. */}
+          <button
+            type="button"
+            role="option"
+            aria-selected={values.length === 0}
+            onClick={() => {
+              onChange([]);
+              setOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px]",
+              values.length === 0 ? "bg-surface font-semibold" : "hover:bg-surface"
+            )}
+          >
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-border" />
+            {allLabel}
+          </button>
+          {options.map((o) => {
+            const on = values.includes(o.value);
+            const accent = o.color || "#0071E3";
+            const Icon = o.icon;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="option"
+                aria-selected={on}
+                onClick={() => toggle(o.value)}
+                className={cn(
+                  "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
+                  !on && "hover:bg-surface"
+                )}
+                style={on ? { background: `${accent}0D` } : undefined}
+              >
+                {/* The checkbox — the literal ask ("checkboxes before them"). */}
+                <span
+                  className={cn(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                    on ? "text-white" : "border-border bg-white"
+                  )}
+                  style={on ? { background: accent, borderColor: accent } : undefined}
+                >
+                  {on && <Check size={11} strokeWidth={3} />}
+                </span>
+                {Icon ? (
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                    style={{ background: `${accent}1F`, color: accent }}
+                  >
+                    <Icon size={12} strokeWidth={2.1} />
+                  </span>
+                ) : (
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: accent }} />
+                )}
+                <span className={cn("min-w-0 flex-1 truncate", on && "font-semibold")}>{o.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
