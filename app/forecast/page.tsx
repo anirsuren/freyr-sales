@@ -3,11 +3,12 @@ import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
-import { ServiceTag } from "@/components/ui/OfferingIcon";
+import { ServiceTag, offeringMark } from "@/components/ui/OfferingIcon";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { ForecastExport } from "@/components/forecast/ForecastExport";
 import { ByRepChart } from "@/components/forecast/ByRepChart";
+import { CoverageViz } from "@/components/forecast/CoverageViz";
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
@@ -320,8 +321,12 @@ export default async function ForecastPage() {
           each other, another graph on the right — no dead space). */}
       <Card className="p-5">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-0">
-          {/* LEFT — value vs weighted per stage */}
-          <div className="xl:pr-5">
+          {/* LEFT — value vs weighted per stage. A flex column so the plot can
+              stretch to the full height the (taller) donut panel gives the row
+              — the bars scale with it and never leave a dead band below
+              (Anir: "make the bar chart on the left bigger so it's properly
+              scaled"). */}
+          <div className="xl:pr-5 flex flex-col">
             <div className="flex items-center gap-1.5 mb-1">
               <h2 className="text-[15px] font-semibold text-text-primary">By stage</h2>
               <InfoHint text="Your pipeline by step of the process. The light column is the full value; the solid fill is the weighted contribution — value trimmed by each step's odds of closing." />
@@ -337,10 +342,13 @@ export default async function ForecastPage() {
             {(() => {
               const maxV = Math.max(...byStage.map((s) => s.value), 1);
               return (
-                <div data-stage-plot className="flex items-end justify-center gap-4">
+                <div data-stage-plot className="flex-1 flex justify-center gap-4">
                   {byStage.map((s, i) => {
                     const color = STAGE_COLOR[s.stage];
-                    const barPx = Math.max((s.value / maxV) * 108, 4);
+                    // Percent of the stretchy track, not fixed pixels — the
+                    // tallest stage always reaches the top of whatever height
+                    // the row gives us.
+                    const barPct = Math.max((s.value / maxV) * 100, 3);
                     const wFrac = s.value > 0 ? s.weighted / s.value : 0;
                     const stageHover = (
                       <div>
@@ -409,40 +417,49 @@ export default async function ForecastPage() {
                         <span className="text-[12px] font-semibold text-text-primary tnum mb-1.5">
                           {formatMoney(s.weighted)}
                         </span>
-                        {/* Fixed-height track so every stage renders as a real
-                            column; only the bar itself pops the breakdown, not
-                            the empty space above a short column (Suren). */}
-                        <div className="w-full h-[108px] flex items-end justify-center">
-                          <HoverCard
-                            side="top"
-                            width={240}
-                            delayMs={0}
-                            content={stageHover}
-                            clearAncestor="[data-stage-plot]"
-                            className="w-full flex items-end justify-center cursor-pointer"
+                        {/* Stretchy track: fills the row height (so the chart
+                            is always as tall as the donut panel beside it) with
+                            a floor for small screens. The bar is absolutely
+                            positioned at the baseline with a %-height, which
+                            resolves reliably against the track. Only the bar
+                            itself pops the breakdown, not the empty space
+                            above a short column (Suren). */}
+                        <div className="relative w-full flex-1 min-h-[216px]">
+                          <div
+                            className="absolute inset-x-0 bottom-0"
+                            style={{ height: `${barPct}%` }}
                           >
-                            {/* Growth wrapper grows the whole column up from the
-                                baseline on load; hover-lift lives on the inner
-                                column so the two transforms don't fight. */}
-                            <div
-                              className="chart-bar w-full flex justify-center"
-                              style={{ animationDelay: `${i * 70}ms` }}
+                            <HoverCard
+                              side="top"
+                              width={240}
+                              delayMs={0}
+                              content={stageHover}
+                              clearAncestor="[data-stage-plot]"
+                              className="h-full w-full flex items-end justify-center cursor-pointer"
                             >
+                              {/* Growth wrapper grows the whole column up from the
+                                  baseline on load; hover-lift lives on the inner
+                                  column so the two transforms don't fight. */}
                               <div
-                                className="relative w-full rounded-t-lg flex items-end justify-center transition-all hover:-translate-y-1 hover:shadow-[0_12px_28px_-8px_rgba(0,0,0,0.18)]"
-                                style={{ height: `${barPx}px`, background: `${color}33` }}
+                                className="chart-bar h-full w-full flex justify-center"
+                                style={{ animationDelay: `${i * 70}ms` }}
                               >
-                                {/* Weighted (likely) fill sits at the base of the value column */}
                                 <div
-                                  className="w-full rounded-t-lg"
-                                  style={{
-                                    height: `${Math.max(wFrac * 100, 4)}%`,
-                                    background: color,
-                                  }}
-                                />
+                                  className="relative h-full w-full rounded-t-lg flex items-end justify-center transition-all hover:-translate-y-1 hover:shadow-[0_12px_28px_-8px_rgba(0,0,0,0.18)]"
+                                  style={{ background: `${color}33` }}
+                                >
+                                  {/* Weighted (likely) fill sits at the base of the value column */}
+                                  <div
+                                    className="w-full rounded-t-lg"
+                                    style={{
+                                      height: `${Math.max(wFrac * 100, 4)}%`,
+                                      background: color,
+                                    }}
+                                  />
+                                </div>
                               </div>
-                            </div>
-                          </HoverCard>
+                            </HoverCard>
+                          </div>
                         </div>
                         {/* Just the stage name at rest — the numbers live in the
                             hover breakdown so this reads as a chart, not a table. */}
@@ -465,10 +482,10 @@ export default async function ForecastPage() {
               <h2 className="text-[15px] font-semibold text-text-primary">
                 Where your commit comes from
               </h2>
-              <InfoHint text="Your weighted commit split by the stage it sits in — which steps of the funnel are actually driving the number you can promise. Closed-lost deals (0% odds) drop out." />
+              <InfoHint text="Your weighted commit sliced two ways — by the funnel stage it sits in, and by the offering being sold. Closed-lost deals (0% odds) drop out." />
             </div>
             <p className="text-[11px] text-text-tertiary mb-3">
-              Weighted forecast by stage
+              The same committed number, sliced two ways
             </p>
             {(() => {
               const segs = byStage
@@ -486,19 +503,78 @@ export default async function ForecastPage() {
                   })),
                 }))
                 .filter((s) => s.value > 0);
+              // The second slice of the same money: which offerings the commit
+              // is riding on. service is a real deal field — nothing invented.
+              const svcMap = new Map<
+                string,
+                { weighted: number; deals: { company: string; contact: string; value: number }[] }
+              >();
+              for (const d of deals) {
+                const w = d.value * (STAGE_PROBABILITY[d.stage] ?? 0);
+                if (w <= 0) continue;
+                const key = d.service || "Unassigned";
+                const cur = svcMap.get(key) || { weighted: 0, deals: [] };
+                cur.weighted += w;
+                cur.deals.push({ company: d.company, contact: d.contactName, value: d.value });
+                svcMap.set(key, cur);
+              }
+              const svcSegs = [...svcMap.entries()]
+                .sort((a, b) => b[1].weighted - a[1].weighted)
+                .map(([service, s]) => ({
+                  label: service,
+                  value: s.weighted,
+                  // the offering's own app-wide colour, so it matches its
+                  // chips and icons everywhere else
+                  color: offeringMark(service).color,
+                  tip: s.deals
+                    .sort((a, b) => b.value - a.value)
+                    .map((d) => ({
+                      logo: d.company,
+                      avatar: d.contact,
+                      name: d.company,
+                      sub: d.contact,
+                      value: formatMoney(d.value),
+                    })),
+                }));
               return (
-                <div className="flex-1 flex items-center gap-3">
-                  <DonutChart
-                    syncId="forecast-commit"
-                    segments={segs}
-                    size={126}
-                    thickness={15}
-                    format="money"
-                    centerLabel={formatMoney(commit)}
-                    centerSub="commit"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <DonutLegend items={segs} format="money" syncId="forecast-commit" />
+                <div className="flex-1 flex flex-col justify-evenly gap-4">
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                      Sliced by stage
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <DonutChart
+                        syncId="forecast-commit"
+                        segments={segs}
+                        size={126}
+                        thickness={15}
+                        format="money"
+                        centerLabel={formatMoney(commit)}
+                        centerSub="commit"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <DonutLegend items={segs} format="money" syncId="forecast-commit" />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                      Sliced by offering
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <DonutChart
+                        syncId="forecast-commit-svc"
+                        segments={svcSegs}
+                        size={126}
+                        thickness={15}
+                        format="money"
+                        centerLabel={String(svcSegs.length)}
+                        centerSub={svcSegs.length === 1 ? "offering" : "offerings"}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <DonutLegend items={svcSegs} format="money" syncId="forecast-commit-svc" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -571,20 +647,13 @@ export default async function ForecastPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 rounded-lg border border-border-light bg-surface/35 p-3">
-                        <div className="mb-2.5 flex items-center justify-between gap-3">
-                          <p className="text-[10px] font-semibold text-text-primary">Weighted commit coverage</p>
-                          <p className="text-[10px] text-text-tertiary tnum">{formatMoney(commit)} total</p>
-                        </div>
-                        <div className="flex h-3 overflow-hidden rounded-full bg-surface">
-                          {activePct > 0 && <span className="bg-[#34C759]" style={{ width: `${activePct}%` }} />}
-                          {riskPct > 0 && <span className="bg-[#FF9500]" style={{ width: `${riskPct}%` }} />}
-                        </div>
-                        <div className="mt-2 flex items-center justify-between gap-3 text-[9.5px] text-text-secondary">
-                          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#34C759]" />{activePct}% recently active</span>
-                          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#FF9500]" />{riskPct}% needs attention</span>
-                        </div>
-                      </div>
+                      <CoverageViz
+                        activeWeighted={activeWeighted}
+                        riskWeighted={riskWeighted}
+                        activePct={activePct}
+                        riskPct={riskPct}
+                        commit={commit}
+                      />
 
                       <div className="mt-auto pt-4">
                         <div className="flex items-center gap-3 border-t border-border-light pt-3">

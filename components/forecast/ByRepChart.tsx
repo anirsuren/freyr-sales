@@ -207,8 +207,10 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                   tightAbove={14}
                   className="w-full flex justify-center shrink-0"
                 >
+                  {/* Hovering pops THIS bar up — no fading of the others
+                      (Anir: "it should just pop that one up"). */}
                   <div
-                    className={`chart-bar rounded-t-md transition-[filter] group-hover:brightness-105 ${
+                    className={`chart-bar rounded-t-md transition-all duration-150 group-hover:brightness-105 group-hover:-translate-y-1.5 group-hover:shadow-[0_10px_22px_-8px_rgba(0,0,0,0.3)] ${
                       you ? "w-[38px] shadow-[0_0_0_3px_rgba(0,113,227,0.18)]" : "w-[30px]"
                     }`}
                     style={{ height: `${barH}px`, background: color, animationDelay: `${i * 45}ms` }}

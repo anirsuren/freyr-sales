@@ -2,16 +2,20 @@
 
 import { cn } from "@/lib/utils";
 
-// The real LinkedIn logo (Suren supplied the file — no AI-drawn mark) as a small
-// icon-link that sits right after a person's name and opens their profile.
+// The real LinkedIn logo (Suren supplied the file — no AI-drawn mark) as a
+// small icon-link that opens the person's profile. Default: bare inline icon
+// with a subtle opacity hover. Pass `label` to render it as a labelled button
+// chip (glyph + text) instead — the caller styles the chip via className.
 // Renders nothing when there's no URL.
 export function LinkedInLink({
   url,
   size = 15,
+  label,
   className,
 }: {
   url?: string | null;
   size?: number;
+  label?: string;
   className?: string;
 }) {
   if (!url) return null;
@@ -24,7 +28,8 @@ export function LinkedInLink({
       aria-label="View LinkedIn profile"
       title="LinkedIn"
       className={cn(
-        "inline-flex items-center justify-center hover:opacity-75 transition-opacity shrink-0 align-middle",
+        "inline-flex items-center shrink-0 align-middle",
+        label ? "gap-1.5" : "justify-center hover:opacity-75 transition-opacity",
         className
       )}
     >
@@ -37,6 +42,7 @@ export function LinkedInLink({
         className="block rounded-[3px]"
         style={{ width: size, height: size }}
       />
+      {label && <span>{label}</span>}
     </a>
   );
 }

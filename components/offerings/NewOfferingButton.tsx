@@ -30,7 +30,7 @@ export function NewOfferingButton({
         New offering
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="New offering" size="wide">
+      <Modal open={open} onClose={() => setOpen(false)} title="New offering" size="workflow">
         <OfferingForm
           customerTypes={customerTypes}
           markets={markets}

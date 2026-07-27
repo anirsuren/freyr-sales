@@ -317,7 +317,13 @@ export default async function OfferingDetailPage({
       </div>
 
       {tab === "reports" ? (
-        <OfferingReports report={report} offeringName={o.offering_name} />
+        <OfferingReports
+          report={report}
+          offeringName={o.offering_name}
+          // In-progress mode shows a labelled sample report when there's no
+          // revenue yet, so people know what the tab will look like.
+          showExample={getDataMode() === "mock"}
+        />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
           {/* ---------------------------------------------------- MAIN column */}

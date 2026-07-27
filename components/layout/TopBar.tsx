@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, FlaskConical, Rocket } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, CheckCircle2, Hammer } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { NotificationMark } from "@/components/notifications/NotificationMark";
 import { Modal } from "@/components/ui/Modal";
@@ -253,52 +253,12 @@ export function TopBar({
         />
       </div>
 
+      {/* No global "New" here. It duplicated the page's own primary action
+          (Offerings already has "+ New offering"), and its menu was clipped
+          behind the header (Anir, Jul 27: "why are there two new buttons…
+          the button next to my name doesn't even work — remove that one").
+          Each page owns its own create button, where the context is. */}
       <div className="flex items-center gap-1.5">
-        <div className="relative">
-          <button
-            data-tour="create-new"
-            aria-label="Create new"
-            aria-haspopup="menu"
-            aria-expanded={newOpen}
-            onClick={() => setNewOpen((o) => !o)}
-            className="flex items-center gap-1.5 h-9 pl-3 pr-2.5 rounded-full bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-          >
-            <Plus size={16} strokeWidth={2.2} />
-            <span className="hidden sm:block">New</span>
-            <ChevronDown size={14} strokeWidth={2} className="opacity-80" />
-          </button>
-          {newOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setNewOpen(false)} />
-              <div
-                role="menu"
-                aria-label="Create new"
-                className="absolute right-0 mt-2 w-[260px] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden p-1.5"
-              >
-                {newItems.map((it) => {
-                  const Icon = it.icon;
-                  return (
-                    <Link
-                      key={it.label}
-                      role="menuitem"
-                      href={it.href}
-                      onClick={() => setNewOpen(false)}
-                      className="flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-surface transition-colors"
-                    >
-                      <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                        <Icon size={16} strokeWidth={1.8} />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[13px] font-medium text-text-primary">{it.label}</span>
-                        <span className="block text-[12px] text-text-secondary leading-snug">{it.sub}</span>
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
         {!offeringsOnly && onAgentToggle && (
           <button
             data-tour="agent-assistant"
@@ -439,14 +399,19 @@ export function TopBar({
                     current mode. Hidden only when the deployment locks it. */}
                 {dataMode && !modeLocked && (
                   <div className="px-3 py-2.5 border-b border-border-light">
+                    {/* Named for what it actually controls: which MODULES are
+                        finished. It never changes your data — the offerings
+                        catalog is one shared store (Anir, Jul 27: "we cannot
+                        call it mock mode and real mode… it's just a matter of
+                        what's done and what's still being worked on"). */}
                     <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-                      Viewing
+                      Show me
                     </p>
                     <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface p-1">
                       {(
                         [
-                          { mode: "mock", icon: FlaskConical, label: "Mock", color: "#7C3AED" },
-                          { mode: "live", icon: Rocket, label: "Real", color: "#16A34A" },
+                          { mode: "live", icon: CheckCircle2, label: "Ready now", color: "#16A34A" },
+                          { mode: "mock", icon: Hammer, label: "In progress", color: "#7C3AED" },
                         ] as const
                       ).map((m) => {
                         const MIcon = m.icon;
@@ -468,15 +433,15 @@ export function TopBar({
                             style={active ? { color: m.color } : undefined}
                           >
                             <MIcon size={13} strokeWidth={2.1} />
-                            {m.label} mode
+                            {m.label}
                           </button>
                         );
                       })}
                     </div>
                     <p className="mt-1.5 text-[11px] text-text-secondary">
                       {dataMode === "mock"
-                        ? "The full vision, with demo data"
-                        : "Only what's released today"}
+                        ? "Everything, including modules still being built"
+                        : "Only the modules that are finished"}
                     </p>
                   </div>
                 )}

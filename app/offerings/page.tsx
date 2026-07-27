@@ -23,6 +23,8 @@ import {
   hydrateOffering,
 } from "@/lib/offerings";
 import { getRole } from "@/lib/role";
+import { getDb } from "@/lib/db";
+import { reportForOffering } from "@/lib/revenue";
 import { ImportExcel } from "@/components/offerings/ImportExcel";
 import { OfferingsManageMenu } from "@/components/offerings/OfferingsManageMenu";
 import { NewOfferingButton } from "@/components/offerings/NewOfferingButton";
@@ -102,6 +104,30 @@ export default async function OfferingsPage() {
   const role = await getRole();
   const canEdit = role === "admin" || role === "editor";
 
+  // Commercial reality per offering — revenue, seats, and WHO is using it —
+  // so the card hover is a mini-dashboard like the Customers page, not just a
+  // pop-out (Anir: "I care about all the information. Look at the customers
+  // page."). Aggregated server-side from the same revenue lines the offering
+  // Reports tab uses; only compact plain data crosses to the client.
+  const allCustomers = await getDb().customers.list();
+  const commerce = Object.fromEntries(
+    offerings.map((o) => {
+      const r = reportForOffering(allCustomers, o.id);
+      return [
+        o.id,
+        {
+          totalRevenue: r.totalRevenue,
+          totalLicenses: r.totalLicenses,
+          customerCount: r.customerCount,
+          customers: [...r.customers]
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 3)
+            .map((c) => ({ id: c.id, name: c.name, revenue: c.revenue })),
+        },
+      ];
+    })
+  );
+
   // Repository completeness — useful as Suren rolls this out and has the data entered.
   const mapped = offerings.filter(
     (o) =>
@@ -173,6 +199,7 @@ export default async function OfferingsPage() {
           markets={markets}
           offeringTypes={offeringTypes}
           offeringCategories={offeringCategories}
+          commerce={commerce}
         />
       </Suspense>
     </div>

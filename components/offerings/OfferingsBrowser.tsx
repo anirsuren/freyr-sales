@@ -21,8 +21,14 @@ import {
   Layers,
   LayoutGrid,
   Table2,
+  Globe,
+  KeyRound,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { formatMoney } from "@/lib/pipeline";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -49,6 +55,42 @@ import type {
 } from "@/lib/offerings";
 
 // Canonical family order so the "who it's for" chips read consistently.
+// Offering descriptions arrive from Suren's Excel as bullet LISTS ("• item\n•
+// item"). The detail page renders them as real lines (whitespace-pre-line), but
+// on a two-line card the newlines collapse and the bullet glyphs run together
+// into "• RIMS Data Entry… • RIMS Data QC…" — which reads as noise (Anir, Jul
+// 27: "why is it just a shit ton of text? It should never look like that").
+// On cards, drop the glyphs and separate the capabilities with a middot.
+function cardSummary(description: string): string {
+  const lines = description
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*[•\-*]\s*/, "").trim())
+    .filter(Boolean);
+  return lines.length > 1 ? lines.join(" · ") : description.replace(/^\s*[•\-*]\s*/, "").trim();
+}
+
+// One metadata chip on an offering card: colour-tinted background, matching
+// icon, never gray. Wraps rather than truncates — labels stay whole.
+function MetaChip({
+  icon: Icon,
+  label,
+  color,
+}: {
+  icon: LucideIcon;
+  label: string;
+  color: string;
+}) {
+  return (
+    <span
+      className="inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight"
+      style={{ background: `${color}14`, color }}
+    >
+      <Icon size={10} strokeWidth={2.2} className="shrink-0" />
+      {label}
+    </span>
+  );
+}
+
 const FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
 // "Pharmaceutical · Biologics · Bio Pharmaceutical" for an offering that covers
@@ -97,18 +139,29 @@ const MATERIAL_ICON: Record<string, typeof Video> = {
   reference: Quote,
 };
 
+export type OfferingCommerce = {
+  totalRevenue: number;
+  totalLicenses: number;
+  customerCount: number;
+  customers: { id: string; name: string; revenue: number }[];
+};
+
 export function OfferingsBrowser({
   offerings,
   customerTypes,
   markets,
   offeringTypes,
   offeringCategories,
+  commerce,
 }: {
   offerings: HydratedOffering[];
   customerTypes: CustomerType[];
   markets: Market[];
   offeringTypes: OfferingType[];
   offeringCategories: OfferingCategory[];
+  /** Per-offering revenue/usage rollup (server-computed) powering the hover
+   *  mini-dashboard. */
+  commerce?: Record<string, OfferingCommerce>;
 }) {
   // Seed filters from the URL so chips elsewhere can deep-link into a filtered
   // view (e.g. /offerings?market=mkt-europe from a market chip on an offering).
@@ -174,6 +227,12 @@ export function OfferingsBrowser({
   const categoryColorByName: Record<string, string> = {};
   offeringCategories.forEach((c, i) => {
     categoryColorByName[c.name] = FILTER_PALETTE[i % FILTER_PALETTE.length];
+  });
+  // Same idea for offering types, offset so a type never wears its category's
+  // colour on the same card.
+  const typeColorByName: Record<string, string> = {};
+  offeringTypes.forEach((t, i) => {
+    typeColorByName[t.name] = FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length];
   });
 
   // Offering type / category are strings on each offering; map the selected id
@@ -338,18 +397,27 @@ export function OfferingsBrowser({
       ...fams.filter((f) => !FAMILY_ORDER.includes(f)),
     ];
     const hasCt = o.customerTypes.length > 0;
+    const com = commerce?.[o.id];
+    // The hover is the Customers-card pattern (HoverExpandCard): the card pops
+    // out over its neighbours and opens a mini-dashboard — revenue, who's
+    // using it, seats, materials — not just a pop-out animation (Anir: "I
+    // don't care about a pop-up. I care about all the information. Look at
+    // the customers page.").
     return (
-      <Link
+      <div
         key={o.id}
-        href={`/offerings/${o.id}`}
-        className="group rise-in flex h-full rounded-lg"
+        // rise-in's retained transform makes every cell its own stacking
+        // context, so the pop-out would paint UNDER later siblings. Lifting
+        // the hovered CELL (not just the inner card) puts the expansion above
+        // every neighbour.
+        className="rise-in h-full relative hover:z-30"
         style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
       >
-        <Card
-          className={`h-full w-full p-5 flex flex-col gap-3 transition-[transform,box-shadow,border-color] duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-hover:border-blue-subtle group-focus-visible:-translate-y-1 group-focus-visible:shadow-[0_8px_24px_rgba(0,0,0,0.07)] group-focus-visible:border-blue-subtle group-active:scale-[0.98] group-active:translate-y-0 group-active:shadow-none ${
-            mapped ? "" : "bg-surface/40"
-          }`}
-        >
+        <HoverExpandCard
+          href={`/offerings/${o.id}`}
+          className="h-full"
+          summary={
+            <div className="flex flex-col gap-3">
           {/* Offering name is the primary element (Suren's live-meeting ask —
               the customer-type families move down so they don't compete). */}
           <div className="flex items-center justify-between gap-2">
@@ -366,8 +434,8 @@ export function OfferingsBrowser({
             />
           </div>
           {o.offering_description && (
-            <p className="text-[12.5px] text-text-secondary line-clamp-2 leading-relaxed">
-              {o.offering_description}
+            <p className="no-auto-tip text-[12.5px] text-text-secondary line-clamp-2 leading-relaxed">
+              {cardSummary(o.offering_description)}
             </p>
           )}
 
@@ -382,47 +450,39 @@ export function OfferingsBrowser({
           <div className="mt-auto pt-3 border-t border-border-light space-y-2">
             {/* Offering category — Suren's Jun 27 grouping (replaces markets on
                 the tile). The primary qualifier above the offering type. */}
-            {o.offering_category && (
-              <p className="flex items-center gap-1 text-[11px] font-medium text-text-secondary">
-                {/* Category is the primary qualifier — its leading icon carries
-                    the family colour so it's recognisable at a glance (Suren's
-                    chip rule: category = colour + icon, never flat gray). */}
-                <Layers
-                  size={11}
-                  strokeWidth={2}
-                  className="shrink-0"
-                  style={{
-                    color:
-                      categoryColorByName[o.offering_category] || "#8E98A8",
-                  }}
+            {/* Every data point is a colour + icon chip, never flat gray text
+                (standing chip rule; Anir, Jul 27: "for the data points on each
+                of these, definitely need tags, icons, and colors — the all
+                customer types or the Freyr service thing"). Category, offering
+                type and audience each carry their own hue so a card is
+                scannable without reading a word. */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {o.offering_category && (
+                <MetaChip
+                  icon={Layers}
+                  label={o.offering_category}
+                  color={categoryColorByName[o.offering_category] || "#2563EB"}
                 />
-                {o.offering_category}
-              </p>
-            )}
-            {/* Offering type */}
-            {o.offering_type && (
-              <p className="flex items-center gap-1 text-[11px] font-medium text-text-secondary">
-                <Sparkles
-                  size={11}
-                  strokeWidth={2}
-                  className="text-text-tertiary shrink-0"
+              )}
+              {o.offering_type && (
+                <MetaChip
+                  icon={Sparkles}
+                  label={o.offering_type}
+                  color={typeColorByName[o.offering_type] || "#7C3AED"}
                 />
-                {o.offering_type}
-              </p>
-            )}
-            {/* Who it's for — de-emphasized so it doesn't take away from the name */}
-            {hasCt && (
-              <p className="flex items-start gap-1.5 text-[11px] text-text-tertiary">
-                <Users size={11} strokeWidth={1.8} className="mt-[1px] shrink-0" />
-                <span>
-                  {whoForLabel(
+              )}
+              {hasCt && (
+                <MetaChip
+                  icon={Users}
+                  label={whoForLabel(
                     families,
                     o.customerTypes.length,
                     customerTypes.length
                   )}
-                </span>
-              </p>
-            )}
+                  color="#0F766E"
+                />
+              )}
+            </div>
             {/* Service-delivery POC */}
             {o.poc && (
               <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
@@ -461,8 +521,107 @@ export function OfferingsBrowser({
               </p>
             )}
           </div>
-        </Card>
-      </Link>
+            </div>
+          }
+          extra={
+            <>
+              {/* The commercial mini-dashboard — the numbers a rep would
+                  otherwise open the offering to see. Every tile is icon +
+                  colour, never flat gray (standing chip rule). */}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {
+                    label: "Annual revenue",
+                    value: formatMoney(com?.totalRevenue ?? 0),
+                    icon: DollarSign,
+                    color: "#16A34A",
+                  },
+                  {
+                    label: "Customers using it",
+                    value: String(com?.customerCount ?? 0),
+                    icon: Building,
+                    color: "#0071E3",
+                  },
+                  {
+                    label: "Licensed seats",
+                    value: String(com?.totalLicenses ?? 0),
+                    icon: KeyRound,
+                    color: "#7C3AED",
+                  },
+                  {
+                    label: "Sales materials",
+                    value: String(o.materials.length),
+                    icon: FileText,
+                    color: "#0F766E",
+                  },
+                ].map((f) => (
+                  <div key={f.label} className="rounded-lg bg-surface px-2.5 py-2">
+                    <p className="flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                      <f.icon size={11} strokeWidth={2.2} style={{ color: f.color }} />
+                      {f.label}
+                    </p>
+                    <p className="mt-0.5 text-[14px] font-semibold text-text-primary tnum">
+                      {f.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* WHO is paying for it — the Customers-page substance. */}
+              {com && com.customers.length > 0 ? (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                    Who&apos;s using it
+                  </p>
+                  <div className="space-y-1.5">
+                    {com.customers.map((c) => (
+                      <div key={c.id} className="flex items-center gap-2 text-[12px]">
+                        <CompanyLogo name={c.name} className="w-[18px] h-[18px] text-[7px] shrink-0" />
+                        <span className="min-w-0 flex-1 truncate font-medium text-text-primary">
+                          {c.name}
+                        </span>
+                        <span className="tnum text-text-secondary shrink-0">
+                          {formatMoney(c.revenue)}
+                        </span>
+                      </div>
+                    ))}
+                    {com.customerCount > com.customers.length && (
+                      <p className="text-[10.5px] text-text-tertiary">
+                        +{com.customerCount - com.customers.length} more{" "}
+                        {com.customerCount - com.customers.length === 1
+                          ? "account"
+                          : "accounts"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-[11px] leading-snug text-text-tertiary">
+                  No revenue recorded yet — accounts appear here as they start
+                  using this offering.
+                </p>
+              )}
+
+              {/* Where it sells + any availability caveat. */}
+              {(o.markets.length > 0 || o.future_availability) && (
+                <div className="mt-3 space-y-1.5">
+                  {o.markets.length > 0 && (
+                    <p className="flex flex-wrap items-center gap-1 text-[10.5px] text-text-tertiary">
+                      <Globe size={10} strokeWidth={2} className="shrink-0" />
+                      {o.markets.map((m) => m.name).join(" · ")}
+                    </p>
+                  )}
+                  {o.future_availability && (
+                    <p className="text-[10.5px] leading-snug text-text-tertiary">
+                      {o.future_availability}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          }
+        />
+      </div>
     );
   };
 

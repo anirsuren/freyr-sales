@@ -122,9 +122,13 @@ export default async function TeamPage() {
               ? "Manager"
               : "Rep"
           : repRole(r.name),
-      region: repRegion(r.name),
+      // NEVER invent identity facts for the real signed-in person — the
+      // hashed demo region/phone are for the synthetic roster only (Anir:
+      // "Why is it saying I'm from China? I didn't even put that."). Until a
+      // real profile field exists, show nothing.
+      region: you ? "" : repRegion(r.name),
       email: (you && currentUser.email) || repEmail(r.name),
-      phone: repPhone(r.name),
+      phone: you ? "" : repPhone(r.name),
       teamsUrl: teamsChatUrl(
         r.name,
         you ? currentUser.email : null

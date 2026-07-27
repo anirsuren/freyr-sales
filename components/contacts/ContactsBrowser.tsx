@@ -508,8 +508,7 @@ export function ContactsBrowser({
                     <p className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
                       {/* Stretched-link pattern: the name link's ::after overlay
                           covers the whole card, so clicking anywhere opens the
-                          contact — while the LinkedIn icon (lifted above it) stays
-                          its own separate link. No nested anchors. */}
+                          contact. No nested anchors. */}
                       {selectMode ? (
                         <span className="truncate">{c.name}</span>
                       ) : (
@@ -521,12 +520,18 @@ export function ContactsBrowser({
                           <span className="block truncate">{c.name}</span>
                         </Link>
                       )}
-                      <span className="relative z-10 shrink-0">
-                        <LinkedInLink url={c.linkedin} size={14} />
-                      </span>
                     </p>
                     <p className="text-[13px] text-text-secondary truncate">{c.title}</p>
                   </div>
+                  {/* LinkedIn as a labelled button chip in the card's top-right
+                      corner (Suren: not glued to the name), lifted above the
+                      stretched card link so it stays independently clickable. */}
+                  <LinkedInLink
+                    url={c.linkedin}
+                    size={14}
+                    label="LinkedIn"
+                    className="relative z-10 ml-auto self-start whitespace-nowrap rounded-lg border border-border-light bg-white px-2 py-1 text-[11px] font-semibold text-text-secondary cursor-pointer hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary transition-colors"
+                  />
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   {c.companyId ? (

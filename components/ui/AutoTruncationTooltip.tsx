@@ -45,8 +45,18 @@ export function AutoTruncationTooltip() {
 
     const showFor = (element: HTMLElement) => {
       if (!isClipped(element) || element.closest(".freyr-hover-trigger")) return;
+      // Opt-out hook: content that is a SUMMARY by design (a card blurb, a
+      // capability list) must not re-appear as a wall of text on hover
+      // (Anir, Jul 27: "instead of just showing me all the data points, it's
+      // so annoying"). Those elements carry .no-auto-tip and open their own
+      // page on click instead.
+      if (element.closest(".no-auto-tip")) return;
       const text = (element.textContent || "").replace(/\s+/g, " ").trim();
       if (!text) return;
+      // This layer exists to rescue CLIPPED LABELS — a name, a company, a
+      // stage. Long prose was never the point, and dumping 500 characters
+      // under the cursor reads as noise.
+      if (text.length > 140) return;
       active = element;
       timer = setTimeout(() => {
         if (active !== element || !document.body.contains(element)) return;
@@ -126,10 +136,13 @@ export function AutoTruncationTooltip() {
   return createPortal(
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-[120] max-w-[360px] rounded-lg bg-text-primary px-3 py-2 text-[12px] font-normal leading-snug text-white shadow-lg"
+      className="autotip-in pointer-events-none fixed z-[120] max-w-[360px] rounded-lg bg-text-primary px-3 py-2 text-[12px] font-normal leading-snug text-white shadow-lg"
       style={{
         left: popup.x,
         top: popup.y,
+        // The positioning transform must stay inline (it depends on which side
+        // the tip opens). The entry animation therefore only fades — the slide
+        // is folded into these same values via the keyframes' translate deltas.
         transform: popup.below ? "translateX(-50%)" : "translate(-50%, -100%)",
       }}
     >

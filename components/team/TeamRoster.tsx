@@ -409,7 +409,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           />
                         </div>
                         <p className="text-[12px] text-text-secondary truncate">
-                          {r.title} · {flagForGeography(r.region) || ""} {r.region}
+                          {r.title}{r.region ? ` · ${flagForGeography(r.region) || ""} ${r.region}` : ""}
                         </p>
                       </div>
                       <span className="relative z-10">
@@ -468,14 +468,16 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <Mail size={12} strokeWidth={1.9} className="shrink-0" />
                         <span className="truncate">{r.email}</span>
                       </a>
-                      <a
-                        href={tel(r.phone)}
-                        title={`Call ${r.phone}`}
-                        className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary hover:text-blue-primary transition-colors tnum w-fit"
-                      >
-                        <Phone size={12} strokeWidth={1.9} className="shrink-0" />
-                        {r.phone}
-                      </a>
+                      {r.phone && (
+                        <a
+                          href={tel(r.phone)}
+                          title={`Call ${r.phone}`}
+                          className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary hover:text-blue-primary transition-colors tnum w-fit"
+                        >
+                          <Phone size={12} strokeWidth={1.9} className="shrink-0" />
+                          {r.phone}
+                        </a>
+                      )}
                     </div>
                   </>
                 }
@@ -549,7 +551,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                   {r.name}
                                 </p>
                                 <p className="text-[11.5px] text-text-tertiary truncate">
-                                  {r.title} · {flagForGeography(r.region) || ""} {r.region}
+                                  {r.title}{r.region ? ` · ${flagForGeography(r.region) || ""} ${r.region}` : ""}
                                 </p>
                               </div>
                             </div>
@@ -630,7 +632,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                               <Badge label={r.role} bg={rc.bg} color={rc.color} className="!normal-case tracking-normal !text-[10px] !px-1.5 !py-0" />
                             </span>
                             <span className="block text-[12px] text-text-secondary truncate">
-                              {r.title} · {flagForGeography(r.region) || ""} {r.region}
+                              {r.title}{r.region ? ` · ${flagForGeography(r.region) || ""} ${r.region}` : ""}
                             </span>
                           </span>
                         </Link>
@@ -640,14 +642,16 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-2">
                           <TeamsButton url={r.teamsUrl} name={r.name} />
-                          <a
-                            href={tel(r.phone)}
-                            title={`Call ${r.phone}`}
-                            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors tnum whitespace-nowrap"
-                          >
-                            <Phone size={13} strokeWidth={2} />
-                            {r.phone}
-                          </a>
+                          {r.phone && (
+                            <a
+                              href={tel(r.phone)}
+                              title={`Call ${r.phone}`}
+                              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors tnum whitespace-nowrap"
+                            >
+                              <Phone size={13} strokeWidth={2} />
+                              {r.phone}
+                            </a>
+                          )}
                         </div>
                         <a
                           href={`mailto:${r.email}`}

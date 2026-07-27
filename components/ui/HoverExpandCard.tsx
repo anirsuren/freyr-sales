@@ -42,7 +42,10 @@ export function HoverExpandCard({
     ? ({ "--hover-expand-delay": `${delayMs}ms` } as CSSProperties)
     : undefined;
   const cardCls = cn(
-    "absolute inset-x-0 top-0 block bg-white border border-border-light rounded-xl p-5 shadow-card origin-top transition-[transform,box-shadow,border-color] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]",
+    // min-h-full: when the wrapper is stretched by a grid row, the resting
+    // card face fills the cell so neighbouring cards stay equal-height
+    // (Suren's symmetry rule). Growth on hover is unaffected — it's a minimum.
+    "absolute inset-x-0 top-0 block min-h-full bg-white border border-border-light rounded-xl p-5 shadow-card origin-top transition-[transform,box-shadow,border-color] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]",
     enabled &&
       // Press-down on click: navigation from these cards had no feedback at
       // all — snapping back to 1.0 reads as nothing (Anir, Jul 25: "there's no

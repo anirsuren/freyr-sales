@@ -146,7 +146,12 @@ export default async function RepPage({
     });
   };
 
-  const region = repRegion(name);
+  // Identity facts are never invented for the real signed-in person — the
+  // hashed demo region/phone belong to the synthetic roster only (Anir: "Why
+  // is it saying I'm from China?").
+  const region = isYou ? "" : repRegion(name);
+  const email = isYou && currentUser.email ? currentUser.email : repEmail(name);
+  const phone = isYou ? "" : repPhone(name);
   const title = isYou ? currentUser.title : repTitle(name);
   const quota = repQuota(name);
   const wonFY = repWonFY(name);
@@ -295,23 +300,25 @@ export default async function RepPage({
             )}
           </h1>
           <p className="text-[13px] text-text-secondary mt-0.5">
-            {title} · {region} · {me.deals} deal{me.deals === 1 ? "" : "s"} owned
+            {title}{region ? ` · ${region}` : ""} · {me.deals} deal{me.deals === 1 ? "" : "s"} owned
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]">
             <a
-              href={`mailto:${repEmail(name)}`}
+              href={`mailto:${email}`}
               className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors"
             >
               <Mail size={13} strokeWidth={1.9} className="shrink-0" />
-              {repEmail(name)}
+              {email}
             </a>
-            <a
-              href={`tel:${repPhone(name).replace(/[^+\d]/g, "")}`}
-              className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors tnum"
-            >
-              <PhoneCall size={13} strokeWidth={1.9} className="shrink-0" />
-              {repPhone(name)}
-            </a>
+            {phone && (
+              <a
+                href={`tel:${phone.replace(/[^+\d]/g, "")}`}
+                className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors tnum"
+              >
+                <PhoneCall size={13} strokeWidth={1.9} className="shrink-0" />
+                {phone}
+              </a>
+            )}
             <a
               href={teamsChatUrl(name)}
               target="_blank"

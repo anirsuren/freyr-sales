@@ -175,7 +175,16 @@ export async function middleware(request: NextRequest) {
     pathname !== "/onboarding" &&
     pathname !== "/settings" &&
     pathname !== "/offerings" &&
-    !pathname.startsWith("/offerings/")
+    !pathname.startsWith("/offerings/") &&
+    // The email-confirmation landing must never bounce to /offerings — the
+    // sign-in tokens ride its URL. (The /login hash fallback would still
+    // rescue it, but the direct path should work.)
+    pathname !== "/auth/confirm" &&
+    // Static files (the sidebar logo, avatars, headshots, icons) are assets,
+    // not pages. Gating them redirected every <img> to the offerings HTML the
+    // moment prod ran in Real mode, which drew the logo as a broken image
+    // (Anir, Jul 27). Authentication above still applies to them.
+    !/\.[a-z0-9]+$/i.test(pathname)
   ) {
     // A configured deployment always uses the fixed public auth origin. The
     // only origin-less path allowed this far is the unauthenticated local-dev

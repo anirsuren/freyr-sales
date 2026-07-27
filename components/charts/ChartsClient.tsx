@@ -69,10 +69,16 @@ function useChartHover() {
 function PortalTip({
   anchor,
   wide,
+  nearPoint,
   children,
 }: {
   anchor: ChartAnchor | null;
   wide?: boolean;
+  /** Place the card just above/below the anchor POINT instead of outside the
+   *  whole chart box. For tall plots (area charts) the box edges are a long
+   *  way from the hovered point (Anir: "it should be right below where it is
+   *  on the graph… or above… it shouldn't be that far away"). */
+  nearPoint?: boolean;
   children: React.ReactNode;
 }) {
   const [ready, setReady] = useState(false);
@@ -147,21 +153,39 @@ function PortalTip({
   // chart box — above when there's room, else below — because a card that
   // covers the plot hides the very data being hovered (the older standing
   // rule the verify suite pins). Viewport clamping keeps it on-screen always.
-  const rooms = {
-    top: Math.max(0, chartRect.top - 8),
-    bottom: Math.max(0, vh - chartRect.bottom - 8),
-  };
-  const placement = rooms.top >= 120 || rooms.top >= rooms.bottom ? "top" : "bottom";
-  const verticalRoom = placement === "top" ? rooms.top : rooms.bottom;
-  const maxHeight = Math.max(48, verticalRoom - sideGap);
+  let placement: "top" | "bottom";
+  let top: number;
+  let maxHeight: number;
+  if (nearPoint) {
+    // Hug the hovered point: just above it when there's room, else just below
+    // — never parked at the far chart edge. The 14px gap clears the point's
+    // own dot so the card frames the data instead of covering it.
+    const pointGap = 14;
+    const roomAbove = Math.max(0, currentAnchor.y - 8);
+    const roomBelow = Math.max(0, vh - currentAnchor.y - 8);
+    placement = roomAbove >= 150 || roomAbove >= roomBelow ? "top" : "bottom";
+    maxHeight = Math.max(48, (placement === "top" ? roomAbove : roomBelow) - pointGap);
+    top =
+      placement === "top"
+        ? currentAnchor.y - pointGap
+        : currentAnchor.y + pointGap;
+  } else {
+    const rooms = {
+      top: Math.max(0, chartRect.top - 8),
+      bottom: Math.max(0, vh - chartRect.bottom - 8),
+    };
+    placement = rooms.top >= 120 || rooms.top >= rooms.bottom ? "top" : "bottom";
+    const verticalRoom = placement === "top" ? rooms.top : rooms.bottom;
+    maxHeight = Math.max(48, verticalRoom - sideGap);
+    top =
+      placement === "top"
+        ? chartRect.top - sideGap
+        : chartRect.bottom + sideGap;
+  }
   const left = Math.max(
     8,
     Math.min(vw - width - 8, currentAnchor.x - width / 2)
   );
-  const top =
-    placement === "top"
-      ? chartRect.top - sideGap
-      : chartRect.bottom + sideGap;
   return createPortal(
     <div
       role="tooltip"
@@ -239,13 +263,15 @@ function Tip({
   anchor,
   children,
   wide,
+  nearPoint,
 }: {
   anchor: ChartAnchor | null;
   children: React.ReactNode;
   wide?: boolean;
+  nearPoint?: boolean;
 }) {
   return (
-    <PortalTip anchor={anchor} wide={wide}>
+    <PortalTip anchor={anchor} wide={wide} nearPoint={nearPoint}>
       {children}
     </PortalTip>
   );
@@ -375,8 +401,13 @@ export function AreaChart({
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientX - rect.left) / rect.width;
-    showHover(Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1)))));
-    setMouse(pointerAnchor(e));
+    const idx = Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1))));
+    showHover(idx);
+    // Anchor the card to the snapped DATA POINT, not the raw cursor, so it
+    // hugs the dot being read (Anir: "right below where it is on the graph").
+    const ax = rect.left + (px(idx) / w) * rect.width;
+    const ay = rect.top + (py(data[idx]) / h) * rect.height;
+    setMouse(elementAnchor(e.currentTarget, ax, ay));
   }
 
   return (
@@ -502,7 +533,7 @@ export function AreaChart({
         }}
       />
       {hover != null && (
-        <Tip anchor={mouse} wide={!!pointTips || goal != null}>
+        <Tip anchor={mouse} wide={!!pointTips || goal != null} nearPoint>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               {xLabels?.[hi] || `Point ${hi + 1} of ${n}`}
@@ -1333,8 +1364,12 @@ export function DonutLegend({
         // values to the far edge and left a canyon of white space in between
         // (Anir: "so much empty space there").
         bars ? "flex-1" : "w-fit",
+        // Label column sizes to content, NOT 1fr — a stretching label column
+        // parked the value a canyon away from short labels like "Prospect"
+        // (Anir: "the other number is so far away from that"). The number now
+        // sits right after the tag and the share bar absorbs the free width.
         bars
-          ? "grid-cols-[auto_minmax(0,1fr)_auto_auto_minmax(44px,1.1fr)]"
+          ? "grid-cols-[auto_minmax(0,auto)_auto_auto_minmax(44px,1fr)]"
           : showValues
             ? "grid-cols-[auto_minmax(0,1fr)_auto_auto]"
             : "grid-cols-[auto_minmax(0,1fr)_auto]",

@@ -257,9 +257,9 @@ export function OfferingForm({
   }
 
   return (
-    <div className="max-w-[840px] space-y-4">
-      <Card className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="max-w-[840px] space-y-3">
+      <Card className="space-y-3 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={LABEL}>Offering type</label>
             <input
@@ -300,7 +300,7 @@ export function OfferingForm({
             placeholder="What the offering does…"
           />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={LABEL}>Current availability</label>
             <select
@@ -357,7 +357,7 @@ export function OfferingForm({
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={LABEL}>Offering category</label>
             <select
@@ -490,7 +490,7 @@ export function OfferingForm({
       </Card>
 
       {/* Sales materials */}
-      <Card className="space-y-3">
+      <Card className="space-y-2.5 p-4">
         <div className="flex items-center justify-between">
           <label className={`${LABEL} mb-0`}>Sales materials</label>
           <button

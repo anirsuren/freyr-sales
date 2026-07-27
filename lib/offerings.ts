@@ -640,8 +640,15 @@ if (!store.offeringTypes) store.offeringTypes = seedOfferingTypes();
 if (!store.offeringCategories)
   store.offeringCategories = seedOfferingCategories();
 
+// ONE offerings catalog, always — the mode switch is about which MODULES are
+// finished, not about which data is real (Anir, Jul 27: "if I add or delete a
+// sales material it should show up on both of them… it's just a matter of
+// what's done and what's still being worked on"). Two catalogs meant an upload
+// made in one view silently vanished in the other. The offerings catalog is
+// approved Freyr master data plus real uploaded assets — never demo content —
+// so both views read and write the same persisted store.
 function activeStore(): OfferingsStore {
-  return getDataMode() === "mock" ? store : liveStore;
+  return liveStore;
 }
 
 function replaceStore(target: OfferingsStore, source: OfferingsStore) {
@@ -942,7 +949,10 @@ export function getOffering(id: string): Offering | null {
 }
 export function createOffering(data: Partial<Offering>): Offering {
   const record: Offering = {
-    id: rid("of"),
+    // An explicit id is honored so a seeded offering can be restored under its
+    // original id (deep links and the persisted catalog reference it). Normal
+    // creates omit it and get a fresh one.
+    id: data.id?.trim() || rid("of"),
     offering_type: data.offering_type || "",
     offering_category: data.offering_category || "",
     offering_name: data.offering_name || "Untitled offering",
