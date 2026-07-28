@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { OfferingForm } from "@/components/offerings/OfferingForm";
 import type { CustomerType, Market, OfferingCategory } from "@/lib/offerings";
+import type { PickablePerson } from "@/components/ui/PeoplePicker";
 
 // "New offering" as a pop-up, right on the offerings list (Suren: "all the new
 // stuff should be popups"). Reuses the full OfferingForm inside a wide modal.
@@ -13,11 +14,14 @@ export function NewOfferingButton({
   markets,
   existingTypes,
   offeringCategories,
+  people,
 }: {
   customerTypes: CustomerType[];
   markets: Market[];
   existingTypes: string[];
   offeringCategories: OfferingCategory[];
+  /** Workspace people for the POC picker (server-supplied: this is a client component). */
+  people: PickablePerson[];
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -36,6 +40,7 @@ export function NewOfferingButton({
           markets={markets}
           existingTypes={existingTypes}
           offeringCategories={offeringCategories}
+          people={people}
         />
       </Modal>
     </>

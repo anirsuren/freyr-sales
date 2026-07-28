@@ -201,13 +201,34 @@ export function OfferingOwners({
           giving it up read as the destructive action it is: red. */}
       {mine?.status === "owner" && (
         <div className="space-y-2">
-          <p
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold"
-            style={{ color: "#0071E3", background: "rgba(0,113,227,0.10)" }}
+          {/* SHOW THE PERSON, not just the fact. A line of text that says "you
+              own this" tells you nothing you can point at; the face and the
+              name are what make it read like the POC card does (Anir, Jul 28:
+              "if I had a profile picture, I should be able to see my profile
+              picture there, just like it does for point of contact"). */}
+          <div
+            className="flex items-center gap-2.5 rounded-lg px-2.5 py-2"
+            style={{ background: "rgba(0,113,227,0.10)" }}
           >
-            <ShieldCheck size={14} strokeWidth={2.2} />
-            You own this offering, so you can edit it.
-          </p>
+            <Avatar name={mine.name} className="h-9 w-9 shrink-0 text-[12px]" />
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="flex flex-wrap items-center gap-1.5">
+                <span className="break-words text-[13.5px] font-semibold text-text-primary">
+                  {mine.name}
+                </span>
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{ color: "#0071E3", background: "rgba(0,113,227,0.16)" }}
+                >
+                  You
+                </span>
+              </span>
+              <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-[color:#0071E3]">
+                <ShieldCheck size={12} strokeWidth={2.2} />
+                Owns this offering, so can edit it
+              </span>
+            </span>
+          </div>
           <button
             onClick={() => release(mine.memberId)}
             disabled={busy === mine.memberId}

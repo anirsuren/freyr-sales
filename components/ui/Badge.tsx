@@ -53,8 +53,13 @@ export const SIZE_TIER_META: Record<
   string,
   { bg: string; color: string; icon: LucideIcon }
 > = {
+  // Three sizes, three hues you can actually tell apart. Mid was indigo
+  // (#4F46E5) next to large's violet (#7C3AED), which read as the same chip
+  // twice (Anir, Jul 28: "mid-size and large are basically the same color,
+  // which is pissing me off"). Mid moves to teal: far from both neighbours and
+  // still not one of the reserved status colours.
   small: { bg: "rgba(14,165,233,0.12)", color: "#0284C7", icon: Home },
-  mid: { bg: "rgba(79,70,229,0.12)", color: "#4F46E5", icon: Building },
+  mid: { bg: "rgba(15,118,110,0.12)", color: "#0F766E", icon: Building },
   large: { bg: "rgba(124,58,237,0.12)", color: "#7C3AED", icon: Building2 },
 };
 

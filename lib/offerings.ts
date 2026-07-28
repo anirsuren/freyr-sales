@@ -1151,6 +1151,39 @@ export function updateOfferingContact(
   return found;
 }
 
+/** EVERYONE THE WORKSPACE KNOWS ABOUT, for the POC picker.
+ *
+ *  Built from what the catalogue actually holds rather than a demo roster:
+ *  every contact on every offering, every named category owner, and every
+ *  granted offering owner. In real mode that IS the Freyr side of the app, so
+ *  the picker offers real colleagues and never invents a sales floor. */
+export function listOfferingPeople(): {
+  name: string;
+  role?: string;
+  email?: string;
+}[] {
+  const byName = new Map<string, { name: string; role?: string; email?: string }>();
+  const put = (name: string, role?: string, email?: string) => {
+    const clean = (name || "").trim();
+    if (!clean) return;
+    const key = clean.toLowerCase();
+    const prev = byName.get(key);
+    // First writer wins on role, but a real email always beats a blank one.
+    if (!prev) byName.set(key, { name: clean, role, email });
+    else if (!prev.email && email) byName.set(key, { ...prev, email });
+  };
+  for (const o of activeStore().offerings) {
+    for (const c of o.contacts || contactsFromPoc(o))
+      put(c.name, c.role || "Service delivery POC", c.email || undefined);
+    for (const owner of o.owners || [])
+      if (owner.status === "owner")
+        put(owner.name, "Offering owner", owner.email || undefined);
+  }
+  for (const c of activeStore().offeringCategories)
+    if (c.owner) put(c.owner, `${c.name} owner`);
+  return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function claimOffering(
   id: string,
   owner: {

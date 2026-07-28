@@ -17,12 +17,12 @@ import { OfferingForm } from "@/components/offerings/OfferingForm";
 import { sectionId } from "@/lib/sectionId";
 import {
   getOffering,
-  type Offering,
   listCustomerTypes,
   listMarkets,
   listOfferings,
   listOfferingTypes,
   listOfferingCategories,
+  listOfferingPeople,
 } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { ViewOnlyNotice } from "@/components/offerings/ViewOnlyNotice";
@@ -68,12 +68,13 @@ export default async function EditOfferingPage({
           </span>
         }
       />
-      {/* Two columns so the form fills the screen instead of hugging the left
-          edge with a third of the monitor empty beside it. The rail carries the
-          section jump-list and what this page actually controls, so the space
-          it fills is doing work. */}
-      <div className="mt-1 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0">
+      {/* The jump strip runs ACROSS the top, not down a right-hand rail. A rail
+          ate 300px of every screen to hold five links (Anir, Jul 28: "if you're
+          gonna put the headers on the right side... put that somewhere else. It
+          doesn't make sense on the right, where it's blocking and eating up so
+          much space"). Sticky, so it stays reachable as you scroll. */}
+      <SectionJumpStrip />
+      <div className="mt-1">
       {/* OfferingForm reads ?focus=name via useSearchParams, so it needs its own
           Suspense boundary; it also lets the page shell paint while the form's
           client chunk loads instead of the route showing nothing. */}
@@ -115,83 +116,39 @@ export default async function EditOfferingPage({
             ])
           )}
           offeringCategories={listOfferingCategories()}
+          people={listOfferingPeople()}
         />
       </Suspense>
-        </div>
-        <EditSideRail offering={o} />
       </div>
     </div>
   );
 }
 
-/** What the right column carries: where you are in the form, and the facts about
- *  this offering that the form is about to change. Sticky, so it stays useful
- *  while you scroll five sections of fields. */
-function EditSideRail({ offering }: { offering: Offering }) {
-  const sections: { title: string; icon: LucideIcon; hint: string }[] = [
-    { title: "The basics", icon: Package, hint: "Name, type, category, owner" },
-    { title: "What's included", icon: ListChecks, hint: "Description and capabilities" },
-    { title: "Who it's for", icon: Building2, hint: "Customer types this suits" },
-    { title: "Where it's available", icon: Globe, hint: "Markets and availability" },
-    { title: "Sales materials", icon: FolderOpen, hint: "Decks, one-pagers, demos" },
-  ];
-  const facts: { label: string; value: string }[] = [
-    { label: "Category", value: offering.offering_category || "No category" },
-    { label: "Type", value: offering.offering_type || "Not set" },
-    { label: "Availability", value: offering.current_availability || "Not set" },
-    { label: "Point of contact", value: offering.poc || "Not set" },
-    { label: "Markets", value: `${offering.market_ids.length} selected` },
-    { label: "Sales materials", value: `${offering.materials.length} attached` },
+/** WHERE YOU ARE IN THE FORM, as a strip across the top rather than a rail down
+ *  the side. Five links do not justify a column: they cost 300px of width on
+ *  every screen and pushed the fields that matter into a narrow gutter. The
+ *  "How it stands today" panel that used to sit under them is gone entirely —
+ *  it restated values the form's own fields already show, two inches away. */
+function SectionJumpStrip() {
+  const sections: { title: string; icon: LucideIcon }[] = [
+    { title: "The basics", icon: Package },
+    { title: "What's included", icon: ListChecks },
+    { title: "Who it's for", icon: Building2 },
+    { title: "Where it's available", icon: Globe },
+    { title: "Sales materials", icon: FolderOpen },
   ];
   return (
-    <aside className="hidden xl:block xl:sticky xl:top-6 space-y-3">
-      <div className="rounded-xl border border-border-light bg-white p-3 shadow-card">
-        <p className="mb-2 px-1 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-          On this page
-        </p>
-        <nav className="space-y-0.5">
-          {sections.map((s) => (
-            <a
-              key={s.title}
-              href={`#${sectionId(s.title)}`}
-              className="flex items-start gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-blue-light"
-            >
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
-                <s.icon size={13} strokeWidth={1.9} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[12.5px] font-semibold text-text-primary">
-                  {s.title}
-                </span>
-                <span className="block text-[11px] leading-snug text-text-tertiary">
-                  {s.hint}
-                </span>
-              </span>
-            </a>
-          ))}
-        </nav>
-      </div>
-
-      <div className="rounded-xl border border-border-light bg-white p-4 shadow-card">
-        <p className="mb-2.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-          How it stands today
-        </p>
-        <dl className="space-y-2">
-          {facts.map((f) => (
-            <div key={f.label} className="flex items-baseline justify-between gap-3">
-              <dt className="shrink-0 text-[11.5px] text-text-secondary">{f.label}</dt>
-              <dd className="min-w-0 break-words text-right text-[12px] font-semibold text-text-primary">
-                {f.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      <p className="px-1 text-[11.5px] leading-relaxed text-text-tertiary">
-        You can edit this because you own {offering.offering_name}. Everyone else
-        sees it read-only until an admin hands them ownership.
-      </p>
-    </aside>
+    <nav className="sticky top-0 z-20 -mx-1 mb-1 flex flex-wrap items-center gap-1.5 rounded-xl border border-border-light bg-white/95 px-2 py-2 shadow-card backdrop-blur">
+      {sections.map((s) => (
+        <a
+          key={s.title}
+          href={`#${sectionId(s.title)}`}
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
+        >
+          <s.icon size={13} strokeWidth={1.95} />
+          {s.title}
+        </a>
+      ))}
+    </nav>
   );
 }

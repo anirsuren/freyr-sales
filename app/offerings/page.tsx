@@ -23,6 +23,7 @@ import {
   listOfferingTypes,
   listOfferingCategories,
   hydrateOffering,
+  listOfferingPeople,
 } from "@/lib/offerings";
 import { getRole } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -296,6 +297,7 @@ export default async function OfferingsPage() {
             {canEdit && <ImportExcel />}
             {canEdit && (
               <NewOfferingButton
+            people={listOfferingPeople()}
                 customerTypes={customerTypes}
                 markets={markets}
                 existingTypes={Array.from(

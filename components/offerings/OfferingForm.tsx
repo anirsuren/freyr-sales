@@ -14,7 +14,6 @@ import {
   FolderOpen,
   CalendarClock,
   ChevronDown,
-  UserRound,
   Check,
   CircleCheck,
   CircleHelp,
@@ -22,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import type { CustomerType, Market, OfferingCategory } from "@/lib/offerings";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -30,6 +30,8 @@ import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { offeringMark } from "@/components/ui/OfferingIcon";
 import { parseCapabilities } from "@/components/offerings/OfferingCapabilities";
 import { cn } from "@/lib/utils";
+import { PeoplePicker, type PickablePerson } from "@/components/ui/PeoplePicker";
+import { pocNames } from "@/lib/pocNames";
 import { sectionId } from "@/lib/sectionId";
 import {
   ACCESS_LEVELS,
@@ -338,6 +340,7 @@ export function OfferingForm({
   markets,
   existingTypes = [],
   offeringCategories = [],
+  people = [],
   offeringId,
   initial,
 }: {
@@ -345,6 +348,8 @@ export function OfferingForm({
   markets: Market[];
   existingTypes?: string[];
   offeringCategories?: OfferingCategory[];
+  /** Everyone in the workspace, for the POC picker. */
+  people?: PickablePerson[];
   offeringId?: string;
   initial?: {
     offering_type?: string;
@@ -364,6 +369,18 @@ export function OfferingForm({
   const isEdit = !!offeringId;
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Adding a material opens a proper dialog. It used to append a blank row
+  // straight into the list, so the "form" was a wall of half-filled rows
+  // (Anir, Jul 28: "the add material thing... that's not the way we work. It
+  // should still be a nice pop-up").
+  const [addingMaterial, setAddingMaterial] = useState(false);
+  const [draftMaterial, setDraftMaterial] = useState<MaterialRow>({
+    kind: "video",
+    label: "",
+    url: "",
+    journeyStage: "awareness",
+    accessLevel: "client_facing",
+  });
   const [deleting, setDeleting] = useState(false);
 
   async function remove() {
@@ -433,6 +450,9 @@ export function OfferingForm({
   const current = buildAvailability(availMode, availMonth, availYear);
   const [future, setFuture] = useState(initial?.future_availability ?? "");
   const [poc, setPoc] = useState(initial?.poc ?? "");
+  // `poc` stays ONE string on the record (every card, the CSV export and search
+  // read it); the picker just works in list form.
+  const pocList = useMemo(() => pocNames(poc), [poc]);
   const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
   const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
   const [materials, setMaterials] = useState<MaterialRow[]>(
@@ -612,14 +632,15 @@ export function OfferingForm({
           </div>
           <div>
             <label className={LABEL}>Service delivery POC</label>
-            <FieldShell accent="#0891B2" icon={UserRound}>
-              <input
-                className={BARE_INPUT}
-                value={poc}
-                onChange={(e) => setPoc(e.target.value)}
-                placeholder="Who owns this offering's data: e.g. Ragav"
-              />
-            </FieldShell>
+            {/* A picker over the people already in the workspace, with faces,
+                not a box you have to spell a name into. */}
+            <PeoplePicker
+              people={people}
+              value={pocList}
+              onChange={(next) => setPoc(next.join(" / "))}
+              emptyLabel="Pick who a rep should call"
+              placeholder="Search people in your workspace…"
+            />
           </div>
         </div>
       </FormSection>
@@ -975,18 +996,16 @@ export function OfferingForm({
         action={
           <button
             type="button"
-            onClick={() =>
-              setMaterials((l) => [
-                ...l,
-                {
-                  kind: "video",
-                  label: "",
-                  url: "",
-                  journeyStage: "awareness",
-                  accessLevel: "client_facing",
-                },
-              ])
-            }
+            onClick={() => {
+              setDraftMaterial({
+                kind: "video",
+                label: "",
+                url: "",
+                journeyStage: "awareness",
+                accessLevel: "client_facing",
+              });
+              setAddingMaterial(true);
+            }}
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-light px-2.5 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-subtle/60"
           >
             <Plus size={14} strokeWidth={2.2} /> Add material
@@ -1092,25 +1111,120 @@ export function OfferingForm({
         ))}
       </FormSection>
 
+      {/* Add material: a real dialog with one field per line, instead of a
+          blank row appended to the list. */}
+      <Modal
+        open={addingMaterial}
+        onClose={() => setAddingMaterial(false)}
+        title="Add a sales material"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className={LABEL}>What is it</label>
+            <ColorSelect
+              value={draftMaterial.kind}
+              options={kindOptionsFor(draftMaterial.kind)}
+              onChange={(v) =>
+                setDraftMaterial((d) => ({ ...d, kind: v as MaterialKind }))
+              }
+              ariaLabel="File format"
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Name</label>
+            <input
+              autoFocus
+              className={FIELD}
+              value={draftMaterial.label}
+              onChange={(e) =>
+                setDraftMaterial((d) => ({ ...d, label: e.target.value }))
+              }
+              placeholder="e.g. Freya.Register overview deck"
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Link</label>
+            <input
+              className={FIELD}
+              value={draftMaterial.url}
+              onChange={(e) =>
+                setDraftMaterial((d) => ({ ...d, url: e.target.value }))
+              }
+              placeholder="https://…"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={LABEL}>Where it fits</label>
+              <ColorSelect
+                value={draftMaterial.journeyStage ?? "awareness"}
+                options={STAGE_OPTIONS}
+                onChange={(v) =>
+                  setDraftMaterial((d) => ({ ...d, journeyStage: v as JourneyStage }))
+                }
+                ariaLabel="Buyer's journey stage"
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Who can see it</label>
+              <ColorSelect
+                value={draftMaterial.accessLevel ?? "client_facing"}
+                options={ACCESS_OPTIONS}
+                onChange={(v) =>
+                  setDraftMaterial((d) => ({ ...d, accessLevel: v as AccessLevel }))
+                }
+                ariaLabel="Who can see it"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <span className="text-[12px] text-text-tertiary">
+              It joins the list here; the offering saves when you press save.
+            </span>
+            <button
+              type="button"
+              onClick={() => setAddingMaterial(false)}
+              className="ml-auto text-[13.5px] font-semibold text-text-secondary hover:text-text-primary"
+            >
+              Cancel
+            </button>
+            <Button
+              onClick={() => {
+                if (!draftMaterial.label.trim() && !draftMaterial.url.trim()) return;
+                setMaterials((l) => [...l, draftMaterial]);
+                setAddingMaterial(false);
+              }}
+            >
+              Add material
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+
       {/* Save follows you down the page. The form is five sections tall, so a
           plain button at the bottom meant scrolling the whole way back to
           commit an edit made near the top. */}
+      {/* Save sits on the RIGHT, where a commit button belongs, with the note
+          on the left (Anir, Jul 28: "I don't know why the Save Changes button
+          is on the left. Shouldn't it be on the right like normal?"). Sticky,
+          because the form is five sections tall. */}
       <div className="sticky bottom-0 z-20 -mx-1 flex items-center gap-3 rounded-xl border border-border-light bg-white/95 px-4 py-3 shadow-card backdrop-blur">
-        <Button onClick={submit} loading={saving}>
-          {isEdit ? "Save changes" : "Save offering"}
-        </Button>
+        <span className="text-[12px] text-text-tertiary">
+          {isEdit ? "Changes apply the moment you save." : "Nothing is saved until you press save."}
+        </span>
         <button
           type="button"
           onClick={() =>
             router.push(isEdit ? `/offerings/${offeringId}` : "/offerings")
           }
-          className="text-[14px] font-semibold text-text-secondary hover:text-text-primary"
+          className="ml-auto text-[14px] font-semibold text-text-secondary hover:text-text-primary"
         >
           Cancel
         </button>
-        <span className="ml-auto text-[12px] text-text-tertiary">
-          {isEdit ? "Changes apply the moment you save." : "Nothing is saved until you press save."}
-        </span>
+        <Button onClick={submit} loading={saving}>
+          {isEdit ? "Save changes" : "Save offering"}
+        </Button>
       </div>
 
       {isEdit && (
