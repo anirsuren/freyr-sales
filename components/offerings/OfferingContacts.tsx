@@ -49,10 +49,11 @@ const ROLE_OPTIONS: ColorOption[] = [
  * add or remove controls.
  */
 
-/** The app's standard "add" affordance: a blue plus in the card header, the
- *  same control every other section uses, instead of a bordered text button
- *  sitting under the list (Anir, Jul 28: "just make it a normal blue plus sign
- *  in the top right, just like everything else"). */
+/** The app's standard "add" affordance: a SOLID blue button with a white plus
+ *  in the card header, the same treatment "New offering" gets at the top of
+ *  the offerings page (Anir, Jul 28: "a proper blue button with a white plus,
+ *  kind of like how it is on the offering page"). A pale tinted plus read as a
+ *  disabled control next to it. */
 function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
@@ -60,9 +61,9 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-light text-blue-primary transition-colors hover:bg-blue-subtle/60"
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-primary text-white shadow-[0_1px_2px_rgba(0,113,227,0.20)] transition-all hover:bg-blue-hover hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
     >
-      <Plus size={15} strokeWidth={2.4} />
+      <Plus size={15} strokeWidth={2.6} />
     </button>
   );
 }
