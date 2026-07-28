@@ -836,7 +836,7 @@ export function OfferingsBrowser({
                       syncId={mixSyncId}
                       segments={revenueSegments}
                       size={92}
-                      thickness={11}
+                      thickness={8}
                       format="money"
                       centerLabel={String(com.customerCount)}
                       centerSub={
