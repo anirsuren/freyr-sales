@@ -122,6 +122,43 @@ const AVAIL_META: Record<AvailMode, { color: string; icon: LucideIcon }> = {
   tbd: { color: "#4338CA", icon: CircleHelp },
 };
 
+
+// Every picker in this form speaks the app's dropdown language: a colour and an
+// icon per option, exactly like the filters on the offerings table (Anir, Jul
+// 28: "look at how you did all the other dropdowns, like the filters on the
+// tables. That's how it should look: icons, colors, tags").
+const AVAIL_OPTIONS: ColorOption[] = [
+  { value: "", label: "Not set", color: AVAIL_META[""].color, icon: AVAIL_META[""].icon },
+  { value: "current", label: "Currently available", color: AVAIL_META.current.color, icon: AVAIL_META.current.icon },
+  { value: "date", label: "Available from a date", color: AVAIL_META.date.color, icon: AVAIL_META.date.icon },
+  { value: "tbd", label: "To be decided", color: AVAIL_META.tbd.color, icon: AVAIL_META.tbd.icon },
+];
+
+const MONTH_OPTIONS: ColorOption[] = [
+  { value: "", label: "Month", color: "#64748B", icon: CalendarClock },
+].concat(
+  MONTHS.map((m, i) => ({
+  value: m,
+  label: m,
+    color: FILTER_PALETTE[i % FILTER_PALETTE.length],
+    icon: CalendarClock,
+  }))
+);
+
+const YEAR_OPTIONS: ColorOption[] = [
+  { value: "", label: "Year", color: "#64748B", icon: CalendarClock },
+].concat(
+  Array.from({ length: 8 }, (_, k) => {
+    const y = String(2026 - 1 + k);
+    return {
+      value: y,
+      label: y,
+      color: FILTER_PALETTE[k % FILTER_PALETTE.length],
+      icon: CalendarClock,
+    };
+  })
+);
+
 // Family accents match the offering detail page exactly (violet / rose / blue).
 const FAMILY_COLOR: Record<string, string> = {
   Pharmaceutical: "#0071E3",
@@ -241,11 +278,14 @@ function FormSection({
   children: React.ReactNode;
 }) {
   return (
+    // NO overflow-hidden. It clipped every dropdown that opened inside the
+    // card, which is why the POC picker's search bar was cut off (Anir, Jul
+    // 28). The header carries its own top radius instead.
     <section
       id={sectionId(title)}
-      className="scroll-mt-24 overflow-hidden rounded-xl border border-border-light bg-white shadow-card"
+      className="scroll-mt-24 rounded-xl border border-border-light bg-white shadow-card"
     >
-      <header className="flex items-start gap-3 border-b border-border-light bg-surface/60 px-4 py-3">
+      <header className="flex items-start gap-3 rounded-t-[11px] border-b border-border-light bg-surface/60 px-4 py-3">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
           <Icon size={15} strokeWidth={1.9} />
         </span>
@@ -453,6 +493,22 @@ export function OfferingForm({
   // `poc` stays ONE string on the record (every card, the CSV export and search
   // read it); the picker just works in list form.
   const pocList = useMemo(() => pocNames(poc), [poc]);
+  // The catalogue's own offering types, each with a stable colour + the mark
+  // that type already wears elsewhere, plus whatever this offering carries.
+  const typeOptions: ColorOption[] = useMemo(() => {
+    const names = Array.from(
+      new Set([...existingTypes, offeringType].filter(Boolean))
+    );
+    return [
+      { value: "", label: "No type set", color: "#64748B", icon: Package },
+      ...names.map((t, i) => ({
+        value: t,
+        label: t,
+        color: FILTER_PALETTE[i % FILTER_PALETTE.length],
+        icon: Package,
+      })),
+    ];
+  }, [existingTypes, offeringType]);
   const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
   const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
   const [materials, setMaterials] = useState<MaterialRow[]>(
@@ -572,16 +628,16 @@ export function OfferingForm({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className={LABEL}>Offering type</label>
-            <FieldShell accent={typeAccent} icon={Package}>
-              <input
-                className={BARE_INPUT}
-                value={offeringType}
-                onChange={(e) => setOfferingType(e.target.value)}
-                placeholder="e.g. Freya Fusion (Module), Freyr Services"
-                list="offering-types"
-                autoComplete="off"
-              />
-            </FieldShell>
+            {/* A colour+icon picker like every other dropdown in the app. It
+                was a bare text input wearing a datalist, which renders as the
+                browser's own grey autocomplete and looked nothing like the
+                rest of the product. */}
+            <ColorSelect
+              value={offeringType}
+              options={typeOptions}
+              onChange={setOfferingType}
+              ariaLabel="Offering type"
+            />
             {existingTypes.length > 0 && (
               <datalist id="offering-types">
                 {existingTypes.map((t) => (
@@ -888,50 +944,26 @@ export function OfferingForm({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className={LABEL}>Current availability</label>
-            <SelectField
-              ariaLabel="Current availability"
+            <ColorSelect
               value={availMode}
+              options={AVAIL_OPTIONS}
               onChange={(v) => setAvailMode(v as AvailMode)}
-              accent={availAccent}
-              icon={AVAIL_META[availMode].icon}
-            >
-              <option value="">Not set</option>
-              <option value="current">Currently available</option>
-              <option value="date">Available from a date</option>
-              <option value="tbd">To be decided</option>
-            </SelectField>
+              ariaLabel="Current availability"
+            />
             {availMode === "date" && (
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <SelectField
-                  ariaLabel="Availability month"
+                <ColorSelect
                   value={availMonth}
+                  options={MONTH_OPTIONS}
                   onChange={setAvailMonth}
-                  accent={availAccent}
-                  icon={CalendarClock}
-                >
-                  <option value="">Month</option>
-                  {MONTHS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </SelectField>
-                <SelectField
-                  ariaLabel="Availability year"
+                  ariaLabel="Availability month"
+                />
+                <ColorSelect
                   value={availYear}
+                  options={YEAR_OPTIONS}
                   onChange={setAvailYear}
-                  accent={availAccent}
-                  icon={CalendarClock}
-                >
-                  <option value="">Year</option>
-                  {Array.from({ length: 8 }, (_, k) =>
-                    String(new Date().getFullYear() - 1 + k)
-                  ).map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </SelectField>
+                  ariaLabel="Availability year"
+                />
               </div>
             )}
           </div>

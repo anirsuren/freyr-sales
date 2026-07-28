@@ -25,6 +25,7 @@ import { OfferingActions } from "@/components/offerings/OfferingActions";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { canEditOffering } from "@/lib/offeringOwnership";
+import { listAssignablePeople } from "@/lib/assignablePeople";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
@@ -137,6 +138,8 @@ export default async function OfferingDetailPage({
   // his sales materials, etc., if he owns that offering"). Owning one offering
   // never grants rights over any other.
   const admin = await canEditOffering(o);
+  // Real accounts, so assigning a contact assigns a PERSON, not a typed name.
+  const people = await listAssignablePeople();
   // Assigning and approving owners is an admin action; editing content is
   // open to the owners they grant.
   const workspaceAdmin = await canManageOfferings();
@@ -379,6 +382,7 @@ export default async function OfferingDetailPage({
                   offeringName={o.offering_name}
                   contacts={o.contacts}
                   canEdit={admin}
+                  people={people}
                 />
             </SectionCard>
 

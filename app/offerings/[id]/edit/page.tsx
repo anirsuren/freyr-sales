@@ -3,18 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Building2,
-  FolderOpen,
-  Globe,
-  ListChecks,
-  Package,
-  type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { OfferingForm } from "@/components/offerings/OfferingForm";
-import { sectionId } from "@/lib/sectionId";
 import {
   getOffering,
   listCustomerTypes,
@@ -22,9 +15,9 @@ import {
   listOfferings,
   listOfferingTypes,
   listOfferingCategories,
-  listOfferingPeople,
 } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
+import { listAssignablePeople } from "@/lib/assignablePeople";
 import { ViewOnlyNotice } from "@/components/offerings/ViewOnlyNotice";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +40,7 @@ export default async function EditOfferingPage({
   // take ownership").
   if (!(await canEditOffering(o)))
     return <ViewOnlyNotice backHref={`/offerings/${o.id}`} />;
+  const people = await listAssignablePeople();
   return (
     <div>
       <Link
@@ -68,12 +62,10 @@ export default async function EditOfferingPage({
           </span>
         }
       />
-      {/* The jump strip runs ACROSS the top, not down a right-hand rail. A rail
-          ate 300px of every screen to hold five links (Anir, Jul 28: "if you're
-          gonna put the headers on the right side... put that somewhere else. It
-          doesn't make sense on the right, where it's blocking and eating up so
-          much space"). Sticky, so it stays reachable as you scroll. */}
-      <SectionJumpStrip />
+      {/* No jump strip and no side rail. Five links were not worth a column on
+          the right, and they were not worth a bar across the top either (Anir,
+          Jul 28: "just remove the header at the top, like the five headers at
+          the top. I don't think it's needed"). The form owns the page. */}
       <div className="mt-1">
       {/* OfferingForm reads ?focus=name via useSearchParams, so it needs its own
           Suspense boundary; it also lets the page shell paint while the form's
@@ -116,39 +108,10 @@ export default async function EditOfferingPage({
             ])
           )}
           offeringCategories={listOfferingCategories()}
-          people={listOfferingPeople()}
+          people={people}
         />
       </Suspense>
       </div>
     </div>
-  );
-}
-
-/** WHERE YOU ARE IN THE FORM, as a strip across the top rather than a rail down
- *  the side. Five links do not justify a column: they cost 300px of width on
- *  every screen and pushed the fields that matter into a narrow gutter. The
- *  "How it stands today" panel that used to sit under them is gone entirely —
- *  it restated values the form's own fields already show, two inches away. */
-function SectionJumpStrip() {
-  const sections: { title: string; icon: LucideIcon }[] = [
-    { title: "The basics", icon: Package },
-    { title: "What's included", icon: ListChecks },
-    { title: "Who it's for", icon: Building2 },
-    { title: "Where it's available", icon: Globe },
-    { title: "Sales materials", icon: FolderOpen },
-  ];
-  return (
-    <nav className="sticky top-0 z-20 -mx-1 mb-1 flex flex-wrap items-center gap-1.5 rounded-xl border border-border-light bg-white/95 px-2 py-2 shadow-card backdrop-blur">
-      {sections.map((s) => (
-        <a
-          key={s.title}
-          href={`#${sectionId(s.title)}`}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
-        >
-          <s.icon size={13} strokeWidth={1.95} />
-          {s.title}
-        </a>
-      ))}
-    </nav>
   );
 }

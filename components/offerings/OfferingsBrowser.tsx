@@ -243,38 +243,51 @@ function PocStrip({
   );
 }
 
-// WHO OWNS THIS, on the card itself. Editing an offering is gated on ownership,
-// so "can I change this?" is a question every tile should answer without a
-// click (Anir, Jul 28: "when I own an offering, it should show up like that:
-// I own it"). Blue = mine and editable; neutral slate = someone else holds it;
-// nothing at all when it is unclaimed, so the row stays quiet.
-function OwnershipChip({
+// WHO OWNS THIS, shown as PEOPLE — the same shape as the POC row directly
+// underneath it: a label, then faces you can hover for the whole person (Anir,
+// Jul 28: "where the fuck can I see the owner... where it should show the
+// owner, just like it shows the point of contact"). A text chip that said "You
+// own this" named nobody and showed nothing. Your own row still marks itself,
+// because "can I edit this?" is the question the card is answering.
+function OwnerStrip({
   owners,
   myMemberId,
+  offeringName,
 }: {
   owners?: { memberId: string; name: string; status: "requested" | "owner" }[];
   myMemberId: string | null;
+  offeringName: string;
 }) {
   const granted = (owners || []).filter((o) => o.status === "owner");
   if (granted.length === 0) return null;
-  const mine = myMemberId ? granted.some((o) => o.memberId === myMemberId) : false;
-  const label = mine
-    ? "You own this"
-    : granted.length === 1
-    ? `Owned by ${granted[0].name}`
-    : `${granted.length} owners`;
+  const mine = myMemberId
+    ? granted.some((o) => o.memberId === myMemberId)
+    : false;
   return (
-    <span
-      className="no-auto-tip inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
-      style={
-        mine
-          ? { color: "#0071E3", background: "rgba(0,113,227,0.12)" }
-          : { color: "#4B5563", background: "rgba(75,85,99,0.10)" }
-      }
+    <div
+      role="group"
+      aria-label={`Owner: ${granted.map((o) => o.name).join(", ")}`}
+      className="relative z-10 flex min-w-0 items-center gap-2"
     >
-      {mine ? <ShieldCheck size={11} strokeWidth={2.2} /> : <UserRound size={11} strokeWidth={2.1} />}
-      {label}
-    </span>
+      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+        Owner
+      </span>
+      <PersonFan
+        people={granted.map((o) => ({
+          name: o.name,
+          role: "Owns this offering",
+          context: offeringName,
+        }))}
+      />
+      {mine && (
+        <span
+          className="no-auto-tip shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+          style={{ color: "#0071E3", background: "rgba(0,113,227,0.12)" }}
+        >
+          You
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -649,7 +662,6 @@ export function OfferingsBrowser({
             {o.current_availability && (
               <AvailabilityPill value={o.current_availability} size="sm" />
             )}
-            <OwnershipChip owners={o.owners} myMemberId={myMemberId} />
           </div>
 
           <div className="mt-auto pt-3 border-t border-border-light space-y-2">
@@ -692,6 +704,11 @@ export function OfferingsBrowser({
                 Teams line to them (Suren: "if there's multiple, make it look
                 like the campaigns page so when I hover over it I can see
                 who's there"). */}
+            <OwnerStrip
+              owners={o.owners}
+              myMemberId={myMemberId}
+              offeringName={o.offering_name}
+            />
             {o.poc && <PocStrip poc={o.poc} offeringName={o.offering_name} />}
             {/* Materials count + type icons */}
             {o.materials.length > 0 && (
@@ -1317,7 +1334,11 @@ export function OfferingsBrowser({
                               <span className="font-semibold text-text-primary group-hover/name:text-blue-primary">
                                 {o.offering_name}
                               </span>
-                              <OwnershipChip owners={o.owners} myMemberId={myMemberId} />
+                              <OwnerStrip
+                                owners={o.owners}
+                                myMemberId={myMemberId}
+                                offeringName={o.offering_name}
+                              />
                             </span>
                             {/* Same fan as the tiles: overlapped faces that
                                 slide apart on hover, each one openable. */}

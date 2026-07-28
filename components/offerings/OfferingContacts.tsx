@@ -2,11 +2,36 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X, Loader2 } from "lucide-react";
+import {
+  Plus,
+  X,
+  Loader2,
+  Headset,
+  GraduationCap,
+  Briefcase,
+  Package,
+  LifeBuoy,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
-import { PersonFan } from "@/components/ui/PersonFan";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { PeoplePicker, type PickablePerson } from "@/components/ui/PeoplePicker";
 import type { OfferingContact } from "@/lib/offerings";
+
+const LABEL =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary";
+
+// What a person DOES on an offering. A colour and an icon each, like every
+// other picker in the app.
+const ROLE_OPTIONS: ColorOption[] = [
+  { value: "Service delivery POC", label: "Service delivery POC", color: "#0071E3", icon: Headset },
+  { value: "Subject matter expert", label: "Subject matter expert", color: "#7C3AED", icon: GraduationCap },
+  { value: "Commercial lead", label: "Commercial lead", color: "#0F766E", icon: Briefcase },
+  { value: "Product owner", label: "Product owner", color: "#C2410C", icon: Package },
+  { value: "Escalation contact", label: "Escalation contact", color: "#4338CA", icon: LifeBuoy },
+];
 
 /**
  * THE PEOPLE BEHIND AN OFFERING, as records you can change.
@@ -25,17 +50,25 @@ export function OfferingContacts({
   offeringName,
   contacts,
   canEdit,
+  people,
 }: {
   offeringId: string;
   offeringName: string;
   contacts: OfferingContact[];
   canEdit: boolean;
+  /** Everyone assignable, with their account details. */
+  people: PickablePerson[];
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", role: "", email: "", phone: "" });
+  // You PICK a person and PICK their role. You do not type their email or
+  // phone: those belong to their account and are carried across automatically
+  // (Anir, Jul 28: "why would I want to enter their email and phone? That
+  // should automatically be tied to that account").
+  const [pick, setPick] = useState<string[]>([]);
+  const [role, setRole] = useState(ROLE_OPTIONS[0].value);
 
   async function send(key: string, fn: () => Promise<Response>) {
     setBusy(key);
@@ -58,19 +91,30 @@ export function OfferingContacts({
   }
 
   async function add() {
-    if (!form.name.trim()) {
-      setError("A contact needs a name");
+    const name = pick[0];
+    if (!name) {
+      setError("Pick who you're adding");
       return;
     }
+    const account = people.find(
+      (p) => p.name.toLowerCase() === name.toLowerCase()
+    );
     const ok = await send("add", () =>
       fetch(`/api/offerings/${offeringId}/contacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name,
+          role,
+          // Straight off their account when they have one.
+          email: account?.email || "",
+          phone: "",
+        }),
       })
     );
     if (ok) {
-      setForm({ name: "", role: "", email: "", phone: "" });
+      setPick([]);
+      setRole(ROLE_OPTIONS[0].value);
       setAdding(false);
     }
   }
@@ -83,9 +127,6 @@ export function OfferingContacts({
       )
     );
 
-  const FIELD =
-    "h-9 w-full min-w-0 rounded-lg border border-border-light bg-white px-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none";
-
   return (
     <div className="space-y-3">
       {contacts.length === 0 && !adding && (
@@ -95,23 +136,12 @@ export function OfferingContacts({
         </p>
       )}
 
-      {/* The same fan the cards use, so the people on this offering read the
-          same way everywhere: overlapped faces that separate on hover. */}
-      {contacts.length > 1 && (
-        <PersonFan
-          avatarClassName="h-9 w-9 text-[11px]"
-          overlap={-12}
-          people={contacts.map((c) => ({
-            name: c.name,
-            role: c.role,
-            context: offeringName,
-            email: c.email,
-            phone: c.phone,
-          }))}
-        />
-      )}
-
-      <ul className="space-y-2.5">
+      {/* ONE representation, not two. The fan used to sit above this list,
+          showing the same faces twice on the same card (Anir, Jul 28: "why are
+          you showing me the people's names and the profile pictures? It's
+          redundant"). The list stays, and scrolls once it outgrows the card so
+          a long roster never stretches the rail. */}
+      <ul className="max-h-[268px] space-y-2.5 overflow-y-auto pr-0.5">
         {contacts.map((c) => (
           <li key={c.id} className="flex items-center gap-3">
             {/* Hover a face for who they are and every way to reach them. */}
@@ -163,62 +193,53 @@ export function OfferingContacts({
         </button>
       )}
 
-      {canEdit && adding && (
-        <div className="space-y-2 rounded-xl border border-border-light bg-[var(--surface)] p-3">
-          <input
-            autoFocus
-            className={FIELD}
-            placeholder="Full name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-          />
-          <input
-            className={FIELD}
-            placeholder="Role, e.g. Service delivery POC"
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-          />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input
-              className={FIELD}
-              placeholder="Email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              onKeyDown={(e) => e.key === "Enter" && add()}
-            />
-            <input
-              className={FIELD}
-              placeholder="Phone"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              onKeyDown={(e) => e.key === "Enter" && add()}
+      {/* Adding someone is a dialog, not a stack of inputs wedged into the
+          card. Two decisions: who, and what they do here. */}
+      <Modal
+        open={canEdit && adding}
+        onClose={() => setAdding(false)}
+        title="Add a contact"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className={LABEL}>Who</label>
+            <PeoplePicker
+              people={people}
+              value={pick}
+              onChange={(next) => setPick(next.slice(-1))}
+              emptyLabel="Pick a person"
+              placeholder="Search people in your workspace…"
             />
           </div>
-          <div className="flex items-center gap-2 pt-0.5">
+          <div>
+            <label className={LABEL}>What they do here</label>
+            <ColorSelect
+              value={role}
+              options={ROLE_OPTIONS}
+              onChange={setRole}
+              ariaLabel="Role on this offering"
+            />
+          </div>
+          {error && (
+            <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
+          )}
+          <div className="flex items-center gap-3 pt-1">
+            <span className="text-[12px] text-text-tertiary">
+              Their email and phone come from their account.
+            </span>
             <button
-              onClick={add}
-              disabled={busy === "add"}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-blue-hover disabled:opacity-50"
-            >
-              {busy === "add" && (
-                <Loader2 size={13} strokeWidth={2.2} className="animate-spin" />
-              )}
-              Add contact
-            </button>
-            <button
-              onClick={() => {
-                setAdding(false);
-                setError(null);
-              }}
-              className="text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+              type="button"
+              onClick={() => setAdding(false)}
+              className="ml-auto text-[13.5px] font-semibold text-text-secondary hover:text-text-primary"
             >
               Cancel
             </button>
+            <Button onClick={add} loading={busy === "add"}>
+              Add contact
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {error && (
         <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
