@@ -585,19 +585,45 @@ export function ContactsBrowser({
                   )}
                 </div>
                 {(c.email || c.phone) && (
+                  /* The address IS the button. There used to be an Email and a
+                     Call button at the bottom of the reveal that did exactly
+                     what these two lines already show (Anir, Jul 28: "you don't
+                     need both — you already have it up there, it's kinda
+                     boring, merge it"). In select mode they stay inert text so
+                     they can't fight the card's click-to-select. */
                   <div className="mt-2 pt-2 border-t border-border-light space-y-1">
-                    {c.email && (
-                      <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
-                        <Mail size={12} strokeWidth={1.6} className="shrink-0" />
-                        <span className="truncate">{c.email}</span>
-                      </div>
-                    )}
-                    {c.phone && (
-                      <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary tnum">
-                        <PhoneCall size={12} strokeWidth={1.6} className="shrink-0" />
-                        <span className="truncate">{c.phone}</span>
-                      </div>
-                    )}
+                    {c.email &&
+                      (selectMode ? (
+                        <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+                          <Mail size={12} strokeWidth={1.6} className="shrink-0" />
+                          <span className="min-w-0 break-all">{c.email}</span>
+                        </div>
+                      ) : (
+                        <a
+                          href={`mailto:${c.email}`}
+                          title={`Email ${c.name}`}
+                          className="relative z-10 flex w-fit max-w-full cursor-pointer items-center gap-1.5 text-[12px] text-text-secondary transition-colors hover:text-blue-primary"
+                        >
+                          <Mail size={12} strokeWidth={1.6} className="shrink-0 text-blue-primary" />
+                          <span className="min-w-0 break-all">{c.email}</span>
+                        </a>
+                      ))}
+                    {c.phone &&
+                      (selectMode ? (
+                        <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary tnum">
+                          <PhoneCall size={12} strokeWidth={1.6} className="shrink-0" />
+                          <span className="min-w-0">{c.phone}</span>
+                        </div>
+                      ) : (
+                        <a
+                          href={tel(c.phone)}
+                          title={`Call ${c.name}`}
+                          className="relative z-10 flex w-fit max-w-full cursor-pointer items-center gap-1.5 text-[12px] tnum text-text-secondary transition-colors hover:text-blue-primary"
+                        >
+                          <PhoneCall size={12} strokeWidth={1.6} className="shrink-0 text-blue-primary" />
+                          <span className="min-w-0">{c.phone}</span>
+                        </a>
+                      ))}
                   </div>
                 )}
               </>
@@ -632,7 +658,8 @@ export function ContactsBrowser({
 
             // Browse mode: the voice-station scale-up hover (Suren: "do that for
             // the customers and the contacts too"). Resting card is unchanged; on
-            // hover it pops out and reveals engagement + one-tap Email/Call.
+            // hover it pops out and reveals engagement; the email and phone at
+            // the top are themselves the one-tap actions.
             const touches = c.touches ?? 0;
             return (
               <HoverExpandCard
@@ -705,26 +732,6 @@ export function ContactsBrowser({
                         <OutcomeBadge outcome={c.lastOutcome} />
                       </div>
                     )}
-                    <div className="mt-3 flex items-center gap-2">
-                      {c.email && (
-                        <a
-                          href={`mailto:${c.email}`}
-                          className="relative z-10 inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
-                        >
-                          <Mail size={13} strokeWidth={1.9} />
-                          Email
-                        </a>
-                      )}
-                      {c.phone && (
-                        <a
-                          href={tel(c.phone)}
-                          className="relative z-10 inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
-                        >
-                          <PhoneCall size={13} strokeWidth={1.9} />
-                          Call
-                        </a>
-                      )}
-                    </div>
                   </>
                 }
               />
