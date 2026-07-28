@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, X, Loader2 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
+import { PersonFan } from "@/components/ui/PersonFan";
 import type { OfferingContact } from "@/lib/offerings";
 
 /**
@@ -92,6 +93,22 @@ export function OfferingContacts({
           Nobody is listed yet. Add the person a rep should call when a customer
           asks something the deck does not answer.
         </p>
+      )}
+
+      {/* The same fan the cards use, so the people on this offering read the
+          same way everywhere: overlapped faces that separate on hover. */}
+      {contacts.length > 1 && (
+        <PersonFan
+          avatarClassName="h-9 w-9 text-[11px]"
+          overlap={-12}
+          people={contacts.map((c) => ({
+            name: c.name,
+            role: c.role,
+            context: offeringName,
+            email: c.email,
+            phone: c.phone,
+          }))}
+        />
       )}
 
       <ul className="space-y-2.5">

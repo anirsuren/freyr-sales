@@ -29,7 +29,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
+import { PersonFan } from "@/components/ui/PersonFan";
 import {
   AreaChart,
   DonutChart,
@@ -40,7 +40,6 @@ import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import {
   SearchPriority,
@@ -233,21 +232,13 @@ function PocStrip({
       <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary shrink-0">
         POC
       </span>
-      <span className="flex items-center -space-x-1.5">
-        {pocs.map((name) => (
-          <PersonHoverCard
-            key={name}
-            name={name}
-            role="Service delivery POC"
-            context={offeringName}
-          >
-            <Avatar
-              name={name}
-              className="w-6 h-6 text-[8px] ring-2 ring-[color:var(--white)]"
-            />
-          </PersonHoverCard>
-        ))}
-      </span>
+      <PersonFan
+        people={pocs.map((name) => ({
+          name,
+          role: "Service delivery POC",
+          context: offeringName,
+        }))}
+      />
     </div>
   );
 }
@@ -1328,32 +1319,25 @@ export function OfferingsBrowser({
                               </span>
                               <OwnershipChip owners={o.owners} myMemberId={myMemberId} />
                             </span>
-                            {o.poc &&
-                              (() => {
-                                const pocs = parsePocs(o.poc);
-                                return (
-                                  <span
-                                    className="mt-1 flex items-center gap-1.5 min-w-0"
-                                    title={`POC: ${o.poc}`}
-                                    aria-label={`POC: ${o.poc}`}
-                                  >
-                                    <span className="flex items-center -space-x-1">
-                                      {pocs.map((n) => (
-                                        <Avatar
-                                          key={n}
-                                          name={n}
-                                          className="w-[18px] h-[18px] text-[7px] ring-2 ring-[color:var(--white)]"
-                                        />
-                                      ))}
-                                    </span>
-                                    {pocs.length === 1 && (
-                                      <span className="min-w-0 break-words text-[11px] text-text-tertiary">
-                                        {pocs[0]}
-                                      </span>
-                                    )}
-                                  </span>
-                                );
-                              })()}
+                            {/* Same fan as the tiles: overlapped faces that
+                                slide apart on hover, each one openable. */}
+                            {o.poc && (
+                              <span
+                                className="mt-1 flex min-w-0 items-center gap-1.5"
+                                aria-label={`POC: ${o.poc}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <PersonFan
+                                  avatarClassName="h-[18px] w-[18px] text-[7px]"
+                                  overlap={-6}
+                                  people={parsePocs(o.poc).map((n) => ({
+                                    name: n,
+                                    role: "Service delivery POC",
+                                    context: o.offering_name,
+                                  }))}
+                                />
+                              </span>
+                            )}
                           </span>
                         </Link>
                       </td>
