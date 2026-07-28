@@ -7,6 +7,7 @@ import {
   commitOfferingsChange,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { canEditOffering } from "@/lib/offeringOwnership";
 import { getCurrentUser } from "@/lib/currentUser";
 import { GENERIC_USER_IDENTITY } from "@/lib/userIdentity";
 import {
@@ -28,7 +29,7 @@ async function uploaderName(): Promise<string | null> {
 }
 
 const FORBIDDEN = NextResponse.json(
-  { error: "View only: admin access required" },
+  { error: "View only: you can edit an offering you own, or ask an admin" },
   { status: 403 }
 );
 
@@ -55,8 +56,20 @@ export async function PATCH(
   // descriptions, mappings, delete — remains admin/editor only.
   const materialsOnly =
     Object.keys(body).length === 1 && Array.isArray(body.materials);
-  if (!materialsOnly && !(await canManageOfferings())) return FORBIDDEN;
   const { id } = await params;
+  if (!materialsOnly) {
+    // Everything beyond a material upload is admin/editor, OR the offering's
+    // own owner: the POC named on THIS offering may edit THIS offering (Anir,
+    // Jul 28: "make sure that someone can edit the content of the
+    // Freyr.Register offering page... if he owns that offering"). Resolved from
+    // the STORED offering, never from the request body, so a caller cannot
+    // hand themselves ownership by posting a new POC. Deleting stays
+    // admin/editor only: an owner curates their offering, they do not get to
+    // remove it from the catalogue.
+    const existing = getOffering(id);
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await canEditOffering(existing.poc))) return FORBIDDEN;
+  }
   // "Who added this" is stamped here, from the session — never from the body.
   // Existing rows keep the attribution already on file, so re-saving the list
   // (which every material edit does) can't re-credit someone else's upload.

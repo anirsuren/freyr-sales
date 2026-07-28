@@ -32,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OFFERING_CATALOGUE_ORDER } from "@/lib/offeringCatalogue";
 
 // A branded mark for an offering — a curated glyph on a deterministic gradient,
 // so every offering reads as its own product (Anir, Jul 8: "every offering
@@ -79,46 +80,9 @@ function hash(s: string): number {
 // The same glyph + hue an offering gets everywhere, exposed so text callouts of
 // a service (list columns, tags) can carry its icon and colour instead of
 // rendering as plain text (standing rule: category chips are colour + icon).
-/** Freyr's catalogue, in the order `lib/offerings.ts` seeds it. Position in
- *  this list, NOT a hash, decides an offering's glyph, which is the only way to
- *  guarantee that no two offerings ever share one. Hashing gave every offering
- *  a unique icon+colour PAIR but still repeated glyphs across the set: Shield
- *  landed on both Freya.Intelligence and Freya.GRR-PAC, Boxes on Submit and
- *  Artwork, Stamp on RTQ and Docs (Anir, Jul 28: "no two icons should be the
- *  same for the offerings"). A name not in this list falls back to the hash,
- *  which is right for offerings created in-app after the seed. */
-const CATALOGUE_ORDER: string[] = [
-  "Freya.Register",
-  "Freya.Intelligence",
-  "Freya.GRR-PAC (Global Regulatory Requirements for Post Approval Changes)",
-  "Freya.Label",
-  "Freya.Submit",
-  "Freya.Artwork",
-  "Freya.RTQ",
-  "Freya.RA Changes",
-  "Freya.Docs",
-  "Freya.Register + Pia + Mia",
-  "Freya.GRR-PAC + Via",
-  "Freya.Register + Pia + Mia + Via",
-  "Freya.Agents",
-  "Freya.OmniObject",
-  "Publishing",
-  "Submissions Planning & Management",
-  "Label Management",
-  "Artwork Management",
-  "Regulatory Affairs Strategy",
-  "Regulatory Affairs - Initial Applications & Market Access",
-  "Local Regulatory Affairs",
-  "Post-Approval Regulatory Affairs",
-  "Regulatory Intelligence Services",
-  "Pharmacovigilance",
-  "Medical Writing - Clinical",
-  "Medical Writing - Non Clinical & Toxicology",
-  "Compliance, Audit and Validation",
-  "Medical & Scientific Communication",
-  "RIMS Data Services",
-];
-const CATALOGUE_SLOT = new Map(CATALOGUE_ORDER.map((n, i) => [n, i]));
+const CATALOGUE_SLOT = new Map(
+  OFFERING_CATALOGUE_ORDER.map((n, i) => [n, i] as const)
+);
 
 export function offeringMark(name: string): {
   icon: LucideIcon;

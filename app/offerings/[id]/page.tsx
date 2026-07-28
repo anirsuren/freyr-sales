@@ -24,7 +24,7 @@ import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { OfferingActions } from "@/components/offerings/OfferingActions";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
-import { canManageOfferings } from "@/lib/role";
+import { canEditOffering } from "@/lib/offeringOwnership";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
@@ -126,7 +126,13 @@ export default async function OfferingDetailPage({
 
   const isMapped =
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;
-  const admin = await canManageOfferings();
+  // Editing this offering's content is open to workspace admins/editors AND to
+  // the person who OWNS it, so an offering owner can upload their own sales
+  // materials without waiting for an admin grant (Anir, Jul 28: "make sure that
+  // someone can edit the content of the Freyr.Register offering page to upload
+  // his sales materials, etc., if he owns that offering"). Owning one offering
+  // never grants rights over any other.
+  const admin = await canEditOffering(o.poc);
   const commercialActionsEnabled = !isOfferingsOnly(getDataMode());
 
   // The internal person accountable for this offering — the category owner if

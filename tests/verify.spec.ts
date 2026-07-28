@@ -5757,4 +5757,97 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(box).not.toBeNull();
     expect(box!.height).toBeLessThan(360);
   });
+
+  test("350 — every offering has its own icon, and the icon catalogue cannot drift", async () => {
+    // Icons are assigned by POSITION in lib/offeringCatalogue.ts, not by a hash
+    // of the name, because a hash cannot guarantee uniqueness and demonstrably
+    // repeated glyphs across the set (Anir, Jul 28: "no two icons should be the
+    // same for the offerings"). That guarantee only holds while the list matches
+    // the SEED: a rename or a new seeded offering silently falls back to the
+    // hash and can collide again, which is exactly what happened when Freya.Doc
+    // became Freya.Docs.
+    //
+    // This reads the seed FILE rather than the running API on purpose. The API
+    // reflects whatever the in-memory store holds, which in dev includes
+    // offerings created by earlier tests, and a runtime-created offering is
+    // legitimately allowed to fall back to the hash.
+    const fs = await import("node:fs/promises");
+    const seed = await fs.readFile("lib/offerings.ts", "utf8");
+    const seeded = [...seed.matchAll(/off\("of-\d+",\s*[A-Z_]+,\s*"((?:[^"\\]|\\.)*)"/g)].map(
+      (m) => m[1].replace(/\\"/g, '"')
+    );
+    expect(seeded.length).toBeGreaterThan(20);
+
+    const { OFFERING_CATALOGUE_ORDER } = await import("../lib/offeringCatalogue");
+    const missing = seeded.filter((n) => !OFFERING_CATALOGUE_ORDER.includes(n));
+    const stale = OFFERING_CATALOGUE_ORDER.filter((n) => !seeded.includes(n));
+    expect(
+      missing,
+      `seeded offerings missing from lib/offeringCatalogue.ts (they fall back to the hash and can collide): ${missing.join(", ")}`
+    ).toEqual([]);
+    expect(
+      stale,
+      `lib/offeringCatalogue.ts names offerings the seed no longer has: ${stale.join(", ")}`
+    ).toEqual([]);
+
+    // And the assignment must have room to stay collision-free. Icons are taken
+    // as ICONS[index % ICONS.length], so every catalogue entry gets its own
+    // glyph exactly while the catalogue is no larger than the icon list. Read
+    // as text rather than imported: OfferingIcon.tsx is a TSX component and
+    // pulls lucide-react, which will not load in this Node context.
+    const iconSrc = await fs.readFile("components/ui/OfferingIcon.tsx", "utf8");
+    const iconList = iconSrc.match(/const ICONS: LucideIcon\[\] = \[([\s\S]*?)\n\];/);
+    expect(iconList, "ICONS array not found in OfferingIcon.tsx").toBeTruthy();
+    const iconCount = iconList![1]
+      .split(",")
+      .map((x) => x.replace(/\/\/.*$/gm, "").trim())
+      .filter(Boolean).length;
+    expect(
+      iconCount,
+      `${seeded.length} offerings but only ${iconCount} icons: two of them would share a glyph. Add more icons to OfferingIcon.tsx.`
+    ).toBeGreaterThanOrEqual(seeded.length)
+  });
+
+  test("351 — an offering owner may edit their own offering, and only theirs", async () => {
+    // Admins/editors edit everything; on top of that the POC named on an
+    // offering may edit THAT offering, so an owner can upload their own sales
+    // materials without waiting for an admin grant (Anir, Jul 28: "make sure
+    // that someone can edit the content of the Freyr.Register offering page to
+    // upload his sales materials, etc., if he owns that offering").
+    const { ownsOffering, pocNames } = await import("../lib/offeringOwnershipMatch");
+    const identified = (name: string, email: string | null = null) => ({
+      name,
+      email,
+      isIdentified: true,
+    });
+
+    // Owns it, by the name on Suren's sheet.
+    expect(ownsOffering("Eswar Subramanian", identified("Eswar Subramanian"))).toBe(true);
+    // Owns it, when their display name differs but the verified email matches.
+    expect(
+      ownsOffering("Eswar Subramanian", identified("E. Subramanian", "eswar.subramanian@freyrsolutions.com"))
+    ).toBe(true);
+    // Surname-first in the sheet still matches a first-name-first session.
+    expect(ownsOffering("Inayat, Tanudeep", identified("Tanudeep Inayat"))).toBe(true);
+    // One of two listed owners is still an owner.
+    expect(
+      ownsOffering("Mukundh Chouthoy / Suresh Modugu", identified("Suresh Modugu"))
+    ).toBe(true);
+
+    // Owning one offering grants nothing on another.
+    expect(ownsOffering("Raj Vinesh", identified("Eswar Subramanian"))).toBe(false);
+    // A partial-name collision is not ownership.
+    expect(ownsOffering("Eswar Subramanian", identified("Eswar"))).toBe(false);
+    // An unowned offering is owned by nobody, and a blank POC never matches.
+    expect(ownsOffering("", identified("Eswar Subramanian"))).toBe(false);
+    expect(ownsOffering(null, identified("Eswar Subramanian"))).toBe(false);
+    // An unidentified session owns nothing, even against a blank POC.
+    expect(
+      ownsOffering("Eswar Subramanian", { name: "Eswar Subramanian", email: null, isIdentified: false })
+    ).toBe(false);
+
+    // The sheet separates two people with a slash; a comma is part of one name.
+    expect(pocNames("Mukundh Chouthoy / Suresh Modugu")).toHaveLength(2);
+    expect(pocNames("Inayat, Tanudeep")).toHaveLength(1);
+  });
 });
