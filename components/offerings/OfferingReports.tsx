@@ -9,7 +9,6 @@ import {
   CircleSlash,
   Crown,
   DollarSign,
-  Hammer,
   KeyRound,
   Layers,
   ReceiptText,
@@ -139,12 +138,10 @@ function renewalRunway(line: OfferingRevenueLine, now: Date): number {
 export function OfferingReports({
   report,
   offeringName,
-  showExample = false,
 }: {
   report: OfferingReport;
   offeringName: string;
   /** In-progress (mock) mode only: show a labelled sample report when empty. */
-  showExample?: boolean;
 }) {
   if (report.customerCount === 0) {
     return (
@@ -156,60 +153,7 @@ export function OfferingReports({
             customer revenue, licenses, contract coverage, and renewals will appear here.
           </p>
         </Card>
-        {/* In-progress mode only (Suren: "show revenue so that people know what
-            it would look like"), a clearly-labelled sample of the report this
-            tab becomes once accounts use the offering. Never rendered in live
-            mode, and the empty branch means it never sits next to real data. */}
-        {showExample && (
-          <div className="mt-4">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10.5px] font-semibold"
-                style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}
-              >
-                <Hammer size={11} strokeWidth={2.1} />
-                Example preview
-              </span>
-              <p className="text-[11px] text-text-tertiary">
-                Sample numbers so you can see what this report will look like, not your data.
-              </p>
-            </div>
-            <div className="rounded-xl border-2 border-dashed border-[#7C3AED]/30 p-4">
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    ["Annual revenue", "$340K"],
-                    ["Customers", "3"],
-                    ["Licensed seats", "45"],
-                  ] as [string, string][]
-                ).map(([label, value]) => (
-                  <div key={label} className="rounded-lg bg-surface px-2.5 py-2">
-                    <p className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                      {label}
-                    </p>
-                    <p className="mt-0.5 text-[14px] font-semibold text-text-primary tnum">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 space-y-1.5">
-                {(
-                  [
-                    ["Acme Biotech", "$180K"],
-                    ["Northstar Pharma", "$95K"],
-                    ["Helix Labs", "$65K"],
-                  ] as [string, string][]
-                ).map(([name, value]) => (
-                  <div key={name} className="flex items-center gap-2 text-[12px]">
-                    <CompanyLogo name={name} className="w-[18px] h-[18px] text-[7px] shrink-0" />
-                    <span className="min-w-0 flex-1 break-words font-medium text-text-primary">{name}</span>
-                    <span className="tnum text-text-secondary">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </>
+              </>
     );
   }
 

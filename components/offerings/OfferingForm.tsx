@@ -30,6 +30,7 @@ import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { offeringMark } from "@/components/ui/OfferingIcon";
 import { parseCapabilities } from "@/components/offerings/OfferingCapabilities";
 import { cn } from "@/lib/utils";
+import { sectionId } from "@/lib/sectionId";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -238,7 +239,10 @@ function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-border-light bg-white shadow-card">
+    <section
+      id={sectionId(title)}
+      className="scroll-mt-24 overflow-hidden rounded-xl border border-border-light bg-white shadow-card"
+    >
       <header className="flex items-start gap-3 border-b border-border-light bg-surface/60 px-4 py-3">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
           <Icon size={15} strokeWidth={1.9} />
@@ -534,7 +538,11 @@ export function OfferingForm({
     );
 
   return (
-    <div className="max-w-[880px] space-y-3">
+    // Width belongs to the PAGE, not the form. This used to be a hard
+    // max-w-[880px], which on a normal monitor pinned every field to the left
+    // edge with a third of the screen empty beside it (Anir, Jul 28: "I don't
+    // know why everything is aligned to the left").
+    <div className="w-full space-y-3">
       {/* ------------------------------------------------------ the basics */}
       <FormSection
         icon={Package}
@@ -1084,7 +1092,10 @@ export function OfferingForm({
         ))}
       </FormSection>
 
-      <div className="flex items-center gap-3 pt-1">
+      {/* Save follows you down the page. The form is five sections tall, so a
+          plain button at the bottom meant scrolling the whole way back to
+          commit an edit made near the top. */}
+      <div className="sticky bottom-0 z-20 -mx-1 flex items-center gap-3 rounded-xl border border-border-light bg-white/95 px-4 py-3 shadow-card backdrop-blur">
         <Button onClick={submit} loading={saving}>
           {isEdit ? "Save changes" : "Save offering"}
         </Button>
@@ -1097,6 +1108,9 @@ export function OfferingForm({
         >
           Cancel
         </button>
+        <span className="ml-auto text-[12px] text-text-tertiary">
+          {isEdit ? "Changes apply the moment you save." : "Nothing is saved until you press save."}
+        </span>
       </div>
 
       {isEdit && (

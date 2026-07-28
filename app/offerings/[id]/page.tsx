@@ -28,6 +28,7 @@ import { canEditOffering } from "@/lib/offeringOwnership";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
+import { pocNames } from "@/lib/pocNames";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
@@ -145,6 +146,9 @@ export default async function OfferingDetailPage({
   // The internal person accountable for this offering — the category owner if
   // set, else the delivery POC. Only render the owner card when one is real.
   const ownerName = o.offeringCategory?.owner || o.poc || "";
+  // A cell can name several people. Each gets their own row and their own
+  // face; never merge them into one.
+  const contacts = pocNames(ownerName);
   const ownerRole = o.offeringCategory?.owner
     ? `${o.offeringCategory.name} owner`
     : o.poc
@@ -341,7 +345,6 @@ export default async function OfferingDetailPage({
             offeringName={o.offering_name}
             // In-progress mode shows a labelled sample report when there's no
             // revenue yet, so people know what the tab will look like.
-            showExample={getDataMode() === "mock"}
           />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
@@ -371,19 +374,31 @@ export default async function OfferingDetailPage({
             {/* The contact named on Suren's master sheet. Display only: it
                 carries no permission, which is why it sits apart from the
                 owners list above. */}
-            {ownerName && (
-              <SectionCard title="Contact for this offering" icon={UserRound}>
-                <div className="flex items-center gap-3">
-                  <Avatar name={ownerName} className="w-10 h-10 text-[14px]" />
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-semibold text-text-primary break-words">
-                      {ownerName}
-                    </p>
-                    <p className="text-[12.5px] text-text-secondary break-words">
-                      {ownerRole}
-                    </p>
-                  </div>
-                </div>
+            {contacts.length > 0 && (
+              <SectionCard
+                title={contacts.length > 1 ? "Contacts for this offering" : "Contact for this offering"}
+                icon={UserRound}
+              >
+                {/* ONE ROW PER PERSON. The sheet packs several contacts into a
+                    single cell; rendering that cell as one avatar merged two
+                    people into a made-up person (Anir, Jul 28: "you're having
+                    two people, but you're showing one profile picture and
+                    combining their names"). */}
+                <ul className="space-y-3">
+                  {contacts.map((person) => (
+                    <li key={person} className="flex items-center gap-3">
+                      <Avatar name={person} className="w-10 h-10 shrink-0 text-[14px]" />
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold text-text-primary break-words">
+                          {person}
+                        </p>
+                        <p className="text-[12.5px] text-text-secondary break-words">
+                          {ownerRole}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </SectionCard>
             )}
 

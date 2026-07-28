@@ -55,6 +55,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 // dropdowns (Suren: "color code all the dropdowns"). Shared with the
 // master-list managers so colours match everywhere.
 import { FILTER_PALETTE, listAccent } from "./filterPalette";
+import { pocNames as parsePocs } from "@/lib/pocNames";
 // A customer family is an IDENTITY, so it never borrows a status colour: red
 // means a problem, green means healthy, #C2410C means caution (Anir, Jul 28:
 // "red means horrible, red means negative... red, green and yellow are
@@ -204,18 +205,6 @@ export type OfferingCommerce = {
   };
 };
 
-// Multi-POC values arrive as one string. Freyr's master sheet separates two
-// people with a SLASH ("Sathya K / Harshvardhan Gummadi"), never a comma, and
-// one owner is written surname-first with a comma ("Inayat, Tanudeep").
-// Splitting on the comma tore that single person into two nameless avatars, so
-// only the slash (and an explicit "&") separates people here. Display-only:
-// never alter or complete a name, the sheet spelling is the source of truth.
-function parsePocs(poc: string): string[] {
-  return poc
-    .split(/[/&]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 // The hover behind a POC avatar, who they are + a straight line to them on
 // Teams (POCs are internal Freyr people, so a Teams chip is always right).

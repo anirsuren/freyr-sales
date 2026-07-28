@@ -29,7 +29,7 @@ async function uploaderName(): Promise<string | null> {
 }
 
 const FORBIDDEN = NextResponse.json(
-  { error: "View only: you can edit an offering you own, or ask an admin" },
+  { error: "Take ownership of this offering to edit it, or ask an admin" },
   { status: 403 }
 );
 
@@ -47,29 +47,17 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  // Sales-material uploads are open to every signed-in workspace member —
-  // offering owners (Eeswar first, for Freya.Register) join via domain
-  // auto-join as "sales" and must be able to upload their own assets without
-  // waiting for an admin grant (Jul 27 call: "all he would need right now is
-  // access to upload the materials on this page"). The middleware has already
-  // authenticated the request. Everything else about an offering — name,
-  // descriptions, mappings, delete — remains admin/editor only.
-  const materialsOnly =
-    Object.keys(body).length === 1 && Array.isArray(body.materials);
   const { id } = await params;
-  if (!materialsOnly) {
-    // Everything beyond a material upload is admin/editor, OR the offering's
-    // own owner: the POC named on THIS offering may edit THIS offering (Anir,
-    // Jul 28: "make sure that someone can edit the content of the
-    // Freyr.Register offering page... if he owns that offering"). Resolved from
-    // the STORED offering, never from the request body, so a caller cannot
-    // hand themselves ownership by posting a new POC. Deleting stays
-    // admin/editor only: an owner curates their offering, they do not get to
-    // remove it from the catalogue.
-    const existing = getOffering(id);
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (!(await canEditOffering(existing))) return FORBIDDEN;
-  }
+  // ONE rule for every write: you must own this offering. Uploading a sales
+  // material is editing the offering's content, so it goes through the same
+  // gate rather than the old "any signed-in member may attach materials"
+  // shortcut, which let anyone in the workspace change any offering's assets.
+  // An owner is granted by an admin; an admin claims instantly for themselves.
+  // Resolved from the STORED offering, never the request body, so a caller
+  // cannot hand themselves ownership by posting a new POC.
+  const existing = getOffering(id);
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canEditOffering(existing))) return FORBIDDEN;
   // "Who added this" is stamped here, from the session — never from the body.
   // Existing rows keep the attribution already on file, so re-saving the list
   // (which every material edit does) can't re-credit someone else's upload.

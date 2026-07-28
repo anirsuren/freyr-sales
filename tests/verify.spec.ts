@@ -5894,5 +5894,38 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(isOfferingOwner({ owners: [] }, "member-1")).toBe(false);
   });
 
+  test("353 — every offering's Reports tab shows a real book, never a labelled sample", async ({
+    page,
+    request,
+  }) => {
+    // Anir, Jul 28: "we don't need example preview... just put fake shit, just
+    // be like it looks real. It's on mock mode anyway. Pretend there's revenue
+    // for all of them." So in the demo seed EVERY offering carries customers,
+    // licences and contracts, and the word "example" appears nowhere.
+    const list = await (await request.get(`${BASE}/api/offerings`)).json();
+    const offerings = (list.offerings || list) as { id: string }[];
+    expect(offerings.length).toBeGreaterThan(20);
+
+    // Check a spread across the catalogue rather than all 29, to keep the suite
+    // quick, plus the first and the last so the ends are never missed.
+    const sample = [
+      offerings[0],
+      offerings[3],
+      offerings[10],
+      offerings[17],
+      offerings[offerings.length - 1],
+    ];
+    for (const o of sample) {
+      await page.goto(`${BASE}/offerings/${o.id}?tab=reports`);
+      await expect(page.getByText("No revenue yet")).toHaveCount(0);
+      await expect(page.getByText(/example preview/i)).toHaveCount(0);
+      await expect(
+        page.getByText("booked across customers", { exact: false })
+      ).toBeVisible();
+      await expect(
+        page.getByText("seats under contract", { exact: false })
+      ).toBeVisible();
+    }
+  });
 
 });

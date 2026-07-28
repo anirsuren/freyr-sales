@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { OFFERING_CATALOGUE_ORDER } from "./offeringCatalogue";
 import { dirname, join } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { MOCK_PITCHES, MOCK_MATCHING_OUTPUT, MOCK_FREYR_KB } from "./claude";
@@ -263,6 +264,93 @@ function seed(): MockStore {
     { id: "012", company: "Orion Vaccines", size: "mid", industry: "Biotechnology", geo: "United States (Rockville, MD)", csum: "Vaccine developer, pandemic-preparedness portfolio, EUA experience.", contact: "Dr. Hana Kim", title: "VP Regulatory Strategy", role: "Regulatory Affairs", csumc: "Led multiple EUAs; values speed and agency relationships.", service: "Regulatory Intelligence", score: 8, outcome: "interested", days: 16, note: "Wants global guidance monitoring.", follow: 5 },
   ];
 
+  // EVERY OFFERING CARRIES REAL-LOOKING COMMERCIALS IN THE DEMO.
+  //
+  // The Reports tab used to sit empty for 27 of the 29 offerings, so it showed
+  // an "Example preview" card of obviously fake numbers instead. Anir, Jul 28:
+  // "we don't need example preview... just put fake shit, just be like it looks
+  // real. It's on mock mode anyway. Pretend there's revenue for all of them."
+  //
+  // So the DEMO seed gives every offering genuine adoption: a handful of the
+  // seeded accounts using it, with licences, project fees and retainers on real
+  // dated contracts. It is all derived deterministically from the offering id,
+  // so the same offering shows the same book on every boot and the totals on
+  // the portfolio report always reconcile with the per-offering pages.
+  //
+  // LIVE MODE IS UNTOUCHED. This runs inside the mock seed only, so a real
+  // workspace still starts empty and never shows a number nobody earned.
+  const DEMO_ACCOUNTS = specs.map((x) => `cust-${x.id}`);
+  // The seeded catalogue, in order. Sourced from the same single list the
+  // offering icons use, so it cannot drift out of sync with the catalogue.
+  const DEMO_OFFERING_IDS = OFFERING_CATALOGUE_ORDER.map(
+    (_, i) => `of-${String(i + 1).padStart(3, "0")}`
+  );
+  function seedCommercials(offeringId: string) {
+    // Stable pseudo-random from the id: same catalog, same book, every time.
+    let h = 0;
+    for (let i = 0; i < offeringId.length; i++)
+      h = (h * 31 + offeringId.charCodeAt(i)) >>> 0;
+    const pick = (n: number) => (h = (h * 1103515245 + 12345) >>> 0) % n;
+
+    const accountCount = 2 + pick(3); // 2 to 4 accounts on every offering
+    const chosen: string[] = [];
+    for (let i = 0; i < accountCount; i++) {
+      const c = DEMO_ACCOUNTS[pick(DEMO_ACCOUNTS.length)];
+      if (!chosen.includes(c)) chosen.push(c);
+    }
+    // Contract dates are RELATIVE to today, not pinned to a calendar year, so
+    // the renewal chart never drifts into a wall of $0 months as time passes.
+    // A licence signed `age` months ago renews `12 - age` months from now, so
+    // spreading `age` over the year spreads the renewals over the year too.
+    const monthsFromNow = (n: number) => {
+      const d = new Date(NOW);
+      d.setUTCMonth(d.getUTCMonth() + n, 1);
+      return d.toISOString().slice(0, 10);
+    };
+    return chosen.map((customerId, i) => {
+      const seats = 15 + pick(70);
+      const perSeat = 6000 + pick(5) * 1000;
+      const age = 1 + pick(11); // signed 1 to 11 months ago
+      const lines = [
+        {
+          id: `rev-${offeringId}-${i}-l`,
+          revenue_type: "license" as const,
+          amount: seats * perSeat,
+          num_licenses: seats,
+          start_date: monthsFromNow(-age),
+          end_date: monthsFromNow(12 - age),
+          description: "Platform licences for the regulatory team.",
+        },
+      ];
+      // Roughly half the accounts also carry services or a project, on their
+      // own term so a single account can have two different renewal dates.
+      if (pick(2) === 0) {
+        const svcAge = 1 + pick(11);
+        lines.push({
+          id: `rev-${offeringId}-${i}-s`,
+          revenue_type: (pick(2) === 0 ? "annual_service" : "project") as "license",
+          amount: (4 + pick(18)) * 10000,
+          num_licenses: null as unknown as number,
+          start_date: monthsFromNow(-svcAge),
+          end_date: monthsFromNow(12 - svcAge),
+          description: "Implementation and ongoing regulatory support.",
+        });
+      }
+      return { customerId, offeringId, revenue_lines: lines };
+    });
+  }
+
+  // Fan the generated book out per account so each customer carries its own
+  // `offering_usage`, which is where the reports read from.
+  const generatedUsage = new Map<string, { offering_id: string; revenue_lines: unknown[] }[]>();
+  for (const offeringId of DEMO_OFFERING_IDS) {
+    for (const row of seedCommercials(offeringId)) {
+      const list = generatedUsage.get(row.customerId) || [];
+      list.push({ offering_id: row.offeringId, revenue_lines: row.revenue_lines });
+      generatedUsage.set(row.customerId, list);
+    }
+  }
+
   for (const s of specs) {
     const cid = `cust-${s.id}`;
     const ctid = `cont-${s.id}`;
@@ -288,7 +376,20 @@ function seed(): MockStore {
         : s.inUse
         ? { offerings_in_use: s.inUse }
         : {}),
-      ...(s.usage ? { offering_usage: s.usage } : {}),
+      // Hand-written usage wins; the generated book fills in the rest so no
+      // offering's report is empty in the demo.
+      offering_usage: [
+        ...(s.usage || []),
+        ...((generatedUsage.get(cid) || []).filter(
+          (g) => !(s.usage || []).some((u) => u.offering_id === g.offering_id)
+        ) as typeof s.usage extends undefined ? never[] : NonNullable<typeof s.usage>),
+      ],
+      offerings_in_use: Array.from(
+        new Set([
+          ...(s.inUse || []),
+          ...(generatedUsage.get(cid) || []).map((g) => g.offering_id),
+        ])
+      ),
     });
     contacts.push({
       id: ctid,

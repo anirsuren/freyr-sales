@@ -1,6 +1,5 @@
 import "server-only";
 
-import { getRole } from "./role";
 import { getCurrentUser } from "./currentUser";
 import { isOfferingOwner, type Offering } from "./offerings";
 
@@ -26,8 +25,13 @@ import { isOfferingOwner, type Offering } from "./offerings";
 export async function canEditOffering(
   offering: Pick<Offering, "owners"> | null | undefined
 ): Promise<boolean> {
-  const role = await getRole();
-  if (role === "admin" || role === "editor") return true;
+  // OWNERSHIP IS THE ONLY KEY, for everybody. A workspace admin does not get to
+  // edit an offering merely by being an admin (Anir, Jul 28: "the edit offering
+  // button shouldn't even open up until I take ownership"). What being an admin
+  // buys you is the RIGHT TO TAKE IT: an admin's own claim is granted on the
+  // spot, and they can assign or revoke anyone else's. So the rule a person
+  // reads on screen is the rule the server enforces, with no invisible
+  // exception for whoever happens to hold the admin role.
   if (!offering) return false;
   const user = await getCurrentUser();
   return isOfferingOwner(offering, user.memberId);
