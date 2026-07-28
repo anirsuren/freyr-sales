@@ -865,8 +865,8 @@ export function OfferingsBrowser({
                         <DonutChart
                           syncId={mixSyncId}
                           segments={revenueSegments}
-                          size={78}
-                          thickness={10}
+                          size={88}
+                          thickness={11}
                           format="money"
                           centerLabel={String(com.customerCount)}
                           centerSub={
@@ -882,7 +882,7 @@ export function OfferingsBrowser({
                         </p>
                         <BarChart
                           data={mixBars}
-                          height={78}
+                          height={118}
                           format={hasSeats ? "number" : "money"}
                           unit={hasSeats ? "seats" : undefined}
                           tipRecordsLabel={

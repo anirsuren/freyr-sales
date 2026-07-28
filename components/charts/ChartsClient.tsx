@@ -1388,7 +1388,19 @@ export function DonutChart({
       )
     : naturalSize;
   const centerLabelY = size / 2 - (centerSub ? (compactCenter ? 7 : 8) : 0);
-  const centerSubY = size / 2 + (compactCenter ? 14 : 16);
+  const centerSubOffset = compactCenter ? 14 : 16;
+  const centerSubY = size / 2 + centerSubOffset;
+  // The hole is a CIRCLE, so the width available to the sub-label is the chord
+  // at its own baseline — not the full inner diameter. "customers" under a 2
+  // in a 78px ring measured ~50px against ~50px of chord and sat right on the
+  // stroke (Anir, Jul 28: "the text is literally getting blocked"). Same
+  // fit-to-space treatment the centre total already gets.
+  const innerRadius = Math.max(0, size / 2 - thickness);
+  const subChord =
+    2 * Math.sqrt(Math.max(0, innerRadius ** 2 - centerSubOffset ** 2)) * 0.82;
+  const centerSubSize = centerSub
+    ? Math.max(7.5, Math.min(compactCenter ? 9 : 10, subChord / (centerSub.length * 0.55)))
+    : 9;
   const hoveredTip = hover != null ? segments[hover]?.tip : undefined;
   const tipInteractive = tipIsLong(hoveredTip);
   function tipAnchor(event: React.MouseEvent<SVGCircleElement>) {
@@ -1482,7 +1494,7 @@ export function DonutChart({
             x={size / 2}
             y={centerSubY}
             textAnchor="middle"
-            fontSize={compactCenter ? 9 : 10}
+            fontSize={centerSubSize}
             className="fill-current text-text-tertiary"
           >
             {centerSub}
