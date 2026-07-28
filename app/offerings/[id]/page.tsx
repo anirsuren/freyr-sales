@@ -25,6 +25,9 @@ import { OfferingActions } from "@/components/offerings/OfferingActions";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { canEditOffering } from "@/lib/offeringOwnership";
+import { canManageOfferings } from "@/lib/role";
+import { getCurrentUser } from "@/lib/currentUser";
+import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
@@ -132,7 +135,11 @@ export default async function OfferingDetailPage({
   // someone can edit the content of the Freyr.Register offering page to upload
   // his sales materials, etc., if he owns that offering"). Owning one offering
   // never grants rights over any other.
-  const admin = await canEditOffering(o.poc);
+  const admin = await canEditOffering(o);
+  // Assigning and approving owners is an admin action; editing content is
+  // open to the owners they grant.
+  const workspaceAdmin = await canManageOfferings();
+  const me = await getCurrentUser();
   const commercialActionsEnabled = !isOfferingsOnly(getDataMode());
 
   // The internal person accountable for this offering — the category owner if
@@ -350,15 +357,29 @@ export default async function OfferingDetailPage({
               entrance the dashboard's lists use. */}
           <div className="space-y-5 stagger">
             {/* Internal owner — only when a real person is on file */}
+            {/* WHO CAN EDIT THIS. Real accounts, granted by an admin, not the
+                contact name off the spreadsheet. */}
+            <SectionCard title="Who can edit this" icon={UserRound}>
+              <OfferingOwners
+                offeringId={o.id}
+                owners={o.owners ?? []}
+                isAdmin={workspaceAdmin}
+                myMemberId={me.memberId ?? null}
+              />
+            </SectionCard>
+
+            {/* The contact named on Suren's master sheet. Display only: it
+                carries no permission, which is why it sits apart from the
+                owners list above. */}
             {ownerName && (
-              <SectionCard title="Internal owner" icon={UserRound}>
+              <SectionCard title="Contact for this offering" icon={UserRound}>
                 <div className="flex items-center gap-3">
                   <Avatar name={ownerName} className="w-10 h-10 text-[14px]" />
                   <div className="min-w-0">
-                    <p className="text-[14px] font-semibold text-text-primary truncate">
+                    <p className="text-[14px] font-semibold text-text-primary break-words">
                       {ownerName}
                     </p>
-                    <p className="text-[12.5px] text-text-secondary truncate">
+                    <p className="text-[12.5px] text-text-secondary break-words">
                       {ownerRole}
                     </p>
                   </div>

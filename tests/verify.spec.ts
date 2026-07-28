@@ -5808,46 +5808,91 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeGreaterThanOrEqual(seeded.length)
   });
 
-  test("351 — an offering owner may edit their own offering, and only theirs", async () => {
-    // Admins/editors edit everything; on top of that the POC named on an
-    // offering may edit THAT offering, so an owner can upload their own sales
-    // materials without waiting for an admin grant (Anir, Jul 28: "make sure
-    // that someone can edit the content of the Freyr.Register offering page to
-    // upload his sales materials, etc., if he owns that offering").
-    const { ownsOffering, pocNames } = await import("../lib/offeringOwnershipMatch");
-    const identified = (name: string, email: string | null = null) => ({
-      name,
-      email,
-      isIdentified: true,
+  test("351 — ownership is granted by an admin, never self-served", async ({
+    request,
+  }) => {
+    // Ownership is a record against the signed-in ACCOUNT, not a name that
+    // resembles the POC on Suren's sheet. And it is not self-service: a member
+    // may REQUEST an offering, but only an admin turns that into edit rights
+    // (Anir, Jul 28: "only a select amount of people should be able to edit the
+    // offering... everyone shouldn't be able to do that if they claim it
+    // first").
+    const before = await request.get(`${BASE}/api/offerings/of-002`);
+    expect(before.ok()).toBeTruthy();
+    const start = (await before.json()).offering;
+    // A seeded offering starts unclaimed: the sheet's POC grants nothing.
+    expect(start.poc).toBeTruthy();
+    expect(start.owners ?? []).toEqual([]);
+
+    const claim = await request.post(`${BASE}/api/offerings/of-002/owners`, {
+      data: {},
     });
+    expect(claim.ok()).toBeTruthy();
+    const claimed = (await claim.json()).offering;
+    expect(claimed.owners).toHaveLength(1);
+    expect(claimed.owners[0].memberId).toBeTruthy();
+    expect(claimed.owners[0].claimed_at).toBeTruthy();
+    // Every row is attributable.
+    expect(claimed.owners[0].granted_by).toBeTruthy();
+    // This harness signs in as an admin, so a self-claim is granted outright:
+    // there is nobody above them to approve it.
+    expect(claimed.owners[0].status).toBe("owner");
 
-    // Owns it, by the name on Suren's sheet.
-    expect(ownsOffering("Eswar Subramanian", identified("Eswar Subramanian"))).toBe(true);
-    // Owns it, when their display name differs but the verified email matches.
-    expect(
-      ownsOffering("Eswar Subramanian", identified("E. Subramanian", "eswar.subramanian@freyrsolutions.com"))
-    ).toBe(true);
-    // Surname-first in the sheet still matches a first-name-first session.
-    expect(ownsOffering("Inayat, Tanudeep", identified("Tanudeep Inayat"))).toBe(true);
-    // One of two listed owners is still an owner.
-    expect(
-      ownsOffering("Mukundh Chouthoy / Suresh Modugu", identified("Suresh Modugu"))
-    ).toBe(true);
+    // Claiming twice does not duplicate the row.
+    const again = await request.post(`${BASE}/api/offerings/of-002/owners`, {
+      data: {},
+    });
+    expect(again.ok()).toBeTruthy();
+    expect((await again.json()).offering.owners).toHaveLength(1);
 
-    // Owning one offering grants nothing on another.
-    expect(ownsOffering("Raj Vinesh", identified("Eswar Subramanian"))).toBe(false);
-    // A partial-name collision is not ownership.
-    expect(ownsOffering("Eswar Subramanian", identified("Eswar"))).toBe(false);
-    // An unowned offering is owned by nobody, and a blank POC never matches.
-    expect(ownsOffering("", identified("Eswar Subramanian"))).toBe(false);
-    expect(ownsOffering(null, identified("Eswar Subramanian"))).toBe(false);
-    // An unidentified session owns nothing, even against a blank POC.
-    expect(
-      ownsOffering("Eswar Subramanian", { name: "Eswar Subramanian", email: null, isIdentified: false })
-    ).toBe(false);
+    // An owner can edit that offering's content.
+    const edit = await request.patch(`${BASE}/api/offerings/of-002`, {
+      data: { future_availability: "Owner edit check" },
+    });
+    expect(edit.ok()).toBeTruthy();
+    expect((await edit.json()).offering.future_availability).toBe("Owner edit check");
 
-    // The sheet separates two people with a slash; a comma is part of one name.
-    expect(pocNames("Mukundh Chouthoy / Suresh Modugu")).toHaveLength(2);
-    expect(pocNames("Inayat, Tanudeep")).toHaveLength(1);
+    // Releasing removes the claim and leaves the offering itself intact.
+    const release = await request.delete(`${BASE}/api/offerings/of-002/owners`);
+    expect(release.ok()).toBeTruthy();
+    const released = (await release.json()).offering;
+    expect(released.owners).toEqual([]);
+    expect(released.offering_name).toBe(start.offering_name);
+
+    // Restore the seeded value for the rest of the suite.
+    await request.patch(`${BASE}/api/offerings/of-002`, {
+      data: { future_availability: start.future_availability },
+    });
   });
+
+  test("352 — a pending request grants nothing until it is approved", async () => {
+    // The permission check must read `status`, not merely the presence of a row.
+    // A member who files a request would otherwise gain write access the moment
+    // they asked for it.
+    const { isOfferingOwner } = await import("../lib/offerings");
+    const requested = {
+      owners: [
+        {
+          memberId: "member-1",
+          name: "Requester",
+          email: null,
+          status: "requested" as const,
+          claimed_at: new Date(0).toISOString(),
+          granted_by: "member-1",
+        },
+      ],
+    };
+    expect(isOfferingOwner(requested, "member-1")).toBe(false);
+
+    const granted = {
+      owners: [{ ...requested.owners[0], status: "owner" as const, granted_by: "admin-1" }],
+    };
+    expect(isOfferingOwner(granted, "member-1")).toBe(true);
+    // Someone else's grant is not yours, and an unidentified session owns nothing.
+    expect(isOfferingOwner(granted, "member-2")).toBe(false);
+    expect(isOfferingOwner(granted, null)).toBe(false);
+    expect(isOfferingOwner({ owners: [] }, "member-1")).toBe(false);
+  });
+
+
 });

@@ -73,11 +73,43 @@ export interface Offering {
   offering_description: string;
   current_availability: string;
   future_availability: string; // "Availability comments" in the UI
-  poc: string; // SME / service-delivery POC who owns this offering's data
+  poc: string; // SME / service-delivery POC named on Suren's master sheet
   customer_type_ids: string[]; // applicable customer types (one or more)
   market_ids: string[]; // applicable markets
   materials: OfferingMaterial[];
+  /** WHO OWNS THIS OFFERING, as account records rather than a name string.
+   *  Editing rights are decided by `memberId`, an exact match against the
+   *  signed-in workspace account, never by matching a person's display name
+   *  against `poc` (Anir, Jul 28: "shouldn't it be based on the account, so
+   *  someone has to claim the offering... this is a full enterprise-level
+   *  application"). `poc` stays what it always was: the contact printed on the
+   *  card, sourced from the sheet, and carries no permission at all.
+   *  Name and email are denormalised so the owners list renders without a join;
+   *  they are display only and are never consulted for access. */
+  owners: OfferingOwner[];
   created_at: string;
+}
+
+/** One claim on an offering.
+ *
+ *  `status` is the whole point. Anyone may REQUEST an offering, which records
+ *  the ask and grants nothing. Only an admin can turn that into `owner`, and
+ *  only `owner` carries edit rights (Anir, Jul 28: "only a select amount of
+ *  people should be able to edit the offering... everyone shouldn't be able to
+ *  do that if they claim it first"). Self-service claiming would have let any
+ *  signed-in member grant themselves write access to any offering. */
+export interface OfferingOwner {
+  /** Stable app_users id. THE permission key. */
+  memberId: string;
+  /** Display only, captured when the row was written. */
+  name: string;
+  email: string | null;
+  /** "requested" grants nothing. "owner" grants edit rights on THIS offering. */
+  status: "requested" | "owner";
+  claimed_at: string;
+  /** Who granted it. For a request this is the requester; for an approval or a
+   *  direct assignment it is the admin. Every grant is attributable. */
+  granted_by: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -287,6 +319,9 @@ function off(
     customer_type_ids: opts.customer_type_ids ?? [],
     market_ids: opts.market_ids ?? [],
     materials: opts.materials ?? [],
+    // Nobody owns a seeded offering until a real account CLAIMS it. Ownership
+    // is never inferred from the sheet's POC name.
+    owners: opts.owners ?? [],
     created_at: opts.created_at ?? "2026-06-20T12:00:00.000Z",
   };
 }
@@ -686,6 +721,10 @@ globalThis.__FREYR_LIVE_OFFERINGS_STORE__ = liveStore;
 if (!store.offeringTypes) store.offeringTypes = seedOfferingTypes();
 if (!store.offeringCategories)
   store.offeringCategories = seedOfferingCategories();
+// `owners` arrived after catalogs were already persisted. Without this back-fill
+// an older stored offering loads with `owners` undefined and every ownership
+// check throws on `.some()`.
+for (const o of store.offerings) if (!o.owners) o.owners = [];
 
 // ONE offerings catalog, always — the mode switch is about which MODULES are
 // finished, not about which data is real (Anir, Jul 27: "if I add or delete a
@@ -994,6 +1033,66 @@ export function getOffering(id: string): Offering | null {
   const found = activeStore().offerings.find((o) => o.id === id);
   return found ? withVisibleMaterials(found) : null;
 }
+/** Write or upgrade a claim. Idempotent, and it never DOWNGRADES: re-requesting
+ *  an offering you already own leaves you the owner. */
+export function claimOffering(
+  id: string,
+  owner: {
+    memberId: string;
+    name: string;
+    email: string | null;
+    status: "requested" | "owner";
+    granted_by: string;
+  }
+): Offering | null {
+  const found = activeStore().offerings.find((o) => o.id === id);
+  if (!found) return null;
+  if (!found.owners) found.owners = [];
+  const existing = found.owners.find((o) => o.memberId === owner.memberId);
+  if (existing) {
+    if (existing.status === "owner" || owner.status === "requested") return found;
+    // A pending request being approved.
+    found.owners = found.owners.map((o) =>
+      o.memberId === owner.memberId
+        ? { ...o, status: "owner", granted_by: owner.granted_by, claimed_at: new Date().toISOString() }
+        : o
+    );
+    return found;
+  }
+  found.owners = [
+    ...found.owners,
+    {
+      memberId: owner.memberId,
+      name: owner.name,
+      email: owner.email,
+      status: owner.status,
+      claimed_at: new Date().toISOString(),
+      granted_by: owner.granted_by,
+    },
+  ];
+  return found;
+}
+
+/** Drop a claim. Idempotent: releasing a claim that is not there is a no-op. */
+export function releaseOffering(id: string, memberId: string): Offering | null {
+  const found = activeStore().offerings.find((o) => o.id === id);
+  if (!found) return null;
+  found.owners = (found.owners || []).filter((o) => o.memberId !== memberId);
+  return found;
+}
+
+/** Does this account own this offering? An exact id match on a row an ADMIN
+ *  granted. A pending request is not ownership and confers nothing. */
+export function isOfferingOwner(
+  offering: Pick<Offering, "owners">,
+  memberId: string | null | undefined
+): boolean {
+  if (!memberId) return false;
+  return (offering.owners || []).some(
+    (o) => o.memberId === memberId && o.status === "owner"
+  );
+}
+
 export function createOffering(data: Partial<Offering>): Offering {
   const record: Offering = {
     // An explicit id is honored so a seeded offering can be restored under its
@@ -1009,6 +1108,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     poc: data.poc || "",
     customer_type_ids: data.customer_type_ids || [],
     market_ids: data.market_ids || [],
+    owners: data.owners ?? [],
     materials: (data.materials || []).map((m) => ({ ...m, id: m.id || rid("m") })),
     created_at: new Date().toISOString(),
   };

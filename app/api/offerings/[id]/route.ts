@@ -68,7 +68,7 @@ export async function PATCH(
     // remove it from the catalogue.
     const existing = getOffering(id);
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (!(await canEditOffering(existing.poc))) return FORBIDDEN;
+    if (!(await canEditOffering(existing))) return FORBIDDEN;
   }
   // "Who added this" is stamped here, from the session — never from the body.
   // Existing rows keep the attribution already on file, so re-saving the list
