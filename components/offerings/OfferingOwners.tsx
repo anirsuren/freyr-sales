@@ -2,8 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Clock3, UserPlus, X, Check, Search } from "lucide-react";
+import {
+  ShieldCheck,
+  Clock3,
+  UserPlus,
+  X,
+  Check,
+  Search,
+  Plus,
+  UserRound,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { SectionCard } from "@/components/ui/SectionCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -28,12 +38,32 @@ export type OwnerRow = {
  * Jul 28: "only a select amount of people should be able to edit the offering").
  * Admins see pending requests inline with approve / decline.
  */
+
+/** The app's standard "add" affordance: a blue plus in the card header, the
+ *  same control every other section uses, instead of a bordered text button
+ *  sitting under the list (Anir, Jul 28: "just make it a normal blue plus sign
+ *  in the top right, just like everything else"). */
+function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-light text-blue-primary transition-colors hover:bg-blue-subtle/60"
+    >
+      <Plus size={15} strokeWidth={2.4} />
+    </button>
+  );
+}
+
 export function OfferingOwners({
   offeringId,
   owners,
   isAdmin,
   myMemberId,
   people = [],
+  canEdit,
 }: {
   offeringId: string;
   owners: OwnerRow[];
@@ -42,6 +72,8 @@ export function OfferingOwners({
   myMemberId: string | null;
   /** Everyone with a real account, so an admin can hand ownership to them. */
   people?: { name: string; email?: string; memberId?: string; role?: string }[];
+  /** Does the signed-in account own this offering? Only owners grant ownership. */
+  canEdit: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -163,7 +195,30 @@ export function OfferingOwners({
     );
 
   return (
-    <div className="space-y-3">
+    <SectionCard
+      title="Who can edit this"
+      icon={UserRound}
+      action={
+        // ONLY AN OWNER HANDS OUT OWNERSHIP. Being a workspace admin is not
+        // enough: an admin who has not taken this offering cannot quietly
+        // grant it to somebody either (Anir, Jul 28: "make sure I can only
+        // actually add a contact or even an owner if I am an owner. That's the
+        // only way I have these permissions"). Bootstrapping an unowned
+        // offering still runs through the admin's own claim below.
+        canEdit ? (
+          <AddButton
+            label="Add an owner"
+            onClick={() => {
+              setChosen([]);
+              setQuery("");
+              setError(null);
+              setGranting(true);
+            }}
+          />
+        ) : undefined
+      }
+      bodyClassName="space-y-3"
+    >
       {granted.length === 0 ? (
         <p className="text-[12.5px] leading-relaxed text-text-secondary">
           Nobody owns this offering yet. An admin assigns an owner, and that
@@ -287,20 +342,6 @@ export function OfferingOwners({
           what grants edit rights and permissions cannot key off a name from a
           spreadsheet. Anyone already on the list is filtered out, which is
           also what stops you granting yourself something you already own. */}
-      {isAdmin && (
-        <button
-          onClick={() => {
-            setChosen([]);
-            setQuery("");
-            setError(null);
-            setGranting(true);
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-        >
-          <UserPlus size={13} strokeWidth={2.1} />
-          Add an owner
-        </button>
-      )}
 
       <Modal
         open={granting}
@@ -389,9 +430,9 @@ export function OfferingOwners({
         </div>
       </Modal>
 
-      {error && (
+      {error && !granting && (
         <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
       )}
-    </div>
+    </SectionCard>
   );
 }

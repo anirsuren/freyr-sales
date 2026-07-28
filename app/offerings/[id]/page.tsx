@@ -5,7 +5,6 @@ import {
   Pencil,
   Plus,
   ChevronRight,
-  UserRound,
   Layers,
   Package,
   Building2,
@@ -353,39 +352,30 @@ export default async function OfferingDetailPage({
             {/* Internal owner — only when a real person is on file */}
             {/* WHO CAN EDIT THIS. Real accounts, granted by an admin, not the
                 contact name off the spreadsheet. */}
-            <SectionCard title="Who can edit this" icon={UserRound}>
-              <OfferingOwners
-                offeringId={o.id}
-                owners={o.owners ?? []}
-                isAdmin={workspaceAdmin}
-                people={people}
-                myMemberId={me.memberId ?? null}
-              />
-            </SectionCard>
+            <OfferingOwners
+              offeringId={o.id}
+              owners={o.owners ?? []}
+              isAdmin={workspaceAdmin}
+              canEdit={admin}
+              people={people}
+              myMemberId={me.memberId ?? null}
+            />
 
             {/* Who to talk to about this offering. Display only in the
                 permissions sense: being a contact carries no edit rights,
                 which is why it sits apart from the owners list above. */}
-            <SectionCard
-                title="Contacts for this offering"
-                icon={UserRound}
-              >
-                {/* ONE ROW PER PERSON, and you can add or take one off. The
-                    sheet packed several contacts into a single cell, which had
-                    two problems: rendering that cell as one avatar merged two
-                    people into an invented person, and there was no way to
-                    change the list at all (Anir, Jul 28: "how do I add a
-                    contact for this offering... obviously there has to be the
-                    ability to remove and add contacts"). Editing is gated on
-                    ownership, same as everything else on this page. */}
-                <OfferingContacts
-                  offeringId={o.id}
-                  offeringName={o.offering_name}
-                  contacts={o.contacts}
-                  canEdit={admin}
-                  people={people}
-                />
-            </SectionCard>
+            {/* ONE ROW PER PERSON, and an owner can add or take one off. The
+                sheet packed several contacts into a single cell, which had two
+                problems: rendering that cell as one avatar merged two people
+                into an invented person, and there was no way to change the
+                list at all. */}
+            <OfferingContacts
+              offeringId={o.id}
+              offeringName={o.offering_name}
+              contacts={o.contacts}
+              canEdit={admin}
+              people={people}
+            />
 
             {/* Offering Category — its plain-English description + the family
                 link. Titled in full ("Offering Category", not "Category") at

@@ -12,10 +12,12 @@ import {
   Briefcase,
   Package,
   LifeBuoy,
+  UserRound,
   Search,
   Check,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { SectionCard } from "@/components/ui/SectionCard";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -46,6 +48,25 @@ const ROLE_OPTIONS: ColorOption[] = [
  * Someone who does not own the offering still sees everybody, they just get no
  * add or remove controls.
  */
+
+/** The app's standard "add" affordance: a blue plus in the card header, the
+ *  same control every other section uses, instead of a bordered text button
+ *  sitting under the list (Anir, Jul 28: "just make it a normal blue plus sign
+ *  in the top right, just like everything else"). */
+function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-light text-blue-primary transition-colors hover:bg-blue-subtle/60"
+    >
+      <Plus size={15} strokeWidth={2.4} />
+    </button>
+  );
+}
+
 export function OfferingContacts({
   offeringId,
   offeringName,
@@ -184,7 +205,25 @@ export function OfferingContacts({
     );
 
   return (
-    <div className="space-y-3">
+    <SectionCard
+      title="Contacts for this offering"
+      icon={UserRound}
+      action={
+        canEdit ? (
+          <AddButton
+            label="Add a contact"
+            onClick={() => {
+              setStep(1);
+              setPick([]);
+              setQuery("");
+              setError(null);
+              setAdding(true);
+            }}
+          />
+        ) : undefined
+      }
+      bodyClassName="space-y-3"
+    >
       {contacts.length === 0 && !adding && (
         <p className="text-[12.5px] leading-relaxed text-text-secondary">
           Nobody is listed yet. Add the person a rep should call when a customer
@@ -250,18 +289,6 @@ export function OfferingContacts({
         ))}
       </ul>
 
-      {canEdit && !adding && (
-        <button
-          onClick={() => {
-            setAdding(true);
-            setError(null);
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-        >
-          <Plus size={14} strokeWidth={2.1} />
-          Add a contact
-        </button>
-      )}
 
       {/* Pick as many people as you like, in one pass. The dialog is a fixed
           height with THREE zones: a search that never moves, a roster that
@@ -522,9 +549,9 @@ export function OfferingContacts({
         )}
       </Modal>
 
-      {error && (
+      {error && !adding && !editing && (
         <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
       )}
-    </div>
+    </SectionCard>
   );
 }
