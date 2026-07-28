@@ -20,6 +20,7 @@ import {
 } from "@/lib/notifications";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { userScopedStorageKey } from "@/lib/userIdentity";
+import { canSwitchWorkspaceMode } from "@/lib/release";
 
 /** How many alerts the bell panel shows before "View all notifications". */
 const PANEL_LIMIT = 6;
@@ -29,7 +30,7 @@ const NO_NOTIFS: AppNotification[] = [];
 const NO_READ_IDS: ReadonlySet<string> = new Set<string>();
 
 const SHORTCUTS = [
-  { keys: ["⌘", "K"], label: "Open command palette — search records & jump to any page" },
+  { keys: ["⌘", "K"], label: "Open command palette: search records & jump to any page" },
   { keys: ["?"], label: "Show this keyboard shortcuts help" },
   { keys: ["Esc"], label: "Close any dialog, menu, or palette" },
   { keys: ["Tab"], label: "Reveal the “Skip to content” link, then move through controls" },
@@ -289,7 +290,7 @@ export function TopBar({
       {/* No global "New" here. It duplicated the page's own primary action
           (Offerings already has "+ New offering"), and its menu was clipped
           behind the header (Anir, Jul 27: "why are there two new buttons…
-          the button next to my name doesn't even work — remove that one").
+          the button next to my name doesn't even work, remove that one").
           Each page owns its own create button, where the context is. */}
       <div className="flex items-center gap-1.5">
         {!offeringsOnly && onAgentToggle && (
@@ -449,13 +450,18 @@ export function TopBar({
                   </div>
                 </div>
                 {/* Quick mock/real switch (Suren: "instead of going to settings
-                    every time" — and it "has to be a toggle"). One segmented
+                    every time", and it "has to be a toggle"). One segmented
                     toggle, active half lit in its color, caption explains the
-                    current mode. Hidden only when the deployment locks it. */}
-                {dataMode && !modeLocked && (
+                    current mode. Hidden when the deployment locks it, and now
+                    also for anyone below admin: this control is the door out of
+                    the released app into the half-built modules, and prod ships
+                    unlocked, so every rep could open that door for the whole
+                    workspace (Suren, Jul 28: hide the unlaunched modules
+                    "especially for the end users (sales members)"). */}
+                {dataMode && !modeLocked && canSwitchWorkspaceMode(currentUser.role) && (
                   <div className="px-3 py-2.5 border-b border-border-light">
                     {/* Named for what it actually controls: which MODULES are
-                        finished. It never changes your data — the offerings
+                        finished. It never changes your data, the offerings
                         catalog is one shared store (Anir, Jul 27: "we cannot
                         call it mock mode and real mode… it's just a matter of
                         what's done and what's still being worked on"). */}

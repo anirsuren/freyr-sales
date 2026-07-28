@@ -126,7 +126,7 @@ export function CustomerCard({
   const mixCount = hasPipeline
     ? mix.reduce((s, m) => s + m.tip.length, 0)
     : mix.reduce((s, m) => s + m.value, 0);
-  const opp = customer.size_tier ? SIZE_OPP[customer.size_tier] ?? "—" : "—";
+  const opp = customer.size_tier ? SIZE_OPP[customer.size_tier] ?? "-" : "-";
   const oppTier = OPP_TIER[opp];
   const offeringsCount = customer.offerings_in_use?.length ?? 0;
   const owner = customer.owner || "Unassigned";
@@ -197,7 +197,7 @@ export function CustomerCard({
                 <SizeBadge tier={customer.size_tier} />
               </div>
               {/* Industry is a category, so it wears its colour + icon like
-                  every other chip in the app — it was the last place still
+                  every other chip in the app, it was the last place still
                   rendering as flat gray text (Anir, Jul 27: "shouldn't that be
                   like a color and an icon? Like a tag?"). IndustryTag already
                   existed and is used on the customer detail header; the grid
@@ -206,7 +206,7 @@ export function CustomerCard({
                 {customer.industry ? (
                   <IndustryTag industry={customer.industry} />
                 ) : (
-                  <span className="text-[13px] text-text-tertiary">—</span>
+                  <span className="text-[13px] text-text-tertiary">-</span>
                 )}
               </div>
             </div>
@@ -239,7 +239,7 @@ export function CustomerCard({
                       >
                         <Avatar
                           name={ct.name}
-                          className="w-7 h-7 text-[10px] ring-2 ring-white"
+                          className="w-7 h-7 text-[10px] ring-2 ring-[color:var(--white)]"
                           tooltip={ct.name}
                         />
                       </Link>
@@ -255,7 +255,7 @@ export function CustomerCard({
             )}
             <span className="flex items-center gap-2 shrink-0">
               {/* Outcome lives with the person it happened with (Anir: "the
-                  outcome should be next to the name — it just looks awkward
+                  outcome should be next to the name, it just looks awkward
                   at the bottom"). */}
               {lastOutcome ? (
                 <OutcomeBadge outcome={lastOutcome} />

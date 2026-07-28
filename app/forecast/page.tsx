@@ -27,6 +27,7 @@ import {
   ROTTING_DAYS,
   STAGES,
   STAGE_COLOR,
+  STAGE_ICON,
   STAGE_PROBABILITY,
   isCurrentRep,
   repOwnsDeal,
@@ -260,14 +261,14 @@ export default async function ForecastPage() {
           raw={commit}
           accent
           icon={CircleCheck}
-          hint="The realistic number — every open deal's value multiplied by its chance of closing, added up. What you can reasonably promise."
+          hint="The realistic number: every open deal's value multiplied by its chance of closing, added up. What you can reasonably promise."
         />
         <Stat
           label="Best case (open)"
           value={formatMoney(bestCase)}
           raw={bestCase}
           icon={TrendingUp}
-          hint="The optimistic number — the full value of every open deal if they ALL closed. The ceiling, not the expectation."
+          hint="The optimistic number: the full value of every open deal if they ALL closed. The ceiling, not the expectation."
         />
         <Stat
           label="Quarter quota"
@@ -326,18 +327,18 @@ export default async function ForecastPage() {
           so you SEE how each step's odds trim the pipeline down to your number. */}
       {/* Two panels side by side: the value→weighted bars packed on the left,
           the commit-composition donut filling the right (Suren: bars next to
-          each other, another graph on the right — no dead space). */}
+          each other, another graph on the right, no dead space). */}
       <Card className="p-5">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-0">
           {/* LEFT — value vs weighted per stage. A flex column so the plot can
               stretch to the full height the (taller) donut panel gives the row
-              — the bars scale with it and never leave a dead band below
+             , the bars scale with it and never leave a dead band below
               (Anir: "make the bar chart on the left bigger so it's properly
               scaled"). */}
           <div className="xl:pr-5 flex flex-col">
             <div className="flex items-center gap-1.5 mb-1">
               <h2 className="text-[15px] font-semibold text-text-primary">By stage</h2>
-              <InfoHint text="Your pipeline by step of the process. The light column is the full value; the solid fill is the weighted contribution — value trimmed by each step's odds of closing." />
+              <InfoHint text="Your pipeline by step of the process. The light column is the full value; the solid fill is the weighted contribution: value trimmed by each step's odds of closing." />
             </div>
             <div className="flex items-center gap-4 mb-3 text-[11px] text-text-tertiary">
               <span className="inline-flex items-center gap-1.5">
@@ -460,7 +461,7 @@ export default async function ForecastPage() {
                             >
                               {/* The value label and the column are ONE object.
                                   The label is pinned to the top edge of THIS
-                                  bar — so a short column's number sits just
+                                  bar, so a short column's number sits just
                                   above that column instead of floating in a
                                   flat row at the top of the plot, and when the
                                   bar lifts under the cursor the number rides up
@@ -519,7 +520,7 @@ export default async function ForecastPage() {
               <h2 className="text-[15px] font-semibold text-text-primary">
                 Where your commit comes from
               </h2>
-              <InfoHint text="Your weighted commit sliced two ways — by the funnel stage it sits in, and by the offering being sold. Closed-lost deals (0% odds) drop out." />
+              <InfoHint text="Your weighted commit sliced two ways: by the funnel stage it sits in, and by the offering being sold. Closed-lost deals (0% odds) drop out." />
             </div>
             <p className="text-[11px] text-text-tertiary mb-3">
               The same committed number, sliced two ways
@@ -689,7 +690,7 @@ export default async function ForecastPage() {
                   content={
                     <div>
                       {/* Adds what the row can't fit: full names, the odds
-                          math, and exactly how quiet the deal has gone — not a
+                          math, and exactly how quiet the deal has gone, not a
                           restatement of the visible numbers (Anir: "the
                           pop-ups don't show me anything of value"). */}
                       <div className="flex items-start gap-2.5">
@@ -709,7 +710,7 @@ export default async function ForecastPage() {
                         <div><p className="text-[12px] font-bold text-text-primary tnum">{Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}%</p><p className="text-[9px] text-text-tertiary">Odds of closing</p></div>
                         <div><p className="text-[12px] font-bold text-text-primary tnum">{deal.staleDays}d</p><p className="text-[9px] text-text-tertiary">Since last touch</p></div>
                       </div>
-                      <p className="mt-2.5 text-[11px] leading-relaxed text-text-secondary">{stale ? `No logged activity for ${deal.staleDays} days — the ${Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}% odds on ${formatMoney(deal.value)} are getting shakier. Reconnect before it slips out of commit.` : `The ${Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}% close-odds trim ${formatMoney(deal.value)} to ${formatMoney(weighted)} of realistic commit. Keep the momentum — book the next step.`}</p>
+                      <p className="mt-2.5 text-[11px] leading-relaxed text-text-secondary">{stale ? `No logged activity for ${deal.staleDays} days: the ${Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}% odds on ${formatMoney(deal.value)} are getting shakier. Reconnect before it slips out of commit.` : `The ${Math.round((STAGE_PROBABILITY[deal.stage] ?? 0) * 100)}% close-odds trim ${formatMoney(deal.value)} to ${formatMoney(weighted)} of realistic commit. Keep the momentum: book the next step.`}</p>
                     </div>
                   }
                 >
@@ -738,8 +739,14 @@ export default async function ForecastPage() {
                         </span>
                       </span>
                       {/* The offering carries its own colour + icon, same mark
-                          it wears everywhere else — never a gray afterthought. */}
-                      <ServiceTag name={deal.service} className="mt-1 max-w-full" />
+                          it wears everywhere else, never a gray afterthought.
+                          Sized to the CONTACT line (11px), not left at the
+                          chip's 12.5px default: at full size it out-shouted the
+                          company, the money and the stage and read as the
+                          headline of the row (Suren, Jul 28: the offering chip
+                          is oversized). The glyph bubble is em-based, so it
+                          shrinks with the text and the chip stays one line. */}
+                      <ServiceTag name={deal.service} className="mt-1 max-w-full text-[11px]" />
                     </span>
                   </span>
                   <span
@@ -749,10 +756,14 @@ export default async function ForecastPage() {
                       background: `${STAGE_COLOR[deal.stage]}14`,
                     }}
                   >
-                    <span
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: STAGE_COLOR[deal.stage] }}
-                    />
+                    {/* The stage's own glyph, not a bullet — a category chip
+                        carries colour AND icon everywhere else in the app
+                        (Anir, Jul 28: "didn't we have icons for this? Add the
+                        actual icons instead of just the bullet points"). */}
+                    {(() => {
+                      const StageIcon = STAGE_ICON[deal.stage];
+                      return <StageIcon size={11} strokeWidth={2.2} className="shrink-0" />;
+                    })()}
                     {deal.stage === "Meeting Booked" ? "Meeting" : deal.stage}
                   </span>
                   <span className="min-w-0">
@@ -876,7 +887,7 @@ export default async function ForecastPage() {
       </section>
 
       {/* By rep — the whole floor with sort + a highly-visible "you"
-          (client so the rep can re-sort it however they want — Suren). */}
+          (client so the rep can re-sort it however they want. Suren). */}
       <ByRepChart reps={byRep} />
     </div>
   );

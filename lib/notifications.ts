@@ -145,7 +145,7 @@ export function buildNotifications(input: {
         id: `review-${s.id}`,
         type: "review",
         title: "Pitch awaiting your approval",
-        body: `${company} — review the pitch before it's sent.`,
+        body: `${company}: review the pitch before it's sent.`,
         subject: company,
         detail: "Read the pitch and approve it before it goes out.",
         urgency: "today",
@@ -164,13 +164,13 @@ export function buildNotifications(input: {
         id: `rotting-${d.sessionId}`,
         type: "rotting",
         title: "Deal going cold",
-        body: `${d.company} — no activity in ${d.staleDays} days.`,
+        body: `${d.company}: no activity in ${d.staleDays} days.`,
         subject: d.company,
         // The stamp already says how long ago it last moved, so this line only
         // says what to do about it.
         detail: d.contactName
-          ? `Nothing has moved here — get back to ${d.contactName}.`
-          : "Nothing has moved here — reach out or move it on.",
+          ? `Nothing has moved here: get back to ${d.contactName}.`
+          : "Nothing has moved here: reach out or move it on.",
         // It has already sat past the rotting line, so it is late by definition.
         urgency: "overdue",
         href: `/deals/${d.sessionId}`,
@@ -191,9 +191,9 @@ export function buildNotifications(input: {
         id: `signal-${i.id}`,
         type: "signal",
         title: "New buying signal",
-        body: `${company} — ${signal}.`,
+        body: `${company} - ${signal}.`,
         subject: company,
-        detail: who ? `${who} — ${signal}. Act while it's warm.` : `${signal}. Act while it's warm.`,
+        detail: who ? `${who} - ${signal}. Act while it's warm.` : `${signal}. Act while it's warm.`,
         urgency: "week",
         href: `/customers/${i.customer_id}`,
         ts: i.created_at,
@@ -246,7 +246,7 @@ export function buildNotifications(input: {
         id: `followup-${i.id}`,
         type: "followup",
         title: overdue ? "Follow-up overdue" : "Follow-up due",
-        body: `${company}${contactName ? ` · ${contactName}` : ""} — ${when}${
+        body: `${company}${contactName ? ` · ${contactName}` : ""} - ${when}${
           outcomeLabel ? `, last: ${outcomeLabel}` : ""
         }.`,
         subject: company,
@@ -279,9 +279,9 @@ export function buildNotifications(input: {
         call.company || call.contact_name || call.external_number || "Voice call",
       detail: failed
         ? `${call.failure_reason || "The call did not complete"}${
-            call.contact_name ? ` — try ${call.contact_name} again` : ""
+            call.contact_name ? `, try ${call.contact_name} again` : ""
           }.`
-        : `${call.contact_name ? `${call.contact_name} — t` : "T"}ranscript and analysis are ready to read.`,
+        : `${call.contact_name ? `${call.contact_name}, t` : "T"}ranscript and analysis are ready to read.`,
       urgency: failed ? "today" : "week",
       href: `/voice/c/${call.conversation_id || call.id}`,
       ts: call.completed_at || call.updated_at,

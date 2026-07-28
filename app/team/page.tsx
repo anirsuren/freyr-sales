@@ -173,7 +173,7 @@ export default async function TeamPage() {
     <div>
       <PageHeader
         title="Team"
-        subtitle="Your Freyr sales floor — message anyone on Teams or call them directly, and see what each rep is working."
+        subtitle="Your Freyr sales floor: message anyone on Teams or call them directly, and see what each rep is working."
       />
 
       {/* The shared tile, same as Sequences: icon and label on one row, the

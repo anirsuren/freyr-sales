@@ -282,14 +282,18 @@ export function CommandPalette({
         if (it) {
           e.preventDefault();
           it.run();
-        } else if (q.trim()) {
+        } else if (q.trim() && !offeringsOnly) {
+          // /search is the everything-page: customers, contacts, sessions.
+          // In the offerings-only release pressing Enter on a miss must not
+          // walk someone into an unreleased module (the middleware would bounce
+          // them straight back out, which reads as a broken app).
           go(`/search?q=${encodeURIComponent(q.trim())}`);
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, items, sel, q, onClose, go]);
+  }, [open, items, sel, q, onClose, go, offeringsOnly]);
 
   if (!open) return null;
 
@@ -394,12 +398,14 @@ export function CommandPalette({
 
           {q.trim() && items.length === 0 && (
             <p className="px-4 py-3 text-[13px] text-text-tertiary">
-              No matches — press Enter to search everything.
+              {offeringsOnly
+                ? "No offerings match that."
+                : "No matches: press Enter to search everything."}
             </p>
           )}
         </div>
 
-        {q.trim() && (
+        {q.trim() && !offeringsOnly && (
           <button
             onClick={() => go(`/search?q=${encodeURIComponent(q.trim())}`)}
             className="w-full border-t border-border-light px-4 py-2.5 text-[13px] font-semibold text-blue-primary text-left hover:bg-surface transition-colors"

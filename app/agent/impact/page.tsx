@@ -83,28 +83,28 @@ export default async function AgentImpactPage({
       value: String(impact.totalRuns),
       icon: Bot,
       tone: "text-blue-primary",
-      hint: "How many times the agent did work for you in this window — a one-click action, a full play, or an autopilot pass.",
+      hint: "How many times the agent did work for you in this window: a one-click action, a full play, or an autopilot pass.",
     },
     {
       label: "Accounts worked",
       value: String(impact.accountsTouched),
       icon: Building2,
       tone: "text-text-primary",
-      hint: "How many different accounts the agent touched here — drafted for, logged on, or moved forward.",
+      hint: "How many different accounts the agent touched here: drafted for, logged on, or moved forward.",
     },
     {
       label: "Entries logged",
       value: String(impact.entriesLogged),
       icon: ScrollText,
       tone: "text-success",
-      hint: "Notes and activity the agent recorded on your accounts (drafts saved, follow-ups set, calls logged) — all left for your review.",
+      hint: "Notes and activity the agent recorded on your accounts (drafts saved, follow-ups set, calls logged): all left for your review.",
     },
     {
       label: "Pipeline at those accounts",
       value: formatMoney(pipelineAtWorked),
       icon: Wallet,
       tone: "text-text-primary",
-      hint: "Total open deal value at the accounts the agent worked. Shown for context — not a claim the agent caused it.",
+      hint: "Total open deal value at the accounts the agent worked. Shown for context: not a claim the agent caused it.",
     },
   ];
 
@@ -120,7 +120,7 @@ export default async function AgentImpactPage({
         </Link>
         <PageHeader
           title="Agent impact"
-          subtitle="Where the agent has invested effort, and the open pipeline at those accounts. An effort view — not a causation claim."
+          subtitle="Where the agent has invested effort, and the open pipeline at those accounts. An effort view: not a causation claim."
         />
       </div>
 
@@ -241,7 +241,7 @@ export default async function AgentImpactPage({
                           {r.runs} run{r.runs === 1 ? "" : "s"}
                         </span>
                         <span className="block text-[12px] text-text-secondary tnum">
-                          {r.openValue > 0 ? formatMoney(r.openValue) : "—"} open
+                          {r.openValue > 0 ? formatMoney(r.openValue) : "-"} open
                         </span>
                       </span>
                       <ArrowRight

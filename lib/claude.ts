@@ -43,7 +43,7 @@ export const MOCK_FREYR_KB = {
     {
       name: "Labeling and Artwork Management",
       description:
-        "Complete lifecycle management of pharmaceutical labeling — from artwork creation and revision through regulatory review, compliance checking, and print-ready output. Covers global labeling requirements.",
+        "Complete lifecycle management of pharmaceutical labeling: from artwork creation and revision through regulatory review, compliance checking, and print-ready output. Covers global labeling requirements.",
       target_roles: ["Labeling", "Regulatory Affairs", "Quality Assurance"],
       target_company_types: ["pharma", "medical device", "consumer health"],
       target_industries: ["pharmaceutical", "medical device"],
@@ -138,7 +138,7 @@ export const MOCK_FREYR_KB = {
       regulatory_needs:
         "FDA/EMA submissions, GMP compliance, labeling, pharmacovigilance",
       freyr_positioning:
-        "Freyr's core market — deepest expertise and largest team",
+        "Freyr's core market: deepest expertise and largest team",
     },
     {
       name: "Biotechnology",
@@ -226,7 +226,7 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
       service_name: "Regulatory Submission Services",
       relevance_score: 9,
       why_this_customer:
-        "BioNex has an NDA targeted for later this year and a multi-compound biologics pipeline across FDA and EMA — exactly the high-stakes submission workload Freyr's dossier teams are built for.",
+        "BioNex has an NDA targeted for later this year and a multi-compound biologics pipeline across FDA and EMA: exactly the high-stakes submission workload Freyr's dossier teams are built for.",
       why_this_contact:
         "Dr. Mehta is a former FDA CDER reviewer who has led 12 NDA/MAA approvals; she will value submission expertise from former agency reviewers over generic outsourcing.",
       pitch_angle:
@@ -240,7 +240,7 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
       service_name: "Regulatory Intelligence",
       relevance_score: 8,
       why_this_customer:
-        "Filing simultaneously across FDA and EMA means tracking guidance changes in multiple jurisdictions — a manual burden Freyr's monitoring across 120+ agencies removes.",
+        "Filing simultaneously across FDA and EMA means tracking guidance changes in multiple jurisdictions: a manual burden Freyr's monitoring across 120+ agencies removes.",
       why_this_contact:
         "A lean RA team under NDA-timeline pressure benefits from curated intelligence rather than another alert feed.",
       pitch_angle:
@@ -268,26 +268,26 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
 // Mock pitches (Section 8.3 fallback)
 // ---------------------------------------------------------------------------
 export const MOCK_PITCHES: PitchOutput = {
-  pitch_5min_script: `Hi Dr. Mehta, I'm Suren Dheen from Freyr Solutions — I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
+  pitch_5min_script: `Hi Dr. Mehta, I'm Suren Dheen from Freyr Solutions. I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
 
-With your NDA submission coming up later this year and two compounds in Phase 2, you're entering the period where regulatory execution either accelerates or stalls your timeline. Freyr has completed over 5,000 regulatory submissions globally, and our team includes former FDA and EMA reviewers — people who know exactly what the agency expects to see.
+With your NDA submission coming up later this year and two compounds in Phase 2, you're entering the period where regulatory execution either accelerates or stalls your timeline. Freyr has completed over 5,000 regulatory submissions globally, and our team includes former FDA and EMA reviewers, people who know exactly what the agency expects to see.
 
-Specifically for BioNex, I think two things are worth a conversation: first, our CTD dossier preparation service where we've consistently cut submission prep time by 30-40% for companies your size. Second, our Regulatory Intelligence service — given that you're working across FDA and EMA simultaneously, having automated monitoring across 120+ agencies in one place would remove a lot of manual tracking burden from your team.
+Specifically for BioNex, I think two things are worth a conversation: first, our CTD dossier preparation service where we've consistently cut submission prep time by 30-40% for companies your size. Second, our Regulatory Intelligence service, given that you're working across FDA and EMA simultaneously, having automated monitoring across 120+ agencies in one place would remove a lot of manual tracking burden from your team.
 
-I'm not here to sell you a contract today — I'd love 20 minutes with you and whoever owns the NDA prep to show you specifically how we've handled submissions for similar biologics pipelines. Would next week work?`,
+I'm not here to sell you a contract today, I'd love 20 minutes with you and whoever owns the NDA prep to show you specifically how we've handled submissions for similar biologics pipelines. Would next week work?`,
   pitch_email: {
     subject_lines: [
-      "Freyr + BioNex — regulatory support for your upcoming NDA",
+      "Freyr + BioNex: regulatory support for your upcoming NDA",
       "Former FDA reviewer perspective on your upcoming submission",
       "How we helped 3 similar biologics companies cut submission time by 35%",
     ],
     body: `Dr. Mehta,
 
-Your background at FDA CDER caught my attention — you know better than most what makes a submission succeed or stall.
+Your background at FDA CDER caught my attention: you know better than most what makes a submission succeed or stall.
 
 With BioNex's NDA filing targeted for later this year, I wanted to reach out now rather than when timelines get tight. Freyr Solutions has supported 5,000+ regulatory submissions globally, and our team includes former FDA and EMA reviewers who work directly on dossier preparation.
 
-For companies at BioNex's stage — mid-size, multi-compound pipeline, working across FDA and EMA — we typically find the highest value in two areas:
+For companies at BioNex's stage, mid-size, multi-compound pipeline, working across FDA and EMA, we typically find the highest value in two areas:
 
 1. CTD dossier preparation and submission management, where we've consistently reduced prep time for similar biologics by 30-40%
 
@@ -302,17 +302,17 @@ Freyr Solutions`,
   },
   pitch_call_script: {
     opener:
-      "Hi, is this Dr. Priya Mehta? Great — this is Suren Dheen from Freyr Solutions. I know you're not expecting my call, so I'll be brief.",
+      "Hi, is this Dr. Priya Mehta? Great: this is Suren Dheen from Freyr Solutions. I know you're not expecting my call, so I'll be brief.",
     value_prop:
-      "We support pharmaceutical and biotech companies with regulatory submissions globally — FDA, EMA, and 120+ other agencies. We've completed over 5,000 submissions and our team includes former FDA CDER reviewers.",
+      "We support pharmaceutical and biotech companies with regulatory submissions globally. FDA, EMA, and 120+ other agencies. We've completed over 5,000 submissions and our team includes former FDA CDER reviewers.",
     permission_question:
-      "I noticed BioNex has an NDA coming up later this year and I had a specific thought about how we might be able to help — do you have 90 seconds or is this a genuinely terrible time?",
+      "I noticed BioNex has an NDA coming up later this year and I had a specific thought about how we might be able to help: do you have 90 seconds or is this a genuinely terrible time?",
     if_bad_time_voicemail:
-      "No problem at all. I'll send you a brief email — just wanted to mention we've helped several similar biologics companies significantly cut their NDA prep timeline. If that's relevant, worth a look. Have a good day.",
+      "No problem at all. I'll send you a brief email: just wanted to mention we've helped several similar biologics companies significantly cut their NDA prep timeline. If that's relevant, worth a look. Have a good day.",
     if_good_time_continue:
-      "Appreciate it. Given your background at FDA and the NDA timeline, I wanted to ask — how is your team currently handling the CTD dossier preparation? Are you doing that fully in-house or working with any external support?",
+      "Appreciate it. Given your background at FDA and the NDA timeline, I wanted to ask: how is your team currently handling the CTD dossier preparation? Are you doing that fully in-house or working with any external support?",
     qualifying_questions: [
-      "How is your team currently managing the CTD dossier preparation — fully in-house?",
+      "How is your team currently managing the CTD dossier preparation: fully in-house?",
       "Are you filing simultaneously with FDA and EMA, or sequencing the submissions?",
     ],
   },
@@ -590,7 +590,7 @@ export async function classifyCustomer(
       size_tier: "mid",
       industry: "Biotechnology",
       geography: "United States",
-      enrichment_summary: `${companyName} is a life sciences company operating across regulatory jurisdictions. (Demo enrichment — add ANTHROPIC_API_KEY for live analysis.)`,
+      enrichment_summary: `${companyName} is a life sciences company operating across regulatory jurisdictions. (Demo enrichment: add ANTHROPIC_API_KEY for live analysis.)`,
     };
   }
 
@@ -861,7 +861,7 @@ export async function runMatchingEngine(
 service and solution Freyr offers. Given a customer and contact profile, identify the 2-3 most
 relevant Freyr offerings. Be specific about why each is a fit. Do not recommend services that
 are clearly mismatched. Use Freyr's own language and positioning where relevant.
-Return ONLY valid JSON — no markdown, no explanation outside the JSON.`,
+Return ONLY valid JSON: no markdown, no explanation outside the JSON.`,
     messages: [
       {
         role: "user",
@@ -931,7 +931,7 @@ export async function generatePitches(
     model: MODEL,
     max_tokens: 4000,
     system: `You are writing sales pitch materials for ${input.senderName}, a Freyr Solutions sales representative.
-Write in a professional but human voice. Be specific to this customer and contact —
+Write in a professional but human voice. Be specific to this customer and contact,
 no generic phrases. Use Freyr's own language and proof points where relevant.
 Write every first-person introduction and signature as ${input.senderName}; never substitute another salesperson.
 Return ONLY valid JSON.`,
@@ -1001,7 +1001,7 @@ Write a ${isLi ? `LinkedIn connection note (HARD LIMIT ${input.linkedinLimit} ch
 
 Pitching this offering (use its substance, don't just name-drop):
 - ${input.offeringName} (${input.offeringCategory})
-- What it is: ${input.offeringDescription || "(description pending — lean on the category)"}
+- What it is: ${input.offeringDescription || "(description pending, lean on the category)"}
 ${input.materials.length ? `- Supporting materials we can share: ${input.materials.join("; ")}` : ""}
 ${input.extra ? `Rep's added context: ${input.extra}` : ""}
 

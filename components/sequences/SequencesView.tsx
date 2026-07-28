@@ -123,8 +123,8 @@ const SEQUENCE_TEMPLATES: Array<{
   },
   {
     label: "Re-engage a stalled account",
-    description: "Restart a quiet conversation without repeating the original pitch.",
-    useCase: "Revive a quiet opportunity",
+    description: "Restart an inactive conversation without repeating the original pitch.",
+    useCase: "Revive an inactive opportunity",
     icon: RefreshCcw,
     color: "#C2410C",
     bg: "#FFF7ED",
@@ -619,7 +619,7 @@ export function SequencesView({
                       <li
                         key={`${step.day}-${index}`}
                         data-testid="sequence-cadence-step"
-                        aria-label={`Step ${index + 1} on day ${step.day}: ${CHANNEL_LABEL[step.channel]} — ${step.label}`}
+                        aria-label={`Step ${index + 1} on day ${step.day}: ${CHANNEL_LABEL[step.channel]} - ${step.label}`}
                         className="relative flex min-h-[146px] min-w-[270px] flex-none basis-[calc((100%-2.25rem)/4)] snap-start flex-col rounded-md border border-border-light bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
                         style={{ borderTopColor: meta.color, borderTopWidth: 3 }}
                       >
@@ -725,7 +725,7 @@ export function SequencesView({
                               return (
                                 <div key={`${cadenceStep.day}-${cadenceIndex}`} className="relative min-w-0 text-center" data-step-state={isCompleted ? "completed" : isCurrent ? "current" : "upcoming"}>
                                   {cadenceIndex > 0 && <span className={cn("absolute right-1/2 top-3.5 h-0.5 w-full", isCompleted || isCurrent ? "bg-blue-primary" : "bg-border-light")} aria-hidden="true" />}
-                                  <Tooltip label={`${isCompleted ? "Completed" : isCurrent ? "Current action" : "Upcoming"}: Step ${cadenceIndex + 1}, day ${cadenceStep.day} — ${cadenceStep.label}`}>
+                                  <Tooltip label={`${isCompleted ? "Completed" : isCurrent ? "Current action" : "Upcoming"}: Step ${cadenceIndex + 1}, day ${cadenceStep.day} - ${cadenceStep.label}`}>
                                     <span className={cn(
                                       "relative z-10 mx-auto flex h-7 w-7 items-center justify-center rounded-full border-2",
                                       isCompleted && "border-blue-primary bg-blue-primary text-white",
@@ -887,7 +887,7 @@ export function SequencesView({
                 <label className="block">
                   <span className="text-[11px] font-semibold text-text-primary">Who is this for, and what should happen?</span>
                   <span className="ml-2 text-[10px] text-text-tertiary">Audience + intended outcome</span>
-                  <textarea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} aria-label="Sequence description" placeholder="Example: VP Regulatory at clinical-stage biopharma — secure a 20-minute discovery call." rows={3} className="mt-1.5 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-blue-primary" />
+                  <textarea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} aria-label="Sequence description" placeholder="Example: VP Regulatory at clinical-stage biopharma: secure a 20-minute discovery call." rows={3} className="mt-1.5 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-blue-primary" />
                 </label>
               </div>
             </section>

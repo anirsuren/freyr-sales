@@ -17,7 +17,7 @@ import { daysLabel, daysSince } from "./dealTime";
 /* ---------------------------------------------------------------------------
    THE FACTS BAND.
 
-   This used to be two cards side by side — "Owner" and "Last activity" — each
+   This used to be two cards side by side, "Owner" and "Last activity", each
    holding a single line on top of a wall of white. That was the dead space
    Suren pointed at, and it was also where the page's rhythm broke: two loose
    p-5 cards sitting between two properly-built panelled cards.
@@ -26,8 +26,8 @@ import { daysLabel, daysSince } from "./dealTime";
    card, one heading, then equal-height bordered panels with a tiny uppercase
    eyebrow, one value line and one note (PANEL/EYEBROW/NOTE are literal copies
    of DealSnapshot's constants, so the two bands cannot drift apart). Every
-   entity in here carries its own mark — the owner their headshot, the account
-   its logo — and nothing in it is printed anywhere else on the page.
+   entity in here carries its own mark, the owner their headshot, the account
+   its logo, and nothing in it is printed anywhere else on the page.
 --------------------------------------------------------------------------- */
 
 // Lifted verbatim from DealSnapshot so the two bands share one rhythm.
@@ -40,8 +40,9 @@ const VALUE = "text-[14.5px] font-semibold leading-snug text-text-primary";
 /** The measure blue the snapshot uses for "your number today". */
 const MEASURE = "#0071E3";
 /** Real red, earned only once the deal has actually gone quiet — the same rule
- *  the snapshot's runway track follows. */
-const RISK = "#FF3B30";
+ *  and the same hex the snapshot's runway track follows, and the app's one
+ *  "this is a problem" red everywhere else (tasks, analytics, account cards). */
+const RISK = "#B02020";
 
 function Tile({ color, Icon }: { color: string; Icon: LucideIcon }) {
   return (
@@ -89,7 +90,7 @@ export function DealFacts({
           <h2 className="text-[15px] font-semibold text-text-primary">
             Key facts
           </h2>
-          <InfoHint text="Who is running this deal, which account it belongs to, when it opened and when it was last touched. Everything here is a fact about the record — the money and the odds live in the snapshot above." />
+          <InfoHint text="Who is running this deal, which account it belongs to, when it opened and when it was last touched. Everything here is a fact about the record: the money and the odds live in the snapshot above." />
         </div>
         <p className="mt-0.5 text-[11px] text-text-tertiary">
           Who owns it, where it sits, and how recently it moved
@@ -108,7 +109,7 @@ export function DealFacts({
             <Avatar
               name={owner}
               className="h-6 w-6 shrink-0 text-[9px]"
-              tooltip={`Owner: ${owner}${isCurrentOwner ? " — that's you" : ""}`}
+              tooltip={`Owner: ${owner}${isCurrentOwner ? ", that's you" : ""}`}
             />
             {/* Wraps rather than truncating — a rep is never "Priya N…". */}
             <span className={`${VALUE} min-w-0 break-normal`}>
@@ -185,7 +186,7 @@ export function DealFacts({
           </span>
           <p className={`mt-auto pt-2 ${NOTE}`}>
             {lastActivityAt
-              ? `Your last logged call, email or note — ${
+              ? `Your last logged call, email or note. ${
                   quietDays > 0 ? `${daysLabel(quietDays)} ago` : "today"
                 }.`
               : "No call, email or note logged yet."}

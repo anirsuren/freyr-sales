@@ -53,10 +53,10 @@ export default async function SessionsPage() {
       id: s.id,
       customerId: s.customer_id,
       contactId: s.contact_id,
-      company: c?.company_name || "—",
-      contact: ct?.full_name || "—",
+      company: c?.company_name || "-",
+      contact: ct?.full_name || "-",
       title: ct?.job_title || "",
-      service: svc[0]?.service_name || "—",
+      service: svc[0]?.service_name || "-",
       outcome: latestOutcome[s.contact_id] || null,
       review: s.review_status || "draft",
       date: s.created_at,
@@ -82,14 +82,7 @@ export default async function SessionsPage() {
 
   return (
     <div>
-      {/* Starting a session lives HERE now, not in the sidebar — and it opens
-          over the list instead of throwing you onto another page (Suren, Jul
-          27). Right-aligned so it shares a vertical edge with the search and
-          filter row underneath it. */}
-      <div className="flex items-center justify-end mb-4">
-        <NewSessionLauncher />
-      </div>
-      <SessionsBrowser rows={rows} />
+      <SessionsBrowser rows={rows} headerAction={<NewSessionLauncher />} />
     </div>
   );
 }

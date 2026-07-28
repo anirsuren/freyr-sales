@@ -24,7 +24,7 @@ const STEPS = [
     // workspace is guided to set that up before anything else.
     key: "offerings",
     label: "Set up your offerings",
-    desc: "Build the repository of what Freyr sells — who it's for and where it's available.",
+    desc: "Build the repository of what Freyr sells: who it's for and where it's available.",
     href: "/offerings",
   },
   {
@@ -36,7 +36,7 @@ const STEPS = [
   {
     key: "approve",
     label: "Review and send a pitch",
-    desc: "Approve a drafted pitch — nothing goes out until you say so.",
+    desc: "Approve a drafted pitch: nothing goes out until you say so.",
     href: "/agent/inbox",
   },
   {

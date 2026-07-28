@@ -39,7 +39,7 @@ import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
 import { teamsChatUrl } from "@/lib/team";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
-import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete } from "lucide-react";
+import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import {
@@ -55,12 +55,16 @@ import { EmptyState } from "@/components/ui/EmptyState";
 // dropdowns (Suren: "color code all the dropdowns"). Shared with the
 // master-list managers so colours match everywhere.
 import { FILTER_PALETTE, listAccent } from "./filterPalette";
+// A customer family is an IDENTITY, so it never borrows a status colour: red
+// means a problem, green means healthy, #C2410C means caution (Anir, Jul 28:
+// "red means horrible, red means negative... red, green and yellow are
+// reserved"). Biologics used to be rose #E11D48 and read as an error chip.
 const familyColor = (fam: string): string => {
   const f = (fam || "").toLowerCase();
-  if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED";
-  if (f.includes("biologic")) return "#E11D48";
-  if (f.includes("pharma")) return "#0071E3";
-  return "#8E98A8";
+  if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED"; // violet
+  if (f.includes("biologic")) return "#DB2777"; // pink
+  if (f.includes("pharma")) return "#0071E3"; // blue
+  return "#475569"; // slate
 };
 import type {
   CustomerType,
@@ -126,7 +130,7 @@ function csv(v: string) {
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
-// Sort options — also valid ?sort= deep-link values, kept in sync with the
+// Sort options: also valid ?sort= deep-link values, kept in sync with the
 // rest of the filter bar so a sorted view can be shared/bookmarked.
 const SORTS = ["default", "name", "type", "category", "mapped"];
 
@@ -154,7 +158,7 @@ const MATERIAL_ICON: Record<string, typeof Video> = {
   reference: Quote,
 };
 
-// One row of a trend-point breakdown — the SAME shape as the charts' TipItem
+// One row of a trend-point breakdown, the SAME shape as the charts' TipItem
 // so it feeds Sparkline's pointTips directly, while staying a plain
 // serializable object the server page can build.
 export type OfferingTrendTip = {
@@ -164,13 +168,13 @@ export type OfferingTrendTip = {
   logo?: string;
 };
 
-// One slice / bar in the hover panel's commerce charts. Plain data only — the
+// One slice / bar in the hover panel's commerce charts. Plain data only, the
 // server page builds these arrays, so nothing here may be a function.
 type MixDatum = {
   label: string;
   value: number;
   color: string;
-  /** TIP_ICONS key ("company", "money") — a string, not a component. */
+  /** TIP_ICONS key ("company", "money"), a string, not a component. */
   icon?: string;
   tip?: { name: string; logo?: string; value?: string; sub?: string }[];
 };
@@ -183,13 +187,13 @@ export type OfferingCommerce = {
     id: string;
     name: string;
     revenue: number;
-    /** Seats this account licenses — the bar chart beside the revenue pie. */
+    /** Seats this account licenses, the bar chart beside the revenue pie. */
     licenses: number;
   }[];
-  /** Revenue split by contract type (Annual / Project / Service / License) —
+  /** Revenue split by contract type (Annual / Project / Service / License),
    *  the bar chart's honest fallback when no account licenses seats. */
   revenueByType: { label: string; value: number }[];
-  /** Cumulative revenue build for the hover chart — honest numbers only:
+  /** Cumulative revenue build for the hover chart, honest numbers only:
    *  derived from real revenue-line start dates when every line carries one,
    *  else cumulative by account ("how the book built"). Server-computed. */
   trend: {
@@ -200,17 +204,20 @@ export type OfferingCommerce = {
   };
 };
 
-// Multi-POC values arrive as one string ("Sathya K / Harshvardhan Gummadi").
-// Split for display only — never alter or complete the names themselves (real
-// employees; the seed spelling is the source of truth).
+// Multi-POC values arrive as one string. Freyr's master sheet separates two
+// people with a SLASH ("Sathya K / Harshvardhan Gummadi"), never a comma, and
+// one owner is written surname-first with a comma ("Inayat, Tanudeep").
+// Splitting on the comma tore that single person into two nameless avatars, so
+// only the slash (and an explicit "&") separates people here. Display-only:
+// never alter or complete a name, the sheet spelling is the source of truth.
 function parsePocs(poc: string): string[] {
   return poc
-    .split(/[/&,]/)
+    .split(/[/&]/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
 
-// The hover behind a POC avatar — who they are + a straight line to them on
+// The hover behind a POC avatar, who they are + a straight line to them on
 // Teams (POCs are internal Freyr people, so a Teams chip is always right).
 // Mirrors the Team roster's person popover.
 function PocHoverContent({
@@ -238,7 +245,7 @@ function PocHoverContent({
         target="_blank"
         rel="noopener noreferrer"
         // The popover portals to <body>, so this never sits inside the card's
-        // stretched link — stopPropagation is belt-and-braces so the chat
+        // stretched link, stopPropagation is belt-and-braces so the chat
         // click can never double as card navigation.
         onClick={(e) => e.stopPropagation()}
         title={`Message ${name.split(" ")[0]} on Teams`}
@@ -251,9 +258,13 @@ function PocHoverContent({
   );
 }
 
-// The tile's POC row: label + overlapping avatar stack (the campaigns
-// "Going to" pattern), each face hoverable for the full identity + Teams
-// link. Single-POC keeps the name inline; multi-POC shows faces only.
+// The tile's POC row: label + overlapping avatar stack, exactly the campaigns
+// "Going to" pattern, each face hoverable for the full identity + Teams link.
+// FACES ONLY, at every count. It used to print the name inline whenever there
+// was one POC, which put an initials bubble next to a comma-separated name and
+// read as two people crushed into one photo (Anir, Jul 28: "the POC should show
+// kinda similar to the campaign's page... you can't merge both people in one
+// pfp... and when I hover over I see the name"). The name lives in the hover.
 function PocStrip({
   poc,
   offeringName,
@@ -282,13 +293,13 @@ function PocStrip({
             className="inline-flex"
             content={<PocHoverContent name={name} offeringName={offeringName} />}
           >
-            <Avatar name={name} className="w-6 h-6 text-[8px] ring-2 ring-white" />
+            <Avatar
+              name={name}
+              className="w-6 h-6 text-[8px] ring-2 ring-[color:var(--white)]"
+            />
           </HoverCard>
         ))}
       </span>
-      {pocs.length === 1 && (
-        <span className="text-[11px] text-text-tertiary truncate">{pocs[0]}</span>
-      )}
     </div>
   );
 }
@@ -313,21 +324,29 @@ export function OfferingsBrowser({
   // Seed filters from the URL so chips elsewhere can deep-link into a filtered
   // view (e.g. /offerings?market=mkt-europe from a market chip on an offering).
   const params = useSearchParams();
-  const initType = customerTypes.some((c) => c.id === params.get("type"))
-    ? params.get("type")!
-    : "";
-  const initMkt = markets.some((m) => m.id === params.get("market"))
-    ? params.get("market")!
-    : "";
-  const initOt = offeringTypes.some((t) => t.id === params.get("otype"))
-    ? params.get("otype")!
-    : "";
-  const initCat = offeringCategories.some((c) => c.id === params.get("cat"))
-    ? params.get("cat")!
-    : "";
-  const initStatus = ["mapped", "unmapped"].includes(params.get("status") || "")
-    ? params.get("status")!
-    : "";
+  // Every filter reads a comma-separated list, so `?market=mkt-europe` and
+  // `?market=mkt-europe,mkt-japan` are both valid and a chip deep-link keeps
+  // working unchanged (change-log row 5, Saras: "any combination").
+  const keepIds = (raw: string | null, ok: (id: string) => boolean) =>
+    (raw ?? "")
+      .split(",")
+      .filter((id) => id && ok(id))
+      .join(",");
+  const initType = keepIds(params.get("type"), (id) =>
+    customerTypes.some((c) => c.id === id)
+  );
+  const initMkt = keepIds(params.get("market"), (id) =>
+    markets.some((m) => m.id === id)
+  );
+  const initOt = keepIds(params.get("otype"), (id) =>
+    offeringTypes.some((t) => t.id === id)
+  );
+  const initCat = keepIds(params.get("cat"), (id) =>
+    offeringCategories.some((c) => c.id === id)
+  );
+  const initStatus = keepIds(params.get("status"), (id) =>
+    ["mapped", "unmapped"].includes(id)
+  );
   const initSort = SORTS.includes(params.get("sort") || "")
     ? params.get("sort")!
     : "default";
@@ -339,11 +358,11 @@ export function OfferingsBrowser({
   const [catId, setCatId] = useState(initCat);
   const [status, setStatus] = useState(initStatus);
   const [sort, setSort] = useState(initSort);
-  // Tile (cards) vs Grid (compact table) — Suren's live-meeting ask.
+  // Tile (cards) vs Grid (compact table). Suren's live-meeting ask.
   const [view, setView] = useState<"tile" | "grid">(initView);
 
   // Keep filters in sync when the URL changes via in-app navigation (chips, the
-  // "still to map" stat link, etc.) — useState only seeds on first mount, so
+  // "still to map" stat link, etc.), useState only seeds on first mount, so
   // without this a client-side nav to ?status=unmapped wouldn't apply.
   useEffect(() => {
     const t = params.get("type");
@@ -353,13 +372,12 @@ export function OfferingsBrowser({
     const s = params.get("status") || "";
     const so = params.get("sort") || "";
     setQ(params.get("q") ?? "");
-    const keep = (raw: string | null, ok: (id: string) => boolean) =>
-      (raw ?? "").split(",").filter((id) => id && ok(id)).join(",");
+    const keep = keepIds;
     setCtId(keep(t, (id) => customerTypes.some((c) => c.id === id)));
-    setMktId(markets.some((mm) => mm.id === m) ? m! : "");
+    setMktId(keep(m, (id) => markets.some((mm) => mm.id === id)));
     setOtId(keep(ot, (id) => offeringTypes.some((tt) => tt.id === id)));
     setCatId(keep(cat, (id) => offeringCategories.some((cc) => cc.id === id)));
-    setStatus(["mapped", "unmapped"].includes(s) ? s : "");
+    setStatus(keep(s, (id) => ["mapped", "unmapped"].includes(id)));
     setSort(SORTS.includes(so) ? so : "default");
     setView(params.get("view") === "grid" ? "grid" : "tile");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -385,9 +403,11 @@ export function OfferingsBrowser({
   // Offering type / category are strings on each offering; map the selected id
   // → its name.
   // Filter states hold comma-separated ids so URL params, deep-link chips and
-  // single-value tests keep working unchanged — the UI reads/writes them as
+  // single-value tests keep working unchanged, the UI reads/writes them as
   // arrays (change-log row 5: any combination, OR within a filter).
   const ctIds = ctId ? ctId.split(",") : [];
+  const mktIds = mktId ? mktId.split(",") : [];
+  const statuses = status ? status.split(",") : [];
   const otNames = otId
     ? otId.split(",").map((id) => offeringTypes.find((t) => t.id === id)?.name ?? "")
     : [];
@@ -398,14 +418,18 @@ export function OfferingsBrowser({
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return offerings.filter((o) => {
+      // OR inside a filter, AND across them (Saras, change-log row 5).
       if (ctIds.length && !o.customerTypes.some((c) => ctIds.includes(c.id))) return false;
-      if (mktId && !o.markets.some((m) => m.id === mktId)) return false;
+      if (mktIds.length && !o.markets.some((m) => mktIds.includes(m.id))) return false;
       if (otNames.length && !otNames.includes(o.offering_type)) return false;
       if (catNames.length && !catNames.includes(o.offering_category)) return false;
-      if (status === "mapped" && !isMapped(o)) return false;
-      if (status === "unmapped" && isMapped(o)) return false;
-      // Search across what's actually on the card — name, type, category,
-      // description, AND the markets / customer types it's mapped to — so typing
+      if (
+        statuses.length &&
+        !statuses.includes(isMapped(o) ? "mapped" : "unmapped")
+      )
+        return false;
+      // Search across what's actually on the card, name, type, category,
+      // description, AND the markets / customer types it's mapped to, so typing
       // "Europe", "intelligence" or "pharmaceutical" finds matches.
       if (
         needle &&
@@ -445,7 +469,7 @@ export function OfferingsBrowser({
           a.offering_name.localeCompare(b.offering_name)
       );
     else
-      // "default" — keep the catalog (sheet) order, but lead with the
+      // "default": keep the catalog (sheet) order, but lead with the
       // fully-detailed offerings so the page opens looking like a live catalog
       // instead of a wall of blank cards. Array sort is stable, so the original
       // catalog order is preserved within each group.
@@ -454,6 +478,12 @@ export function OfferingsBrowser({
   }, [filtered, sort]);
 
   const activeFilters = !!(q || ctId || mktId || otId || catId || status);
+  // Market and completeness arrive as self-clearing chips (see the filter bar).
+  // When they are the ONLY thing filtering, a separate Clear button is a second
+  // control for the same job, and its 85px is what pushed the sort / view /
+  // export cluster onto a second line (Anir, Jul 28: "this should just be one
+  // row"). Everything else still gets the Clear button.
+  const chipFiltersOnly = !q && !ctId && !otId && !catId && !!(mktId || status);
   const clearAll = () => {
     setQ("");
     setCtId("");
@@ -470,16 +500,20 @@ export function OfferingsBrowser({
     const slug = (s: string) =>
       s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const parts = ["freyr-offerings"];
-    const mkt = markets.find((m) => m.id === mktId);
-    const ct = customerTypes.find((c) => ctIds.includes(c.id));
-    if (mkt) parts.push(slug(mkt.name));
-    if (ct) parts.push(slug(ct.name));
-    if (status) parts.push(status);
+    // One pick names itself ("…-europe.csv"); a combination is counted, because
+    // a filename listing five markets helps nobody.
+    const pickedMarkets = markets.filter((m) => mktIds.includes(m.id));
+    const pickedTypes = customerTypes.filter((c) => ctIds.includes(c.id));
+    if (pickedMarkets.length === 1) parts.push(slug(pickedMarkets[0].name));
+    else if (pickedMarkets.length > 1) parts.push(`${pickedMarkets.length}-markets`);
+    if (pickedTypes.length === 1) parts.push(slug(pickedTypes[0].name));
+    else if (pickedTypes.length > 1) parts.push(`${pickedTypes.length}-customer-types`);
+    if (statuses.length === 1) parts.push(statuses[0]);
     if (parts.length === 1 && q.trim()) parts.push("filtered");
     return `${parts.join("-")}.csv`;
   };
 
-  // Export the current (filtered) view to CSV — Suren built this from Excel, so
+  // Export the current (filtered) view to CSV. Suren built this from Excel, so
   // round-tripping back out is natural.
   function exportCsv() {
     const header = [
@@ -500,7 +534,7 @@ export function OfferingsBrowser({
         o.offering_name,
         o.offering_category,
         // Fall back to the offering type's description when the offering's own
-        // isn't written yet — same as the detail page — so the Excel export
+        // isn't written yet, same as the detail page, so the Excel export
         // isn't a column of blanks for the not-yet-detailed offerings.
         o.offering_description ||
           offeringTypes.find((t) => t.name === o.offering_type)?.description ||
@@ -553,7 +587,7 @@ export function OfferingsBrowser({
     // both sides, so a colour means one customer wherever you look.
     const payingCustomers = (com?.customers ?? []).filter((c) => c.revenue > 0);
     const shownRevenue = payingCustomers.reduce((s, c) => s + c.revenue, 0);
-    // The rollup ships the top accounts only — the tail still has to occupy its
+    // The rollup ships the top accounts only: the tail still has to occupy its
     // share of the ring, or every percentage on it would be a lie.
     const tailRevenue = Math.max((com?.totalRevenue ?? 0) - shownRevenue, 0);
     const tailAccounts = Math.max(
@@ -589,8 +623,8 @@ export function OfferingsBrowser({
       });
     }
     // The hover is the Customers-card pattern (HoverExpandCard): the card pops
-    // out over its neighbours and opens a mini-dashboard — revenue, who's
-    // using it, seats, materials — not just a pop-out animation (Anir: "I
+    // out over its neighbours and opens a mini-dashboard: revenue, who's
+    // using it, seats, materials, not just a pop-out animation (Anir: "I
     // don't care about a pop-up. I care about all the information. Look at
     // the customers page.").
     return (
@@ -608,7 +642,7 @@ export function OfferingsBrowser({
           className="h-full"
           summary={
             <div className="flex flex-col gap-3">
-          {/* Offering name is the primary element (Suren's live-meeting ask —
+          {/* Offering name is the primary element (Suren's live-meeting ask,
               the customer-type families move down so they don't compete). */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -631,18 +665,18 @@ export function OfferingsBrowser({
 
           {o.current_availability && (
             <div className="flex flex-wrap gap-1.5">
-              {/* The clean timing status only — market-coverage / version notes
+              {/* The clean timing status only: market-coverage / version notes
                   (future_availability) are free-form and live on the detail page. */}
               <AvailabilityPill value={o.current_availability} size="sm" />
             </div>
           )}
 
           <div className="mt-auto pt-3 border-t border-border-light space-y-2">
-            {/* Offering category — Suren's Jun 27 grouping (replaces markets on
+            {/* Offering category, Suren's Jun 27 grouping (replaces markets on
                 the tile). The primary qualifier above the offering type. */}
             {/* Every data point is a colour + icon chip, never flat gray text
                 (standing chip rule; Anir, Jul 27: "for the data points on each
-                of these, definitely need tags, icons, and colors — the all
+                of these, definitely need tags, icons, and colors, the all
                 customer types or the Freyr service thing"). Category, offering
                 type and audience each carry their own hue so a card is
                 scannable without reading a word. */}
@@ -673,7 +707,7 @@ export function OfferingsBrowser({
                 />
               )}
             </div>
-            {/* Service-delivery POC(s) — hover a face for who's there + a
+            {/* Service-delivery POC(s), hover a face for who's there + a
                 Teams line to them (Suren: "if there's multiple, make it look
                 like the campaigns page so when I hover over it I can see
                 who's there"). */}
@@ -704,7 +738,7 @@ export function OfferingsBrowser({
             {!mapped && (
               <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
                 <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
-                Awaiting details — add who it&apos;s for, its markets &amp; sales
+                Awaiting details, add who it&apos;s for, its markets &amp; sales
                 materials
               </p>
             )}
@@ -713,7 +747,7 @@ export function OfferingsBrowser({
           }
           extra={
             <>
-              {/* The commercial mini-dashboard — the numbers a rep would
+              {/* The commercial mini-dashboard, the numbers a rep would
                   otherwise open the offering to see. Every tile is icon +
                   colour, never flat gray (standing chip rule). */}
               <div className="grid grid-cols-2 gap-2">
@@ -755,15 +789,15 @@ export function OfferingsBrowser({
                 ))}
               </div>
 
-              {/* How the revenue built — a real line, like the customer cards
+              {/* How the revenue built, a real line, like the customer cards
                   (Suren: "need graph like line chart for revenue like the
                   customers"). Points are cumulative annual revenue keyed off
                   the revenue lines' real start dates (or account-by-account
-                  when lines carry no dates) — never an invented curve.
+                  when lines carry no dates), never an invented curve.
                   It used to be a bare Sparkline: a curve with no scale and no
                   dates on it (Suren: "for the line chart, there are no units or
                   anything, it looks kind of weird"). AreaChart is the same
-                  series with the axes /forecast draws — the money value at the
+                  series with the axes /forecast draws, the money value at the
                   top, $0 on the baseline, and the first/last period underneath.
                   `yMax` pins the ceiling to the real total so the top label is
                   the actual book, not a 10%-headroom number nobody booked; the
@@ -794,7 +828,7 @@ export function OfferingsBrowser({
                   </div>
                 )}
 
-              {/* WHO is paying for it — the Customers-page substance, now read
+              {/* WHO is paying for it: the Customers-page substance, now read
                   as charts instead of a text list (Suren: "for the 'who is
                   using it' part, you can definitely make that a pie chart, it'll
                   look better… a pie chart on the left and, on the right, maybe
@@ -814,23 +848,23 @@ export function OfferingsBrowser({
                         <CompanyLogo
                           key={c.id}
                           name={c.name}
-                          className="w-5 h-5 text-[7px] ring-2 ring-white"
+                          className="w-5 h-5 text-[7px] ring-2 ring-[color:var(--white)]"
                         />
                       ))}
                       {tailAccounts > 0 && (
-                        <span className="flex h-5 w-5 items-center justify-center rounded-xl bg-blue-light text-[8px] font-semibold text-blue-primary ring-2 ring-white tnum">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-xl bg-blue-light text-[8px] font-semibold text-blue-primary ring-2 ring-[color:var(--white)] tnum">
                           +{tailAccounts}
                         </span>
                       )}
                     </span>
                   </div>
                   {/* ONE row: the ring, and its key beside it. The licensed-seats
-                      bar chart that used to sit here is gone — it charted two
+                      bar chart that used to sit here is gone, it charted two
                       numbers the legend already states, and squeezing it into
                       half the panel meant it needed its own sideways scroll to
                       show a company name (Anir, Jul 28: "why the fuck would I
                       want to scroll within that licensed seats bar chart? You
-                      don't even need it — move the names and numbers to the
+                      don't even need it, move the names and numbers to the
                       right of the pie"). Markets follow directly underneath. */}
                   <div className="flex items-center gap-3">
                     <DonutChart
@@ -854,7 +888,7 @@ export function OfferingsBrowser({
                   </div>
                 </div>
               ) : com && com.customers.length > 0 ? (
-                // Marked in use, but no money against it yet — still say WHO,
+                // Marked in use, but no money against it yet, still say WHO,
                 // with their logos, rather than dropping to "no revenue".
                 <div className="mt-3">
                   <p className="text-[11.5px] font-semibold text-text-primary">
@@ -872,12 +906,12 @@ export function OfferingsBrowser({
                     ))}
                   </div>
                   <p className="mt-1.5 text-[10.5px] leading-snug text-text-tertiary">
-                    In use today — no revenue recorded against it yet.
+                    In use today, no revenue recorded against it yet.
                   </p>
                 </div>
               ) : (
                 <p className="mt-3 text-[11px] leading-snug text-text-tertiary">
-                  No revenue recorded yet — accounts appear here as they start
+                  No revenue recorded yet, accounts appear here as they start
                   using this offering.
                 </p>
               )}
@@ -886,7 +920,7 @@ export function OfferingsBrowser({
               {(o.markets.length > 0 || o.future_availability) && (
                 <div className="mt-2.5 space-y-1.5">
                   {/* A flag belongs next to its OWN place (Suren's standing
-                      rule) — so each market is its own chip carrying its own
+                      rule), so each market is its own chip carrying its own
                       flag, not one globe in front of a middot list. Flag and
                       name never separate (whitespace-nowrap); a market with no
                       flag match shows its name alone rather than a placeholder.
@@ -941,7 +975,7 @@ export function OfferingsBrowser({
     }
   }
 
-  // When sorted "By category", group under each offering category — Suren's
+  // When sorted "By category", group under each offering category. Suren's
   // primary grouping ("if I pick Global Regulatory Intelligence I see these
   // offerings"). sorted is already category→name ordered.
   const catGroups: { cat: string; items: HydratedOffering[] }[] = [];
@@ -959,12 +993,12 @@ export function OfferingsBrowser({
 
   return (
     <div>
-      {/* Filter bar — search priority (Suren, Jul 27): pressing the search
+      {/* Filter bar, search priority (Suren, Jul 27): pressing the search
           compresses every control to its right, and this box is already
           `flex-1`, so it simply absorbs the width they release. */}
       <SearchPriority
         query={q}
-        className="rounded-xl border border-border-light bg-surface/50 p-2.5 mb-4 flex flex-wrap items-center gap-2.5"
+        className="rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-wrap items-center gap-2.5"
       >
         <PrioritySearchInput
           grow
@@ -973,10 +1007,18 @@ export function OfferingsBrowser({
           placeholder="Search offerings…"
           ariaLabel="Search offerings"
           iconSize={16}
-          className="flex-1 min-w-[190px]"
+          className="flex-1 min-w-[120px]"
           iconClassName="left-3"
           inputClassName={`${inputCls} w-full pl-9 pr-3`}
         />
+        {/* Three dropdowns, one row. Five of them pushed the display cluster
+            (sort / view / export) onto a lonely second line (Anir, Jul 28:
+            "this should just be one row… you don't need all these
+            selectors"). Markets and completeness were the two that went: both
+            already have one-click entry points elsewhere (the market chips on
+            each card, the "awaiting details" stat card), and both still filter
+            from the URL, they just name themselves as a clearable chip below
+            instead of owning a permanent control. */}
         <MultiColorSelect
           values={ctIds}
           onChange={(next) => setCtId(next.join(","))}
@@ -986,7 +1028,7 @@ export function OfferingsBrowser({
           allIcon={Users}
           allColor="#0071E3"
           options={[
-            // Colour says the FAMILY, the icon says the SIZE — the list used
+            // Colour says the FAMILY, the icon says the SIZE, the list used
             // to encode only family, so Small/Mid/Large read identically
             // (Anir, Jul 25: "you only have it color-coded by the category…
             // not by the size").
@@ -1025,7 +1067,7 @@ export function OfferingsBrowser({
           values={otId ? otId.split(",") : []}
           onChange={(next) => setOtId(next.join(","))}
           minWidth={150}
-          allLabel="All offering types"
+          allLabel="All types"
           ariaLabel="Filter by offering type"
           allIcon={SortPackage}
           allColor="#C2410C"
@@ -1037,19 +1079,56 @@ export function OfferingsBrowser({
             })),
           ]}
         />
-        {status && (
-          <span className="h-10 inline-flex items-center gap-1.5 px-3 rounded-lg bg-blue-light text-[12.5px] font-semibold text-blue-primary">
-            {status === "unmapped" ? "Awaiting details" : "Fully detailed"}
+        {/* Market and completeness arrive by LINK, not by dropdown: the market
+            chips on every card link to `?market=`, and the "awaiting details"
+            stat card links to `?status=unmapped`. The filtering is unchanged;
+            what an arriving rep gets instead of a select is this chip, which
+            names the filter that is narrowing the list and clears it on click.
+            Nothing renders when no param is set, so the row stays one line. */}
+        {mktIds.map((id) => {
+          const i = markets.findIndex((m) => m.id === id);
+          const m = markets[i];
+          if (!m) return null;
+          const color = listAccent(i);
+          return (
             <button
-              onClick={() => setStatus("")}
-              aria-label="Clear status filter"
-              className="hover:opacity-70"
+              key={`mkt-chip-${id}`}
+              type="button"
+              onClick={() => setMktId(mktIds.filter((x) => x !== id).join(","))}
+              aria-label={`Clear market filter: ${m.name}`}
+              title={`Clear market filter: ${m.name}`}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold transition-opacity hover:opacity-75"
+              style={{ color, background: `${color}1A` }}
             >
-              <X size={13} strokeWidth={2.2} />
+              <Globe size={13} strokeWidth={2.1} className="shrink-0" />
+              {m.name}
+              <X size={13} strokeWidth={2.4} className="shrink-0" />
             </button>
-          </span>
-        )}
-        {activeFilters && (
+          );
+        })}
+        {statuses.map((s) => {
+          const meta =
+            s === "mapped"
+              ? { label: "Fully detailed", color: "#059669", Icon: SortComplete }
+              : { label: "Awaiting details", color: "#C2410C", Icon: Clock3 };
+          const StatusIcon = meta.Icon;
+          return (
+            <button
+              key={`status-chip-${s}`}
+              type="button"
+              onClick={() => setStatus(statuses.filter((x) => x !== s).join(","))}
+              aria-label={`Clear completeness filter: ${meta.label}`}
+              title={`Clear completeness filter: ${meta.label}`}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold transition-opacity hover:opacity-75"
+              style={{ color: meta.color, background: `${meta.color}1A` }}
+            >
+              <StatusIcon size={13} strokeWidth={2.1} className="shrink-0" />
+              {meta.label}
+              <X size={13} strokeWidth={2.4} className="shrink-0" />
+            </button>
+          );
+        })}
+        {activeFilters && !chipFiltersOnly && (
           <PriorityTooltip label="Clear filters">
             <button
               onClick={clearAll}
@@ -1061,19 +1140,19 @@ export function OfferingsBrowser({
             </button>
           </PriorityTooltip>
         )}
-        {/* Sort, view and export live IN the filter bar — two stacked control
+        {/* Sort, view and export live IN the filter bar, two stacked control
             rows read as clutter (Anir, Jul 25: "everything should be on one
             row, and it should look beautiful"). ml-auto keeps this display
             cluster docked right; the bar wraps gracefully when narrow. */}
         <div className="ml-auto flex items-center gap-2">
 
-          {/* Sort — a display control, so it lives here with view + export rather
+          {/* Sort, a display control, so it lives here with view + export rather
               than wrapping onto a lonely second line under the filters. */}
           <ColorSelect
             value={sort}
             onChange={setSort}
             ariaLabel="Sort offerings"
-            minWidth={170}
+            minWidth={148}
             options={[
               { value: "default", label: "Recommended", color: "#0071E3", icon: SortSpark },
               { value: "name", label: "Name (A–Z)", color: "#7C3AED", icon: ArrowDownAZ },
@@ -1086,7 +1165,7 @@ export function OfferingsBrowser({
           <div
             role="group"
             aria-label="View"
-            className="inline-flex items-center rounded-lg border border-border-light bg-surface/60 p-0.5"
+            className="inline-flex items-center rounded-lg border border-border-light bg-[var(--surface)] p-0.5"
           >
             <button
               type="button"
@@ -1094,14 +1173,13 @@ export function OfferingsBrowser({
               aria-label="Tile view"
               aria-pressed={view === "tile"}
               title="Tile view"
-              className={`inline-flex items-center text-[12px] font-semibold rounded-md px-2.5 py-1 transition-colors ${
+              className={`inline-flex h-7 w-8 items-center justify-center rounded-md transition-colors ${
                 view === "tile"
                   ? "bg-white text-blue-primary shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
               <LayoutGrid size={14} strokeWidth={2} />
-              <PriorityLabel gap="ml-1">Tiles</PriorityLabel>
             </button>
             <button
               type="button"
@@ -1109,14 +1187,13 @@ export function OfferingsBrowser({
               aria-label="Grid view"
               aria-pressed={view === "grid"}
               title="Grid view"
-              className={`inline-flex items-center text-[12px] font-semibold rounded-md px-2.5 py-1 transition-colors ${
+              className={`inline-flex h-7 w-8 items-center justify-center rounded-md transition-colors ${
                 view === "grid"
                   ? "bg-white text-blue-primary shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
               <Table2 size={14} strokeWidth={2} />
-              <PriorityLabel gap="ml-1">Grid</PriorityLabel>
             </button>
           </div>
           {sorted.length > 0 && (
@@ -1132,17 +1209,13 @@ export function OfferingsBrowser({
         </div>
       </SearchPriority>
 
-      <p className="mb-3 text-[12px] text-text-tertiary tnum">
-        Showing {filtered.length} of {offerings.length} offerings
-      </p>
-
 
       {offerings.length === 0 ? (
         <Card className="p-0">
           <EmptyState
             icon={Package}
             title="No offerings yet."
-            description="Build the repository by adding your first offering — its type, who it's for, the markets it covers, and the sales materials behind it."
+            description="Build the repository by adding your first offering: its type, who it's for, the markets it covers, and the sales materials behind it."
             action={
               <Link
                 href="/offerings/new"
@@ -1174,31 +1247,34 @@ export function OfferingsBrowser({
           />
         </Card>
       ) : view === "grid" ? (
-        // Grid (compact table) view — Suren's live-meeting ask; mirrors his
+        // Grid (compact table) view. Suren's live-meeting ask; mirrors his
         // Excel so the whole catalog is scannable in rows. Keyed so switching
         // views re-mounts with the shared fade/lift.
         <Card key="grid-view" className="tab-panel p-0 overflow-hidden">
           <div className="overflow-x-auto">
-            {/* table-fixed + explicit widths so all six columns fit the card —
-                auto layout let "Availability" grab all the slack and shoved the
-                last two columns off-screen behind a horizontal scroll. */}
-            <table className="w-full min-w-[1280px] table-fixed text-[13px] border-collapse">
+            {/* table-fixed + explicit widths. The min-width was 1280px, wider
+                than the card on a 1512 screen, so the table always scrolled and
+                the last column sat half off the edge (Anir, Jul 28: "it's not
+                really properly aligned, especially in the last column"). It now
+                fits, and Category is wide enough to hold its longest name,
+                "Submissions and Document Operations", on ONE line. */}
+            <table className="w-full min-w-[1040px] table-fixed text-[13px] border-collapse">
               <thead>
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="px-4 py-2.5 w-[22%]">Offering</th>
-                  <th className="px-4 py-2.5 w-[15%]">Category</th>
+                  <th className="px-4 py-2.5 w-[19%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[21%]">Category</th>
                   <th className="px-4 py-2.5 w-[12%]">Type</th>
-                  <th className="px-4 py-2.5 w-[10%]">Availability</th>
+                  <th className="px-4 py-2.5 w-[11%]">Availability</th>
                   <th className="px-4 py-2.5 w-[14%]">Who it&apos;s for</th>
                   <th className="px-4 py-2.5 w-[12%]">Revenue</th>
-                  <th className="px-4 py-2.5 w-[9%]">Trend</th>
-                  <th className="px-4 py-2.5 w-[6%]">Materials</th>
+                  <th className="px-4 py-2.5 w-[6%]">Trend</th>
+                  <th className="px-4 py-2.5 w-[5%] text-right">Materials</th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.map((o) => {
                   // Grid rows were bare gray text while the tiles were fully
-                  // colour-coded — same data, two moods (Anir, Jul 25: "the
+                  // colour-coded, same data, two moods (Anir, Jul 25: "the
                   // grid view doesn't have any colors, and it's really dry").
                   // Colours derive from list order, matching the dropdowns.
                   const catIndex = offeringCategories.findIndex(
@@ -1221,7 +1297,7 @@ export function OfferingsBrowser({
                     ...fams.filter((f) => !FAMILY_ORDER.includes(f)),
                   ];
                   // Commercial columns (Team-roster pattern: number + stacked
-                  // share bar + trend spark) — same server rollup as the tile
+                  // share bar + trend spark), same server rollup as the tile
                   // hover, so both views tell one story.
                   const com = commerce?.[o.id];
                   const revCustomers = (com?.customers ?? []).filter(
@@ -1231,7 +1307,7 @@ export function OfferingsBrowser({
                     (s, c) => s + c.revenue,
                     0
                   );
-                  // The rollup ships the top accounts only — the tail still
+                  // The rollup ships the top accounts only, the tail still
                   // has to occupy its share of the bar to stay honest.
                   const restRevenue = Math.max(
                     (com?.totalRevenue ?? 0) - shownRevenue,
@@ -1244,7 +1320,7 @@ export function OfferingsBrowser({
                   return (
                     <tr
                       key={o.id}
-                      className="border-b border-border-light last:border-0 align-middle hover:bg-surface/50 transition-colors"
+                      className="border-b border-border-light last:border-0 align-middle hover:bg-[var(--surface)] transition-colors"
                     >
                       <td className="px-4 py-3">
                         <Link
@@ -1273,12 +1349,12 @@ export function OfferingsBrowser({
                                         <Avatar
                                           key={n}
                                           name={n}
-                                          className="w-[18px] h-[18px] text-[7px] ring-2 ring-white"
+                                          className="w-[18px] h-[18px] text-[7px] ring-2 ring-[color:var(--white)]"
                                         />
                                       ))}
                                     </span>
                                     {pocs.length === 1 && (
-                                      <span className="text-[11px] text-text-tertiary truncate">
+                                      <span className="min-w-0 break-words text-[11px] text-text-tertiary">
                                         {pocs[0]}
                                       </span>
                                     )}
@@ -1291,17 +1367,17 @@ export function OfferingsBrowser({
                       <td className="px-4 py-3">
                         {o.offering_category && catColor ? (
                           <span
-                            className="inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-0.5 text-[11.5px] font-semibold leading-snug"
+                            className="inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1 text-[11.5px] font-semibold leading-tight"
                             style={{ color: catColor, background: `${catColor}14` }}
                           >
                             <span
-                              className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
+                              className="h-1.5 w-1.5 shrink-0 rounded-full"
                               style={{ background: catColor }}
                             />
                             <span className="min-w-0">{o.offering_category}</span>
                           </span>
                         ) : (
-                          <span className="text-text-secondary">{o.offering_category || "—"}</span>
+                          <span className="text-text-secondary">{o.offering_category || "-"}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1317,14 +1393,14 @@ export function OfferingsBrowser({
                             <span className="min-w-0">{o.offering_type}</span>
                           </span>
                         ) : (
-                          <span className="text-text-secondary">{o.offering_type || "—"}</span>
+                          <span className="text-text-secondary">{o.offering_type || "-"}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
                         {o.current_availability ? (
                           <AvailabilityPill value={o.current_availability} size="sm" />
                         ) : (
-                          "—"
+                          "-"
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1353,7 +1429,7 @@ export function OfferingsBrowser({
                             </span>
                           )
                         ) : (
-                          <span className="text-text-secondary">—</span>
+                          <span className="text-text-secondary">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1362,7 +1438,7 @@ export function OfferingsBrowser({
                             <p className="text-[13px] font-semibold text-text-primary tnum">
                               {formatMoney(com.totalRevenue)}
                             </p>
-                            {/* Who that money comes from — a slim stacked bar
+                            {/* Who that money comes from: a slim stacked bar
                                 (the Team table's pipeline-bar treatment), one
                                 segment per account, hover a segment for the
                                 name + amount. */}
@@ -1394,7 +1470,7 @@ export function OfferingsBrowser({
                             </div>
                           </div>
                         ) : (
-                          <span className="text-text-tertiary">—</span>
+                          <span className="text-text-tertiary">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1414,7 +1490,7 @@ export function OfferingsBrowser({
                             />
                           </div>
                         ) : (
-                          <span className="text-text-tertiary">—</span>
+                          <span className="text-text-tertiary">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3 tnum">
@@ -1423,7 +1499,7 @@ export function OfferingsBrowser({
                             {o.materials.length}
                           </span>
                         ) : (
-                          <span className="text-text-tertiary">—</span>
+                          <span className="text-text-tertiary">-</span>
                         )}
                       </td>
                     </tr>

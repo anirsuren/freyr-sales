@@ -7,7 +7,7 @@ import { TopBar } from "./TopBar";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AgentDock } from "@/components/agent/AgentDock";
 import type { DataMode } from "@/lib/dataMode";
-import { isOfferingsOnly } from "@/lib/release";
+import { isOfferingsOnly, isReleasedPath } from "@/lib/release";
 import { useHoverPreference } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
@@ -36,14 +36,11 @@ export function AppShell({
   const pathname = usePathname() || "";
   const router = useRouter();
   const offeringsOnly = isOfferingsOnly(dataMode);
-  const restrictedPath =
-    offeringsOnly &&
-    pathname !== "/login" &&
-    pathname !== "/auth/confirm" &&
-    pathname !== "/settings" &&
-    pathname !== "/onboarding" &&
-    pathname !== "/offerings" &&
-    !pathname.startsWith("/offerings/");
+  // Same allow-list the middleware redirect uses (lib/release.ts). Keeping one
+  // copy is what stops a page from rendering its chrome for a frame before the
+  // server bounce lands — and it restores /access-pending, which this list used
+  // to omit, so an unapproved visitor no longer ping-pongs to /offerings.
+  const restrictedPath = !isReleasedPath(pathname, dataMode);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const hoverPreference = useHoverPreference();
   const agentHiddenStorageKey = userScopedStorageKey(
@@ -234,7 +231,7 @@ export function AppShell({
                 className="flex-1 min-w-0 overflow-y-auto"
               >
                 {/* key=pathname re-mounts on navigation so every page fades/rises
-                    in — one place fixes "no animation when I click X" everywhere
+                    in, one place fixes "no animation when I click X" everywhere
                     (Suren, repeatedly). Full-bleed pages animate separately. */}
                 <div key={pathname} className="p-8 page-in">{children}</div>
               </main>

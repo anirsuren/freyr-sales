@@ -49,16 +49,16 @@ export async function POST(req: NextRequest) {
   // The angle (cycled by "Rewrite") sets the subject + core value sentence …
   const ANGLES = [
     {
-      subject: `${co} × Freyr — ${service}`,
-      value: `I've been following ${co}'s regulatory work and wanted to reconnect — Freyr's ${service} helps teams like yours hit submission timelines across FDA, EMA, and 120+ agencies without adding headcount.`,
+      subject: `${co} × Freyr. ${service}`,
+      value: `I've been following ${co}'s regulatory work and wanted to reconnect. Freyr's ${service} helps teams like yours hit submission timelines across FDA, EMA, and 120+ agencies without adding headcount.`,
     },
     {
-      subject: `Former FDA/EMA reviewers — ${service} for ${co}`,
+      subject: `Former FDA/EMA reviewers. ${service} for ${co}`,
       value: `Our ${service} team includes former FDA and EMA reviewers, so we tend to de-risk ${industry} submissions before they become bottlenecks.`,
     },
     {
       subject: `Should I close the loop, ${firstName}?`,
-      value: `Totally fine if the timing isn't right for ${service} — but if it's worth a quick look for ${co}, I'll make it easy.`,
+      value: `Totally fine if the timing isn't right for ${service}: but if it's worth a quick look for ${co}, I'll make it easy.`,
     },
   ];
   // … and the tone sets the greeting, CTA, and sign-off.
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     brief: {
       greet: `Hi ${firstName},`,
       cta: `Worth 20 minutes this week?`,
-      signoff: `— ${senderName}, Freyr`,
+      signoff: `- ${senderName}, Freyr`,
     },
   };
   const angle = ANGLES[variant % ANGLES.length];
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     tone === "formal"
       ? "Tone: formal and professional."
       : tone === "brief"
-      ? "Tone: brief — 2-3 sentences, punchy."
+      ? "Tone: brief. 2-3 sentences, punchy."
       : "Tone: warm and personable.";
   const facts = [
     `Company: ${co}`,
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     `Lead service: ${service}`,
     customer.competitor ? `Incumbent/competitor: ${customer.competitor}` : null,
     toneHint,
-    variant > 0 ? `This is rewrite #${variant} — take a clearly different angle.` : null,
+    variant > 0 ? `This is rewrite #${variant}: take a clearly different angle.` : null,
   ]
     .filter(Boolean)
     .join("\n");

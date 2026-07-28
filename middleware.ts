@@ -6,6 +6,7 @@ import {
   verifyAppSession,
 } from "@/lib/appSession";
 import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
+import { isOfferingsReleasePath } from "@/lib/release";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
@@ -170,16 +171,10 @@ export async function middleware(request: NextRequest) {
   if (
     offeringsOnly(request) &&
     !pathname.startsWith("/api/") &&
-    pathname !== "/login" &&
-    pathname !== "/access-pending" &&
-    pathname !== "/onboarding" &&
-    pathname !== "/settings" &&
-    pathname !== "/offerings" &&
-    !pathname.startsWith("/offerings/") &&
-    // The email-confirmation landing must never bounce to /offerings — the
-    // sign-in tokens ride its URL. (The /login hash fallback would still
-    // rescue it, but the direct path should work.)
-    pathname !== "/auth/confirm" &&
+    // The released module + the handful of non-module pages (sign-in, the
+    // email-confirmation landing whose URL carries the session, access-pending,
+    // settings, the tour). One shared list — see lib/release.ts.
+    !isOfferingsReleasePath(pathname) &&
     // Static files (the sidebar logo, avatars, headshots, icons) are assets,
     // not pages. Gating them redirected every <img> to the offerings HTML the
     // moment prod ran in Real mode, which drew the logo as a broken image

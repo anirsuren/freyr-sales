@@ -86,7 +86,7 @@ export default async function ReportsPage() {
   const TYPE_COLOR: Record<string, string> = {
     annual: "#2563EB", // blue
     project: "#7C3AED", // violet
-    annual_service: "#C2410C", // burnt orange — this colour is also the Type chip's TEXT (below), and amber was unreadable there
+    annual_service: "#C2410C", // burnt orange, this colour is also the Type chip's TEXT (below), and amber was unreadable there
     license: "#059669", // emerald
   };
   const typeSegments = report.byType.map((t) => ({
@@ -137,7 +137,7 @@ export default async function ReportsPage() {
     <div className="space-y-6 stagger">
       <PageHeader
         title="Reports"
-        subtitle="Revenue across every offering — how much we make, how many licenses and customers, and what's in flight. All from the revenue logged on each account."
+        subtitle="Revenue across every offering: how much we make, how many licenses and customers, and what's in flight. All from the revenue logged on each account."
         action={<ReportsExport report={report} />}
       />
 
@@ -145,7 +145,7 @@ export default async function ReportsPage() {
         <EmptyState
           icon={ReceiptText}
           title="No offering revenue yet"
-          description="As reps log the revenue on the offerings each customer uses (on the customer's Offerings tab), it rolls up here — total revenue, licenses, customers, renewals, and what's in progress."
+          description="As reps log the revenue on the offerings each customer uses (on the customer's Offerings tab), it rolls up here: total revenue, licenses, customers, renewals, and what's in progress."
         />
       ) : (
         <>
@@ -366,7 +366,7 @@ export default async function ReportsPage() {
                         {formatMoney(o.revenue)}
                       </td>
                       <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">
-                        {o.licenses || "—"}
+                        {o.licenses || "-"}
                       </td>
                       <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">{o.lines}</td>
                     </tr>
@@ -385,13 +385,13 @@ export default async function ReportsPage() {
                   Renewals &amp; contract terms
                 </h2>
                 <p className="text-[12px] text-text-tertiary">
-                  Every contract by end date — what&apos;s up for renewal soonest.
+                  Every contract by end date, what&apos;s up for renewal soonest.
                 </p>
               </div>
             </div>
             {report.renewals.length === 0 ? (
               <p className="px-5 pb-5 text-[13px] text-text-secondary">
-                No dated contracts yet — add start/end dates to a revenue line and
+                No dated contracts yet, add start/end dates to a revenue line and
                 renewals track here.
               </p>
             ) : (
@@ -438,7 +438,7 @@ export default async function ReportsPage() {
                           {r.offering}
                         </td>
                         {/* Each contract type carries its OWN colour — the same
-                            one the revenue-by-type donut uses — instead of every
+                            one the revenue-by-type donut uses, instead of every
                             row reading identical blue (Anir, Jul 25: "we need
                             proper color-coded tags here in the type column"). */}
                         <td className="px-5 py-3 whitespace-nowrap">
@@ -472,7 +472,7 @@ export default async function ReportsPage() {
                             {r.daysLeft < 0
                               ? "Expired"
                               : r.daysLeft <= 90
-                              ? `${r.daysLeft}d — renew soon`
+                              ? `${r.daysLeft}d: renew soon`
                               : "Active"}
                           </span>
                         </td>
@@ -489,7 +489,7 @@ export default async function ReportsPage() {
               {formatMoney(weightedOpen)}
             </span>{" "}
             weighted pipeline is still in progress on top of the{" "}
-            {formatMoney(report.totalRevenue)} already on the books — see the{" "}
+            {formatMoney(report.totalRevenue)} already on the books, see the{" "}
             <Link href="/forecast" className="text-blue-primary hover:underline">
               forecast
             </Link>{" "}

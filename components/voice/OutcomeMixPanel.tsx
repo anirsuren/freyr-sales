@@ -131,7 +131,7 @@ export function OutcomeMixPanel({
       <div className="mt-4 flex min-h-0 flex-1 flex-col">
         <p className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-            How they ended, day by day — last 7 days
+            How they ended, day by day, last 7 days
           </span>
           <span className="text-[10px] text-text-tertiary">calls</span>
         </p>

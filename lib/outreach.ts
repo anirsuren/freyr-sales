@@ -20,7 +20,7 @@ import { hasAnthropic } from "./env";
 // What Freyr/Freya IS — the "basic information the system should have access
 // to by default" (Suren). Kept short; the real KB grows via sales materials.
 export const FREYR_CONTEXT =
-  "Freyr is a global regulatory solutions partner to 400+ life-sciences companies. Freya is Freyr's AI-powered regulatory platform — modules for product registration, submissions, labeling, artwork and regulatory intelligence, with AI agents that automate the work around them.";
+  "Freyr is a global regulatory solutions partner to 400+ life-sciences companies. Freya is Freyr's AI-powered regulatory platform: modules for product registration, submissions, labeling, artwork and regulatory intelligence, with AI agents that automate the work around them.";
 
 const STOPWORDS = new Set([
   "and", "the", "for", "with", "head", "lead", "senior", "chief", "global",
@@ -90,7 +90,7 @@ export interface OutreachDraft {
   limit?: number; // LinkedIn character budget, for the UI counter
 }
 
-const LINKEDIN_LIMIT = 300; // connection-note budget — keep it copy-paste safe
+const LINKEDIN_LIMIT = 300; // connection-note budget, keep it copy-paste safe
 
 function firstName(full: string): string {
   return (full || "").replace(/^(dr|mr|ms|mrs)\.?\s+/i, "").split(/\s+/)[0] || "there";
@@ -130,9 +130,9 @@ export function generateMessageTemplate(input: OutreachInput): OutreachDraft {
 
   if (kind === "linkedin") {
     // Budgeted assembly — trim the longest parts first so we stay ≤300.
-    let msg = `Hi ${first} — given your role as ${title} at ${company}, I think ${offering.offering_name} (our ${cat.toLowerCase()} ${/service/i.test(offering.offering_type) ? "service" : "module"}) is worth 2 minutes of your time. Happy to share a short overview — open to it?`;
+    let msg = `Hi ${first}: given your role as ${title} at ${company}, I think ${offering.offering_name} (our ${cat.toLowerCase()} ${/service/i.test(offering.offering_type) ? "service" : "module"}) is worth 2 minutes of your time. Happy to share a short overview: open to it?`;
     if (msg.length > LINKEDIN_LIMIT) {
-      msg = `Hi ${first} — given your role at ${company}, I think ${offering.offering_name} is worth 2 minutes of your time. Happy to share a short overview — open to it?`;
+      msg = `Hi ${first}: given your role at ${company}, I think ${offering.offering_name} is worth 2 minutes of your time. Happy to share a short overview: open to it?`;
     }
     if (msg.length > LINKEDIN_LIMIT) msg = msg.slice(0, LINKEDIN_LIMIT - 1) + "…";
     return { kind, message: msg, source: "template", limit: LINKEDIN_LIMIT };
@@ -155,7 +155,7 @@ export function generateMessageTemplate(input: OutreachInput): OutreachDraft {
         : offering.current_availability
         ? `Availability: ${offering.current_availability}`
         : "It's part of the Freya platform"
-    } — and I can walk you through how teams like ${company}'s use it in 15 minutes.`,
+    }: and I can walk you through how teams like ${company}'s use it in 15 minutes.`,
     ``,
     `Would next week work for a quick call?`,
     ``,

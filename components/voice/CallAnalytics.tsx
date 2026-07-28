@@ -225,7 +225,7 @@ export function CallAnalytics({
         {/* Sentiment over the call — a line + a per-turn heat-map strip. */}
         <ChartInspector
           title="Sentiment through the call"
-          description="How the mood moved, turn by turn — higher is warmer."
+          description="How the mood moved, turn by turn: higher is warmer."
           records={turnRecords}
           searchPlaceholder="Search transcript..."
           expandedChildren={
@@ -308,7 +308,7 @@ export function CallAnalytics({
               other shows whether the contact actively exchanged turns. */}
           <ChartInspector
             title="Who did the talking"
-            description="Share of words spoken — aim for a balanced discovery call."
+            description="Share of words spoken: aim for a balanced discovery call."
             bodyClassName="pt-2"
             expandedChildren={
               <div className="flex items-center justify-center gap-10 py-5">
@@ -360,7 +360,7 @@ export function CallAnalytics({
             Objections raised
           </h3>
           <p className="text-[12px] text-text-tertiary mb-3">
-            What {contactFirst} pushed back on — handle these next time.
+            What {contactFirst} pushed back on, handle these next time.
           </p>
           {objections.length > 0 ? (
             <ul className="space-y-2">
@@ -376,7 +376,7 @@ export function CallAnalytics({
             </ul>
           ) : (
             <p className="flex-1 flex items-center text-[13px] text-text-tertiary">
-              No clear objections — a smooth conversation.
+              No clear objections, a smooth conversation.
             </p>
           )}
         </Card>
@@ -392,7 +392,7 @@ export function CallAnalytics({
             {moments.map((m, i) => (
               <li key={i} className="pl-4 relative">
                 <span
-                  className="absolute -left-[7px] top-0.5 w-3 h-3 rounded-full ring-2 ring-white"
+                  className="absolute -left-[7px] top-0.5 w-3 h-3 rounded-full ring-2 ring-[color:var(--white)]"
                   style={{ background: m.color }}
                 />
                 <p className="text-[13px] font-semibold text-text-primary leading-none">

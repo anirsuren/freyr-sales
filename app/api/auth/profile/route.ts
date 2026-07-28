@@ -83,7 +83,7 @@ export async function PATCH(request: NextRequest) {
     });
   } catch {
     return NextResponse.json(
-      { error: "Profile saved — sign in again to see it everywhere." },
+      { error: "Profile saved: sign in again to see it everywhere." },
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }

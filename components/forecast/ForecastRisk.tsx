@@ -5,7 +5,6 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { BarChart, type TipItem } from "@/components/charts/Charts";
 import {
   STAGE_COLOR,
   STAGE_ICON,
@@ -17,7 +16,7 @@ import {
 import { formatDateTime } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------
-   FORECAST RISK — rebuilt to the standard of the By-stage block directly above
+   FORECAST RISK, rebuilt to the standard of the By-stage block directly above
    it (Suren, Jul 27: "it just looks atrocious… the colours don't match and it
    looks very outdated").
 
@@ -26,7 +25,7 @@ import { formatDateTime } from "@/lib/utils";
    1. THE PALETTE WASN'T THIS APP'S. A traffic-light green→orange coverage bar,
       a pale-green ACTIVE box beside a pale-orange EXPOSED box, and orange-on-
       pale-orange count pills. Nothing here is amber, yellow or orange now.
-      There is ONE measure — weighted commit — drawn in the app's measure blue,
+      There is ONE measure, weighted commit, drawn in the app's measure blue,
       and red is EARNED, only by the part of it that has genuinely gone past
       the quiet line. Same rule the deal page's runway track follows.
 
@@ -46,15 +45,33 @@ import { formatDateTime } from "@/lib/utils";
       chip, the quiet time as a semantic pill, and the money right beside the
       share bar that proportions it.
 
-   HONESTY: every figure comes off a field this page already derives —
+   HONESTY: every figure comes off a field this page already derives,
    `Deal.value`, `Deal.staleDays`, `Deal.stage`, and STAGE_PROBABILITY. No
    benchmark, no trend, no "typical" comparison, nothing bucketed into being.
+
+   ── Jul 28 pass ────────────────────────────────────────────────────────────
+   5. THE DAY-COUNT COLUMN CHART WAS THE WRONG PICTURE. Suren: "that's a very
+      poor way of showing that… you're trying to show how many days each one
+      has been since the last touch". A column per deal made each count a
+      standalone tower with nothing to read it against, the only comparison
+      on offer was deal-to-deal height. It is now a QUIET PLOT: one row per
+      open deal on ONE shared day axis, a dot at that deal's `staleDays`, and
+      the quiet line drawn straight down the plot as a labelled threshold, so
+      "how far past the line is this deal" is the shape you see first. Blue at
+      or under the line, red past it. Every mark is one real deal's staleDays
+     , no buckets, no averages, no benchmark.
+
+   6. THE "DEALS DRIVING THE RISK" ROWS FLOATED IN DEAD SPACE. Suren: "why is
+      there so much space in between them?" Each row was `flex-1`, so three or
+      four rows stretched to swallow the whole panel and every row became a
+      card adrift. Rows now take their natural height and sit tight; the
+      PANEL absorbs the slack, and a footer line closes the block off.
 --------------------------------------------------------------------------- */
 
 /** The measure. Every dollar in this section is weighted commit, drawn blue. */
 const MEASURE = "#0071E3";
 /** Real red, EARNED only once a deal has actually gone past the quiet line. */
-const RISK = "#B02020";
+const RISK = "#C2410C";
 /** The all-clear. Only ever shown when there is genuinely nothing exposed. */
 const CLEAR = "#1A7A35";
 
@@ -65,34 +82,40 @@ const PANEL =
 const EYEBROW =
   "text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary";
 
-/** How many open deals the quiet plot can show before the labels stop being
+/** How many open deals the quiet plot can show before the rows stop being
  *  readable. Sorted quietest-first, so the exposed end is always in view. */
-const QUIET_BARS = 8;
+const QUIET_ROWS = 12;
 
-/** Stage → the chart layer's serializable icon key. A string, not a component:
- *  this is a server component, so `icon`/`format`/`caption` are string KINDS. */
-const TIP_ICON_KEY: Record<Stage, string> = {
-  Prospect: "prospect",
-  Engaged: "engaged",
-  Qualified: "qualified",
-  "Meeting Booked": "meeting",
-  "Closed Lost": "lost",
-};
+/** How many quiet deals the exposure list names before it hands off to the
+ *  pipeline. Rows are natural-height now, so the panel can carry five. */
+const DRIVING_ROWS = 5;
+
+/* --- Quiet-plot geometry --------------------------------------------------
+   The name column, the value column and the gap between them are FIXED pixel
+   widths so the quiet line can be positioned in the same coordinate space as
+   every dot with one `calc()`, without them the threshold would have to be
+   redrawn per row and could never be one continuous rule. */
+const NAME_W = 128;
+const VALUE_W = 58;
+const COL_GAP = 10;
+const GUTTER = NAME_W + VALUE_W + COL_GAP * 2;
+const PLOT_COLS = `${NAME_W}px minmax(0,1fr) ${VALUE_W}px`;
+/** x for a fraction of the shared day axis, in the whole plot's coordinates. */
+const axisX = (frac: number) =>
+  `calc(${NAME_W + COL_GAP}px + (100% - ${GUTTER}px) * ${frac})`;
+
+/** A readable tick spacing for a day axis that runs 0 → `m`. */
+const tickStep = (m: number) =>
+  m <= 12 ? 2 : m <= 30 ? 5 : m <= 70 ? 10 : m <= 160 ? 25 : 50;
+
+/** Days at rest, in words a rep would say out loud. */
+const idleLabel = (days: number) =>
+  days === 0 ? "today" : days === 1 ? "1 day" : `${days} days`;
 
 const weightedOf = (d: Deal) => d.value * (STAGE_PROBABILITY[d.stage] ?? 0);
 const oddsOf = (d: Deal) => Math.round((STAGE_PROBABILITY[d.stage] ?? 0) * 100);
 const shortStage = (stage: Stage) =>
   stage === "Meeting Booked" ? "Meeting" : stage;
-
-/** One real deal, as a tooltip row: its logo, its person, its offering, and the
- *  weighted money it carries. Never a bare number. */
-const dealTip = (d: Deal): TipItem => ({
-  logo: d.company,
-  avatar: d.contactName,
-  name: d.company,
-  sub: `${d.contactName} · ${d.service}`,
-  value: formatMoney(weightedOf(d)),
-});
 
 /** The stage's own colour + its own glyph — a stage is a status chip, and a
  *  status chip is never plain type on a plain background (standing rule). */
@@ -114,6 +137,12 @@ function StageChip({ stage }: { stage: Stage }) {
     </span>
   );
 }
+
+// Chart tips open instantly because pointing at a data point is deliberate.
+// These rows are different — the pointer crosses them just reading the list, so
+// firing at 0ms made the section flicker (Anir, Jul 28: "it should only be when
+// I hover over it for a certain amount of time… 0.3 seconds").
+const HOVER_OPEN_MS = 300;
 
 export function ForecastRisk({
   open,
@@ -144,31 +173,44 @@ export function ForecastRisk({
   const activePct = Math.max(0, 100 - riskPct);
   const clear = quiet.length === 0;
 
-  // ── THE PLOT ───────────────────────────────────────────────────────────────
-  // One bar per open deal: how many days since its last logged touch. Quietest
-  // first, so the crossing of the quiet line reads left to right. Red is not a
-  // category here — it is the same measure, past the line.
+  // ── THE QUIET PLOT ─────────────────────────────────────────────────────────
+  // One ROW per open deal, all of them on ONE day axis, with the quiet line
+  // drawn down the plot. The question this answers is not "how many days is
+  // this deal" (a column chart already failed at that) — it is "how far past
+  // the line is each deal", which only a shared axis with the line ON it can
+  // show. Quietest first, so the exposed end is the first thing read.
   const shown = [...open]
     .sort((a, b) => b.staleDays - a.staleDays || weightedOf(b) - weightedOf(a))
-    .slice(0, QUIET_BARS);
-  const bars = shown.map((d) => {
-    const past = d.staleDays > rottingDays;
-    return {
-      label: d.company,
-      value: d.staleDays,
-      color: past ? RISK : MEASURE,
-      icon: TIP_ICON_KEY[d.stage],
-      // The money rides directly under the days, on the bar it belongs to —
-      // never across a canyon from it.
-      caption: formatMoney(d.value),
-      tipNote: `${formatMoney(d.value)} open at ${oddsOf(d)}% odds on ${
-        d.stage
-      } — ${formatMoney(weightedOf(d))} of ${
-        past ? "exposed" : "active"
-      } commit. Last touch ${formatDateTime(d.lastActivity)}.`,
-      tip: [dealTip(d)],
-    };
-  });
+    .slice(0, QUIET_ROWS);
+  const maxIdle = shown.reduce((n, d) => Math.max(n, d.staleDays), 0);
+  // The axis always runs past the quiet line, so the line can never be pinned
+  // to the right edge and read as "the end of the scale".
+  const step = tickStep(Math.max(maxIdle, rottingDays + 2));
+  const axisMax = Math.max(
+    step,
+    Math.ceil(Math.max(maxIdle, rottingDays + 2) / step) * step
+  );
+  const ticks = Array.from({ length: Math.floor(axisMax / step) + 1 }, (_, i) =>
+    Math.min(i * step, axisMax)
+  );
+  const quietFrac = rottingDays / axisMax;
+  // One company can carry more than one open deal, and every row here was
+  // labelled with just the company, so the same name appeared twice with no way
+  // to tell the two apart (Anir, Jul 28: "Why does it say bionics twice?").
+  // Where a name repeats, the row also names the offering that deal is for,
+  // which is the field that actually distinguishes them.
+  const companyCounts = shown.reduce<Record<string, number>>((acc, d) => {
+    acc[d.company] = (acc[d.company] ?? 0) + 1;
+    return acc;
+  }, {});
+  const marks = shown.map((d) => ({
+    deal: d,
+    past: d.staleDays > rottingDays,
+    // The mark IS the record: one deal's own staleDays against the axis.
+    pct: (d.staleDays / axisMax) * 100,
+    /** Only set when this company has more than one open deal on the plot. */
+    disambiguator: companyCounts[d.company] > 1 ? d.service : "",
+  }));
 
   // ── WHERE THE EXPOSED MONEY SITS ───────────────────────────────────────────
   // The same exposed dollars, cut by stage instead of by deal. A different
@@ -188,8 +230,10 @@ export function ForecastRisk({
     .sort((a, b) => b.weighted - a.weighted);
 
   // ── THE RANKED EXPOSURE ────────────────────────────────────────────────────
-  const driving = quiet.slice(0, 4);
-  const topExposure = driving[0] ? weightedOf(driving[0]) : 0;
+  const driving = quiet.slice(0, DRIVING_ROWS);
+  const drivingWeighted = driving.reduce((sum, d) => sum + weightedOf(d), 0);
+  const drivingShare =
+    riskWeighted > 0 ? Math.round((drivingWeighted / riskWeighted) * 100) : 0;
 
   /** The deals behind one half of the split track — the real records, never a
    *  bare percentage. */
@@ -227,7 +271,7 @@ export function ForecastRisk({
                   {d.company}
                 </span>
                 <span className="block text-[10.5px] text-text-secondary tnum">
-                  {d.staleDays === 0 ? "touched today" : `${d.staleDays}d quiet`}
+                  {d.staleDays === 0 ? "touched today" : `${d.staleDays}d inactive`}
                 </span>
               </span>
               <span className="shrink-0 text-text-secondary tnum">
@@ -244,6 +288,91 @@ export function ForecastRisk({
       )}
     </div>
   );
+
+  /** The real record behind one mark on the quiet plot — the whole deal, not a
+   *  restatement of the day count the row already shows at rest. */
+  const quietHover = (d: Deal) => {
+    const past = d.staleDays > rottingDays;
+    const tone = past ? RISK : MEASURE;
+    return (
+      <div>
+        <div className="flex items-start gap-2.5">
+          <CompanyLogo
+            name={d.company}
+            className="h-9 w-9 shrink-0 text-[8px]"
+          />
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold leading-snug text-text-primary">
+              {d.company}
+            </p>
+            <p className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[10.5px] text-text-secondary">
+              <Avatar
+                name={d.contactName}
+                className="mt-[1px] h-4 w-4 shrink-0 text-[6px]"
+              />
+              <span className="min-w-0 leading-snug break-normal">
+                {d.contactName}
+                {d.title ? ` · ${d.title}` : ""}
+              </span>
+            </p>
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <ServiceTag name={d.service} className="max-w-full text-[11px]" />
+          <StageChip stage={d.stage} />
+        </div>
+        <div className="mt-3 grid grid-cols-3 divide-x divide-border-light rounded-md bg-surface px-2 py-2 text-center">
+          <div>
+            <p className="text-[12px] font-bold tnum" style={{ color: tone }}>
+              {d.staleDays}d
+            </p>
+            <p className="text-[9px] text-text-secondary">Since last touch</p>
+          </div>
+          <div>
+            <p className="text-[12px] font-bold text-text-primary tnum">
+              {formatMoney(d.value)}
+            </p>
+            <p className="text-[9px] text-text-secondary">Full value</p>
+          </div>
+          <div>
+            <p className="text-[12px] font-bold text-text-primary tnum">
+              {oddsOf(d)}%
+            </p>
+            <p className="text-[9px] text-text-secondary">Odds of closing</p>
+          </div>
+        </div>
+        <div className="mt-2.5 space-y-1.5 text-[11px]">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-text-secondary">Owner</span>
+            <span className="flex min-w-0 items-center gap-1.5 font-medium text-text-primary">
+              <Avatar
+                name={d.owner}
+                className="h-4 w-4 shrink-0 text-[6px]"
+              />
+              {d.owner}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-text-secondary">Last logged touch</span>
+            <span className="font-medium text-text-primary tnum">
+              {formatDateTime(d.lastActivity)}
+            </span>
+          </div>
+        </div>
+        <p className="mt-2.5 border-t border-border-light pt-2.5 text-[11px] leading-relaxed text-text-secondary">
+          {past
+            ? `${d.staleDays - rottingDays} ${
+                d.staleDays - rottingDays === 1 ? "day" : "days"
+              } past the ${rottingDays}-day inactivity threshold. Weighted commit on this deal: ${formatMoney(
+                weightedOf(d)
+              )}.`
+            : `Last activity ${d.staleDays === 0 ? "today" : `${d.staleDays} ${d.staleDays === 1 ? "day" : "days"} ago`}, inside the ${rottingDays}-day inactivity threshold. Weighted commit on this deal: ${formatMoney(
+                weightedOf(d)
+              )}.`}
+        </p>
+      </div>
+    );
+  };
 
   /** A legend line for one half of the split: dot, glyph, label, then its own
    *  number immediately after it. */
@@ -267,9 +396,15 @@ export function ForecastRisk({
     hover: React.ReactNode;
   }) => (
     <HoverCard
-      side="top"
+      // Opens off the row's RIGHT EDGE — clear of this panel entirely — not
+      // at the pointer. A pointer-anchored card lands wherever the cursor
+      // happens to be, which on a full-width row is straight on top of the
+      // thing it describes (Anir, Jul 28: "it should only show the pop-up
+      // right after the dot, it's covering up the graph").
+      side="right"
+      anchor="trigger"
       width={280}
-      delayMs={0}
+      delayMs={HOVER_OPEN_MS}
       content={hover}
       className="min-w-0 flex-1 cursor-pointer rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface)]"
     >
@@ -326,7 +461,7 @@ export function ForecastRisk({
             <>Every open deal was touched in the last {rottingDays} days</>
           ) : (
             <span className="tnum">
-              {quiet.length} of {open.length} open deals have gone quiet
+              {quiet.length} of {open.length} open deals: no activity in {rottingDays}+ days
             </span>
           )}
         </span>
@@ -342,7 +477,7 @@ export function ForecastRisk({
                   Active vs exposed
                 </h3>
                 <InfoHint
-                  text={`One measure — your weighted commit — split two ways by the ${rottingDays}-day quiet line. Hover either half, or any bar, to see the deals behind it.`}
+                  text={`Your weighted commit, split at the ${rottingDays}-day inactivity threshold. Hover either half, or any bar, to see the deals behind it.`}
                 />
               </div>
               <p className="mt-0.5 text-[10.5px] text-text-secondary">
@@ -361,11 +496,11 @@ export function ForecastRisk({
                   <HoverCard
                     side="top"
                     width={288}
-                    delayMs={0}
+                    delayMs={HOVER_OPEN_MS}
                     className="h-full w-full cursor-pointer"
                     content={splitHover(
                       "Active",
-                      `Touched within the last ${rottingDays} days — ${activePct}% of the weighted commit.`,
+                      `Touched within the last ${rottingDays} days. ${activePct}% of the weighted commit.`,
                       activeWeighted,
                       MEASURE,
                       warm
@@ -383,11 +518,11 @@ export function ForecastRisk({
                   <HoverCard
                     side="top"
                     width={288}
-                    delayMs={0}
+                    delayMs={HOVER_OPEN_MS}
                     className="h-full w-full cursor-pointer"
                     content={splitHover(
                       "Exposed",
-                      `No logged touch for more than ${rottingDays} days — ${riskPct}% of the weighted commit.`,
+                      `No logged activity in over ${rottingDays} days: ${riskPct}% of the weighted commit.`,
                       riskWeighted,
                       RISK,
                       quiet
@@ -413,7 +548,7 @@ export function ForecastRisk({
                 list={warm}
                 hover={splitHover(
                   "Active",
-                  `Touched within the last ${rottingDays} days — ${activePct}% of the weighted commit.`,
+                  `Touched within the last ${rottingDays} days. ${activePct}% of the weighted commit.`,
                   activeWeighted,
                   MEASURE,
                   warm
@@ -425,11 +560,11 @@ export function ForecastRisk({
                 label="Exposed"
                 money={riskWeighted}
                 pct={riskPct}
-                note={`quiet for more than ${rottingDays} days`}
+                note={`no activity in over ${rottingDays} days`}
                 list={quiet}
                 hover={splitHover(
                   "Exposed",
-                  `No logged touch for more than ${rottingDays} days — ${riskPct}% of the weighted commit.`,
+                  `No logged activity in over ${rottingDays} days: ${riskPct}% of the weighted commit.`,
                   riskWeighted,
                   RISK,
                   quiet
@@ -459,13 +594,13 @@ export function ForecastRisk({
                         key={s.stage}
                         side="right"
                         width={272}
-                        delayMs={0}
+                        delayMs={HOVER_OPEN_MS}
                         className="cursor-pointer rounded-md px-1.5 py-1 transition-colors hover:bg-[var(--surface)]"
                         content={splitHover(
                           s.stage,
-                          `${s.deals.length} quiet ${
+                          `${s.deals.length} inactive ${
                             s.deals.length === 1 ? "deal" : "deals"
-                          } on ${s.stage}, carrying ${share}% of everything exposed.`,
+                          } on ${s.stage}: ${share}% of the exposed commit.`,
                           s.weighted,
                           color,
                           s.deals
@@ -501,46 +636,178 @@ export function ForecastRisk({
               </div>
             )}
 
-            {/* THE PLOT — days since the last touch, one bar per real deal. */}
+            {/* THE QUIET PLOT — every open deal on ONE day axis, with the
+                quiet line drawn through it. A column chart of the same numbers
+                could only be read deal-against-deal; here the eye lands on the
+                line first and every dot to its right is, visibly, exposed. */}
             <div className="mt-3 flex flex-1 flex-col justify-end border-t border-border-light pt-3">
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <p className={EYEBROW}>Days since the last touch</p>
                 <p className="text-[10.5px] text-text-secondary tnum">
-                  {open.length > QUIET_BARS
-                    ? `the ${shown.length} quietest of ${open.length} open deals`
+                  {open.length > QUIET_ROWS
+                    ? `the ${shown.length} longest-inactive of ${open.length} open deals`
                     : `all ${open.length} open ${open.length === 1 ? "deal" : "deals"}`}
                 </p>
               </div>
-              {bars.length > 0 ? (
-                <>
-                  <BarChart
-                    data={bars}
-                    height={244}
-                    format="number"
-                    unit="days"
-                    tipRecordsLabel="The deal behind this bar"
-                  />
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10.5px] text-text-secondary">
+              {marks.length > 0 ? (
+                <div
+                  role="img"
+                  aria-label={`Days since the last touch, on a shared 0 to ${axisMax} day axis with the ${rottingDays}-day inactivity threshold marked: ${marks
+                    .map((m) => `${m.deal.company} ${m.deal.staleDays} days`)
+                    .join(", ")}`}
+                >
+                  {/* The threshold, named out loud and sitting exactly over the
+                      rule it labels. */}
+                  <div className="relative mb-1 h-[17px]">
+                    <span
+                      className="absolute top-0 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-[2px] text-[9.5px] font-semibold leading-tight tnum"
+                      style={{ left: axisX(quietFrac), color: RISK, background: `${RISK}14` }}
+                    >
+                      {rottingDays}-day threshold
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    {marks.map(({ deal, past, pct, disambiguator }) => {
+                      const tone = past ? RISK : MEASURE;
+                      return (
+                        <HoverCard
+                          key={deal.sessionId}
+                          // The card opens off the ROW'S RIGHT EDGE, which is
+                          // the right edge of this whole panel — so it lands
+                          // beside the plot, never on it. Anchoring to the
+                          // cursor put it wherever the pointer was, i.e. in
+                          // the middle of the chart (Anir, Jul 28: "it should
+                          // only show the pop-up right after the dot, it's
+                          // covering up the graph").
+                          side="right"
+                          width={300}
+                          delayMs={HOVER_OPEN_MS}
+                          anchor="trigger"
+                          className="cursor-pointer rounded-md transition-colors hover:bg-[var(--surface)]"
+                          content={quietHover(deal)}
+                        >
+                          <span
+                            className="grid items-center py-[3px]"
+                            style={{
+                              gridTemplateColumns: PLOT_COLS,
+                              columnGap: COL_GAP,
+                            }}
+                          >
+                            {/* The row names its own deal — a plot of anonymous
+                                dots would be the same failure again. */}
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <CompanyLogo
+                                name={deal.company}
+                                className="h-[18px] w-[18px] shrink-0 text-[6px]"
+                              />
+                              <span className="flex min-w-0 flex-col leading-tight">
+                                <span className="min-w-0 break-normal text-[10.5px] font-medium text-text-primary">
+                                  {deal.company}
+                                </span>
+                                {disambiguator && (
+                                  <span className="min-w-0 break-normal text-[9px] text-text-tertiary">
+                                    {disambiguator}
+                                  </span>
+                                )}
+                              </span>
+                            </span>
+                            <span className="relative block h-[18px]">
+                              {/* the axis at rest, 0 → axisMax */}
+                              <span className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-surface" />
+                              {/* the stem, 0 → this deal's own idle days */}
+                              <span
+                                className="chart-grow-x absolute left-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full"
+                                style={{ width: `${pct}%`, background: tone }}
+                              />
+                              {/* the mark itself */}
+                              <span
+                                className="absolute top-1/2 z-[2] h-[11px] w-[11px] -translate-y-1/2 rounded-full"
+                                style={{
+                                  left: `${pct}%`,
+                                  marginLeft: -5.5,
+                                  background: tone,
+                                  boxShadow: `0 0 0 3px ${tone}26`,
+                                }}
+                              />
+                            </span>
+                            <span
+                              className="text-right text-[10.5px] font-semibold leading-tight tnum"
+                              style={{ color: tone }}
+                            >
+                              {idleLabel(deal.staleDays)}
+                            </span>
+                          </span>
+                        </HoverCard>
+                      );
+                    })}
+                    {/* One continuous quiet line across every row. Drawn after
+                        the rows so a row's hover wash can't paint over it; the
+                        dots carry z-[2] so they still ride on top of it. */}
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 z-[1] w-px"
+                      style={{
+                        left: axisX(quietFrac),
+                        backgroundImage: `repeating-linear-gradient(to bottom, ${RISK} 0 3px, transparent 3px 7px)`,
+                      }}
+                    />
+                  </div>
+
+                  {/* The axis, labelled in days at rest. */}
+                  <div
+                    className="mt-1 grid"
+                    style={{ gridTemplateColumns: PLOT_COLS, columnGap: COL_GAP }}
+                  >
+                    <span />
+                    <span className="relative block h-[14px] border-t border-border-light">
+                      {ticks.map((t, i) => (
+                        <span
+                          key={t}
+                          className="absolute top-[2px] text-[9.5px] leading-tight text-text-tertiary tnum"
+                          style={{
+                            left: `${(t / axisMax) * 100}%`,
+                            transform:
+                              i === 0
+                                ? "translateX(0)"
+                                : i === ticks.length - 1
+                                ? "translateX(-100%)"
+                                : "translateX(-50%)",
+                          }}
+                        >
+                          {i === ticks.length - 1 ? `${t} days` : t}
+                        </span>
+                      ))}
+                    </span>
+                    <span />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10.5px] text-text-secondary">
                     <span className="inline-flex items-center gap-1.5">
                       <span
-                        className="h-2.5 w-2.5 rounded-sm"
+                        className="h-2.5 w-2.5 rounded-full"
                         style={{ background: MEASURE }}
                       />
                       Touched in the last {rottingDays} days
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <span
-                        className="h-2.5 w-2.5 rounded-sm"
+                        className="h-2.5 w-2.5 rounded-full"
                         style={{ background: RISK }}
                       />
-                      Quiet for more than {rottingDays} days
+                      No activity in over {rottingDays} days
                     </span>
-                    <span>
-                      Each bar is one open deal — the number under it is what is
-                      on the table
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className="h-3 w-px shrink-0"
+                        style={{
+                          backgroundImage: `repeating-linear-gradient(to bottom, ${RISK} 0 3px, transparent 3px 7px)`,
+                        }}
+                      />
+                      Everything right of the line is exposed
                     </span>
                   </div>
-                </>
+                </div>
               ) : (
                 <p className="py-8 text-center text-[12px] text-text-secondary">
                   There are no open deals in the book yet, so there is nothing to
@@ -559,43 +826,46 @@ export function ForecastRisk({
                 <h3 className="text-[13.5px] font-semibold text-text-primary">
                   Deals driving the risk
                 </h3>
-                <InfoHint text="The quiet deals carrying the most weighted commit — the ones worth a call today. The bar under each row is that deal's share of the whole exposed total." />
+                <InfoHint text="The inactive deals carrying the most weighted commit. The bar under each row is that deal's share of the total exposed commit." />
               </div>
               <p className="mt-0.5 text-[10.5px] text-text-secondary">
-                Biggest exposure first — hover a row for the full record
+                Biggest exposure first, hover a row for the full record
               </p>
             </div>
           </div>
 
           {driving.length > 0 ? (
-            <div className="flex flex-1 flex-col divide-y divide-border-light">
+            <>
+            {/* A LIST, not a stack of cards. The rows used to be `flex-1` so
+                they would "absorb slack", which ballooned three rows into
+                three floating slabs (Suren: "why is there so much space in
+                between them?"). Rows now take their natural height and sit
+                tight; the panel keeps whatever height the grid gives it and
+                the footer below closes the block. */}
+            <div className="flex flex-col divide-y divide-border-light">
               {driving.map((deal) => {
                 const weighted = weightedOf(deal);
                 const share =
                   riskWeighted > 0
                     ? Math.round((weighted / riskWeighted) * 100)
                     : 0;
-                // Ranked against the biggest exposure, not against the total:
-                // scaled to the total every bar reads as a stub.
-                const barPct =
-                  topExposure > 0
-                    ? Math.max(Math.round((weighted / topExposure) * 100), 4)
-                    : 0;
+                // The bar IS the number beside it. It used to be scaled against
+                // the biggest exposure instead of the total, so a row labelled
+                // "35% of the exposed total" drew a nearly full-width rail and
+                // the picture contradicted its own caption (Anir, Jul 28, on the
+                // identical bug in the seats chart: "why is it saying 65% of all
+                // seats, but it shows a 100% bar?"). One number, one length.
+                const barPct = share;
                 return (
                   <HoverCard
                     key={deal.sessionId}
                     side="left"
                     width={296}
-                    // The row wrapper takes the flex share, so four rows spread
-                    // to fill whatever height the taller panel sets instead of
-                    // pooling the slack as a dead band at the bottom (Suren:
-                    // equal card heights, no dead space at rest).
-                    className="flex min-h-0 flex-1"
                     content={
                       <div>
                         {/* Adds what the row can't fit: the person's title, who
                             owns it, the odds arithmetic, and exactly when it
-                            last moved — never a restatement of the row. */}
+                            last moved, never a restatement of the row. */}
                         <div className="flex items-start gap-2.5">
                           <CompanyLogo
                             name={deal.company}
@@ -669,7 +939,7 @@ export function ForecastRisk({
                         <p className="mt-2.5 border-t border-border-light pt-2.5 text-[11px] leading-relaxed text-text-secondary">
                           Nothing has been logged for {deal.staleDays} days, so
                           the {oddsOf(deal)}% odds on {formatMoney(deal.value)}{" "}
-                          are getting shakier — {formatMoney(weighted)} of your
+                          are getting shakier, {formatMoney(weighted)} of your
                           commit, {share}% of everything exposed.
                         </p>
                       </div>
@@ -677,16 +947,16 @@ export function ForecastRisk({
                   >
                     <Link
                       href={`/deals/${deal.sessionId}`}
-                      className="group flex w-full items-center gap-3 px-3.5 py-3 transition-colors hover:bg-[var(--surface)]"
+                      className="group flex w-full items-center gap-2.5 px-3.5 py-2.5 transition-colors hover:bg-[var(--surface)]"
                     >
                       <CompanyLogo
                         name={deal.company}
-                        className="h-9 w-9 shrink-0 text-[8px]"
+                        className="h-8 w-8 shrink-0 text-[8px]"
                       />
                       <span className="min-w-0 flex-1">
                         {/* Line 1 — the company, then the money it carries,
                             immediately after it. Never across a canyon. */}
-                        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="flex flex-wrap items-baseline gap-x-2">
                           <span className="text-[12.5px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
                             {deal.company}
                           </span>
@@ -702,7 +972,7 @@ export function ForecastRisk({
                         </span>
                         {/* Line 2 — the person, headshot and name on one
                             unbroken line, wrapping rather than truncating. */}
-                        <span className="mt-1 flex min-w-0 items-start gap-1.5 text-[11px] text-text-secondary">
+                        <span className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[11px] text-text-secondary">
                           <Avatar
                             name={deal.contactName}
                             className="mt-[1px] h-4 w-4 shrink-0 text-[6px]"
@@ -713,7 +983,7 @@ export function ForecastRisk({
                         </span>
                         {/* Line 3 — the offering, the stage and the quiet time,
                             each carrying its own colour and glyph. */}
-                        <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className="mt-1 flex flex-wrap items-center gap-1.5">
                           <ServiceTag
                             name={deal.service}
                             className="max-w-full text-[11px]"
@@ -729,7 +999,7 @@ export function ForecastRisk({
                         </span>
                         {/* Line 4 — this deal's share of the exposed total, the
                             bar and its number side by side. */}
-                        <span className="mt-2 flex items-center gap-2">
+                        <span className="mt-1.5 flex items-center gap-2">
                           <span className="block h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface">
                             <span
                               className="chart-grow-x block h-full rounded-full"
@@ -746,6 +1016,30 @@ export function ForecastRisk({
                 );
               })}
             </div>
+            {/* The panel — not the rows — takes whatever slack the grid hands
+                it, and this line gives the block a bottom edge instead of
+                letting the last row float. It states a fact the rows don't:
+                how much of the exposed total these rows actually cover. */}
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border-light px-3.5 py-2.5 text-[10.5px] text-text-secondary">
+              <span className="tnum">
+                These {driving.length}{" "}
+                {driving.length === 1 ? "deal carries" : "deals carry"}{" "}
+                <span className="font-semibold" style={{ color: RISK }}>
+                  {formatMoney(drivingWeighted)}
+                </span>
+               , {drivingShare}% of everything exposed
+              </span>
+              {quiet.length > driving.length && (
+                <Link
+                  href="/pipeline"
+                  className="shrink-0 cursor-pointer font-semibold text-blue-primary tnum"
+                >
+                  {quiet.length - driving.length} more inactive{" "}
+                  {quiet.length - driving.length === 1 ? "deal" : "deals"} →
+                </Link>
+              )}
+            </div>
+            </>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-10 text-center">
               <span

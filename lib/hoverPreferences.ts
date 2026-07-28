@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 
 export const HOVER_PREFERENCE_KEY = "freyr.hover-preference.v1";
 export const HOVER_PREFERENCE_EVENT = "freyr:hover-preference-change";
+/** THE hover delay for this entire app. Every popup, on every page, waits
+ *  exactly this long before it opens. There is no per-component override and no
+ *  user setting any more (Anir, Jul 28: "we need it where it's 0.5 seconds on
+ *  every single graph. There should not be any point where, as soon as I hover
+ *  over it, it does the popup. Remove that setting, straight up 0.5 seconds.
+ *  End of story on every single page"). */
 export const DEFAULT_HOVER_DELAY_MS = 500;
 export const MAX_HOVER_DELAY_MS = 2000;
 
@@ -18,12 +24,11 @@ const DEFAULT_PREFERENCE: HoverPreference = {
 };
 
 function normalize(value: Partial<HoverPreference> | null): HoverPreference {
-  const delay = Number(value?.delayMs);
+  // The delay is FIXED. Anything stored from the old slider is discarded so a
+  // previously-saved 0ms cannot resurrect instant popups.
   return {
     enabled: value?.enabled !== false,
-    delayMs: Number.isFinite(delay)
-      ? Math.max(0, Math.min(MAX_HOVER_DELAY_MS, Math.round(delay)))
-      : DEFAULT_HOVER_DELAY_MS,
+    delayMs: DEFAULT_HOVER_DELAY_MS,
   };
 }
 

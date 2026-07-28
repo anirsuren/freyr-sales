@@ -299,7 +299,7 @@ export function SessionForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
-      <Field label="Company Website" hint="Paste a URL — we'll detect the company">
+      <Field label="Company Website" hint="Paste a URL: we'll detect the company">
         <Input
           ref={firstFieldRef}
           name="websiteUrl"
@@ -320,7 +320,7 @@ export function SessionForm({
         {autoFlags.companyName && (
           <p className="text-[12px] text-blue-primary mt-1 flex items-center gap-1">
             <Sparkles size={13} strokeWidth={1.8} />
-            Auto-detected from website — edit to override
+            Auto-detected from website, edit to override
           </p>
         )}
         {show("companyName") && (
@@ -352,7 +352,7 @@ export function SessionForm({
         {autoFlags.contactName && (
           <p className="text-[12px] text-blue-primary mt-1 flex items-center gap-1">
             <Sparkles size={13} strokeWidth={1.8} />
-            Auto-detected from LinkedIn — edit to override
+            Auto-detected from LinkedIn, edit to override
           </p>
         )}
         {show("contactName") && (
@@ -377,7 +377,7 @@ export function SessionForm({
       <Field label="Additional Context">
         <Textarea
           name="additionalContext"
-          placeholder="Anything you already know — where you met, their timeline, priorities…"
+          placeholder="Anything you already know: where you met, their timeline, priorities…"
           className="min-h-[100px]"
           value={form.additionalContext}
           onChange={(e) => update("additionalContext", e.target.value)}

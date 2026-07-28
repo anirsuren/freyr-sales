@@ -10,7 +10,7 @@ export async function DELETE(
 ) {
   if (!(await canManageOfferings()))
     return NextResponse.json(
-      { error: "View only — admin access required" },
+      { error: "View only: admin access required" },
       { status: 403 }
     );
   const { id } = await params;

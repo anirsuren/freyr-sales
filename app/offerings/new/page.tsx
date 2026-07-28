@@ -38,7 +38,7 @@ export default async function NewOfferingPage() {
       </Link>
       <PageHeader
         title="New offering"
-        subtitle="Add an offering to the repository — its type, who it's for, the markets it's available in, and the sales materials behind it."
+        subtitle="Add an offering to the repository: its type, who it's for, the markets it's available in, and the sales materials behind it."
       />
       <OfferingForm
         customerTypes={listCustomerTypes()}

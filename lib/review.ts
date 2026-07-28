@@ -23,7 +23,7 @@ export const REVIEW_META: Record<
     color: "#475569",
     icon: PencilLine,
     explain:
-      "Compliance gate: submit this pitch for review — Send email and Send to CRM stay locked until it's approved, so nothing unvetted reaches a customer.",
+      "Compliance gate: submit this pitch for review. Send email and Send to CRM stay locked until it's approved, so nothing unvetted reaches a customer.",
   },
   in_review: {
     label: "In review",
@@ -31,7 +31,7 @@ export const REVIEW_META: Record<
     color: "#7A4A00",
     icon: Clock,
     explain:
-      "Waiting on compliance sign-off. In this workspace you're also the reviewer — Approve it or send it back with changes.",
+      "Waiting on compliance sign-off. In this workspace you're also the reviewer. Approve it or send it back with changes.",
   },
   approved: {
     label: "Approved",
@@ -39,7 +39,7 @@ export const REVIEW_META: Record<
     color: "#1A7A35",
     icon: CircleCheck,
     explain:
-      "Cleared by compliance — Send email and Send to CRM are unlocked for this pitch.",
+      "Cleared by compliance. Send email and Send to CRM are unlocked for this pitch.",
   },
   changes_requested: {
     label: "Changes requested",

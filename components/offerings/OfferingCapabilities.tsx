@@ -340,7 +340,7 @@ export function OfferingCapabilities({
                 </p>
               )}
               {/* `items-stretch` is the grid default, but it is the thing that
-                  makes `h-full` on the card mean "as tall as my neighbour" —
+                  makes `h-full` on the card mean "as tall as my neighbour",
                   spelled out so a later refactor can't quietly drop it. */}
               <ul className="grid grid-cols-1 items-stretch gap-2.5 md:grid-cols-2">
                 {group.items.map((item, ii) => (

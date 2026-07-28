@@ -30,7 +30,7 @@ export default async function OfferingCategoriesPage() {
       </Link>
       <PageHeader
         title="Offering categories"
-        subtitle="The master list of offering categories — each groups related offerings and has an owner. Offerings are grouped and filtered by these."
+        subtitle="The master list of offering categories: each groups related offerings and has an owner. Offerings are grouped and filtered by these."
       />
       <OfferingCategoriesManager
         offeringCategories={offeringCategories}

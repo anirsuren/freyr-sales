@@ -343,7 +343,7 @@ export function MultiColorSelect({
               {picked.slice(0, 3).map((o, i) => (
                 <span
                   key={o.value}
-                  className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-white", i > 0 && "-ml-1")}
+                  className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-[color:var(--white)]", i > 0 && "-ml-1")}
                   style={{ background: o.color || "#C7CDD6" }}
                 />
               ))}

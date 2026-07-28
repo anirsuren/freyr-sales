@@ -9,11 +9,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DealTimeline } from "@/components/deals/DealTimeline";
 import { DealSnapshot } from "@/components/deals/DealSnapshot";
 import { DealFacts } from "@/components/deals/DealFacts";
-import { DealCharts } from "@/components/deals/DealCharts";
 import { DealServices } from "@/components/deals/DealServices";
 import { DealContact } from "@/components/deals/DealContact";
 import { DealActivity } from "@/components/deals/DealActivity";
 import { daysSince, stageEnteredAt } from "@/components/deals/dealTime";
+import { humanTouches } from "@/components/deals/dealOutcome";
 import {
   buildDeals,
   STAGE_COLOR,
@@ -67,7 +67,7 @@ export default async function DealDetailPage({
     );
   }
 
-  const [customer, contact, interactions, sessions, customers, contacts, allInteractions] =
+  const [customer, contact, rawInteractions, sessions, customers, contacts, allInteractions] =
     await Promise.all([
       db.customers.get(session.customer_id),
       db.contacts.get(session.contact_id),
@@ -78,12 +78,18 @@ export default async function DealDetailPage({
       db.interactions.list(),
     ]);
 
+  // A deal's history is what a PERSON did with this account. The agent routes
+  // (app/api/agent/plan, act, run, advance, autopilot, converse, cadence-run)
+  // write their own rows into the same interactions store stamped "Freyr Agent",
+  // and those were showing up in the activity feed as `🤖 Plan "Find the
+  // highest-leverage moves…"` (Anir, Jul 28: "There should be no agent stuff on
+  // any page except the chatbot"). They are dropped once, here, so the feed, the
+  // touch count, the last-activity date, the quiet clock and the stage dates are
+  // ALL built from the same human-only set and can never disagree.
+  const interactions = humanTouches(rawInteractions);
+
   const allDeals = buildDeals(sessions, customers, contacts, allInteractions);
   const deal = allDeals.find((d) => d.sessionId === id);
-  // Every deal still in play — the real comparison set for "how does this one
-  // size up". Closed-lost deals aren't competing for anyone's time, so they're
-  // out; nothing here is synthesised, every entry is a real session.
-  const openDeals = allDeals.filter((d) => d.stage !== "Closed Lost");
   const stage: Stage = deal?.stage || "Prospect";
   const owner = deal?.owner || "Unassigned";
   const isCurrentOwner =
@@ -103,7 +109,7 @@ export default async function DealDetailPage({
   const companyName = customer?.company_name || "This account";
   const serviceName = services[0]?.service_name?.trim();
   const dealName =
-    serviceName && serviceName !== "—" ? serviceName : "Untitled deal";
+    serviceName && serviceName !== "-" ? serviceName : "Untitled deal";
   const StageIcon = STAGE_ICON[stage];
   const nextStep = interactions.find((i) => i.follow_up_date)?.follow_up_date || null;
   const lastActivityAt = interactions[0]?.created_at || null;
@@ -142,7 +148,7 @@ export default async function DealDetailPage({
     <div className="stagger">
       {/* ONE way back, and it is the same place every time: the board that owns
           every deal. The trail also answers "where am I?" before you read
-          anything else — Pipeline › this account › this deal. */}
+          anything else. Pipeline › this account › this deal. */}
       <nav
         aria-label="Breadcrumb"
         className="mb-3 flex min-w-0 items-center gap-1.5 text-[12.5px]"
@@ -167,7 +173,7 @@ export default async function DealDetailPage({
           className="min-w-0 break-normal font-medium text-text-primary"
           aria-current="page"
         >
-          {companyName} — {dealName}
+          {companyName}, {dealName}
         </span>
       </nav>
       {/* The record header, built to the same shape every other detail page in
@@ -176,13 +182,13 @@ export default async function DealDetailPage({
           "the top is very, very cluttered. I can't even stand to look at it."
           It was seven stacked things. Gone: the "One deal" pill (the breadcrumb
           and the title already say it), and the three-line paragraph explaining
-          what the screen is — a header is not the place to narrate the page.
+          what the screen is, a header is not the place to narrate the page.
           The KB badge moved down to Recommended Services, which is the only
           place it means anything. */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
           {/* The DEAL is the headline, so the mark beside it is the OFFERING's
-              own glyph — the company logo lives on the company line below
+              own glyph, the company logo lives on the company line below
               (Anir: "the company logo is supposed to be next to the company
               name… it's next to the service, it doesn't make sense"). */}
           <OfferingIcon name={dealName} className="w-12 h-12 shrink-0" />
@@ -229,7 +235,7 @@ export default async function DealDetailPage({
             explanation belongs. */}
         <Link
           href={`/sessions/${session.id}`}
-          title="The writing workspace for this deal — the pitch, the email and the objections."
+          title="The writing workspace for this deal: the pitch, the email and the objections."
           className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-2 text-[13px] font-semibold text-blue-primary transition-colors hover:bg-surface hover:text-blue-hover"
         >
           Open full session
@@ -237,10 +243,14 @@ export default async function DealDetailPage({
         </Link>
       </div>
 
-      {/* Stage rail — the funnel, and only the funnel. */}
+      {/* Stage rail — the funnel, and only the funnel, now carrying how long
+          each step held the deal. The separate "Stage journey" card that used to
+          draw the same walk lower down is gone (Anir, Jul 28: "It says it at the
+          top anyway… Remove the stage journey. so redundant"). */}
       <DealTimeline
         stage={stage}
         stageDates={stageDates}
+        interactions={interactions}
         nextStep={nextStep}
         nowIso={nowIso}
       />
@@ -259,7 +269,7 @@ export default async function DealDetailPage({
       />
 
       {/* Key facts. This was two cards each holding one line above a wall of
-          white — the dead space Suren pointed at. Four facts, one band, one
+          white, the dead space Suren pointed at. Four facts, one band, one
           rhythm, and every one of them lives nowhere else on the page: the
           money and the odds belong to the snapshot, the dates on the rail
           belong to the rail. */}
@@ -276,26 +286,12 @@ export default async function DealDetailPage({
         nowIso={nowIso}
       />
 
-      {/* The charts this page never had. Both are built from fields already on
-          this record — the dated stage journey, and this deal's value against
-          the rest of the open book. Nothing modelled, nothing benchmarked into
-          existence. */}
-      <DealCharts
-        stage={stage}
-        stageDates={stageDates}
-        interactions={interactions}
-        nowIso={nowIso}
-        sessionId={session.id}
-        value={value}
-        openDeals={openDeals}
-      />
-
       {/* The per-deal agent card is gone (Anir, Jul 27: "remove the agent
           notifications about each deal on every single page. We're not there
-          yet") — the agent keeps its own page and the dock. */}
+          yet"), the agent keeps its own page and the dock. */}
 
       {/* `items-start` so a long services column can't stretch the right-hand
-          card into a column of empty white beneath its own content — each side
+          card into a column of empty white beneath its own content, each side
           ends where its content ends. The right column carries two blocks (who
           to call, then everything logged) so it finishes level with the two
           rich service cards rather than halfway up the page. */}

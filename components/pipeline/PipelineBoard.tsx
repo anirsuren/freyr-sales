@@ -403,7 +403,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
       contactId: id,
       company: addForm.company.trim(),
       sizeTier: addForm.sizeTier,
-      contactName: addForm.contactName.trim() || "—",
+      contactName: addForm.contactName.trim() || "-",
       title: "Manually added",
       service: "Untriaged opportunity",
       value,
@@ -437,7 +437,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           filled button on the row.
           `relative z-20`: the entrance animation makes this a stacking context,
           so without an explicit z-index the Views menu and the size dropdown
-          would paint BEHIND the (positioned) deal cards further down the DOM —
+          would paint BEHIND the (positioned) deal cards further down the DOM,
           the same trap called out on /voice. */}
       {/* Search priority (Suren, Jul 27): pressing the search widens it and
           compresses the controls to its right down to colour + glyph. */}
@@ -823,11 +823,15 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
             </div>
             {/* flex-1 + a body floor: a column that filters down to nothing
                 still holds its shape, so the board keeps its height and the
-                page never jumps. */}
+                page never jumps. The empty note sits at the TOP of the column,
+                level with the first card in the columns beside it, not centred
+                in the column's full height, which floated it halfway down a
+                tall board and read as a stray label (Anir, Jul 28: "why is it
+                saying this at the bottom? It should say this at the top"). */}
             <div
               className={cn(
                 "flex-1 p-2.5",
-                items.length === 0 ? "flex items-center justify-center" : "space-y-2.5"
+                items.length === 0 ? "flex items-start justify-center" : "space-y-2.5"
               )}
               style={{ minHeight: COLUMN_BODY_MIN_H }}
             >
@@ -838,7 +842,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 // session behind them, and in select mode a click picks the
                 // card instead — both skip the overlay link.
                 const opensDeal = !isManual && !selectMode;
-                const openLabel = `Open the ${d.service} deal — ${d.company}`;
+                const openLabel = `Open the ${d.service} deal. ${d.company}`;
                 return (
                 <div
                   key={d.sessionId}
@@ -859,7 +863,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                       CONTACT, and anywhere else on the card opens the DEAL
                       ("if my cursor's just on the card, I should just be able
                       to go to that pipeline thing"). The two names sit at
-                      z-10 above this stretched link — a real nested <a> is
+                      z-10 above this stretched link, a real nested <a> is
                       invalid HTML, which is why the overlay exists. */}
                   {opensDeal && (
                     <Link
@@ -912,13 +916,13 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                     {/* The "this opens" cue: slides in on hover, the same arrow
                         idiom the customer cards use. */}
                     {/* No card-wide arrow: it advertised a whole-card click
-                        that no longer exists. The name underlines on hover —
+                        that no longer exists. The name underlines on hover,
                         that IS the affordance. */}
                   </div>
                   {/* One rhythm down the card: 10px between every block, so the
                       company → person → offering → numbers stack reads as four
                       even beats instead of drifting 8/10/12px gaps. */}
-                  {d.contactName && d.contactName !== "—" ? (
+                  {d.contactName && d.contactName !== "-" ? (
                     isManual ? (
                       <div className="flex items-center gap-2 mt-2.5 min-w-0">
                         <Avatar name={d.contactName} className="w-7 h-7 text-[10px] shrink-0" />
@@ -972,7 +976,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                     )
                   )}
                   {/* The offering wears its own colour + icon here, the same mark
-                      it carries on /forecast and everywhere else — it was flat
+                      it carries on /forecast and everywhere else, it was flat
                       tertiary gray on a gray column, the definition of a category
                       shown as plain text. Idle days sit beside it as a caution
                       chip (#C2410C), not raw alarm red. */}
@@ -1048,7 +1052,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                   {/* No per-card agent footer any more. The "Agent: re-engage
                       this deal" row is gone at Anir's instruction (Jul 27:
                       "no one's gonna click these buttons… it's so obscure.
-                      We're not there yet") — the idle chip above still tells
+                      We're not there yet"), the idle chip above still tells
                       the truth about staleness; the agent lives on its own
                       page and in the dock only. */}
                 </div>
@@ -1058,7 +1062,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                   a calm line and room to breathe, instead of one small gray
                   sentence stranded in a blank box. */}
               {items.length === 0 && (
-                <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
+                <div className="flex flex-col items-center gap-2 px-4 pb-8 pt-4 text-center">
                   <span
                     className="flex h-9 w-9 items-center justify-center rounded-full"
                     style={{ background: `${stageColor}14`, color: stageColor }}
@@ -1123,7 +1127,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                 Size
               </label>
               {/* Matches the Stage picker below it and the size filter in the
-                  toolbar — same colour + glyph as the badge it sets. */}
+                  toolbar, same colour + glyph as the badge it sets. */}
               <ColorSelect
                 value={addForm.sizeTier}
                 ariaLabel="Size"

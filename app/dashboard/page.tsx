@@ -16,6 +16,7 @@ import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import {
   AreaChart,
   DonutChart,
+  DonutLegend,
   Legend,
   VIZ,
 } from "@/components/charts/Charts";
@@ -121,8 +122,8 @@ export default async function DashboardPage({
     .slice(0, 5)
     .map((i) => ({
       id: i.id,
-      company: customerById[i.customer_id]?.company_name || "—",
-      contact: contactById[i.contact_id]?.full_name || "—",
+      company: customerById[i.customer_id]?.company_name || "-",
+      contact: contactById[i.contact_id]?.full_name || "-",
       outcome: i.outcome,
       note: i.notes,
       followUp: i.follow_up_date,
@@ -165,9 +166,9 @@ export default async function DashboardPage({
     const svc = (s.recommended_services || []) as RecommendedService[];
     const oc = latestOutcomeByContact[s.contact_id];
     return {
-      company: c?.company_name || "—",
-      contact: ct?.full_name || "—",
-      service: svc[0]?.service_name || "—",
+      company: c?.company_name || "-",
+      contact: ct?.full_name || "-",
+      service: svc[0]?.service_name || "-",
       outcome: oc ? OUTCOME_META[oc]?.label || oc : "",
       date: formatDateTime(s.created_at),
     };
@@ -212,7 +213,7 @@ export default async function DashboardPage({
     const co = customerById[i.customer_id];
     (outcomeContacts[label] ||= []).push({
       name: ct?.full_name || "Unknown",
-      company: co?.company_name || "—",
+      company: co?.company_name || "-",
       contactId: i.contact_id,
     });
   }
@@ -534,7 +535,7 @@ export default async function DashboardPage({
 
       {/* No agent attention queue on the dashboard any more (Anir, Jul 27:
           "remove the agent notifications about each deal… I don't want no
-          next move") — the agent lives on its own page and in the dock. */}
+          next move"), the agent lives on its own page and in the dock. */}
 
       <section className="space-y-4">
         <Card className="overflow-visible p-0">
@@ -593,27 +594,28 @@ export default async function DashboardPage({
             <div className="mt-4 grid grid-cols-[180px_minmax(0,1fr)] items-center gap-5">
               <div className="flex justify-center">
                 <DonutChart
+                  syncId="dashboard-expected-revenue"
                   segments={forecastSegments}
                   size={170}
-                  thickness={20}
+                  thickness={16}
                   centerLabel={formatMoney(quarterCommit)}
                   centerSub="expected revenue"
                   format="money"
                 />
               </div>
-              <div className="space-y-2.5">
-                {forecastStageRows.map((row) => (
-                  <div key={row.stage}>
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: STAGE_COLOR[row.stage] }} />
-                      <span className="min-w-0 flex-1 truncate font-medium text-text-primary">{row.stage}</span>
-                      <span className="shrink-0 text-right font-semibold text-text-primary tnum">{formatMoney(row.weighted)} expected</span>
-                    </div>
-                    <div className="ml-[18px] mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface">
-                      <div className="h-full rounded-full" style={{ width: `${Math.max(3, row.share)}%`, background: STAGE_COLOR[row.stage] }} />
-                    </div>
-                  </div>
-                ))}
+              {/* The key was hand-rolled here, so hovering a slice lit nothing
+                  and hovering a row lit nothing back (Anir, Jul 28: "when I
+                  hover here it doesn't do the thing for the bar next to it").
+                  DonutLegend is the shared component that already carries that
+                  link, same syncId, and the ring and its rows highlight each
+                  other. It also drops the `truncate` the hand-rolled row had on
+                  the stage name. */}
+              <div className="min-w-0">
+                <DonutLegend
+                  items={forecastSegments}
+                  syncId="dashboard-expected-revenue"
+                  format="money"
+                />
               </div>
             </div>
           </Card>
@@ -731,7 +733,7 @@ export default async function DashboardPage({
               ))}
               {atRisk.length === 0 && (
                 <p className="p-5 text-[13px] text-text-secondary">
-                  Every account is healthy — nothing needs attention. 🎉
+                  Every account is healthy, nothing needs attention. 🎉
                 </p>
               )}
             </div>
@@ -926,9 +928,9 @@ export default async function DashboardPage({
                     <tr key={s.id} className="hover:bg-surface transition-colors group">
                       <td className="px-5 py-4">
                         <Link href={`/sessions/${s.id}`} className="flex items-center gap-3">
-                          <CompanyChip name={customer?.company_name || "—"} />
+                          <CompanyChip name={customer?.company_name || "-"} />
                           <span className="text-[13px] font-semibold text-text-primary">
-                            {customer?.company_name || "—"}
+                            {customer?.company_name || "-"}
                           </span>
                         </Link>
                       </td>
@@ -940,7 +942,7 @@ export default async function DashboardPage({
                           />
                           <div className="min-w-0">
                             <div className="truncate text-[13px] font-medium text-text-primary">
-                              {contact?.full_name || "—"}
+                              {contact?.full_name || "-"}
                             </div>
                             <div className="truncate text-[11px] text-text-tertiary">
                               {contact?.job_title || ""}
@@ -949,10 +951,10 @@ export default async function DashboardPage({
                         </div>
                       </td>
                       <td className="px-5 py-4 text-[13px] text-text-secondary whitespace-nowrap">
-                        {services[0]?.service_name || "—"}
+                        {services[0]?.service_name || "-"}
                       </td>
                       <td className="px-5 py-4">
-                        {outcome ? <OutcomeBadge outcome={outcome} /> : "—"}
+                        {outcome ? <OutcomeBadge outcome={outcome} /> : "-"}
                       </td>
                       <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">
                         {formatDateTime(s.created_at)}

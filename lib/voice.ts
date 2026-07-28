@@ -269,7 +269,7 @@ export async function placeOrQueueCall(opts: {
         call_direction: "outbound",
         opening_line: `Hi ${firstName}, this is ${
           line?.persona || "the Freyr team"
-        } calling from Freyr Solutions — I'm reaching out about ${pitchName}${
+        } calling from Freyr Solutions. I'm reaching out about ${pitchName}${
           customer?.company_name ? ` for ${customer.company_name}` : ""
         }. Did I catch you at an okay moment?`,
       });
@@ -309,7 +309,7 @@ export async function placeOrQueueCall(opts: {
         entry.reason = result.message || "Dial failed - left in the queue.";
       }
     } catch {
-      entry.reason = "Dial failed — left in the queue.";
+      entry.reason = "Dial failed: left in the queue.";
     }
   } else if (live && !contact.phone) {
     entry.reason = "No phone number on this contact yet.";
@@ -367,13 +367,13 @@ export function mockCallTranscript(
   const what = call.offering_name || call.category;
   const opener: MockTurn = {
     role: "agent",
-    message: `Hi ${first}, this is ${personaName} from Freyr Solutions — I'm reaching out about ${what}${
+    message: `Hi ${first}, this is ${personaName} from Freyr Solutions. I'm reaching out about ${what}${
       call.company ? ` for ${call.company}` : ""
     }. Did I catch you at an okay moment?`,
   };
   const value: MockTurn = {
     role: "agent",
-    message: `In short, we take the routine regulatory load off your team so they can focus on strategy — former FDA and EMA reviewers, 5,000+ submissions delivered. Where does ${what.toLowerCase()} sit on your priority list right now?`,
+    message: `In short, we take the routine regulatory load off your team so they can focus on strategy: former FDA and EMA reviewers, 5,000+ submissions delivered. Where does ${what.toLowerCase()} sit on your priority list right now?`,
   };
   const contactContext: MockTurn | null =
     call.contact_name === "Megan Ruiz" && call.id === "vc-seed-08"
@@ -386,12 +386,12 @@ export function mockCallTranscript(
 
   if (call.outcome === "no_answer") {
     return {
-      summary: `No answer — reached voicemail. ${personaName} left a short message introducing ${what} and asked ${first} to call back.`,
+      summary: `No answer: reached voicemail. ${personaName} left a short message introducing ${what} and asked ${first} to call back.`,
       turns: [
         opener,
         {
           role: "agent",
-          message: `Hi ${first}, ${personaName} from Freyr Solutions — sorry to miss you. I'll follow up by email about ${what}, and you can reach me on this line any time. Thanks!`,
+          message: `Hi ${first}, ${personaName} from Freyr Solutions: sorry to miss you. I'll follow up by email about ${what}, and you can reach me on this line any time. Thanks!`,
         },
       ],
     };
@@ -399,10 +399,10 @@ export function mockCallTranscript(
 
   if (call.outcome === "declined") {
     return {
-      summary: `Not a fit right now — ${first} already has a vendor for ${what} and asked us not to follow up this quarter. Polite close, door left open.`,
+      summary: `Not a fit right now. ${first} already has a vendor for ${what} and asked us not to follow up this quarter. Polite close, door left open.`,
       turns: [
         opener,
-        { role: "user", message: `Hi — honestly this isn't a great time, we already have a partner for that.` },
+        { role: "user", message: `Hi: honestly this isn't a great time, we already have a partner for that.` },
         value,
         { role: "user", message: `Appreciate it, but we're set for now. Maybe revisit next year.` },
         {
@@ -415,12 +415,12 @@ export function mockCallTranscript(
 
   if (call.outcome === "follow_up") {
     return {
-      summary: `Interested but timing-dependent — ${first} asked ${personaName} to send details on ${what} and follow up after their internal review. A callback is owed.`,
+      summary: `Interested but timing-dependent. ${first} asked ${personaName} to send details on ${what} and follow up after their internal review. A callback is owed.`,
       turns: [
         opener,
         { role: "user", message: `Sure, I've got a minute. What's this about exactly?` },
         value,
-        { role: "user", message: `That's relevant — we're scoping this for next quarter. Can you send something over and circle back?` },
+        { role: "user", message: `That's relevant: we're scoping this for next quarter. Can you send something over and circle back?` },
         {
           role: "agent",
           message: `Absolutely. I'll email a short overview of ${what} today and follow up next week. Who else should I include?`,
@@ -432,10 +432,10 @@ export function mockCallTranscript(
 
   // interested (default)
   return {
-    summary: `Strong interest — ${first} wants a 20-minute working session on ${what}. ${personaName} to send times. Warm, moving to a meeting.`,
+    summary: `Strong interest. ${first} wants a 20-minute working session on ${what}. ${personaName} to send times. Warm, moving to a meeting.`,
     turns: [
       opener,
-      { role: "user", message: `Yeah, good timing actually — we've been feeling this.` },
+      { role: "user", message: `Yeah, good timing actually: we've been feeling this.` },
       ...(contactContext ? [contactContext] : []),
       value,
       { role: "user", message: `It's high. We're stretched thin heading into a filing. What would working together look like?` },
@@ -446,7 +446,7 @@ export function mockCallTranscript(
       { role: "user", message: `Yes, please do. Mornings work best.` },
       {
         role: "agent",
-        message: `Perfect — I'll send two morning slots and a short brief. Thanks ${first}, talk soon.`,
+        message: `Perfect. I'll send two morning slots and a short brief. Thanks ${first}, talk soon.`,
       },
     ],
   };

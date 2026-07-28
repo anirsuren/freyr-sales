@@ -11,7 +11,6 @@ import {
   MessageSquareText,
   Reply,
   Search,
-  Sparkles,
   UsersRound,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -39,7 +38,9 @@ export type ActivityItem = {
   contactId: string;
   followUpDate: string | null;
   owner: string;
-  source: "Agent-assisted" | "Logged manually";
+  /** Always "Logged manually": agent-written rows are filtered out upstream,
+   *  because agent surfaces belong in the chat and nowhere else. */
+  source: "Logged manually";
 };
 
 function cleanNote(note: string): string {
@@ -624,11 +625,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
 
                         <Tooltip label={note} side="bottom" align="left">
                           <div className="flex cursor-pointer items-start gap-2 text-[11px] leading-[1.45] text-text-secondary">
-                            {item.source === "Agent-assisted" ? (
-                              <Sparkles size={14} strokeWidth={1.8} className="mt-0.5 shrink-0 text-blue-primary" />
-                            ) : (
-                              <MessageSquareText size={14} strokeWidth={1.8} className="mt-0.5 shrink-0 text-text-tertiary" />
-                            )}
+                            <MessageSquareText size={14} strokeWidth={1.8} className="mt-0.5 shrink-0 text-text-tertiary" />
                             <span className="line-clamp-2">{note}</span>
                           </div>
                         </Tooltip>

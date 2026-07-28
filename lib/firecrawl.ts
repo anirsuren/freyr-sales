@@ -16,11 +16,11 @@ Strong pipeline in monoclonal antibodies and ADCs. Working across FDA and EMA ju
 // A small mock set of "crawled pages" used when keys are missing so the KB
 // crawl flow is fully exercisable end-to-end without a real Firecrawl call.
 export const MOCK_FREYR_CRAWL_PAGES: string[] = [
-  `# Freyr Solutions — Regulatory Submissions
+  `# Freyr Solutions. Regulatory Submissions
 Freyr offers end-to-end regulatory submission services to FDA, EMA, CDSCO and 120+ agencies.
 INDs, NDAs, ANDAs, MAAs, CTD/eCTD dossiers. 5000+ submissions completed.`,
   `# Labeling & Artwork Management
-Global pharmaceutical labeling lifecycle — artwork, compliance, print-ready output. Zero-error labeling.`,
+Global pharmaceutical labeling lifecycle: artwork, compliance, print-ready output. Zero-error labeling.`,
   `# Pharmacovigilance
 ICSR processing, signal detection, PSUR/PBRER aggregate reports, validated safety databases.`,
   `# Regulatory Intelligence

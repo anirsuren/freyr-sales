@@ -100,7 +100,7 @@ export function OfferingActions({
         // Two-part feedback: the toast people already expect, plus a visible
         // confirmation inside the popover before it closes itself.
         setAdded(name);
-        toast(`Added ${offeringName} to ${name} — see it on their Offerings tab.`);
+        toast(`Added ${offeringName} to ${name}: see it on their Offerings tab.`);
         router.refresh();
         window.setTimeout(close, 1600);
       } else {

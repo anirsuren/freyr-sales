@@ -93,7 +93,15 @@ const COLUMNS: { label: string; width: string }[] = [
   { label: "Date", width: "min-w-[88px]" },
 ];
 
-export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
+export function SessionsBrowser({
+  rows,
+  headerAction,
+}: {
+  rows: SessionRow[];
+  /** Rendered beside the page title, so a primary CTA never needs a row
+   *  of its own above the heading. */
+  headerAction?: React.ReactNode;
+}) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [outcome, setOutcome] = useState("all");
@@ -143,9 +151,16 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
           search bar eating a whole row (Suren). */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
         <div className="min-w-0">
-          <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
-            Sessions
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
+              Sessions
+            </h1>
+            {/* The New Session CTA sits WITH the title, not on a row of its own
+                above it, which left a band of empty page across the top (Anir,
+                Jul 28: "the new session button should not just be on its own
+                row"). */}
+            {headerAction}
+          </div>
           <p className="text-[14px] text-text-secondary mt-0.5">
             {rows.length} pitch session{rows.length === 1 ? "" : "s"} across your book.
           </p>
@@ -200,14 +215,6 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
           </PriorityTooltip>
         </SearchPriority>
       </div>
-      {view.length > 0 && (
-        <p className="text-[13px] text-text-secondary mb-4 tnum">
-          Showing <span className="font-semibold text-text-primary">{view.length}</span> of{" "}
-          <span className="font-semibold text-text-primary">{rows.length}</span>{" "}
-          {rows.length === 1 ? "session" : "sessions"}
-        </p>
-      )}
-
       {view.length === 0 ? (
         <Card className="p-0">
           <EmptyState
@@ -294,7 +301,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                                 <p className="text-[9px] text-text-tertiary">Sessions</p>
                               </div>
                               <div>
-                                <p className="text-[12px] font-bold text-text-primary tnum uppercase">{r.companyMeta?.sizeTier || "—"}</p>
+                                <p className="text-[12px] font-bold text-text-primary tnum uppercase">{r.companyMeta?.sizeTier || "-"}</p>
                                 <p className="text-[9px] text-text-tertiary">Size</p>
                               </div>
                             </div>
@@ -304,7 +311,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                       >
                         {/* min-w here (not just on the <th>) is what actually
                             raises the column's minimum content width in an
-                            auto-layout table — the logo keeps its 32px and the
+                            auto-layout table, the logo keeps its 32px and the
                             name gets the rest. */}
                         <Link
                           href={`/customers/${r.customerId}`}
@@ -350,7 +357,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                                 <p className="text-[9px] text-text-tertiary">Sessions</p>
                               </div>
                               <div>
-                                <p className="text-[12px] font-bold text-text-primary">{r.outcome ? OUTCOME_META[r.outcome]?.label || "—" : "—"}</p>
+                                <p className="text-[12px] font-bold text-text-primary">{r.outcome ? OUTCOME_META[r.outcome]?.label || "-" : "-"}</p>
                                 <p className="text-[9px] text-text-tertiary">Last outcome</p>
                               </div>
                             </div>
@@ -396,7 +403,7 @@ export function SessionsBrowser({ rows }: { rows: SessionRow[] }) {
                         className="!text-[11.5px] !py-0.5 !pl-1 !pr-2 whitespace-nowrap"
                       />
                     </td>
-                    <td className="px-4 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "—"}</td>
+                    <td className="px-4 py-4">{r.outcome ? <OutcomeBadge outcome={r.outcome} /> : "-"}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {(() => {
                         const rm = REVIEW_META[r.review];

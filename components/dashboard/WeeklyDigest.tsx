@@ -50,7 +50,7 @@ export function WeeklyDigest({
   const visibleSubscribed = identityReady && subscribed;
 
   const lines = [
-    `📊 Freyr weekly digest — ${period}`,
+    `📊 Freyr weekly digest. ${period}`,
     "",
     ...kpis.map((k) => `• ${k.label}: ${k.value}`),
     "",
@@ -89,7 +89,7 @@ export function WeeklyDigest({
     try {
       localStorage.setItem(subscriptionStorageKey, v ? "1" : "0");
     } catch {}
-    toast(v ? "Subscribed — weekly summary every Monday 8am" : "Weekly summary off");
+    toast(v ? "Subscribed: weekly summary every Monday 8am" : "Weekly summary off");
   }
 
   return (

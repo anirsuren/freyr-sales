@@ -76,7 +76,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       m
     );
 
-  // Material questions — Suren modeled materials by TYPE (video, deck, pricing,
+  // Material questions. Suren modeled materials by TYPE (video, deck, pricing,
   // competition, case study, customer reference) so a rep can grab the right one
   // for a pitch. Detect the kind so "what materials / the competition / pricing
   // for <offering>" lists the actual items, not a generic count.
@@ -99,7 +99,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     matKind !== null ||
     /\b(materials|collateral|assets|sales material|resources)\b/.test(m);
 
-  // Offering-TYPE questions — Suren's model leans on the AI-native vs agentic
+  // Offering-TYPE questions, Suren's model leans on the AI-native vs agentic
   // distinction, so "which offerings are AI-native?" / "which have agents?"
   // should filter by type instead of dumping the generic overview.
   const aiNativeIntent = /\bai[ -]?native\b/.test(m);
@@ -140,7 +140,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     const o = hydrateOffering(named);
     if (!o.offering_category) {
       return {
-        reply: `**${o.offering_name}** isn't assigned to a category yet — open it to set one.\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
+        reply: `**${o.offering_name}** isn't assigned to a category yet: open it to set one.\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
         suggestions: [
           "What categories are there?",
           `Tell me about ${o.offering_name}`,
@@ -170,7 +170,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     return {
       reply: namedCategory.owner
         ? `**${namedCategory.name}** is owned by ${namedCategory.owner}. It groups ${inCat.length} offering${inCat.length === 1 ? "" : "s"}.\n\n[See all in ${namedCategory.name} →](/offerings?cat=${namedCategory.id})`
-        : `**${namedCategory.name}** doesn't have an owner assigned yet — set one under Offering categories.\n\n[Open offering categories →](/offerings/offering-categories)`,
+        : `**${namedCategory.name}** doesn't have an owner assigned yet: set one under Offering categories.\n\n[Open offering categories →](/offerings/offering-categories)`,
       suggestions: [
         `What's in ${namedCategory.name}?`,
         "What categories are there?",
@@ -198,7 +198,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       .map((o) => `• [${o.offering_name}](/offerings/${o.id})`);
     const ownerLine = namedCategory.owner ? ` Owner: ${namedCategory.owner}.` : "";
     return {
-      reply: `**${namedCategory.name}** — ${inCat.length} offering${inCat.length === 1 ? "" : "s"}.${ownerLine}\n\n${lines.join("\n")}\n\n[See all in ${namedCategory.name} →](/offerings?cat=${namedCategory.id})`,
+      reply: `**${namedCategory.name}**. ${inCat.length} offering${inCat.length === 1 ? "" : "s"}.${ownerLine}\n\n${lines.join("\n")}\n\n[See all in ${namedCategory.name} →](/offerings?cat=${namedCategory.id})`,
       suggestions: [
         `Who owns ${namedCategory.name}?`,
         "What categories are there?",
@@ -223,7 +223,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       );
     const lines = cats.map(
       (c) =>
-        `• ${c.name} (${counts.get(c.name) || 0})${c.owner ? ` — ${c.owner}` : ""}`
+        `• ${c.name} (${counts.get(c.name) || 0})${c.owner ? `, ${c.owner}` : ""}`
     );
     return {
       reply: `${cats.length} offering categor${cats.length === 1 ? "y" : "ies"}:\n\n${lines.join("\n")}\n\n[Open offering categories →](/offerings/offering-categories)`,
@@ -248,7 +248,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       : "sales materials";
     if (mats.length === 0) {
       return {
-        reply: `**${o.offering_name}** has no ${label} attached yet — add them on the offering.\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
+        reply: `**${o.offering_name}** has no ${label} attached yet: add them on the offering.\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
         suggestions: [
           `Tell me about ${o.offering_name}`,
           "What offerings do we have?",
@@ -260,7 +260,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       (x) => `• ${MATERIAL_META[x.kind].label}: [${x.label}](${x.url})`
     );
     return {
-      reply: `**${o.offering_name}** — ${mats.length} ${label}:\n\n${lines.join("\n")}\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
+      reply: `**${o.offering_name}**. ${mats.length} ${label}:\n\n${lines.join("\n")}\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
       suggestions: [
         `Tell me about ${o.offering_name}`,
         o.offering_category
@@ -283,7 +283,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       const o = hydrateOffering(named);
       if (o.markets.length === 0) {
         return {
-          reply: `**${o.offering_name}**'s markets aren't filled in yet, so I can't confirm ${mkt.name} — open it to set where it's available.\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
+          reply: `**${o.offering_name}**'s markets aren't filled in yet, so I can't confirm ${mkt.name}: open it to set where it's available.\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
           suggestions: [
             `Tell me about ${o.offering_name}`,
             `Which offerings are available in ${mkt.name}?`,
@@ -296,8 +296,8 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       return {
         reply:
           (inMkt
-            ? `Yes — **${o.offering_name}** is available in ${mkt.name}.`
-            : `No — **${o.offering_name}** isn't mapped to ${mkt.name}.`) +
+            ? `Yes. **${o.offering_name}** is available in ${mkt.name}.`
+            : `No. **${o.offering_name}** isn't mapped to ${mkt.name}.`) +
           ` Its markets: ${all}.\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
         suggestions: [
           `Tell me about ${o.offering_name}`,
@@ -312,8 +312,8 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
   if (named) {
     const o = hydrateOffering(named);
     const avail = [
-      o.current_availability && `now — ${o.current_availability}`,
-      o.future_availability && `future — ${o.future_availability}`,
+      o.current_availability && `now. ${o.current_availability}`,
+      o.future_availability && `future. ${o.future_availability}`,
     ]
       .filter(Boolean)
       .join("; ");
@@ -332,7 +332,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       detail = ` It's set up with ${bits.join(", ")}.`;
     } else {
       // Plain-English, not a robotic "0 customer types, 0 markets".
-      detail = ` It's in the repository, but its details aren't filled in yet — open it to add who it's for, its markets, and sales materials.`;
+      detail = ` It's in the repository, but its details aren't filled in yet: open it to add who it's for, its markets, and sales materials.`;
     }
     const pocLine = o.poc ? ` The data POC is ${o.poc}.` : "";
     const catLine = o.offering_category
@@ -341,7 +341,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     return {
       reply:
         `**${o.offering_name}** (${o.offering_type})` +
-        (o.offering_description ? ` — ${o.offering_description}` : "") +
+        (o.offering_description ? ` - ${o.offering_description}` : "") +
         `.${detail}` +
         catLine +
         pocLine +
@@ -450,7 +450,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     );
     if (list.length === 0) {
       return {
-        reply: `No offerings have ${wantsFuture ? "future" : "current"} availability noted yet — add it on each offering.\n\n[Open Offerings →](/offerings)`,
+        reply: `No offerings have ${wantsFuture ? "future" : "current"} availability noted yet: add it on each offering.\n\n[Open Offerings →](/offerings)`,
         suggestions: SUGGESTIONS,
       };
     }
@@ -458,7 +458,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       .slice(0, 8)
       .map(
         (o) =>
-          `• [${o.offering_name}](/offerings/${o.id}) — ${wantsFuture ? o.future_availability : o.current_availability}`
+          `• [${o.offering_name}](/offerings/${o.id}). ${wantsFuture ? o.future_availability : o.current_availability}`
       );
     return {
       reply: `${list.length} offering${list.length === 1 ? "" : "s"} ${wantsFuture ? "coming up" : "available now"}:\n\n${lines.join("\n")}`,
@@ -476,7 +476,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     const label = matKind ? MATERIAL_META[matKind].plural.toLowerCase() : "sales materials";
     if (list.length === 0) {
       return {
-        reply: `No offerings have ${label} attached yet — add them on each offering.\n\n[Open Offerings →](/offerings)`,
+        reply: `No offerings have ${label} attached yet: add them on each offering.\n\n[Open Offerings →](/offerings)`,
         suggestions: SUGGESTIONS,
       };
     }
@@ -484,7 +484,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       const n = matKind
         ? o.materials.filter((x) => x.kind === matKind).length
         : o.materials.length;
-      return `• [${o.offering_name}](/offerings/${o.id}) — ${n} ${n === 1 ? "item" : "items"}`;
+      return `• [${o.offering_name}](/offerings/${o.id}). ${n} ${n === 1 ? "item" : "items"}`;
     });
     return {
       reply: `${list.length} offering${list.length === 1 ? "" : "s"} with ${label}:\n\n${lines.join("\n")}`,
@@ -560,7 +560,7 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
       : `${n} offering${plural} with agents`;
     const lines = matches
       .slice(0, 10)
-      .map((o) => `• [${o.offering_name}](/offerings/${o.id}) — ${o.offering_type}`);
+      .map((o) => `• [${o.offering_name}](/offerings/${o.id}). ${o.offering_type}`);
     return {
       reply: `${headline}:\n\n${lines.join("\n")}`,
       suggestions: [

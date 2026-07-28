@@ -162,7 +162,7 @@ export function OfferingCategoriesManager({
 
         <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
           The master list of offering categories. Each groups related offerings
-          and has an owner — offerings are grouped and filtered by these.
+          and has an owner, offerings are grouped and filtered by these.
         </p>
       </Card>
 
@@ -189,7 +189,7 @@ export function OfferingCategoriesManager({
               className={`${FIELD} min-h-[88px] resize-y`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What this category groups — in plain English"
+              placeholder="What this category groups: in plain English"
             />
           </div>
           <div>
@@ -240,7 +240,7 @@ export function OfferingCategoriesManager({
                       className={`${FIELD} min-h-[72px] resize-y`}
                       value={editDesc}
                       onChange={(e) => setEditDesc(e.target.value)}
-                      placeholder="What this category groups — in plain English"
+                      placeholder="What this category groups: in plain English"
                     />
                   </div>
                   <div>

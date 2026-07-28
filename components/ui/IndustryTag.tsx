@@ -9,7 +9,7 @@ const INDUSTRY_META: Record<string, { color: string; icon: LucideIcon }> = {
   Pharmaceutical: { color: "#0071E3", icon: Pill }, // blue
   Biotechnology: { color: "#7C3AED", icon: Dna }, // violet
   "Medical Device": { color: "#0891B2", icon: Stethoscope }, // cyan
-  "Consumer Health": { color: "#E11D48", icon: Leaf }, // rose
+  "Consumer Health": { color: "#DB2777", icon: Leaf }, // pink
 };
 
 export function industryMeta(industry: string) {

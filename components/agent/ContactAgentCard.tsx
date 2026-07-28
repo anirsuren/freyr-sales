@@ -53,7 +53,7 @@ export function ContactAgentCard({
         setDone(true);
         setDraft({ title: data.draft.title, body: data.draft.body, runId: data.runId });
         setViewing(true);
-        toast("Draft ready — saved to the timeline and added to Tasks");
+        toast("Draft ready: saved to the timeline and added to Tasks");
         router.refresh();
       } else {
         toast(data.error || "Agent couldn't draft that", "error");
@@ -80,7 +80,7 @@ export function ContactAgentCard({
           </p>
         </div>
       </div>
-      <div className="rounded-xl bg-white/70 border border-blue-subtle/60 p-3.5 mb-3">
+      <div className="rounded-xl bg-[var(--white)] border border-blue-subtle/60 p-3.5 mb-3">
         <p className="text-[14px] font-semibold text-text-primary">
           {suggestion.title}
         </p>

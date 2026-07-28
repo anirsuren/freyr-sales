@@ -91,7 +91,7 @@ export function AgentPreferences() {
       const data = await res.json();
       if (data.ok) {
         setPrefs(data.prefs);
-        toast("Agent preferences saved — autopilot will respect them");
+        toast("Agent preferences saved: autopilot will respect them");
         router.refresh(); // re-filter the queue/digest to the new lens live
       } else {
         toast("Couldn't save preferences", "error");
@@ -195,7 +195,7 @@ export function AgentPreferences() {
           ))}
         </div>
         <p className="text-[12px] text-text-tertiary mt-1.5">
-          The voice the agent drafts outreach in — you can still switch per email.
+          The voice the agent drafts outreach in, you can still switch per email.
         </p>
       </div>
 
@@ -230,7 +230,7 @@ export function AgentPreferences() {
           }
           className="w-full bg-surface border border-border rounded-md px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-blue-primary transition-colors"
         >
-          <option value="">No limit — autopilot may handle any deal</option>
+          <option value="">No limit, autopilot may handle any deal</option>
           <option value="100000">$100K open pipeline</option>
           <option value="250000">$250K open pipeline</option>
           <option value="500000">$500K open pipeline</option>
@@ -268,7 +268,7 @@ export function AgentPreferences() {
         </div>
         <p className="text-[12px] text-text-tertiary mt-1.5">
           {prefs.autopilot_cadence === "off"
-            ? "No scheduled runs — run autopilot manually."
+            ? "No scheduled runs: run autopilot manually."
             : `Flagged as due on your next visit; a deployment cron fires it on time.${
                 prefs.autopilot_last_run
                   ? ` Last run ${new Date(prefs.autopilot_last_run).toLocaleDateString()}.`
@@ -300,7 +300,7 @@ export function AgentPreferences() {
         </div>
         <p className="text-[12px] text-text-tertiary mt-1.5">
           {prefs.digest_cadence === "off"
-            ? "No scheduled briefing — open the digest anytime."
+            ? "No scheduled briefing: open the digest anytime."
             : `The agent's briefing is flagged ready on your next visit.${
                 prefs.digest_last_sent
                   ? ` Last sent ${new Date(prefs.digest_last_sent).toLocaleDateString()}.`

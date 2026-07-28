@@ -106,7 +106,7 @@ export async function importOfferingsWorkbook(
   } catch {
     return {
       ok: false,
-      error: "Couldn't read that file — is it a valid .xlsx?",
+      error: "Couldn't read that file: is it a valid .xlsx?",
       categories: 0,
       types: 0,
       offeringsCreated: 0,

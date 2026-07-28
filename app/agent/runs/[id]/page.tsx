@@ -234,7 +234,7 @@ export default async function AgentRunDetailPage({
             The draft
           </h2>
           <p className="text-[12px] text-text-secondary mb-3">
-            A first draft from this account&apos;s live data — edit before you
+            A first draft from this account&apos;s live data, edit before you
             send. Nothing was sent.
           </p>
           <Card>
@@ -329,7 +329,7 @@ export default async function AgentRunDetailPage({
         <Card className="bg-surface border-border-light flex items-center gap-2.5">
           <Undo2 size={15} strokeWidth={2} className="text-text-tertiary shrink-0" />
           <p className="text-[13px] text-text-secondary">
-            This run was reverted — the timeline entries it created have been
+            This run was reverted, the timeline entries it created have been
             rolled back.
           </p>
         </Card>

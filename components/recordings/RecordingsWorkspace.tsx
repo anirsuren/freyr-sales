@@ -164,7 +164,7 @@ function Player({
           style={{ width: `${pct}%` }}
         />
         <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-blue-primary shadow ring-2 ring-white opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-blue-primary shadow ring-2 ring-[color:var(--white)] opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ left: `${pct}%` }}
         />
       </div>
@@ -190,7 +190,7 @@ function CoachChat({ rec }: { rec: Recording }) {
     setMsgs([
       {
         role: "ai",
-        text: `I analyzed the ${rec.company} call — overall ${rec.score}/100. Ask me anything, e.g. "how could the rep have closed better?"`,
+        text: `I analyzed the ${rec.company} call: overall ${rec.score}/100. Ask me anything, e.g. "how could the rep have closed better?"`,
       },
     ]);
     tipIdx.current = 0;
@@ -669,7 +669,7 @@ export function RecordingsWorkspace() {
                         {l.at}
                       </span>
                       {/* Who is talking is a category, so it gets colour + a mark
-                          — and the mark is the REAL person's face (the rep for
+                         , and the mark is the REAL person's face (the rep for
                           "Rep", the contact for "Prospect") rather than a generic
                           glyph. Prospect was flat gray on gray, which is banned
                           for anything categorical. */}
@@ -721,7 +721,7 @@ export function RecordingsWorkspace() {
                 <textarea
                   value={commentDraft}
                   onChange={(e) => setCommentDraft(e.target.value)}
-                  placeholder="e.g. Great discovery question — let the prospect finish next time."
+                  placeholder="e.g. Great discovery question: let the prospect finish next time."
                   rows={2}
                   className="w-full bg-white border border-border rounded-lg px-3 py-2 text-[14px] outline-none focus:border-blue-primary resize-y"
                 />
@@ -791,7 +791,7 @@ export function RecordingsWorkspace() {
                     className="relative block text-left w-full hover:bg-surface rounded-lg p-2 -ml-2 transition-colors group"
                   >
                     <span
-                      className="absolute left-[-15px] top-3 w-3.5 h-3.5 rounded-full ring-4 ring-white"
+                      className="absolute left-[-15px] top-3 w-3.5 h-3.5 rounded-full ring-4 ring-[color:var(--white)]"
                       style={{ background: c }}
                     />
                     <div className="flex items-center gap-2">
@@ -866,7 +866,7 @@ export function RecordingsWorkspace() {
               <Button
                 disabled={!fileName}
                 onClick={() => {
-                  toast(`Uploaded “${fileName}” — transcription queued`);
+                  toast(`Uploaded “${fileName}”: transcription queued`);
                   setFileName("");
                   setUploadOpen(false);
                 }}

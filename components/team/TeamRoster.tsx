@@ -369,7 +369,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             <span className="text-text-tertiary tnum font-normal">({reps.length})</span>
           </h2>
           <p className="text-[12.5px] text-text-tertiary mt-0.5">
-            Ranked by open pipeline. Message on Teams or call — click a rep for their full analytics.
+            Ranked by open pipeline. Message on Teams or call, click a rep for their full analytics.
           </p>
         </div>
         <div className="flex border border-border rounded-md overflow-hidden shrink-0">
@@ -394,7 +394,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
 
       {/* key=view re-mounts the panel so switching grid↔table animates. It used
           `page-in`, which is OPACITY-ONLY by design (a transform there would
-          trap fixed/sticky descendants app-wide) — at 0.24s with no movement
+          trap fixed/sticky descendants app-wide), at 0.24s with no movement
           the switch read as nothing happening (Anir, Jul 27: "what happened to
           the animation here when I go from tiles to grid? There's nothing").
           `tab-panel` is the app's own view-switch animation: it lifts 6px AND
@@ -587,7 +587,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                   <tr key={r.identityKey} className="hover:bg-surface transition-colors">
                     <td className="px-4 py-3.5">
                       {/* Row hover popover (Suren: "on the rows page there's no
-                          pop-up like the grid") — the rep's mix + headline stats. */}
+                          pop-up like the grid"), the rep's mix + headline stats. */}
                       <HoverCard
                         side="bottom"
                         width={420}
@@ -700,7 +700,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                               <Badge label={r.role} bg={rc.bg} color={rc.color} className="!normal-case tracking-normal !text-[10px] !px-1.5 !py-0" />
                             </span>
                             {/* Inline is fine here — the table column has the
-                                width — but wrap instead of ellipsizing so a
+                                width, but wrap instead of ellipsizing so a
                                 long region never clips mid-word. */}
                             <span className="block text-[12px] text-text-secondary whitespace-normal break-normal">
                               {r.title}

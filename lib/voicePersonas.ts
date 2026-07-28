@@ -70,7 +70,7 @@ export const VOICE_PERSONAS: VoicePersona[] = [
     name: "Kai",
     slug: "kai-freya-fusion",
     category: "Freya Fusion Platform and Agents",
-    tagline: "Demos the Freya AI platform — agents, modules and automation.",
+    tagline: "Demos the Freya AI platform: agents, modules and automation.",
     color: "#E0338E",
     icon: Cpu,
   },
@@ -87,5 +87,5 @@ export function personaBySlug(slug: string): VoicePersona | null {
 // The line each persona opens with when a prospect CALLS IN. Outbound calls
 // override this with a personalized opener (see lib/voice.ts).
 export function inboundOpener(p: VoicePersona): string {
-  return `Hi, this is ${p.name} with Freyr Solutions — thanks for calling! Can I get your name, and what can I help you with today?`;
+  return `Hi, this is ${p.name} with Freyr Solutions: thanks for calling! Can I get your name, and what can I help you with today?`;
 }

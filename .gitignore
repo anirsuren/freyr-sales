@@ -27,7 +27,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -60,3 +62,6 @@ scripts/
 
 # isolated build cache for the Playwright suite
 /.next-test/
+
+# local editor/agent config, not app code
+.claude/

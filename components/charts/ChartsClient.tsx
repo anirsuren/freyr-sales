@@ -174,7 +174,7 @@ function PointMarker({
       )}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute rounded-full ring-2 ring-white transition-[width,height] duration-100"
+        className="pointer-events-none absolute rounded-full ring-2 ring-[color:var(--white)] transition-[width,height] duration-100"
         style={{
           left,
           top,
@@ -216,10 +216,27 @@ function tipIsLong(items?: TipItem[]): boolean {
 // Hover state for one chart: which index is lit, where its tip is anchored, and
 // — for tips the user is allowed to reach — a grace timer so the card survives
 // the trip from the chart into the card.
+/** Every graph tooltip in this app waits this long before it opens. No chart
+ *  gets to opt out, and there is no user setting for it any more (Anir, Jul 28:
+ *  "we need it where it's 0.5 seconds on every single graph. There should not
+ *  be any point where, as soon as I hover over it, it does the popup. Remove
+ *  that setting, straight up 0.5 seconds. End of story on every single page").
+ *  Charts used to open at 0ms on the theory that pointing at a data point is
+ *  deliberate, which made every pass of the cursor across a chart flash a card. */
+export const CHART_TIP_OPEN_MS = 500;
+
 function useChartHover() {
   const [hover, setHover] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<ChartAnchor | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopOpening = useCallback(() => {
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  }, []);
 
   const keepOpen = useCallback(() => {
     if (closeTimer.current) {
@@ -227,12 +244,24 @@ function useChartHover() {
       closeTimer.current = null;
     }
   }, []);
-  useEffect(() => keepOpen, [keepOpen]);
+  useEffect(
+    () => () => {
+      keepOpen();
+      stopOpening();
+    },
+    [keepOpen, stopOpening]
+  );
 
   function show(index: number, at?: ChartAnchor | null) {
     keepOpen();
-    setHover((current) => (current === index ? current : index));
+    // The anchor is remembered immediately so the card lands in the right place
+    // the instant it does open, but the card itself waits out the dwell.
     if (at !== undefined) setAnchor(at);
+    stopOpening();
+    openTimer.current = setTimeout(() => {
+      openTimer.current = null;
+      setHover((current) => (current === index ? current : index));
+    }, CHART_TIP_OPEN_MS);
   }
 
   /** Reposition without changing which index is lit (mousemove). */
@@ -244,6 +273,7 @@ function useChartHover() {
   const close = useCallback(
     (graceMs = 0) => {
       keepOpen();
+      stopOpening();
       if (graceMs <= 0) {
         setHover(null);
         setAnchor(null);
@@ -255,7 +285,7 @@ function useChartHover() {
         setAnchor(null);
       }, graceMs);
     },
-    [keepOpen]
+    [keepOpen, stopOpening]
   );
 
   return { hover, anchor, show, move, close, keepOpen };
@@ -778,8 +808,8 @@ function TipBreakdown({
               style={TIP_ROW_PAD}
             >
               {/* The subject line: whose deal it is, and how much it's worth.
-                  The money sits on the COMPANY's line — it is that company's
-                  number — instead of floating vertically centred against four
+                  The money sits on the COMPANY's line, it is that company's
+                  number, instead of floating vertically centred against four
                   unrelated lines. */}
               <div className="flex items-center gap-2">
                 {mark}
@@ -1269,7 +1299,7 @@ export function AreaChart({
               globals.css (`.dark .bg-surface`, `.dark .border-border-light`,
               `.dark .text-text-secondary`); an opacity modifier compiles to a
               DIFFERENT class (`bg-white\/70`), which `.dark .bg-white` cannot
-              match — so these axis numbers used to stay light-grey-on-white and
+              match, so these axis numbers used to stay light-grey-on-white and
               vanished on every area/line chart in dark mode. */}
           <span className={AXIS_CHIP + " top-1 font-semibold"}>
             {fmt(format, max)}
@@ -1865,7 +1895,7 @@ export function BarChart({
             </div>
             {/* The axis label: the company's own mark above its name, and the
                 name wrapped over as many lines as it takes. No line-clamp, no
-                max-width, no "…" — the column is wide enough, and the plot
+                max-width, no "…", the column is wide enough, and the plot
                 scrolls if the columns outgrow the card. */}
             <span
               className="mt-2 flex w-full shrink-0 flex-col items-center justify-start gap-1 px-0.5 text-center"
@@ -1878,7 +1908,7 @@ export function BarChart({
                 />
               )}
               {/* A category label carries its series colour, the way the
-                  forecast by-stage legend does — Suren, Jul 28: "do the next
+                  forecast by-stage legend does. Suren, Jul 28: "do the next
                   nice colour-coding thing here… look at the labels at the
                   bottom". Only when the column has no logo: a company already
                   has its mark above the name and a dot beside it would be a
@@ -2019,7 +2049,7 @@ export function LineChart({
       </svg>
       {/* Y-axis scale at rest — max (top) + zero baseline, with the unit, so
           the chart reads without hovering (Suren: "all graphs need units").
-          Only on charts tall enough that the labels don't sit ON the lines —
+          Only on charts tall enough that the labels don't sit ON the lines,
           on compact card charts they collided with the data. */}
       {h >= 120 && (
         <>
@@ -2231,7 +2261,7 @@ export function Sparkline({
         />
       </svg>
       {/* A 6px dot in the line's own colour, sitting ON a 2px stroke of that
-          same colour, was invisible — which is what read as "it doesn't show
+          same colour, was invisible, which is what read as "it doesn't show
           me the dot properly… maybe it's getting covered up" (Suren, Jul 27,
           on the voice agents' "Calls · last 2 weeks"). It is now a ringed,
           haloed marker with a dashed guide down to the baseline, the same
@@ -2315,6 +2345,11 @@ export function DonutLegend({
     value: number;
     /** TIP_ICONS key — colour-tinted icon tile instead of the plain dot. */
     icon?: string;
+    /** The records behind this slice. When present, hovering the legend row
+     *  opens the SAME pop-up the donut slice shows — the row already lit the
+     *  slice via syncId but gave no records, which read as a dead hover
+     *  (Anir, Jul 28: "when I hover over this, the pop-up doesn't show up"). */
+    tip?: TipItem[];
   }[];
   total?: number;
   format?: Fmt;
@@ -2333,6 +2368,14 @@ export function DonutLegend({
 }) {
   const sum = (total ?? items.reduce((s, x) => s + x.value, 0)) || 1;
   const linked = useDonutSync(syncId);
+  const {
+    hover,
+    anchor: mouse,
+    show: showHover,
+    move: moveTip,
+    close: closeTip,
+    keepOpen,
+  } = useChartHover();
   return (
     // One shared grid: label/value/% columns size to their widest row, so
     // every share bar starts at the same x (Anir: "the bars have to be
@@ -2370,8 +2413,15 @@ export function DonutLegend({
         return (
           <div
             key={it.label}
-            onMouseEnter={syncId ? () => donutSyncBroadcast(syncId, i) : undefined}
-            onMouseLeave={syncId ? () => donutSyncBroadcast(syncId, null) : undefined}
+            onMouseEnter={(e) => {
+              if (syncId) donutSyncBroadcast(syncId, i);
+              if (it.tip?.length) showHover(i, pointerAnchor(e));
+            }}
+            onMouseMove={it.tip?.length ? (e) => moveTip(pointerAnchor(e)) : undefined}
+            onMouseLeave={() => {
+              if (syncId) donutSyncBroadcast(syncId, null);
+              if (it.tip?.length) closeTip(tipIsLong(it.tip) ? TIP_CLOSE_GRACE_MS : 0);
+            }}
             className={cn(
               // Always the pointer cursor — these rows are hover-interactive
               // chart elements (standing rule; Suren: "why is my cursor not
@@ -2412,7 +2462,7 @@ export function DonutLegend({
                 />
                 {/* One line, never truncated (Suren): a two-word stage name
                     like "Meeting Booked" reads as one thing, so it is nowrap
-                    and its grid track is sized from that — the share bar
+                    and its grid track is sized from that, the share bar
                     yields the width instead of the words. */}
                 <span className="whitespace-nowrap text-text-secondary">{it.label}</span>
               </>
@@ -2436,6 +2486,37 @@ export function DonutLegend({
           </div>
         );
       })}
+      {/* The same records pop-up the donut slice opens, fed by the same tip
+          rows, so the legend and the ring answer a hover identically. */}
+      {hover != null && items[hover]?.tip?.length ? (
+        <PortalTip
+          anchor={mouse}
+          wide
+          interactive={tipIsLong(items[hover].tip)}
+          onEnter={keepOpen}
+          onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
+        >
+          <TipHeader
+            icon={items[hover].icon}
+            color={items[hover].color}
+            dot
+            label={items[hover].label}
+            value={format ? fmt(format, items[hover].value) : String(items[hover].value)}
+          />
+          <TipShareStats
+            value={items[hover].value}
+            total={sum}
+            share={Math.round((items[hover].value / sum) * 100)}
+            color={items[hover].color}
+            format={format}
+          />
+          <TipBreakdown
+            items={items[hover].tip}
+            label="Records in this segment"
+            interactive={tipIsLong(items[hover].tip)}
+          />
+        </PortalTip>
+      ) : null}
     </div>
   );
 }

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       customer_id: customerId,
       contact_id: contactId,
       outcome: "in_progress",
-      notes: `🤖 Agent ran a full outreach play for ${customer.company_name} — ${sentLine}`,
+      notes: `🤖 Agent ran a full outreach play for ${customer.company_name} - ${sentLine}`,
       follow_up_date: null,
       logged_by: "Freyr Agent",
     });
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   });
 
   notifyTelegram(
-    `🤖 <b>Agent play complete</b>\n${customer.company_name} — sent after approval`
+    `🤖 <b>Agent play complete</b>\n${customer.company_name}: sent after approval`
   );
   return NextResponse.json({ ok: true });
 }

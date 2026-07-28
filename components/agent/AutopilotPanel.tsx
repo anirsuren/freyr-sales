@@ -53,7 +53,7 @@ export function AutopilotPanel() {
           <div className="min-w-0">
             <p className="text-[14px] font-semibold text-text-primary">Autopilot</p>
             <p className="text-[12px] text-text-secondary">
-              Let the agent work the whole queue — it drafts the safe ones for
+              Let the agent work the whole queue, it drafts the safe ones for
               you and leaves anything needing approval to you.
             </p>
           </div>
@@ -73,8 +73,8 @@ export function AutopilotPanel() {
           <p className="text-[12px] text-text-primary">
             <span className="font-semibold">
               {report.heldForValue} held for your sign-off
-            </span>{" "}
-            — over your{" "}
+            </span>
+           , over your{" "}
             {report.ceiling ? formatMoney(report.ceiling) : "value"} ceiling, so
             the agent left these for you instead of drafting them.
           </p>

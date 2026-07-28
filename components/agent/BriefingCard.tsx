@@ -36,7 +36,7 @@ export function BriefingCard({
       </div>
 
       {/* The "Recommended:" coaching row is gone (Anir, Jul 27: "I don't want
-          no next move") — the brief states facts; the rep decides the move. */}
+          no next move"), the brief states facts; the rep decides the move. */}
     </div>
   );
 }

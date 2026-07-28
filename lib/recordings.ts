@@ -50,7 +50,7 @@ export const RECORDINGS: Recording[] = [
     contact: "Dr. Priya Mehta",
     contactTitle: "VP Regulatory Affairs",
     rep: "Suren Dheen",
-    title: "Discovery — BioNex NDA",
+    title: "Discovery. BioNex NDA",
     date: daysAgo(1),
     duration: "24:18",
     score: 88,
@@ -59,19 +59,19 @@ export const RECORDINGS: Recording[] = [
       "Strong discovery call. Suren Dheen opened by referencing Dr. Mehta's FDA background and tied the conversation to the upcoming NDA timeline. Surfaced a clear pain around CTD dossier throughput and booked a follow-up with the NDA owner.",
     didWell: [
       "Opened with a relevant, researched hook (FDA CDER background) instead of a generic intro.",
-      "Quantified the pain — asked how the team is currently handling CTD dossier prep.",
+      "Quantified the pain: asked how the team is currently handling CTD dossier prep.",
       "Earned the next step with a specific, low-friction ask (20 minutes with the NDA owner).",
     ],
     needsImprovement: [
-      "Talk-to-listen ratio was 64% — let the prospect carry more of the conversation.",
+      "Talk-to-listen ratio was 64%: let the prospect carry more of the conversation.",
       "Mentioned pricing too early; defer until value is established.",
     ],
     coaching: [
-      "Use a 70/30 listen ratio on discovery — ask one more layer of 'why' before proposing.",
-      "When asked about price, bridge to value: 'It depends on scope — can I show you how we'd approach your NDA first?'",
+      "Use a 70/30 listen ratio on discovery: ask one more layer of 'why' before proposing.",
+      "When asked about price, bridge to value: 'It depends on scope: can I show you how we'd approach your NDA first?'",
     ],
     keyMoments: [
-      { at: "01:12", label: "Strong opener", quote: "I noticed your time at FDA CDER — I'll skip the basics.", tone: "good" },
+      { at: "01:12", label: "Strong opener", quote: "I noticed your time at FDA CDER. I'll skip the basics.", tone: "good" },
       { at: "08:40", label: "Pain identified", quote: "We're seeing a 12% lag in CMC technical writing right now.", tone: "good" },
       { at: "15:03", label: "Pricing raised early", quote: "Ballpark, what does something like this run?", tone: "warn" },
       { at: "22:50", label: "Next step secured", quote: "Let's get the NDA owner on a call next Thursday.", tone: "good" },
@@ -89,7 +89,7 @@ export const RECORDINGS: Recording[] = [
     contact: "Dr. Lena Vogt",
     contactTitle: "SVP Global Regulatory",
     rep: "Mark Miller",
-    title: "Exec Briefing — Helix Global Labeling",
+    title: "Exec Briefing. Helix Global Labeling",
     date: daysAgo(2),
     duration: "31:42",
     score: 74,
@@ -101,7 +101,7 @@ export const RECORDINGS: Recording[] = [
       "Tailored the labeling story to a multi-market (FDA/EMA/PMDA) program.",
     ],
     needsImprovement: [
-      "Monologued for ~4 minutes on capabilities — lost engagement mid-call.",
+      "Monologued for ~4 minutes on capabilities: lost engagement mid-call.",
       "No firm next step; ended with 'we'll follow up'.",
     ],
     coaching: [
@@ -126,7 +126,7 @@ export const RECORDINGS: Recording[] = [
     contact: "Marcus Thorne",
     contactTitle: "Head of CMC",
     rep: "Suren Dheen",
-    title: "Cold Call — Cortexa CMC",
+    title: "Cold Call. Cortexa CMC",
     date: daysAgo(3),
     duration: "06:54",
     score: 81,
@@ -156,7 +156,7 @@ export const RECORDINGS: Recording[] = [
     contact: "Dr. Lisa Chen",
     contactTitle: "Director, Labeling",
     rep: "Mark Miller",
-    title: "Follow-up — Indavel 483 Remediation",
+    title: "Follow-up. Indavel 483 Remediation",
     date: daysAgo(4),
     duration: "18:07",
     score: 67,
@@ -169,7 +169,7 @@ export const RECORDINGS: Recording[] = [
       "Did not quantify the cost of the open 483 finding.",
     ],
     coaching: [
-      "Listen for and name buying signals out loud: 'It sounds like timing is critical — let's move fast.'",
+      "Listen for and name buying signals out loud: 'It sounds like timing is critical: let's move fast.'",
       "Quantify risk: tie the open finding to potential delay/cost.",
     ],
     keyMoments: [
@@ -189,7 +189,7 @@ export const RECORDINGS: Recording[] = [
     contact: "Dr. Arun Pillai",
     contactTitle: "Chief Medical Officer",
     rep: "Suren Dheen",
-    title: "Discovery — Quantum Trial Regulatory",
+    title: "Discovery. Quantum Trial Regulatory",
     date: daysAgo(5),
     duration: "27:31",
     score: 92,
@@ -199,7 +199,7 @@ export const RECORDINGS: Recording[] = [
     didWell: [
       "Spoke the CMO's language on trial de-risking.",
       "Built a mutual action plan with dates.",
-      "Multi-threaded — asked to include the regulatory lead.",
+      "Multi-threaded: asked to include the regulatory lead.",
     ],
     needsImprovement: ["Slightly rushed the recap at the end."],
     coaching: ["Always close discovery with a 30-second recap to confirm alignment."],
@@ -221,7 +221,7 @@ export const RECORDINGS: Recording[] = [
     contact: "Claudia Hofmann",
     contactTitle: "Global Head, Reg Submissions",
     rep: "Mark Miller",
-    title: "Intro — Meridian Submissions",
+    title: "Intro. Meridian Submissions",
     date: daysAgo(7),
     duration: "09:38",
     score: 54,
@@ -235,7 +235,7 @@ export const RECORDINGS: Recording[] = [
     ],
     coaching: [
       "Prepare an incumbent-displacement track: ask what's working / not working and when the contract renews.",
-      "Treat the first 'no' as 'not yet' — book a check-in near renewal.",
+      "Treat the first 'no' as 'not yet': book a check-in near renewal.",
     ],
     keyMoments: [
       { at: "03:45", label: "Objection mishandled", quote: "We already work with someone for this.", tone: "warn" },
@@ -253,7 +253,7 @@ export const RECORDINGS: Recording[] = [
     contact: "Dr. Hana Kim",
     contactTitle: "VP Regulatory Strategy",
     rep: "Suren Dheen",
-    title: "Discovery — Orion Reg Intelligence",
+    title: "Discovery. Orion Reg Intelligence",
     date: daysAgo(8),
     duration: "21:09",
     score: 79,
@@ -299,12 +299,12 @@ function tFmt(sec: number) {
 }
 
 const FILLER_REP = [
-  "Before I dive in — what's actually driving the timeline on your side?",
+  "Before I dive in: what's actually driving the timeline on your side?",
   "Got it. A lot of teams at your stage hit exactly that wall.",
   "Here's specifically how we'd approach it for you.",
   "We've run this play for similar biologics programs recently.",
   "Let me make sure I understand the constraint correctly.",
-  "Totally fair — I'll keep this tight and respect your time.",
+  "Totally fair. I'll keep this tight and respect your time.",
 ];
 const FILLER_PROSPECT = [
   "Sure, that makes sense.",
@@ -320,7 +320,7 @@ const FILLER_PROSPECT = [
 export function transcriptFor(rec: Recording): TranscriptLine[] {
   const total = tSec(rec.duration);
   const out: Omit<TranscriptLine, "at">[] = [
-    { sec: 2, speaker: "Rep", text: "Hi — thanks for taking the time today. I'll keep this focused." },
+    { sec: 2, speaker: "Rep", text: "Hi: thanks for taking the time today. I'll keep this focused." },
     { sec: 13, speaker: "Prospect", text: "Sounds good, I've got a few minutes." },
   ];
   const kms = [...rec.keyMoments].sort((a, b) => tSec(a.at) - tSec(b.at));
@@ -345,8 +345,8 @@ export function transcriptFor(rec: Recording): TranscriptLine[] {
     speaker: "Rep",
     text:
       rec.outcome.includes("Meeting") || rec.outcome === "Interested"
-        ? "Appreciate it — I'll send a recap and we'll lock the next step."
-        : "Thanks for the candor — I'll follow up with something genuinely useful.",
+        ? "Appreciate it. I'll send a recap and we'll lock the next step."
+        : "Thanks for the candor. I'll follow up with something genuinely useful.",
   });
 
   const seen = new Set<number>();

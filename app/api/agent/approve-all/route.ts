@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     });
     steps.push({
       label: `Approved ${custById[s.customer_id]?.company_name || "a pitch"}`,
-      detail: "Cleared compliance — now ready to send",
+      detail: "Cleared compliance: now ready to send",
       status: "done",
     });
   }
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       steps,
     });
     notifyTelegram(
-      `📋 <b>Bulk approve</b>\n${pending.length} pitch(es) cleared compliance — ready to send.`
+      `📋 <b>Bulk approve</b>\n${pending.length} pitch(es) cleared compliance: ready to send.`
     );
   }
 

@@ -168,7 +168,7 @@ function seedOfferingTypes(): OfferingType[] {
       id: "ot-fusion-platform",
       name: "Freya Fusion (Platform)",
       description:
-        "The complete Freya Fusion platform delivered as one unified regulatory ecosystem — its full suite of modules together with platform-level AI agents (Freya.Agents) and cross-module objects (Freya.OmniObject) that operate across the entire environment.",
+        "The complete Freya Fusion platform delivered as one unified regulatory ecosystem: its full suite of modules together with platform-level AI agents (Freya.Agents) and cross-module objects (Freya.OmniObject) that operate across the entire environment.",
     },
     {
       id: "ot-freyr-ai-native",
@@ -299,12 +299,21 @@ function off(
 // customer-type applicability matrix (Label/Artwork Not Applicable to Small),
 // and availability. Per Suren's Jun 27 video the medicinal-products listing is
 // finalised and "everything is available", so the 12 Freya modules are all
-// "Currently available". Offering descriptions stay blank — they come from the
-// sales materials we write — and the offering TYPE / CATEGORY descriptions carry
-// the framing meanwhile. Early adopters were removed at Suren's request ("I
+// "Currently available". Early adopters were removed at Suren's request ("I
 // don't want that anymore — we'll come from the customer angle later"). Markets
 // are sample values on the core modules. Service-delivery POCs carry over from
 // Sara's MPR list.
+//
+// DESCRIPTIONS + OWNERS (Jul 28, from the CSV Anir dropped in Downloads —
+// "Digital Sales and Marketing(Offerings).csv", the current export of that same
+// sheet): three modules now carry Freyr's own written description verbatim
+// (Freya.Register, +Pia+Mia, +Pia+Mia+Via); the other eleven are blank IN THE
+// SHEET, so they stay blank here rather than being written for Freyr. The
+// module owners come from the sheet's "Offering Owner" column, copied exactly —
+// "TBD" is not a person, so those offerings keep no owner at all. Names are
+// never reordered or completed from outside the sheet; where the sheet's own
+// Owner column spells out a POC's surname (Mukundh → Mukundh Chouthoy) that
+// spelling is used, and nowhere else.
 const FREYR_URL = {
   resources: "https://www.freyrsolutions.com/resources",
   insights: "https://www.freyrsolutions.com/insights",
@@ -326,7 +335,8 @@ function seedOfferings(): Offering[] {
   // availability notes describe global / various-market coverage); materials are
   // added per offering in-app. Rows the sheet left blank stay blank.
   return [
-    off("of-001", MODULE, "Freya.Register", "", {
+    off("of-001", MODULE, "Freya.Register", "Freya.Register is the core Regulatory Information Management System (RIMS) module of Freya Fusion, managing the end-to-end processes across Products, Applications, Registrations, and Life Cycle Management (LCM). It gives regulatory teams a single, structured source of truth for product and registration data, with clear visibility into status and dependencies across markets. Lifecycle changes and registration updates remain user-governed, keeping regulatory control and data integrity with the team.\n\nProducts: Maintains a structured master record of each product's regulatory identity and attributes, serving as the anchor/parent other data links back to.\n\nApplications: Tracks regulatory applications through their dossier preparation and review journey until the submission to a health authority, with status visibility across markets.\n\nRegistrations: Holds the record of granted registrations and approvals per product and market, giving a clear view of what is authorised where.\n\nLCM (Life Cycle Management): Manages post-approval changes and variations over a registration's life, keeping the regulatory record current as products and requirements evolve.", {
+      poc: "Eswar Subramanian",
       offering_category: CAT_RIM,
       current_availability: "Currently available",
       future_availability: "Version 1",
@@ -342,6 +352,7 @@ function seedOfferings(): Offering[] {
       ],
     }),
     off("of-002", MODULE, "Freya.Intelligence", "", {
+      poc: "Inayat, Tanudeep",
       offering_category: CAT_GRI,
       current_availability: "Currently available",
       future_availability: "Version 1",
@@ -349,6 +360,7 @@ function seedOfferings(): Offering[] {
       market_ids: ALL_MKT,
     }),
     off("of-003", MODULE, "Freya.GRR-PAC (Global Regulatory Requirements for Post Approval Changes)", "", {
+      poc: "Inayat, Tanudeep",
       offering_category: CAT_GRI,
       current_availability: "Currently available",
       future_availability: "Version 1",
@@ -356,24 +368,28 @@ function seedOfferings(): Offering[] {
       market_ids: ALL_MKT,
     }),
     off("of-004", MODULE, "Freya.Label", "", {
+      poc: "Raj Vinesh",
       offering_category: CAT_LABELING,
       current_availability: "Oct-26",
       customer_type_ids: NO_SMALL_CT,
       market_ids: ALL_MKT,
     }),
     off("of-005", MODULE, "Freya.Submit", "", {
+      poc: "Sameer Siddiqui",
       offering_category: CAT_SUBMISSIONS,
       current_availability: "Currently available",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
     off("of-006", MODULE, "Freya.Artwork", "", {
+      poc: "Raj Vinesh",
       offering_category: CAT_LABELING,
       current_availability: "Oct-26",
       customer_type_ids: NO_SMALL_CT,
       market_ids: ALL_MKT,
     }),
     off("of-007", MODULE, "Freya.RTQ", "", {
+      poc: "Inayat, Tanudeep",
       offering_category: CAT_RA,
       current_availability: "Currently available",
       customer_type_ids: [],
@@ -385,13 +401,15 @@ function seedOfferings(): Offering[] {
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-009", MODULE, "Freya.Doc", "", {
+    off("of-009", MODULE, "Freya.Docs", "", {
+      poc: "Sameer Siddiqui",
       offering_category: CAT_SUBMISSIONS,
       current_availability: "Oct-26",
       customer_type_ids: NO_SMALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-010", MODULE_AGENT, "Freya.Register + Pia + Mia", "", {
+    off("of-010", MODULE_AGENT, "Freya.Register + Pia + Mia", "This offering pairs the core Regulatory Information Management System (RIMS) registration modules of Freya.Register with AI agents that assist regulatory teams across product identification, market scoping, and change impact assessments.\n\nPIA (Product Identification Agent): Helps identify and structure a product's regulatory identity and classification.\n\nMIA (Market Identification Agent): Assists in determining applicable markets and their regulatory requirements for a given product.", {
+      poc: "Eswar Subramanian",
       offering_category: CAT_RIM,
       current_availability: "Currently available",
       customer_type_ids: ALL_CT,
@@ -402,7 +420,7 @@ function seedOfferings(): Offering[] {
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
-    off("of-012", MODULE_AGENT_ADDON, "Freya.Register + Pia + Mia + Via", "", {
+    off("of-012", MODULE_AGENT_ADDON, "Freya.Register + Pia + Mia + Via", "This offering pairs the core Regulatory Information Management System (RIMS) registration modules of Freya.Register with AI agents that assist regulatory teams across product identification, market scoping, and change impact assessments.\n\nPIA (Product Identification Agent): Helps identify and structure a product's regulatory identity and classification.\n\nMIA (Market Identification Agent): Assists in determining applicable markets and their regulatory requirements for a given product.\n\nVIA (Variation Impact Assessment): Assesses the regulatory impact of a variation and indicates what needs to be communicated and through which channel, leaving the drafting and decision with the regulatory team.", {
       offering_category: CAT_RIM,
       current_availability: "To be Decided",
       future_availability: "Pilot Available Now",
@@ -419,6 +437,7 @@ function seedOfferings(): Offering[] {
       ],
     }),
     off("of-013", PLATFORM_TYPE, "Freya.Agents", "", {
+      poc: "Harshith",
       offering_category: CAT_PLATFORM,
       current_availability: "Currently available",
       customer_type_ids: [],
@@ -450,7 +469,7 @@ function seedOfferings(): Offering[] {
       offering_category: CAT_LABELING,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · ePI services: Upcoming for EU in 2027",
-      poc: "Sathya K / Harshvardhan Gummadi",
+      poc: "Harshvardhan Gummadi / Sathya K",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
@@ -466,7 +485,7 @@ function seedOfferings(): Offering[] {
       offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Available in major markets via in-house delivery team. Can be supported by Freyr-X for other regions.",
-      poc: "Mukundh / Suresh Modugu",
+      poc: "Mukundh Chouthoy / Suresh Modugu",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
@@ -474,7 +493,7 @@ function seedOfferings(): Offering[] {
       offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Available in major markets via in-house delivery team. Can be supported by Freyr-X for other regions.",
-      poc: "Mukundh / Suresh Modugu",
+      poc: "Mukundh Chouthoy / Suresh Modugu",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
@@ -482,7 +501,7 @@ function seedOfferings(): Offering[] {
       offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX",
-      poc: "Mukundh / Suresh Modugu",
+      poc: "Mukundh Chouthoy / Suresh Modugu",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),
@@ -490,7 +509,7 @@ function seedOfferings(): Offering[] {
       offering_category: CAT_RA,
       current_availability: "Currently available",
       future_availability: "Can be provided globally through Freyr central team (India, Poland, Colombia)",
-      poc: "Mukundh",
+      poc: "Mukundh Chouthoy",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
     }),

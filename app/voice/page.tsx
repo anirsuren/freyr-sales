@@ -241,7 +241,7 @@ export default async function VoicePage() {
     {
       label: "Phone lines",
       value: status.phoneConnected ? String(lineCount || 1) : "Not connected",
-      sub: status.phoneConnected ? "live — one per agent" : undefined,
+      sub: status.phoneConnected ? "live: one per agent" : undefined,
       icon: status.phoneConnected ? PhoneCall : PhoneOff,
       warn: !status.phoneConnected,
     },
@@ -265,7 +265,7 @@ export default async function VoicePage() {
     <div className="space-y-6">
       <PageHeader
         title="Voice agents"
-        subtitle="One AI caller per offering category — queue calls from any contact or the Contacts list, and watch them here."
+        subtitle="One AI caller per offering category: queue calls from any contact or the Contacts list, and watch them here."
       />
 
       {/* At-a-glance numbers — separate cards, same as Forecast/Pipeline */}
@@ -285,7 +285,7 @@ export default async function VoicePage() {
       {!status.phoneConnected && (
         <p className="text-[13px] text-text-secondary bg-warning/10 border border-warning/20 rounded-lg px-4 py-3">
           <span className="font-semibold text-warning">One step from live:</span>{" "}
-          the agents are built and queued calls are waiting — connect a phone
+          the agents are built and queued calls are waiting, connect a phone
           number (Twilio → ElevenLabs) and everything below starts dialing.
           Nothing dials silently until then.
         </p>
@@ -297,7 +297,7 @@ export default async function VoicePage() {
           their conversations, transcripts and stats. */}
       <section>
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
-          The calling team — one per offering category ({categories.length})
+          The calling team, one per offering category ({categories.length})
         </h2>
         {/* No `stagger` here — its residual transform traps the hover popover's
             z-index behind the row below it (Suren's blurb must float on top). */}
@@ -342,7 +342,7 @@ export default async function VoicePage() {
             const OUT_COLORS: Record<string, string> = {
               interested: "#34C759",
               follow_up: "#0071E3",
-              no_answer: "#C2410C", // matches OUTCOME_META — donut legend rows are colour-on-tint text
+              no_answer: "#C2410C", // matches OUTCOME_META, donut legend rows are colour-on-tint text
               declined: "#FF3B30",
             };
             const OUT_LABELS: Record<string, string> = {
@@ -427,7 +427,7 @@ export default async function VoicePage() {
                   </>
                 ) : (
                   <p className="text-[12.5px] text-text-secondary">
-                    No calls yet — {p.name} is ready. Knows {cat?.count || 0}{" "}
+                    No calls yet, {p.name} is ready. Knows {cat?.count || 0}{" "}
                     offering{(cat?.count || 0) === 1 ? "" : "s"}.
                   </p>
                 )}
@@ -455,7 +455,7 @@ export default async function VoicePage() {
                         )}
                       >
                         <LineStatusIcon size={10} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
-                        {status.phoneConnected ? "Live" : "Ready — awaiting number"}
+                        {status.phoneConnected ? "Live" : "Ready: awaiting number"}
                       </span>
                     </div>
                     {/* Stretched nav link — the whole card opens the agent, and
@@ -474,7 +474,7 @@ export default async function VoicePage() {
                     {/* Two-line floor: Nina's and Kai's taglines run one line
                         and Arjun's two, which used to leave the divider, the
                         phone row and the card bottom at different heights
-                        across the row (Suren). Longer taglines still wrap —
+                        across the row (Suren). Longer taglines still wrap,
                         nothing is clamped or truncated. */}
                     <p className="mb-3 mt-1 min-h-[41px] text-[12.5px] leading-relaxed text-text-secondary">
                       {p.tagline}
@@ -526,7 +526,7 @@ export default async function VoicePage() {
           {realConvos.length === 0 && (
             <Card>
               <p className="text-[13px] text-text-secondary leading-relaxed">
-                No live calls yet — every conversation lands here the moment it
+                No live calls yet, every conversation lands here the moment it
                 happens, with its transcript one click away. Call any team
                 member&apos;s line (or run the voice agent on contacts with
                 phone numbers) and watch it appear.
@@ -543,7 +543,7 @@ export default async function VoicePage() {
                 label: "Went well",
                 value: doneConvos.length
                   ? `${Math.round((realSuccess / doneConvos.length) * 100)}%`
-                  : "—",
+                  : "-",
               },
               {
                 label: "In progress",
@@ -614,11 +614,11 @@ export default async function VoicePage() {
                             )}
                           </Link>
                         ) : (
-                          <span className="text-[12.5px] text-text-tertiary">—</span>
+                          <span className="text-[12.5px] text-text-tertiary">-</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary capitalize whitespace-nowrap">
-                        {c.direction || "—"}
+                        {c.direction || "-"}
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         {(() => {
@@ -646,14 +646,14 @@ export default async function VoicePage() {
                         })()}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
-                        {c.call_duration_secs ? fmtLen(c.call_duration_secs) : "—"}
+                        {c.call_duration_secs ? fmtLen(c.call_duration_secs) : "-"}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap">
                         {c.start_time_unix_secs
                           ? formatDateTime(
                               new Date(c.start_time_unix_secs * 1000).toISOString()
                             )
-                          : "—"}
+                          : "-"}
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <Link
@@ -760,7 +760,7 @@ export default async function VoicePage() {
                             <span>{q.company}</span>
                           </span>
                         ) : (
-                          "—"
+                          "-"
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-[13px] text-text-secondary transition-colors duration-200 group-hover:text-text-primary">
@@ -795,11 +795,11 @@ export default async function VoicePage() {
                             {outcomeMeta.label}
                           </span>
                         ) : (
-                          <span className="text-[12.5px] text-text-tertiary">—</span>
+                          <span className="text-[12.5px] text-text-tertiary">-</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap transition-colors duration-200 group-hover:font-semibold group-hover:text-blue-primary">
-                        {q.duration_secs ? fmtLen(q.duration_secs) : "—"}
+                        {q.duration_secs ? fmtLen(q.duration_secs) : "-"}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap transition-colors duration-200 group-hover:text-text-secondary">
                         {formatDateTime(q.created_at)}
@@ -832,8 +832,8 @@ export default async function VoicePage() {
         {finished.length === 0 ? (
           <Card>
             <p className="text-[13px] text-text-secondary leading-relaxed">
-              Conversation stats — durations, outcomes, interest signals and
-              transcripts — appear here automatically once calls start going
+              Conversation stats, durations, outcomes, interest signals and
+              transcripts, appear here automatically once calls start going
               out. ElevenLabs records every conversation, so nothing extra to
               set up.
             </p>
@@ -984,11 +984,11 @@ export default async function VoicePage() {
                   Callbacks to make
                 </h3>
                 <p className="text-[12px] text-text-tertiary mb-3">
-                  They asked to be called back — don&apos;t leave them waiting.
+                  They asked to be called back, don&apos;t leave them waiting.
                 </p>
                 {callbacks.length === 0 ? (
                   <p className="flex-1 flex items-center text-[13px] text-text-secondary">
-                    None owed — every follow-up is handled.
+                    None owed, every follow-up is handled.
                   </p>
                 ) : (
                   // `max-h-[300px]` was fighting `flex-1`: the cap won, so the
@@ -1003,7 +1003,7 @@ export default async function VoicePage() {
                         <Avatar name={q.contact_name} className="w-9 h-9 text-[12px] shrink-0 transition-[transform,box-shadow] duration-150 group-hover/callback:scale-105 group-hover/callback:shadow-sm" />
                         {/* Three lines, one fact each. The company used to be
                             `truncate`d next to the phone and came out as a
-                            single letter — "S…", "C…" — which is both the
+                            single letter, "S…", "C…", which is both the
                             banned ellipsis and a total loss of the information
                             (Anir: "the name is getting fucking cut off. The
                             number should probably be on the next line to help
@@ -1089,7 +1089,7 @@ export default async function VoicePage() {
             </div>
             {!status.phoneConnected && (
               <p className="text-[11.5px] text-text-tertiary">
-                Sample calls shown so you can see the shape — live ElevenLabs
+                Sample calls shown so you can see the shape, live ElevenLabs
                 stats take over the moment the numbers connect.
               </p>
             )}

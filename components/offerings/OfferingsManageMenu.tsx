@@ -10,7 +10,7 @@ import { SlidersHorizontal, ChevronDown, Layers, Package, Users } from "lucide-r
 const LINKS = [
   { href: "/offerings/offering-categories", label: "Offering categories", icon: Layers, color: "#7C3AED" },
   { href: "/offerings/offering-types", label: "Offering types", icon: Package, color: "#0071E3" },
-  { href: "/offerings/customer-types", label: "Customer types", icon: Users, color: "#059669" },
+  { href: "/offerings/customer-types", label: "Customer types", icon: Users, color: "#0891B2" },
 ];
 
 export function OfferingsManageMenu() {

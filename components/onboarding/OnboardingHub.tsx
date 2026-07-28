@@ -256,7 +256,7 @@ export function OnboardingHub({
             )}
           </div>
 
-          <div className="rounded-xl border border-border-light bg-white/90 p-5 shadow-sm">
+          <div className="rounded-xl border border-border-light bg-[var(--white)] p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[12px] font-semibold text-text-secondary">
                 Your tour

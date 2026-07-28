@@ -156,7 +156,7 @@ export function AnalyticsView({
           </span>
           <p className="flex items-center gap-1 text-[13px] text-text-secondary">
             Open Pipeline Value
-            <InfoHint text="The total dollar value of every deal still in play — nothing won or lost yet." />
+            <InfoHint text="The total dollar value of every deal still in play: nothing won or lost yet." />
           </p>
           <p className="text-[28px] font-bold text-text-primary mt-1.5 tnum">
             <CountUp value={openValue} unit="money" />
@@ -171,7 +171,7 @@ export function AnalyticsView({
           </span>
           <p className="flex items-center gap-1 text-[13px] text-text-secondary">
             Total Deals
-            <InfoHint text="How many deals are in this view — open and closed — for the time range you picked." />
+            <InfoHint text="How many deals are in this view: open and closed, for the time range you picked." />
           </p>
           <p className="text-[28px] font-bold text-text-primary mt-1.5 tnum">
             <CountUp value={totalDeals} unit="count" />
@@ -187,7 +187,7 @@ export function AnalyticsView({
             </span>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
               Qualified rate
-              <InfoHint text="Of the deals you've actively worked (past the first-contact step), the share that reached Qualified or further — a quick read on how often effort turns into progress. (Not a closed-won rate — this pipeline tracks up to Meeting Booked.)" />
+              <InfoHint text="Of the deals you've actively worked (past the first-contact step), the share that reached Qualified or further: a quick read on how often effort turns into progress. (Not a closed-won rate, this pipeline tracks up to Meeting Booked.)" />
             </p>
             <p className="text-[13px] text-text-tertiary mt-1 max-w-[140px]">
               Qualified or further, of all worked deals
@@ -222,7 +222,7 @@ export function AnalyticsView({
         >
           <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
             Pipeline by Stage
-            <InfoHint text="Where your open dollars sit across the steps of your process. Click a stage to see the deals in it — including who you closed and lost." />
+            <InfoHint text="Where your open dollars sit across the steps of your process. Click a stage to see the deals in it: including who you closed and lost." />
           </h2>
           <BarChart
             data={stages.map((s) => ({
@@ -266,7 +266,7 @@ export function AnalyticsView({
                     <button
                       key={s.stage}
                       onClick={() => toggle(k)}
-                      title={`${s.stage} — ${s.count} deal${s.count === 1 ? "" : "s"}`}
+                      title={`${s.stage} - ${s.count} deal${s.count === 1 ? "" : "s"}`}
                       className={`flex items-center justify-center gap-1.5 text-[12px] font-medium rounded-full px-2 py-1 border transition-colors ${
                         active
                           ? "border-transparent text-white"
@@ -322,7 +322,7 @@ export function AnalyticsView({
         <Card className="h-full flex flex-col">
           <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
             Outcome Mix
-            <InfoHint text="What your logged touches led to. Click any outcome to see exactly who — who's interested, who's not, who booked a meeting." />
+            <InfoHint text="What your logged touches led to. Click any outcome to see exactly who: who's interested, who's not, who booked a meeting." />
           </h2>
           {/* Bigger donut + roomier legend fill the card so it doesn't read as
               empty top-and-bottom next to the taller Pipeline card (Suren). */}
@@ -561,7 +561,7 @@ export function AnalyticsView({
         <Card className="h-full flex flex-col">
           <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
             Weighted Forecast by Stage
-            <InfoHint text="Each stage's open value multiplied by its odds of closing — the realistic pipeline, not the headline number." />
+            <InfoHint text="Each stage's open value multiplied by its odds of closing: the realistic pipeline, not the headline number." />
           </h2>
           {weightedByStage.length > 0 ? (
             <div className="flex-1 flex items-center gap-6">
@@ -587,7 +587,7 @@ export function AnalyticsView({
         <Card className="h-full flex flex-col">
           <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
             Average Deal Size by Stage
-            <InfoHint text="The average open-deal value at each step — where the bigger deals sit in your process. Each bar is an average, so the deals listed on hover add up to the stage total shown there, not to the bar." />
+            <InfoHint text="The average open-deal value at each step: where the bigger deals sit in your process. Each bar is an average, so the deals listed on hover add up to the stage total shown there, not to the bar." />
           </h2>
           <div className="flex flex-1 items-end w-full">
             <BarChart

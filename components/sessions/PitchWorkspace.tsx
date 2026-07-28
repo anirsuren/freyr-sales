@@ -266,7 +266,7 @@ export function PitchWorkspace({
   const briefText = accountBrief
     ? `${accountBrief.summary}\n\n${accountBrief.facts
         .map((f) => `${f.label}: ${f.value}`)
-        .join("\n")}\n\nContact: ${accountBrief.contactName} — ${
+        .join("\n")}\n\nContact: ${accountBrief.contactName} - ${
         accountBrief.contactRole
       }\n${accountBrief.contactBackground}`
     : "";
@@ -292,7 +292,7 @@ export function PitchWorkspace({
       setTimeout(() => setCopied(false), 1800);
       return;
     }
-    toast("Copy failed — select the text and copy it manually", "error");
+    toast("Copy failed: select the text and copy it manually", "error");
   }
 
   async function save() {
@@ -315,7 +315,7 @@ export function PitchWorkspace({
       }
       toast(
         data.ok
-          ? "Pitch saved — submit the updated copy for approval"
+          ? "Pitch saved: submit the updated copy for approval"
           : data.error || "Couldn't save",
         data.ok ? "success" : "error"
       );
@@ -403,9 +403,9 @@ export function PitchWorkspace({
         setReviewNote(data.session.review_note || null);
         toast(
           action === "submit"
-            ? "Submitted — the Sessions list now shows In review; approve or send back from here"
+            ? "Submitted: the Sessions list now shows In review; approve or send back from here"
             : action === "approve"
-            ? "Pitch approved — cleared to send"
+            ? "Pitch approved: cleared to send"
             : "Sent back for changes"
         );
       } else {
@@ -482,9 +482,9 @@ export function PitchWorkspace({
       if (!data.ok) throw new Error(data.error || "Restore failed");
       setReviewStatus(data.review_status || "draft");
       setReviewNote(null);
-      toast("Version restored — submit it for approval");
+      toast("Version restored: submit it for approval");
     } catch {
-      toast("Restored locally — couldn't persist", "error");
+      toast("Restored locally: couldn't persist", "error");
     }
   }
 
@@ -526,7 +526,7 @@ export function PitchWorkspace({
           </span>
           <span className="text-text-tertiary text-[14px]">•</span>
           <span className="text-text-secondary text-[13px]">
-            Last activity: {lastActivityAt ? timeAgo(lastActivityAt) : "—"}
+            Last activity: {lastActivityAt ? timeAgo(lastActivityAt) : "-"}
           </span>
         </div>
         <div>
@@ -550,7 +550,7 @@ export function PitchWorkspace({
             })()}
             <span className="w-px h-6 bg-border-light mx-0.5" />
             {/* The one action that moves this pitch forward is the blue
-                primary — everything gated stays clearly secondary so the row
+                primary, everything gated stays clearly secondary so the row
                 reads left-to-right in the order you actually work it. */}
             {reviewStatus === "in_review" ? (
               <>
@@ -586,14 +586,14 @@ export function PitchWorkspace({
                 locked control has to *look* locked: these read as ordinary
                 buttons before, so clicking them felt like nothing happened
                 (Anir, Jul 25: "these fucking buttons don't work"). They stay
-                clickable on purpose — the click is what explains the gate. */}
+                clickable on purpose, the click is what explains the gate. */}
             <button
               onClick={openCompose}
               aria-disabled={reviewStatus !== "approved"}
               title={
                 reviewStatus === "approved"
                   ? "Send this email"
-                  : "Locked — submit this pitch for review and get it approved first"
+                  : "Locked: submit this pitch for review and get it approved first"
               }
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[13px] font-medium transition-colors",
@@ -628,7 +628,7 @@ export function PitchWorkspace({
                 title={
                   reviewStatus === "approved"
                     ? "Push to your CRM or a sequence"
-                    : "Locked — submit this pitch for review and get it approved first"
+                    : "Locked: submit this pitch for review and get it approved first"
                 }
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors disabled:opacity-50",
@@ -816,7 +816,7 @@ export function PitchWorkspace({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
                   Subject line
                   <span className="ml-1.5 font-normal normal-case tracking-normal text-text-tertiary">
-                    — arrow through; the one showing is what sends
+                    arrow through; the one showing is what sends
                   </span>
                 </p>
                 <SubjectLineCarousel

@@ -53,16 +53,16 @@ function tel(phone: string) {
 // the role bucket so it's resilient to naming ("Regulatory Affairs",
 // "Reg Ops", etc.). Each entry is a soft tinted bg + a saturated text color.
 const ROLE_STYLES: { test: RegExp; bg: string; color: string }[] = [
-  { test: /exec|c-?level|ceo|coo|cfo|founder|chief/i, bg: "rgba(124,58,237,0.10)", color: "#6D28D9" }, // violet — leadership
-  { test: /regulatory|reg\b|ra\b/i, bg: "rgba(0,113,227,0.10)", color: "#0040A0" }, // blue — regulatory
-  { test: /medical|clinical|scientific/i, bg: "rgba(5,150,105,0.12)", color: "#047857" }, // emerald — medical
-  { test: /quality|qa|cmc|manufactur/i, bg: "rgba(249,115,22,0.12)", color: "#EA580C" }, // clean orange — quality (no brown-amber, Suren)
-  { test: /complian|legal|audit/i, bg: "rgba(225,29,72,0.10)", color: "#BE123C" }, // rose — compliance
-  { test: /commercial|market|sales|business/i, bg: "rgba(2,132,199,0.12)", color: "#0369A1" }, // sky — commercial
+  { test: /exec|c-?level|ceo|coo|cfo|founder|chief/i, bg: "rgba(124,58,237,0.10)", color: "#6D28D9" }, // violet, leadership
+  { test: /regulatory|reg\b|ra\b/i, bg: "rgba(0,113,227,0.10)", color: "#0040A0" }, // blue, regulatory
+  { test: /medical|clinical|scientific/i, bg: "rgba(5,150,105,0.12)", color: "#047857" }, // emerald, medical
+  { test: /quality|qa|cmc|manufactur/i, bg: "rgba(249,115,22,0.12)", color: "#EA580C" }, // clean orange, quality (no brown-amber, Suren)
+  { test: /complian|legal|audit/i, bg: "rgba(225,29,72,0.10)", color: "#BE123C" }, // rose, compliance
+  { test: /commercial|market|sales|business/i, bg: "rgba(2,132,199,0.12)", color: "#0369A1" }, // sky, commercial
 ];
 function roleStyle(role: string): { bg: string; color: string } {
   const hit = ROLE_STYLES.find((s) => s.test.test(role));
-  return hit ?? { bg: "rgba(13,148,136,0.12)", color: "#0D9488" }; // teal default — never gray
+  return hit ?? { bg: "rgba(13,148,136,0.12)", color: "#0D9488" }; // teal default, never gray
 }
 
 export function ContactsBrowser({
@@ -101,8 +101,8 @@ export function ContactsBrowser({
       if (data.ok) {
         toast(
           data.called > 0
-            ? `Dialing ${data.called} of ${data.queued} now — the rest are queued.`
-            : `Queued ${data.queued} call${data.queued === 1 ? "" : "s"} — they dial as soon as a phone number is connected.`
+            ? `Dialing ${data.called} of ${data.queued} now: the rest are queued.`
+            : `Queued ${data.queued} call${data.queued === 1 ? "" : "s"}: they dial as soon as a phone number is connected.`
         );
         setSelected(new Set());
         setSelectMode(false);
@@ -292,7 +292,7 @@ export function ContactsBrowser({
       {/* Bulk action bar — shows the moment Select is on, with SELECT ALL and
           the voice-agent run INLINE (Suren: "select a bunch of contacts, then
           for every offering category there's a voice agent you select and
-          run") — no popup blocking the list. */}
+          run"), no popup blocking the list. */}
       {/* Selection bar — a quiet card, not a loud blue banner. The old bar
           shouted every control at once (grayed-out buttons included) before a
           single contact was ticked, which read as pressure with no explanation
@@ -370,20 +370,13 @@ export function ContactsBrowser({
           </div>
           {selected.size > 0 && voiceCategories.length > 0 && (
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              The {voiceCategory} agent calls each selected contact — calls
+              The {voiceCategory} agent calls each selected contact, calls
               queue until a phone number is connected, nothing dials silently.
             </p>
           )}
         </div>
       )}
 
-      {view.length > 0 && (
-        <p className="text-[13px] text-text-secondary mb-4 tnum">
-          Showing <span className="font-semibold text-text-primary">{view.length}</span> of{" "}
-          <span className="font-semibold text-text-primary">{rows.length}</span>{" "}
-          {rows.length === 1 ? "contact" : "contacts"}
-        </p>
-      )}
 
       {view.length === 0 ? (
         <Card className="p-0">
@@ -551,7 +544,7 @@ export function ContactsBrowser({
                     <p className="text-[13px] text-text-secondary truncate">{c.title}</p>
                   </div>
                   {/* LinkedIn as a button chip in the card's top-right corner
-                      (Suren: not glued to the name) — logo only, no text
+                      (Suren: not glued to the name), logo only, no text
                       (Anir: "you don't need the text. Just a logo's enough"),
                       but still unmistakably a button: border + hover. Lifted
                       above the stretched card link so it stays clickable. */}
@@ -588,7 +581,7 @@ export function ContactsBrowser({
                   /* The address IS the button. There used to be an Email and a
                      Call button at the bottom of the reveal that did exactly
                      what these two lines already show (Anir, Jul 28: "you don't
-                     need both — you already have it up there, it's kinda
+                     need both, you already have it up there, it's kinda
                      boring, merge it"). In select mode they stay inert text so
                      they can't fight the card's click-to-select. */
                   <div className="mt-2 pt-2 border-t border-border-light space-y-1">
@@ -714,7 +707,7 @@ export function ContactsBrowser({
                       {[
                         { l: "Touches", v: String(touches) },
                         { l: "Offerings", v: String(c.offerings ?? 0) },
-                        { l: "Last spoke", v: c.lastTouch ? formatDateTime(c.lastTouch) : "—" },
+                        { l: "Last spoke", v: c.lastTouch ? formatDateTime(c.lastTouch) : "-" },
                       ].map((s) => (
                         <div key={s.l} className="rounded-lg bg-surface px-2.5 py-2">
                           <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">

@@ -10,6 +10,12 @@
 
   --white: #ffffff;
   --surface: #f9fafb;
+  /* Channel form of --surface. Tailwind compiles `bg-surface/50` to
+     rgb(var(--surface-rgb) / 0.5), so every opacity variant follows the
+     theme automatically. Before this, `bg-surface/50` baked the LIGHT hex
+     into its own class name, which `.dark .bg-surface` could never match,
+     and ~85 washes across the app stayed pale on the dark page. */
+  --surface-rgb: 249 250 251;
   --border: #d2d2d7;
   --border-light: #e5e5ea;
 
@@ -51,7 +57,9 @@ body {
 ---------------------------------------------------------------------------- */
 .dark {
   color-scheme: dark;
+  --white: #1c1c1e;
   --surface: #26262a;
+  --surface-rgb: 38 38 42;
   --border: #3a3a3d;
   --border-light: #2e2e31;
   --text-primary: #f5f5f7;
@@ -87,6 +95,12 @@ html.dark body {
 }
 .dark .bg-blue-light {
   background-color: rgba(10, 132, 255, 0.18) !important;
+}
+/* #0071E3 is tuned for white. On the dark page it lands near 3.9:1, and on
+   the dark blue chip wash near 2.9:1, so category chips and links read as
+   smudges. This lifts it to a dark-mode blue that clears AA on both. */
+.dark .text-blue-primary {
+  color: #6fb6ff !important;
 }
 
 * {

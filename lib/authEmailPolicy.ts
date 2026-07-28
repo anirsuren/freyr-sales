@@ -62,7 +62,7 @@ export function isValidAuthEmail(
 
 /**
  * Company domains whose members join the workspace without an invitation
- * (Suren: everyone with a Freyr email "technically already has an account" —
+ * (Suren: everyone with a Freyr email "technically already has an account",
  * they just set a password). Comma-separated in AUTO_APPROVE_EMAIL_DOMAINS;
  * empty means invitation-only, unchanged.
  */
@@ -75,7 +75,7 @@ export function autoApproveEmailDomains(): string[] {
 
 /**
  * True when a VERIFIED email belongs to an auto-join company domain. Callers
- * must only pass provider-verified addresses — the domain is the credential
+ * must only pass provider-verified addresses: the domain is the credential
  * here, so an unverified address must never reach this check.
  */
 export function isAutoApprovedEmail(

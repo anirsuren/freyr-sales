@@ -220,7 +220,43 @@ export function OfferingOverviewMain({
         </div>
       </section>
 
+      {/* Sales materials sits ABOVE Commercial performance (Saras, item 6).
+          She offered either deleting Commercial performance until it can be
+          linked to another module, or moving Sales materials above it, this
+          is the second option, because Commercial performance is populated
+          from real revenue data today and deleting working content is the
+          destructive reading of an either/or.
+          The border weights stay with the POSITION, not the section: 2px
+          between the first three blocks, 1px before Related offerings (which
+          carries its own 2px top rule). Swapping the classes along with the
+          content keeps the page's divider rhythm exactly as it was. */}
       <section className="py-7 border-b-2 border-border-light">
+        <SectionHeading
+          icon={FolderOpen}
+          title={`Sales materials (${o.materials.length})`}
+          description="Seller-ready assets, ordered by the way they are typically used."
+          action={
+            /* Uploading assets is every member's job — offering owners join as
+               "sales" and must not need an admin to add their own materials
+               (Jul 27 call). Editing/deleting the offering stays admin-only. */
+            o.materials.length === 0 ? (
+              <AddMaterialButton offeringId={o.id} materials={o.materials} />
+            ) : null
+          }
+        />
+        {o.materials.length === 0 ? (
+          <p className="mt-5 pl-11 text-[13px] text-text-tertiary">No sales materials have been added.</p>
+        ) : (
+          <MaterialsSection
+            materials={o.materials}
+            action={
+              <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
+            }
+          />
+        )}
+      </section>
+
+      <section className="py-7 border-b border-border-light">
         <SectionHeading
           icon={BarChart3}
           title="Commercial performance"
@@ -285,7 +321,7 @@ export function OfferingOverviewMain({
             {/* Both panels add something the table below cannot: the KIND of
                 revenue, and how far out it stays under contract. */}
             {/* Both panels stretch to one shared height and their contents
-                FILL it — the donut used to sit at the top of its box with a
+                FILL it, the donut used to sit at the top of its box with a
                 dead band underneath (Suren: "a lot of empty space below"). */}
             <div className="mt-5 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
               <div className="flex h-full flex-col rounded-xl border border-border-light px-4 py-4">
@@ -302,9 +338,16 @@ export function OfferingOverviewMain({
                     centerLabel={String(report.lineCount)}
                     centerSub={report.lineCount === 1 ? "line" : "lines"}
                   />
+                  {/* `format` has to be stated on the LEGEND too, not just the
+                      donut. The legend's own pop-up prints the segment value
+                      through the same fmt() the donut uses, so without it the
+                      hover card headlined a raw "740000" where the ring beside
+                      it said "$740K" — the same number in two different
+                      languages, inches apart. It is money on both sides. */}
                   <DonutLegend
                     syncId="offering-types"
                     items={typeSegments}
+                    format="money"
                     pill
                     bars={false}
                     showValues={false}
@@ -329,7 +372,7 @@ export function OfferingOverviewMain({
                     Why is it all in line?"). Same idiom as /forecast's by-stage
                     plot: a stretchy track with the bar pinned to the baseline,
                     percentage heights so the chart fills whatever height the
-                    row gives it — never a fixed pixel block with dead space. */}
+                    row gives it, never a fixed pixel block with dead space. */}
                 <div className="mt-3 flex flex-1 flex-col">
                   <div
                     data-outlook-plot
@@ -401,7 +444,7 @@ export function OfferingOverviewMain({
                           className="group relative min-h-[136px] min-w-0 flex-1"
                         >
                           {/* Bar + value label are ONE object, lifted together
-                              6px under the cursor — the exact idiom the shared
+                              6px under the cursor, the exact idiom the shared
                               <BarChart> uses everywhere else in the app
                               (`transition-transform duration-150`, label as a
                               child of the lifted element so they move as one,
@@ -459,7 +502,13 @@ export function OfferingOverviewMain({
             </div>
 
             <div className="mt-5 overflow-hidden border-y border-border-light">
-              <div className="grid grid-cols-[minmax(190px,1.45fr)_88px_70px_minmax(118px,.85fr)] gap-3 bg-surface/65 px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              {/* `bg-[var(--surface)]`, never `bg-surface/65`: an opacity
+                  modifier compiles to the class `bg-surface\/65`, which the
+                  `.dark .bg-surface` re-skin cannot match, so this header bar
+                  kept its light plate and sat as a pale strip across the table
+                  in dark mode. The variable is redefined under `.dark`, so it
+                  follows the theme on its own. */}
+              <div className="grid grid-cols-[minmax(190px,1.45fr)_88px_70px_minmax(118px,.85fr)] gap-3 bg-[var(--surface)] px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 <span>Customer account</span>
                 <span>Revenue</span>
                 <span>Seats</span>
@@ -519,7 +568,10 @@ export function OfferingOverviewMain({
                     <HoverCard key={customer.id} side="top" width={310} content={hover}>
                       <Link
                         href={`/customers/${customer.id}?tab=offerings`}
-                        className="group grid min-h-[62px] grid-cols-[minmax(190px,1.45fr)_88px_70px_minmax(118px,.85fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface/55"
+                        // Same reason as the header bar above: the row wash has
+                        // to be the CSS variable, or hovering a customer row in
+                        // dark mode flashes a light plate under light text.
+                        className="group grid min-h-[62px] grid-cols-[minmax(190px,1.45fr)_88px_70px_minmax(118px,.85fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--surface)]"
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
                           <CompanyLogo name={customer.name} className="h-8 w-8 shrink-0 text-[8px]" />
@@ -537,7 +589,7 @@ export function OfferingOverviewMain({
                           {formatMoney(customer.revenue)}
                         </span>
                         <span className="text-[12px] font-medium text-text-secondary tnum">
-                          {customer.licenses || "—"}
+                          {customer.licenses || "-"}
                         </span>
                         <span className="min-w-0">
                           <span className="flex items-center justify-between gap-2 text-[9.5px] text-text-tertiary">
@@ -562,32 +614,6 @@ export function OfferingOverviewMain({
         )}
       </section>
 
-      <section className="py-7 border-b border-border-light">
-        <SectionHeading
-          icon={FolderOpen}
-          title={`Sales materials (${o.materials.length})`}
-          description="Seller-ready assets, ordered by the way they are typically used."
-          action={
-            /* Uploading assets is every member's job — offering owners join as
-               "sales" and must not need an admin to add their own materials
-               (Jul 27 call). Editing/deleting the offering stays admin-only. */
-            o.materials.length === 0 ? (
-              <AddMaterialButton offeringId={o.id} materials={o.materials} />
-            ) : null
-          }
-        />
-        {o.materials.length === 0 ? (
-          <p className="mt-5 pl-11 text-[13px] text-text-tertiary">No sales materials have been added.</p>
-        ) : (
-          <MaterialsSection
-            materials={o.materials}
-            action={
-              <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
-            }
-          />
-        )}
-      </section>
-
       {related.length > 0 && (
         <section className="pt-7 border-t-2 border-border-light">
           <SectionHeading
@@ -595,20 +621,59 @@ export function OfferingOverviewMain({
             title="Related offerings"
             description={`Other ${o.offering_type} configurations worth considering for the same account.`}
           />
-          <div className="mt-5 ml-11 grid grid-cols-2 gap-x-5 border-y border-border-light">
+          {/* Floating pill cards, not hairline rows (Anir, Jul 28: "make it
+              look better, like pill-like floating pills"). Each related
+              offering is its own rounded card that lifts on hover, the same
+              tile language as the offerings browser, so the section reads as
+              things you can pick up rather than a table. */}
+          <div className="mt-5 ml-11 grid grid-cols-1 gap-3 xl:grid-cols-2">
             {related.map((relatedOffering) => (
               <Link
                 key={relatedOffering.id}
                 href={`/offerings/${relatedOffering.id}`}
-                className="group flex min-h-[68px] items-center gap-3 border-b border-border-light px-1 py-3 hover:bg-blue-light/30 transition-colors"
+                // Every pill is the SAME height, whatever its name does. The
+                // chip row below is always one line (see below), so the only
+                // variable left is how many lines the name takes, and the icon
+                // beside it is already 36px tall — a two-line name costs the
+                // card nothing. min-h pins the rest so a row of pills can never
+                // come out ragged.
+                className="group flex min-h-[92px] flex-col justify-center gap-2 rounded-2xl border border-border-light bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
               >
-                <OfferingIcon name={relatedOffering.offering_name} className="h-9 w-9 shrink-0" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">{relatedOffering.offering_name}</span>
-                  <span className="mt-0.5 block text-[11px] leading-snug text-text-tertiary">{relatedOffering.offering_category}</span>
+                <span className="flex items-center gap-3">
+                  <OfferingIcon name={relatedOffering.offering_name} className="h-9 w-9 shrink-0" />
+                  {/* The full name, always. No truncate, no break-words: the
+                      default wrap only breaks at spaces, so
+                      "Freya.GRR-PAC (Global Regulatory Requirements for Post
+                      Approval Changes)" runs onto a second line intact instead
+                      of splitting the product code down the middle. */}
+                  <span className="min-w-0 flex-1 text-[13.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">
+                    {relatedOffering.offering_name}
+                  </span>
+                  <ChevronRight size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary" />
                 </span>
-                <AvailabilityPill value={relatedOffering.current_availability} size="sm" />
-                <ChevronRight size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary group-hover:text-blue-primary" />
+                {/* The facts sit on their own full-width row UNDER the header,
+                    not in the narrow column beside the icon. That extra ~75px
+                    is what keeps the longest pair ("Submissions and Document
+                    Operations" + "Available Oct-26") on a single line, which is
+                    what keeps every pill the same height. The category used to
+                    print as flat gray text, the one thing a category is never
+                    allowed to be: it now wears the same blue + Layers mark as
+                    the category chip in this page's own header, so the same
+                    fact reads the same on both. */}
+                <span className="flex flex-wrap items-center gap-1">
+                  {relatedOffering.offering_category && (
+                    // Sized to clear the row, not by eye: the widest pair in
+                    // this list ("Submissions and Document Operations" +
+                    // "Available Oct-26") came to 361px against 360px of row,
+                    // and wrapped, which is what made two of the eight pills
+                    // taller than the other six.
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-semibold text-blue-primary">
+                      <Layers size={10} strokeWidth={2.3} aria-hidden="true" />
+                      {relatedOffering.offering_category}
+                    </span>
+                  )}
+                  <AvailabilityPill value={relatedOffering.current_availability} size="sm" />
+                </span>
               </Link>
             ))}
           </div>

@@ -160,7 +160,7 @@ export function CustomerAnalyzePanel({
       });
       const data = await res.json();
       if (data.ok) {
-        toast("Saved — customer profile updated.");
+        toast("Saved: customer profile updated.");
         setOpen(false);
         router.refresh();
       } else {
@@ -209,7 +209,7 @@ export function CustomerAnalyzePanel({
     </div>
   );
 
-  const notSet = <span className="text-[14px] text-text-tertiary">—</span>;
+  const notSet = <span className="text-[14px] text-text-tertiary">-</span>;
   const ownershipMeta = ownership ? OWNERSHIP_META[ownership] : null;
 
   // Once qualified, show the full profile + applicable offerings. Before that,
@@ -223,8 +223,8 @@ export function CustomerAnalyzePanel({
       <div className="flex items-center gap-2 text-[13px] text-blue-primary mb-3">
         <Sparkles size={15} strokeWidth={1.8} />
         {meta.source === "web"
-          ? "Researched from the web — edit anything, then approve to save."
-          : "Proposed — edit anything, then approve to save."}
+          ? "Researched from the web: edit anything, then approve to save."
+          : "Proposed: edit anything, then approve to save."}
         {meta.confidence && (
           <span className="ml-auto text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {meta.confidence} confidence
@@ -356,7 +356,7 @@ export function CustomerAnalyzePanel({
             You haven&apos;t analyzed this customer yet
           </p>
           <p className="text-[12.5px] text-text-secondary leading-relaxed">
-            Press Analyze to run a full enrichment pass — it pulls this company&apos;s
+            Press Analyze to run a full enrichment pass, it pulls this company&apos;s
             customer type, ownership, revenue, and the offerings that fit, from the
             open web (Perplexity, LinkedIn, Firecrawl, and more). You review and
             approve everything before it saves.
@@ -384,7 +384,7 @@ export function CustomerAnalyzePanel({
                 {canEdit && analyzeInfo}
               </h2>
               <p className="text-[12.5px] text-text-secondary mt-0.5 leading-relaxed">
-                Not analyzed yet — analyze to qualify its type, ownership and
+                Not analyzed yet, analyze to qualify its type, ownership and
                 revenue from the web, and the offerings that fit show
                 automatically.
               </p>
@@ -491,7 +491,7 @@ export function CustomerAnalyzePanel({
                 <span className="flex items-center gap-2.5 min-w-0">
                   <OfferingIcon name={o.name} className="w-8 h-8 shrink-0" />
                   {/* Offering names are long — "Freya.GRR-PAC (Global Regulatory
-                      Requirements for Product Approval Change)" — and used to be
+                      Requirements for Product Approval Change)", and used to be
                       cut off mid-word with "…", which is banned app-wide (Suren,
                       Jul 27). They wrap onto a second line instead. */}
                   <span className="min-w-0">

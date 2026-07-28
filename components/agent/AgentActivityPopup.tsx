@@ -105,7 +105,7 @@ export function AgentActivityPopup({
       <div className="max-h-[240px] overflow-y-auto px-3 py-2.5 space-y-2">
         {steps.length === 0 ? (
           <p className="text-[12px] text-text-secondary px-1 py-1.5">
-            You&apos;re all caught up — nothing needed doing right now.
+            You&apos;re all caught up, nothing needed doing right now.
           </p>
         ) : (
           steps.slice(0, shown).map((s, i) => {
@@ -151,7 +151,7 @@ export function AgentActivityPopup({
       {/* footer */}
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-t border-border-light">
         <span className="text-[11px] text-text-tertiary">
-          Nothing sent — drafts saved for you.
+          Nothing sent, drafts saved for you.
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
           <button

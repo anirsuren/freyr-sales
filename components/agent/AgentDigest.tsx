@@ -56,7 +56,7 @@ export function AgentDigest({
           </p>
           {clear ? (
             <p className="text-[13px] text-text-secondary">
-              Nothing waiting — you&apos;re clear.
+              Nothing waiting, you&apos;re clear.
             </p>
           ) : (
             <p className="text-[13px] text-text-primary">

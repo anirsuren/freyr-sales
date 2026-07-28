@@ -111,7 +111,7 @@ export function AgentDraftModal({
       toast("Draft copied to your clipboard");
       return;
     }
-    toast("Couldn't copy — select and copy manually", "error");
+    toast("Couldn't copy: select and copy manually", "error");
   }
 
   /** Keep a good draft for reuse across accounts. */
@@ -125,7 +125,7 @@ export function AgentDraftModal({
       });
       if (res.ok) {
         setSavedSnippet(true);
-        toast("Saved — reuse it from any draft");
+        toast("Saved: reuse it from any draft");
       } else {
         toast("Couldn't save the snippet", "error");
       }
@@ -151,7 +151,7 @@ export function AgentDraftModal({
     <Modal
       open={!!draft}
       onClose={reset}
-      title="Agent draft — ready for your review"
+      title="Agent draft: ready for your review"
       size="wide"
     >
       {draft && (
@@ -165,7 +165,7 @@ export function AgentDraftModal({
                 {draft.title}
               </p>
               <p className="text-[12.5px] text-text-secondary mt-0.5">
-                First draft from this account&apos;s live data — edit before you
+                First draft from this account&apos;s live data, edit before you
                 send. Nothing goes out automatically.
               </p>
             </div>

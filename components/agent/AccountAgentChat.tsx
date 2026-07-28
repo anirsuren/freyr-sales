@@ -31,7 +31,7 @@ export function AccountAgentChat({
 }) {
   const greeting: Msg = {
     role: "agent",
-    text: `Ask me anything about ${context.company} — health, next steps, deals, or contacts.`,
+    text: `Ask me anything about ${context.company}: health, next steps, deals, or contacts.`,
   };
   const [msgs, setMsgs] = useState<Msg[]>([greeting]);
   const [input, setInput] = useState("");

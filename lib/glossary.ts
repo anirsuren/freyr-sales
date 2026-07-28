@@ -20,7 +20,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   weighted: {
     term: "Weighted value",
-    def: "A deal's value adjusted for how likely it is to close at its current stage. A $100K deal that's 30% likely shows as $30K weighted — a realistic view of what your pipeline is really worth.",
+    def: "A deal's value adjusted for how likely it is to close at its current stage. A $100K deal that's 30% likely shows as $30K weighted: a realistic view of what your pipeline is really worth.",
   },
   wtd: {
     term: "Weighted",
@@ -32,21 +32,21 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   owner: {
     term: "Owner",
-    def: "The person on your team responsible for this deal — who's driving it and who to ask about it.",
+    def: "The person on your team responsible for this deal: who's driving it and who to ask about it.",
   },
   last_activity: {
     term: "Last activity",
-    def: "How long since anything happened on this deal — a call, email, meeting, or note. The longer the gap, the more the deal is at risk of going cold.",
+    def: "How long since anything happened on this deal: a call, email, meeting, or note. The longer the gap, the more the deal is at risk of going cold.",
   },
   value: {
     term: "Deal value",
-    def: "The expected annual contract value if this deal closes — the full amount, before adjusting for how likely it is.",
+    def: "The expected annual contract value if this deal closes: the full amount, before adjusting for how likely it is.",
   },
 
   // --- deal / board cap ----------------------------------------------------
   wip_limit: {
     term: "Deal limit",
-    def: "The most deals you want sitting in this stage at once. Go over it and the column turns red, a gentle nudge to push deals forward instead of letting them pile up. Optional — leave it blank for no limit.",
+    def: "The most deals you want sitting in this stage at once. Go over it and the column turns red, a gentle nudge to push deals forward instead of letting them pile up. Optional: leave it blank for no limit.",
   },
 
   // --- stages --------------------------------------------------------------
@@ -56,7 +56,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   stage_prospect: {
     term: "Prospect",
-    def: "A potential customer you haven't really connected with yet. Earliest stage — about 10% likely to close.",
+    def: "A potential customer you haven't really connected with yet. Earliest stage: about 10% likely to close.",
   },
   stage_engaged: {
     term: "Engaged",
@@ -68,11 +68,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   stage_meeting_booked: {
     term: "Meeting Booked",
-    def: "A real meeting is on the calendar — strong momentum. About 70% likely to close.",
+    def: "A real meeting is on the calendar: strong momentum. About 70% likely to close.",
   },
   stage_closed_lost: {
     term: "Closed Lost",
-    def: "The deal didn't work out — they passed or went quiet for good. Kept on record so you can learn from it.",
+    def: "The deal didn't work out. They passed or stopped responding. Kept on record so you can learn from it.",
   },
 
   // --- deal size -----------------------------------------------------------
@@ -82,15 +82,15 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   size_small: {
     term: "Small",
-    def: "A smaller account — lower deal value, usually quicker to close.",
+    def: "A smaller account: lower deal value, usually quicker to close.",
   },
   size_mid: {
     term: "Mid-size",
-    def: "A mid-size account — a solid, meaningful deal.",
+    def: "A mid-size account: a solid, meaningful deal.",
   },
   size_large: {
     term: "Large",
-    def: "One of your biggest accounts — high value, worth real attention.",
+    def: "One of your biggest accounts: high value, worth real attention.",
   },
 
   // --- account health ------------------------------------------------------
@@ -100,11 +100,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   health_healthy: {
     term: "Healthy",
-    def: "This account is in good shape — recent activity, momentum, and people mapped. Keep it up.",
+    def: "This account is in good shape: recent activity, momentum, and people mapped. Keep it up.",
   },
   health_at_risk: {
     term: "At-risk",
-    def: "This account is slipping — little recent contact or stalled momentum. Worth re-engaging before you lose it.",
+    def: "This account is slipping: little recent contact or stalled momentum. Worth re-engaging before you lose it.",
   },
   health_cooling: {
     term: "Cooling",
@@ -118,7 +118,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   cadence: {
     term: "Cadence",
-    def: "Another word for a sequence — the rhythm of outreach steps (e.g. email day 1, call day 4, email day 7) you follow to reach a prospect.",
+    def: "Another word for a sequence: the rhythm of outreach steps (e.g. email day 1, call day 4, email day 7) you follow to reach a prospect.",
   },
   enrolled: {
     term: "Enrolled",
@@ -126,11 +126,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   steps_automated: {
     term: "Steps automated",
-    def: "How many outreach steps the agent has prepared for you across your sequences. It drafts and lines them up — you still approve before anything is sent.",
+    def: "How many outreach steps the agent has prepared for you across your sequences. It drafts and lines them up: you still approve before anything is sent.",
   },
   run_cadence: {
     term: "Run cadence",
-    def: "Have the agent work through this sequence: enroll any stalled accounts and prepare the next step that's due. It drafts everything for your review — nothing goes out without your OK.",
+    def: "Have the agent work through this sequence: enroll any stalled accounts and prepare the next step that's due. It drafts everything for your review: nothing goes out without your OK.",
   },
   due_to_advance: {
     term: "Due to advance",
@@ -140,7 +140,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   // --- knowledge / misc ----------------------------------------------------
   kb_version: {
     term: "KB version",
-    def: "Which version of your Freyr knowledge base (services, messaging, positioning) the agent used to write this pitch — so you know it's on the latest playbook.",
+    def: "Which version of your Freyr knowledge base (services, messaging, positioning) the agent used to write this pitch: so you know it's on the latest playbook.",
   },
   next_best_action: {
     term: "Next best action",
@@ -152,13 +152,13 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   pre_call_brief: {
     term: "Pre-call brief",
-    def: "A quick summary the agent puts together before a call — where the deal stands, what's at stake, and the one thing to focus on — so you walk in prepared.",
+    def: "A quick summary the agent puts together before a call: where the deal stands, what's at stake, and the one thing to focus on, so you walk in prepared.",
   },
 
   // --- dashboard KPIs ------------------------------------------------------
   kpi_pipeline: {
     term: "Active Pipeline",
-    def: "The total dollar value of every deal you're still working — not yet won or lost. Your book of live opportunities.",
+    def: "The total dollar value of every deal you're still working: not yet won or lost. Your book of live opportunities.",
   },
   kpi_leads: {
     term: "Active Leads",
@@ -166,11 +166,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   kpi_winrate: {
     term: "Win Rate",
-    def: "Of the deals that have closed, the share you won. A simple read on how often your deals go your way — higher is better.",
+    def: "Of the deals that have closed, the share you won. A simple read on how often your deals go your way: higher is better.",
   },
   kpi_sessions: {
     term: "Pitch Sessions",
-    def: "How many tailored pitches the agent has prepared across your accounts — each one a ready-to-review email, call script, and service recommendation.",
+    def: "How many tailored pitches the agent has prepared across your accounts: each one a ready-to-review email, call script, and service recommendation.",
   },
 };
 

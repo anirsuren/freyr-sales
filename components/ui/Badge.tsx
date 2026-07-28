@@ -53,9 +53,9 @@ export const SIZE_TIER_META: Record<
   string,
   { bg: string; color: string; icon: LucideIcon }
 > = {
-  small: { bg: "rgba(22,163,74,0.12)", color: "#16A34A", icon: Home },
-  mid: { bg: "rgba(8,145,178,0.12)", color: "#0891B2", icon: Building },
-  large: { bg: "rgba(234,88,12,0.12)", color: "#EA580C", icon: Building2 },
+  small: { bg: "rgba(14,165,233,0.12)", color: "#0284C7", icon: Home },
+  mid: { bg: "rgba(79,70,229,0.12)", color: "#4F46E5", icon: Building },
+  large: { bg: "rgba(124,58,237,0.12)", color: "#7C3AED", icon: Building2 },
 };
 
 export function SizeBadge({ tier }: { tier: string | null }) {

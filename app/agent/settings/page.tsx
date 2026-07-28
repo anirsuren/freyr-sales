@@ -12,7 +12,7 @@ export default function AgentSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Agent settings"
-        subtitle="How the agent works for you — its focus, voice, autopilot rules, and saved snippets."
+        subtitle="How the agent works for you: its focus, voice, autopilot rules, and saved snippets."
       />
       <AgentPreferences />
       <SnippetLibrary />

@@ -50,7 +50,7 @@ export default async function ContactsPage() {
             (i): TipItem => ({
               avatar: c.full_name,
               name: c.full_name,
-              sub: cust?.company_name || "—",
+              sub: cust?.company_name || "-",
               value: OUTCOME_META[i.outcome]?.label || i.outcome,
             })
           ),
@@ -85,7 +85,7 @@ export default async function ContactsPage() {
       id: c.id,
       name: c.full_name,
       title: c.job_title || "",
-      company: cust?.company_name || "—",
+      company: cust?.company_name || "-",
       companyId: cust ? c.customer_id : null,
       role: c.role_bucket || "",
       email: c.email || "",

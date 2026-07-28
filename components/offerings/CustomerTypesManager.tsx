@@ -32,11 +32,11 @@ const SIZES: CustomerSize[] = ["Small", "Mid size", "Large"];
 // colours match familyColor() on the offerings page.
 const FAMILY_META: Record<CustomerFamily, { color: string; icon: LucideIcon }> = {
   Pharmaceutical: { color: "#0071E3", icon: Pill },
-  Biologics: { color: "#E11D48", icon: Dna },
+  Biologics: { color: "#DB2777", icon: Dna },
   "Bio Pharmaceutical": { color: "#7C3AED", icon: FlaskConical },
 };
 const SIZE_META: Record<CustomerSize, { color: string; icon: LucideIcon }> = {
-  Small: { color: "#059669", icon: Store },
+  Small: { color: "#0891B2", icon: Store },
   "Mid size": { color: "#0891B2", icon: Building },
   Large: { color: "#0071E3", icon: Building2 },
 };
@@ -193,7 +193,7 @@ export function CustomerTypesManager({
         </div>
 
         <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
-          Grouped by family — each family shares a product type; revenue,
+          Grouped by family, each family shares a product type; revenue,
           employees and focus vary by size.
         </p>
       </Card>
@@ -252,7 +252,7 @@ export function CustomerTypesManager({
             </div>
             {typeExists && (
               <p className="text-[12px] text-text-tertiary -mt-1">
-                {family} · {size} already has a definition — saving will update
+                {family} · {size} already has a definition, saving will update
                 it.
               </p>
             )}
@@ -480,7 +480,7 @@ export function CustomerTypesManager({
               </span>
             </div>
             <p className="mt-1.5 text-[12px] text-text-secondary">
-              Type a country or region — the flag appears when it&apos;s
+              Type a country or region, the flag appears when it&apos;s
               recognised.
             </p>
           </div>

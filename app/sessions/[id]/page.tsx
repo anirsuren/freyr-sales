@@ -52,22 +52,22 @@ export default async function SessionPage({
     ? {
         summary: customer.enrichment_summary || "",
         facts: [
-          { label: "Industry", value: customer.industry || "—" },
+          { label: "Industry", value: customer.industry || "-" },
           { label: "Geography", value: geographyWithFlag(customer.geography) },
           {
             label: "Size",
             value: customer.size_tier
               ? SIZE_TIER_LABEL[customer.size_tier] || customer.size_tier
-              : "—",
+              : "-",
           },
           {
             label: "Website",
             value: customer.website_url
               ? customer.website_url.replace(/^https?:\/\//, "")
-              : "—",
+              : "-",
           },
         ],
-        contactName: contact?.full_name || "—",
+        contactName: contact?.full_name || "-",
         contactRole: contact?.job_title || "",
         contactBackground:
           contact?.career_summary || contact?.enrichment_summary || "",
@@ -77,7 +77,7 @@ export default async function SessionPage({
   const objections = [
     {
       q: "We already have a regulatory vendor.",
-      a: `Many teams run us alongside an incumbent for ${topSvc} — worth 20 minutes to see where we'd add capacity, especially heading into a filing.`,
+      a: `Many teams run us alongside an incumbent for ${topSvc}: worth 20 minutes to see where we'd add capacity, especially heading into a filing.`,
     },
     {
       q: "Now isn't the right time.",
@@ -85,18 +85,18 @@ export default async function SessionPage({
     },
     {
       q: "How are you different from the big CROs?",
-      a: "Former FDA/EMA reviewers on every dossier and 5,000+ submissions completed — agency-side judgment, not just extra hands.",
+      a: "Former FDA/EMA reviewers on every dossier and 5,000+ submissions completed: agency-side judgment, not just extra hands.",
     },
     {
       q: "What does it cost?",
-      a: "It scopes to the work — let me show how we'd approach your filing first, then the pricing conversation is straightforward.",
+      a: "It scopes to the work: let me show how we'd approach your filing first, then the pricing conversation is straightforward.",
     },
   ];
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* This workspace is reached from the deal page, and it fills the whole
-          window — so without this line there is no way back and no label saying
+          window, so without this line there is no way back and no label saying
           what you're now looking at. Suren, after clicking through: "how the
           fuck did I get to this screen, I'm so confused. I can't go back." */}
       {/* Just the arrow, like every other detail page — the old version was a
@@ -116,7 +116,7 @@ export default async function SessionPage({
       <div className="rise-in flex min-h-0 flex-1 overflow-hidden">
         <RecordView
           type="Session"
-          label={`${shortName} — pitch session`}
+          label={`${shortName}: pitch session`}
           sublabel={contact?.full_name || ""}
           href={`/sessions/${session.id}`}
         />

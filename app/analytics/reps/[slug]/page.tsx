@@ -103,7 +103,7 @@ export default async function RepPage({
   const contactPool = contacts.map((c) => c.full_name).filter(Boolean);
   const custById = new Map(customers.map((c) => [c.id, c.company_name] as const));
   const contactCompany = new Map(
-    contacts.map((c) => [c.full_name, custById.get(c.customer_id) || "—"] as const)
+    contacts.map((c) => [c.full_name, custById.get(c.customer_id) || "-"] as const)
   );
   function pick(pool: string[], seed: string, count: number): string[] {
     if (pool.length === 0 || count <= 0) return [];
@@ -202,7 +202,7 @@ export default async function RepPage({
       tip: pick(contactPool, `${name}-out-${o.label}`, o.value).map((c) => ({
         avatar: c,
         name: c,
-        sub: contactCompany.get(c) || "—",
+        sub: contactCompany.get(c) || "-",
       })),
     }));
   const totalTouches = outcomes.reduce((s, o) => s + o.value, 0);
@@ -384,7 +384,7 @@ export default async function RepPage({
       </section>
 
       {/* Pipeline value by stage + deals by stage. Every chart card opens
-          full-size on click with the complete breakdown listed — a card chart
+          full-size on click with the complete breakdown listed, a card chart
           plus per-slice hovers was never enough to read the whole picture
           (Anir, Jul 25: "I need the ability to open all these graphs"). */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
@@ -490,7 +490,7 @@ export default async function RepPage({
             <BarChart data={topAccounts} height={150} format="money" />
           </ChartInspector>
           <ChartInspector
-            title="Going quiet"
+            title="Days since last touch"
             description="Days since the last touch. Tallest bar needs a call first."
             records={quietRecords}
             searchPlaceholder="Find an account or contact..."
@@ -512,7 +512,7 @@ export default async function RepPage({
               {name.split(" ")[0]}&apos;s deals
             </h2>
             <p className="text-[12px] text-text-tertiary">
-              Every account they own — stage, likelihood, value and how fresh it is.
+              Every account they own, stage, likelihood, value and how fresh it is.
             </p>
           </div>
           <div className="overflow-x-auto">

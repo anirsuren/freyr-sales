@@ -91,6 +91,21 @@ export function outcomeMark(outcome: string): OutcomeMark {
   };
 }
 
+/** The actor every agent route stamps on the rows it writes (app/api/agent/*:
+ *  plan, act, run, advance, autopilot, converse, enroll, cadence-run). */
+export const AGENT_ACTOR = "Freyr Agent";
+
+/** A deal's activity is the record of what a PERSON did with this account, so
+ *  agent-written rows are not part of it (Anir, Jul 28: "There should be no
+ *  agent stuff on any page except the chatbot"). Filtering the actor, not the
+ *  robot emoji in the note, because the entry itself does not belong: the count,
+ *  the dates and the stage history all have to be built from what is left. */
+export function humanTouches<T extends { logged_by?: string | null }>(
+  interactions: T[]
+): T[] {
+  return interactions.filter((i) => i.logged_by !== AGENT_ACTOR);
+}
+
 export type OutcomeSlice = OutcomeMark & { count: number; share: number };
 
 /** The real mix of what has actually been logged on this deal — every slice is

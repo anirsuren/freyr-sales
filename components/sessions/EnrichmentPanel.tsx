@@ -46,7 +46,7 @@ export function EnrichmentPanel({
         <dl className="text-[13px] space-y-1.5">
           <div className="flex gap-2">
             <dt className="text-text-tertiary w-20 shrink-0">Industry</dt>
-            <dd className="text-text-primary">{customer.industry || "—"}</dd>
+            <dd className="text-text-primary">{customer.industry || "-"}</dd>
           </div>
           <div className="flex gap-2">
             <dt className="text-text-tertiary w-20 shrink-0">Geography</dt>

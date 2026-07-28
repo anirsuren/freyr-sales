@@ -30,7 +30,7 @@ export function CrmSyncCard({
     await new Promise((r) => setTimeout(r, 600));
     setSyncing(false);
     setLastSynced("just now");
-    toast(`CRM synced — ${total.toLocaleString()} records up to date`);
+    toast(`CRM synced. ${total.toLocaleString()} records up to date`);
   }
 
   return (
@@ -40,7 +40,7 @@ export function CrmSyncCard({
           <Database size={18} strokeWidth={1.75} className="text-blue-primary" />
           <div>
             <h2 className="text-[15px] font-semibold text-text-primary">
-              CRM sync — HubSpot
+              CRM sync: HubSpot
             </h2>
             <p className="text-[12px] text-text-tertiary">
               Two-way mirror · last synced {lastSynced}

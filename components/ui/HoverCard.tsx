@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import {
+  DEFAULT_HOVER_DELAY_MS,
   readHoverPreference,
   useHoverPreference,
 } from "@/lib/hoverPreferences";
@@ -125,10 +126,14 @@ export function HoverCard({
   }
 
   function show() {
+    // `delayMs` no longer sets the delay: it only marks a surface that opens
+    // regardless of the user's show-popups toggle (charts). The DELAY itself is
+    // always DEFAULT_HOVER_DELAY_MS, everywhere. Callers passing 0 used to make
+    // popups fire the instant the cursor touched them.
     const current =
       delayOverride != null
-        ? { enabled: true, delayMs: delayOverride }
-        : readHoverPreference();
+        ? { enabled: true, delayMs: DEFAULT_HOVER_DELAY_MS }
+        : { ...readHoverPreference(), delayMs: DEFAULT_HOVER_DELAY_MS };
     if (!current.enabled) return;
     if (hideTimer.current) clearTimeout(hideTimer.current);
     if (showTimer.current) clearTimeout(showTimer.current);
@@ -208,7 +213,7 @@ export function HoverCard({
             onMouseLeave={scheduleHide}
           >
             {/* pt/pb (not mt/mb) so the gap to the trigger is inside this
-                hoverable element — the cursor never crosses a dead margin. */}
+                hoverable element, the cursor never crosses a dead margin. */}
             <div
               className={cn(
                 "h-full",

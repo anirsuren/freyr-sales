@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { listOfferings, hydrateOffering } from "@/lib/offerings";
+import { getDataMode } from "@/lib/dataMode";
+import { isOfferingsOnly } from "@/lib/release";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +12,16 @@ export async function GET(req: Request) {
     .trim();
   if (!q) return NextResponse.json({ results: [] });
 
+  // Release gate (Suren, Jul 28): in the offerings-only rollout the global
+  // search must not surface unreleased modules. The palette already filtered
+  // the response client-side, which meant every customer and contact matching
+  // the query still travelled to the browser — hidden in the UI, present in the
+  // payload. Never build the rows in the first place.
+  const offeringsOnly = isOfferingsOnly(getDataMode());
+
   const db = getDb();
-  const [customers, contacts] = await Promise.all([
-    db.customers.list(),
-    db.contacts.list(),
-  ]);
+  const customers = offeringsOnly ? [] : await db.customers.list();
+  const contacts = offeringsOnly ? [] : await db.contacts.list();
 
   const results: {
     type: string;

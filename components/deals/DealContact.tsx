@@ -21,7 +21,7 @@ import type { Contact } from "@/lib/types";
    WHO YOU'RE SELLING TO.
 
    The header names the person, but naming them isn't the same as being able to
-   ring them. This is the chip idiom off the team roster and the contact page —
+   ring them. This is the chip idiom off the team roster and the contact page,
    the ACTUAL number and the ACTUAL address, tappable, rather than an icon that
    hides them (Suren: "just actually put the fucking email address and the call
    number… you have it correctly on the teams page").
@@ -108,31 +108,67 @@ export function DealContact({ contact }: { contact: Contact }) {
           </div>
         </div>
 
+        {/* Two full-width rows, not two bordered pills side by side (Anir, Jul
+            28: "the phone number and email look bad"). Same icon tile, same
+            height, same left edge, so they read as one pair of details rather
+            than two floating buttons. Still real tel: / mailto: links. */}
         {(phone || contact.email) && (
-          <div className="mt-3.5 flex flex-wrap gap-2 border-t border-border-light pt-3.5">
+          <div className="mt-3.5 space-y-0.5 border-t border-border-light pt-2">
             {phone && (
-              <a
+              <ReachRow
                 href={`tel:${contact.phone?.replace(/[^\d+]/g, "")}`}
                 title={`Call ${phone}`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-text-secondary tnum transition-colors hover:border-blue-subtle hover:text-blue-primary"
-              >
-                <Phone size={13} strokeWidth={2} className="shrink-0" />
-                {phone}
-              </a>
+                Icon={Phone}
+                value={phone}
+                numeric
+              />
             )}
             {contact.email && (
-              <a
+              <ReachRow
                 href={`mailto:${contact.email}`}
                 title={`Email ${contact.email}`}
-                className="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-              >
-                <Mail size={13} strokeWidth={2} className="shrink-0" />
-                <span className="min-w-0 break-all">{contact.email}</span>
-              </a>
+                Icon={Mail}
+                value={contact.email}
+              />
             )}
           </div>
         )}
       </Card>
     </div>
+  );
+}
+
+/** One way to reach this person. Full width, so the phone row and the email row
+ *  start and end together however long the address is. */
+function ReachRow({
+  href,
+  title,
+  Icon,
+  value,
+  numeric = false,
+}: {
+  href: string;
+  title: string;
+  Icon: LucideIcon;
+  value: string;
+  numeric?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      title={title}
+      className="group -mx-1.5 flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-surface"
+    >
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+        <Icon size={13} strokeWidth={2} />
+      </span>
+      <span
+        className={`min-w-0 flex-1 break-all text-[13px] font-medium leading-snug text-text-primary transition-colors group-hover:text-blue-primary${
+          numeric ? " tnum" : ""
+        }`}
+      >
+        {value}
+      </span>
+    </a>
   );
 }

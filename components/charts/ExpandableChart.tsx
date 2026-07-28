@@ -55,14 +55,14 @@ export function ExpandableChart({
     <>
       <div className={cn("group relative", className)}>
         {/* Sits over the card's own header row. Visible on hover and on
-            keyboard focus — a control that only appears on hover is invisible
+            keyboard focus, a control that only appears on hover is invisible
             to anyone tabbing through. */}
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label={`Open ${title} full size`}
           title="Open full size"
-          className="absolute -top-1 right-0 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light bg-white/90 text-text-tertiary opacity-0 transition-all hover:border-blue-subtle hover:text-blue-primary focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute -top-1 right-0 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light bg-[var(--white)] text-text-tertiary opacity-0 transition-all hover:border-blue-subtle hover:text-blue-primary focus-visible:opacity-100 group-hover:opacity-100"
         >
           <Maximize2 size={13} strokeWidth={2} />
         </button>

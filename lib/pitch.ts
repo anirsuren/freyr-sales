@@ -73,7 +73,7 @@ export function buildAccountPitch(p: {
 
   const body =
     `Dear ${contactName || "there"},\n\n` +
-    `${sit ? `I've been following ${company} — ${sit.charAt(0).toLowerCase()}${sit.slice(1)}.` : `I've been following ${company}'s regulatory work.`} ` +
+    `${sit ? `I've been following ${company}, ${sit.charAt(0).toLowerCase()}${sit.slice(1)}.` : `I've been following ${company}'s regulatory work.`} ` +
     `Freyr can ${hook}.\n\n` +
     `For a team at ${company}'s stage that usually means faster, lower-risk submissions and less load on your internal RA group. ` +
     `We've supported 5,000+ regulatory submissions globally, with former FDA and EMA reviewers on the team.\n\n` +
@@ -86,14 +86,14 @@ export function buildAccountPitch(p: {
     `and that's exactly where Freyr helps. In short, we ${hook}.\n\n` +
     `For companies like ${company}, the value usually shows up in two places: speed to submission, and taking routine regulatory load off your team so they can focus on strategy. ` +
     `We've done this across 5,000+ submissions globally, and our people include former FDA and EMA reviewers.\n\n` +
-    `I'm not trying to sell you anything today — I'd just like 20 minutes to show you how we've handled ${service.toLowerCase()} for teams in a similar spot. Would next week work?`;
+    `I'm not trying to sell you anything today. I'd just like 20 minutes to show you how we've handled ${service.toLowerCase()} for teams in a similar spot. Would next week work?`;
 
   const pitch_call_script = {
-    opener: `Hi, is this ${contactName || "the regulatory lead"}? Great — this is ${repFirstName} from Freyr. I know I'm catching you cold, so I'll be brief.`,
-    value_prop: `We help pharma and biotech teams with regulatory submissions globally — FDA, EMA, and 120+ agencies. Specifically, we ${hook}.`,
-    permission_question: `I had a specific thought about ${company}'s ${service.toLowerCase()} — do you have 90 seconds, or is this a bad time?`,
-    if_bad_time_voicemail: `No problem — I'll send a short email. We've helped similar teams move submissions faster without adding headcount; if that's useful, worth a look. Thanks ${fn}.`,
-    if_good_time_continue: `Appreciate it. Given where ${company} is, how are you handling ${service.toLowerCase()} today — fully in-house, or with outside support?`,
+    opener: `Hi, is this ${contactName || "the regulatory lead"}? Great: this is ${repFirstName} from Freyr. I know I'm catching you cold, so I'll be brief.`,
+    value_prop: `We help pharma and biotech teams with regulatory submissions globally. FDA, EMA, and 120+ agencies. Specifically, we ${hook}.`,
+    permission_question: `I had a specific thought about ${company}'s ${service.toLowerCase()}: do you have 90 seconds, or is this a bad time?`,
+    if_bad_time_voicemail: `No problem. I'll send a short email. We've helped similar teams move submissions faster without adding headcount; if that's useful, worth a look. Thanks ${fn}.`,
+    if_good_time_continue: `Appreciate it. Given where ${company} is, how are you handling ${service.toLowerCase()} today: fully in-house, or with outside support?`,
     qualifying_questions: [
       `How is your team handling ${service.toLowerCase()} right now?`,
       `What's the next regulatory milestone on the calendar, and how tight is it?`,

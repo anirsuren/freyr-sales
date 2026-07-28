@@ -235,7 +235,7 @@ export default async function ContactDetailPage({
       </div>
 
       {/* The one-line "Next move" strip is gone (Suren, Jul 27: "I don't want
-          no next move" — stripping per-record agent nags app-wide). The
+          no next move", stripping per-record agent nags app-wide). The
           suggestion itself still feeds the pre-call brief below. */}
 
       {/* Where things stand — a small timeline: last contacted → today → next
@@ -247,7 +247,7 @@ export default async function ContactDetailPage({
           </h3>
           <span className="inline-flex items-center gap-1.5 text-[12px] font-medium rounded-full bg-blue-light text-blue-primary px-2.5 py-1">
             <Brain size={13} strokeWidth={1.9} />
-            Buying style: {persona.code} · {persona.label.split(" — ")[0]}
+            Buying style: {persona.code} · {persona.label.split(" - ")[0]}
           </span>
         </div>
         <div className="flex items-start">
@@ -322,7 +322,7 @@ export default async function ContactDetailPage({
       </Card>
 
       {/* Engagement graphs (Suren, Jul 27: "there are no graphs on the
-          contacts page… it probably needs some sort of graph") — outcome mix +
+          contacts page… it probably needs some sort of graph"), outcome mix +
           touch cadence + the open deals this person is on, all computed from
           the interactions/sessions already loaded for this page. */}
       <ContactEngagement
@@ -431,12 +431,12 @@ export default async function ContactDetailPage({
             </h2>
             <p className="text-[12.5px] text-text-tertiary mb-3 leading-relaxed">
               The other people you know at {customer?.company_name || "this account"}. Deals stall when
-              they hang on one person — the more contacts you&apos;re talking to, the safer it is. Click anyone to open them.
+              they hang on one person, the more contacts you&apos;re talking to, the safer it is. Click anyone to open them.
             </p>
             {siblings.length === 0 ? (
               <p className="text-[13px] text-text-secondary">
                 {contact.full_name.replace(/^(Dr|Mr|Ms|Mrs|Prof)\.?\s+/i, "").split(/\s+/)[0]} is your only contact at {customer?.company_name || "this account"} right
-                now — that&apos;s risky. Find a second person (a peer or their manager) so the deal doesn&apos;t rest on one relationship.
+                now, that&apos;s risky. Find a second person (a peer or their manager) so the deal doesn&apos;t rest on one relationship.
               </p>
             ) : (
               <ul className="space-y-2">
@@ -464,7 +464,7 @@ export default async function ContactDetailPage({
         </div>
 
         {/* Right: how to engage. The per-contact "Agent recommends" card is
-            gone (Anir, Jul 27: agent nags off every record page — the agent
+            gone (Anir, Jul 27: agent nags off every record page, the agent
             keeps its own page and the dock). */}
         <div className="space-y-8">
           <Card>
@@ -473,7 +473,7 @@ export default async function ContactDetailPage({
               How to engage
             </h2>
             {/* The buying style is a category, so it reads as the same
-                colour + icon chip the timeline card uses above — not gray
+                colour + icon chip the timeline card uses above, not gray
                 emphasis text. */}
             <p className="flex flex-wrap items-center gap-1.5 text-[12px] text-text-tertiary mb-3">
               Inferred buying style:

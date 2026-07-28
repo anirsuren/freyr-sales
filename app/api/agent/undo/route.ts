@@ -58,11 +58,11 @@ export async function POST(req: NextRequest) {
 
   await db.agentRuns.update(runId, {
     reverted: true,
-    summary: `Reverted — ${removed} step(s) rolled back.`,
+    summary: `Reverted. ${removed} step(s) rolled back.`,
   });
 
   notifyTelegram(
-    `🤖 <b>Agent run reverted</b>\n${run.title} — ${removed} step(s) rolled back.`
+    `🤖 <b>Agent run reverted</b>\n${run.title} - ${removed} step(s) rolled back.`
   );
 
   return NextResponse.json({ ok: true, removed });

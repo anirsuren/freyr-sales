@@ -195,7 +195,7 @@ export default async function ConversationPage({
       <EmptyState
         icon={SearchX}
         title="Transcript not available"
-        description="This conversation couldn't be loaded — it may still be processing, or the voice service isn't connected in this environment."
+        description="This conversation couldn't be loaded: it may still be processing, or the voice service isn't connected in this environment."
         className="py-24"
         action={
           <Link

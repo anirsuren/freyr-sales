@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
           status: "done",
           message: websiteUrl
             ? "Website scraped successfully"
-            : "No website provided — skipped",
+            : "No website provided: skipped",
         });
 
         // 3. LinkedIn enrichment
@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
           `🆕 <b>New session</b>\n${customer.company_name} · ${
             contact.full_name
           }\nTop match: ${
-            matching.recommended_services?.[0]?.service_name || "—"
+            matching.recommended_services?.[0]?.service_name || "-"
           }`
         );
 

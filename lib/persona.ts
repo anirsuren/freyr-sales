@@ -15,12 +15,12 @@ export function personaFor(roleBucket: string | null | undefined): Persona {
   if (r.includes("exec") || r.includes("chief") || r.includes("vp") || r.includes("head")) {
     return {
       code: "D",
-      label: "Driver — direct & outcome-focused",
+      label: "Driver: direct & outcome-focused",
       blurb:
         "Time-poor and results-oriented. Decides fast when the business case is clear.",
       engage: [
         "Lead with the outcome and ROI, not the feature list",
-        "Keep it tight — one clear ask",
+        "Keep it tight: one clear ask",
         "Tie everything to their upcoming milestone",
       ],
       avoid: ["Long preamble", "Getting lost in implementation detail"],
@@ -29,12 +29,12 @@ export function personaFor(roleBucket: string | null | undefined): Persona {
   if (r.includes("regulatory") || r.includes("quality") || r.includes("compliance")) {
     return {
       code: "C",
-      label: "Conscientious — detail-driven & risk-averse",
+      label: "Conscientious: detail-driven & risk-averse",
       blurb:
         "Evidence-led and precise. Trusts specifics, frameworks, and a clean track record.",
       engage: [
         "Bring data, references, and exact frameworks (CTD, MDR, 21 CFR)",
-        "Be precise — name the agency and the standard",
+        "Be precise: name the agency and the standard",
         "Show proof points and prior similar work",
       ],
       avoid: ["Vague claims", "Overselling or hard closes"],
@@ -43,7 +43,7 @@ export function personaFor(roleBucket: string | null | undefined): Persona {
   if (r.includes("medical") || r.includes("clinical")) {
     return {
       code: "C/S",
-      label: "Analytical-Steady — scientific & collaborative",
+      label: "Analytical-Steady: scientific & collaborative",
       blurb:
         "Methodical and peer-driven. Responds to clinical rigor and a consultative tone.",
       engage: [
@@ -56,7 +56,7 @@ export function personaFor(roleBucket: string | null | undefined): Persona {
   }
   return {
     code: "C",
-    label: "Conscientious — evidence-led",
+    label: "Conscientious: evidence-led",
     blurb: "Responds best to specifics, accuracy, and a credible track record.",
     engage: ["Be specific and accurate", "Bring proof points", "Respect their time"],
     avoid: ["Vague claims", "Overselling"],

@@ -131,7 +131,7 @@ export function ContactEngagement({
             Engagement
           </h2>
           <p className="text-[11px] text-text-tertiary mt-0.5">
-            Every email, call and meeting logged with {firstName} — how often
+            Every email, call and meeting logged with {firstName}, how often
             you reach out, and how it lands.
           </p>
         </div>
@@ -144,7 +144,7 @@ export function ContactEngagement({
 
       {total === 0 ? (
         <p className="mt-4 text-[13px] text-text-secondary">
-          Nothing logged with {firstName} yet — after your first email, call or
+          Nothing logged with {firstName} yet, after your first email, call or
           meeting, the charts fill in here.
         </p>
       ) : (

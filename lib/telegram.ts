@@ -56,7 +56,7 @@ export async function sendTelegram(text: string): Promise<TgResult> {
   if (!chatId)
     return {
       ok: false,
-      error: "No chat yet — message the bot (/start) so it can reply.",
+      error: "No chat yet: message the bot (/start) so it can reply.",
     };
   try {
     const res = await fetch(API("sendMessage"), {

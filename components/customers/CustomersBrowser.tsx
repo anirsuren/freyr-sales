@@ -48,7 +48,7 @@ type EnrichedCustomer = Customer & {
 // Plain-English explanations for the table columns a rep might not recognize.
 const COL_HINTS: Record<string, string> = {
   Opportunity:
-    "How big a deal this account could be, based on company size — High = Large, Medium = Mid, Low = Small. A quick read on where the bigger prizes are.",
+    "How big a deal this account could be, based on company size. High = Large, Medium = Mid, Low = Small. A quick read on where the bigger prizes are.",
   // Health column intentionally has no header hint — each row's Health badge
   // already explains itself on hover, and an exact-text test depends on the
   // header reading exactly "Health".
@@ -59,7 +59,7 @@ const COL_HINTS: Record<string, string> = {
 const SIGNAL: Record<string, { label: string; bars: number; color: string }> = {
   large: { label: "High", bars: 3, color: "#34C759" }, // green
   mid: { label: "Medium", bars: 2, color: "#0071E3" }, // blue
-  small: { label: "Low", bars: 1, color: "#C2410C" }, // burnt orange — tracks the warning token
+  small: { label: "Low", bars: 1, color: "#C2410C" }, // burnt orange, tracks the warning token
 };
 
 // Color-code industries so the table scans at a glance (Suren).
@@ -84,7 +84,7 @@ function Signal({ tier }: { tier: string | null }) {
   const color = s?.color || "#0071E3";
   const sizeLabel = tier ? SIZE_TIER_LABEL[tier] || tier : null;
   const label = s
-    ? `${s.label} opportunity — based on company size (${sizeLabel}). Bigger accounts tend to mean bigger potential deals.`
+    ? `${s.label} opportunity: based on company size (${sizeLabel}). Bigger accounts tend to mean bigger potential deals.`
     : "Company size hasn't been set for this account yet.";
   return (
     <Tooltip label={label} side="bottom" align="left">
@@ -105,7 +105,7 @@ function Signal({ tier }: { tier: string | null }) {
           className="text-[13px] font-semibold"
           style={{ color: s ? color : "#8A8A8E" }}
         >
-          {s?.label || "—"}
+          {s?.label || "-"}
         </span>
       </span>
     </Tooltip>
@@ -358,7 +358,7 @@ export function CustomersBrowser({
           }
         })
       );
-      toast(`Analyzed ${done} account${done === 1 ? "" : "s"} — profiles updated.`);
+      toast(`Analyzed ${done} account${done === 1 ? "" : "s"}: profiles updated.`);
       setSelected(new Set());
       router.refresh();
     } finally {
@@ -642,7 +642,7 @@ export function CustomersBrowser({
                                   {c.company_name}
                                 </p>
                                 <p className="text-[11.5px] text-text-tertiary truncate">
-                                  {[c.industry, geographyWithFlag(c.geography, "")].filter(Boolean).join(" · ") || "—"}
+                                  {[c.industry, geographyWithFlag(c.geography, "")].filter(Boolean).join(" · ") || "-"}
                                 </p>
                               </div>
                             </div>
@@ -653,7 +653,7 @@ export function CustomersBrowser({
                               <div className="flex justify-between gap-3">
                                 <span className="text-text-tertiary">Opportunity</span>
                                 <span className="font-medium text-text-primary">
-                                  {c.size_tier ? SIGNAL[c.size_tier]?.label ?? "—" : "—"}
+                                  {c.size_tier ? SIGNAL[c.size_tier]?.label ?? "-" : "-"}
                                 </span>
                               </div>
                               <div className="flex justify-between gap-3">
@@ -696,7 +696,7 @@ export function CustomersBrowser({
                           {c.industry}
                         </span>
                       ) : (
-                        <span className="text-[13px] text-text-tertiary">—</span>
+                        <span className="text-[13px] text-text-tertiary">-</span>
                       )}
                     </td>
                     <td className="px-5 py-4">
@@ -711,23 +711,23 @@ export function CustomersBrowser({
                             >
                               <Avatar
                                 name={ct.name}
-                                className="w-7 h-7 text-[10px] ring-2 ring-white"
+                                className="w-7 h-7 text-[10px] ring-2 ring-[color:var(--white)]"
                               />
                             </Link>
                           ))}
                           {c.contact_count > 3 && (
-                            <span className="w-7 h-7 rounded-full bg-surface border border-border-light text-[10px] font-semibold text-text-secondary flex items-center justify-center ring-2 ring-white tnum">
+                            <span className="w-7 h-7 rounded-full bg-surface border border-border-light text-[10px] font-semibold text-text-secondary flex items-center justify-center ring-2 ring-[color:var(--white)] tnum">
                               +{c.contact_count - 3}
                             </span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-[13px] text-text-tertiary">—</span>
+                        <span className="text-[13px] text-text-tertiary">-</span>
                       )}
                     </td>
-                    <td className="px-5 py-4">{c.last_outcome ? <OutcomeBadge outcome={c.last_outcome} /> : "—"}</td>
+                    <td className="px-5 py-4">{c.last_outcome ? <OutcomeBadge outcome={c.last_outcome} /> : "-"}</td>
                     <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">
-                      {c.last_session_date ? formatDateTime(c.last_session_date) : "—"}
+                      {c.last_session_date ? formatDateTime(c.last_session_date) : "-"}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Link href={`/customers/${c.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">

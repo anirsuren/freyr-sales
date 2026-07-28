@@ -168,23 +168,26 @@ export async function POST(req: NextRequest) {
   const agentSystem =
     `You are Freyr's AI sales agent for the signed-in user (${actorName}) in regulatory life-sciences. ` +
     "You are a sharp, decisive sales partner: warm, concise, plain English, NO jargon. " +
+    // House style (Anir, Jul 28): facts, not metaphors, and never an em dash.
+    "State facts plainly. Never use figures of speech or metaphors for data. " +
+    "NEVER use an em dash (—) in your reply: use a period, a comma or a colon instead. " +
     "Reply in the SAME language the user writes in (Spanish in → Spanish out, etc.). " +
     "You are HUMAN-LED: you draft, prep, and recommend; the signed-in user approves everything. You NEVER claim to have " +
     "sent an email, made a call, or contacted anyone. The only real writes you make are saving a draft, " +
-    "setting a follow-up, and logging a touch the rep ALREADY had — each waits for the signed-in user. " +
-    "Ground every number, name, email, and figure ONLY in the data below or in tool results — never invent. " +
+    "setting a follow-up, and logging a touch the rep ALREADY had: each waits for the signed-in user. " +
+    "Ground every number, name, email, and figure ONLY in the data below or in tool results: never invent. " +
     "Use your tools: get_account_detail for depth on a named account, list_accounts to filter the book, " +
     "save_draft / set_followup / log_touch to take a real action, show_pitch to surface a prepared pitch. " +
     "When asked to draft/re-engage/reach out, WRITE the full draft yourself (a 'Subject:' line + 3–5 short " +
-    `sentences signed '${actorName} · Freyr'), show it, then offer to save it — don't ask permission first, ` +
+    `sentences signed '${actorName} · Freyr'), show it, then offer to save it: don't ask permission first, ` +
     "and never use bracketed placeholders like [First Name]. If the rep names an account you don't have, " +
     "say so plainly. Keep non-draft answers to 2–5 sentences.\n" +
-    "FORMATTING: **bold**, *italics*, bullets and Markdown tables all render properly — use a table when listing 3+ records. " +
+    "FORMATTING: **bold**, *italics*, bullets and Markdown tables all render properly: use a table when listing 3+ records. " +
     "When you compare 3+ numbers, ALSO include a chart on its own lines, exactly this shape with REAL values from the data below:\n" +
     '```chart\n{"type":"bar","title":"Open pipeline by stage","format":"money","data":[{"label":"Prospect","value":391000},{"label":"Qualified","value":578000}]}\n```\n' +
-    'Chart types: "bar" (comparisons), "donut" (share of a whole — may add "center":{"label":"10","sub":"open"}), "area" (trend). ' +
+    'Chart types: "bar" (comparisons), "donut" (share of a whole: may add "center":{"label":"10","sub":"open"}), "area" (trend). ' +
     "Never fabricate numbers for a chart; skip the chart if the data is not in your grounding.\n\n" +
-    "LIVE PIPELINE (your grounding — full book):\n" +
+    "LIVE PIPELINE (your grounding: full book):\n" +
     facts;
   const turns: { role: "user" | "assistant"; content: string }[] = [
     ...history.map((t) => ({
@@ -244,7 +247,7 @@ export async function POST(req: NextRequest) {
         contactCount: cContacts.length,
       });
       const content = [
-        `Account: ${c.company_name} — ${c.industry}, ${c.geography}, size ${c.size_tier}`,
+        `Account: ${c.company_name} - ${c.industry}, ${c.geography}, size ${c.size_tier}`,
         `Enrichment: ${c.enrichment_summary || "n/a"}`,
         `Health: ${health.label} (${health.score}/100)`,
         `Open deals (${open.length}, ${formatMoney(
@@ -265,7 +268,7 @@ export async function POST(req: NextRequest) {
               `${new Date(i.created_at).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
-              })} ${i.outcome} — ${(i.notes || "").replace(/\s+/g, " ").slice(0, 100)}`
+              })} ${i.outcome}: ${(i.notes || "").replace(/\s+/g, " ").slice(0, 100)}`
           )
           .join(" | ") || "none"}`,
       ].join("\n");
@@ -285,21 +288,21 @@ export async function POST(req: NextRequest) {
       if (filter === "at_risk") {
         rows = customers
           .filter((c) => healthOf(c).band === "at_risk")
-          .map((c) => `${c.company_name} — health ${healthOf(c).score}/100`);
+          .map((c) => `${c.company_name}: health ${healthOf(c).score}/100`);
       } else if (filter === "cooling") {
         rows = open
           .filter((d) => d.staleDays > ROTTING_DAYS)
           .sort((a, b) => b.staleDays - a.staleDays)
-          .map((d) => `${d.company} — ${formatMoney(d.value)}, quiet ${d.staleDays}d (${d.stage})`);
+          .map((d) => `${d.company} - ${formatMoney(d.value)}, quiet ${d.staleDays}d (${d.stage})`);
       } else if (filter === "biggest") {
         rows = [...open]
           .sort((a, b) => b.value - a.value)
           .slice(0, 8)
-          .map((d) => `${d.company} — ${formatMoney(d.value)} (${d.stage})`);
+          .map((d) => `${d.company} - ${formatMoney(d.value)} (${d.stage})`);
       } else {
         rows = customers.map((c) => {
           const d = open.find((x) => x.customerId === c.id);
-          return `${c.company_name} — ${d ? `${d.stage} ${formatMoney(d.value)}` : "no open deal"}, health ${healthOf(c).score}/100`;
+          return `${c.company_name} - ${d ? `${d.stage} ${formatMoney(d.value)}` : "no open deal"}, health ${healthOf(c).score}/100`;
         });
       }
       return { content: rows.length ? rows.join("\n") : `No accounts match "${filter}".` };
@@ -485,7 +488,7 @@ const AGENT_TOOLS: AgentToolDef[] = [
   {
     name: "show_pitch",
     description:
-      "Surface the pitch already prepared and stored for an account (subject + email body). Use when asked to show/pull up/review a pitch. Present the returned pitch to the rep verbatim — don't paraphrase it.",
+      "Surface the pitch already prepared and stored for an account (subject + email body). Use when asked to show/pull up/review a pitch. Present the returned pitch to the rep verbatim: don't paraphrase it.",
     input_schema: {
       type: "object",
       properties: { account: { type: "string" } },
@@ -533,7 +536,7 @@ async function executeAction(
       contact_id: contactId,
       pitch_session_id: null,
       outcome: "in_progress",
-      notes: `✍️ Draft outreach (NOT sent — saved for your review):\n\n${draft}`,
+      notes: `✍️ Draft outreach (NOT sent: saved for your review):\n\n${draft}`,
       follow_up_date: null,
       logged_by: "Freyr Agent",
     });
@@ -554,7 +557,7 @@ async function executeAction(
       interaction_ids: [interaction.id],
     });
     return {
-      reply: `Done — I saved the draft to ${action.company}'s timeline. It's marked as a draft for you to review and send; I didn't send anything. Want me to set a follow-up reminder too?\n\n[View it on ${action.company} →](/customers/${action.customerId})`,
+      reply: `Done. I saved the draft to ${action.company}'s timeline. It's marked as a draft for you to review and send; I didn't send anything. Want me to set a follow-up reminder too?\n\n[View it on ${action.company} →](/customers/${action.customerId})`,
       suggestions: [
         `Set a follow-up with ${action.company} next week`,
         `Tell me about ${action.company}`,
@@ -589,7 +592,7 @@ async function executeAction(
       interaction_ids: [interaction.id],
     });
     return {
-      reply: `Set — I'll keep ${action.company} on your radar for ${prettyWhen(action.when)} (${action.label}). It's on the account timeline and in your to-dos. Want me to draft what you'll send then?\n\n[View it on ${action.company} →](/customers/${action.customerId})`,
+      reply: `Set. I'll keep ${action.company} on your radar for ${prettyWhen(action.when)} (${action.label}). It's on the account timeline and in your to-dos. Want me to draft what you'll send then?\n\n[View it on ${action.company} →](/customers/${action.customerId})`,
       suggestions: [
         `Draft an email to ${action.company}`,
         "Who needs a follow-up?",
@@ -638,7 +641,7 @@ function showPitch(
   const session = sessions.find((s) => s.customer_id === action.customerId);
   if (!session) {
     return {
-      reply: `There's no pitch prepared for ${action.company} yet — want me to draft one now?`,
+      reply: `There's no pitch prepared for ${action.company} yet: want me to draft one now?`,
       suggestions: [
         `Draft an email to ${action.company}`,
         `Tell me about ${action.company}`,
@@ -657,7 +660,7 @@ function showPitch(
   const body = (email.body || "").trim() || "Pitch content is being prepared.";
   return {
     reply:
-      `Here's the pitch queued for ${action.company} — this is what's waiting for your approval:\n\n` +
+      `Here's the pitch queued for ${action.company}: this is what's waiting for your approval:\n\n` +
       `**Subject: ${subject}**\n\n${body}\n\n` +
       `There's also a 5-minute script and a cold-call script saved on the account. Want me to tighten this, change the tone, or set a follow-up? I won't send anything without your OK.`,
     suggestions: [
@@ -734,7 +737,7 @@ function buildFacts(
       contactCount: ctx.contacts.filter((x) => x.customer_id === c.id).length,
     });
     return (
-      `- ${c.company_name} (${c.industry}, ${c.geography}) — ` +
+      `- ${c.company_name} (${c.industry}, ${c.geography}). ` +
       `${d ? `${d.stage}, ${formatMoney(d.value)}` : "no open deal"}; ` +
       `contact ${contact ? `${contact.full_name}, ${contact.job_title}${contact.email ? ` <${contact.email}>` : ""}` : "none mapped"}; ` +
       `health ${health.label}; last touch ${lastDays}`
@@ -751,6 +754,6 @@ function buildFacts(
     `RECENT AGENT ACTIONS: ${recent.map((r) => r.title).join("; ") || "none"}.`,
     `ACCOUNTS (${ctx.customers.length} total, ${ctx.contacts.length} contacts):`,
     ...roster,
-    `NOTE: a per-account pitch is already prepared and stored on each account with a session — if asked to show/pull up a pitch, say you'll pull it up (the app shows the real pitch).`,
+    `NOTE: a per-account pitch is already prepared and stored on each account with a session: if asked to show/pull up a pitch, say you'll pull it up (the app shows the real pitch).`,
   ].join("\n");
 }

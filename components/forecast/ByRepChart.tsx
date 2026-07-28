@@ -65,13 +65,20 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
     return b.weighted - a.weighted;
   });
   const max = Math.max(...reps.map((r) => r.weighted), 1);
-  const yourRank =
-    sorted.findIndex(
-      (r) =>
-        !!r.memberId &&
-        !!currentUser.memberId &&
-        r.memberId === currentUser.memberId
-    ) + 1;
+  // Rank is a STANDING, not a position in whatever order you happen to be
+  // looking at. It was read off `sorted`, so switching to "Name A–Z" told a rep
+  // with $0 of pipeline that they were #2 of 21 purely because their name
+  // starts with A (Anir, Jul 28: "that doesn't make sense — obviously I'm not
+  // number two, I'm last"). Always rank by weighted pipeline, descending, no
+  // matter how the chart is currently sorted. Ties share a place, so two reps
+  // on the same number are both #4 rather than #4 and #5.
+  const byWeighted = [...reps].sort((a, b) => b.weighted - a.weighted);
+  const you = byWeighted.find(
+    (r) => !!r.memberId && !!currentUser.memberId && r.memberId === currentUser.memberId
+  );
+  const yourRank = you
+    ? byWeighted.filter((r) => r.weighted > you.weighted).length + 1
+    : 0;
 
   return (
     <Card>
@@ -148,11 +155,20 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                       >
                         <CompanyLogo name={d.company} className="w-[18px] h-[18px] text-[7px] shrink-0" />
                         <span className="min-w-0 flex-1 leading-tight">
-                          <span className="block truncate font-medium text-text-primary">
+                          {/* Names wrap, never truncate — "Aether Medical
+                              Devic…" told a rep nothing. And the person gets
+                              their face: a name on screen always carries its
+                              avatar (Anir, Jul 28: "People? Profile
+                              pictures?"). */}
+                          <span className="block break-words font-medium text-text-primary">
                             {d.company}
                           </span>
-                          <span className="block truncate text-[10.5px] text-text-tertiary">
-                            {d.contact}
+                          <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-secondary">
+                            <Avatar
+                              name={d.contact}
+                              className="h-[15px] w-[15px] shrink-0 text-[6px]"
+                            />
+                            <span className="min-w-0 whitespace-nowrap">{d.contact}</span>
                           </span>
                         </span>
                         <span className="tnum text-text-secondary shrink-0">
@@ -195,7 +211,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                     closed the gap under the label, so the number looked like it
                     was being clipped by the column (Anir, Jul 27: "the number
                     is supposed to move with it… it's almost getting cut off").
-                    Same distance, same duration — they move as one object. */}
+                    Same distance, same duration, they move as one object. */}
                 <span
                   className={`text-[10.5px] font-semibold tnum shrink-0 transition-all duration-150 group-hover:-translate-y-1.5 ${
                     you ? "text-blue-primary" : "text-text-secondary group-hover:text-blue-primary"
@@ -249,7 +265,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
       </div>
 
       <p className="text-[12px] text-text-tertiary mt-4">
-        Weighted pipeline per teammate — click a rep for their full breakdown. Sort it whichever way you like.
+        Weighted pipeline per teammate, click a rep for their full breakdown. Sort it whichever way you like.
       </p>
     </Card>
   );

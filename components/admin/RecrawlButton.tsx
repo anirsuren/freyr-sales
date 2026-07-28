@@ -24,7 +24,7 @@ export function RecrawlButton() {
       setPageCount(data.page_count);
       setStatus("done");
       setMessage(`Indexed ${data.page_count} pages (version ${data.version}).`);
-      toast(`Knowledge base updated — ${data.page_count} pages`);
+      toast(`Knowledge base updated. ${data.page_count} pages`);
       router.refresh();
     } catch (e: any) {
       setStatus("error");

@@ -153,7 +153,7 @@ export function Sidebar({
         <span className="relative shrink-0">
           <Icon size={20} strokeWidth={1.5} />
           {collapsed && badge > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-2 h-2 rounded-full bg-warning ring-2 ring-white" />
+            <span className="absolute -top-1.5 -right-1.5 w-2 h-2 rounded-full bg-warning ring-2 ring-[color:var(--white)]" />
           )}
         </span>
         {!collapsed && <span className="flex-1">{item.label}</span>}
@@ -180,7 +180,7 @@ export function Sidebar({
       )}
     >
       {/* Logo + collapse toggle. The gap below is the brand-to-nav rhythm now
-          that nothing sits between them — one clean step, not the leftover
+          that nothing sits between them, one clean step, not the leftover
           hole where the CTA used to be. */}
       <div
         className={cn(
@@ -226,7 +226,7 @@ export function Sidebar({
 
       {/* No New Session CTA here. Starting a session is an action that belongs
           to the Sessions page, not a button pinned above the nav on every
-          screen — pressing it from Teams threw you out of Teams (Suren, Jul 27:
+          screen, pressing it from Teams threw you out of Teams (Suren, Jul 27:
           "if I'm on the Teams page and I press New Session, that's kind of a
           problem… that should just stay on the sessions page. That way, you can
           move all the shit in the sidebar up too"). See
@@ -257,7 +257,7 @@ export function Sidebar({
         {!offeringsOnly && (
         <Link
           href="/settings?tab=profile"
-          title={collapsed ? `${currentUser.name} — profile` : undefined}
+          title={collapsed ? `${currentUser.name}: profile` : undefined}
           className={cn(
             "flex items-center gap-3 py-2 rounded-md transition-colors hover:bg-surface",
             collapsed ? "justify-center px-0" : "px-3"

@@ -16,7 +16,10 @@ const config: Config = {
           light: "#E8F1FB",
           subtle: "#C7DCFA",
         },
-        surface: "#F9FAFB",
+        // Channel syntax, NOT a hex: it makes every opacity variant
+        // (`bg-surface/50`, `hover:bg-surface/60`) resolve through
+        // --surface-rgb, so they follow dark mode like the bare class does.
+        surface: "rgb(var(--surface-rgb) / <alpha-value>)",
         border: "#D2D2D7",
         "border-light": "#E5E5EA",
         text: {

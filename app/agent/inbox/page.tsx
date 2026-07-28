@@ -68,12 +68,12 @@ export default async function AgentInboxPage() {
       <div>
         <PageHeader
           title="To-do"
-          subtitle="What's waiting on you — pitches to approve, work the agent sent back, and accounts it can draft outreach for."
+          subtitle="What's waiting on you: pitches to approve, work the agent sent back, and accounts it can draft outreach for."
         />
         {lensLabel && (
           <span className="inline-flex items-center gap-1.5 mt-1 text-[12px] font-semibold text-blue-primary bg-blue-light rounded-full px-2.5 py-1">
             <Sparkles size={13} strokeWidth={1.9} />
-            Lens: {lensLabel} — everything else is hidden
+            Lens: {lensLabel}, everything else is hidden
           </span>
         )}
       </div>
@@ -125,7 +125,7 @@ export default async function AgentInboxPage() {
                   <div className="min-w-0 flex-1">
                     {/* The account is this row's subject, so it wears its logo;
                         the RotateCcw tile stays as the ACTION glyph. Wraps
-                        instead of truncating — a clipped account name is the one
+                        instead of truncating, a clipped account name is the one
                         thing a rep can't act on. */}
                     <p className="text-[14px] font-semibold text-text-primary">
                       Rework the pitch for{" "}

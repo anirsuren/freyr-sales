@@ -9,7 +9,7 @@ import { canManageOfferings } from "@/lib/role";
 export const dynamic = "force-dynamic";
 
 const FORBIDDEN = NextResponse.json(
-  { error: "View only — admin access required" },
+  { error: "View only: admin access required" },
   { status: 403 }
 );
 

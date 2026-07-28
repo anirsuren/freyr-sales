@@ -316,7 +316,7 @@ export function TasksWorkspace({
 
                   <div className="min-w-0">
                     {/* A review row's whole Task cell IS the offering being
-                        pitched — an offering name is a CATEGORY and can never
+                        pitched, an offering name is a CATEGORY and can never
                         be flat text, so it wears the same glyph + colour chip
                         it carries on the pipeline cards and sessions table.
                         A follow-up's task ("Follow up with …") is a sentence,

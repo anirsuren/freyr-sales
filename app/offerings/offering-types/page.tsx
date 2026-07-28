@@ -30,7 +30,7 @@ export default async function OfferingTypesPage() {
       </Link>
       <PageHeader
         title="Offering types"
-        subtitle="The master list of offering types — what Freyr sells, each with a plain-English description. Offerings are grouped and filtered by these."
+        subtitle="The master list of offering types: what Freyr sells, each with a plain-English description. Offerings are grouped and filtered by these."
       />
       <OfferingTypesManager
         offeringTypes={offeringTypes}

@@ -83,7 +83,7 @@ export function suggestForContact(input: {
     return {
       kind: "followup",
       title: `Send ${first} the scheduled follow-up`,
-      rationale: "A follow-up is due — draft the recap with a concrete next step.",
+      rationale: "A follow-up is due: draft the recap with a concrete next step.",
     };
   }
   if (!input.everContacted) {
@@ -97,13 +97,13 @@ export function suggestForContact(input: {
     return {
       kind: "reengage",
       title: `Multi-thread ${input.company}`,
-      rationale: `${first} is the only mapped contact — draft an intro to widen the thread and de-risk the deal.`,
+      rationale: `${first} is the only mapped contact: draft an intro to widen the thread and de-risk the deal.`,
     };
   }
   return {
     kind: "reengage",
     title: `Re-engage ${first} with a value nudge`,
-    rationale: "Keep momentum — send a relevant insight tied to their priorities.",
+    rationale: "Keep momentum: send a relevant insight tied to their priorities.",
   };
 }
 
@@ -111,17 +111,17 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
   const s = q.toLowerCase();
   const next = c.topAction
     ? `The top next step is: ${c.topAction}.`
-    : "There's no urgent action right now — keep nurturing.";
+    : "There's no urgent action right now: keep nurturing.";
 
   // Deliverable drafts — the account "Deliverables" rail hands these to the
   // agent to draft. Grounded ONLY in this account's real data; where we don't
   // have a fact (e.g. external market numbers) we flag what to check rather
   // than inventing it. Each is explicitly a first draft for the rep to edit.
-  const move = c.topAction || "Keep nurturing — no urgent move right now";
+  const move = c.topAction || "Keep nurturing: no urgent move right now";
   const dealWord = `${c.dealCount} open deal${c.dealCount === 1 ? "" : "s"}`;
   const threadLine =
     c.contactCount < 2
-      ? `Single-threaded${c.topContact ? ` on ${c.topContact}` : ""} — worth widening.`
+      ? `Single-threaded${c.topContact ? ` on ${c.topContact}` : ""}: worth widening.`
       : `${c.contactCount} contacts mapped${c.topContact ? `, e.g. ${c.topContact}` : ""}.`;
 
   // Draft/outreach requests on the read-only Ask panel — point to the action
@@ -132,12 +132,12 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
       s
     )
   ) {
-    return `I can draft that for ${c.company} — use “Draft it for me” on the account, or ask me in the main agent chat and I'll write it for your review. Nothing goes out until you approve it.`;
+    return `I can draft that for ${c.company}: use “Draft it for me” on the account, or ask me in the main agent chat and I'll write it for your review. Nothing goes out until you approve it.`;
   }
 
   if (/account brief/.test(s)) {
     return [
-      `Account brief — ${c.company}`,
+      `Account brief. ${c.company}`,
       ``,
       `• Health: ${c.healthLabel} (${c.healthScore}/100).`,
       `• Pipeline: ${dealWord} worth ${c.openValue}.`,
@@ -147,14 +147,14 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
       c.lastActivity ? `• Last activity: ${c.lastActivity}.` : null,
       `• Recommended next move: ${asClause(move)}.`,
       ``,
-      `A first draft from your live account data — edit before you share it.`,
+      `A first draft from your live account data: edit before you share it.`,
     ]
       .filter(Boolean)
       .join("\n");
   }
   if (/market (report|read|landscape)/.test(s)) {
     return [
-      `Market read — ${c.company}`,
+      `Market read. ${c.company}`,
       ``,
       `From your data:`,
       `• Standing: ${c.healthLabel} (${c.healthScore}/100), ${c.openValue} open across ${dealWord}.`,
@@ -162,22 +162,22 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
       ``,
       `Worth confirming before the next conversation:`,
       `• Recent regulatory guidance in their space that could shift submission timelines.`,
-      `• Whether they're expanding (hiring, new programs) — a signal of more workload.`,
+      `• Whether they're expanding (hiring, new programs): a signal of more workload.`,
       `• Any funding or pipeline milestones that raise their urgency.`,
       ``,
-      `A scaffold — I've flagged what to check rather than guessing at numbers.`,
+      `A scaffold. I've flagged what to check rather than guessing at numbers.`,
     ]
       .filter(Boolean)
       .join("\n");
   }
   if (/abm plan|account[- ]based/.test(s)) {
     return [
-      `ABM plan — ${c.company}`,
+      `ABM plan. ${c.company}`,
       ``,
       `Target: ${c.company} (${c.healthLabel}, ${c.openValue} open).`,
-      `Primary contact: ${c.topContact || `to identify — only ${c.contactCount} mapped`}.`,
+      `Primary contact: ${c.topContact || `to identify, only ${c.contactCount} mapped`}.`,
       c.contactCount < 2
-        ? `Gap: single-threaded — map 2–3 more stakeholders to de-risk.`
+        ? `Gap: single-threaded: map 2–3 more stakeholders to de-risk.`
         : null,
       ``,
       `Recommended motion:`,
@@ -185,23 +185,23 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
       `2. Multi-thread beyond ${c.topContact || "the primary contact"}.`,
       `3. Bring a relevant proof point (an offering or case study) to the next touch.`,
       ``,
-      `A first-pass plan from your account data — shape it to the deal.`,
+      `A first-pass plan from your account data: shape it to the deal.`,
     ]
       .filter(Boolean)
       .join("\n");
   }
   if (/slide outline|\bdeck\b|\bslides\b/.test(s)) {
     return [
-      `Slide outline — ${c.company}`,
+      `Slide outline. ${c.company}`,
       ``,
-      `1. Title — ${c.company} × Freyr`,
-      `2. Where things stand — ${c.healthLabel} (${c.healthScore}/100), ${c.openValue} open across ${dealWord}`,
-      `3. Why now — ${asClause(move)}`,
-      `4. Our fit — the offerings that match their needs`,
-      `5. Proof — a relevant result or case`,
-      `6. The ask — a clear next step${c.topContact ? ` with ${c.topContact}` : ""}`,
+      `1. Title. ${c.company} × Freyr`,
+      `2. Where things stand. ${c.healthLabel} (${c.healthScore}/100), ${c.openValue} open across ${dealWord}`,
+      `3. Why now. ${asClause(move)}`,
+      `4. Our fit: the offerings that match their needs`,
+      `5. Proof: a relevant result or case`,
+      `6. The ask: a clear next step${c.topContact ? ` with ${c.topContact}` : ""}`,
       ``,
-      `An outline to build the deck from — your real facts are slotted in.`,
+      `An outline to build the deck from: your real facts are slotted in.`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -247,7 +247,7 @@ export function answerAccountQuestion(q: string, c: AccountContext): string {
       : "No activity has been logged yet.";
   }
   // default: overview
-  return `${c.company} — ${c.healthLabel} health (${c.healthScore}/100), ${
+  return `${c.company} - ${c.healthLabel} health (${c.healthScore}/100), ${
     c.dealCount
   } deal${c.dealCount === 1 ? "" : "s"} (${c.openValue} open), ${
     c.contactCount
@@ -278,10 +278,10 @@ export function buildAccountBriefing(c: AccountContext): AccountBriefing {
 
   const healthPhrase = c.healthLabel.toLowerCase();
   const headline = atRisk
-    ? `${c.company} needs attention — ${healthPhrase}, with ${c.openValue} in open pipeline at stake.`
+    ? `${c.company} needs attention. ${healthPhrase}, with ${c.openValue} in open pipeline at stake.`
     : strong
-    ? `${c.company} is in good shape — ${healthPhrase}, with ${c.openValue} of open pipeline to grow.`
-    : `${c.company} is steady — ${healthPhrase} across ${c.dealCount} deal${
+    ? `${c.company} is in good shape. ${healthPhrase}, with ${c.openValue} of open pipeline to grow.`
+    : `${c.company} is steady. ${healthPhrase} across ${c.dealCount} deal${
         c.dealCount === 1 ? "" : "s"
       } (${c.openValue} open).`;
 
@@ -297,7 +297,7 @@ export function buildAccountBriefing(c: AccountContext): AccountBriefing {
         c.contactCount < 2
           ? `Single-threaded${
               c.topContact ? ` on ${c.topContact}` : ""
-            } — widen the relationship to de-risk.`
+            }: widen the relationship to de-risk.`
           : `${c.contactCount} contacts mapped${
               c.topContact ? `, e.g. ${c.topContact}` : ""
             }.`,
@@ -306,7 +306,7 @@ export function buildAccountBriefing(c: AccountContext): AccountBriefing {
       label: "Momentum",
       text: c.lastActivity
         ? `Last touch ${c.lastActivity}.`
-        : "No activity logged yet — open the relationship.",
+        : "No activity logged yet: open the relationship.",
     },
   ];
   if (c.competitor) {
@@ -315,7 +315,7 @@ export function buildAccountBriefing(c: AccountContext): AccountBriefing {
 
   const recommendation = c.topAction
     ? c.topAction
-    : "Keep nurturing — no urgent move right now.";
+    : "Keep nurturing: no urgent move right now.";
 
   const threadNote =
     c.contactCount < 2
@@ -341,8 +341,8 @@ export function buildDealBriefing(d: {
   topAction?: string;
 }): AccountBriefing {
   const headline = d.rotting
-    ? `${d.company} is cooling in ${d.stage} — ${d.staleDays} days since the last touch, ${d.value} at risk.`
-    : `${d.company} is in ${d.stage} — ${d.value} open, weighted to ${d.weighted} at ${d.winProb}% win odds.`;
+    ? `${d.company} is cooling in ${d.stage} - ${d.staleDays} days since the last touch, ${d.value} at risk.`
+    : `${d.company} is in ${d.stage} - ${d.value} open, weighted to ${d.weighted} at ${d.winProb}% win odds.`;
 
   const reads: { label: string; text: string }[] = [
     { label: "Stage", text: `${d.stage} · ${d.winProb}% win probability.` },
@@ -350,14 +350,14 @@ export function buildDealBriefing(d: {
     {
       label: "Momentum",
       text: d.rotting
-        ? `Cooling — ${d.staleDays} days since the last activity.`
+        ? `Cooling. ${d.staleDays} days since the last activity.`
         : `${d.staleDays} day${d.staleDays === 1 ? "" : "s"} since the last activity.`,
     },
     {
       label: "Next step",
       text: d.nextStep
         ? `Scheduled for ${d.nextStep}.`
-        : "Nothing scheduled — set the next step.",
+        : "Nothing scheduled: set the next step.",
     },
   ];
 
@@ -403,7 +403,7 @@ export function buildContactBriefing(c: {
     : c.lastContacted
     ? `last touched ${c.lastContacted}`
     : "no recent activity";
-  const headline = `${first} — ${role}. ${
+  const headline = `${first} - ${role}. ${
     momentum.charAt(0).toUpperCase() + momentum.slice(1)
   }.`;
 
@@ -411,7 +411,7 @@ export function buildContactBriefing(c: {
     { label: "Role", text: c.jobTitle ? `${c.jobTitle}.` : "Role not on file." },
     {
       label: "Style",
-      text: c.engageTip ? `${c.buyingStyle} — ${c.engageTip}.` : `${c.buyingStyle}.`,
+      text: c.engageTip ? `${c.buyingStyle} - ${c.engageTip}.` : `${c.buyingStyle}.`,
     },
     {
       label: "Momentum",
@@ -419,13 +419,13 @@ export function buildContactBriefing(c: {
         ? `Follow-up due ${c.nextStep}.`
         : c.lastContacted
         ? `Last touched ${c.lastContacted}.`
-        : "No outreach logged yet — open the relationship.",
+        : "No outreach logged yet: open the relationship.",
     },
     {
       label: "Threading",
       text:
         c.siblingCount < 1
-          ? "Only mapped contact at the account — widen the thread to de-risk."
+          ? "Only mapped contact at the account: widen the thread to de-risk."
           : `${c.siblingCount} other contact${
               c.siblingCount === 1 ? "" : "s"
             } mapped at ${c.company}.`,
@@ -472,7 +472,7 @@ export function buildDigest(input: {
   if (acts) parts.push(`${acts} one-click action${acts === 1 ? "" : "s"}`);
   const didSummary = parts.length
     ? `I've run ${parts.join(", ")} for you.`
-    : "I haven't run anything yet — set a goal and I'll get to work.";
+    : "I haven't run anything yet: set a goal and I'll get to work.";
 
   const needsApproval = input.actions.filter(
     (a) => !DRAFTABLE.includes(a.kind)
@@ -538,20 +538,20 @@ export function buildActDraft(
 
   if (kind === "stabilize") {
     return {
-      title: `Recovery plan — ${company}`,
+      title: `Recovery plan. ${company}`,
       body: [
         `RECOVERY PLAN · ${company}`,
         ``,
-        `Signal: engagement has cooled and the account is trending at-risk. A focused, human plan to stabilize it — the agent will draft each touch for your approval, nothing sends on its own.`,
+        `Signal: engagement has cooled and the account is trending at-risk. A focused, human plan to stabilize it: the agent will draft each touch for your approval, nothing sends on its own.`,
         ``,
         `1. Reconnect this week`,
-        `   • Send ${first} a short, value-first note — no ask, just a relevant insight.`,
+        `   • Send ${first} a short, value-first note: no ask, just a relevant insight.`,
         ``,
         `2. Widen the relationship`,
         `   • Add a second stakeholder beyond ${fullName || "the primary contact"} so the deal isn't single-threaded.`,
         ``,
         `3. Re-set a concrete next step`,
-        `   • Propose a specific working session with a date — not an open-ended "let's catch up."`,
+        `   • Propose a specific working session with a date: not an open-ended "let's catch up."`,
         ``,
         `4. Bring value`,
         `   • Share one piece of ${industry || "regulatory"} guidance or a relevant customer result.`,
@@ -563,7 +563,7 @@ export function buildActDraft(
 
   if (kind === "reengage") {
     return {
-      title: `Re-engagement email — ${company}`,
+      title: `Re-engagement email. ${company}`,
       body: [
         `Subject: A quick, relevant note for ${company}`,
         ``,
@@ -581,16 +581,16 @@ export function buildActDraft(
         `${rep}`,
         `Freyr Solutions`,
         ``,
-        `— First draft from your live account data. Edit before you send; I'll check back by ${dueLabel}.`,
+        `, First draft from your live account data. Edit before you send; I'll check back by ${dueLabel}.`,
       ].join("\n"),
     };
   }
 
   // followup (default)
   return {
-    title: `Follow-up email — ${company}`,
+    title: `Follow-up email. ${company}`,
     body: [
-      `Subject: Following up — next steps for ${company}`,
+      `Subject: Following up: next steps for ${company}`,
       ``,
       `Hi ${first},`,
       ``,
@@ -598,7 +598,7 @@ export function buildActDraft(
       ``,
       `Where things stand`,
       `• ${context}`,
-      `• You flagged timeline as the priority — that's where we can help most.`,
+      `• You flagged timeline as the priority: that's where we can help most.`,
       ``,
       `Proposed next step`,
       `• A 30-minute working session to map your submission timeline to our team's capacity.`,
@@ -610,7 +610,7 @@ export function buildActDraft(
       `${rep}`,
       `Freyr Solutions`,
       ``,
-      `— First draft from your live account data. Edit before you send.`,
+      `, First draft from your live account data. Edit before you send.`,
     ].join("\n"),
   };
 }
@@ -634,7 +634,7 @@ export function playRunSteps(company: string): AgentRunStep[] {
     },
     {
       label: "Saved to the account timeline",
-      detail: "Ready for you to review and send — nothing sent",
+      detail: "Ready for you to review and send: nothing sent",
       status: "done",
     },
     {
@@ -652,7 +652,7 @@ export function autopilotRunSteps(
   return [
     ...handled.map((t) => ({
       label: t,
-      detail: "Drafted and saved to the timeline — review and send when you're ready. Nothing sent.",
+      detail: "Drafted and saved to the timeline: review and send when you're ready. Nothing sent.",
       status: "done" as const,
     })),
     ...escalated.map((t) => ({
@@ -1116,7 +1116,7 @@ export function nextBestActions(input: {
         kind: "approve",
         title: `Approve the pitch for ${co}`,
         rationale:
-          "The pitch is written and waiting on your compliance sign-off — approve it and it can go out, or send it back with a note.",
+          "The pitch is written and waiting on your compliance sign-off: approve it and it can go out, or send it back with a note.",
         href: `/sessions/${s.id}`,
         cta: "Review",
         customerId: s.customer_id,
@@ -1133,7 +1133,7 @@ export function nextBestActions(input: {
         kind: "send",
         title: `Send the approved pitch to ${co}`,
         rationale:
-          "Compliance cleared this pitch — it's ready to go out. Open it to review the final copy and send.",
+          "Compliance cleared this pitch: it's ready to go out. Open it to review the final copy and send.",
         href: `/sessions/${s.id}`,
         cta: "Open",
         customerId: s.customer_id,
@@ -1153,7 +1153,7 @@ export function nextBestActions(input: {
         title: `Re-engage ${d.company}`,
         rationale: `No activity in ${d.staleDays} days on a ${formatMoney(
           d.value
-        )} deal sitting at "${d.stage}" — it's going cold. Draft a value nudge to bring it back.`,
+        )} deal sitting at "${d.stage}": it's going cold. Draft a value nudge to bring it back.`,
         href: `/deals/${d.sessionId}`,
         cta: "Open deal",
         customerId: d.customerId,
@@ -1178,7 +1178,7 @@ export function nextBestActions(input: {
         kind: "stabilize",
         title: `Stabilize ${c.company_name}`,
         rationale: `${c.company_name}'s health has slipped to ${h.score}/100${
-          h.factors[0]?.label ? ` — ${h.factors[0].label.toLowerCase()}` : ""
+          h.factors[0]?.label ? `, ${h.factors[0].label.toLowerCase()}` : ""
         }. Step in with a stabilizing touch before the relationship cools.`,
         href: `/customers/${c.id}`,
         cta: "View",

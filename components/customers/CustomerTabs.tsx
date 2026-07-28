@@ -404,7 +404,7 @@ export function CustomerTabs({
       });
       const data = await res.json();
       if (!res.ok) {
-        toast(data?.error || "Could not save — try again", "error");
+        toast(data?.error || "Could not save: try again", "error");
         return null;
       }
       if (data?.customer) {
@@ -414,7 +414,7 @@ export function CustomerTabs({
       }
       return data?.customer;
     } catch {
-      toast("Could not save — try again");
+      toast("Could not save: try again");
       return null;
     }
   }
@@ -547,11 +547,11 @@ export function CustomerTabs({
   const insights = [
     {
       tag: "Regulatory",
-      title: `Check for recent ${customer.industry || "industry"} guidance that could tighten their submission timelines — a timely reason to reach out.`,
+      title: `Check for recent ${customer.industry || "industry"} guidance that could tighten their submission timelines: a timely reason to reach out.`,
     },
     {
       tag: "Hiring",
-      title: `See whether ${shortName} is hiring in regulatory affairs — a growing team often means more submission workload they may need help with.`,
+      title: `See whether ${shortName} is hiring in regulatory affairs: a growing team often means more submission workload they may need help with.`,
     },
   ];
 
@@ -587,7 +587,7 @@ export function CustomerTabs({
         {tab === "overview" && (
           <div className="space-y-6">
             {/* Identity FIRST (Anir's audit): who this account IS leads the
-                page; the agent's read follows right after — kept, not cut. */}
+                page; the agent's read follows right after, kept, not cut. */}
             <Card>
               <h3 className="text-[15px] font-semibold text-text-primary mb-3">
                 About this account
@@ -596,7 +596,7 @@ export function CustomerTabs({
                   220px floor and the row drops to two columns, then one, rather
                   than squeezing values into each other. Every cell is min-w-0 so
                   a long value shrinks its own column instead of overflowing into
-                  its neighbour — which is exactly how Geography ended up sitting
+                  its neighbour, which is exactly how Geography ended up sitting
                   on top of Website. */}
               <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-6 gap-y-4 mb-4">
                 <div className="flex items-start gap-2 min-w-0">
@@ -612,7 +612,7 @@ export function CustomerTabs({
                         color={industryMeta(customer.industry).color}
                       />
                     ) : (
-                      <p className="text-[14px] text-text-primary">—</p>
+                      <p className="text-[14px] text-text-primary">-</p>
                     )}
                   </div>
                 </div>
@@ -623,7 +623,7 @@ export function CustomerTabs({
                     {customer.geography ? (
                       <GeographyValue value={customer.geography} />
                     ) : (
-                      <p className="text-[14px] text-text-primary">—</p>
+                      <p className="text-[14px] text-text-primary">-</p>
                     )}
                   </div>
                 </div>
@@ -641,7 +641,7 @@ export function CustomerTabs({
                         {customer.website_url.replace(/^https?:\/\//, "")}
                       </a>
                     ) : (
-                      <p className="text-[14px] text-text-primary">—</p>
+                      <p className="text-[14px] text-text-primary">-</p>
                     )}
                   </div>
                 </div>
@@ -649,7 +649,7 @@ export function CustomerTabs({
               {/* No customer-type chip here. Its family half is the SAME word
                   as the Industry chip directly above it, so a classified pharma
                   account showed "Pharmaceutical" twice, one under the other
-                  (Suren, Jul 27: "where are the tags?… same thing" — one chip,
+                  (Suren, Jul 27: "where are the tags?… same thing", one chip,
                   once). Customer type now has one home: the colour + icon chip
                   on the Company profile card below, where it sits beside
                   Ownership and Revenue and carries its full value. */}
@@ -660,7 +660,7 @@ export function CustomerTabs({
 
             {/* Account analytics — what a rep needs to read the relationship at a
                 glance (Suren: "imagine I was a sales agent looking at this
-                customer — what would I need to see?"): how health is trending and
+                customer, what would I need to see?"): how health is trending and
                 how our touches have actually landed. */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="flex flex-col">
@@ -852,7 +852,7 @@ export function CustomerTabs({
                 })}
                 {valueProps.length === 0 && (
                   <p className="text-[13px] text-text-secondary">
-                    No matched services yet — generate a session.
+                    No matched services yet, generate a session.
                   </p>
                 )}
               </div>
@@ -867,7 +867,7 @@ export function CustomerTabs({
                 </span>
               </h3>
               <p className="text-[12px] text-text-tertiary mb-3">
-                Agent-suggested things worth checking before you reach out — verify before you rely on them.
+                Agent-suggested things worth checking before you reach out, verify before you rely on them.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {insights.map((ins, i) => (
@@ -1455,7 +1455,7 @@ export function CustomerTabs({
         {tab === "notes" && (
           <div className="space-y-6">
             {/* Header + single "Add note" button. The composer is a popup now
-                (Suren, Jul 8) — no always-open textarea box cluttering the tab. */}
+                (Suren, Jul 8), no always-open textarea box cluttering the tab. */}
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-semibold text-text-primary">
@@ -1705,7 +1705,7 @@ export function CustomerTabs({
               </h3>
               {atts.length === 0 && (
                 <p className="text-[12px] text-text-tertiary">
-                  Nothing attached yet — use the Attach button above.
+                  Nothing attached yet, use the Attach button above.
                 </p>
               )}
               {atts.length > 0 && (
@@ -1881,7 +1881,7 @@ export function CustomerTabs({
                 {interactions[0] ? (
                   <OutcomeBadge outcome={interactions[0].outcome} />
                 ) : (
-                  <span className="text-[13px] text-text-tertiary">—</span>
+                  <span className="text-[13px] text-text-tertiary">-</span>
                 )}
               </dd>
             </div>
@@ -1988,7 +1988,7 @@ export function CustomerTabs({
                   autoFocus
                   value={dealForm.name}
                   onChange={(e) => set("name", e.target.value)}
-                  placeholder="e.g. EU MDR remediation — 2026"
+                  placeholder="e.g. EU MDR remediation. 2026"
                   className={fld}
                 />
               </div>

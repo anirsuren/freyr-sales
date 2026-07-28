@@ -332,7 +332,7 @@ export default async function VoiceAgentPage({
     label: call.contact_name,
     meta: call.company || "Account",
     outcome: call.outcome || undefined,
-    value: call.duration_secs ? fmtLen(call.duration_secs) : "—",
+    value: call.duration_secs ? fmtLen(call.duration_secs) : "-",
     href: `/voice/c/${call.conversation_id || call.id}`,
     avatar: call.contact_name,
   }));
@@ -396,7 +396,7 @@ export default async function VoiceAgentPage({
           called.length) *
           100
       )}%`
-    : "—";
+    : "-";
 
   const tiles: {
     label: string;
@@ -477,7 +477,7 @@ export default async function VoiceAgentPage({
                     : "text-warning bg-warning/10"
                 )}
               >
-                {status.phoneConnected ? "Live" : "Ready — awaiting number"}
+                {status.phoneConnected ? "Live" : "Ready: awaiting number"}
               </span>
             </div>
             <p className="text-[14px] text-text-secondary mt-0.5">
@@ -488,8 +488,8 @@ export default async function VoiceAgentPage({
                 Their line:{" "}
                 <span className="font-semibold text-text-primary tnum">
                   {formatPhone(line.number)}
-                </span>{" "}
-                — call it and {persona.name} answers; outbound runs from it too.
+                </span>
+               , call it and {persona.name} answers; outbound runs from it too.
               </p>
             )}
           </div>
@@ -637,7 +637,7 @@ export default async function VoiceAgentPage({
         {convos.length === 0 && called.length === 0 && waiting.length === 0 ? (
           <Card>
             <p className="text-[13px] text-text-secondary">
-              Nothing yet — call{" "}
+              Nothing yet, call{" "}
               {line ? (
                 <span className="font-semibold text-text-primary tnum">
                   {formatPhone(line.number)}
@@ -672,7 +672,7 @@ export default async function VoiceAgentPage({
                         {c.direction === "inbound" ? "Inbound call" : "Outbound call"}
                         <span className="text-text-tertiary font-normal">
                           {" "}
-                          · {c.message_count ?? "—"} turns
+                          · {c.message_count ?? "-"} turns
                         </span>
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
@@ -694,14 +694,14 @@ export default async function VoiceAgentPage({
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
-                        {c.call_duration_secs ? fmtLen(c.call_duration_secs) : "—"}
+                        {c.call_duration_secs ? fmtLen(c.call_duration_secs) : "-"}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap">
                         {c.start_time_unix_secs
                           ? formatDateTime(
                               new Date(c.start_time_unix_secs * 1000).toISOString()
                             )
-                          : "—"}
+                          : "-"}
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <Link
@@ -773,7 +773,7 @@ export default async function VoiceAgentPage({
                         })()}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
-                        {q.duration_secs ? fmtLen(q.duration_secs) : "—"}
+                        {q.duration_secs ? fmtLen(q.duration_secs) : "-"}
                       </td>
                       <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap">
                         {formatDateTime(q.created_at)}
@@ -804,7 +804,7 @@ export default async function VoiceAgentPage({
           What {persona.name} knows ({offerings.length})
         </h2>
         <p className="text-[12px] text-text-tertiary mb-3">
-          Every offering in {persona.category} — the knowledge behind the calls.
+          Every offering in {persona.category}, the knowledge behind the calls.
         </p>
         <div className="flex flex-wrap gap-1.5">
           {offerings.map((o) => (

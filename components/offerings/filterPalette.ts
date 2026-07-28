@@ -26,25 +26,29 @@
 //      or chip accent, and darkening them into brown is banned too — so the
 //      tail was rehued instead of reordered. Slots 8 and 9 are the ONLY two
 //      that changed; 0-7 keep the colours the six categories already wear.
+//   6. NO STATUS COLOUR AT ALL (Anir, Jul 28). Red, green and yellow are
+//      reserved in this app for meaning: red is a problem, green is healthy,
+//      #C2410C is caution. A category is an IDENTITY, so a category chip must
+//      never borrow one. "Submissions and Document Operations" was shipping in
+//      rose and "Global Regulatory Intelligence" in emerald, so two perfectly
+//      healthy categories read as an error and an all-clear. His words: "you
+//      have to understand that red means horrible, red means negative... colors
+//      like red, green, and yellow are reserved for actually signifying
+//      something else. The purple is fine, obviously, because that's a neutral
+//      color." Rose, emerald, orange and forest are gone; the wheel now runs
+//      through blues, purples, cyans, pinks and slate only, still keeping
+//      rule 1 (no two hue-neighbours within three slots).
 export const FILTER_PALETTE = [
-  "#2563EB", // blue        · 220°
-  "#E11D48", // rose        · 348°
-  "#059669", // emerald     · 160°  (blue-green)
-  "#7C3AED", // violet      · 265°
-  "#EA580C", // orange      ·  22°  (deep enough to read as text, still orange)
-  "#0891B2", // cyan        · 192°
-  "#C026D3", // fuchsia     · 292°
-  "#4F46E5", // indigo      · 244°
-  "#166534", // forest      · 145°  (was amber; 7.1:1 on white, 47° clear of
-  //                                 every hue within three slots — with yellow
-  //                                 gone, 95°-192° is the only clean window
-  //                                 left. Second green is allowed by rule 2:
-  //                                 emerald sits six slots away and is far
-  //                                 lighter, so they never read as one colour.)
-  "#9E1A72", // magenta     · 320°  (was lime; 7.4:1 on white, and the widest
-  //                                 remaining gap — 28° from both fuchsia and
-  //                                 rose, and much darker than either, so the
-  //                                 three never collapse into one pink.)
+  "#2563EB", // blue         · 220°
+  "#C026D3", // fuchsia      · 292°
+  "#0891B2", // cyan         · 192°
+  "#4F46E5", // indigo       · 244°
+  "#9E1A72", // magenta      · 320°
+  "#0EA5E9", // sky          · 199°
+  "#7C3AED", // violet       · 265°
+  "#0F766E", // dark teal    · 178°  (blue-green, never reads as "healthy")
+  "#475569", // slate        · 215°  (neutral, 7.5:1 on white)
+  "#DB2777", // pink         · 333°
 ];
 
 export const listAccent = (i: number) =>

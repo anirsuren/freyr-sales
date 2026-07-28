@@ -19,13 +19,13 @@ export function cn(
 }
 
 export function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "-";
   try {
     const d = typeof value === "string" ? parseISO(value) : value;
-    if (!isValid(d)) return "—";
+    if (!isValid(d)) return "-";
     return format(d, "MMM d, yyyy");
   } catch {
-    return "—";
+    return "-";
   }
 }
 
@@ -45,10 +45,10 @@ export function formatTime(value: string | null | undefined): string {
 // Human "time ago" for recency labels (e.g. "2h ago", "3d ago"). Falls back to
 // an absolute date for anything older than ~4 weeks so it stays meaningful.
 export function timeAgo(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "-";
   try {
     const d = typeof value === "string" ? parseISO(value) : value;
-    if (!isValid(d)) return "—";
+    if (!isValid(d)) return "-";
     const secs = Math.floor((Date.now() - d.getTime()) / 1000);
     if (secs < 60) return "just now";
     const mins = Math.floor(secs / 60);
@@ -59,24 +59,24 @@ export function timeAgo(value: string | null | undefined): string {
     if (days < 28) return `${days}d ago`;
     return formatDate(value);
   } catch {
-    return "—";
+    return "-";
   }
 }
 
 export function formatDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "-";
   try {
     const d = parseISO(value);
-    if (!isValid(d)) return "—";
+    if (!isValid(d)) return "-";
     return format(d, "MMM d, yyyy • h:mm a");
   } catch {
-    return "—";
+    return "-";
   }
 }
 
 // "+15072487204" → "+1 507-248-7204" — dashes make numbers readable (Anir).
 export function formatPhone(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const digits = value.replace(/\D/g, "");
   if (digits.length === 11 && digits.startsWith("1")) {
     return `+1 ${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
@@ -181,7 +181,7 @@ export const OUTCOME_META: Record<
 export const OUTCOME_CHART_COLOR: Record<string, string> = {
   interested: "#34C759", // bright green
   meeting_booked: "#0A84FF", // bright blue
-  in_progress: "#FFCC00", // bright yellow — the mustard band stays banned
+  in_progress: "#FFCC00", // bright yellow, the mustard band stays banned
   not_interested: "#FF453A", // bright red
   no_response: "#AF9BF5", // soft violet (never gray)
   ai_call_completed: "#0A84FF",

@@ -117,11 +117,11 @@ export function ContactOutreachPanel({
         : message;
     if (await copyText(text)) {
       setCopied(true);
-      toast("Copied — paste it into LinkedIn / your email and send.");
+      toast("Copied: paste it into LinkedIn / your email and send.");
       setTimeout(() => setCopied(false), 1500);
       return;
     }
-    toast("Couldn't copy — select the text manually.", "error");
+    toast("Couldn't copy: select the text manually.", "error");
   }
 
   async function queueCall() {
@@ -137,8 +137,8 @@ export function ContactOutreachPanel({
       if (data.ok) {
         toast(
           data.status === "called"
-            ? "Calling now — the voice agent is dialing."
-            : "Queued — the agent will dial as soon as a phone number is connected."
+            ? "Calling now: the voice agent is dialing."
+            : "Queued: the agent will dial as soon as a phone number is connected."
         );
         setMode(null);
       } else {
@@ -267,7 +267,7 @@ export function ContactOutreachPanel({
                 {offerings.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.name}
-                    {o.score >= 2 ? " — strong match" : ""}
+                    {o.score >= 2 ? ": strong match" : ""}
                   </option>
                 ))}
               </select>
@@ -294,7 +294,7 @@ export function ContactOutreachPanel({
                 <span className="font-semibold text-text-primary">
                   {selected?.category || selected?.type || "offering"}
                 </span>{" "}
-                voice agent calls {firstName} about this offering — it knows the
+                voice agent calls {firstName} about this offering, it knows the
                 category, the description and the Freyr context.
               </p>
               <p
@@ -305,7 +305,7 @@ export function ContactOutreachPanel({
                 }`}
               >
                 {voiceWired
-                  ? "Agents are wired — no phone number is connected yet, so the call queues until one is."
+                  ? "Agents are wired: no phone number is connected yet, so the call queues until one is."
                   : "Voice agents aren't configured in this environment yet."}
               </p>
               <div className="flex justify-end">
@@ -343,13 +343,13 @@ export function ContactOutreachPanel({
                 >
                   {draft.kind === "linkedin" && draft.limit
                     ? `${message.length}/${draft.limit} characters${
-                        overLimit ? " — over LinkedIn's note limit" : ""
+                        overLimit ? ", over LinkedIn's note limit" : ""
                       }`
                     : `${message.split(/\s+/).filter(Boolean).length} words`}
                   {" · "}
                   {draft.source === "claude" ? "AI-personalized" : "template"}
                   {" · "}
-                  Nothing sends from here — copy it and send it yourself.
+                  Nothing sends from here, copy it and send it yourself.
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -385,7 +385,7 @@ export function ContactOutreachPanel({
             </span>
             <p className="text-[13.5px] text-text-secondary max-w-[360px] leading-relaxed">
               Classify {companyName} and every offering that fits {firstName}&apos;s
-              role shows up here — ready to pitch.
+              role shows up here, ready to pitch.
             </p>
             <Link
               href={`/customers/${customerId}?tab=offerings`}
@@ -445,7 +445,7 @@ export function ContactOutreachPanel({
           ))}
           {offerings.length > 8 && customerId && (
             <p className="pt-2.5 text-[12px] text-text-tertiary">
-              Showing the top 8 of {offerings.length} —{" "}
+              Showing the top 8 of {offerings.length},{" "}
               <Link
                 href={`/customers/${customerId}?tab=offerings`}
                 className="font-semibold text-blue-primary hover:underline"

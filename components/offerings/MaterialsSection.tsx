@@ -3,14 +3,13 @@
 import { useState } from "react";
 import {
   ExternalLink,
-  FileText,
+  Files,
   FilterX,
-  Presentation,
-  Shapes,
-  Video,
+  Route,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
 import { timeAgo } from "@/lib/utils";
 import {
@@ -18,75 +17,66 @@ import {
   ACCESS_LEVEL_META,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
+  MATERIAL_COLOR,
+  MATERIAL_FORMATS,
+  MATERIAL_FORMAT_META,
   MATERIAL_ICON,
-  MATERIAL_META,
-  type AccessLevel,
-  type JourneyStage,
-  type MaterialKind,
+  legacyKindLabel,
+  materialFormat,
+  type MaterialFormat,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 
-const KIND_ORDER: MaterialKind[] = [
-  "video",
-  "presentation",
-  "whitepaper",
-  "pricing",
-  "case_study",
-  "reference",
-  "competition",
-  "one_pager",
-  "datasheet",
-];
-
-// CR-2: the nine material kinds roll up into four file-format buckets for
-// filtering. "Others" catches everything that isn't a deck, a video, or a
-// written document (pricing, battle cards, reference calls, unknown kinds).
-type FormatBucket = "ppt" | "video" | "doc" | "other";
-const FORMAT_BUCKETS: FormatBucket[] = ["ppt", "video", "doc", "other"];
-const FORMAT_META: Record<FormatBucket, { label: string; color: string; icon: LucideIcon }> = {
-  ppt: { label: "PPT", color: "#0071E3", icon: Presentation }, // blue
-  video: { label: "Video", color: "#E11D48", icon: Video }, // rose
-  doc: { label: "Document", color: "#7C3AED", icon: FileText }, // violet
-  other: { label: "Others", color: "#4F46E5", icon: Shapes }, // indigo
+// Rows run Video → Presentation → Document → Others, and within a format they
+// keep the order the offering owner put them in. A sort (not a per-kind loop)
+// is deliberate: the old version rendered one bucket per known kind, so a kind
+// nobody had listed would have disappeared from the page entirely.
+const FORMAT_RANK: Record<MaterialFormat, number> = {
+  video: 0,
+  presentation: 1,
+  document: 2,
+  other: 3,
 };
-function bucketOf(kind: MaterialKind): FormatBucket {
-  if (kind === "presentation") return "ppt";
-  if (kind === "video") return "video";
-  if (
-    kind === "whitepaper" ||
-    kind === "case_study" ||
-    kind === "one_pager" ||
-    kind === "datasheet"
-  )
-    return "doc";
-  return "other";
-}
 
-// A small colour + icon tag pill (never gray, never bare text). Missing tags
-// render nothing at the call site — no broken pill for untagged materials.
+// A colour + icon tag pill (standing rule: never flat gray, never bare text).
+// `solid` is reserved for the one tag a seller must never misread.
 function TagPill({
   label,
   color,
   icon: Icon,
+  variant = "tint",
+  title,
 }: {
   label: string;
   color: string;
   icon: LucideIcon;
+  variant?: "tint" | "outline" | "solid";
+  title?: string;
 }) {
+  const style =
+    variant === "solid"
+      ? { background: color, color: "#FFFFFF" }
+      : variant === "outline"
+        ? { color, borderColor: `${color}66` }
+        : { background: `${color}14`, color };
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-none"
-      style={{ background: `${color}14`, color }}
+      title={title}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-none ${
+        variant === "outline" ? "border bg-transparent" : ""
+      } ${variant === "solid" ? "tracking-[0.04em] uppercase" : ""}`}
+      style={style}
     >
-      <Icon size={10} strokeWidth={2.2} />
+      <Icon size={10} strokeWidth={variant === "solid" ? 2.6 : 2.2} />
       {label}
     </span>
   );
 }
 
-// The Sales materials list with the three multi-select filters (CR-2): file
-// format, buyer's-journey stage, and access level. Within a filter the picks
-// OR together; across filters they AND. No selection in a filter = show all.
+// The Sales materials list: every file's format, buyer's-journey stage and
+// access level on the row (item 2), over three multi-select filters (item 3).
+// Within a filter the picks OR together; across filters they AND. No selection
+// in a filter = no restriction.
 export function MaterialsSection({
   materials,
   action,
@@ -95,20 +85,24 @@ export function MaterialsSection({
   /** Rendered at the right end of the filter row (the "+" add button). */
   action?: React.ReactNode;
 }) {
-  // Arrays, not single strings: each filter now accepts ANY COMBINATION of
-  // its values (change-log row 3, Saras — "PPT and Video together"). Empty
-  // array = no restriction. Within a filter picks OR; across filters AND.
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
 
   const anyFilter = formats.length > 0 || stages.length > 0 || levels.length > 0;
-  const visible = materials.filter((m) => {
-    if (formats.length && !formats.includes(bucketOf(m.kind))) return false;
-    if (stages.length && !stages.includes(m.journeyStage ?? "")) return false;
-    if (levels.length && !levels.includes(m.accessLevel ?? "")) return false;
-    return true;
-  });
+  const visible = materials
+    .filter((m) => {
+      if (formats.length && !formats.includes(materialFormat(m.kind))) return false;
+      // An untagged material matches only "no restriction" — it is never
+      // counted into a stage or an access level nobody recorded for it.
+      if (stages.length && !stages.includes(m.journeyStage ?? "")) return false;
+      if (levels.length && !levels.includes(m.accessLevel ?? "")) return false;
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        FORMAT_RANK[materialFormat(a.kind)] - FORMAT_RANK[materialFormat(b.kind)]
+    );
 
   const clear = () => {
     setFormats([]);
@@ -121,52 +115,54 @@ export function MaterialsSection({
       {/* One row of three compact dropdowns — the app-wide filter pattern.
           Twelve loose chips across two-and-a-half wrapping rows read as chaos,
           and "Access level" landed wherever the wrap dropped it (Anir, Jul 25:
-          "so disorganized… why is access level on the same row as that?"). */}
+          "so disorganized… why is access level on the same row as that?").
+          All three are ALWAYS rendered, even when every material shares one
+          value: a control that appears and disappears reads as broken. */}
       <div className="flex flex-wrap items-center gap-2">
         <MultiColorSelect
           values={formats}
           onChange={setFormats}
           minWidth={150}
           allLabel="All formats"
+          allIcon={Files}
+          allColor="#0071E3"
           ariaLabel="Filter by file format"
-          options={[
-            ...FORMAT_BUCKETS.map((b) => ({
-              value: b,
-              label: FORMAT_META[b].label,
-              color: FORMAT_META[b].color,
-              icon: FORMAT_META[b].icon,
-            })),
-          ]}
+          options={MATERIAL_FORMATS.map((f) => ({
+            value: f,
+            label: MATERIAL_FORMAT_META[f].label,
+            color: MATERIAL_FORMAT_META[f].color,
+            icon: MATERIAL_FORMAT_META[f].icon,
+          }))}
         />
         <MultiColorSelect
           values={stages}
           onChange={setStages}
           minWidth={170}
           allLabel="All journey stages"
+          allIcon={Route}
+          allColor="#7C3AED"
           ariaLabel="Filter by buyer's journey stage"
-          options={[
-            ...JOURNEY_STAGES.map((s) => ({
-              value: s,
-              label: JOURNEY_STAGE_META[s].label,
-              color: JOURNEY_STAGE_META[s].color,
-              icon: JOURNEY_STAGE_META[s].icon,
-            })),
-          ]}
+          options={JOURNEY_STAGES.map((s) => ({
+            value: s,
+            label: JOURNEY_STAGE_META[s].label,
+            color: JOURNEY_STAGE_META[s].color,
+            icon: JOURNEY_STAGE_META[s].icon,
+          }))}
         />
         <MultiColorSelect
           values={levels}
           onChange={setLevels}
           minWidth={160}
           allLabel="All access levels"
+          allIcon={ShieldCheck}
+          allColor="#0F766E"
           ariaLabel="Filter by access level"
-          options={[
-            ...ACCESS_LEVELS.map((l) => ({
-              value: l,
-              label: ACCESS_LEVEL_META[l].label,
-              color: ACCESS_LEVEL_META[l].color,
-              icon: ACCESS_LEVEL_META[l].icon,
-            })),
-          ]}
+          options={ACCESS_LEVELS.map((l) => ({
+            value: l,
+            label: ACCESS_LEVEL_META[l].label,
+            color: ACCESS_LEVEL_META[l].color,
+            icon: ACCESS_LEVEL_META[l].icon,
+          }))}
         />
         {/* Add lives on the same row as the filters (Anir: "put this filter
             inline with the add button"). */}
@@ -176,14 +172,15 @@ export function MaterialsSection({
       {/* Live count + one-click reset */}
       <div className="mt-3 flex items-center justify-between gap-3">
         <p className="text-[12px] text-text-secondary" aria-live="polite">
-          Showing {visible.length} of {materials.length}{" "}
+          Showing <span className="tnum font-semibold">{visible.length}</span> of{" "}
+          <span className="tnum font-semibold">{materials.length}</span>{" "}
           {materials.length === 1 ? "material" : "materials"}
         </p>
         {anyFilter && (
           <button
             type="button"
             onClick={clear}
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+            className="inline-flex cursor-pointer items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
           >
             <FilterX size={12} strokeWidth={2.2} /> Clear filters
           </button>
@@ -192,90 +189,138 @@ export function MaterialsSection({
 
       {visible.length === 0 ? (
         <p className="mt-3 border-y border-border-light py-5 text-[13px] text-text-tertiary">
-          Nothing matches those filters — clear one to see the rest of the
-          materials.
+          None of the {materials.length}{" "}
+          {materials.length === 1 ? "material" : "materials"} on this offering
+          match all three filters, clear one to see the rest.
         </p>
       ) : (
         <div className="mt-3 border-y border-border-light divide-y divide-border-light">
-          {KIND_ORDER.flatMap((kind) =>
-            visible
-              .filter((material) => material.kind === kind)
-              .map((material) => {
-                const Icon = MATERIAL_ICON[kind];
-                const stage = material.journeyStage
-                  ? JOURNEY_STAGE_META[material.journeyStage]
-                  : null;
-                const level = material.accessLevel
-                  ? ACCESS_LEVEL_META[material.accessLevel]
-                  : null;
-                return (
-                  <a
-                    key={material.id}
-                    href={material.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex min-h-[64px] items-center gap-3 px-1 py-3 hover:bg-blue-light/30 transition-colors"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
-                      <Icon size={16} strokeWidth={1.8} />
+          {visible.map((material) => {
+            const format = materialFormat(material.kind);
+            const formatMeta = MATERIAL_FORMAT_META[format];
+            const Icon = MATERIAL_ICON[material.kind] ?? formatMeta.icon;
+            // What this file was uploaded as, back when the picker offered
+            // nine types. Shown only when it says more than the format does.
+            const originalKind = legacyKindLabel(material.kind);
+            const stage = material.journeyStage
+              ? JOURNEY_STAGE_META[material.journeyStage]
+              : null;
+            const level = material.accessLevel
+              ? ACCESS_LEVEL_META[material.accessLevel]
+              : null;
+            const internal = material.accessLevel === "internal_only";
+            return (
+              <a
+                key={material.id}
+                href={material.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex min-h-[64px] cursor-pointer items-center gap-3 border-l-2 px-1 py-3 pl-2.5 transition-colors hover:bg-[var(--surface)]"
+                // An internal-only file gets its own rail down the left edge,
+                // so a row that must never be forwarded is obvious before you
+                // read a word. Every other row carries the same transparent
+                // border, so nothing shifts and the list stays aligned.
+                style={{
+                  borderLeftColor: internal
+                    ? ACCESS_LEVEL_META.internal_only.color
+                    : "transparent",
+                }}
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+                  style={{
+                    background: `${formatMeta.color}14`,
+                    color: formatMeta.color,
+                  }}
+                >
+                  <Icon size={16} strokeWidth={1.8} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  {/* File titles WRAP. A truncated name ("Post-approval change…")
+                      is the one thing a seller can't guess from the rest of the
+                      row, so it never gets an ellipsis. */}
+                  <span className="block break-words text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                    {material.label}
+                  </span>
+                  {/* The owner's one-line note (item 10). Rendered only when
+                      there is one, no placeholder, no empty line. */}
+                  {material.description && (
+                    <span className="mt-0.5 block break-words text-[12px] leading-snug text-text-secondary">
+                      {material.description}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                        {material.label}
+                  )}
+                  <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <TagPill
+                      label={formatMeta.label}
+                      color={formatMeta.color}
+                      icon={formatMeta.icon}
+                    />
+                    {originalKind && (
+                      <TagPill
+                        label={originalKind}
+                        color={MATERIAL_COLOR[material.kind]}
+                        icon={Icon}
+                        variant="outline"
+                      />
+                    )}
+                    {stage && (
+                      <TagPill
+                        label={stage.short}
+                        color={stage.color}
+                        icon={stage.icon}
+                      />
+                    )}
+                    {level && (
+                      <TagPill
+                        label={level.label}
+                        color={level.color}
+                        icon={level.icon}
+                        // Client-facing is a fact; internal-only is a warning.
+                        // Solid burnt orange + a lock, against a page where
+                        // every other chip is a light tint — it cannot be
+                        // mistaken for "safe to send".
+                        variant={internal ? "solid" : "tint"}
+                        title={
+                          internal
+                            ? "Internal only: never send this file to a client"
+                            : undefined
+                        }
+                      />
+                    )}
+                  </span>
+                  {/* Who put this here (Suren: "I should say who added it,
+                      with pfp"). Rendered ONLY for materials a real person
+                      uploaded through the app, the seeded catalog assets
+                      carry no uploader and must not be credited to anyone,
+                      so their rows simply have no attribution line. */}
+                  {material.addedBy && (
+                    <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                      <Avatar
+                        name={material.addedBy}
+                        className="h-5 w-5 text-[8px]"
+                      />
+                      <span className="truncate">
+                        Added by {material.addedBy}
                       </span>
-                      <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[11px] text-text-tertiary">
-                          {MATERIAL_META[kind].label}
-                        </span>
-                        {stage && (
-                          <TagPill
-                            label={stage.label}
-                            color={stage.color}
-                            icon={stage.icon}
-                          />
-                        )}
-                        {level && (
-                          <TagPill
-                            label={level.label}
-                            color={level.color}
-                            icon={level.icon}
-                          />
-                        )}
-                      </span>
-                      {/* Who put this here (Suren: "I should say who added it,
-                          with pfp"). Rendered ONLY for materials a real person
-                          uploaded through the app — the seeded catalog assets
-                          carry no uploader and must not be credited to anyone,
-                          so their rows simply have no attribution line. */}
-                      {material.addedBy && (
-                        <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-text-tertiary">
-                          <Avatar
-                            name={material.addedBy}
-                            className="h-5 w-5 text-[8px]"
-                          />
-                          <span className="truncate">
-                            Added by {material.addedBy}
-                          </span>
-                          {material.addedAt && (
-                            <span className="shrink-0 tnum">
-                              · {timeAgo(material.addedAt)}
-                            </span>
-                          )}
+                      {material.addedAt && (
+                        <span className="shrink-0 tnum">
+                          · {timeAgo(material.addedAt)}
                         </span>
                       )}
                     </span>
-                    <span className="hidden shrink-0 text-[11px] font-medium text-text-tertiary lg:block">
-                      Open asset
-                    </span>
-                    <ExternalLink
-                      size={14}
-                      strokeWidth={1.7}
-                      className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
-                    />
-                  </a>
-                );
-              })
-          )}
+                  )}
+                </span>
+                <span className="hidden shrink-0 text-[11px] font-medium text-text-tertiary lg:block">
+                  Open asset
+                </span>
+                <ExternalLink
+                  size={14}
+                  strokeWidth={1.7}
+                  className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                />
+              </a>
+            );
+          })}
         </div>
       )}
     </div>

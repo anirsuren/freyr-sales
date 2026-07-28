@@ -94,21 +94,21 @@ export default async function AccountReportPage({
     accountDeals.reduce((s, d) => s + d.value, 0);
 
   const facts = [
-    { label: "Industry", value: customer.industry || "—" },
+    { label: "Industry", value: customer.industry || "-" },
     { label: "Geography", value: geographyWithFlag(customer.geography) },
     {
       label: "Size",
       value: customer.size_tier
         ? SIZE_TIER_LABEL[customer.size_tier] || customer.size_tier
-        : "—",
+        : "-",
     },
     // Show the effective owner (the same rep the pipeline/forecast assign) so the
     // report doesn't read "Unassigned" while the deal is clearly owned elsewhere.
     { label: "Owner", value: ownerFor(customer) },
-    { label: "Competitor", value: customer.competitor || "—" },
+    { label: "Competitor", value: customer.competitor || "-" },
     {
       label: "Open value",
-      value: openValue ? formatMoney(openValue) : "—",
+      value: openValue ? formatMoney(openValue) : "-",
     },
   ];
 
@@ -236,7 +236,7 @@ export default async function AccountReportPage({
                 <li key={i.id} className="flex items-center justify-between gap-3 py-2.5">
                   <span className="text-[13px] text-text-secondary truncate">
                     {OUTCOME_META[i.outcome]?.label || i.outcome}
-                    {i.notes ? ` — ${i.notes}` : ""}
+                    {i.notes ? ` - ${i.notes}` : ""}
                   </span>
                   <span className="text-[12px] text-text-tertiary tnum shrink-0">
                     {formatDateTime(i.created_at)}

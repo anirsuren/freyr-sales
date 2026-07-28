@@ -9,7 +9,7 @@
 // so similar… it has to be distinct"). Each name is now its own hue family.
 export const VIZ = {
   blue: "#2563EB",
-  sky: "#0891B2", // cyan — clearly not blue
+  sky: "#0891B2", // cyan, clearly not blue
   teal: "#0D9488", // deep blue-green
   indigo: "#4F46E5",
   // A true green. #65A30D pulled this too far toward yellow chasing separation

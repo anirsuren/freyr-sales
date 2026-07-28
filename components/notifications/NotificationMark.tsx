@@ -57,7 +57,7 @@ export function NotificationMark({
   const badge = (
     <span
       className={cn(
-        "absolute -bottom-0.5 -right-0.5 w-[13px] h-[13px] rounded-full flex items-center justify-center ring-2 ring-white",
+        "absolute -bottom-0.5 -right-0.5 w-[13px] h-[13px] rounded-full flex items-center justify-center ring-2 ring-[color:var(--white)]",
         BADGE[type] || "bg-blue-primary text-white"
       )}
     >
@@ -87,7 +87,7 @@ export function NotificationMark({
         {person ? (
           <Avatar
             name={person}
-            className="absolute -bottom-1 -right-1 w-[15px] h-[15px] text-[6.5px] ring-2 ring-white"
+            className="absolute -bottom-1 -right-1 w-[15px] h-[15px] text-[6.5px] ring-2 ring-[color:var(--white)]"
           />
         ) : (
           badge

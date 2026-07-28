@@ -158,7 +158,7 @@ export function PitchPanel({
             <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               Subject line
               <span className="ml-1.5 font-normal normal-case tracking-normal">
-                — pick the one to send
+                pick the one to send
               </span>
             </span>
             <CopyButton

@@ -8,13 +8,21 @@ import { cn } from "@/lib/utils";
 // by passing `src`; until then the mark is the fallback everywhere a company
 // name appears.
 const GRADIENTS: [string, string][] = [
+// IDENTITY HUES ONLY. Red, green, amber and burnt orange are RESERVED in this
+// app for meaning: red is a problem, green is healthy, orange is caution. An
+// identity palette that reaches for them paints a perfectly good record in the
+// colour of a warning. Anir, Jul 28, on a 90%-fit service rendered in red:
+// "Why is it red? You have to understand that red means horrible, red means
+// negative... colors like red, green, and yellow are reserved for actually
+// signifying something else." Purple, blue, indigo, teal, cyan, sky, pink,
+// fuchsia and slate all carry no status meaning, so they are safe here.
   ["#0071E3", "#4AA3FF"], // blue
   ["#5E5CE6", "#8A88FF"], // indigo
   ["#0F9E8E", "#2DD4BF"], // teal
   ["#7C3AED", "#A78BFA"], // violet
   ["#0891B2", "#22D3EE"], // cyan
-  ["#059669", "#34D399"], // emerald
-  ["#C2410C", "#F97316"], // orange — white initials sat at 2.1:1 on the amber tile
+  ["#4338CA", "#818CF8"], // deep indigo
+  ["#0EA5E9", "#7DD3FC"], // sky
   ["#DB2777", "#F472B6"], // pink
   ["#475569", "#94A3B8"], // slate
   ["#C026D3", "#E879F9"], // fuchsia

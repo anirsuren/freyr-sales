@@ -140,7 +140,7 @@ export default async function CustomerDetailPage({
           {/* No health bar in the header: the same score already leads the
               Account snapshot rail AND the Relationship health card below, so a
               third copy beside the buttons was pure duplication (Anir, Jul 27:
-              "remove the health bar from next to the New session — it's already
+              "remove the health bar from next to the New session, it's already
               below"). */}
           {/* Start a pitch session for THIS account — the button first explains
               what a session is (Suren #89), then prefills the intake with the

@@ -52,7 +52,7 @@ function seedCampaigns(): Campaign[] {
       offering_id: "of-001",
       offering_name: "Freya.Register",
       subject: "One source of truth for every registration you own",
-      body: "Hi {{first_name}},\n\nTeams juggling FDA, EMA and PMDA timelines usually track registrations in spreadsheets that drift out of date the week they're made. Freya.Register keeps every product, market and license in one live view — with the renewals and commitments surfaced before they become fire drills.\n\nWorth a 20-minute look at how it would sit on top of your current tracker?\n\nBest,\nFreyr team",
+      body: "Hi {{first_name}},\n\nTeams juggling FDA, EMA and PMDA timelines usually track registrations in spreadsheets that drift out of date the week they're made. Freya.Register keeps every product, market and license in one live view: with the renewals and commitments surfaced before they become fire drills.\n\nWorth a 20-minute look at how it would sit on top of your current tracker?\n\nBest,\nFreyr team",
       recipient_contact_ids: [
         "cont-004",
         "cont-005",
@@ -81,7 +81,7 @@ function seedCampaigns(): Campaign[] {
       offering_id: "of-023",
       offering_name: "Regulatory Intelligence Services",
       subject: "Guidance changes, summarized before they hit your inbox",
-      body: "Hi {{first_name}},\n\nMost RA teams find out about guidance changes from a colleague's forward. Our Regulatory Intelligence service watches the agencies you care about and sends periodic, source-linked updates your team can act on — consulting, on-demand research, or embedded FTE support.\n\nWe're inviting a few teams into a pilot this quarter. Interested?\n\nBest,\nFreyr team",
+      body: "Hi {{first_name}},\n\nMost RA teams find out about guidance changes from a colleague's forward. Our Regulatory Intelligence service watches the agencies you care about and sends periodic, source-linked updates your team can act on: consulting, on-demand research, or embedded FTE support.\n\nWe're inviting a few teams into a pilot this quarter. Interested?\n\nBest,\nFreyr team",
       recipient_contact_ids: [
         "cont-007",
         "cont-012",
@@ -108,8 +108,8 @@ function seedCampaigns(): Campaign[] {
       name: "Labeling compliance intro",
       offering_id: null,
       offering_name: "",
-      subject: "Six markets, one label change — without the scramble",
-      body: "Draft — pick the labeling offering to ground this, then tighten the hook before queueing.",
+      subject: "Six markets, one label change: without the scramble",
+      body: "Draft: pick the labeling offering to ground this, then tighten the hook before queueing.",
       recipient_contact_ids: ["cont-008", "cont-004", "cont-010"],
       objective: "pipeline",
       owner: "Suren Dheen",

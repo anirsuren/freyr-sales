@@ -78,7 +78,7 @@ export function AgentActions({
           },
         }));
         setViewing(a.id);
-        toast("Draft ready — saved to the timeline and added to Tasks");
+        toast("Draft ready: saved to the timeline and added to Tasks");
         router.refresh();
       } else {
         toast(data.error || "Agent couldn't complete that", "error");
@@ -119,7 +119,7 @@ export function AgentActions({
         setDone((s) => new Set(s).add(a.id));
         toast(
           decision === "approve"
-            ? "Pitch approved — ready to send"
+            ? "Pitch approved: ready to send"
             : "Pitch sent back for changes"
         );
         router.refresh();
@@ -149,7 +149,7 @@ export function AgentActions({
         return (
           <Card key={a.id} className={compact ? "p-3" : grid ? "flex h-full flex-col p-4" : "p-4"}>
             {/* Compact (280px rail): stack text above the buttons and let them
-                wrap — nothing overflows the card (Anir: "this button is
+                wrap, nothing overflows the card (Anir: "this button is
                 literally going out of the screen"). Full width: one row. */}
             <div className={compact ? "space-y-2.5" : grid ? "flex h-full flex-col gap-3" : "flex items-center gap-3"}>
               <div className="flex items-center gap-3 min-w-0 flex-1">

@@ -3,20 +3,31 @@ import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
-import { formatDate, formatDateTime, OUTCOME_META } from "@/lib/utils";
+import { formatDate, formatDateTime, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
+
+/** The agent stamps its own rows into the same interactions store. A touch log
+ *  is a record of what a PERSON did with the account, and agent surfaces belong
+ *  in the chat and nowhere else (Anir, repeatedly: "there should be no agent
+ *  stuff on any page except the chatbot"). The agent's own work is still fully
+ *  visible in its run history. */
+const AGENT_ACTOR = "Freyr Agent";
 
 // A real vertical timeline (Suren): newest at the top, a spine down the left,
 // a coloured node per touch, and the date + time on each. Scrolls inside its
 // own container so old history never pushes the page down.
 export function InteractionTimeline({
-  interactions,
+  interactions: allInteractions,
   contactNames,
 }: {
   interactions: Interaction[];
   contactNames?: Record<string, string>;
 }) {
-  if (!interactions || interactions.length === 0) {
+  const interactions = (allInteractions || []).filter(
+    (i) => i.logged_by !== AGENT_ACTOR
+  );
+
+  if (interactions.length === 0) {
     return (
       <Card className="p-0">
         <EmptyState
@@ -35,11 +46,16 @@ export function InteractionTimeline({
           {/* the spine */}
           <div className="absolute left-[6px] top-1.5 bottom-1.5 w-px bg-border-light" />
           {interactions.map((it) => {
-            const c = OUTCOME_META[it.outcome]?.color || "#8A8A8E";
+            // The node takes the outcome's CHART colour, never `OUTCOME_META.color`.
+            // That field is the chip's TEXT colour, and In Progress reads as
+            // near-black there because it sits on a yellow fill. Painting the
+            // node with it gave a column of black dots (Anir, Jul 28: "I don't
+            // like the black dots").
+            const c = OUTCOME_CHART_COLOR[it.outcome] || "#AF9BF5";
             return (
               <li key={it.id} className="relative pl-7 pb-5 last:pb-0">
                 <span
-                  className="absolute left-0 top-1 w-3.5 h-3.5 rounded-full ring-4 ring-white"
+                  className="absolute left-0 top-1 w-3.5 h-3.5 rounded-full ring-4 ring-[color:var(--white)]"
                   style={{ background: c }}
                 />
                 <div className="flex items-center justify-between gap-3 mb-1">

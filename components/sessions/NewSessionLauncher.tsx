@@ -70,7 +70,7 @@ export function NewSessionLauncher() {
       setError("");
       setStatuses({});
       setCompany(values.companyName);
-      setNote("Starting — this usually takes about 30 seconds.");
+      setNote("Starting: this usually takes about 30 seconds.");
 
       let settled = false;
       const handleEvent = (evt: any) => {
@@ -196,7 +196,7 @@ export function NewSessionLauncher() {
             )}
 
             <p className="text-[12px] text-text-tertiary pt-4 border-t border-border-light leading-relaxed">
-              You can close this and keep working — we&apos;ll drop a note in
+              You can close this and keep working, we&apos;ll drop a note in
               the corner the moment the pitch is ready.
             </p>
           </div>

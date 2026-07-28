@@ -141,7 +141,7 @@ export function OfferingTypesManager({
 
         <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
           The master list of offering types. Give each one a plain-English
-          description — offerings are grouped and filtered by these.
+          description, offerings are grouped and filtered by these.
         </p>
       </Card>
 
@@ -170,7 +170,7 @@ export function OfferingTypesManager({
               className={`${FIELD} min-h-[88px] resize-y`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What this offering type is — in plain English"
+              placeholder="What this offering type is: in plain English"
             />
           </div>
           <div className="flex items-center justify-end gap-2 pt-1">
@@ -210,7 +210,7 @@ export function OfferingTypesManager({
                       className={`${FIELD} min-h-[72px] resize-y`}
                       value={editDesc}
                       onChange={(e) => setEditDesc(e.target.value)}
-                      placeholder="What this offering type is — in plain English"
+                      placeholder="What this offering type is: in plain English"
                     />
                   </div>
                   <div className="flex items-center gap-2">

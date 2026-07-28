@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
             : offering.current_availability
             ? `Availability: ${offering.current_availability}`
             : "It's part of the Freya platform"
-        } — happy to show you how teams like yours use it in 15 minutes.`,
+        }: happy to show you how teams like yours use it in 15 minutes.`,
         ``,
         `Would next week work for a quick call?`,
         ``,

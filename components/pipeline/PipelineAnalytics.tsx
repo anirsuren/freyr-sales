@@ -169,7 +169,7 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
             How your pipeline is moving
           </h2>
           <p className="mt-0.5 text-[11px] text-text-tertiary">
-            Both graphs are drawn straight from the deals on this board — real
+            Both graphs are drawn straight from the deals on this board, real
             totals on real dates, nothing estimated or filled in.
           </p>
         </div>
@@ -212,14 +212,14 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
             border-t while the panels stack, a border-l once they sit side by
             side, so the wide layout never leaves a dead band under the bars. */}
         <div className="mt-5 flex flex-col border-t border-border-light pt-5 xl:mt-0 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
-          <Eyebrow hint="The same open money, split by the step each deal is sitting on right now. Bar height is the full value of the deals in that step; the line under it is how many deals make it up. Lost deals are excluded — they are not pipeline any more.">
+          <Eyebrow hint="The same open money, split by the step each deal is sitting on right now. Bar height is the full value of the deals in that step; the line under it is how many deals make it up. Lost deals are excluded: they are not pipeline any more.">
             Where that money sits
           </Eyebrow>
           <p className="mt-1.5 text-[25px] font-bold leading-none text-text-primary tnum">
             {formatMoney(lateValue)}
           </p>
           <p className="mt-1.5 text-[11.5px] text-text-secondary">
-            {late.length} of {open.length} are Qualified or Meeting Booked — the
+            {late.length} of {open.length} are Qualified or Meeting Booked, the
             steps closest to a signature
           </p>
           <div className="mt-5 flex flex-1 flex-col justify-end">

@@ -54,7 +54,7 @@ export default async function PipelinePage() {
       suffix: "",
       warn: false,
       icon: Briefcase,
-      def: "How many deals are still in play right now — not yet won or lost.",
+      def: "How many deals are still in play right now: not yet won or lost.",
     },
     {
       label: "Weighted forecast",
@@ -72,7 +72,7 @@ export default async function PipelinePage() {
       suffix: "d",
       warn: false,
       icon: Clock,
-      def: "On average, how many days since anything happened on your open deals. Lower is better — it means you're staying in touch.",
+      def: "On average, how many days since anything happened on your open deals. Lower is better: it means you're staying in touch.",
     },
     {
       label: "Stalled (14d+)",
@@ -109,7 +109,7 @@ export default async function PipelinePage() {
               </Link>
               <Link
                 href="/intake"
-                title="Start a sales session — that's how a new deal enters the pipeline"
+                title="Start a sales session: that's how a new deal enters the pipeline"
                 className="inline-flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-all shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
               >
                 <Plus size={15} strokeWidth={2.2} />

@@ -157,7 +157,7 @@ export function ContactTalkTimePanel({ calls, color }: { calls: TalkTimeCall[]; 
           <div>
             <h3 className="text-[15px] font-semibold text-text-primary">Talk time by contact</h3>
             <p className="mt-0.5 text-[12px] text-text-tertiary">
-              How long each person stayed on the call — minutes:seconds.
+              How long each person stayed on the call, minutes:seconds.
             </p>
           </div>
           <div className="flex items-center gap-2">

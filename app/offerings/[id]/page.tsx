@@ -7,6 +7,7 @@ import {
   ChevronRight,
   UserRound,
   Layers,
+  Package,
   Building2,
   Globe,
   type LucideIcon,
@@ -74,7 +75,7 @@ export default async function OfferingDetailPage({
             days < 0
               ? { color: "#B02020", bg: "rgba(176,32,32,0.10)" }
               : days <= 90
-                ? // Caution reads in orange-700, never the yellow band — this
+                ? // Caution reads in orange-700, never the yellow band, this
                   // status renders as TEXT and amber failed on white.
                   { color: "#C2410C", bg: "rgba(194,65,12,0.12)" }
                 : { color: "#1A7A35", bg: "rgba(26,122,53,0.10)" };
@@ -201,7 +202,7 @@ export default async function OfferingDetailPage({
           offering, there's no transition"). The identity block + tab bar lift
           in with the app's shared `rise-in`; the panel below carries
           `tab-panel`, so it also replays on every Overview↔Reports switch.
-          Existing classes only — the reduced-motion guards in globals.css
+          Existing classes only, the reduced-motion guards in globals.css
           already cover both. */}
       <Link
         href="/offerings"
@@ -318,7 +319,7 @@ export default async function OfferingDetailPage({
       </div>
 
       {/* Keyed on the active tab so React re-mounts the panel and the
-          `tabPanelIn` keyframes replay on every switch — the tabs had no
+          `tabPanelIn` keyframes replay on every switch, the tabs had no
           transition at all before. */}
       <div key={tab} className="tab-panel">
         {tab === "reports" ? (
@@ -359,9 +360,12 @@ export default async function OfferingDetailPage({
               </SectionCard>
             )}
 
-            {/* Category — its plain-English description + the family link */}
+            {/* Offering Category — its plain-English description + the family
+                link. Titled in full ("Offering Category", not "Category") at
+                Saras' request, item 7, the page carries several kinds of
+                category and this one is the offering's own. */}
             {o.offeringCategory && (
-              <SectionCard title="Category" icon={Layers}>
+              <SectionCard title="Offering Category" icon={Layers}>
                 <p className="text-[13.5px] font-semibold text-text-primary">
                   {o.offeringCategory.name}
                 </p>
@@ -380,7 +384,39 @@ export default async function OfferingDetailPage({
                   href={`/offerings?cat=${o.offeringCategory.id}`}
                   className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline mt-3"
                 >
-                  See all in this category
+                  See all offerings in this category
+                  <ChevronRight size={13} strokeWidth={2} />
+                </Link>
+              </SectionCard>
+            )}
+
+            {/* Offering Type — the twin of the box above it (Saras, item 8:
+                the page named the type but never explained it). Same card,
+                same type scale, same spacing, same link shape as Offering
+                Category, two boxes doing the same job must not read as two
+                different components. `Package` is the icon the offerings
+                browser already uses for the offering-type filter.
+                The description is Freyr's own copy from the offering-types
+                master list: when a type carries none, the box shows the name
+                and the link and stays silent rather than inventing one. */}
+            {o.offeringType && (
+              <SectionCard title="Offering Type" icon={Package}>
+                <p className="text-[13.5px] font-semibold text-text-primary">
+                  {o.offeringType.name}
+                </p>
+                {o.offeringType.description && (
+                  <p className="text-[13px] text-text-secondary leading-relaxed mt-1.5">
+                    {o.offeringType.description}
+                  </p>
+                )}
+                {/* `otype` is the offerings list's own offering-type filter
+                    param (OfferingsBrowser reads it alongside `cat`), so this
+                    lands on the list already filtered to this type. */}
+                <Link
+                  href={`/offerings?otype=${o.offeringType.id}`}
+                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline mt-3"
+                >
+                  See all offerings in this offering type
                   <ChevronRight size={13} strokeWidth={2} />
                 </Link>
               </SectionCard>

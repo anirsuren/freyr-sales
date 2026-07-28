@@ -57,7 +57,7 @@ function seed(): MockStore {
       size_tier: "mid",
       industry: "Biotechnology",
       geography:
-        "United States (Princeton, NJ) — offices in London, Singapore",
+        "United States (Princeton, NJ): offices in London, Singapore",
       enrichment_summary:
         "Mid-size clinical-stage biopharma, ~450 employees, Series D, 3 Phase 2 compounds + 1 NDA-ready. Focus on biologics for oncology and autoimmune. Working across FDA and EMA.",
       created_at: new Date("2025-11-15").toISOString(),
@@ -69,7 +69,7 @@ function seed(): MockStore {
       website_url: "https://indavelpharma.com",
       size_tier: "small",
       industry: "Pharmaceutical",
-      geography: "India (Mumbai) — expanding to EU",
+      geography: "India (Mumbai): expanding to EU",
       enrichment_summary:
         "Small generic pharma company, ~80 employees, focused on ANDA filings for US market entry. First-time FDA submitter.",
       created_at: new Date("2025-12-01").toISOString(),
@@ -378,13 +378,13 @@ function seed(): MockStore {
       customer_id: "cust-004",
       company: "Helix Biologics",
       outcome: "sent",
-      summary: "Researched, matched services, and drafted — you reviewed, approved, and sent it.",
+      summary: "Researched, matched services, and drafted: you reviewed, approved, and sent it.",
       steps: [
         { label: "Researched the account", detail: "Scanned Helix Biologics' profile, signals, and history", status: "done" },
         { label: "Matched Freyr services", detail: "Led with Global Labeling Strategy", status: "done" },
         { label: "Drafted the outreach", detail: "Tailored email + call angle for SVP Global Regulatory", status: "done" },
         { label: "Compliance approval", detail: "You reviewed and approved it", status: "gated" },
-        { label: "Sent by you", detail: "You sent it after approving — the agent never sends on its own", status: "done" },
+        { label: "Sent by you", detail: "You sent it after approving: the agent never sends on its own", status: "done" },
       ],
       created_at: iso(1),
     },
@@ -397,8 +397,8 @@ function seed(): MockStore {
       outcome: "mixed",
       summary: "2 drafted for your review · 1 needs your approval.",
       steps: [
-        { label: "Re-engage Aether Medical Devices", detail: "Drafted and saved to the timeline — review and send when you're ready. Nothing sent.", status: "done" },
-        { label: "Follow up with Cortexa Biopharma", detail: "Drafted and saved to the timeline — review and send when you're ready. Nothing sent.", status: "done" },
+        { label: "Re-engage Aether Medical Devices", detail: "Drafted and saved to the timeline: review and send when you're ready. Nothing sent.", status: "done" },
+        { label: "Follow up with Cortexa Biopharma", detail: "Drafted and saved to the timeline: review and send when you're ready. Nothing sent.", status: "done" },
         { label: "Approve the pitch for Helix Biologics", detail: "Needs your approval before anything is drafted or sent", status: "escalated" },
       ],
       created_at: iso(2),

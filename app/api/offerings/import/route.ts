@@ -11,7 +11,7 @@ const MAX_WORKBOOK_BYTES = 5 * 1024 * 1024;
 export async function POST(req: Request) {
   if (!(await canManageOfferings()))
     return NextResponse.json(
-      { error: "View only — admin access required" },
+      { error: "View only: admin access required" },
       { status: 403 }
     );
 
@@ -28,13 +28,13 @@ export async function POST(req: Request) {
   }
   if (!file) {
     return NextResponse.json(
-      { error: "No file uploaded — choose an .xlsx to import." },
+      { error: "No file uploaded: choose an .xlsx to import." },
       { status: 400 }
     );
   }
   if (!/\.xlsx?$/i.test(file.name)) {
     return NextResponse.json(
-      { error: "That's not an Excel file — upload a .xlsx." },
+      { error: "That's not an Excel file: upload a .xlsx." },
       { status: 400 }
     );
   }

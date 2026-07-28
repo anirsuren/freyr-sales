@@ -36,6 +36,7 @@ import {
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
   MATERIAL_COLOR,
+  MATERIAL_FORMATS,
   MATERIAL_ICON,
   MATERIAL_META,
   type AccessLevel,
@@ -47,6 +48,8 @@ interface MaterialRow {
   kind: MaterialKind;
   label: string;
   url: string;
+  /** The optional one-line note (item 10). "" means the owner cleared it. */
+  description?: string;
   journeyStage?: JourneyStage;
   accessLevel?: AccessLevel;
 }
@@ -65,14 +68,23 @@ const ACCESS_OPTIONS: ColorOption[] = ACCESS_LEVELS.map((l) => ({
   color: ACCESS_LEVEL_META[l].color,
   icon: ACCESS_LEVEL_META[l].icon,
 }));
-const KIND_OPTIONS: ColorOption[] = (Object.keys(MATERIAL_META) as MaterialKind[]).map(
-  (k) => ({
-    value: k,
-    label: MATERIAL_META[k].label,
-    color: MATERIAL_COLOR[k],
-    icon: MATERIAL_ICON[k],
-  })
-);
+// Item 9: uploads choose from FOUR formats. The nine older types are still
+// real on existing files, so a row that carries one keeps it as an extra
+// option — the dropdown shows what the material actually is instead of
+// silently re-typing a case study as a video, and the owner can move it onto
+// one of the four whenever they like.
+const kindOption = (k: MaterialKind): ColorOption => ({
+  value: k,
+  label: MATERIAL_META[k].label,
+  color: MATERIAL_COLOR[k],
+  icon: MATERIAL_ICON[k],
+});
+const FORMAT_OPTIONS: ColorOption[] = MATERIAL_FORMATS.map(kindOption);
+function kindOptionsFor(kind: MaterialKind): ColorOption[] {
+  return (MATERIAL_FORMATS as MaterialKind[]).includes(kind)
+    ? FORMAT_OPTIONS
+    : [...FORMAT_OPTIONS, kindOption(kind)];
+}
 
 // A material link a rep pastes as a bare domain ("example.com/deck.pdf") would
 // render as a relative href and 404 on click. Give it a scheme; leave full URLs
@@ -110,7 +122,7 @@ const AVAIL_META: Record<AvailMode, { color: string; icon: LucideIcon }> = {
 // Family accents match the offering detail page exactly (violet / rose / blue).
 const FAMILY_COLOR: Record<string, string> = {
   Pharmaceutical: "#0071E3",
-  Biologics: "#E11D48",
+  Biologics: "#DB2777",
   "Bio Pharmaceutical": "#7C3AED",
 };
 
@@ -469,8 +481,8 @@ export function OfferingForm({
     if (partial) {
       toast(
         partial.label.trim()
-          ? `Add a link for “${partial.label.trim()}” — or remove that material.`
-          : "Add a name for that material — or remove the empty link.",
+          ? `Add a link for “${partial.label.trim()}”: or remove that material.`
+          : "Add a name for that material: or remove the empty link.",
         "error"
       );
       return;
@@ -597,7 +609,7 @@ export function OfferingForm({
                 className={BARE_INPUT}
                 value={poc}
                 onChange={(e) => setPoc(e.target.value)}
-                placeholder="Who owns this offering's data — e.g. Ragav"
+                placeholder="Who owns this offering's data: e.g. Ragav"
               />
             </FieldShell>
           </div>
@@ -652,7 +664,7 @@ export function OfferingForm({
               aria-label="Paste the list"
             />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              One service per line — paste straight from a spreadsheet. Switch back
+              One service per line, paste straight from a spreadsheet. Switch back
               to <span className="font-medium">One by one</span> to tidy it up row by row.
             </p>
           </div>
@@ -660,7 +672,7 @@ export function OfferingForm({
           <div className="space-y-2">
             {capRows.length === 0 && (
               <p className="rounded-lg border border-dashed border-border-light px-3 py-4 text-center text-[12.5px] text-text-secondary">
-                Nothing listed yet. Add the services that make up this offering —
+                Nothing listed yet. Add the services that make up this offering,
                 one per row.
               </p>
             )}
@@ -694,8 +706,8 @@ export function OfferingForm({
                     }
                     placeholder={
                       isSection
-                        ? "Group heading — e.g. Product & Portfolio Strategy"
-                        : "A service inside this offering — e.g. GLP Audits of Test Facilities"
+                        ? "Group heading: e.g. Product & Portfolio Strategy"
+                        : "A service inside this offering: e.g. GLP Audits of Test Facilities"
                     }
                     aria-label={isSection ? "Group heading" : "Capability"}
                   />
@@ -739,7 +751,7 @@ export function OfferingForm({
       <FormSection
         icon={Building2}
         title="Who it's for"
-        hint="The customer types this offering applies to — by family and company size."
+        hint="The customer types this offering applies to: by family and company size."
       >
         {ctGroups.map(({ fam, types }) => {
           const ids = types.map((t) => t.id);
@@ -951,7 +963,7 @@ export function OfferingForm({
       <FormSection
         icon={FolderOpen}
         title="Sales materials"
-        hint="Videos, decks, pricing, case studies — anything a rep hands a customer."
+        hint="Videos, presentations, documents: anything a rep hands a customer."
         action={
           <button
             type="button"
@@ -967,7 +979,7 @@ export function OfferingForm({
                 },
               ])
             }
-            className="inline-flex items-center gap-1.5 rounded-md bg-blue-light px-2.5 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-subtle/60"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-light px-2.5 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-subtle/60"
           >
             <Plus size={14} strokeWidth={2.2} /> Add material
           </button>
@@ -975,25 +987,26 @@ export function OfferingForm({
       >
         {materials.length === 0 && (
           <p className="rounded-lg border border-dashed border-border-light px-3 py-4 text-center text-[12.5px] text-text-secondary">
-            Nothing attached yet. Add the materials behind this offering — videos,
-            sales presentations, white papers, pricing, competition, case studies,
-            and customer references.
+            Nothing attached yet. Add the materials behind this offering, a
+            video, a presentation, a document, or anything else a rep hands a
+            customer. The name you give each file says what it is.
           </p>
         )}
         {materials.map((m, i) => (
           <div
             key={i}
-            className="flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-surface/30 p-2.5"
+            className="rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
           >
+          <div className="flex flex-wrap items-center gap-2">
             <ColorSelect
               value={m.kind}
-              options={KIND_OPTIONS}
+              options={kindOptionsFor(m.kind)}
               onChange={(v) =>
                 setMaterials((l) =>
                   l.map((x, j) => (j === i ? { ...x, kind: v as MaterialKind } : x))
                 )
               }
-              ariaLabel="Material type"
+              ariaLabel="File format"
               minWidth={196}
             />
             <input
@@ -1046,10 +1059,27 @@ export function OfferingForm({
               type="button"
               onClick={() => setMaterials((l) => l.filter((_, j) => j !== i))}
               aria-label="Remove material"
-              className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
+              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
             >
               <Trash2 size={15} strokeWidth={1.7} />
             </button>
+          </div>
+          {/* Material Description (item 10) — optional, never validated, and
+              saved as blank when left blank so the offering page shows no note
+              rather than an empty line. */}
+          <input
+            value={m.description ?? ""}
+            onChange={(e) =>
+              setMaterials((l) =>
+                l.map((x, j) =>
+                  j === i ? { ...x, description: e.target.value } : x
+                )
+              )
+            }
+            aria-label="Material description (optional)"
+            placeholder="Optional: one sentence on what this file is for"
+            className={cn(FIELD, "mt-2")}
+          />
           </div>
         ))}
       </FormSection>

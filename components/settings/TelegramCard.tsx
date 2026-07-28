@@ -50,8 +50,8 @@ export function TelegramCard() {
                 Connected as{" "}
                 <span className="font-medium text-text-primary">
                   @{bot || "bot"}
-                </span>{" "}
-                — new sessions and logged outcomes are pushed here.
+                </span>
+               , new sessions and logged outcomes are pushed here.
               </>
             ) : (
               "Add TELEGRAM_BOT_TOKEN to .env.local to enable."
@@ -61,7 +61,7 @@ export function TelegramCard() {
             First time? Message{" "}
             <span className="font-medium">@{bot || "your bot"}</span> with{" "}
             <code className="bg-surface px-1 rounded">/start</code> so it can
-            reply — then send a test.
+            reply, then send a test.
           </p>
         </div>
         <span

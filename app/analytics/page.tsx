@@ -161,7 +161,7 @@ export default async function AnalyticsPage({
     const co = custById[i.customer_id];
     (outcomeContacts[label] ||= []).push({
       name: ct?.full_name || "Unknown",
-      company: co?.company_name || "—",
+      company: co?.company_name || "-",
       contactId: i.contact_id,
     });
   }
@@ -201,7 +201,7 @@ export default async function AnalyticsPage({
           <div>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
               Pipeline growth
-              <InfoHint text="The big number is your open pipeline right now. The line shows how that pipeline built up over the period you've been tracking — each point adds in the deals created by then." />
+              <InfoHint text="The big number is your open pipeline right now. The line shows how that pipeline built up over the period you've been tracking: each point adds in the deals created by then." />
             </p>
             <p className="text-[32px] font-bold text-text-primary tnum leading-none mt-1">
               <CountUp value={openValue} unit="money" />

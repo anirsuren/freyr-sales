@@ -171,7 +171,7 @@ export function countryOnlyGeography(
  */
 export function geographyWithFlag(
   geography?: string | null,
-  fallback = "—"
+  fallback = "-"
 ): string {
   const country = countryOnlyGeography(geography);
   if (!country) return fallback;

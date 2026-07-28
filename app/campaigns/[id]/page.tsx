@@ -97,7 +97,7 @@ export default async function CampaignDetailPage({
             name: c.full_name,
             title: c.job_title || "",
             email: c.email || "",
-            company: companyById.get(c.customer_id) || "—",
+            company: companyById.get(c.customer_id) || "-",
             customerId: c.customer_id,
           }
         : null;
@@ -307,10 +307,10 @@ export default async function CampaignDetailPage({
           </h2>
           <p className="text-[12px] text-text-tertiary mb-3">
             {campaign.status === "sent"
-              ? "Delivered — every recipient got the blast."
+              ? "Delivered: every recipient got the blast."
               : campaign.status === "queued"
-              ? "Queued — the rest sends as the channel works through it."
-              : "Still a draft — queue the blast to line it up."}
+              ? "Queued: the rest sends as the channel works through it."
+              : "Still a draft: queue the blast to line it up."}
           </p>
           <div className="flex-1 flex items-center gap-5">
             <DonutChart
@@ -359,7 +359,7 @@ export default async function CampaignDetailPage({
             <BarChart data={engagementBars} height={170} format="percent" hideTipStats />
           ) : (
             <p className="min-h-[170px] flex items-center text-[13px] text-text-secondary leading-relaxed">
-              No engagement yet — send the blast and opens &amp; replies show up here.
+              No engagement yet, send the blast and opens &amp; replies show up here.
             </p>
           )}
         </ChartInspector>
@@ -432,7 +432,7 @@ export default async function CampaignDetailPage({
           </p>
           {hasMergeTag && (
             <p className="text-[11px] text-text-tertiary mt-2">
-              Shown with {previewFirst}&apos;s name — each recipient gets their own.
+              Shown with {previewFirst}&apos;s name, each recipient gets their own.
             </p>
           )}
           <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border-light">
@@ -524,7 +524,7 @@ export default async function CampaignDetailPage({
         </p>
         {voiceTouches.length === 0 ? (
           <p className="text-[13px] text-text-secondary">
-            None yet — queue calls from a contact&apos;s AI voice call, or select
+            None yet, queue calls from a contact&apos;s AI voice call, or select
             these recipients on the Contacts page and run a category&apos;s agent.
           </p>
         ) : (
@@ -603,7 +603,7 @@ export default async function CampaignDetailPage({
         {sent === 0 && campaign.opens === 0 ? (
           <p className="text-[13px] text-text-secondary leading-relaxed">
             Opens, replies and click-throughs chart here automatically once the
-            blast starts sending — this fills in as recipients engage.
+            blast starts sending, this fills in as recipients engage.
           </p>
         ) : (
           <div
@@ -633,13 +633,13 @@ export default async function CampaignDetailPage({
                 <span className="font-semibold text-text-primary tnum">{replyRate}%</span>{" "}
                 reply rate
                 {campaign.replies > 0 &&
-                  " — replies land in the owner's inbox, ready for a personal follow-up."}
+                  ": replies land in the owner's inbox, ready for a personal follow-up."}
               </p>
             </div>
             {hasTimeline && (
               <div className="flex flex-col justify-between">
                 <p className="text-[12px] text-text-tertiary mb-4">
-                  Over time — cumulative since the blast went out. Toggle the
+                  Over time, cumulative since the blast went out. Toggle the
                   lines you care about.
                 </p>
                 <EngagementChart

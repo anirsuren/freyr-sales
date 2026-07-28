@@ -99,7 +99,7 @@ export function SnippetLibrary() {
 
       {snippets.length === 0 ? (
         <p className="text-[13px] text-text-secondary">
-          No saved snippets yet — in a play, edit a draft and hit “Save as
+          No saved snippets yet, in a play, edit a draft and hit “Save as
           snippet” to reuse it later.
         </p>
       ) : visible.length === 0 ? (

@@ -17,26 +17,29 @@ import { formatDate } from "@/lib/utils";
 import { daysLabel } from "./dealTime";
 
 /* ---------------------------------------------------------------------------
-   THE COLOUR LAW FOR THIS CARD — colour by MEANING, exactly like /forecast.
+   THE COLOUR LAW FOR THIS CARD, colour by MEANING, exactly like /forecast.
 
    The previous version painted every element in the deal's stage colour, so a
    Prospect deal rendered as a wall of burnt orange (Anir: "all the colors are
    the same, but why is it all fucking red? That's so negative"). The stage now
-   appears exactly ONCE — its chip on the first panel — and everything else
+   appears exactly ONCE, its chip on the first panel, and everything else
    borrows the meanings the rest of the app already taught the reader:
 
      blue-primary   the measure. The probability ring, the counted money and
                     the days-used fill are all "your number today", the same
                     blue as the quota-attainment bar on /forecast.
-     blue-subtle    the upside — value not counted yet. The same pairing as
+     blue-subtle    the upside, value not counted yet. The same pairing as
                     /forecast's solid-commit vs light best-case bar.
      traffic light  momentum (HEALTH_COLOR), so a slowing deal looks exactly
                     like an account slipping to "watch".
      RISK red       ONLY past the 14-day quiet line. If it's red, act.
 --------------------------------------------------------------------------- */
 
-/** Real red. Earned only by a deal that has gone past the quiet line. */
-const RISK = "#FF3B30"; // = --error
+/** Real red, and the app's one "this is a problem" red (tasks, analytics, the
+ *  account cards). Earned only by a deal that has overdrawn its runway. The
+ *  brighter #FF3B30 that used to sit here is a full-saturation alarm red and is
+ *  not the sanctioned risk colour. */
+const RISK = "#B02020";
 /** The measure: the same blue as /forecast's commit bar. */
 const MEASURE = "#0071E3"; // = blue-primary
 /** The upside share: /forecast's best-case light blue. */
@@ -90,7 +93,7 @@ export function DealSnapshot({
           <InfoHint text="The three things worth knowing before you call: how likely it is, what it's worth, and whether it's still moving." />
         </div>
         {/* No colour key here any more. A legend only ever existed because the
-            colours weren't self-evident — the fix was the colours. */}
+            colours weren't self-evident, the fix was the colours. */}
         <p className="mt-0.5 text-[11px] text-text-tertiary">
           Where this deal stands, at a glance
         </p>
@@ -103,7 +106,7 @@ export function DealSnapshot({
         <section className={PANEL}>
           <PanelHead
             label="Win chance"
-            hint="Set by the stage this deal has reached — every deal at the same stage is counted at the same odds."
+            hint="Set by the stage this deal has reached: every deal at the same stage is counted at the same odds."
           >
             <Pill color={stageColor} Icon={StageIcon}>
               {stage}
@@ -115,7 +118,7 @@ export function DealSnapshot({
                 already lays a full --border-light track under every ring, so
                 the empty share reads as the app's own quiet neutral in both
                 light and dark, and there is no hardcoded tint to go wrong. The
-                salmon that used to live here is gone for good — an empty gauge
+                salmon that used to live here is gone for good, an empty gauge
                 is not an alarm. */}
             <span className="shrink-0">
               <DonutChart
@@ -167,7 +170,7 @@ export function DealSnapshot({
                   "The forecast counts none of it."
                 ) : (
                   <>
-                    Set by the stage — every{" "}
+                    Set by the stage, every{" "}
                     <span className="font-semibold" style={{ color: stageColor }}>
                       {stage}
                     </span>{" "}
@@ -264,14 +267,15 @@ export function DealSnapshot({
               color={lost ? SPENT : MEASURE}
               lost={lost}
             />
+            {/* Facts only (Anir, Jul 28: "'past the quiet line'? why are you
+                speaking in metaphors? It's all about the facts") and no em
+                dashes anywhere in UI copy, same order. */}
             <p className={NOTE}>
               {lost
-                ? `Marked lost on ${formatDate(stageStartedAt)} — nothing left to chase.`
-                : daysInStage < rottingDays
-                  ? `${daysLabel(rottingDays - daysInStage)} before it goes quiet.`
-                  : daysInStage === rottingDays
-                    ? "It just hit the quiet line — time to chase it."
-                    : `${daysLabel(daysInStage - rottingDays)} past the quiet line — time to chase it.`}
+                ? `Marked lost on ${formatDate(stageStartedAt)}.`
+                : daysInStage <= rottingDays
+                  ? `Marked stalled at ${rottingDays} days in a stage.`
+                  : `${daysLabel(daysInStage - rottingDays)} over the ${rottingDays}-day stalled threshold.`}
             </p>
           </div>
         </section>
@@ -385,7 +389,15 @@ function QuietTrack({
   lost: boolean;
 }) {
   const overdue = !lost && days >= rottingDays;
-  const pct = lost ? 100 : Math.min(100, (days / Math.max(rottingDays, 1)) * 100);
+  // The axis runs PAST the threshold, so a deal that has overdrawn its runway
+  // still shows HOW FAR past it is. Capping the fill at the threshold painted
+  // every stalled deal as one identical full-width red slab: 15 days and 50
+  // days looked the same, and the block read as a wall of red (Anir, Jul 28:
+  // "I hate the way that red bar chart looks. It looks like blood").
+  const axis = lost ? Math.max(days, 1) : Math.max(rottingDays * 2, days, 1);
+  const pct = lost ? 100 : Math.min(100, (days / axis) * 100);
+  /** Where the runway ends on that axis, drawn as a marker on the track. */
+  const markPct = lost ? 100 : (rottingDays / axis) * 100;
   // Real red is earned only by a deal that has actually overdrawn its runway.
   // A closed deal has no clock left to run, so it reads as a spent track.
   const base = overdue ? RISK : color;
@@ -394,7 +406,7 @@ function QuietTrack({
     <Tooltip
       label={
         lost
-          ? "This deal is closed — there is no clock left to run."
+          ? "This deal is closed: there is no clock left to run."
           : overdue
             ? `${daysLabel(days)} on this stage. Anything past ${rottingDays} days counts as gone quiet.`
             : `${daysLabel(days)} of the ${rottingDays}-day runway used.`
@@ -403,13 +415,23 @@ function QuietTrack({
       className="w-full cursor-pointer"
     >
       <span
-        className="block h-2 w-full overflow-hidden rounded-full"
+        className="relative block h-2 w-full rounded-full"
         style={{ background: quiet(base) }}
       >
-        <span
-          className="block h-full rounded-full"
-          style={{ width: `${Math.max(pct, days > 0 || lost ? 3 : 0)}%`, background: fill }}
-        />
+        <span className="absolute inset-0 overflow-hidden rounded-full">
+          <span
+            className="block h-full rounded-full"
+            style={{ width: `${Math.max(pct, days > 0 || lost ? 3 : 0)}%`, background: fill }}
+          />
+        </span>
+        {/* The runway mark: the fill crossing it IS the stalled signal. */}
+        {!lost && (
+          <span
+            aria-hidden
+            className="absolute top-1/2 h-[10px] w-px -translate-y-1/2"
+            style={{ left: `${markPct}%`, background: RISK }}
+          />
+        )}
       </span>
     </Tooltip>
   );

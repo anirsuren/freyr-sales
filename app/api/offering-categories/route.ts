@@ -19,7 +19,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!(await canManageOfferings()))
     return NextResponse.json(
-      { error: "View only — admin access required" },
+      { error: "View only: admin access required" },
       { status: 403 }
     );
   const body = await req.json().catch(() => ({}));

@@ -58,7 +58,7 @@ export default async function AgentGoalsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Goals"
-        subtitle="Hand the agent a goal and it lines up the work — research, drafts, next moves. You review and approve everything before anything goes out."
+        subtitle="Hand the agent a goal and it lines up the work: research, drafts, next moves. You review and approve everything before anything goes out."
       />
 
       <AgentGoalBar />
@@ -101,7 +101,7 @@ export default async function AgentGoalsPage() {
         </div>
         {runs.length === 0 ? (
           <p className="text-[13px] text-text-secondary">
-            Nothing yet — set a goal above, or open the{" "}
+            Nothing yet, set a goal above, or open the{" "}
             <Link href="/agent/inbox" className="text-blue-primary hover:underline">
               To-do
             </Link>{" "}

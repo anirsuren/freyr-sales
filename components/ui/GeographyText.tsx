@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 export function GeographyText({
   geography,
   className,
-  fallback = "—",
+  fallback = "-",
 }: {
   geography?: string | null;
   className?: string;
@@ -33,7 +33,7 @@ export function GeographyText({
   return (
     <span className={cn("inline-flex items-baseline gap-1.5", className)}>
       {/* The country is already in the text beside it, so the emoji is
-          decorative to a screen reader — announcing "United States flag" then
+          decorative to a screen reader, announcing "United States flag" then
           "United States" is noise. */}
       <span aria-hidden="true" title={country}>
         {flag}

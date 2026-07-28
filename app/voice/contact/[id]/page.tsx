@@ -29,7 +29,7 @@ import { personaFor } from "@/lib/voicePersonas";
 import { formatPhone, formatDateTime, formatDate } from "@/lib/utils";
 import { listStoredVoiceConversations, storedVoiceCall } from "@/lib/voiceEvents";
 
-export const metadata = { title: "Contact — voice" };
+export const metadata = { title: "Contact: voice" };
 export const dynamic = "force-dynamic";
 
 const fmtLen = (secs: number) =>
@@ -153,7 +153,7 @@ export default async function VoiceContactPage({
     id: call.id,
     label: call.offering_name || "Call",
     meta: `${call.outcome ? OUTCOME_META[call.outcome].label : "Queued"} · ${formatDateTime(call.created_at)}`,
-    value: call.duration_secs ? fmtLen(call.duration_secs) : "—",
+    value: call.duration_secs ? fmtLen(call.duration_secs) : "-",
     href: isDialedVoiceCall(call.status) ? `/voice/c/${call.conversation_id || call.id}` : undefined,
   }));
   const conversationItems: ContactConversationItem[] = calls.map((call) => {

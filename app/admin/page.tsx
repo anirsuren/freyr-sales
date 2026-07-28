@@ -218,7 +218,7 @@ export default async function AdminPage() {
                 className="inline-flex items-center gap-2 text-[13px]"
                 style={{ color: ok ? "#1A7A35" : "#B02020" }}
               >
-                {ok ? "✓ Configured" : "✕ Missing — using mock"}
+                {ok ? "✓ Configured" : "✕ Missing: using mock"}
               </span>
             </li>
           ))}

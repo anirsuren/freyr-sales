@@ -142,12 +142,12 @@ function CampaignAudienceFan({
               {item.kind === "contact" ? (
                 <Avatar
                   name={item.name}
-                  className="h-7 w-7 text-[10px] ring-2 ring-white"
+                  className="h-7 w-7 text-[10px] ring-2 ring-[color:var(--white)]"
                 />
               ) : (
                 <CompanyLogo
                   name={item.name}
-                  className="h-7 w-7 rounded-lg text-[8px] ring-2 ring-white"
+                  className="h-7 w-7 rounded-lg text-[8px] ring-2 ring-[color:var(--white)]"
                 />
               )}
             </Link>
@@ -420,7 +420,7 @@ export function CampaignsView({
       if (data.ok) {
         toast(
           queue
-            ? `Queued for ${picked.size} contact${picked.size === 1 ? "" : "s"} — emails go out once the send channel is connected.`
+            ? `Queued for ${picked.size} contact${picked.size === 1 ? "" : "s"}: emails go out once the send channel is connected.`
             : "Campaign saved as a draft."
         );
         setComposing(false);
@@ -479,7 +479,7 @@ export function CampaignsView({
     <div>
       <PageHeader
         title="Campaigns"
-        subtitle="One message, many contacts — drafted for you, edited by you, sent to everyone on the list with an email."
+        subtitle="One message, many contacts: drafted for you, edited by you, sent to everyone on the list with an email."
         action={
           <Button
             onClick={() => {
@@ -557,7 +557,7 @@ export function CampaignsView({
           </aside>
 
           {/* Fixed body height so the dialog stays the same size on every
-              step — Setup is short and Audience is long, so browsing the
+              step. Setup is short and Audience is long, so browsing the
               rail made the whole modal jump around (Anir, Jul 26: "when I
               click on different steps it's changing the dimension, so it's
               annoying"). Overflow scrolls inside instead of resizing. */}
@@ -779,7 +779,7 @@ export function CampaignsView({
         <EmptyState
           icon={Megaphone}
           title="No campaigns yet"
-          description="Draft one message for an offering, pick the contacts, and queue the blast — everyone on the list with an email gets it."
+          description="Draft one message for an offering, pick the contacts, and queue the blast: everyone on the list with an email gets it."
           action={
             <Button
               onClick={() => {
@@ -940,9 +940,9 @@ export function CampaignsView({
                             ? `${c.sent_count} of ${total} sent`
                             : c.status === "queued"
                             ? `${c.sent_count} of ${total} sent${
-                                c.sent_count < total ? " — rest queued" : ""
+                                c.sent_count < total ? ", rest queued" : ""
                               }`
-                            : "Draft — not queued yet"}
+                            : "Draft: not queued yet"}
                         </span>
                         <span className="tnum font-semibold text-text-secondary">
                           {pct}%
@@ -1035,7 +1035,7 @@ export function CampaignsView({
                     <Gauge
                       label="Open rate"
                       pct={c.sent_count > 0 ? openRate : 0}
-                      sub={c.sent_count > 0 ? `${c.opens} opened` : "—"}
+                      sub={c.sent_count > 0 ? `${c.opens} opened` : "-"}
                       segments={[
                         { label: "Opened", value: c.opens, color: VIZ.teal },
                         { label: "Unopened", value: Math.max(c.sent_count - c.opens, 0), color: "#EEF0F3" },
@@ -1045,7 +1045,7 @@ export function CampaignsView({
                     <Gauge
                       label="Reply rate"
                       pct={c.sent_count > 0 ? replyRate : 0}
-                      sub={c.sent_count > 0 ? `${c.replies} replied` : "—"}
+                      sub={c.sent_count > 0 ? `${c.replies} replied` : "-"}
                       segments={[
                         { label: "Replied", value: c.replies, color: VIZ.indigo },
                         { label: "No reply", value: Math.max(c.sent_count - c.replies, 0), color: "#EEF0F3" },

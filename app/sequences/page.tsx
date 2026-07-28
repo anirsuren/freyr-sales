@@ -86,20 +86,20 @@ export default async function SequencesPage() {
     <div>
       <PageHeader
         title="Sequences"
-        subtitle="A sequence is a step-by-step outreach plan — emails and calls spaced over days — and which accounts are working through it."
+        subtitle="A sequence is a step-by-step outreach plan: emails and calls spaced over days, and which accounts are working through it."
         action={
           <div className="flex items-center gap-2">
             <HowItWorks title="How sequences work">
               <p>
-                The agent preps each step for you — it drafts the emails and sets
-                reminders for the calls — then you review, approve, and send.
+                The agent preps each step for you, it drafts the emails and sets
+                reminders for the calls, then you review, approve, and send.
               </p>
               <p>
                 <span className="font-semibold text-text-primary">
                   It never emails or dials on its own.
                 </span>{" "}
                 Every message goes out from you, only to contacts who&apos;ve agreed
-                to hear from you — so you stay in control and compliant.
+                to hear from you, so you stay in control and compliant.
               </p>
             </HowItWorks>
             <Link

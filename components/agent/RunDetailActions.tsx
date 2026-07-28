@@ -56,7 +56,7 @@ export function RunDetailActions({ run }: { run: AgentRun }) {
       });
       const data = await res.json();
       if (data.ok) {
-        toast(`Reverted — ${data.removed ?? 0} step(s) rolled back`);
+        toast(`Reverted. ${data.removed ?? 0} step(s) rolled back`);
         router.refresh();
       } else {
         toast(data.error || "Couldn't undo that run", "error");

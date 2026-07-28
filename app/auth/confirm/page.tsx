@@ -75,7 +75,7 @@ export default function ConfirmLandingPage() {
               Confirming your email…
             </p>
             <p className="mt-1 text-[12.5px] text-text-tertiary">
-              Signing you in — one moment.
+              Signing you in, one moment.
             </p>
           </>
         ) : (

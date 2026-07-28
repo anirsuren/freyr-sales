@@ -23,6 +23,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { HoverCard } from "@/components/ui/HoverCard";
 import {
   AreaChart,
+  BarChart,
   DonutChart,
   DonutLegend,
   VIZ,
@@ -100,7 +101,7 @@ const REVENUE_TYPE_STYLE: Record<
   annual: { color: "#0071E3", bg: "rgba(0,113,227,0.10)", icon: Repeat },
   project: { color: "#7C3AED", bg: "rgba(124,58,237,0.10)", icon: Briefcase },
   annual_service: { color: "#0F766E", bg: "rgba(15,118,110,0.10)", icon: Wrench },
-  license: { color: "#059669", bg: "rgba(5,150,105,0.12)", icon: KeyRound },
+  license: { color: "#0891B2", bg: "rgba(8,145,178,0.12)", icon: KeyRound },
 };
 
 function TypePill({
@@ -156,7 +157,7 @@ export function OfferingReports({
           </p>
         </Card>
         {/* In-progress mode only (Suren: "show revenue so that people know what
-            it would look like") — a clearly-labelled sample of the report this
+            it would look like"), a clearly-labelled sample of the report this
             tab becomes once accounts use the offering. Never rendered in live
             mode, and the empty branch means it never sits next to real data. */}
         {showExample && (
@@ -170,7 +171,7 @@ export function OfferingReports({
                 Example preview
               </span>
               <p className="text-[11px] text-text-tertiary">
-                Sample numbers so you can see what this report will look like — not your data.
+                Sample numbers so you can see what this report will look like, not your data.
               </p>
             </div>
             <div className="rounded-xl border-2 border-dashed border-[#7C3AED]/30 p-4">
@@ -278,9 +279,58 @@ export function OfferingReports({
         : 0,
     };
   });
-  // The tallest seat bar sets the scale, so the biggest account fills the
-  // track and the rest read against it.
-  const maxSeats = Math.max(...customerSummaries.map((c) => c.licenses), 1);
+  // Seats as a pie, mirroring the revenue donut on the left. The old
+  // progress-bar rows scaled every bar to the BIGGEST account, so the top
+  // account always drew a full bar while its label said "65% of all seats"
+  // (Anir, Jul 28: "why is it saying 65% but shows a 100% bar? You'd just
+  // want a pie chart there"). A donut IS the share, so number and picture
+  // can never disagree.
+  const seatSegments = customerSummaries
+    .filter((customer) => customer.licenses > 0)
+    .map((customer) => ({
+      label: customer.name,
+      value: customer.licenses,
+      color: customer.color,
+      tip: customer.licenseLines.map((line) => ({
+        logo: customer.name,
+        name: line.description || "License",
+        sub: `${formatDate(line.start_date)} to ${formatDate(line.end_date)}`,
+        value: `${line.num_licenses} seats · ${formatMoney(line.amount)}`,
+      })),
+    }));
+  const noSeatAccounts = customerSummaries.filter((c) => c.licenses === 0);
+
+  // Renewal exposure, by month: how much contracted value reaches its end
+  // date in each of the next 12 months. The renewals table lower down lists
+  // each contract; this is the shape of that list, and the page's proper
+  // bar chart (Anir, Jul 28: "I would want a proper bar chart here").
+  const monthKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`;
+  const renewalMonths = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    return {
+      key: monthKey(d),
+      label: d.toLocaleDateString("en-US", { month: "short", year: "2-digit" }).replace(" ", " '"),
+      value: 0,
+      color: VIZ.blue,
+      tip: [] as TipItem[],
+    };
+  });
+  const renewalByKey = new Map(renewalMonths.map((m) => [m.key, m]));
+  for (const { customer, line } of lines) {
+    if (!line.end_date) continue;
+    const end = new Date(line.end_date);
+    if (Number.isNaN(end.getTime())) continue;
+    const bucket = renewalByKey.get(monthKey(end));
+    if (!bucket) continue;
+    bucket.value += line.amount;
+    bucket.tip.push({
+      logo: customer,
+      name: customer,
+      sub: `${REVENUE_TYPE_META[line.revenue_type]?.short || line.revenue_type} · ends ${formatDate(line.end_date)}`,
+      value: formatMoney(line.amount),
+    });
+  }
+  const renewalTotal = renewalMonths.reduce((s, m) => s + m.value, 0);
 
   const typeSegments = REVENUE_TYPES.map((type) => {
     const typeLines = lines.filter(({ line }) => line.revenue_type === type);
@@ -409,7 +459,7 @@ export function OfferingReports({
             <div className="flex-1 min-w-0">
               {/* The company tag stays (Anir: "the tag that has the company
                   name"), but its label span ships `break-normal`, which still
-                  lets a two-word name break BETWEEN the words — that is how
+                  lets a two-word name break BETWEEN the words, that is how
                   "Meridian Pharmaceuticals" ended up two lines tall while
                   "Helix Biologics" stayed one, and the rows read as broken.
                   `whitespace-nowrap` on the legend's spans forbids the break,
@@ -431,7 +481,7 @@ export function OfferingReports({
         {/* RIGHT — the second picture, in the space the table left behind.
             Seats, not dollars: the donut beside it already answers "who pays
             us the most", so restating money here would be the same chart
-            twice. This answers the other half a seller needs — how many people
+            twice. This answers the other half a seller needs, how many people
             are actually on it per account, i.e. where the room to grow is.
             Every number comes from the license lines' own `num_licenses`. */}
         <div className="flex h-full flex-col px-5 py-4">
@@ -443,112 +493,77 @@ export function OfferingReports({
               {report.totalLicenses} seats in total
             </p>
           </div>
-          {/* Centred when the list is short (so the panel never opens with a
-              dead band under it), capped and scrolled when it is long — the
-              same cap the table used to carry on this side, so a long customer
-              list can never stretch this compact card. `justify-center` lives
-              on the OUTER box and the scroll on the inner one: a centred flex
-              container that overflows makes its first rows unreachable. */}
-          <div className="flex flex-1 flex-col justify-center">
-          <div className="flex max-h-[204px] flex-col gap-3.5 overflow-y-auto">
-            {report.totalLicenses === 0 && (
+          {/* A donut, mirroring the revenue split on the left: the share IS
+              the picture, so "65% of all seats" can never sit beside a
+              full-width bar again. Hovering a slice or its legend pill opens
+              the license contracts behind those seats. */}
+          {report.totalLicenses === 0 ? (
+            <div className="flex flex-1 items-center">
               <p className="text-[12px] leading-relaxed text-text-secondary">
-                No licensed seats on this offering yet — every account below is
+                No licensed seats on this offering yet, every account below is
                 on project or service revenue, so there are no seats to count.
               </p>
-            )}
-            {customerSummaries.map((customer) => {
-              const fill = Math.round((customer.licenses / maxSeats) * 100);
-              const typeNames = customer.typeMix
-                .map((segment) => REVENUE_TYPE_META[segment.type].short)
-                .join(" + ");
-              const hover = (
-                <div>
-                  <div className="flex items-center gap-2.5 border-b border-border-light pb-2.5">
-                    <CompanyLogo name={customer.name} className="h-8 w-8 shrink-0 text-[10px]" />
-                    <div className="min-w-0">
-                      {/* Wraps, never truncates — the full account name is the
-                          point of the breakdown. */}
-                      <p className="break-words text-[13px] font-semibold leading-tight text-text-primary">
-                        {customer.name}
-                      </p>
-                      <p className="mt-0.5 text-[10.5px] text-text-tertiary tnum">
-                        {customer.licenses} of {report.totalLicenses} seats · {customer.seatShare}%
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mb-1.5 mt-2.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                    License contracts behind these seats
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center gap-2.5">
+              <DonutChart
+                syncId="offering-seats"
+                segments={seatSegments}
+                size={132}
+                thickness={10}
+                centerLabel={String(report.totalLicenses)}
+                centerSub="seats"
+              />
+              <div className="min-w-0 flex-1">
+                <DonutLegend
+                  items={seatSegments}
+                  syncId="offering-seats"
+                  pill
+                  bars={false}
+                  className="[&_span]:whitespace-nowrap"
+                />
+                {noSeatAccounts.length > 0 && (
+                  <p className="mt-2 text-[10.5px] leading-snug text-text-tertiary">
+                    No seats: {noSeatAccounts.map((c) => c.name).join(", ")} (project/service revenue only).
                   </p>
-                  {customer.licenseLines.length === 0 ? (
-                    <p className="text-[11.5px] leading-relaxed text-text-secondary">
-                      No licensed seats — this account is on {typeNames || "no booked"}{" "}
-                      revenue only.
-                    </p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {customer.licenseLines.map((line) => (
-                        <div key={line.id} className="rounded-md bg-surface px-2 py-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <TypePill type={line.revenue_type} short />
-                            <span className="shrink-0 text-[11px] font-semibold text-text-primary tnum">
-                              {line.num_licenses} seats · {formatMoney(line.amount)}
-                            </span>
-                          </div>
-                          <p className="mt-1 break-words text-[11px] leading-snug text-text-secondary">
-                            {line.description || "No description on this line."}
-                          </p>
-                          <p className="mt-0.5 text-[10px] text-text-tertiary tnum">
-                            {formatDate(line.start_date)} – {formatDate(line.end_date)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-              return (
-                <HoverCard
-                  key={customer.id}
-                  side="top"
-                  width={300}
-                  delayMs={0}
-                  content={hover}
-                  className="cursor-pointer rounded-lg px-1.5 py-1 transition-colors hover:bg-[var(--surface)]"
-                >
-                  <div data-testid="offering-customer-commercial-row">
-                    <div className="flex items-center gap-2">
-                      <CompanyLogo name={customer.name} className="h-6 w-6 shrink-0 text-[7.5px]" />
-                      {/* One line, always — and the seat count sits right next
-                          to the name it belongs to, not flung to the far edge. */}
-                      <span className="whitespace-nowrap text-[12.5px] font-semibold text-text-primary">
-                        {customer.name}
-                      </span>
-                      <span className="whitespace-nowrap text-[11.5px] font-semibold text-text-primary tnum">
-                        {customer.licenses} seats
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-border-light">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${fill}%`, background: customer.color }}
-                      />
-                    </div>
-                    <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
-                      {customer.licenses > 0
-                        ? `${customer.seatShare}% of all seats · ${formatMoney(customer.licenseRevenue)} licensed`
-                        : `No licensed seats · on ${typeNames || "no booked"} revenue`}
-                    </p>
-                  </div>
-                </HoverCard>
-              );
-            })}
-          </div>
-          </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         </div>
       </Card>
+
+      {/* Band A½ — renewal exposure as a real, full-width bar chart: the
+          contracted value reaching its end date in each of the next twelve
+          months. The renewals table further down lists every contract; this
+          is that list's shape, so a heavy quarter is visible from across the
+          room. Hidden entirely when no dated contract ends in the window. */}
+      {renewalTotal > 0 && (
+        <Card data-testid="offering-renewal-chart">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold text-text-primary">
+                Renewal exposure, month by month
+              </h2>
+              <p className="mt-0.5 text-[12px] text-text-tertiary">
+                Contracted value reaching its end date, next 12 months. Hover a
+                bar for the contracts behind it.
+              </p>
+            </div>
+            <p className="shrink-0 text-[12px] text-text-tertiary tnum">
+              {formatMoney(renewalTotal)} comes up for renewal in this window
+            </p>
+          </div>
+          <BarChart
+            data={renewalMonths}
+            height={190}
+            format="money"
+            tipRecordsLabel="Contracts ending this month"
+          />
+        </Card>
+      )}
 
       {/* Band B — the account table, now the full width of the page so it can
           carry the columns the 440px sliver never had room for (Suren: "the
@@ -682,7 +697,7 @@ export function OfferingReports({
                     </td>
                     <td className="px-4 py-3.5">
                       <span className="block text-[14px] font-semibold text-text-primary tnum">
-                        {customer.licenses || "—"}
+                        {customer.licenses || "-"}
                       </span>
                       <span className="block whitespace-nowrap text-[10.5px] text-text-tertiary">
                         {customer.licenses ? "licensed" : "none licensed"}
@@ -728,7 +743,7 @@ export function OfferingReports({
                       ) : (
                         <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-blue-light px-2 py-1 text-[10.5px] font-semibold text-blue-primary">
                           <Repeat size={11} strokeWidth={2.1} />
-                          Ongoing — no end date
+                          Ongoing, no end date
                         </span>
                       )}
                     </td>
@@ -789,7 +804,7 @@ export function OfferingReports({
                 instead of leaving an empty panel beside a full-height chart. */}
             {renewals.length === 0 && (
               <p className="px-4 py-5 text-[12.5px] leading-relaxed text-text-secondary">
-                Nothing is up for renewal — every contract on this offering is
+                Nothing is up for renewal, every contract on this offering is
                 ongoing or already past its end date.
               </p>
             )}
@@ -845,7 +860,7 @@ export function OfferingReports({
           {(
             [
               [Users, "Avg. per customer", formatMoney(Math.round(report.totalRevenue / Math.max(report.customerCount, 1))), "booked value per account"],
-              [KeyRound, "Revenue per seat", report.totalLicenses ? formatMoney(Math.round(report.totalRevenue / report.totalLicenses)) : "—", "booked ÷ licensed seats"],
+              [KeyRound, "Revenue per seat", report.totalLicenses ? formatMoney(Math.round(report.totalRevenue / report.totalLicenses)) : "-", "booked ÷ licensed seats"],
               [Repeat, "Recurring share", `${recurringShare}%`, "on repeating contracts"],
               [Crown, "Top-account share", `${topCustomerShare}%`, "held by the biggest account"],
               [CalendarClock, "Next renewal", nextRenewal?.line.end_date ? formatDate(nextRenewal.line.end_date) : "No date", "the next contract decision"],
@@ -907,17 +922,17 @@ export function OfferingReports({
                           <span className="text-[12px] text-text-tertiary">In use</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap">{line ? formatMoney(line.amount) : "—"}</td>
-                      <td className="px-4 py-3 text-[12.5px] text-text-secondary tnum whitespace-nowrap">{line?.revenue_type === "license" && line.num_licenses ? line.num_licenses : "—"}</td>
+                      <td className="px-4 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap">{line ? formatMoney(line.amount) : "-"}</td>
+                      <td className="px-4 py-3 text-[12.5px] text-text-secondary tnum whitespace-nowrap">{line?.revenue_type === "license" && line.num_licenses ? line.num_licenses : "-"}</td>
                       <td className="px-4 py-3 text-[11.5px] text-text-secondary whitespace-nowrap">
                         {line && (line.start_date || line.end_date)
                           ? `${formatDate(line.start_date)} – ${formatDate(line.end_date)}`
-                          : "—"}
+                          : "-"}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        {status ? <span className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", status.className)}>{status.label}</span> : "—"}
+                        {status ? <span className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", status.className)}>{status.label}</span> : "-"}
                       </td>
-                      <td className="max-w-[260px] whitespace-normal break-words px-4 py-3 text-[12px] text-text-secondary">{line?.description || "—"}</td>
+                      <td className="max-w-[260px] whitespace-normal break-words px-4 py-3 text-[12px] text-text-secondary">{line?.description || "-"}</td>
                     </tr>
                   );
                 })

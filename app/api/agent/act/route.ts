@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     customer_id: customerId,
     contact_id: contactId,
     outcome: "in_progress",
-    notes: `🤖 Agent ${verb} for ${customer.company_name} — “${draft.title}”. Review and send.`,
+    notes: `🤖 Agent ${verb} for ${customer.company_name}. “${draft.title}”. Review and send.`,
     // Set a follow-up date so this becomes a real task the rep sees in Tasks.
     follow_up_date: dueIso,
     logged_by: "Freyr Agent",
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     customer_id: customerId,
     company: customer.company_name,
     outcome: "handled",
-    summary: `${draft.title} — saved to the timeline, added to Tasks for your review (due ${dueLabel}).`,
+    summary: `${draft.title}: saved to the timeline, added to Tasks for your review (due ${dueLabel}).`,
     steps: actRunSteps(verb, customer.company_name),
     interaction_ids: [logged.id],
     draft,

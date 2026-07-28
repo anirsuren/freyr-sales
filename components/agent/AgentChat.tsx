@@ -83,8 +83,8 @@ function renderInline(s: string, keyBase: string): ReactNode[] {
     if (m[2] != null && m[3] != null) {
       const href = m[3];
       const label = m[2];
-      // Company/contact mentions render as a proper PILL — logo/headshot + bold
-      // name in a rounded chip — not a bare blue link (Suren: "make it an actual
+      // Company/contact mentions render as a proper PILL: logo/headshot + bold
+      // name in a rounded chip, not a bare blue link (Suren: "make it an actual
       // pill with the logo and the name bolded"). Still deep-links through.
       const isCompany = href.startsWith("/customers/");
       const isContact = href.startsWith("/contacts/");
@@ -503,7 +503,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
         });
         const data = await res.json();
         if (activeUserIdRef.current !== requestUserId) return;
-        const reply: string = data.reply || "Sorry — I couldn't answer that one.";
+        const reply: string = data.reply || "Sorry. I couldn't answer that one.";
         if (Array.isArray(data.suggestions) && data.suggestions.length)
           setSuggestions(data.suggestions);
         const replyTs = Date.now();
@@ -662,7 +662,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
               className="text-[26px] font-semibold text-text-primary tracking-[-0.01em] rise-in"
               style={{ animationDelay: "60ms" }}
             >
-              Hey {firstName} — what do you want to work on?
+              Hey {firstName}, what do you want to work on?
             </h1>
             <p
               className="text-[14px] text-text-secondary mt-2 text-center max-w-[520px] rise-in"
@@ -814,7 +814,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
               </button>
             </div>
             <p className="text-[11px] text-text-tertiary text-center mt-2">
-              The agent drafts and recommends — you approve everything before it goes out.
+              The agent drafts and recommends, you approve everything before it goes out.
             </p>
           </div>
         </div>

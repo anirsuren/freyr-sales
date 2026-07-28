@@ -550,7 +550,7 @@ export function CustomerOfferingsTab({
       });
       const data = await res.json();
       if (data.ok) {
-        toast(`Classified as ${type} — here's everything that applies.`);
+        toast(`Classified as ${type}: here's everything that applies.`);
         router.refresh();
       } else {
         setSelectedType(previous);
@@ -580,7 +580,7 @@ export function CustomerOfferingsTab({
       if (data.ok) {
         toast(
           nowUsing
-            ? "Marked as already using — moved out of the pitch list."
+            ? "Marked as already using: moved out of the pitch list."
             : "Moved back to the pitch list."
         );
         router.refresh();
@@ -714,7 +714,7 @@ export function CustomerOfferingsTab({
           </p>
           {o.materials.length === 0 ? (
             <p className="text-[12px] text-text-tertiary">
-              None yet — add them on the offering and they&apos;ll show here.
+              None yet, add them on the offering and they&apos;ll show here.
             </p>
           ) : (
             /* One material per row. Two-up packed the titles, the format and
@@ -866,7 +866,7 @@ export function CustomerOfferingsTab({
           What type of customer is this?
         </h2>
         <p className="text-[13.5px] text-text-secondary leading-relaxed max-w-[520px] mx-auto mt-2 mb-6">
-          Pick the segment — the same master list your offerings are mapped to.
+          Pick the segment, the same master list your offerings are mapped to.
           The moment you classify it, every offering that applies shows up here
           with its description and sales materials.
         </p>
@@ -958,7 +958,7 @@ export function CustomerOfferingsTab({
         <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
           <span className="inline-flex items-center gap-1">
             Segment
-            <InfoHint text="This account's segment — its industry and company size (e.g. Biologics, mid-size). It decides which of your offerings apply, shown below. Change it if the account was classified wrong." />
+            <InfoHint text="This account's segment: its industry and company size (e.g. Biologics, mid-size). It decides which of your offerings apply, shown below. Change it if the account was classified wrong." />
           </span>
           <ColorSelect
             ariaLabel="Change customer segment"
@@ -1004,7 +1004,7 @@ export function CustomerOfferingsTab({
           />
         ) : toPitch.length === 0 ? (
           <p className="text-[13px] text-text-secondary">
-            They&apos;re already using everything that applies — a good problem
+            They&apos;re already using everything that applies, a good problem
             to have.
           </p>
         ) : (

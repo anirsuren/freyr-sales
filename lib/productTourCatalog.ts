@@ -443,7 +443,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
       "Pipeline by Stage shows where open value is concentrated. Open a stage to reveal the exact deals and people behind it.",
     targets: featureTargets("analytics", [
       '[data-tour="analytics-pipeline-stages"]',
-      'button[title^="Prospect —"]',
+      'button[title^="Prospect,"]',
     ]),
     roles: ALL_ROLES,
   },

@@ -286,7 +286,7 @@ function makeDraft(
   if (opts.length === "short") {
     body =
       `Subject: Quick question on your submission timeline\n\n` +
-      `Hi ${fn} — Freyr helps clinical-stage teams hit FDA/EMA timelines without adding headcount. Worth a quick call this week?\n\nBest,\n${repName} · Freyr`;
+      `Hi ${fn}. Freyr helps clinical-stage teams hit FDA/EMA timelines without adding headcount. Worth a quick call this week?\n\nBest,\n${repName} · Freyr`;
   } else if (opts.tone === "formal") {
     body =
       `Subject: Supporting ${account.company_name}'s regulatory submissions\n\n` +
@@ -298,7 +298,7 @@ function makeDraft(
   }
   return {
     text:
-      `${opts.lead || `Here's a draft for ${account.company_name} — review and tweak before it goes out:`}\n\n${body}\n\n` +
+      `${opts.lead || `Here's a draft for ${account.company_name}, review and tweak before it goes out:`}\n\n${body}\n\n` +
       `Want me to make it shorter, change the tone, or save it as a draft on ${account.company_name}?`,
     suggestions: ["Make it shorter", "Make it more formal", `Tell me about ${account.company_name}`],
   };
@@ -432,7 +432,7 @@ export function answerAgentChat(
     const t = acct || contactAcct;
     if (!t) {
       return {
-        text: "Happy to save a draft — which account is it for?",
+        text: "Happy to save a draft, which account is it for?",
         suggestions: ctx.customers.slice(0, 3).map((c) => `Draft an email to ${c.company_name}`),
       };
     }
@@ -459,7 +459,7 @@ export function answerAgentChat(
     const target = acct || contactAcct || criterionAccount(m, ctx)?.customer || null;
     if (!target) {
       return {
-        text: "Sure — who should I set the follow-up with?",
+        text: "Sure, who should I set the follow-up with?",
         suggestions: ctx.customers.slice(0, 3).map((c) => `Set a follow-up with ${c.company_name} next week`),
       };
     }
@@ -471,7 +471,7 @@ export function answerAgentChat(
     };
   }
 
-  // Log a call / meeting / email the rep already had — either explicitly
+  // Log a call / meeting / email the rep already had: either explicitly
   // ("log a call with X") or just reported in passing ("I called X", "spoke with
   // X, they're interested"). A past-tense report counts even without "log".
   const logVerb = /\b(log|note|record|mark|jot)\b/.test(m);
@@ -484,7 +484,7 @@ export function answerAgentChat(
     const t = acct || contactAcct;
     if (!t) {
       return {
-        text: "Got it — which account should I log that on?",
+        text: "Got it: which account should I log that on?",
         suggestions: ctx.customers.slice(0, 3).map((c) => `Log a call with ${c.company_name}`),
       };
     }
@@ -505,8 +505,8 @@ export function answerAgentChat(
     return {
       text: vary(
         [
-          `Hi ${userFirstName} — I'm your sales agent. Ask me where to focus, who's cooling or at-risk, or to draft outreach. And I can actually do things for you: save a draft onto an account, set a follow-up, or log a call. I never send anything without your OK. What do you want to do?`,
-          `Hey ${userFirstName}. I read your pipeline and act on it — I'll draft and save outreach, set follow-ups, log your calls, and flag what's slipping. Everything waits for your sign-off. Where do you want to start?`,
+          `Hi ${userFirstName}. I'm your sales agent. Ask me where to focus, who's cooling or at-risk, or to draft outreach. And I can actually do things for you: save a draft onto an account, set a follow-up, or log a call. I never send anything without your OK. What do you want to do?`,
+          `Hey ${userFirstName}. I read your pipeline and act on it. I'll draft and save outreach, set follow-ups, log your calls, and flag what's slipping. Everything waits for your sign-off. Where do you want to start?`,
         ],
         history
       ),
@@ -519,8 +519,8 @@ export function answerAgentChat(
     return {
       text: vary(
         [
-          `Not much on my end — I'm watching your book. You've got ${open.length} open deal${open.length === 1 ? "" : "s"} worth ${formatMoney(openValue)}${cooling.length ? `, and ${cooling.length} ${cooling.length === 1 ? "is" : "are"} starting to cool` : ""}. Want me to pull what needs you today?`,
-          `${cooling.length ? `${cooling.length} deal${cooling.length === 1 ? "" : "s"} ${cooling.length === 1 ? "is" : "are"} going quiet — want me to draft re-engagement?` : "Pipeline's warm, nothing slipping."} ${ctx.needsApproval ? `${ctx.needsApproval} thing${ctx.needsApproval === 1 ? "" : "s"} ${ctx.needsApproval === 1 ? "is" : "are"} waiting on you.` : ""}`.trim(),
+          `Not much on my end. I'm watching your book. You've got ${open.length} open deal${open.length === 1 ? "" : "s"} worth ${formatMoney(openValue)}${cooling.length ? `, and ${cooling.length} ${cooling.length === 1 ? "is" : "are"} starting to cool` : ""}. Want me to pull what needs you today?`,
+          `${cooling.length ? `${cooling.length} deal${cooling.length === 1 ? "" : "s"} ${cooling.length === 1 ? "is" : "are"} going quiet: want me to draft re-engagement?` : "Pipeline's warm, nothing slipping."} ${ctx.needsApproval ? `${ctx.needsApproval} thing${ctx.needsApproval === 1 ? "" : "s"} ${ctx.needsApproval === 1 ? "is" : "are"} waiting on you.` : ""}`.trim(),
           `Standing by for you. Quickest win right now: ${ctx.topActions[0]?.title || "widening relationships on your bigger accounts"}. Want the full focus list?`,
         ],
         history
@@ -531,7 +531,7 @@ export function answerAgentChat(
   if (/^(thanks|thank you|thx|ty|cheers|appreciate it|nice one)\b/.test(m)) {
     return {
       text: vary(
-        ["Anytime. Want me to tee up your next move?", "You got it — anything else you want me to dig into?", "Happy to help. Should I set a follow-up or draft something while we're here?"],
+        ["Anytime. Want me to tee up your next move?", "You got it: anything else you want me to dig into?", "Happy to help. Should I set a follow-up or draft something while we're here?"],
         history
       ),
       suggestions: DEFAULT_SUGGESTIONS,
@@ -540,7 +540,7 @@ export function answerAgentChat(
   if (!hadDraft && /^(cool|nice|great|awesome|perfect|sweet|ok(ay)?|got it|sounds good|makes sense|good stuff|👍)\b/.test(m) && message.trim().split(/\s+/).length <= 3) {
     return {
       text: vary(
-        ["👍 What next — want your focus list, or should I draft something?", "On it. Want me to line up the next account?", "Anything else? I can summarize an account or set a follow-up."],
+        ["👍 What next, want your focus list, or should I draft something?", "On it. Want me to line up the next account?", "Anything else? I can summarize an account or set a follow-up."],
         history
       ),
       suggestions: DEFAULT_SUGGESTIONS,
@@ -565,12 +565,12 @@ export function answerAgentChat(
           ? "More formal version:"
           : wantsWarm
           ? "Warmer version:"
-          : "Done — here it is:",
+          : "Done, here it is:",
       }, userName);
     }
   }
 
-  // --- "send it" / "go ahead and send" — human-led: the agent NEVER sends
+  // --- "send it" / "go ahead and send": human-led: the agent NEVER sends
   //     outward. Catch send-of-an-existing-draft and hand control back. ("draft
   //     an email to X" still drafts; "send AN email to X" has no back-reference
   //     token so it falls through to drafting too.)
@@ -582,8 +582,8 @@ export function answerAgentChat(
     const co = acct?.company_name;
     return {
       text: co
-        ? `I can't send emails on your behalf — you stay in control of what actually goes out. The draft's ready, though: I can save it to ${co}'s timeline so it's queued for you, or you can open ${co} and hit Send there yourself. Want me to save it?`
-        : "I can't send anything on your behalf — you always have the final say on what goes out. Tell me which account and I'll get the draft ready for you to send.",
+        ? `I can't send emails on your behalf: you stay in control of what actually goes out. The draft's ready, though: I can save it to ${co}'s timeline so it's queued for you, or you can open ${co} and hit Send there yourself. Want me to save it?`
+        : "I can't send anything on your behalf: you always have the final say on what goes out. Tell me which account and I'll get the draft ready for you to send.",
       suggestions: co
         ? [`Save it as a draft on ${co}`, "Make it shorter", "Make it more formal"]
         : ctx.customers.slice(0, 3).map((c) => `Draft an email to ${c.company_name}`),
@@ -612,7 +612,7 @@ export function answerAgentChat(
       return makeDraft(contactAcct, ctx, {
         tone,
         length,
-        lead: `Drafting to ${namedContactForAction.full_name} at ${contactAcct.company_name} — review before anything goes out:`,
+        lead: `Drafting to ${namedContactForAction.full_name} at ${contactAcct.company_name}: review before anything goes out:`,
       }, userName);
     }
     if (!acct) {
@@ -623,12 +623,12 @@ export function answerAgentChat(
         return makeDraft(crit.customer, ctx, {
           tone,
           length,
-          lead: `Going with ${crit.customer.company_name} — your ${crit.label}. Here's a draft to review before anything goes out:`,
+          lead: `Going with ${crit.customer.company_name}: your ${crit.label}. Here's a draft to review before anything goes out:`,
         }, userName);
       }
       return {
         text:
-          "Happy to draft it — which account is it for? (e.g. “draft an email to Helix Biologics”). I'll write it and leave it for you to review before anything goes out.",
+          "Happy to draft it: which account is it for? (e.g. “draft an email to Helix Biologics”). I'll write it and leave it for you to review before anything goes out.",
         suggestions: ctx.customers.slice(0, 3).map((c) => `Draft an email to ${c.company_name}`),
       };
     }
@@ -665,12 +665,12 @@ export function answerAgentChat(
     const threadNote = snap.contacts.length < 2 ? " It's single-threaded, so widening the relationship would de-risk it." : "";
     return {
       text:
-        `${detailTarget.company_name} — ${band} health (${snap.health.score}/100). ` +
+        `${detailTarget.company_name}. ${band} health (${snap.health.score}/100). ` +
         `${snap.open.length} open deal${snap.open.length === 1 ? "" : "s"} worth ${formatMoney(snap.openValue)}${stage ? `, currently ${stage}` : ""}. ` +
         `Main contact: ${ct ? `${ct.full_name}${ct.job_title ? `, ${ct.job_title}` : ""}${ct.email ? ` (${ct.email})` : ""}` : "none mapped yet"}` +
         `${snap.contacts.length > 1 ? ` (+${snap.contacts.length - 1} more)` : ""}. ` +
         `Last touch: ${fmtDate(snap.lastAt)}.${threadNote}` +
-        (snap.cooling ? " ⚠️ A deal here has gone quiet — worth re-engaging." : "") +
+        (snap.cooling ? " ⚠️ A deal here has gone quiet, worth re-engaging." : "") +
         `\n\nWant me to pull up their pitch, draft outreach, or set a follow-up?`,
       suggestions: [
         `Show me the pitch for ${detailTarget.company_name}`,
@@ -683,11 +683,11 @@ export function answerAgentChat(
   // --- at-risk / churn / health ---
   if (/\b(at.?risk|risk|churn|los(e|ing)|unhealthy|in trouble|about to lose)/.test(m)) {
     if (atRisk.length === 0) {
-      return { text: "Good news — no accounts are flagged at-risk right now. Your book looks stable.", suggestions: DEFAULT_SUGGESTIONS };
+      return { text: "Good news, no accounts are flagged at-risk right now. Your book looks stable.", suggestions: DEFAULT_SUGGESTIONS };
     }
     const lines = atRisk.slice(0, 5).map((c) => {
       const s = snapshot(c, ctx);
-      return `• ${acctLink(c.company_name, c.id)} — ${formatMoney(s.openValue)} open, last touch ${fmtDate(s.lastAt)}`;
+      return `• ${acctLink(c.company_name, c.id)}. ${formatMoney(s.openValue)} open, last touch ${fmtDate(s.lastAt)}`;
     });
     return {
       text: `${atRisk.length} account${atRisk.length === 1 ? " is" : "s are"} at-risk:\n\n${lines.join("\n")}\n\nWant me to draft re-engagement for the top one?`,
@@ -699,9 +699,9 @@ export function answerAgentChat(
   if (/\b(follow.?up|overdue|chase|needs? a (touch|call|nudge)|who (do i need to|haven'?t i|to|should i|do i|can i) (call|contact|reach|chase|email))/.test(m)) {
     const due = [...open].sort((a, b) => b.staleDays - a.staleDays).slice(0, 5);
     if (due.length === 0) {
-      return { text: "Nothing's overdue for a follow-up — you're on top of your touches.", suggestions: DEFAULT_SUGGESTIONS };
+      return { text: "Nothing's overdue for a follow-up: you're on top of your touches.", suggestions: DEFAULT_SUGGESTIONS };
     }
-    const lines = due.map((d) => `• ${acctLink(d.company, d.customerId)} — last touch ${d.staleDays} days ago (${d.stage})`);
+    const lines = due.map((d) => `• ${acctLink(d.company, d.customerId)}: last touch ${d.staleDays} days ago (${d.stage})`);
     return {
       text: `Due a follow-up (longest since contact first):\n\n${lines.join("\n")}\n\nWant me to draft one for ${due[0].company}?`,
       suggestions: [`Draft an email to ${due[0].company}`, "Which deals are cooling?", "What should I focus on today?"],
@@ -711,11 +711,11 @@ export function answerAgentChat(
   // --- cooling / stalled / re-engage ---
   if (/\b(cool|stall|cold|quiet|gone dark|re.?engage|dormant|rotting|no activity|fallen off|slip|neglect|letting|gone silent|going dark)/.test(m)) {
     if (cooling.length === 0) {
-      return { text: "Nothing's gone cold — every open deal has had activity recently. Nicely kept up.", suggestions: DEFAULT_SUGGESTIONS };
+      return { text: "Nothing's gone cold: every open deal has had activity recently. Nicely kept up.", suggestions: DEFAULT_SUGGESTIONS };
     }
-    const lines = cooling.slice(0, 5).map((d) => `• ${acctLink(d.company, d.customerId)} — ${formatMoney(d.value)}, quiet ${d.staleDays} days (${d.stage})`);
+    const lines = cooling.slice(0, 5).map((d) => `• ${acctLink(d.company, d.customerId)}, ${formatMoney(d.value)}, quiet ${d.staleDays} days (${d.stage})`);
     return {
-      text: `${cooling.length} deal${cooling.length === 1 ? " is" : "s are"} cooling:\n\n${lines.join("\n")}\n\nI can draft re-engagement for any of them — just say which, or "draft for all".`,
+      text: `${cooling.length} deal${cooling.length === 1 ? " is" : "s are"} cooling:\n\n${lines.join("\n")}\n\nI can draft re-engagement for any of them, just say which, or "draft for all".`,
       suggestions: [`Draft an email to ${cooling[0].company}`, "What's my open pipeline worth?", "What should I focus on today?"],
     };
   }
@@ -723,12 +723,12 @@ export function answerAgentChat(
   // --- pipeline / forecast / value ---
   if (/\b(pipeline|forecast|open value|worth|how much|revenue|quota|deal value|in play|booked)\b/.test(m)) {
     const weighted = Math.round(openValue * 0.45);
-    const top = topDeals.slice(0, 3).map((d) => `• ${acctLink(d.company, d.customerId)} — ${formatMoney(d.value)} (${d.stage})`);
-    // A real chart in the answer — the chat renders ```chart specs with the
+    const top = topDeals.slice(0, 3).map((d) => `• ${acctLink(d.company, d.customerId)}. ${formatMoney(d.value)} (${d.stage})`);
+    // A real chart in the answer, the chat renders ```chart specs with the
     // app's own components, so "what's my pipeline worth" SHOWS the shape of
     // the number instead of only stating it.
     const STAGE_CHART_COLOR: Record<string, string> = {
-      Prospect: "#C2410C", // mirrors STAGE_COLOR — one stage, one colour everywhere
+      Prospect: "#C2410C", // mirrors STAGE_COLOR: one stage, one colour everywhere
       Engaged: "#0071E3",
       Qualified: "#7C3AED",
       "Meeting Booked": "#059669",
@@ -761,7 +761,7 @@ export function answerAgentChat(
 
   // --- biggest / top deals ---
   if (/\b(biggest|largest|top deals?|highest value|most valuable)\b/.test(m)) {
-    const lines = topDeals.slice(0, 5).map((d, i) => `${i + 1}. ${acctLink(d.company, d.customerId)} — ${formatMoney(d.value)} (${d.stage}, ${d.contactName})`);
+    const lines = topDeals.slice(0, 5).map((d, i) => `${i + 1}. ${acctLink(d.company, d.customerId)}, ${formatMoney(d.value)} (${d.stage}, ${d.contactName})`);
     return {
       text: `Your biggest open deals:\n\n${lines.join("\n")}\n\nWant a briefing on any of them before you reach out?`,
       suggestions: topDeals.slice(0, 3).map((d) => `Tell me about ${d.company}`),
@@ -773,16 +773,16 @@ export function answerAgentChat(
     const pending = ctx.topActions.filter((a) => a.kind === "approve" || a.kind === "send");
     if (pending.length === 0) {
       return {
-        text: "Nothing's waiting on your approval right now — you're all clear.",
+        text: "Nothing's waiting on your approval right now: you're all clear.",
         suggestions: ["What should I focus on today?", "Which deals are cooling?", "What did you do recently?"],
       };
     }
-    const lines = pending.map((a) => `• ${a.title} — ${a.rationale}`);
+    const lines = pending.map((a) => `• ${a.title}, ${a.rationale}`);
     const firstCo = pending[0].company;
     return {
       text:
         `${pending.length} ${pending.length === 1 ? "pitch is" : "pitches are"} waiting on you:\n\n${lines.join("\n")}\n\n` +
-        `Open the To-do tab to approve or send each — you have the final say. Want me to pull up the ${firstCo} pitch so you can review it here?`,
+        `Open the To-do tab to approve or send each, you have the final say. Want me to pull up the ${firstCo} pitch so you can review it here?`,
       suggestions: [
         firstCo ? `Show me the pitch for ${firstCo}` : "What should I focus on today?",
         "Which deals are cooling?",
@@ -795,7 +795,7 @@ export function answerAgentChat(
   if (/\b(what did you|recent|this week|activity|history|done lately|been up to|worked on)\b/.test(m)) {
     const recent = ctx.runs.filter((r) => !r.reverted).slice(0, 4);
     if (recent.length === 0) {
-      return { text: "I haven't run anything for you yet. Give me a goal — like “re-engage my cooling deals” — and I'll get started (and leave everything for your review).", suggestions: DEFAULT_SUGGESTIONS };
+      return { text: "I haven't run anything for you yet. Give me a goal: like “re-engage my cooling deals”, and I'll get started (and leave everything for your review).", suggestions: DEFAULT_SUGGESTIONS };
     }
     const lines = recent.map((r) => `• ${r.title}`);
     return {
@@ -813,7 +813,7 @@ export function answerAgentChat(
     const ct = snap.contacts[0];
     return {
       text:
-        `Pre-call brief — ${acct.company_name}:\n\n` +
+        `Pre-call brief. ${acct.company_name}:\n\n` +
         `• Health: ${snap.health.label} (${snap.health.score}/100)\n` +
         `• Pipeline: ${snap.open.length} open deal${snap.open.length === 1 ? "" : "s"}, ${formatMoney(snap.openValue)}\n` +
         `• Last touch: ${fmtDate(snap.lastAt)}\n` +
@@ -836,7 +836,7 @@ export function answerAgentChat(
     const c = findAccount(top.title, ctx.customers);
     return {
       text:
-        `Most urgent: **${top.title}** — ${top.rationale}` +
+        `Most urgent: **${top.title}**. ${top.rationale}` +
         (c ? `\n\n[Open ${c.company_name} →](/customers/${c.id})` : ""),
       suggestions: [
         "What else should I focus on?",
@@ -852,13 +852,13 @@ export function answerAgentChat(
     const body = picks.length
       ? picks
           .map((a, i) => {
-            // No trailing "open →" link — the account name in the answer
+            // No trailing "open →" link: the account name in the answer
             // already renders as a clickable pill with its logo, so the extra
             // button was noise (Anir, Jul 25: "fix that open button").
-            return `${i + 1}. ${a.title} — ${a.rationale}`;
+            return `${i + 1}. ${a.title}, ${a.rationale}`;
           })
           .join("\n")
-      : "Your book is quiet — nothing urgent. A good time to widen relationships on your bigger accounts.";
+      : "Your book is quiet, nothing urgent. A good time to widen relationships on your bigger accounts.";
     return {
       text:
         `Here's where I'd start today:\n\n${body}\n\n` +
@@ -904,7 +904,7 @@ export function answerAgentChat(
     text: vary(
       [
         `I can dig into your pipeline or take an action for you. Right now you've got ${open.length} open deal${open.length === 1 ? "" : "s"} worth ${formatMoney(openValue)}${cooling.length ? `, ${cooling.length} cooling` : ""}. Try “what should I focus on today?”, “draft an email to ${exampleAcct}”, or “set a follow-up with ${exampleAcct} next week.”`,
-        `Not sure I caught that — but I can act on it. Ask me to summarize an account, draft and save outreach, set a follow-up, or log a call. Want your focus list for today?`,
+        `Not sure I caught that: but I can act on it. Ask me to summarize an account, draft and save outreach, set a follow-up, or log a call. Want your focus list for today?`,
       ],
       history
     ),

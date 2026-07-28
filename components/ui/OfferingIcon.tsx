@@ -1,4 +1,22 @@
 import {
+  Beaker,
+  Binoculars,
+  BookMarked,
+  Braces,
+  Compass,
+  GitBranch,
+  Landmark,
+  LibraryBig,
+  LineChart,
+  Network,
+  Orbit,
+  PenTool,
+  Route,
+  Sparkle,
+  Microscope,
+  Scale,
+  Send,
+  Stamp,
   Package,
   Layers,
   Globe,
@@ -23,39 +41,100 @@ import { cn } from "@/lib/utils";
 const ICONS: LucideIcon[] = [
   Package, Layers, Globe, FileText, Tag, Boxes,
   ShieldCheck, Radar, Database, Cpu, ClipboardCheck, Workflow,
+  BookMarked, Beaker, Microscope, Scale, Stamp, Send,
+  Binoculars, Braces, Compass, GitBranch, Landmark, LibraryBig,
+  LineChart, Network, Orbit, PenTool, Route, Sparkle,
 ];
+// IDENTITY HUES ONLY. Red, green, amber and burnt orange are RESERVED in this
+// app for meaning: red is a problem, green is healthy, orange is caution. An
+// identity palette that reaches for them paints a perfectly good record in the
+// colour of a warning. Anir, Jul 28, on a 90%-fit service rendered in red:
+// "Why is it red? You have to understand that red means horrible, red means
+// negative... colors like red, green, and yellow are reserved for actually
+// signifying something else." Purple, blue, indigo, teal, cyan, sky, pink,
+// fuchsia and slate all carry no status meaning, so they are safe here.
 const GRADIENTS: [string, string][] = [
   ["#0071E3", "#4AA3FF"], // blue
   ["#5E5CE6", "#8A88FF"], // indigo
   ["#0F9E8E", "#2DD4BF"], // teal
   ["#7C3AED", "#A78BFA"], // violet
   ["#0891B2", "#22D3EE"], // cyan
-  ["#059669", "#34D399"], // emerald
-  ["#C2410C", "#F97316"], // orange — was amber, but offeringMark() hands the
-  //                          first stop out as TEXT colour (forecast rows,
-  //                          capability tiles) and amber failed there.
+  ["#4338CA", "#818CF8"], // deep indigo
+  ["#0EA5E9", "#7DD3FC"], // sky
   ["#DB2777", "#F472B6"], // pink
-  ["#DC2626", "#F87171"], // red — never gray (Suren: kill the gray icons)
+  ["#9333EA", "#C084FC"], // purple
   ["#C026D3", "#E879F9"], // fuchsia
 ];
 
+// Multiplier 71, not 31. Over Freyr's real 29-offering catalogue, 31 collided:
+// two offerings landed on the same icon+hue slot. 71 spreads all 29 across 29
+// distinct slots and uses all ten hues. Verified against the live catalogue, so
+// re-check it if the catalogue grows a lot.
 function hash(s: string): number {
   let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < s.length; i++) h = (h * 71 + s.charCodeAt(i)) >>> 0;
   return h;
 }
 
 // The same glyph + hue an offering gets everywhere, exposed so text callouts of
 // a service (list columns, tags) can carry its icon and colour instead of
 // rendering as plain text (standing rule: category chips are colour + icon).
+/** Freyr's catalogue, in the order `lib/offerings.ts` seeds it. Position in
+ *  this list, NOT a hash, decides an offering's glyph, which is the only way to
+ *  guarantee that no two offerings ever share one. Hashing gave every offering
+ *  a unique icon+colour PAIR but still repeated glyphs across the set: Shield
+ *  landed on both Freya.Intelligence and Freya.GRR-PAC, Boxes on Submit and
+ *  Artwork, Stamp on RTQ and Docs (Anir, Jul 28: "no two icons should be the
+ *  same for the offerings"). A name not in this list falls back to the hash,
+ *  which is right for offerings created in-app after the seed. */
+const CATALOGUE_ORDER: string[] = [
+  "Freya.Register",
+  "Freya.Intelligence",
+  "Freya.GRR-PAC (Global Regulatory Requirements for Post Approval Changes)",
+  "Freya.Label",
+  "Freya.Submit",
+  "Freya.Artwork",
+  "Freya.RTQ",
+  "Freya.RA Changes",
+  "Freya.Docs",
+  "Freya.Register + Pia + Mia",
+  "Freya.GRR-PAC + Via",
+  "Freya.Register + Pia + Mia + Via",
+  "Freya.Agents",
+  "Freya.OmniObject",
+  "Publishing",
+  "Submissions Planning & Management",
+  "Label Management",
+  "Artwork Management",
+  "Regulatory Affairs Strategy",
+  "Regulatory Affairs - Initial Applications & Market Access",
+  "Local Regulatory Affairs",
+  "Post-Approval Regulatory Affairs",
+  "Regulatory Intelligence Services",
+  "Pharmacovigilance",
+  "Medical Writing - Clinical",
+  "Medical Writing - Non Clinical & Toxicology",
+  "Compliance, Audit and Validation",
+  "Medical & Scientific Communication",
+  "RIMS Data Services",
+];
+const CATALOGUE_SLOT = new Map(CATALOGUE_ORDER.map((n, i) => [n, i]));
+
 export function offeringMark(name: string): {
   icon: LucideIcon;
   color: string;
   light: string;
 } {
   const key = name || "offering";
-  const [a, b] = GRADIENTS[hash(`${key}::hue`) % GRADIENTS.length];
-  return { icon: ICONS[hash(key) % ICONS.length], color: a, light: b };
+  const seeded = CATALOGUE_SLOT.get(key);
+  // Seeded offerings walk the icon list one at a time, so no glyph can repeat
+  // until the catalogue outgrows ICONS. The hue advances on a coprime stride so
+  // neighbours in the list never share a colour either.
+  const slot = seeded ?? hash(key) % (ICONS.length * GRADIENTS.length);
+  const hueIndex =
+    seeded != null ? seeded * 3 : Math.floor(slot / ICONS.length);
+  const [a, b] = GRADIENTS[hueIndex % GRADIENTS.length];
+  return { icon: ICONS[slot % ICONS.length], color: a, light: b };
 }
 
 // An inline service/offering chip: glyph + name in the offering's own colour.
@@ -66,8 +145,8 @@ export function ServiceTag({
   name: string;
   className?: string;
 }) {
-  if (!name || name === "—")
-    return <span className="text-[13px] text-text-tertiary">—</span>;
+  if (!name || name === "-")
+    return <span className="text-[13px] text-text-tertiary">-</span>;
   const { icon: Icon, color } = offeringMark(name);
   return (
     <span

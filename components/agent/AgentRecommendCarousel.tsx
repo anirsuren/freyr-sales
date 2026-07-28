@@ -85,7 +85,7 @@ export function AgentRecommendCarousel({ actions }: { actions: AgentAction[] }) 
           [x.id]: { title: data.draft.title, body: data.draft.body, runId: data.runId },
         }));
         setViewing(x.id);
-        toast("Draft ready — saved to the timeline and added to Tasks");
+        toast("Draft ready: saved to the timeline and added to Tasks");
         router.refresh();
       } else toast(data.error || "Agent couldn't complete that", "error");
     } catch {
@@ -121,7 +121,7 @@ export function AgentRecommendCarousel({ actions }: { actions: AgentAction[] }) 
         setDone((s) => new Set(s).add(x.id));
         toast(
           decision === "approve"
-            ? "Pitch approved — ready to send"
+            ? "Pitch approved: ready to send"
             : "Pitch sent back for changes"
         );
         router.refresh();

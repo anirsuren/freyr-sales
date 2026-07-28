@@ -21,7 +21,7 @@ export default async function ServiceCatalogPage() {
         title="Service Catalog"
         subtitle={
           admin
-            ? "The Freyr services the system matches against — searchable and editable."
+            ? "The Freyr services the system matches against: searchable and editable."
             : "The Freyr services the system matches against."
         }
       />

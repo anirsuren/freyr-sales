@@ -8,7 +8,7 @@ import type { RecommendedService } from "@/lib/types";
 /* ---------------------------------------------------------------------------
    RECOMMENDED SERVICES.
 
-   These were three flat rows — a title, a percentage, an identical blue bar and
+   These were three flat rows, a title, a percentage, an identical blue bar and
    a sentence. Every offering looked like every other offering, and a 70% fit
    was drawn in exactly the same blue as a 50% fit, so the bars carried no
    information you couldn't already read in the number.
@@ -17,7 +17,7 @@ import type { RecommendedService } from "@/lib/types";
    hands it everywhere else in the app (the forecast donut, the pipeline tags),
    so the same service is the same colour on every screen. The fit bar is drawn
    in that offering's colour on a 12% wash of itself, which means two bars of
-   different lengths are also two different colours — the chart reads before the
+   different lengths are also two different colours, the chart reads before the
    number does.
 --------------------------------------------------------------------------- */
 
@@ -109,7 +109,7 @@ export function DealServices({
               {/* The fit bar, in the offering's own colour on a wash of itself.
                   Units at rest: the % is printed above, the label under it. */}
               <Tooltip
-                label={`${name} scored ${pct}% against this account's profile — a ${
+                label={`${name} scored ${pct}% against this account's profile: a ${
                   pct >= 80 ? "strong" : pct >= 60 ? "solid" : "partial"
                 } fit.`}
                 side="top"

@@ -72,7 +72,7 @@ export function SequenceAgentBanner({
           <p className="text-[12px] text-text-secondary">
             {pending
               ? `Prep the next ${sequenceName} touches for review. Nothing sends or dials automatically.`
-              : `Nothing pending — the "${sequenceName}" plan is up to date.`}
+              : `Nothing pending: the "${sequenceName}" plan is up to date.`}
           </p>
         </div>
       </div>

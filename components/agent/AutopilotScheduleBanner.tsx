@@ -27,7 +27,7 @@ export function AutopilotScheduleBanner({ cadence }: { cadence: string }) {
       });
       if (data.ok) {
         toast(
-          `Scheduled autopilot ran — drafted ${data.handled} for you · ${data.escalated} waiting for your approval`
+          `Scheduled autopilot ran: drafted ${data.handled} for you · ${data.escalated} waiting for your approval`
         );
       } else {
         toast("Autopilot couldn't run", "error");
@@ -51,7 +51,7 @@ export function AutopilotScheduleBanner({ cadence }: { cadence: string }) {
             Your {cadence} autopilot run is due
           </p>
           <p className="text-[12px] text-text-secondary">
-            Catches up on your visit — a deployment cron fires it on time.
+            Catches up on your visit, a deployment cron fires it on time.
           </p>
         </div>
       </div>

@@ -78,7 +78,7 @@ export function EngagementRail({
       <div className="p-4 border-b border-border-light">
         <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
           Engagement
-          <InfoHint text="The timeline of every touch with this contact — calls, emails, meetings. The full history is below; log a new one only when something actually happens." />
+          <InfoHint text="The timeline of every touch with this contact: calls, emails, meetings. The full history is below; log a new one only when something actually happens." />
         </h2>
       </div>
 
@@ -162,7 +162,7 @@ export function EngagementRail({
         </h3>
         <div className="relative pl-6 space-y-5 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-px before:bg-border-light">
           <div className="relative">
-            <span className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-blue-primary ring-4 ring-white flex items-center justify-center" />
+            <span className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-blue-primary ring-4 ring-[color:var(--white)] flex items-center justify-center" />
             <p className="text-[11px] font-bold uppercase tracking-[0.04em] text-blue-primary flex items-center gap-1">
               <Sparkles size={12} strokeWidth={2} /> Generated
             </p>
@@ -177,7 +177,7 @@ export function EngagementRail({
             const m = OUTCOME_META[it.outcome];
             return (
               <div key={it.id} className="relative">
-                <span className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-text-tertiary ring-4 ring-white" />
+                <span className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-text-tertiary ring-4 ring-[color:var(--white)]" />
                 <p className="text-[11px] uppercase tracking-[0.04em] text-text-tertiary tnum">
                   {formatDateTime(it.created_at)}
                 </p>

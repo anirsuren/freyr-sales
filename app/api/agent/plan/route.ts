@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
         contact_id: cid,
         outcome: "in_progress",
         notes: `🤖 Plan "${goal}": ${a.title}${
-          instruction ? ` — steer: ${instruction}` : ""
+          instruction ? `, steer: ${instruction}` : ""
         }`,
         follow_up_date: null,
         logged_by: "Freyr Agent",
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
   });
 
   notifyTelegram(
-    `🤖 <b>Plan executed</b>\n${goal} — handled ${handled.length}, escalated ${escalated.length}${skipNote}.`
+    `🤖 <b>Plan executed</b>\n${goal}: handled ${handled.length}, escalated ${escalated.length}${skipNote}.`
   );
 
   return NextResponse.json({

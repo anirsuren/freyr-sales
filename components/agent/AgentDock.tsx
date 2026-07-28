@@ -102,7 +102,7 @@ function suggestionsFor(label: string): string[] {
     return ["Tighten this pitch", "Draft a follow-up", "What objections should I expect?"];
   if (label.includes("Campaign"))
     return ["Who should I add?", "Draft a subject line", "How's this campaign doing?"];
-  return ["What should I work on next?", "Summarize my pipeline", "Who's gone quiet?"];
+  return ["What should I work on next?", "Summarize my pipeline", "Which deals have no recent activity?"];
 }
 
 // Minimal, safe markdown: **bold**, `code`, and line breaks. Content is our own
@@ -138,7 +138,7 @@ function renderRich(text: string, entities: Entity[] = []): ReactNode {
 }
 
 // A little personality while it works (Anir: "like Claude Code's rotating
-// words") — blue equalizer bars + an italic word that changes every ~1.6s.
+// words"): blue equalizer bars + an italic word that changes every ~1.6s.
 const THINKING_WORDS = [
   "Thinking",
   "Percolating",
@@ -227,7 +227,7 @@ export function AgentDock({
   }, []);
 
   // Anything in the app can open THIS chat (instead of a second panel) by firing
-  // `freyr:ask-agent` — optionally with a prompt to send. Deliverables and the
+  // `freyr:ask-agent`: optionally with a prompt to send. Deliverables and the
   // old account "Ask the agent" drawer now route here (Suren: "shouldn't it just
   // open the chat?"). One chat, one place.
   useEffect(() => {
@@ -300,7 +300,7 @@ export function AgentDock({
     setBusy(true);
     setMsgs((m) => [...m, { role: "me", text }]);
     // Grab what's actually on screen so the assistant answers from the record
-    // the rep is looking at — fixes "I can't access that record" (Anir, Jul 8).
+    // the rep is looking at, fixes "I can't access that record" (Anir, Jul 8).
     let pageContext = "";
     try {
       const main = document.getElementById("main-content");
@@ -333,8 +333,8 @@ export function AgentDock({
 
   const suggestions = suggestionsFor(label);
   const greeting = subject
-    ? `Hi ${firstName} — I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
-    : `Hi ${firstName} — I'm on **${label}** with you. Ask me anything, or pick a starting point below.`;
+    ? `Hi ${firstName}. I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
+    : `Hi ${firstName}. I'm on **${label}** with you. Ask me anything, or pick a starting point below.`;
 
   return (
     <>
@@ -360,7 +360,7 @@ export function AgentDock({
             </button>
           </div>
 
-          {/* Messages — greeting is always the first bubble so it never vanishes */}
+          {/* Messages: greeting is always the first bubble so it never vanishes */}
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto px-4 py-4 space-y-2.5 h-[400px] max-h-[58vh]"
@@ -390,7 +390,7 @@ export function AgentDock({
 
           {/* Suggestions (only before the first exchange) + input */}
           <div className="px-3 pb-3 pt-2 border-t border-border-light shrink-0">
-            {/* One row, scrolling sideways if tight — stacked rows of starters
+            {/* One row, scrolling sideways if tight, stacked rows of starters
                 read as a form, not shortcuts (Anir: "why are the pre-recorded
                 messages one in another row"). */}
             {visibleMsgs.length === 0 && (

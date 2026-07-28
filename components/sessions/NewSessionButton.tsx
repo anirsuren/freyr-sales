@@ -23,7 +23,7 @@ export function NewSessionButton({
     {
       icon: Sparkles,
       title: "We read the account",
-      body: `Everything Freyr knows about ${company} — who they are, what they buy, where they're going.`,
+      body: `Everything Freyr knows about ${company}: who they are, what they buy, where they're going.`,
     },
     {
       icon: FileText,
@@ -33,7 +33,7 @@ export function NewSessionButton({
     {
       icon: MessageSquareText,
       title: "We draft the outreach",
-      body: "A ready-to-send email, a 5-minute call script, and the talking points — in about a minute.",
+      body: "A ready-to-send email, a 5-minute call script, and the talking points: in about a minute.",
     },
   ];
 

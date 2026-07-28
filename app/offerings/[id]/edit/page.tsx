@@ -42,7 +42,7 @@ export default async function EditOfferingPage({
       </Link>
       <PageHeader
         title="Edit offering"
-        subtitle="Update this offering — its details, who it's for, the markets it's available in, and its sales materials."
+        subtitle="Update this offering: its details, who it's for, the markets it's available in, and its sales materials."
         action={
           /* Which offering you're editing, visible without scrolling back. */
           <span className="inline-flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5">

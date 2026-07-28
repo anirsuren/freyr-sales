@@ -44,7 +44,7 @@ export function DigestScheduleBanner({ cadence }: { cadence: string }) {
             Your {cadence} digest is ready
           </p>
           <p className="text-[12px] text-text-secondary">
-            Catches up on your visit — a deployment cron sends it on time.
+            Catches up on your visit, a deployment cron sends it on time.
           </p>
         </div>
       </div>

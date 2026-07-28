@@ -180,7 +180,7 @@ export function SupabaseLoginForm({
           setMessage("");
           setError("");
           resetTo("password");
-          setMessage("You already have an account here — enter your password to sign in.");
+          setMessage("You already have an account here: enter your password to sign in.");
           return;
         }
         setError("");
@@ -201,7 +201,7 @@ export function SupabaseLoginForm({
           setStep("sent");
           setError(null);
           setMessage(
-            "Your email isn't confirmed yet — the sign-in link is in your inbox. Need a new one? Resend below."
+            "Your email isn't confirmed yet: the sign-in link is in your inbox. Need a new one? Resend below."
           );
           return;
         }
@@ -241,7 +241,7 @@ export function SupabaseLoginForm({
           </label>
           <p className="-mt-2 text-[11px] text-text-tertiary">
             {joinDomainLabel
-              ? `Your ${joinDomainLabel} address gets in automatically — no invitation needed.`
+              ? `Your ${joinDomainLabel} address gets in automatically: no invitation needed.`
               : "Use the exact address your workspace owner invited."}
           </p>
         </>
@@ -264,7 +264,7 @@ export function SupabaseLoginForm({
       {step === "activate" && (
         <>
           <p className="rounded-md bg-blue-50 px-3 py-2.5 text-[12px] leading-relaxed text-blue-900">
-            Your account is ready — just add your name and choose a password.
+            Your account is ready, just add your name and choose a password.
           </p>
           <label className="block text-[12px] font-semibold text-text-secondary">
             Full name
@@ -306,7 +306,7 @@ export function SupabaseLoginForm({
           </label>
           <p className="-mt-2 text-[11px] text-text-tertiary">
             The AI agent reads this to learn your role and background, so what it
-            drafts sounds like you — and it picks up your photo. You can add it
+            drafts sounds like you, and it picks up your photo. You can add it
             later in Settings.
           </p>
         </>
@@ -348,7 +348,7 @@ export function SupabaseLoginForm({
 
       {/* No "I confirmed it" button. The email link itself signs you in and
           lands in the product, so there is nothing to click here (Anir, Jul
-          27: "that button should not exist — they should log in straight from
+          27: "that button should not exist, they should log in straight from
           the email"). This screen's only jobs: say where the link went, and
           offer a fresh one if it never arrived. */}
       {step === "sent" && (
@@ -363,7 +363,7 @@ export function SupabaseLoginForm({
             <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
               We sent a sign-in link to{" "}
               <span className="font-semibold text-text-primary">{email}</span>.
-              Clicking it signs you in automatically — that&apos;s it.
+              Clicking it signs you in automatically, that&apos;s it.
             </p>
           </div>
           <button
@@ -379,7 +379,7 @@ export function SupabaseLoginForm({
                   email: normalizeAuthEmail(email) || email,
                 });
                 if (resendError) throw resendError;
-                setMessage("Sent — check your inbox for the newest email.");
+                setMessage("Sent: check your inbox for the newest email.");
               } catch (caught) {
                 setError(
                   caught instanceof Error ? caught.message : "Could not resend the email."

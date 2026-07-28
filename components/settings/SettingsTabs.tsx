@@ -47,6 +47,7 @@ import {
   userScopedStorageKey,
   type UserIdentity,
 } from "@/lib/userIdentity";
+import { canSwitchWorkspaceMode } from "@/lib/release";
 
 const TABS = [
   { key: "workspace", label: "Workspace", description: "Data and behavior", icon: Settings2 },
@@ -57,11 +58,21 @@ const TABS = [
   { key: "access", label: "Access", description: "Approvals and roles", icon: KeyRound },
 ] as const;
 
+// Settings is one of the few pages that survives the offerings-only release, so
+// it must not become the back door to the modules that don't. These two tabs
+// are entirely about unreleased work — every notification is a deal/session
+// alert, and Integrations mirrors the CRM record counts (companies, contacts,
+// deals). They come back the moment the release opens up.
+const TABS_HIDDEN_IN_OFFERINGS_ONLY: ReadonlySet<string> = new Set([
+  "notifications",
+  "integrations",
+]);
+
 // Client-facing connectors — tools a rep's org already uses (Anir, Jul 8:
 // "integrations shouldn't be client-facing keys — put what THEY would connect").
 // Internal service keys (Anthropic/Apify/Telegram) live in .env, not here.
 const CONNECTORS = [
-  { key: "email", name: "Email", icon: Mail, desc: "Send pitches and sequences from your own inbox — Gmail or Outlook." },
+  { key: "email", name: "Email", icon: Mail, desc: "Send pitches and sequences from your own inbox. Gmail or Outlook." },
   { key: "calendar", name: "Calendar", icon: CalendarDays, desc: "Booked meetings land straight on your Google or Outlook calendar." },
   { key: "crm", name: "CRM", icon: Building2, desc: "Two-way sync of accounts, contacts and deals with Salesforce or HubSpot." },
   { key: "chat", name: "Slack / Teams", icon: MessageSquare, desc: "Deal alerts and your daily digest, right in your team channel." },
@@ -80,12 +91,12 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
 ];
 
 const SERVICE_LABELS: Record<string, string> = {
-  anthropic: "Anthropic — AI analysis & pitch generation",
-  supabase: "Supabase — database",
-  firecrawl: "Firecrawl — web crawl & scrape",
-  apify: "Apify — LinkedIn enrichment",
-  telegram: "Telegram — bot notifications",
-  email: "Email — Resend / SMTP send channel",
+  anthropic: "Anthropic: AI analysis & pitch generation",
+  supabase: "Supabase: database",
+  firecrawl: "Firecrawl: web crawl & scrape",
+  apify: "Apify: LinkedIn enrichment",
+  telegram: "Telegram: bot notifications",
+  email: "Email: Resend / SMTP send channel",
 };
 
 type Member = { name: string; email: string; role: string; you?: boolean };
@@ -217,12 +228,15 @@ export function SettingsTabs({
   initialDataMode,
   initialDataModeLocked,
   authConfig,
+  offeringsOnly = false,
 }: {
   services: Record<string, boolean>;
   crmCounts: { companies: number; contacts: number; deals: number };
   initialDataMode: "mock" | "live";
   initialDataModeLocked: boolean;
   authConfig: { authMode: string; approvalEnabled: boolean };
+  /** True while only the Offerings module is released — see lib/release.ts. */
+  offeringsOnly?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -239,17 +253,32 @@ export function SettingsTabs({
     "freyr_connectors",
     currentUser.id
   );
+  const visibleTabs = TABS.filter(
+    (item) => !offeringsOnly || !TABS_HIDDEN_IN_OFFERINGS_ONLY.has(item.key)
+  );
   const requestedTab = searchParams.get("tab");
+  // A hidden tab can't be reached by hand-typing ?tab=integrations either — an
+  // unknown key falls back to Workspace, same as any other bad value.
   const [tab, setTab] = useState(
-    requestedTab && TABS.some((item) => item.key === requestedTab) ? requestedTab : "workspace"
+    requestedTab && visibleTabs.some((item) => item.key === requestedTab)
+      ? requestedTab
+      : "workspace"
   );
   const [dataMode, setDataMode] = useState<"mock" | "live">(initialDataMode);
   const [modeBusy, setModeBusy] = useState(false);
   const hoverPreference = useHoverPreference();
+  // The mode switch reveals the modules that aren't launched yet, so it is an
+  // admin control (Suren, Jul 28). Reps still SEE which mode the workspace is
+  // in — the card just tells them who changes it, instead of vanishing.
+  const canChangeDataMode = canSwitchWorkspaceMode(currentUser.role);
 
   async function changeDataMode(mode: "mock" | "live") {
     if (initialDataModeLocked) {
       toast("Workspace data mode is controlled by this deployment");
+      return;
+    }
+    if (!canChangeDataMode) {
+      toast("Only a workspace admin can change what the workspace shows");
       return;
     }
     if (mode === dataMode || modeBusy) return;
@@ -313,7 +342,7 @@ export function SettingsTabs({
   const [accessBusy, setAccessBusy] = useState<string | null>(null);
   const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
 
-  const activeTab = TABS.find((item) => item.key === tab) || TABS[0];
+  const activeTab = visibleTabs.find((item) => item.key === tab) || visibleTabs[0];
   const isLocalAuth = authConfig.authMode === "local";
   const authProviderLabel =
     authConfig.authMode === "supabase"
@@ -504,7 +533,7 @@ export function SettingsTabs({
         setLinkedinStatus({
           ok: true,
           message: data?.profile?.headline
-            ? `Got it — the agent now knows you as "${data.profile.headline}".`
+            ? `Got it: the agent now knows you as "${data.profile.headline}".`
             : "Saved. The agent will use this when it writes as you.",
         });
       } else {
@@ -547,7 +576,7 @@ export function SettingsTabs({
         body: JSON.stringify({ name: nextName }),
       });
       if (res.ok) {
-        toast("Profile saved — your name is updated everywhere");
+        toast("Profile saved: your name is updated everywhere");
         router.refresh();
       } else if (res.status === 404) {
         // Local/demo workspace without sign-in — nothing server-side to update.
@@ -562,7 +591,7 @@ export function SettingsTabs({
   }
   async function addMember() {
     if (!canInvite) {
-      toast("Reps can't invite teammates — ask an admin or manager", "error");
+      toast("Reps can't invite teammates: ask an admin or manager", "error");
       return;
     }
     if (!invite.name.trim() || !invite.email) {
@@ -676,7 +705,7 @@ export function SettingsTabs({
             Workspace settings
           </p>
           <nav role="tablist" aria-label="Settings sections" className="space-y-1">
-            {TABS.map((item) => {
+            {visibleTabs.map((item) => {
               const Icon = item.icon;
               const selected = tab === item.key;
               return (
@@ -773,7 +802,9 @@ export function SettingsTabs({
                 <p className="mt-1 text-[11.5px] text-text-secondary">
                   {initialDataModeLocked
                     ? `This release is locked to ${dataMode === "mock" ? "Mock Mode" : "Real Mode"} for every signed-in user.`
-                    : "Choose whether this browser uses sample records or the connected workspace."}
+                    : canChangeDataMode
+                      ? "Choose whether this browser uses sample records or the connected workspace."
+                      : "A workspace admin decides whether the team sees the released app or the modules still being built."}
                 </p>
               </div>
               <div className="flex items-center gap-3" aria-label="Workspace data mode">
@@ -790,7 +821,7 @@ export function SettingsTabs({
                 <Toggle
                   on={dataMode === "mock"}
                   onClick={() => changeDataMode(dataMode === "mock" ? "live" : "mock")}
-                  disabled={initialDataModeLocked || modeBusy}
+                  disabled={initialDataModeLocked || modeBusy || !canChangeDataMode}
                   label="Switch between real mode and mock mode"
                 />
                 <span
@@ -963,7 +994,7 @@ export function SettingsTabs({
             </label>
             {/* The agent drafts in the rep's own voice, so it has to know who
                 the rep is. LinkedIn is the one link that carries role, tenure
-                and background in a form the enrichment run can read — and it is
+                and background in a form the enrichment run can read, and it is
                 where the profile photo comes from, replacing the initials
                 circle (Anir, Jul 25: "the agent should know all about my
                 LinkedIn URL… that's how it pulls your profile picture too"). */}
@@ -986,7 +1017,7 @@ export function SettingsTabs({
                 className="mt-1.5 block text-[12px] text-text-secondary"
               >
                 Paste your LinkedIn address. The agent reads it to learn your
-                role and background, so what it writes sounds like you — and it
+                role and background, so what it writes sounds like you, and it
                 picks up your photo instead of your initials.
               </span>
               {linkedinStatus && (
@@ -1251,7 +1282,7 @@ export function SettingsTabs({
                         {p[k] ? (
                           <Check size={15} strokeWidth={2.5} className="text-success inline" />
                         ) : (
-                          <span className="text-text-tertiary">—</span>
+                          <span className="text-text-tertiary">-</span>
                         )}
                       </td>
                     ))}
@@ -1413,7 +1444,7 @@ export function SettingsTabs({
       {tab === "integrations" && (
         <div className="space-y-4">
           <p className="text-[13px] text-text-secondary max-w-[640px]">
-            Connect the tools your team already uses. Freyr works alongside them —
+            Connect the tools your team already uses. Freyr works alongside them,
             you stay in control of what syncs, and nothing goes out without your
             approval.
           </p>
@@ -1467,7 +1498,7 @@ export function SettingsTabs({
             </div>
             <p className="text-[12.5px] text-text-secondary mb-4 max-w-[640px]">
               The engines Freyr runs on. These are configured with secure keys by
-              your admin — nothing to connect here, just what&apos;s live.
+              your admin, nothing to connect here, just what&apos;s live.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {Object.entries(SERVICE_LABELS).map(([key, label]) => {

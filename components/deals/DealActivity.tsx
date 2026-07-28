@@ -3,29 +3,51 @@ import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
 import { daysSince, whenLabel } from "./dealTime";
-import { outcomeMark, outcomeMix } from "./dealOutcome";
+import { outcomeMark } from "./dealOutcome";
 
 /* ---------------------------------------------------------------------------
-   THE ACTIVITY COLUMN.
+   THE ACTIVITY COLUMN, AND IT IS A VERTICAL TIMELINE.
 
-   The shared <InteractionTimeline> is a good timeline, but it paints its status
-   chips through lib/utils' OUTCOME_META — and that map still renders "IN
-   PROGRESS" as a YELLOW pill with brown type (lib/utils.ts:107-112) and "No
-   Response" as gray on gray. Yellow is banned app-wide and a category chip is
-   never gray, so this page draws its own touches through `outcomeMark()`, where
-   an activity takes the colour of the stage it moves the deal to.
+   Anir, Jul 28: "This should look more like a vert timeline. I thought I already
+   had this. Why does it look like that?" It had become a stack of full-width
+   bordered rows split by hairlines, which reads as a table. It is now one
+   continuous spine down the left with a marker per touch sitting ON it in that
+   touch's own colour, and the record to its right. No box per entry, no
+   separators, newest at the top.
 
-   It also stopped being just a list: three counted facts and the real mix of
-   what has been logged sit above it, so this column carries the same weight as
-   the services column beside it and neither one bottoms out in white.
+   The spine is drawn PER ENTRY (a marker, then a line that grows to fill the
+   rest of that entry's height) rather than as one absolutely-positioned rule
+   behind the list. An absolute rule has to be masked at every marker with a ring
+   in the card's background colour, and `bg-white` is re-skinned under `.dark`
+   while `ring-[color:var(--white)]` is not, so that ring goes wrong in dark mode. Growing the
+   line inside each row needs no mask at all.
+
+   COLOURS. The shared <InteractionTimeline> paints its status chips through
+   lib/utils' OUTCOME_META, and that map still renders "In Progress" as a YELLOW
+   pill with brown type (lib/utils.ts:107-112) and "No Response" as gray on gray.
+   Yellow is banned app-wide and a category chip is never gray, so this page
+   draws its own touches through `outcomeMark()`, where an activity takes the
+   colour of the stage it moves the deal to.
+
+   WHAT WAS DELETED, AND WHY (Anir, Jul 28: "if a block does not answer a
+   question a rep actually has, delete it rather than restyling it").
+
+     A trio of stat tiles: "Touches logged", "First touch", "Latest touch". All
+     three restated the list directly beneath them: the count is the length of
+     the list, the first touch is its last row, and the latest touch is already
+     printed in Key facts as LAST ACTIVITY.
+
+     A "What has been logged" proportion rail with an outcome legend under it. A
+     deal with one logged outcome drew it as a single full-width line and a
+     single chip, which is a chart of nothing.
+
+   The list this renders has already had agent-written rows filtered out of it
+   upstream (see `humanTouches` and app/deals/[id]/page.tsx), so the count in the
+   heading is the count of what is actually listed.
 --------------------------------------------------------------------------- */
-
-const EYEBROW =
-  "text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary";
 
 export function DealActivity({
   interactions,
@@ -35,17 +57,11 @@ export function DealActivity({
   nowIso: string;
 }) {
   const total = interactions.length;
-  // db.interactions.list() hands these back newest-first; the timeline reads
-  // that way and the "first touch" comes off the tail.
-  const newest = interactions[0] || null;
-  const oldest = interactions[total - 1] || null;
-  const mix = outcomeMix(interactions);
-  const followUps = interactions.filter((i) => i.follow_up_date).length;
 
   if (total === 0) {
     return (
       <div>
-        <ActivityHeading />
+        <ActivityHeading count={0} />
         <Card className="p-0">
           <EmptyState
             icon={MessageSquareText}
@@ -59,158 +75,109 @@ export function DealActivity({
 
   return (
     <div>
-      <ActivityHeading />
+      <ActivityHeading count={total} />
 
-      <Card className="p-0">
-        {/* Three counted facts, the compact trio idiom off the team roster. */}
-        <div className="grid grid-cols-3 gap-2 border-b border-border-light p-4">
-          {[
-            {
-              l: "Touches logged",
-              v: String(total),
-              n: followUps > 0 ? `${followUps} with a follow-up` : "no follow-up booked",
-            },
-            {
-              l: "First touch",
-              v: oldest ? formatDate(oldest.created_at) : "—",
-              n: oldest ? whenLabel(daysSince(oldest.created_at, nowIso)) : "",
-            },
-            {
-              l: "Latest touch",
-              v: newest ? formatDate(newest.created_at) : "—",
-              n: newest ? whenLabel(daysSince(newest.created_at, nowIso)) : "",
-            },
-          ].map((s) => (
-            <div key={s.l} className="min-w-0 rounded-lg bg-surface px-2.5 py-2">
-              <p className={`${EYEBROW} whitespace-nowrap`}>{s.l}</p>
-              <p className="mt-0.5 text-[14px] font-bold leading-none text-text-primary tnum">
-                {s.v}
-              </p>
-              <p className="mt-1 text-[10px] leading-snug text-text-tertiary">
-                {s.n}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* The real mix of what has been logged — one segment per outcome that
-            actually exists on this deal, sized by its true count. The counts sit
-            RIGHT AFTER their labels, never stranded at the far edge. */}
-        <div className="border-b border-border-light p-4">
-          <p className={`${EYEBROW} mb-2`}>What has been logged</p>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface">
-            {mix.map((m) => (
-              // flexGrow on the OUTER span, which is the actual flex item. The
-              // width used to live on the Tooltip's child, so it resolved
-              // against a zero-width wrapper and painted nothing at all.
-              <span
-                key={m.outcome}
-                className="h-full"
-                style={{ flexGrow: m.count, flexBasis: 0 }}
-              >
-                <Tooltip
-                  label={`${m.count} ${m.count === 1 ? "touch" : "touches"} logged as ${m.label} — ${Math.round(m.share)}% of everything on this deal.`}
-                  side="top"
-                  className="block h-full w-full cursor-pointer"
-                >
+      <Card className="p-5">
+        {/* db.interactions.list() hands these back newest-first, and that is the
+            order a rep reads them in. */}
+        <ol className="max-h-[560px] overflow-y-auto">
+          {interactions.map((it, i) => {
+            const m = outcomeMark(it.outcome);
+            const Icon = m.icon;
+            const last = i === interactions.length - 1;
+            return (
+              <li key={it.id} className="flex gap-3">
+                {/* The spine: this touch's marker, then the run down to the
+                    next one. The last entry ends the line at its own marker. */}
+                <div className="flex w-[22px] shrink-0 flex-col items-center">
                   <span
-                    className="block h-full w-full transition-[filter] hover:brightness-110"
+                    className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-white"
                     style={{ background: m.color }}
-                  />
-                </Tooltip>
-              </span>
-            ))}
-          </div>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {mix.map((m) => (
-              <span
-                key={m.outcome}
-                className="inline-flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-2.5 text-[11.5px] font-semibold leading-tight"
-                style={{ background: `${m.color}14`, color: m.color }}
-              >
-                <span
-                  className="flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full text-white"
-                  style={{ background: m.color }}
-                >
-                  <m.icon size={10} strokeWidth={2.3} />
-                </span>
-                {m.label}
-                <span className="tnum font-bold">{m.count}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* The history itself. Newest at the top, a spine down the left, a node
-            per touch in that touch's own colour. */}
-        <div className="max-h-[420px] overflow-y-auto p-4">
-          <ol className="relative">
-            <div className="absolute bottom-1.5 left-[6px] top-1.5 w-px bg-border-light" />
-            {interactions.map((it) => {
-              const m = outcomeMark(it.outcome);
-              const Icon = m.icon;
-              return (
-                <li key={it.id} className="relative pb-5 pl-7 last:pb-0">
-                  <span
-                    className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full ring-4 ring-[color:var(--bg,#fff)]"
-                    style={{ background: m.color }}
-                  />
-                  <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {/* Colour + icon, never a gray word — and never the yellow
-                        band the shared badge still paints "In Progress" in. */}
+                  >
+                    <Icon size={12} strokeWidth={2.3} />
+                  </span>
+                  {!last && (
                     <span
-                      className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                      style={{ background: `${m.color}1A`, color: m.color }}
+                      aria-hidden
+                      className="mt-1 w-px flex-1 bg-border-light"
+                    />
+                  )}
+                </div>
+
+                <div className={`min-w-0 flex-1 ${last ? "" : "pb-6"}`}>
+                  {/* What it was on the left, when it happened hard against the
+                      right edge, so every entry lines up on one straight edge. */}
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span
+                      className="min-w-0 break-normal text-[13px] font-semibold leading-snug"
+                      style={{ color: m.color }}
                     >
-                      <Icon size={11} strokeWidth={2.2} className="shrink-0" />
                       {m.label}
                     </span>
-                    <span className="whitespace-nowrap text-[11.5px] text-text-secondary tnum">
-                      {formatDateTime(it.created_at)}
-                    </span>
-                    <span className="whitespace-nowrap text-[11.5px] text-text-tertiary tnum">
+                    <span className="shrink-0 text-right text-[11.5px] leading-snug text-text-tertiary tnum">
                       {whenLabel(daysSince(it.created_at, nowIso))}
                     </span>
                   </div>
+                  <p className="mt-0.5 text-[11.5px] leading-snug text-text-tertiary tnum">
+                    {formatDateTime(it.created_at)}
+                  </p>
+
                   {it.notes && (
-                    <p className="text-[13.5px] leading-relaxed text-text-secondary">
+                    <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">
                       {it.notes}
                     </p>
                   )}
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-text-tertiary">
-                    {it.follow_up_date && (
-                      <span className="inline-flex items-center gap-1 tnum">
-                        <CalendarClock size={12} strokeWidth={1.7} />
-                        Follow-up {formatDate(it.follow_up_date)}
-                      </span>
-                    )}
-                    {it.logged_by && (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Avatar name={it.logged_by} className="h-5 w-5 text-[7px]" />
-                        Logged by {it.logged_by}
-                      </span>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
+
+                  {(it.logged_by || it.follow_up_date) && (
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                      {it.logged_by ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
+                          <Avatar
+                            name={it.logged_by}
+                            className="h-5 w-5 text-[7px]"
+                          />
+                          {it.logged_by}
+                        </span>
+                      ) : (
+                        <span />
+                      )}
+                      {it.follow_up_date && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-semibold text-blue-primary tnum">
+                          <CalendarClock size={11} strokeWidth={2.1} />
+                          Follow-up {formatDate(it.follow_up_date)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       </Card>
     </div>
   );
 }
 
-function ActivityHeading() {
+function ActivityHeading({ count }: { count: number }) {
   return (
-    <div className="mb-3 flex items-start gap-1.5">
-      <div>
-        <h2 className="text-[15px] font-semibold text-text-primary">Activity</h2>
-        <p className="mt-0.5 text-[11px] text-text-tertiary">
-          Every call, email and note logged on this deal
-        </p>
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="flex items-start gap-1.5">
+        <div>
+          <h2 className="text-[15px] font-semibold text-text-primary">
+            Activity
+          </h2>
+          <p className="mt-0.5 text-[11px] text-text-tertiary">
+            Every call, email and note logged on this deal
+          </p>
+        </div>
+        <InfoHint text="Each touch is coloured by the stage it moved the deal to, so this history and the stage tracker at the top of the page tell one story." />
       </div>
-      <InfoHint text="Each touch is coloured by the stage it moved the deal to, so this history and the stage tracker at the top of the page tell one story." />
+      {count > 0 && (
+        <span className="shrink-0 rounded-full bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary tnum">
+          {count} {count === 1 ? "touch" : "touches"}
+        </span>
+      )}
     </div>
   );
 }

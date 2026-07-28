@@ -173,7 +173,7 @@ export function AgentGoalBar() {
       if (data.ok) {
         setResult({ handled: data.handled, escalated: data.escalated });
         toast(
-          `Done — drafted ${data.handled} for you, ${data.escalated} waiting for your approval`
+          `Done: drafted ${data.handled} for you, ${data.escalated} waiting for your approval`
         );
         router.refresh();
       } else {
@@ -311,8 +311,8 @@ export function AgentGoalBar() {
                     <p className="text-[12px] text-text-primary">
                       <span className="font-semibold">
                         {preview.heldForValue} held for your sign-off
-                      </span>{" "}
-                      — over your{" "}
+                      </span>
+                     , over your{" "}
                       {preview.ceiling ? formatMoney(preview.ceiling) : "value"}{" "}
                       ceiling.
                     </p>
@@ -418,7 +418,7 @@ export function AgentGoalBar() {
             <div className="flex items-center gap-3 mt-3.5 pt-3 border-t border-border-light">
               <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-success">
                 <Check size={15} strokeWidth={2.2} />
-                Done — drafted {result.handled} for you, {result.escalated}{" "}
+                Done, drafted {result.handled} for you, {result.escalated}{" "}
                 waiting for your approval
               </span>
             </div>

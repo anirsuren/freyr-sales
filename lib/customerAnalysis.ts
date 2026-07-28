@@ -112,7 +112,7 @@ export function analyzeCustomerDeterministic(
   const revenue = reveueFor(size, h);
 
   const rationale = match
-    ? `Matched to ${match.name} — ${match.product_type ? match.product_type.replace(/\.$/, "") + "; " : ""}${match.revenue} revenue, ${match.employees} employees. ${ownership} company.`
+    ? `Matched to ${match.name} - ${match.product_type ? match.product_type.replace(/\.$/, "") + "; " : ""}${match.revenue} revenue, ${match.employees} employees. ${ownership} company.`
     : `Qualified as ${customer_type} (${ownership}, ${revenue}).`;
 
   return {
@@ -194,7 +194,7 @@ export async function analyzeCustomer(
           : Promise.resolve(""),
       ]);
       const webText = [
-        siteText && `# ${name} — website\n${siteText}`,
+        siteText && `# ${name}: website\n${siteText}`,
         ...results.map((r) => `# ${r.title} (${r.url})\n${r.markdown}`),
       ]
         .filter(Boolean)

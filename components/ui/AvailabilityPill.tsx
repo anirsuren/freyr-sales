@@ -22,19 +22,19 @@ function classify(value: string): { kind: Kind; label: string; tip: string } {
     return {
       kind: "tbd",
       label: "Timing TBD",
-      tip: "Roadmap item — the availability date hasn't been decided yet.",
+      tip: "Roadmap item: the availability date hasn't been decided yet.",
     };
   if (/current|now|available|live|general availability|\bga\b/i.test(v))
     return {
       kind: "available",
       label: "Available now",
-      tip: "Live today — this offering can be sold right now.",
+      tip: "Live today: this offering can be sold right now.",
     };
   // Otherwise it's a target date/version, e.g. "Oct-26".
   return {
     kind: "upcoming",
     label: `Available ${v}`,
-    tip: `Planned — this offering isn't sellable until ${v}.`,
+    tip: `Planned: this offering isn't sellable until ${v}.`,
   };
 }
 
