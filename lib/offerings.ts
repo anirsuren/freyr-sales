@@ -622,17 +622,45 @@ const DEMO_MATERIAL_IDS = new Set([
   "m-001", "m-002", "m-003", // Freya.Register samples
   "m-012a", "m-012b", "m-012c", "m-012d", // Register-stack samples
 ]);
-function stripDemoMaterials(s: OfferingsStore): OfferingsStore {
-  for (const o of s.offerings) {
-    if (o.materials?.length) {
-      o.materials = o.materials.filter((m) => !DEMO_MATERIAL_IDS.has(m.id));
+// The samples STAY in the catalog; real mode simply doesn't serve them. They
+// used to be deleted outright, which was correct while mock and live were two
+// separate catalogs — but once they were merged into one, that delete ran on
+// the only catalog there is and the samples vanished for everyone, in every
+// mode. Freya.Register's Sales materials section has been empty ever since.
+// Hiding at read time gives real mode what it asked for without destroying
+// data an offering owner can still see in the demo.
+const DEMO_MATERIALS_BY_OFFERING: Record<string, OfferingMaterial[]> = (() => {
+  const map: Record<string, OfferingMaterial[]> = {};
+  for (const off of seed().offerings) {
+    const demo = (off.materials || []).filter((m) => DEMO_MATERIAL_IDS.has(m.id));
+    if (demo.length) map[off.id] = demo;
+  }
+  return map;
+})();
+
+// A catalog persisted BEFORE this fix had the samples deleted out of it, so put
+// them back on load rather than leaving prod permanently empty.
+function restoreDemoMaterials(s: OfferingsStore): OfferingsStore {
+  for (const off of s.offerings) {
+    const demo = DEMO_MATERIALS_BY_OFFERING[off.id];
+    if (!demo) continue;
+    off.materials = off.materials || [];
+    for (const m of demo) {
+      if (!off.materials.some((x) => x.id === m.id)) off.materials.push({ ...m });
     }
   }
   return s;
 }
 
+/** What a READER may see. Real mode gets only genuinely uploaded assets. */
+function withVisibleMaterials(off: Offering): Offering {
+  if (getDataMode() !== "live" || !off.materials?.length) return off;
+  const real = off.materials.filter((m) => !DEMO_MATERIAL_IDS.has(m.id));
+  return real.length === off.materials.length ? off : { ...off, materials: real };
+}
+
 const liveStore: OfferingsStore =
-  globalThis.__FREYR_LIVE_OFFERINGS_STORE__ ?? stripDemoMaterials(seed());
+  globalThis.__FREYR_LIVE_OFFERINGS_STORE__ ?? seed();
 globalThis.__FREYR_LIVE_OFFERINGS_STORE__ = liveStore;
 // Back-fill collections added in a later build onto a store that an earlier build
 // already created (matters only for dev HMR; prod always starts fresh).
@@ -707,11 +735,10 @@ export async function initializeLiveOfferings(): Promise<void> {
       if (error) throw new Error(`Could not load the offering catalog: ${error.message}`);
       if (isOfferingsStore(data?.catalog)) {
         replaceStore(liveStore, data.catalog);
-        // Self-clean a catalog persisted before the demo-material strip: the
-        // prod document already carries the samples, so remove them here and
-        // write the cleaned catalog back once.
+        // Heal a catalog persisted while the samples were being deleted: put
+        // them back and write the repaired catalog once.
         const before = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
-        stripDemoMaterials(liveStore);
+        restoreDemoMaterials(liveStore);
         const after = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
         if (after !== before) await persistLiveOfferings();
         return;
@@ -942,10 +969,11 @@ function ensureOfferingCategory(name: string) {
 }
 
 export function listOfferings(): Offering[] {
-  return [...activeStore().offerings];
+  return activeStore().offerings.map(withVisibleMaterials);
 }
 export function getOffering(id: string): Offering | null {
-  return activeStore().offerings.find((o) => o.id === id) || null;
+  const found = activeStore().offerings.find((o) => o.id === id);
+  return found ? withVisibleMaterials(found) : null;
 }
 export function createOffering(data: Partial<Offering>): Offering {
   const record: Offering = {
