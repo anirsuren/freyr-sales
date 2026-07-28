@@ -509,6 +509,25 @@ export function OfferingForm({
       })),
     ];
   }, [existingTypes, offeringType]);
+
+  // Each category wears the same hue it wears on the cards and the filters.
+  const categoryOptions: ColorOption[] = useMemo(() => {
+    const names = Array.from(
+      new Set([
+        ...offeringCategories.map((c) => c.name),
+        ...(offeringCategory ? [offeringCategory] : []),
+      ])
+    );
+    return [
+      { value: "", label: "No category", color: "#64748B", icon: Layers },
+      ...names.map((n, i) => ({
+        value: n,
+        label: n,
+        color: FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length],
+        icon: Layers,
+      })),
+    ];
+  }, [offeringCategories, offeringCategory]);
   const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
   const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
   const [materials, setMaterials] = useState<MaterialRow[]>(
@@ -662,25 +681,15 @@ export function OfferingForm({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className={LABEL}>Offering category</label>
-            <SelectField
-              ariaLabel="Offering category"
+            {/* The last raw <select> in this form. It rendered as the
+                browser's own grey list, no colour, no icon, nothing like the
+                pickers beside it. */}
+            <ColorSelect
               value={offeringCategory}
+              options={categoryOptions}
               onChange={setOfferingCategory}
-              accent={categoryAccent}
-              icon={Layers}
-            >
-              <option value="">No category</option>
-              {/* The offering's current category, if it's not in the master list */}
-              {offeringCategory &&
-                !offeringCategories.some((c) => c.name === offeringCategory) && (
-                  <option value={offeringCategory}>{offeringCategory}</option>
-                )}
-              {offeringCategories.map((c) => (
-                <option key={c.id} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </SelectField>
+              ariaLabel="Offering category"
+            />
             <p className="mt-1 text-[11.5px] text-text-tertiary">
               Manage the list under{" "}
               <span className="font-medium">Offering categories</span>.

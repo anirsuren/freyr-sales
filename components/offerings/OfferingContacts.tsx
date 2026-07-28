@@ -6,6 +6,7 @@ import {
   Plus,
   X,
   Loader2,
+  Pencil,
   Headset,
   GraduationCap,
   Briefcase,
@@ -69,7 +70,15 @@ export function OfferingContacts({
   // should automatically be tied to that account").
   const [pick, setPick] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [role, setRole] = useState(ROLE_OPTIONS[0].value);
+  // Step 1 picks the people, step 2 gives each of them their own role. One
+  // shared role would have meant adding a team in as many passes as it has
+  // jobs (Anir, Jul 28: "each person can have a different role... maybe there
+  // are two screens: you choose everyone, you assign the roles").
+  const [step, setStep] = useState<1 | 2>(1);
+  const [roles, setRoles] = useState<Record<string, string>>({});
+  // The contact whose role is being edited, in its own dialog.
+  const [editing, setEditing] = useState<OfferingContact | null>(null);
+  const [editRole, setEditRole] = useState(ROLE_OPTIONS[0].value);
 
   // Nobody who is already a contact should show up as addable.
   const roster = useMemo(() => {
@@ -126,7 +135,7 @@ export function OfferingContacts({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
-            role,
+            role: roles[name] || ROLE_OPTIONS[0].value,
             // Straight off their account when they have one.
             email: account?.email || "",
             phone: "",
@@ -141,7 +150,8 @@ export function OfferingContacts({
       }
       setPick([]);
       setQuery("");
-      setRole(ROLE_OPTIONS[0].value);
+      setRoles({});
+      setStep(1);
       setAdding(false);
       router.refresh();
     } catch {
@@ -206,21 +216,22 @@ export function OfferingContacts({
               </p>
               {/* An owner can change what someone does here without removing
                   and re-adding them. Everyone else just reads it. */}
-              {canEdit ? (
-                <div className="mt-1 max-w-[240px]">
-                  <ColorSelect
-                    value={roleValue(c.role)}
-                    options={ROLE_OPTIONS}
-                    onChange={(v) => setRoleFor(c, v)}
-                    ariaLabel={`${c.name}'s role on this offering`}
-                  />
-                </div>
-              ) : (
-                <p className="break-words text-[12.5px] text-text-secondary">
-                  {[c.role, c.email].filter(Boolean).join(" · ")}
-                </p>
-              )}
+              <p className="break-words text-[12.5px] text-text-secondary">
+                {[c.role, c.email].filter(Boolean).join(" · ")}
+              </p>
             </div>
+            {canEdit && (
+              <button
+                onClick={() => {
+                  setEditRole(roleValue(c.role));
+                  setEditing(c);
+                }}
+                aria-label={`Edit ${c.name}`}
+                className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+              >
+                <Pencil size={15} strokeWidth={2} />
+              </button>
+            )}
             {canEdit && (
               <button
                 onClick={() => remove(c)}
@@ -266,6 +277,7 @@ export function OfferingContacts({
         size="workflow"
       >
         <div className="flex h-[min(66vh,540px)] flex-col">
+          {step === 1 && (
           <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2">
               <Search size={15} strokeWidth={2} className="shrink-0 text-text-tertiary" />
@@ -281,8 +293,43 @@ export function OfferingContacts({
               {roster.length} available
             </span>
           </div>
+          )}
 
-          {/* The only thing that scrolls. */}
+          {/* SCREEN 2: one row per chosen person, each with their own role. */}
+          {step === 2 && (
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-xl border border-border-light p-2">
+              {pick.map((name) => (
+                <div
+                  key={name}
+                  className="flex flex-wrap items-center gap-3 rounded-lg bg-[var(--surface)] px-2.5 py-2"
+                >
+                  <Avatar name={name} className="h-10 w-10 shrink-0 text-[12px]" />
+                  <span className="min-w-0 flex-1 break-words text-[13.5px] font-semibold text-text-primary">
+                    {name}
+                  </span>
+                  <div className="w-[268px] shrink-0">
+                    <ColorSelect
+                      value={roles[name] || ROLE_OPTIONS[0].value}
+                      options={ROLE_OPTIONS}
+                      onChange={(v) => setRoles((r) => ({ ...r, [name]: v }))}
+                      ariaLabel={`${name}'s role on this offering`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${name}`}
+                    onClick={() => setPick((l) => l.filter((n) => n !== name))}
+                    className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:text-[color:#B02020]"
+                  >
+                    <X size={15} strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* SCREEN 1: the roster. The only thing that scrolls. */}
+          {step === 1 && (
           <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border-light p-1.5">
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {roster.map((p) => {
@@ -332,49 +379,39 @@ export function OfferingContacts({
               )}
             </div>
           </div>
+          )}
 
-          {/* Always on screen: who you picked, what they'll do, and the button. */}
+          {/* Always on screen: the step dots, and the way forward. */}
           <div className="mt-3 shrink-0 space-y-2.5 border-t border-border-light pt-3">
-            {pick.length > 0 && (
-              <div className="flex max-h-[68px] flex-wrap gap-1.5 overflow-y-auto">
-                {pick.map((name) => (
-                  <span
-                    key={name}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-blue-light py-0.5 pl-0.5 pr-1.5"
-                  >
-                    <Avatar name={name} className="h-6 w-6 text-[8px]" />
-                    <span className="text-[12.5px] font-semibold text-text-primary">
-                      {name}
-                    </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Remove ${name}`}
-                      onClick={() => setPick((l) => l.filter((n) => n !== name))}
-                      onKeyDown={(e) =>
-                        (e.key === "Enter" || e.key === " ") &&
-                        setPick((l) => l.filter((n) => n !== name))
-                      }
-                      className="cursor-pointer rounded p-0.5 text-blue-primary hover:text-[color:#B02020]"
-                    >
-                      <X size={12} strokeWidth={2.4} />
-                    </span>
-                  </span>
-                ))}
-              </div>
-            )}
             <div className="flex flex-wrap items-center gap-3">
-              <span className="shrink-0 text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                Role
+              <span className="flex items-center gap-1.5">
+                {[1, 2].map((n) => (
+                  <span
+                    key={n}
+                    aria-label={n === 1 ? "Step 1, choose people" : "Step 2, assign roles"}
+                    className={cn(
+                      "h-2 rounded-full transition-all",
+                      step === n ? "w-5 bg-blue-primary" : "w-2 bg-border-light"
+                    )}
+                  />
+                ))}
               </span>
-              <div className="w-[280px]">
-                <ColorSelect
-                  value={role}
-                  options={ROLE_OPTIONS}
-                  onChange={setRole}
-                  ariaLabel="Role on this offering"
-                />
-              </div>
+              <span className="text-[12.5px] text-text-tertiary">
+                {step === 1
+                  ? pick.length === 0
+                    ? "Choose who to add"
+                    : `${pick.length} selected`
+                  : "Give each of them a role"}
+              </span>
+              {step === 2 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="text-[13px] font-semibold text-text-secondary hover:text-text-primary"
+                >
+                  Back
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setAdding(false)}
@@ -382,9 +419,30 @@ export function OfferingContacts({
               >
                 Cancel
               </button>
-              <Button onClick={add} loading={busy === "add"}>
-                {pick.length > 1 ? `Add ${pick.length} contacts` : "Add contact"}
-              </Button>
+              {step === 1 ? (
+                <Button
+                  onClick={() => {
+                    if (pick.length === 0) {
+                      setError("Pick who you're adding");
+                      return;
+                    }
+                    setError(null);
+                    setRoles((r) => {
+                      const next = { ...r };
+                      for (const n of pick)
+                        if (!next[n]) next[n] = ROLE_OPTIONS[0].value;
+                      return next;
+                    });
+                    setStep(2);
+                  }}
+                >
+                  Next: assign roles
+                </Button>
+              ) : (
+                <Button onClick={add} loading={busy === "add"}>
+                  {pick.length > 1 ? `Add ${pick.length} contacts` : "Add contact"}
+                </Button>
+              )}
             </div>
             {error && (
               <p className="text-[12.5px] font-medium text-[color:#B02020]">{error}</p>
@@ -394,6 +452,75 @@ export function OfferingContacts({
       </Modal>
 
 
+
+      {/* Changing what someone does is a decision you commit to, not a
+          dropdown that fires the moment it closes (Anir, Jul 28: "there should
+          be a definitive edit button on the contacts. It should be another
+          popup, and then I can press Save"). */}
+      <Modal
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title={editing ? `Edit ${editing.name}` : "Edit contact"}
+      >
+        {editing && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Avatar name={editing.name} className="h-12 w-12 shrink-0 text-[14px]" />
+              <span className="min-w-0 leading-tight">
+                <span className="block break-words text-[14.5px] font-semibold text-text-primary">
+                  {editing.name}
+                </span>
+                <span className="block break-words text-[12px] text-text-tertiary">
+                  {editing.email || "No email on their account"}
+                </span>
+              </span>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                What they do here
+              </p>
+              <ColorSelect
+                value={editRole}
+                options={ROLE_OPTIONS}
+                onChange={setEditRole}
+                ariaLabel={`${editing.name}'s role on this offering`}
+              />
+            </div>
+            {error && (
+              <p className="text-[12.5px] font-medium text-[color:#B02020]">{error}</p>
+            )}
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = editing;
+                  setEditing(null);
+                  remove(target);
+                }}
+                className="text-[13px] font-semibold text-[color:#B02020] hover:underline"
+              >
+                Remove from this offering
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="ml-auto text-[13.5px] font-semibold text-text-secondary hover:text-text-primary"
+              >
+                Cancel
+              </button>
+              <Button
+                loading={busy === editing.id}
+                onClick={async () => {
+                  const ok = await setRoleFor(editing, editRole);
+                  if (ok) setEditing(null);
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {error && (
         <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
