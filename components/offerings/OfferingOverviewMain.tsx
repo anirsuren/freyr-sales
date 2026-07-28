@@ -400,27 +400,39 @@ export function OfferingOverviewMain({
                           // box, however tall the row grows.
                           className="group relative min-h-[136px] min-w-0 flex-1"
                         >
-                          <span
-                            className="pointer-events-none absolute inset-x-0 text-center text-[10.5px] font-semibold tnum text-text-primary"
-                            style={{ bottom: `calc(${barPct}% + 5px)` }}
-                          >
-                            {formatMoney(month.value)}
-                          </span>
+                          {/* Bar + value label are ONE object, lifted together
+                              6px under the cursor — the exact idiom the shared
+                              <BarChart> uses everywhere else in the app
+                              (`transition-transform duration-150`, label as a
+                              child of the lifted element so they move as one,
+                              at one speed). This chart is hand-rolled here and
+                              never got the behaviour, so it was the only bar
+                              chart in the product that sat dead on hover. The
+                              lift is CSS-only (`group-hover`) because this is a
+                              server component with no hover state of its own. */}
                           <div
-                            className="absolute inset-x-0 bottom-0 flex justify-center"
+                            className="absolute inset-x-0 bottom-0 flex justify-center transition-transform duration-150 group-hover:-translate-y-1.5 motion-reduce:transition-none"
                             style={{ height: `${barPct}%` }}
                           >
+                            <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap text-center text-[10.5px] font-semibold tnum text-text-primary">
+                              {formatMoney(month.value)}
+                            </span>
                             <HoverCard
                               side="top"
                               width={266}
                               delayMs={0}
                               content={hover}
                               clearAncestor="[data-outlook-plot]"
-                              tightAbove={20}
+                              // 20 + the 6px hover lift: HoverCard measures the
+                              // trigger the instant the cursor arrives, before
+                              // the bar has risen, so the card has to reserve
+                              // the lift itself or it lands on the top of the
+                              // value label it is supposed to clear.
+                              tightAbove={26}
                               className="h-full w-[70%] max-w-[52px] cursor-pointer"
                             >
                               <div
-                                className="chart-bar h-full w-full rounded-t-md transition-[filter,transform] group-hover:brightness-105"
+                                className="chart-bar h-full w-full rounded-t-md transition-[filter] group-hover:brightness-105"
                                 style={{
                                   background: month.color,
                                   animationDelay: `${index * 60}ms`,

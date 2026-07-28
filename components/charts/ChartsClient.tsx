@@ -100,6 +100,29 @@ const TIP_INLINE_ROWS = 3;
  *  tooltip and never as a panel. ~3 rows, then it scrolls. Shared by every
  *  chart so the bar tip and the line tip beside it feel like one component. */
 const TIP_LIST_MAX_HEIGHT = 190;
+/** The card's own horizontal padding, mirrored from `.chart-tip` in
+ *  `app/globals.css` (`padding: 11px 13px`). The record list cancels it with a
+ *  negative margin so the LIST spans the card edge to edge and its scrollbar
+ *  rides the card's true right edge — instead of sitting inboard, on top of the
+ *  money column (Suren, on the pipeline area chart: "this scroll bar… should
+ *  probably be on the very right side of that little container. You see how
+ *  it's almost covering the text, like the money amount?"). The padding moves
+ *  onto the ROWS, so nothing shifts; only the scroll gutter changes owner. */
+const TIP_CARD_PAD_X = 13;
+/** Pull a block out to the card's border box (see TIP_CARD_PAD_X). */
+const TIP_BLEED = {
+  marginLeft: -TIP_CARD_PAD_X,
+  marginRight: -TIP_CARD_PAD_X,
+} as const;
+/** …and give the padding back to whatever sits inside that block. */
+const TIP_ROW_PAD = {
+  paddingLeft: TIP_CARD_PAD_X,
+  paddingRight: TIP_CARD_PAD_X,
+} as const;
+/** Left rail of a record row: the company/person mark (22px) + the gap after
+ *  it, so every secondary line under the name starts on the name's own edge
+ *  rather than drifting back under the logo. */
+const TIP_MARK_INDENT = 30;
 /** Hard ceiling on the whole card (header + stats + list), independent of how
  *  much viewport room happens to be free. */
 const TIP_MAX_HEIGHT = 340;
@@ -622,7 +645,7 @@ function TipTag({ tag }: { tag: TipTagDef }) {
   const Icon = tag.icon;
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0 text-[10px] font-semibold"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-[1.5px] text-[10px] font-semibold leading-[1.2]"
       style={{ background: tag.bg, color: tag.color }}
     >
       <Icon size={10} strokeWidth={2.2} />
@@ -672,9 +695,19 @@ function TipBreakdown({
   const rows = interactive ? items : items.slice(0, TIP_INLINE_ROWS);
   const hidden = items.length - rows.length;
   return (
-    <div className="mt-2.5 flex min-h-0 flex-col border-t border-border-light pt-2.5 text-left">
+    // Full-bleed section. Two things fall out of that: the hairline above the
+    // list runs the WHOLE width of the card, so the headline block above it
+    // reads as a headline and this reads as a list; and the scroller below
+    // owns the card's right edge, which is where a scrollbar belongs.
+    <div
+      className="mt-3 flex min-h-0 flex-col border-t border-border-light pt-2.5 text-left"
+      style={TIP_BLEED}
+    >
       {label && (
-        <p className="mb-1.5 flex shrink-0 items-baseline gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+        <p
+          className="mb-1.5 flex shrink-0 items-baseline gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"
+          style={TIP_ROW_PAD}
+        >
           <span>{label}</span>
           {/* How many there are, at rest — a scrollable list needs to say how
               far it goes before you start scrolling it. */}
@@ -682,11 +715,19 @@ function TipBreakdown({
         </p>
       )}
       <div
-        className={cn(
-          "min-h-0 space-y-[3px]",
-          interactive && "overflow-y-auto pr-0.5"
-        )}
-        style={interactive ? { maxHeight: TIP_LIST_MAX_HEIGHT } : undefined}
+        className={cn("min-h-0", interactive && "overflow-y-auto")}
+        style={
+          interactive
+            ? {
+                maxHeight: TIP_LIST_MAX_HEIGHT,
+                // Reserve the gutter so the list doesn't reflow the instant a
+                // scrollbar appears. On overlay-scrollbar platforms (macOS)
+                // this is a no-op and the bar simply paints over the card's
+                // own padding strip — which is now empty by design.
+                scrollbarGutter: "stable",
+              }
+            : undefined
+        }
       >
         {rows.map((t, j) => {
           // The person gets their own line whenever the left-hand mark is
@@ -703,81 +744,115 @@ function TipBreakdown({
             tipTagFor(t.outcome, "outcome"),
             ...parsed.tags,
           ].filter((x): x is TipTagDef => !!x);
+          // The company logo stands ALONE on the left so it reads as the
+          // company's mark; the person's face travels with the person's NAME on
+          // the line below (Suren, Jul 27: "the profile picture should come
+          // next to the person's name, and then you can leave the company
+          // there"). Overlapping the two stuck the face onto the company label.
+          const mark = t.logo ? (
+            <CompanyLogo name={t.logo} className="h-[22px] w-[22px] shrink-0 text-[8px]" />
+          ) : t.avatar ? (
+            <Avatar name={t.avatar} className="h-[22px] w-[22px] shrink-0 text-[8px]" />
+          ) : null;
+          const hasDetail =
+            showPerson || tags.length > 0 || !!t.service || parsed.lines.length > 0;
           return (
             <div
               key={j}
-              // Tight vertical rhythm: a row is up to four lines now (company,
-              // person, chips, clause), so the plate keeps its padding minimal
-              // and nothing shrinks below 10px type.
-              className="flex items-center gap-2 rounded-md bg-surface px-1.5 py-[3px] text-[11px]"
+              // No per-row grey plate any more. Three or four lines of text on
+              // a solid fill, stacked three deep, is the "bunch of text on top
+              // of each other" Suren was reading (Jul 28: "I don't know how I
+              // feel about that gray background either"). A list wants a
+              // hairline between records and room to breathe, not a wall of
+              // plates: the separator does the grouping, `py-2` does the
+              // rhythm, and the fill only appears under the cursor — on a
+              // reachable tip that also tells you which record you're on while
+              // you scroll. `bg-[var(--surface)]` because `hover:bg-surface`
+              // compiles to a class `.dark .bg-surface` can never match; the
+              // CSS variable is re-defined under `.dark`, so it follows the
+              // theme by itself (same fix as the bar-chart column wash).
+              className={cn(
+                "py-2 transition-colors hover:bg-[var(--surface)]",
+                j > 0 && "border-t border-border-light"
+              )}
+              style={TIP_ROW_PAD}
             >
-              {/* The company logo stands ALONE on the left so it reads as the
-                  company's mark; the person's face travels with the person's
-                  NAME on the line below (Suren, Jul 27: "the profile picture
-                  should come next to the person's name, and then you can leave
-                  the company there"). Overlapping the two stuck the face onto
-                  the company label. Mirrors TeamRoster's "Top open deals". */}
-              {t.logo ? (
-                <CompanyLogo name={t.logo} className="h-[22px] w-[22px] shrink-0 text-[8px]" />
-              ) : t.avatar ? (
-                <Avatar name={t.avatar} className="h-[22px] w-[22px] shrink-0 text-[8px]" />
-              ) : null}
-              <span className="min-w-0 flex-1 leading-[1.25]">
+              {/* The subject line: whose deal it is, and how much it's worth.
+                  The money sits on the COMPANY's line — it is that company's
+                  number — instead of floating vertically centred against four
+                  unrelated lines. */}
+              <div className="flex items-center gap-2">
+                {mark}
                 {/* Wrap, never ellipsize — a clipped company name is the one
                     thing a rep can't act on (Suren's standing rule). */}
-                <span className="block break-normal font-semibold text-text-primary">
+                <span className="min-w-0 flex-1 break-normal text-[12px] font-semibold leading-[1.3] text-text-primary">
                   {t.name}
                 </span>
-                {showPerson && (
-                  // One line, always. A human's name broken mid-way across two
-                  // lines is the thing Suren called out ("that looks really
-                  // bad"), so the name is nowrap and anything that used to
-                  // trail it after a "·" drops to the line below.
-                  <span className="mt-px flex min-w-0 items-center gap-1">
-                    <Avatar name={t.avatar!} className="h-[14px] w-[14px] shrink-0 text-[6px]" />
-                    <span className="whitespace-nowrap text-[10.5px] font-medium text-text-secondary">
-                      {t.avatar}
+                {t.value != null && (
+                  <span className="shrink-0 text-[12px] font-semibold leading-[1.3] text-text-primary tnum">
+                    {t.value}
+                  </span>
+                )}
+              </div>
+              {hasDetail && (
+                // Everything under the subject is secondary, and it says so by
+                // starting on the name's left edge rather than the logo's —
+                // one clean rail down the row.
+                <div
+                  className="mt-1 flex flex-col gap-1"
+                  style={mark ? { paddingLeft: TIP_MARK_INDENT } : undefined}
+                >
+                  {showPerson && (
+                    // One line, always. A human's name broken mid-way across
+                    // two lines is the thing Suren called out ("that looks
+                    // really bad"), so the name is nowrap and anything that
+                    // used to trail it after a "·" drops to the line below.
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Avatar name={t.avatar!} className="h-[15px] w-[15px] shrink-0 text-[6px]" />
+                      <span className="whitespace-nowrap text-[11px] font-medium text-text-secondary">
+                        {t.avatar}
+                      </span>
                     </span>
-                  </span>
-                )}
-                {/* Chips first, on their own line — a category is never flat
-                    text. The offering wears the same ServiceTag it wears on
-                    the pipeline cards. */}
-                {(tags.length > 0 || t.service) && (
-                  <span className="mt-[3px] flex flex-wrap items-center gap-1">
-                    {t.service && (
-                      <ServiceTag
-                        name={t.service}
-                        className="!py-0 !pl-0.5 !pr-1.5 !text-[10px]"
-                      />
-                    )}
-                    {tags.map((tag, k) => (
-                      <TipTag key={`${tag.label}-${k}`} tag={tag} />
-                    ))}
-                  </span>
-                )}
-                {/* …then each remaining clause on a line of its own. Real
-                    contrast, not gray-on-gray: these carry facts a rep acts
-                    on ("7 days since last touch"). */}
-                {parsed.lines.map((line, k) => (
-                  <span
-                    key={k}
-                    className="mt-px block break-normal text-[10px] text-text-secondary"
-                  >
-                    {line}
-                  </span>
-                ))}
-              </span>
-              {t.value != null && (
-                <span className="shrink-0 self-center font-semibold text-text-secondary tnum">
-                  {t.value}
-                </span>
+                  )}
+                  {/* Metadata, on its own line — a category is never flat text.
+                      The offering wears the same ServiceTag it wears on the
+                      pipeline cards; the stage wears its board colour+icon. */}
+                  {(tags.length > 0 || t.service) && (
+                    <span className="flex flex-wrap items-center gap-1">
+                      {t.service && (
+                        <ServiceTag
+                          name={t.service}
+                          className="!py-0 !pl-0.5 !pr-1.5 !text-[10px]"
+                        />
+                      )}
+                      {tags.map((tag, k) => (
+                        <TipTag key={`${tag.label}-${k}`} tag={tag} />
+                      ))}
+                    </span>
+                  )}
+                  {/* …then each remaining clause on a line of its own. Real
+                      contrast, not gray-on-gray: these carry facts a rep acts
+                      on ("7 days since last touch"). */}
+                  {parsed.lines.map((line, k) => (
+                    <span
+                      key={k}
+                      className="block break-normal text-[10.5px] leading-snug text-text-secondary"
+                    >
+                      {line}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           );
         })}
         {hidden > 0 && (
-          <div className="pt-0.5 text-[10.5px] text-text-tertiary">+{hidden} more</div>
+          <div
+            className="border-t border-border-light py-2 text-[10.5px] text-text-tertiary"
+            style={TIP_ROW_PAD}
+          >
+            +{hidden} more
+          </div>
         )}
       </div>
     </div>
@@ -817,14 +892,18 @@ function TipHeader({
         tileClassName="mt-0.5"
       />
       <span className="min-w-0 flex-1">
-        <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
           {label}
         </span>
-        <span className="mt-1 block text-[19px] font-bold leading-none text-text-primary tnum">
+        {/* The headline of the whole card, and sized like one. At 19px it sat
+            in the same weight class as the rows below it, which is half of why
+            the tip read as one undifferentiated stack (Suren, Jul 28: "a bunch
+            of text on top of each other"). */}
+        <span className="mt-1.5 block text-[21px] font-bold leading-none text-text-primary tnum">
           {value}
         </span>
         {note && (
-          <span className="mt-1.5 block text-[11.5px] leading-snug text-text-secondary">
+          <span className="mt-2 block text-[11.5px] leading-snug text-text-secondary">
             {note}
           </span>
         )}
@@ -989,7 +1068,7 @@ function TipShareStats({
 }) {
   const others = Math.max(0, total - value);
   return (
-    <div className="mt-2.5 flex shrink-0 items-center gap-2.5 rounded-lg bg-surface px-2.5 py-2">
+    <div className="mt-3 flex shrink-0 items-center gap-2.5 rounded-lg bg-surface px-2.5 py-2">
       <TipShareDonut pct={share} color={color} />
       <div className="min-w-0">
         <span className="sr-only">
@@ -1236,7 +1315,7 @@ export function AreaChart({
             label={xLabels?.[hi] || `Point ${hi + 1} of ${n}`}
             value={`${fmt(format, data[hi])}${unit ? ` ${unit}` : ""}`}
           />
-          <div className="mt-2.5 shrink-0 space-y-1 rounded-lg bg-surface px-2.5 py-2 text-[10.5px]">
+          <div className="mt-3 shrink-0 space-y-1.5 rounded-lg bg-surface px-2.5 py-2 text-[11px]">
             <TipStat
               label="Change from prior"
               value={
@@ -1711,7 +1790,7 @@ export function BarChart({
                   note={d.tipNote || d.caption}
                 />
                 {!hideTipStats && (
-                  <div className="mt-2.5 shrink-0 space-y-1 rounded-lg bg-surface px-2.5 py-2 text-[10.5px]">
+                  <div className="mt-3 shrink-0 space-y-1.5 rounded-lg bg-surface px-2.5 py-2 text-[11px]">
                     <TipStat
                       label="Share of shown total"
                       value={`${total ? Math.round((d.value / total) * 100) : 0}%`}
@@ -1744,7 +1823,7 @@ export function BarChart({
                   with it, exactly as far, at exactly the same speed (Suren:
                   "the number does not go up when the bar chart goes up"). */}
               <div
-                className="relative flex w-[72%] min-w-[14px] max-w-[88px] justify-center transition-transform duration-150"
+                className="relative flex w-[72%] min-w-[14px] max-w-[88px] justify-center transition-transform duration-150 motion-reduce:transition-none"
                 style={{
                   height: `${(d.value / max) * 100}%`,
                   minHeight: 4,
@@ -1985,7 +2064,7 @@ export function LineChart({
                     label={tipLabel || `Point ${hi + 1} of ${n}`}
                     value={`${fmt(format, current)}${unit ? ` ${unit}` : ""}`}
                   />
-                  <div className="mt-2.5 rounded-lg bg-surface px-2.5 py-2 text-[10.5px]">
+                  <div className="mt-3 rounded-lg bg-surface px-2.5 py-2 text-[11px]">
                     <TipStat
                       label="Change from prior"
                       value={
@@ -2170,7 +2249,7 @@ export function Sparkline({
               }`}
               value={`${fmt(format, points[hi] ?? 0)}${unit ? ` ${unit}` : ""}`}
             />
-            <div className="mt-2.5 rounded-lg bg-surface px-2.5 py-2 text-[10.5px]">
+            <div className="mt-3 rounded-lg bg-surface px-2.5 py-2 text-[11px]">
               {(() => {
                 const current = points[hi] ?? 0;
                 const prior = hi > 0 ? points[hi - 1] ?? current : current;

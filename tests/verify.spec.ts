@@ -5420,13 +5420,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(metricTip.getByText("Quarter quota")).toBeVisible();
     await expect(metricTip.getByText("Open deals")).toBeVisible();
 
-    const attentionQueue = page
-      .getByRole("heading", { name: "What needs your attention" })
-      .locator("xpath=ancestor::div[contains(@class,'bg-white')][1]");
-    await attentionQueue.locator(".divide-y > *").first().hover();
-    const attentionTip = page.getByRole("tooltip").last();
-    await expect(attentionTip.getByText(/Priority 1/)).toBeVisible();
-    await expect(attentionTip.getByText(/Why it needs attention/)).toBeVisible();
+    // The "What needs your attention" agent queue was removed from the
+    // dashboard on Jul 27 — test 103 pins its absence — so there is no longer
+    // a priority row here to hover. The metric, activity and chart tips below
+    // are what this test still guards.
 
     // activity rows are the only links whose name carries a "• h:mm AM" stamp —
     // fresh stores seed different people, so match the shape, not a name
