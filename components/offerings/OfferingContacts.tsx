@@ -1,0 +1,211 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, X, Loader2 } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
+import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
+import type { OfferingContact } from "@/lib/offerings";
+
+/**
+ * THE PEOPLE BEHIND AN OFFERING, as records you can change.
+ *
+ * These used to be text parsed out of a spreadsheet cell, so there was no way
+ * to add anyone or take anyone off (Anir, Jul 28: "obviously, there has to be
+ * the ability to remove and add contacts for this offering"). Now each person
+ * is a row with a name, role, email and phone, and the card writes through the
+ * contacts API, which is gated on OWNERSHIP exactly like the Edit button.
+ *
+ * Someone who does not own the offering still sees everybody, they just get no
+ * add or remove controls.
+ */
+export function OfferingContacts({
+  offeringId,
+  offeringName,
+  contacts,
+  canEdit,
+}: {
+  offeringId: string;
+  offeringName: string;
+  contacts: OfferingContact[];
+  canEdit: boolean;
+}) {
+  const router = useRouter();
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: "", role: "", email: "", phone: "" });
+
+  async function send(key: string, fn: () => Promise<Response>) {
+    setBusy(key);
+    setError(null);
+    try {
+      const res = await fn();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error || "That did not go through.");
+        return false;
+      }
+      router.refresh();
+      return true;
+    } catch {
+      setError("That did not go through.");
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function add() {
+    if (!form.name.trim()) {
+      setError("A contact needs a name");
+      return;
+    }
+    const ok = await send("add", () =>
+      fetch(`/api/offerings/${offeringId}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+    );
+    if (ok) {
+      setForm({ name: "", role: "", email: "", phone: "" });
+      setAdding(false);
+    }
+  }
+
+  const remove = (c: OfferingContact) =>
+    send(c.id, () =>
+      fetch(
+        `/api/offerings/${offeringId}/contacts?contactId=${encodeURIComponent(c.id)}`,
+        { method: "DELETE" }
+      )
+    );
+
+  const FIELD =
+    "h-9 w-full min-w-0 rounded-lg border border-border-light bg-white px-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none";
+
+  return (
+    <div className="space-y-3">
+      {contacts.length === 0 && !adding && (
+        <p className="text-[12.5px] leading-relaxed text-text-secondary">
+          Nobody is listed yet. Add the person a rep should call when a customer
+          asks something the deck does not answer.
+        </p>
+      )}
+
+      <ul className="space-y-2.5">
+        {contacts.map((c) => (
+          <li key={c.id} className="flex items-center gap-3">
+            {/* Hover a face for who they are and every way to reach them. */}
+            <PersonHoverCard
+              name={c.name}
+              role={c.role}
+              context={offeringName}
+              email={c.email}
+              phone={c.phone}
+            >
+              <Avatar name={c.name} className="h-10 w-10 shrink-0 text-[14px]" />
+            </PersonHoverCard>
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-[14px] font-semibold text-text-primary">
+                {c.name}
+              </p>
+              <p className="break-words text-[12.5px] text-text-secondary">
+                {[c.role, c.email, c.phone].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            {canEdit && (
+              <button
+                onClick={() => remove(c)}
+                disabled={busy === c.id}
+                aria-label={`Remove ${c.name} from this offering`}
+                className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020] disabled:opacity-50"
+              >
+                {busy === c.id ? (
+                  <Loader2 size={15} strokeWidth={2} className="animate-spin" />
+                ) : (
+                  <X size={15} strokeWidth={2} />
+                )}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {canEdit && !adding && (
+        <button
+          onClick={() => {
+            setAdding(true);
+            setError(null);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+        >
+          <Plus size={14} strokeWidth={2.1} />
+          Add a contact
+        </button>
+      )}
+
+      {canEdit && adding && (
+        <div className="space-y-2 rounded-xl border border-border-light bg-[var(--surface)] p-3">
+          <input
+            autoFocus
+            className={FIELD}
+            placeholder="Full name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+          />
+          <input
+            className={FIELD}
+            placeholder="Role, e.g. Service delivery POC"
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+          />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input
+              className={FIELD}
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+            />
+            <input
+              className={FIELD}
+              placeholder="Phone"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+            />
+          </div>
+          <div className="flex items-center gap-2 pt-0.5">
+            <button
+              onClick={add}
+              disabled={busy === "add"}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-blue-hover disabled:opacity-50"
+            >
+              {busy === "add" && (
+                <Loader2 size={13} strokeWidth={2.2} className="animate-spin" />
+              )}
+              Add contact
+            </button>
+            <button
+              onClick={() => {
+                setAdding(false);
+                setError(null);
+              }}
+              className="text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
+      )}
+    </div>
+  );
+}

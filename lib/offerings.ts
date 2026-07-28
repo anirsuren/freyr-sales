@@ -65,6 +65,8 @@ export interface OfferingCategory {
   owner_user_id?: string | null;
 }
 
+import { pocNames } from "./pocNames";
+
 export interface Offering {
   id: string;
   offering_type: string;
@@ -74,6 +76,13 @@ export interface Offering {
   current_availability: string;
   future_availability: string; // "Availability comments" in the UI
   poc: string; // SME / service-delivery POC named on Suren's master sheet
+  /** THE PEOPLE BEHIND THIS OFFERING, as records you can add to and remove
+   *  from, not a spreadsheet cell (Anir, Jul 28: "obviously, there has to be
+   *  the ability to remove and add contacts for this offering"). Back-filled
+   *  from `poc` the first time an offering loads, so nothing Suren's sheet
+   *  carried is lost, and `poc` is kept in sync from this list so the cards,
+   *  the POC strip and the CSV export keep reading the same names. */
+  contacts: OfferingContact[];
   customer_type_ids: string[]; // applicable customer types (one or more)
   market_ids: string[]; // applicable markets
   materials: OfferingMaterial[];
@@ -88,6 +97,18 @@ export interface Offering {
    *  they are display only and are never consulted for access. */
   owners: OfferingOwner[];
   created_at: string;
+}
+
+/** One person to talk to about an offering. Freyr-internal: the SME or service
+ *  delivery lead a rep should reach when a customer asks something the deck
+ *  does not answer. Only the name is required; a row with just a name is still
+ *  useful, and demanding an email would push people back to the sheet. */
+export interface OfferingContact {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
 }
 
 /** One claim on an offering.
@@ -305,8 +326,9 @@ function off(
   offering_description: string,
   opts: Partial<Offering> = {}
 ): Offering {
-  return {
+  const record: Offering = {
     id,
+    contacts: [],
     offering_type,
     offering_category: opts.offering_category ?? "",
     offering_name,
@@ -324,6 +346,10 @@ function off(
     owners: opts.owners ?? [],
     created_at: opts.created_at ?? "2026-06-20T12:00:00.000Z",
   };
+  // The sheet's POC cell becomes real contact rows, so a seeded offering opens
+  // with its people listed and they can be added to or removed like any other.
+  record.contacts = opts.contacts ?? contactsFromPoc(record);
+  return record;
 }
 
 // Seeded from Suren's "Digital Sales and Marketing.xlsx" → "Offerings" sheet:
@@ -725,6 +751,10 @@ if (!store.offeringCategories)
 // an older stored offering loads with `owners` undefined and every ownership
 // check throws on `.some()`.
 for (const o of store.offerings) if (!o.owners) o.owners = [];
+// `contacts` arrived after catalogs were persisted too. Back-fill it from the
+// `poc` cell so an offering that has only ever known the sheet still opens with
+// its people listed, one row per person, rather than an empty card.
+for (const o of store.offerings) if (!o.contacts) o.contacts = contactsFromPoc(o);
 
 // ONE offerings catalog, always — the mode switch is about which MODULES are
 // finished, not about which data is real (Anir, Jul 27: "if I add or delete a
@@ -1035,6 +1065,92 @@ export function getOffering(id: string): Offering | null {
 }
 /** Write or upgrade a claim. Idempotent, and it never DOWNGRADES: re-requesting
  *  an offering you already own leaves you the owner. */
+// ---------------------------------------------------------------------------
+// Offering contacts
+// ---------------------------------------------------------------------------
+
+/** Turn the sheet's `poc` cell into real rows. The cell packs several people
+ *  into one string ("Inayat / Tanudeep", "Ravi, Sara"), which is why rendering
+ *  it as a single avatar used to merge two people into an invented person. */
+export function contactsFromPoc(o: {
+  id: string;
+  poc?: string;
+  offering_category?: string;
+}): OfferingContact[] {
+  return pocNames(o.poc || "").map((name, i) => ({
+    id: `oc-${o.id}-${i}`,
+    name,
+    role: "Service delivery POC",
+    email: "",
+    phone: "",
+  }));
+}
+
+/** `poc` stays the derived display string so every surface that already reads
+ *  it (offering cards, the POC strip, the CSV export, search) keeps working
+ *  without knowing contacts exist. One writer, no drift. */
+function syncPoc(o: Offering) {
+  o.poc = o.contacts.map((c) => c.name).join(" / ");
+}
+
+export function addOfferingContact(
+  id: string,
+  contact: { name: string; role?: string; email?: string; phone?: string }
+): Offering | null {
+  const found = activeStore().offerings.find((o) => o.id === id);
+  if (!found) return null;
+  const name = contact.name.trim();
+  if (!name) throw new Error("A contact needs a name");
+  if (!found.contacts) found.contacts = contactsFromPoc(found);
+  // Same person twice is a mistake, not an intent.
+  if (found.contacts.some((c) => c.name.toLowerCase() === name.toLowerCase()))
+    throw new Error(`${name} is already a contact for this offering`);
+  found.contacts = [
+    ...found.contacts,
+    {
+      id: `oc-${id}-${Date.now().toString(36)}`,
+      name,
+      role: (contact.role || "").trim() || "Service delivery POC",
+      email: (contact.email || "").trim(),
+      phone: (contact.phone || "").trim(),
+    },
+  ];
+  syncPoc(found);
+  return found;
+}
+
+export function removeOfferingContact(id: string, contactId: string): Offering | null {
+  const found = activeStore().offerings.find((o) => o.id === id);
+  if (!found) return null;
+  if (!found.contacts) found.contacts = contactsFromPoc(found);
+  found.contacts = found.contacts.filter((c) => c.id !== contactId);
+  syncPoc(found);
+  return found;
+}
+
+export function updateOfferingContact(
+  id: string,
+  contactId: string,
+  patch: { name?: string; role?: string; email?: string; phone?: string }
+): Offering | null {
+  const found = activeStore().offerings.find((o) => o.id === id);
+  if (!found) return null;
+  if (!found.contacts) found.contacts = contactsFromPoc(found);
+  found.contacts = found.contacts.map((c) =>
+    c.id === contactId
+      ? {
+          ...c,
+          name: patch.name !== undefined ? patch.name.trim() || c.name : c.name,
+          role: patch.role !== undefined ? patch.role.trim() : c.role,
+          email: patch.email !== undefined ? patch.email.trim() : c.email,
+          phone: patch.phone !== undefined ? patch.phone.trim() : c.phone,
+        }
+      : c
+  );
+  syncPoc(found);
+  return found;
+}
+
 export function claimOffering(
   id: string,
   owner: {
@@ -1102,6 +1218,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     offering_type: data.offering_type || "",
     offering_category: data.offering_category || "",
     offering_name: data.offering_name || "Untitled offering",
+    contacts: data.contacts ?? [],
     offering_description: data.offering_description || "",
     current_availability: data.current_availability || "",
     future_availability: data.future_availability || "",

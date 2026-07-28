@@ -1,0 +1,112 @@
+"use client";
+
+import { Mail, Phone } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
+import { HoverCard } from "@/components/ui/HoverCard";
+import { TeamsIcon } from "@/components/ui/TeamsIcon";
+import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
+import { repEmail, repPhone, repLinkedIn, teamsChatUrl } from "@/lib/team";
+
+/**
+ * HOVER A FACE, GET THE PERSON.
+ *
+ * The campaigns "Going to" pattern: an avatar you hover to see who it is and
+ * every way to reach them. Four ways, as icons only, because the icon already
+ * says which one it is (Anir, Jul 28: "you don't need to say Teams. You already
+ * have the icon. Just show me the LinkedIn logo, the Teams logo, the email, the
+ * phone. That's all you need").
+ *
+ * The old version was 250px wide with `truncate` on both lines, so a name and
+ * its context were cut off mid-word inside the popup itself. Nothing here
+ * truncates (standing rule) and the card is wide enough to hold a full name and
+ * role; the HoverCard portals to <body> and flips side so it can't be clipped
+ * by a card's own bounds.
+ */
+export function PersonHoverCard({
+  name,
+  role,
+  context,
+  email,
+  phone,
+  children,
+}: {
+  name: string;
+  /** What they do, e.g. "Service delivery POC". */
+  role: string;
+  /** What they're the contact FOR, e.g. the offering name. Optional. */
+  context?: string;
+  /** Real address if one was entered; a demo one is derived when blank. */
+  email?: string;
+  phone?: string;
+  children: React.ReactNode;
+}) {
+  const mail = (email || "").trim() || repEmail(name);
+  const tel = (phone || "").trim() || repPhone(name);
+  const links: { href: string; label: string; icon: React.ReactNode }[] = [
+    {
+      href: repLinkedIn(name),
+      label: `${name} on LinkedIn`,
+      icon: <LinkedInIcon size={15} />,
+    },
+    {
+      href: teamsChatUrl(name, mail),
+      label: `Message ${name.split(" ")[0]} on Teams`,
+      icon: <TeamsIcon size={15} />,
+    },
+    {
+      href: `mailto:${mail}`,
+      label: mail,
+      icon: <Mail size={15} strokeWidth={1.9} />,
+    },
+    {
+      href: `tel:${tel.replace(/[^\d+]/g, "")}`,
+      label: tel,
+      icon: <Phone size={15} strokeWidth={1.9} />,
+    },
+  ];
+
+  return (
+    <HoverCard
+      side="top"
+      delayMs={0}
+      width={296}
+      className="inline-flex"
+      content={
+        <div>
+          <div className="flex items-center gap-2.5">
+            <Avatar name={name} className="h-10 w-10 shrink-0 text-[12px]" />
+            <div className="min-w-0">
+              <p className="break-words text-[13.5px] font-semibold leading-tight text-text-primary">
+                {name}
+              </p>
+              <p className="mt-0.5 break-words text-[11.5px] leading-snug text-text-tertiary">
+                {[role, context].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+          </div>
+          <div className="mt-2.5 flex items-center gap-1.5">
+            {links.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                target={l.href.startsWith("http") ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                // The popover portals to <body>, so this never sits inside a
+                // card's stretched link; stopPropagation is belt-and-braces so
+                // a click here can never double as card navigation.
+                onClick={(e) => e.stopPropagation()}
+                title={l.label}
+                aria-label={l.label}
+                className="relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary"
+              >
+                {l.icon}
+              </a>
+            ))}
+          </div>
+        </div>
+      }
+    >
+      {children}
+    </HoverCard>
+  );
+}

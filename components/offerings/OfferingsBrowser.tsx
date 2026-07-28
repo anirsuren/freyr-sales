@@ -28,9 +28,8 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
-import { HoverCard } from "@/components/ui/HoverCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { TeamsIcon } from "@/components/ui/TeamsIcon";
+import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
 import {
   AreaChart,
   DonutChart,
@@ -39,7 +38,6 @@ import {
 } from "@/components/charts/Charts";
 import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
-import { teamsChatUrl } from "@/lib/team";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -210,47 +208,6 @@ export type OfferingCommerce = {
 };
 
 
-// The hover behind a POC avatar, who they are + a straight line to them on
-// Teams (POCs are internal Freyr people, so a Teams chip is always right).
-// Mirrors the Team roster's person popover.
-function PocHoverContent({
-  name,
-  offeringName,
-}: {
-  name: string;
-  offeringName: string;
-}) {
-  return (
-    <div>
-      <div className="flex items-center gap-2.5">
-        <Avatar name={name} className="w-9 h-9 text-[11px] shrink-0" />
-        <div className="min-w-0">
-          <p className="text-[13.5px] font-semibold text-text-primary truncate">
-            {name}
-          </p>
-          <p className="text-[11.5px] text-text-tertiary truncate">
-            Service delivery POC · {offeringName}
-          </p>
-        </div>
-      </div>
-      <a
-        href={teamsChatUrl(name)}
-        target="_blank"
-        rel="noopener noreferrer"
-        // The popover portals to <body>, so this never sits inside the card's
-        // stretched link, stopPropagation is belt-and-braces so the chat
-        // click can never double as card navigation.
-        onClick={(e) => e.stopPropagation()}
-        title={`Message ${name.split(" ")[0]} on Teams`}
-        className="relative z-10 mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
-      >
-        <TeamsIcon size={15} />
-        Teams
-      </a>
-    </div>
-  );
-}
-
 // The tile's POC row: label + overlapping avatar stack, exactly the campaigns
 // "Going to" pattern, each face hoverable for the full identity + Teams link.
 // FACES ONLY, at every count. It used to print the name inline whenever there
@@ -278,19 +235,17 @@ function PocStrip({
       </span>
       <span className="flex items-center -space-x-1.5">
         {pocs.map((name) => (
-          <HoverCard
+          <PersonHoverCard
             key={name}
-            side="top"
-            delayMs={0}
-            width={250}
-            className="inline-flex"
-            content={<PocHoverContent name={name} offeringName={offeringName} />}
+            name={name}
+            role="Service delivery POC"
+            context={offeringName}
           >
             <Avatar
               name={name}
               className="w-6 h-6 text-[8px] ring-2 ring-[color:var(--white)]"
             />
-          </HoverCard>
+          </PersonHoverCard>
         ))}
       </span>
     </div>

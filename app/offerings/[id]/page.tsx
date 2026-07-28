@@ -28,7 +28,7 @@ import { canEditOffering } from "@/lib/offeringOwnership";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
-import { pocNames } from "@/lib/pocNames";
+import { OfferingContacts } from "@/components/offerings/OfferingContacts";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
@@ -142,18 +142,6 @@ export default async function OfferingDetailPage({
   const workspaceAdmin = await canManageOfferings();
   const me = await getCurrentUser();
   const commercialActionsEnabled = !isOfferingsOnly(getDataMode());
-
-  // The internal person accountable for this offering — the category owner if
-  // set, else the delivery POC. Only render the owner card when one is real.
-  const ownerName = o.offeringCategory?.owner || o.poc || "";
-  // A cell can name several people. Each gets their own row and their own
-  // face; never merge them into one.
-  const contacts = pocNames(ownerName);
-  const ownerRole = o.offeringCategory?.owner
-    ? `${o.offeringCategory.name} owner`
-    : o.poc
-    ? "Delivery contact"
-    : "";
 
   // Each market + size band reads as its own color so they scan at a glance
   // (Anir: "USA, Europe, Japan, China, Korea each a different color; same for
@@ -371,36 +359,28 @@ export default async function OfferingDetailPage({
               />
             </SectionCard>
 
-            {/* The contact named on Suren's master sheet. Display only: it
-                carries no permission, which is why it sits apart from the
-                owners list above. */}
-            {contacts.length > 0 && (
-              <SectionCard
-                title={contacts.length > 1 ? "Contacts for this offering" : "Contact for this offering"}
+            {/* Who to talk to about this offering. Display only in the
+                permissions sense: being a contact carries no edit rights,
+                which is why it sits apart from the owners list above. */}
+            <SectionCard
+                title="Contacts for this offering"
                 icon={UserRound}
               >
-                {/* ONE ROW PER PERSON. The sheet packs several contacts into a
-                    single cell; rendering that cell as one avatar merged two
-                    people into a made-up person (Anir, Jul 28: "you're having
-                    two people, but you're showing one profile picture and
-                    combining their names"). */}
-                <ul className="space-y-3">
-                  {contacts.map((person) => (
-                    <li key={person} className="flex items-center gap-3">
-                      <Avatar name={person} className="w-10 h-10 shrink-0 text-[14px]" />
-                      <div className="min-w-0">
-                        <p className="text-[14px] font-semibold text-text-primary break-words">
-                          {person}
-                        </p>
-                        <p className="text-[12.5px] text-text-secondary break-words">
-                          {ownerRole}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </SectionCard>
-            )}
+                {/* ONE ROW PER PERSON, and you can add or take one off. The
+                    sheet packed several contacts into a single cell, which had
+                    two problems: rendering that cell as one avatar merged two
+                    people into an invented person, and there was no way to
+                    change the list at all (Anir, Jul 28: "how do I add a
+                    contact for this offering... obviously there has to be the
+                    ability to remove and add contacts"). Editing is gated on
+                    ownership, same as everything else on this page. */}
+                <OfferingContacts
+                  offeringId={o.id}
+                  offeringName={o.offering_name}
+                  contacts={o.contacts}
+                  canEdit={admin}
+                />
+            </SectionCard>
 
             {/* Offering Category — its plain-English description + the family
                 link. Titled in full ("Offering Category", not "Category") at
