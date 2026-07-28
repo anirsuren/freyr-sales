@@ -31,7 +31,6 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import {
   AreaChart,
-  BarChart,
   DonutChart,
   DonutLegend,
   Sparkline,
@@ -589,32 +588,6 @@ export function OfferingsBrowser({
         icon: "company",
       });
     }
-    // Seats are the richer second dimension — but only when someone actually
-    // licenses them. When nobody does, re-plotting revenue as bars would just
-    // restate the pie, so the bars answer a different question instead: what
-    // KIND of revenue this offering earns.
-    const hasSeats = payingCustomers.some((c) => c.licenses > 0);
-    const mixBars: MixDatum[] = hasSeats
-      ? payingCustomers.map((c, ci) => ({
-          label: c.name,
-          value: c.licenses,
-          color: FILTER_PALETTE[ci % FILTER_PALETTE.length],
-          icon: "company",
-          tip: [
-            {
-              name: c.name,
-              logo: c.name,
-              value: `${c.licenses} seat${c.licenses === 1 ? "" : "s"}`,
-              sub: `${formatMoney(c.revenue)} a year`,
-            },
-          ],
-        }))
-      : (com?.revenueByType ?? []).map((t, ti) => ({
-          label: t.label,
-          value: t.value,
-          color: FILTER_PALETTE[(ti + 4) % FILTER_PALETTE.length],
-          icon: "money",
-        }));
     // The hover is the Customers-card pattern (HoverExpandCard): the card pops
     // out over its neighbours and opens a mini-dashboard — revenue, who's
     // using it, seats, materials — not just a pop-out animation (Anir: "I
@@ -850,58 +823,33 @@ export function OfferingsBrowser({
                       )}
                     </span>
                   </div>
-                  {/* Two equal halves so the row reads symmetrical: the ring and
-                      the bars are the same height, each under its own subtitle. */}
-                  <div
-                    className={`grid items-start gap-3 ${
-                      mixBars.length > 0 ? "grid-cols-2" : "grid-cols-1"
-                    }`}
-                  >
-                    <div>
-                      <p className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                        Revenue share
-                      </p>
-                      <div className="flex justify-center">
-                        <DonutChart
-                          syncId={mixSyncId}
-                          segments={revenueSegments}
-                          size={88}
-                          thickness={11}
-                          format="money"
-                          centerLabel={String(com.customerCount)}
-                          centerSub={
-                            com.customerCount === 1 ? "customer" : "customers"
-                          }
-                        />
-                      </div>
-                    </div>
-                    {mixBars.length > 0 && (
-                      <div>
-                        <p className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                          {hasSeats ? "Licensed seats" : "Revenue by type"}
-                        </p>
-                        <BarChart
-                          data={mixBars}
-                          height={118}
-                          format={hasSeats ? "number" : "money"}
-                          unit={hasSeats ? "seats" : undefined}
-                          tipRecordsLabel={
-                            hasSeats
-                              ? "Account behind this bar"
-                              : "Records behind this bar"
-                          }
-                        />
-                      </div>
-                    )}
-                  </div>
-                  {/* The ring's key — name, money, share — linked to the slices
-                      by mixSyncId, and the same colours the bars wear. */}
-                  <div className="mt-1.5">
-                    <DonutLegend
-                      items={revenueSegments}
-                      format="money"
+                  {/* ONE row: the ring, and its key beside it. The licensed-seats
+                      bar chart that used to sit here is gone — it charted two
+                      numbers the legend already states, and squeezing it into
+                      half the panel meant it needed its own sideways scroll to
+                      show a company name (Anir, Jul 28: "why the fuck would I
+                      want to scroll within that licensed seats bar chart? You
+                      don't even need it — move the names and numbers to the
+                      right of the pie"). Markets follow directly underneath. */}
+                  <div className="flex items-center gap-3">
+                    <DonutChart
                       syncId={mixSyncId}
+                      segments={revenueSegments}
+                      size={92}
+                      thickness={11}
+                      format="money"
+                      centerLabel={String(com.customerCount)}
+                      centerSub={
+                        com.customerCount === 1 ? "customer" : "customers"
+                      }
                     />
+                    <div className="min-w-0 flex-1">
+                      <DonutLegend
+                        items={revenueSegments}
+                        format="money"
+                        syncId={mixSyncId}
+                      />
+                    </div>
                   </div>
                 </div>
               ) : com && com.customers.length > 0 ? (
