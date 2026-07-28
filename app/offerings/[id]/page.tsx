@@ -78,10 +78,23 @@ export default async function OfferingDetailPage({
                   // status renders as TEXT and amber failed on white.
                   { color: "#C2410C", bg: "rgba(194,65,12,0.12)" }
                 : { color: "#1A7A35", bg: "rgba(26,122,53,0.10)" };
+          // How much of the contract's OWN term is left. When a line carries
+          // no start date the term is unknown, so it falls back to a 12-month
+          // assumption rather than inventing a specific one — same rule the
+          // Reports tab's renewal list already uses, so the two never disagree.
+          const startMs = line.start_date
+            ? Date.parse(line.start_date)
+            : ends - 365 * 86_400_000;
+          const runway =
+            ends <= nowMs
+              ? 0
+              : Math.max(0.04, Math.min(1, (ends - nowMs) / Math.max(ends - startMs, 1)));
           return {
             id: line.id,
             customer: customer.company_name,
             customerId: customer.id,
+            runway,
+            days,
             label: line.description || REVENUE_TYPE_META[line.revenue_type].short,
             when: new Date(ends).toLocaleDateString("en-US", {
               month: "short",
@@ -515,22 +528,49 @@ export default async function OfferingDetailPage({
                     <Link
                       key={`${item.customerId}-${item.id}`}
                       href={`/customers/${item.customerId}?tab=offerings`}
-                      className="group flex items-start gap-2.5"
+                      className="group flex items-start gap-2.5 rounded-md -mx-1 px-1 py-1 transition-colors hover:bg-[var(--surface)]"
                     >
                       <CompanyLogo name={item.customer} className="mt-0.5 h-7 w-7 shrink-0 text-[10px]" />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[13px] font-medium leading-snug text-text-primary group-hover:text-blue-primary">
-                          {item.customer}
+                        <span className="flex items-start justify-between gap-2">
+                          <span className="min-w-0 text-[13px] font-medium leading-snug text-text-primary group-hover:text-blue-primary">
+                            {item.customer}
+                          </span>
+                          <span
+                            className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em]"
+                            style={{ color: item.tone.color, background: item.tone.bg }}
+                          >
+                            {item.status}
+                          </span>
                         </span>
-                        <span className="block text-[10.5px] text-text-tertiary">
+                        <span className="mt-0.5 block text-[10.5px] leading-snug text-text-tertiary">
                           {item.label} · {item.when}
                         </span>
-                      </span>
-                      <span
-                        className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em]"
-                        style={{ color: item.tone.color, background: item.tone.bg }}
-                      >
-                        {item.status}
+                        {/* Contract runway, drawn. A date alone makes you do the
+                            arithmetic; the bar shows how much of the term is
+                            left before anyone has to decide (Anir, Jul 28: "if
+                            it says renewal watch, I want to see a progress
+                            bar"). It carries the same colour as the status pill
+                            above it, so the row is never two different warnings. */}
+                        <span className="mt-1.5 flex items-center gap-2">
+                          <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-border-light">
+                            <span
+                              className="block h-full rounded-full"
+                              style={{
+                                width: `${Math.round(item.runway * 100)}%`,
+                                background: item.tone.color,
+                              }}
+                            />
+                          </span>
+                          <span
+                            className="shrink-0 text-[10px] font-semibold tnum"
+                            style={{ color: item.tone.color }}
+                          >
+                            {item.days < 0
+                              ? "term ended"
+                              : `${item.days}d of term left`}
+                          </span>
+                        </span>
                       </span>
                     </Link>
                   ))}

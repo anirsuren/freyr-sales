@@ -226,7 +226,6 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
             <BarChart
               data={stageBars}
               format="money"
-              unit="USD"
               height={BAR_H}
               tipRecordsLabel="Deals in this step"
             />

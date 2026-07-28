@@ -1877,7 +1877,20 @@ export function BarChart({
                   className="h-[20px] w-[20px] shrink-0 text-[7px]"
                 />
               )}
+              {/* A category label carries its series colour, the way the
+                  forecast by-stage legend does — Suren, Jul 28: "do the next
+                  nice colour-coding thing here… look at the labels at the
+                  bottom". Only when the column has no logo: a company already
+                  has its mark above the name and a dot beside it would be a
+                  second, weaker identity. Same 6px dot the forecast uses. */}
               <span className="w-full break-words text-[11px] leading-[1.2] text-text-tertiary">
+                {!d.logo && d.color && (
+                  <span
+                    aria-hidden
+                    className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"
+                    style={{ background: d.color }}
+                  />
+                )}
                 {d.label}
               </span>
             </span>
