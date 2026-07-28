@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "New offering" };
 
 export default async function NewOfferingPage() {
-  if (!(await canManageOfferings())) return <ViewOnlyNotice />;
+  if (!(await canManageOfferings())) return <ViewOnlyNotice reason="role" />;
   return (
     <div>
       <Link

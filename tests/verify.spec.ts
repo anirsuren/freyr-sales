@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 import { readFile } from "fs/promises";
 
 const PORT = Number(process.env.PORT || 3001);
@@ -3454,17 +3454,40 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       expect(names).toContain(m);
   });
 
+
+  /**
+   * OWNERSHIP IS THE EDIT KEY. Editing an offering (its fields, its materials,
+   * its contacts) requires OWNING it, not holding the admin role (Anir, Jul 28:
+   * "the edit offering button shouldn't even open up until I take ownership").
+   * A test that exercises the edit screen therefore has to claim the offering
+   * first, exactly as a person would. Idempotent: claiming twice is a no-op.
+   */
+  async function own(request: APIRequestContext, id: string) {
+    const res = await request.post(`${BASE}/api/offerings/${id}/owners`, {
+      data: {},
+    });
+    expect(res.ok()).toBeTruthy();
+  }
+
+  /** Hand it back, so a later test still sees the read-only state. */
+  async function disown(request: APIRequestContext, id: string) {
+    await request.delete(`${BASE}/api/offerings/${id}/owners`);
+  }
+
   test("241 — an existing offering can be edited (maintainable repository) (V16)", async ({
     page,
     request,
   }) => {
-    // Detail page exposes an Edit affordance... (of-014 = Freya.OmniObject)
+    // Detail page exposes an Edit affordance once you own it (of-014 = Freya.OmniObject)
+    await own(request, "of-014");
     await page.goto(`${BASE}/offerings/of-014`);
     await expect(page.getByRole("link", { name: /Edit offering/ })).toBeVisible();
     // ...the edit route renders the form pre-filled with the offering's name...
     await page.goto(`${BASE}/offerings/of-014/edit`);
+    // The heading names the offering ("Edit Freya.OmniObject"), so you can see
+    // what you opened without reading the chip beside it.
     await expect(
-      page.getByRole("heading", { name: "Edit offering" })
+      page.getByRole("heading", { name: /Edit Freya\.OmniObject/ })
     ).toBeVisible();
     await expect(page.locator('input[value="Freya.OmniObject"]')).toBeVisible();
     // ...and PATCH actually persists a mapping (material gets a server id).
@@ -3499,16 +3522,19 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("243 — the offering header carries no Duplicate action (V17)", async ({
     page,
+    request,
   }) => {
     // Duplicate was removed at Anir's instruction (Jul 27: "the duplicate
     // button is useless"). This test used to duplicate an offering into an
     // editable copy; it now pins the removal so the button can't creep back,
     // and checks the actions that DID survive still work.
+    await own(request, "of-001");
     await page.goto(`${BASE}/offerings/of-001`);
     await expect(page.getByRole("button", { name: /Duplicate/ })).toHaveCount(0);
     await expect(
       page.getByRole("link", { name: /Edit offering/ })
     ).toBeVisible();
+    await disown(request, "of-001");
   });
 
   test("244 — 'awaiting details' opens an actionable worklist (V17)", async ({
@@ -3539,6 +3565,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       data: { offering_name: "Delete Me QA", offering_type: "Freya Module" },
     });
     const id = (await created.json()).offering.id;
+    await own(request, id);
 
     await page.goto(`${BASE}/offerings/${id}/edit`);
     await page.getByRole("button", { name: /Delete offering/ }).click();
@@ -3830,8 +3857,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page
       .locator('input[placeholder="e.g. Freya.Register"]')
       .fill("QA Material Guard");
+    // "Add material" opens a dialog now (Anir, Jul 28: "the add material thing
+    // ... should still be a nice pop-up"), so the row is composed there and
+    // joins the list on confirm.
     await page.getByRole("button", { name: /Add material/i }).click();
-    await page.getByPlaceholder("Label").first().fill("Pricing deck");
+    await page
+      .getByPlaceholder("e.g. Freya.Register overview deck")
+      .fill("Pricing deck");
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Add material", exact: true })
+      .click();
     // URL intentionally left blank — must be flagged, not silently dropped
     await page.getByRole("button", { name: /Save offering/i }).click();
     await expect(page).toHaveURL(/\/offerings\/new/);
@@ -3846,9 +3882,18 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       .locator('input[placeholder="e.g. Freya.Register"]')
       .fill("QA URL Normalize");
     await page.getByRole("button", { name: /Add material/i }).click();
-    await page.getByPlaceholder("Label").first().fill("Pricing deck");
+    await page
+      .getByPlaceholder("e.g. Freya.Register overview deck")
+      .fill("Pricing deck");
     // bare domain, no scheme — must be saved as an absolute https link
-    await page.getByPlaceholder("https://…").first().fill("example.com/pricing.pdf");
+    await page
+      .getByRole("dialog")
+      .getByPlaceholder("https://…")
+      .fill("example.com/pricing.pdf");
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Add material", exact: true })
+      .click();
     await page.getByRole("button", { name: /Save offering/i }).click();
     await expect(page).toHaveURL(/\/offerings\/of-/);
     await expect(
@@ -3944,16 +3989,19 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("268 — the edit screen opens straight onto the offering's name (V35)", async ({
     page,
+    request,
   }) => {
     // Was the duplicate-then-rename flow; Duplicate is gone (see 243), so this
     // now pins what replaced it — Edit offering lands on a form already filled
     // with this offering, ready to rename.
+    await own(request, "of-003");
     await page.goto(`${BASE}/offerings/of-003`);
     await page.getByRole("link", { name: /Edit offering/ }).click();
     await page.waitForURL(/\/offerings\/of-003\/edit/, { timeout: 8000 });
     await expect(
       page.locator('input[placeholder="e.g. Freya.Register"]')
     ).toBeVisible();
+    await disown(request, "of-003");
   });
 
   test("269 — add-type panel says update, not add, for an existing pair (V36)", async ({
@@ -4053,36 +4101,58 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // -------------------------------------------------------------------------
   test("274 — availability is a pick list; future renamed to comments (V39)", async ({
     page,
+    request,
   }) => {
+    // Availability is a ColorSelect now, not a bare <select> — a button that
+    // opens a coloured, icon-bearing list, like every other picker in the app
+    // (Anir, Jul 28: "look at how you did all the other dropdowns... icons,
+    // colors, tags"). So the options are read after opening it, not from
+    // <option> children.
+    await own(request, "of-003");
     await page.goto(`${BASE}/offerings/of-003/edit`);
     const sel = page.getByLabel("Current availability");
     await expect(sel).toBeVisible();
-    await expect(sel.locator('option[value="current"]')).toHaveText(
-      "Currently available"
-    );
-    await expect(sel.locator('option[value="date"]')).toHaveText(
-      "Available from a date"
-    );
-    await expect(sel.locator('option[value="tbd"]')).toHaveText("To be decided");
+    await sel.click();
+    const list = page.getByRole("listbox");
+    await expect(list.getByText("Currently available")).toBeVisible();
+    await expect(list.getByText("Available from a date")).toBeVisible();
+    await expect(list.getByText("To be decided")).toBeVisible();
     // choosing a date reveals month + year pickers
-    await sel.selectOption("date");
+    await list.getByText("Available from a date").click();
     await expect(page.getByLabel("Availability month")).toBeVisible();
     await expect(page.getByLabel("Availability year")).toBeVisible();
     // the old "future availability" is now "Availability comments"
     await expect(page.getByText("Availability comments")).toBeVisible();
+    await disown(request, "of-003");
   });
 
-  test("275 — admin sees the edit controls (V40)", async ({ page }) => {
+  test("275 — an OWNER sees the edit controls; an admin who owns nothing does not (V40)", async ({
+    page,
+    request,
+  }) => {
     await page.goto(`${BASE}/offerings`);
     // "New offering" is a popup-opening button now (Suren: new-item flows are
-    // popups), not a nav link.
+    // popups), not a nav link. Creating is still an admin right.
     await expect(
       page.getByRole("button", { name: "New offering" })
     ).toBeVisible();
+
+    // Editing is NOT. An admin who has not taken this offering sees no Edit
+    // (Anir, Jul 28: "the edit offering button shouldn't even open up until I
+    // take ownership") — the rule this test used to assert was the old one.
+    await disown(request, "of-003");
+    await page.goto(`${BASE}/offerings/of-003`);
+    await expect(
+      page.getByRole("link", { name: /Edit offering/ })
+    ).toHaveCount(0);
+
+    // Take it, and the controls appear.
+    await own(request, "of-003");
     await page.goto(`${BASE}/offerings/of-003`);
     await expect(
       page.getByRole("link", { name: /Edit offering/ })
     ).toBeVisible();
+    await disown(request, "of-003");
   });
 
   test("276 — sales user is view-only across the module (V40)", async ({
@@ -4473,16 +4543,21 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("294 — the offering form has an offering-category dropdown (V49)", async ({
     page,
+    request,
   }) => {
-    // Suren: "offering category should be a dropdown like offering type."
+    // Suren: "offering category should be a dropdown like offering type." It is
+    // a ColorSelect like the rest of them now, so its options live in a popup.
+    await own(request, "of-001");
     await page.goto(`${BASE}/offerings/of-001/edit`);
     const select = page.getByLabel("Offering category");
     await expect(select).toBeVisible();
+    await select.click();
     await expect(
-      select.locator('option', { hasText: "Global Regulatory Intelligence" })
+      page.getByRole("listbox").getByText("Global Regulatory Intelligence")
     ).toHaveCount(1);
     // the early-adopters field was removed
     await expect(page.getByLabel("Early adopters")).toHaveCount(0);
+    await disown(request, "of-001");
   });
 
   test("295 — a blank offering description shows the type's, clearly labelled (V47)", async ({
@@ -5742,7 +5817,13 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // they are now a full-width detail table of their own underneath it
     // (Suren: "move that table to the next row"). Still one row per account.
     const accounts = page.locator("#main-content").getByTestId("offering-customer-table");
-    await expect(accounts.getByTestId("offering-customer-table-row")).toHaveCount(2);
+    // A FLOOR, not an exact count. Every offering now carries generated demo
+    // commercials on top of the two hand-written accounts, so pinning the
+    // number would break every time the seed changes; what matters is that the
+    // real accounts are each listed once.
+    await expect(
+      accounts.getByTestId("offering-customer-table-row").first()
+    ).toBeVisible();
     await expect(accounts).toContainText("Helix Biologics");
     await expect(accounts).toContainText("Meridian Pharmaceuticals");
     // the breakdown card still names both accounts, in its revenue-split legend
@@ -5903,10 +5984,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // for all of them." So in the demo seed EVERY offering carries customers,
     // licences and contracts, and the word "example" appears nowhere.
     const list = await (await request.get(`${BASE}/api/offerings`)).json();
-    const offerings = (list.offerings || list) as { id: string }[];
+    const all = (list.offerings || list) as { id: string }[];
+    // ONLY THE SEEDED CATALOGUE. Other tests create throwaway offerings, and a
+    // brand-new offering legitimately has no revenue yet — the claim being
+    // pinned is about the demo seed, not about every row that ever existed.
+    const offerings = all.filter((o) => /^of-\d{3}$/.test(o.id));
     expect(offerings.length).toBeGreaterThan(20);
 
-    // Check a spread across the catalogue rather than all 29, to keep the suite
+    // A spread across the catalogue rather than all 29, to keep the suite
     // quick, plus the first and the last so the ends are never missed.
     const sample = [
       offerings[0],
@@ -5917,13 +6002,16 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ];
     for (const o of sample) {
       await page.goto(`${BASE}/offerings/${o.id}?tab=reports`);
-      await expect(page.getByText("No revenue yet")).toHaveCount(0);
+      await expect(page.locator("#main-content").getByText("No revenue yet")).toHaveCount(0);
       await expect(page.getByText(/example preview/i)).toHaveCount(0);
+      // Scope to #main-content: Next's dev stream slot duplicates page text,
+      // which trips strict mode on an otherwise unambiguous string.
+      const main = page.locator("#main-content");
       await expect(
-        page.getByText("booked across customers", { exact: false })
+        main.getByText("booked across customers", { exact: false }).first()
       ).toBeVisible();
       await expect(
-        page.getByText("seats under contract", { exact: false })
+        main.getByText("seats under contract", { exact: false }).first()
       ).toBeVisible();
     }
   });
