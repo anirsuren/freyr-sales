@@ -9,6 +9,29 @@ export const NOTIF_READ_KEY = "freyr.notif.read.v1";
 
 export type NotificationType = "review" | "rotting" | "signal" | "followup" | "voice";
 
+/**
+ * How pressing an alert is. Five rows that all say "Follow-up due" read as five
+ * copies of the same thing (Suren, Jul 27: "they don't look good at all… it just
+ * looks bad"), so urgency is a first-class field: it groups the list, it orders
+ * it, and it's printed as a heading you can see instead of a sort you can't.
+ */
+export type NotificationUrgency = "overdue" | "today" | "week" | "later";
+
+export const URGENCY_ORDER: NotificationUrgency[] = [
+  "overdue",
+  "today",
+  "week",
+  "later",
+];
+
+/** Plain English, no jargon — this is what the group heading says. */
+export const URGENCY_LABEL: Record<NotificationUrgency, string> = {
+  overdue: "Overdue",
+  today: "Today",
+  week: "This week",
+  later: "Later",
+};
+
 export interface AppNotification {
   id: string;
   type: NotificationType;
@@ -25,6 +48,80 @@ export interface AppNotification {
    */
   company?: string;
   person?: string;
+  /**
+   * The row's headline: the account or person this is about. The TYPE
+   * ("Follow-up due") is not a headline — it's a chip. Leading with the subject
+   * is what makes a stack of five alerts scannable.
+   */
+  subject?: string;
+  /** One short line saying what's needed. Never repeats the subject or the time. */
+  detail?: string;
+  urgency?: NotificationUrgency;
+  /**
+   * Compact relative time ("in 4d", "2d ago") for the right-hand stamp.
+   * Computed here, on the server, so the bell and the page always agree and no
+   * client clock can drift the markup between render and hydration.
+   */
+  stamp?: string;
+}
+
+export function urgencyRank(u?: NotificationUrgency): number {
+  const i = URGENCY_ORDER.indexOf(u || "later");
+  return i === -1 ? URGENCY_ORDER.length : i;
+}
+
+/**
+ * Splits a list into the visible urgency groups, in order, dropping empties.
+ * Shared by the bell panel and the notifications page so the two never diverge.
+ */
+export function groupByUrgency(
+  items: AppNotification[]
+): Array<{ urgency: NotificationUrgency; label: string; items: AppNotification[] }> {
+  return URGENCY_ORDER.map((urgency) => ({
+    urgency,
+    label: URGENCY_LABEL[urgency],
+    items: items.filter((n) => (n.urgency || "later") === urgency),
+  })).filter((g) => g.items.length > 0);
+}
+
+/**
+ * "in 4d" / "2d ago" — short enough to sit in a right-aligned stamp instead of
+ * being buried mid-sentence, which is where the old copy hid it.
+ */
+function relativeStamp(ts: string, nowMs: number): string {
+  const at = new Date(ts).getTime();
+  if (!Number.isFinite(at)) return "";
+  const diff = at - nowMs;
+  const ahead = diff >= 0;
+  const mins = Math.round(Math.abs(diff) / 60_000);
+  if (mins < 1) return "now";
+  if (mins < 60) return ahead ? `in ${mins}m` : `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return ahead ? `in ${hours}h` : `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return ahead ? `in ${days}d` : `${days}d ago`;
+  if (days < 60) {
+    const weeks = Math.round(days / 7);
+    return ahead ? `in ${weeks}w` : `${weeks}w ago`;
+  }
+  const months = Math.round(days / 30);
+  return ahead ? `in ${months}mo` : `${months}mo ago`;
+}
+
+/**
+ * The same stamp from a whole-day count, for dates that only ever mean a day
+ * (a follow-up is "due Thursday", not "due at 00:00"). Without this, a
+ * follow-up due today stamps as "14h ago" because its date lands at midnight.
+ */
+function dayStamp(days: number, ahead: boolean): string {
+  if (days <= 0) return "Today";
+  if (days < 14) return ahead ? `in ${days}d` : `${days}d ago`;
+  if (days < 60) {
+    const weeks = Math.round(days / 7);
+    return ahead ? `in ${weeks}w` : `${weeks}w ago`;
+  }
+  const months = Math.round(days / 30);
+  return ahead ? `in ${months}mo` : `${months}mo ago`;
 }
 
 export function buildNotifications(input: {
@@ -38,6 +135,7 @@ export function buildNotifications(input: {
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
   const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
   const out: AppNotification[] = [];
+  const nowMs = Date.now();
 
   // Pitches awaiting compliance review
   for (const s of sessions) {
@@ -48,6 +146,9 @@ export function buildNotifications(input: {
         type: "review",
         title: "Pitch awaiting your approval",
         body: `${company} — review the pitch before it's sent.`,
+        subject: company,
+        detail: "Read the pitch and approve it before it goes out.",
+        urgency: "today",
         href: `/sessions/${s.id}`,
         ts: s.created_at,
         company,
@@ -64,6 +165,14 @@ export function buildNotifications(input: {
         type: "rotting",
         title: "Deal going cold",
         body: `${d.company} — no activity in ${d.staleDays} days.`,
+        subject: d.company,
+        // The stamp already says how long ago it last moved, so this line only
+        // says what to do about it.
+        detail: d.contactName
+          ? `Nothing has moved here — get back to ${d.contactName}.`
+          : "Nothing has moved here — reach out or move it on.",
+        // It has already sat past the rotting line, so it is late by definition.
+        urgency: "overdue",
         href: `/deals/${d.sessionId}`,
         ts: d.lastActivity,
         company: d.company,
@@ -76,15 +185,20 @@ export function buildNotifications(input: {
   for (const i of interactions) {
     const company = custById[i.customer_id]?.company_name || "Account";
     if (i.outcome === "interested" || i.outcome === "meeting_booked") {
+      const who = contactById[i.contact_id]?.full_name;
+      const signal = OUTCOME_META[i.outcome]?.label || i.outcome;
       out.push({
         id: `signal-${i.id}`,
         type: "signal",
         title: "New buying signal",
-        body: `${company} — ${OUTCOME_META[i.outcome]?.label || i.outcome}.`,
+        body: `${company} — ${signal}.`,
+        subject: company,
+        detail: who ? `${who} — ${signal}. Act while it's warm.` : `${signal}. Act while it's warm.`,
+        urgency: "week",
         href: `/customers/${i.customer_id}`,
         ts: i.created_at,
         company,
-        person: contactById[i.contact_id]?.full_name,
+        person: who,
       });
     }
     if (i.follow_up_date) {
@@ -111,14 +225,22 @@ export function buildNotifications(input: {
       const contactName = contactById[i.contact_id]?.full_name || "";
       const outcomeLabel = i.outcome ? OUTCOME_META[i.outcome]?.label || "" : "";
       let when: string;
+      let urgency: NotificationUrgency;
+      let stamp: string;
       if (overdue) {
         const n = Math.max(1, Math.round((todayDay - dueDay) / dayMs));
         when = `${n} day${n === 1 ? "" : "s"} overdue`;
+        urgency = "overdue";
+        stamp = dayStamp(n, false);
       } else if (dueDay === todayDay) {
         when = "due today";
+        urgency = "today";
+        stamp = "Today";
       } else {
         const n = Math.round((dueDay - todayDay) / dayMs);
         when = `due in ${n} day${n === 1 ? "" : "s"}`;
+        urgency = n <= 7 ? "week" : "later";
+        stamp = dayStamp(n, true);
       }
       out.push({
         id: `followup-${i.id}`,
@@ -127,6 +249,14 @@ export function buildNotifications(input: {
         body: `${company}${contactName ? ` · ${contactName}` : ""} — ${when}${
           outcomeLabel ? `, last: ${outcomeLabel}` : ""
         }.`,
+        subject: company,
+        // The "when" lives in the right-hand stamp, so this line only has to
+        // say what to DO and where you left off.
+        detail: `${contactName ? `Check in with ${contactName}` : "Check back in"}${
+          outcomeLabel ? ` · last time: ${outcomeLabel}` : ""
+        }`,
+        urgency,
+        stamp,
         href: `/customers/${i.customer_id}`,
         ts: i.follow_up_date,
         company,
@@ -137,20 +267,39 @@ export function buildNotifications(input: {
 
   for (const call of voiceConversations) {
     if (call.status !== "completed" && call.status !== "failed") continue;
+    const failed = call.status === "failed";
     out.push({
       id: `voice-${call.conversation_id || call.id}-${call.status}`,
       type: "voice",
-      title: call.status === "failed" ? "Voice call needs attention" : "Call analysis is ready",
-      body:
-        call.status === "failed"
-          ? `${call.contact_name || call.external_number || "A call"} - ${call.failure_reason || "the call did not complete"}.`
-          : `${call.contact_name || "A contact"}${call.company ? ` at ${call.company}` : ""} - transcript and analysis are ready.`,
+      title: failed ? "Voice call needs attention" : "Call analysis is ready",
+      body: failed
+        ? `${call.contact_name || call.external_number || "A call"} - ${call.failure_reason || "the call did not complete"}.`
+        : `${call.contact_name || "A contact"}${call.company ? ` at ${call.company}` : ""} - transcript and analysis are ready.`,
+      subject:
+        call.company || call.contact_name || call.external_number || "Voice call",
+      detail: failed
+        ? `${call.failure_reason || "The call did not complete"}${
+            call.contact_name ? ` — try ${call.contact_name} again` : ""
+          }.`
+        : `${call.contact_name ? `${call.contact_name} — t` : "T"}ranscript and analysis are ready to read.`,
+      urgency: failed ? "today" : "week",
       href: `/voice/c/${call.conversation_id || call.id}`,
       ts: call.completed_at || call.updated_at,
+      // A call is about a company and a person too — same logo + headshot rule
+      // as every other row, instead of the generic phone tile it used to get.
+      company: call.company || undefined,
+      person: call.contact_name || undefined,
     });
   }
 
   return out
-    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+    .map((n) => ({ ...n, stamp: n.stamp || relativeStamp(n.ts, nowMs) }))
+    .sort((a, b) => {
+      // Urgency first — overdue work should never sit below a note from today
+      // just because the note is newer. Within a bucket, most recent first.
+      const byUrgency = urgencyRank(a.urgency) - urgencyRank(b.urgency);
+      if (byUrgency !== 0) return byUrgency;
+      return new Date(b.ts).getTime() - new Date(a.ts).getTime();
+    })
     .slice(0, 30);
 }

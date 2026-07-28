@@ -7,21 +7,47 @@ import {
   Wallet,
   Check,
   ArrowRight,
-  Building2,
   Zap,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReviewActions } from "@/components/agent/ReviewActions";
 import { buildWeeklyReview, buildActivityByAccount } from "@/lib/agent";
 import { narrateReview } from "@/lib/claude";
-import { buildDeals, formatMoney } from "@/lib/pipeline";
+import {
+  buildDeals,
+  formatMoney,
+  STAGE_COLOR,
+  STAGE_ICON,
+  type Stage,
+} from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
 import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Weekly Review" };
 export const dynamic = "force-dynamic";
+
+/** A stage is a status chip, so it carries its own colour AND its own glyph —
+ *  never flat gray type (standing chip rule). Reads the one shared stage
+ *  palette in lib/pipeline rather than inventing a parallel one. */
+function StageChip({ stage }: { stage: string }) {
+  const color = STAGE_COLOR[stage as Stage];
+  const Icon = STAGE_ICON[stage as Stage];
+  if (!color || !Icon) {
+    return <span className="text-[12px] text-text-secondary">{stage}</span>;
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight"
+      style={{ background: `${color}1A`, color }}
+    >
+      <Icon size={11} strokeWidth={2.2} className="shrink-0" />
+      {stage}
+    </span>
+  );
+}
 
 export default async function WeeklyReviewPage() {
   const db = getDb();
@@ -119,12 +145,16 @@ export default async function WeeklyReviewPage() {
                     href={`/deals/${d.sessionId}`}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-surface transition-colors group"
                   >
+                    <CompanyLogo
+                      name={d.company}
+                      className="w-7 h-7 text-[9px]"
+                    />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] font-semibold text-text-primary truncate">
+                      <span className="block text-[13px] font-semibold text-text-primary">
                         {d.company}
                       </span>
-                      <span className="block text-[12px] text-text-secondary">
-                        {d.stage}
+                      <span className="mt-0.5 block">
+                        <StageChip stage={d.stage} />
                       </span>
                     </span>
                     <span className="text-[13px] font-bold text-text-primary tnum shrink-0">
@@ -169,11 +199,14 @@ export default async function WeeklyReviewPage() {
                     href={`/customers/${a.customer_id}`}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-surface transition-colors group"
                   >
-                    <span className="w-7 h-7 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                      <Building2 size={14} strokeWidth={1.8} />
-                    </span>
+                    {/* The account's own mark, not one generic building glyph
+                        repeated down the list (standing identity-mark rule). */}
+                    <CompanyLogo
+                      name={a.company}
+                      className="w-7 h-7 text-[9px]"
+                    />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] font-semibold text-text-primary truncate">
+                      <span className="block text-[13px] font-semibold text-text-primary">
                         {a.company}
                       </span>
                       <span className="block text-[12px] text-text-secondary">

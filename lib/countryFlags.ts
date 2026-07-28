@@ -132,19 +132,51 @@ export function flagForGeography(geography?: string | null): string | null {
 }
 
 /**
- * The geography string with its flag prefixed, for the places that render plain
- * strings rather than components (the label/value fact lists on the report,
- * session and account-card views). Returns the fallback untouched when no
- * country is named, so "Unknown" never gains a stray space.
+ * The country a geography string names, and NOTHING else.
+ *
+ * Account geography is free text and it arrives carrying cities and prose —
+ * "United States (Princeton, NJ) — offices in London, Singapore" is a real seed
+ * value. Suren, Jul 27: "I don't think you need to see Cambridge. I don't think
+ * we care about cities. We only care about countries, so just remove cities."
+ * So this is the one place that decides what a geography DISPLAYS as, and every
+ * renderer goes through it:
+ *
+ *   "United States (Princeton, NJ) — offices in London, Singapore" → "United States"
+ *   "United Kingdom (Cambridge)"                                   → "United Kingdom"
+ *   "India (Mumbai) — expanding to EU"                             → "India"
+ *   "APAC" / "NA West" / "MEA"                                     → unchanged
+ *   "Unknown"                                                      → "Unknown"
+ *   "" / null                                                      → the caller's fallback
+ *
+ * A sales territory is not a country, so a known territory survives whole —
+ * otherwise "UK & Ireland" would be quietly reduced to "Ireland", which is a
+ * different (and wrong) fact. Anything else with no country in it is returned
+ * untouched rather than blanked: we never invent a country we can't read.
+ */
+export function countryOnlyGeography(
+  geography?: string | null,
+  fallback = ""
+): string {
+  const text = geography?.trim();
+  if (!text) return fallback;
+  if (TERRITORY_FLAGS[text.toLowerCase()]) return text;
+  return countryNameForGeography(text) || text;
+}
+
+/**
+ * The geography's flag + its COUNTRY, for the places that render plain strings
+ * rather than components (the label/value fact lists on the report, session and
+ * account-card views). Returns the fallback untouched for an empty field, so
+ * "Unknown" never gains a stray space.
  */
 export function geographyWithFlag(
   geography?: string | null,
   fallback = "—"
 ): string {
-  const text = geography?.trim();
-  if (!text) return fallback;
-  const flag = flagForGeography(text);
-  return flag ? `${flag} ${text}` : text;
+  const country = countryOnlyGeography(geography);
+  if (!country) return fallback;
+  const flag = flagForGeography(country);
+  return flag ? `${flag} ${country}` : country;
 }
 
 /**
@@ -160,7 +192,10 @@ export function countryNameForGeography(
   for (const name of SORTED_NAMES) {
     const pattern = new RegExp(`(^|[^a-z])${name}([^a-z]|$)`);
     if (pattern.test(haystack)) {
-      return name.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+      return name
+        .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+        // "United States Of America" reads wrong — small words stay lowercase.
+        .replace(/\bOf\b/g, "of");
     }
   }
   return null;

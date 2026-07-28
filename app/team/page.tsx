@@ -18,6 +18,7 @@ import {
 import {
   repEmail,
   repPhone,
+  repLinkedIn,
   teamsChatUrl,
   repTitle,
   repRole,
@@ -31,6 +32,7 @@ import { TeamRoster, type RosterRep } from "@/components/team/TeamRoster";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
+import { requireServerMemberScope } from "@/lib/memberScope";
 
 export const metadata = { title: "Team" };
 export const dynamic = "force-dynamic";
@@ -66,14 +68,21 @@ export default async function TeamPage() {
   if (getDataMode() === "live") {
     return <EmptyState icon={Users} title="No teammates yet" description="Invite your first teammate from Settings to build the sales workspace." />;
   }
-  const currentUser = await getCurrentUser();
-  const db = getDb();
-  const [sessions, customers, contacts, interactions] = await Promise.all([
-    db.pitchSessions.list(),
-    db.customers.list(),
-    db.contacts.list(),
-    db.interactions.list(),
+  const [currentUser, scope] = await Promise.all([
+    getCurrentUser(),
+    requireServerMemberScope(),
   ]);
+  const db = getDb();
+  const [sessions, customers, contacts, interactions, agentPrefs] =
+    await Promise.all([
+      db.pitchSessions.list(),
+      db.customers.list(),
+      db.contacts.list(),
+      db.interactions.list(),
+      // The signed-in member's own profile prefs — the LinkedIn URL they
+      // pasted in Settings › Profile is the ONLY LinkedIn we may show for them.
+      db.agentPrefs.get(scope),
+    ]);
   const deals = buildDeals(sessions, customers, contacts, interactions);
   const stats = buildRepStats(deals, {
     roster: salesTeamFor(currentUser),
@@ -125,10 +134,13 @@ export default async function TeamPage() {
       // NEVER invent identity facts for the real signed-in person — the
       // hashed demo region/phone are for the synthetic roster only (Anir:
       // "Why is it saying I'm from China? I didn't even put that."). Until a
-      // real profile field exists, show nothing.
+      // real profile field exists, show nothing. Same rule for linkedin: the
+      // real person gets the URL they pasted in Settings › Profile or NO chip
+      // at all — a fabricated profile link is worse than none.
       region: you ? "" : repRegion(r.name),
       email: (you && currentUser.email) || repEmail(r.name),
       phone: you ? "" : repPhone(r.name),
+      linkedin: you ? agentPrefs?.linkedin_url ?? "" : repLinkedIn(r.name),
       teamsUrl: teamsChatUrl(
         r.name,
         you ? currentUser.email : null

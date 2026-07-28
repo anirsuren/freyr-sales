@@ -7,7 +7,6 @@ import {
   ListChecks,
   Package,
   SearchX,
-  Clock,
   Clock3,
   BarChart3,
   ArrowRight,
@@ -20,9 +19,22 @@ import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { DonutChart, LineChart, Sparkline, VIZ, type TipItem } from "@/components/charts/Charts";
+import {
+  DonutChart,
+  DonutLegend,
+  LineChart,
+  Sparkline,
+  VIZ,
+  type TipItem,
+} from "@/components/charts/Charts";
 import { ChartInspector } from "@/components/charts/ChartInspector";
 import { ContactTalkTimePanel } from "@/components/voice/ContactTalkTimePanel";
+import {
+  CallQualityCard,
+  type LengthBucket,
+  type QualityMetric,
+} from "@/components/voice/CallQualityCard";
+import { OutcomeMixPanel, type OutcomeDay } from "@/components/voice/OutcomeMixPanel";
 import { voiceStatus, listVoiceQueue, isDialedVoiceCall, voiceCallStatusLabel, type VoiceOutcome } from "@/lib/voice";
 import { listConversations } from "@/lib/elevenlabs";
 import { listOfferings } from "@/lib/offerings";
@@ -126,6 +138,9 @@ export default async function VoiceAgentPage({
   // Per-agent analytics (a sales manager should see how this rep performs).
   const finishedCalls = called.filter((q) => q.outcome);
   const outcomeSegments = OUTCOME_ORDER.map((o) => ({
+    // The OUTCOME_META key travels with the slice so the legend can paint the
+    // app's own colour + icon for it (never a gray category chip).
+    key: o,
     label: OUTCOME_META[o].label,
     value: finishedCalls.filter((q) => q.outcome === o).length,
     color: OUTCOME_META[o].color,
@@ -151,6 +166,73 @@ export default async function VoiceAgentPage({
     : 0;
   const interestedN = finishedCalls.filter((q) => q.outcome === "interested").length;
   const followUpN = finishedCalls.filter((q) => q.outcome === "follow_up").length;
+  // Every "Call quality" number below is COUNTED from these same calls — no
+  // invented metric, no invented denominator (Suren's honesty rule).
+  const answered = connectedCalls.filter((q) => (q.duration_secs || 0) > 0);
+  const longestSecs = answered.reduce((m, q) => Math.max(m, q.duration_secs || 0), 0);
+  const peopleReached = new Set(connectedCalls.map((q) => q.contact_id)).size;
+  const qualityMetrics: QualityMetric[] = [
+    {
+      key: "connect",
+      label: "Connect rate",
+      value: `${connectRate}%`,
+      sub: `${connectedCalls.length} of ${finishedCalls.length} answered`,
+      icon: "connect",
+    },
+    { key: "avg", label: "Avg length", value: fmtLen(talkAvg), sub: "min:sec", icon: "length" },
+    {
+      key: "longest",
+      label: "Longest call",
+      value: fmtLen(longestSecs),
+      sub: "min:sec",
+      icon: "longest",
+    },
+    {
+      key: "interested",
+      label: "Interested",
+      value: String(interestedN),
+      sub: interestedN === 1 ? "call" : "calls",
+      icon: "interested",
+    },
+    {
+      key: "follow_up",
+      label: "Follow-ups",
+      value: String(followUpN),
+      sub: followUpN === 1 ? "call" : "calls",
+      icon: "follow_up",
+    },
+    {
+      key: "people",
+      label: "People reached",
+      value: String(peopleReached),
+      sub: peopleReached === 1 ? "person" : "people",
+      icon: "people",
+    },
+  ];
+  // How long answered calls actually run — a real distribution, straight from
+  // duration_secs. Shorter → longer, warm → green, never a yellow band.
+  const LENGTH_BUCKETS: { label: string; min: number; max: number; color: string }[] = [
+    { label: "Under 1 min", min: 0, max: 60, color: "#C2410C" },
+    { label: "1–2 min", min: 60, max: 120, color: VIZ.sky },
+    { label: "2–4 min", min: 120, max: 240, color: VIZ.blue },
+    { label: "4 min+", min: 240, max: Number.POSITIVE_INFINITY, color: VIZ.green },
+  ];
+  const lengthBuckets: LengthBucket[] = LENGTH_BUCKETS.map((bucket) => {
+    const inBucket = answered.filter(
+      (q) => (q.duration_secs || 0) >= bucket.min && (q.duration_secs || 0) < bucket.max
+    );
+    return {
+      label: bucket.label,
+      count: inBucket.length,
+      color: bucket.color,
+      calls: inBucket.map((q) => ({
+        id: q.id,
+        name: q.contact_name,
+        company: q.company || "Account",
+        length: fmtLen(q.duration_secs || 0),
+      })),
+    };
+  });
   // Calls per day over the last 14 days (sample calls + any live ones).
   const DAY = 86_400_000;
   const midnight = new Date();
@@ -199,7 +281,41 @@ export default async function VoiceAgentPage({
       }));
     return [...qTips, ...rTips];
   });
+  // The same outcomes as the donut, day by day — the second chart inside the
+  // "How calls ended" card. Only calls that actually finished, so nothing is
+  // counted twice or invented.
+  const outcomeDays: OutcomeDay[] = Array.from({ length: 7 }, (_, i) => {
+    const dayStart = midnight.getTime() - (6 - i) * DAY;
+    const dayCalls = finishedCalls.filter((c) => {
+      const t = new Date(c.created_at).getTime();
+      return t >= dayStart && t < dayStart + DAY;
+    });
+    const d = new Date(dayStart);
+    return {
+      key: `${d.getMonth() + 1}/${d.getDate()}`,
+      label: d.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+      total: dayCalls.length,
+      stack: OUTCOME_ORDER.map((o) => ({
+        key: o,
+        label: OUTCOME_META[o].label,
+        color: OUTCOME_META[o].color,
+        value: dayCalls.filter((c) => c.outcome === o).length,
+      })),
+      people: dayCalls.map((c) => ({
+        id: c.id,
+        name: c.contact_name,
+        company: c.company || "Account",
+        outcome: c.outcome as string,
+      })),
+    };
+  });
   // Talk time per placed call — WHO was on each call (avatar), not a bare name.
+  // `outcome` is the OUTCOME_META KEY: the panel renders it as the app's
+  // colour + icon pill instead of plain text.
   const talk = called
     .filter((q) => q.duration_secs)
     .map((q) => ({
@@ -207,14 +323,15 @@ export default async function VoiceAgentPage({
       name: q.contact_name,
       company: q.company || "Account",
       value: q.duration_secs || 0,
-      outcome: q.outcome ? OUTCOME_META[q.outcome].label : "Completed",
+      outcome: q.outcome || "ai_call_completed",
       createdAt: q.created_at,
       href: `/voice/c/${q.conversation_id || q.id}`,
     }));
   const outcomeRecords = finishedCalls.map((call) => ({
     id: call.id,
     label: call.contact_name,
-    meta: `${call.company || "Account"} · ${call.outcome ? OUTCOME_META[call.outcome].label : "Completed"}`,
+    meta: call.company || "Account",
+    outcome: call.outcome || undefined,
     value: call.duration_secs ? fmtLen(call.duration_secs) : "—",
     href: `/voice/c/${call.conversation_id || call.id}`,
     avatar: call.contact_name,
@@ -223,7 +340,8 @@ export default async function VoiceAgentPage({
     id: call.id,
     label: call.contact_name,
     meta: `${call.company || "Account"} · ${formatDateTime(call.created_at)}`,
-    value: call.outcome ? OUTCOME_META[call.outcome].label : "Queued",
+    outcome: call.outcome || undefined,
+    value: call.duration_secs ? fmtLen(call.duration_secs) : undefined,
     href: `/voice/c/${call.id}`,
     avatar: call.contact_name,
   }));
@@ -436,85 +554,46 @@ export default async function VoiceAgentPage({
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Outcome mix */}
+            {/* Search removed from the CARD (it lives in the expanded view) —
+                the donut now charts the full set, and the freed space carries
+                the share bars + a second chart (Suren, Jul 27). */}
             <ChartInspector
               title="How calls ended"
               description="Every finished call, by outcome."
               records={outcomeRecords}
               searchPlaceholder="Find a contact..."
+              inlineSearch={false}
               expandedChildren={
-                <div className="flex items-center justify-center gap-10 py-4">
-                  <DonutChart segments={outcomeSegments} size={280} thickness={28} />
-                  <div className="space-y-3 text-[14px]">
-                    {outcomeSegments.map((segment) => (
-                      <p key={segment.label} className="flex items-center gap-2.5">
-                        <span className="h-3 w-3 rounded-full" style={{ background: segment.color }} />
-                        <span className="min-w-[100px] text-text-secondary">{segment.label}</span>
-                        <span className="font-bold text-text-primary tnum">{segment.value}</span>
-                      </p>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap items-center justify-center gap-10 py-4">
+                  <DonutChart
+                    segments={outcomeSegments}
+                    size={280}
+                    thickness={28}
+                    syncId="voice-agent-outcomes-lg"
+                  />
+                  <DonutLegend
+                    items={outcomeSegments}
+                    syncId="voice-agent-outcomes-lg"
+                    className="min-w-[240px] max-w-[320px] text-[14px]"
+                  />
                 </div>
               }
             >
-              <div className="flex-1 flex items-center gap-5">
-                <div className="relative shrink-0" style={{ width: 120, height: 120 }}>
-                  <DonutChart
-                    segments={outcomeSegments}
-                    size={120}
-                    thickness={12}
-                    centerLabel={String(finishedCalls.length)}
-                    centerSub="calls"
-                  />
-                </div>
-                <div className="space-y-2 text-[13px]">
-                  {outcomeSegments.map((s) => (
-                    <p key={s.label} className="flex items-center gap-2">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ background: s.color }}
-                      />
-                      <span className="text-text-secondary">{s.label}</span>
-                      <span className="font-semibold text-text-primary tnum">{s.value}</span>
-                    </p>
-                  ))}
-                </div>
-              </div>
+              <OutcomeMixPanel
+                segments={outcomeSegments}
+                totalCalls={finishedCalls.length}
+                days={outcomeDays}
+                syncId="voice-agent-outcomes"
+              />
             </ChartInspector>
 
-            {/* Quality */}
-            <Card className="flex flex-col">
-              <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                Call quality
-              </h3>
-              <p className="text-[12px] text-text-tertiary mb-3">
-                How {persona.name}&apos;s conversations are going.
-              </p>
-              <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-4 content-center">
-                {[
-                  { icon: PhoneCall, label: "Connect rate", value: `${connectRate}%` },
-                  { icon: Timer, label: "Avg length", value: fmtLen(talkAvg) },
-                  { icon: ThumbsUp, label: "Interested", value: String(interestedN) },
-                  { icon: Clock, label: "Follow-ups", value: String(followUpN) },
-                ].map((st) => {
-                  const StIcon = st.icon;
-                  return (
-                    <div key={st.label} className="flex items-center gap-2.5">
-                      <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                        <StIcon size={15} strokeWidth={1.9} />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                          {st.label}
-                        </span>
-                        <span className="block text-[17px] font-bold leading-tight tnum text-text-primary">
-                          {st.value}
-                        </span>
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
+            {/* Quality — six counted metrics pinned under the header, then a
+                real distribution chart filling the rest (no dead band). */}
+            <CallQualityCard
+              name={persona.name}
+              metrics={qualityMetrics}
+              buckets={lengthBuckets}
+            />
 
             {/* Talk time per call — WHO was on each call (photo), not a name */}
             <ContactTalkTimePanel calls={talk} color={persona.color} />
@@ -526,6 +605,7 @@ export default async function VoiceAgentPage({
             description={`${persona.name}'s calling activity over the last two weeks.`}
             records={activityRecords}
             searchPlaceholder="Find a contact..."
+            inlineSearch={false}
             expandedChildren={
               <LineChart
                 series={[{ label: "Calls", color: persona.color, points: perDay }]}

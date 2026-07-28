@@ -194,6 +194,10 @@ export function HoverCard({
               top: pos.top,
               bottom: pos.bottom,
               width,
+              // Callers pick the width (300-360). On a window narrower than
+              // that, `left` bottoms out at the 8px gutter and the card would
+              // run off the right edge, so cap it at the viewport as well.
+              maxWidth: "calc(100vw - 16px)",
               // Never taller than the space it opened into — scroll inside.
               maxHeight:
                 pos.top != null

@@ -31,7 +31,6 @@ import {
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { SequenceAgentBanner } from "@/components/sequences/SequenceAgentBanner";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -260,7 +259,9 @@ export function SequencesView({
   const stats = [
     { icon: Zap, label: "Active sequences", value: String(activeCount), sub: "running" },
     { icon: Users, label: "Accounts enrolled", value: String(enrollments.length), sub: "across all plans" },
-    { icon: CalendarClock, label: "Due now", value: String(dueCount), sub: dueCount === 1 ? "touch to prep" : "touches to prep", color: "#F59E0B" },
+    // StatTile paints this colour SOLID behind a white icon — white on amber was
+    // 2.1:1. Burnt orange is 5.2:1 and still reads as "needs attention".
+    { icon: CalendarClock, label: "Due now", value: String(dueCount), sub: dueCount === 1 ? "touch to prep" : "touches to prep", color: "#C2410C" },
     { icon: CircleDotDashed, label: "Re-engage", value: String(candidateCount), sub: candidateCount === 1 ? "stalled account" : "stalled accounts", color: "#7C3AED" },
   ];
 
@@ -460,14 +461,8 @@ export function SequencesView({
         {stats.map((stat) => <StatTile key={stat.label} {...stat} />)}
       </div>
 
-      {reengagement && (
-        <SequenceAgentBanner
-          candidateCount={candidateCount}
-          dueCount={dueCount}
-          sequenceId={reengagement.id}
-          sequenceName={reengagement.name}
-        />
-      )}
+      {/* The agent's re-engagement banner is gone (Anir, Jul 27: "remove the
+          agent notifications… on every single page. We're not there yet"). */}
 
       <div className="grid grid-cols-[310px_minmax(0,1fr)] items-start gap-5">
         <aside className="overflow-hidden rounded-lg border border-border-light bg-white">

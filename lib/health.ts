@@ -120,11 +120,13 @@ export function accountHealthSeries(
   return { points, delta: points[points.length - 1] - points[0] };
 }
 
-// Plain traffic-light colors (Suren: "just make it green and red and yellow" —
-// the old Watch text was a muddy brown). Yellow uses a golden tone dark enough
-// to stay readable on the light chip.
+// Traffic-light bands: green / warm / red. The middle band was mustard #CA8A04
+// on a yellow wash — 2.7:1, i.e. unreadable, and the exact yellow Suren banned
+// on Jul 27. It is now burnt orange: still unmistakably "caution" between the
+// green and the red, but 4.3:1 on its own tint, and saturated enough (94%) to
+// read as orange rather than the muddy brown that darkened amber becomes.
 export const HEALTH_COLOR: Record<HealthBand, { bg: string; color: string }> = {
   healthy: { bg: "rgba(34,197,94,0.14)", color: "#16A34A" },
-  watch: { bg: "rgba(250,204,21,0.22)", color: "#CA8A04" },
+  watch: { bg: "rgba(194,65,12,0.12)", color: "#C2410C" },
   at_risk: { bg: "rgba(239,68,68,0.12)", color: "#DC2626" },
 };

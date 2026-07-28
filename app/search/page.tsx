@@ -3,43 +3,88 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Building2, Contact as ContactIcon, Clock, ArrowRight, Package } from "lucide-react";
+import {
+  Search,
+  Building2,
+  Contact as ContactIcon,
+  Clock,
+  ArrowRight,
+  Package,
+  CalendarClock,
+  type LucideIcon,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { getRecent, type RecentItem } from "@/lib/recent";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
 type Result = { type: string; label: string; sublabel: string; href: string };
 
+// The record TYPE is a category, so it reads as a colour + icon chip rather
+// than gray type in the corner (standing chip rule).
+const TYPE_META: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
+  Customer: { icon: Building2, color: "#0040A0", bg: "rgba(0,113,227,0.10)" },
+  Contact: { icon: ContactIcon, color: "#6D28D9", bg: "rgba(124,58,237,0.10)" },
+  Offering: { icon: Package, color: "#0F766E", bg: "rgba(15,118,110,0.12)" },
+  Session: { icon: CalendarClock, color: "#0891B2", bg: "rgba(8,145,178,0.12)" },
+};
+const TYPE_FALLBACK = { icon: Clock, color: "#0369A1", bg: "rgba(2,132,199,0.12)" };
+
+function typeMeta(type: string) {
+  return TYPE_META[type] ?? TYPE_FALLBACK;
+}
+
+// Every result leads with the record's OWN mark, never a generic glyph in a
+// blue square: a company shows its logo, a person their headshot, an offering
+// its branded icon. Same 32px footprint the old square had, so rows stay in
+// line.
+function RecordMark({ type, label }: { type: string; label: string }) {
+  if (type === "Customer")
+    return <CompanyLogo name={label} className="w-8 h-8 text-[11px]" />;
+  if (type === "Contact")
+    return <Avatar name={label} className="w-8 h-8 text-[11px]" />;
+  if (type === "Offering")
+    return <OfferingIcon name={label} className="w-8 h-8" />;
+  const { icon: Icon, color, bg } = typeMeta(type);
+  return (
+    <span
+      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+      style={{ background: bg, color }}
+    >
+      <Icon size={16} strokeWidth={1.8} />
+    </span>
+  );
+}
+
 function Row({ item }: { item: { type: string; label: string; sublabel?: string; href: string } }) {
-  const Icon =
-    item.type === "Customer"
-      ? Building2
-      : item.type === "Contact"
-      ? ContactIcon
-      : item.type === "Offering"
-      ? Package
-      : Clock;
+  const { icon: TypeIcon, color, bg } = typeMeta(item.type);
   return (
     <Link
       href={item.href}
       className="flex items-center gap-3 px-4 py-3 hover:bg-surface transition-colors group border-b border-border-light last:border-0"
     >
-      <span className="w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-        <Icon size={16} strokeWidth={1.7} />
-      </span>
+      <RecordMark type={item.type} label={item.label} />
       <span className="min-w-0 flex-1">
-        <span className="block text-[14px] font-medium text-text-primary truncate">
+        <span className="block text-[14px] font-medium text-text-primary whitespace-nowrap">
           {item.label}
         </span>
         {item.sublabel && (
-          <span className="block text-[12px] text-text-secondary truncate">
+          <span className="block text-[12px] text-text-secondary">
             {item.sublabel}
           </span>
         )}
       </span>
-      <span className="text-[11px] text-text-tertiary">{item.type}</span>
+      <span
+        className="inline-flex items-center gap-1 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+        style={{ background: bg, color }}
+      >
+        <TypeIcon size={11} strokeWidth={2.2} />
+        {item.type}
+      </span>
       <ArrowRight size={15} strokeWidth={1.5} className="text-text-tertiary group-hover:text-blue-primary shrink-0" />
     </Link>
   );

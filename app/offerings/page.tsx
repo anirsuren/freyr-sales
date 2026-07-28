@@ -13,6 +13,8 @@ import { CountUp } from "@/components/ui/CountUp";
 import {
   OfferingsBrowser,
   type HydratedOffering,
+  type OfferingCommerce,
+  type OfferingTrendTip,
 } from "@/components/offerings/OfferingsBrowser";
 import {
   listOfferings,
@@ -24,13 +26,140 @@ import {
 } from "@/lib/offerings";
 import { getRole } from "@/lib/role";
 import { getDb } from "@/lib/db";
-import { reportForOffering } from "@/lib/revenue";
+import {
+  reportForOffering,
+  REVENUE_TYPES,
+  REVENUE_TYPE_META,
+  type OfferingReport,
+} from "@/lib/revenue";
+import { formatMoney } from "@/lib/pipeline";
 import { ImportExcel } from "@/components/offerings/ImportExcel";
 import { OfferingsManageMenu } from "@/components/offerings/OfferingsManageMenu";
 import { NewOfferingButton } from "@/components/offerings/NewOfferingButton";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offerings" };
+
+// ---------------------------------------------------------------- trend
+// The revenue build behind an offering's hover chart. Honest numbers only
+// (standing rule): the time axis comes from the revenue lines' REAL
+// `start_date` field (yyyy-mm-dd, lib/types.ts) — each point is the
+// cumulative annual book through that month. When any line carries no date,
+// a month axis would misstate the totals, so the fallback is the other true
+// story: cumulative revenue account by account ("how the book built").
+// Nothing here is interpolated or invented.
+
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function monthLabel(key: string): string {
+  const [y, m] = key.split("-");
+  return `${MONTH_NAMES[Number(m) - 1] ?? m} '${y.slice(2)}`;
+}
+
+function monthBefore(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+}
+
+function buildTrend(r: OfferingReport): OfferingCommerce["trend"] {
+  if (r.totalRevenue <= 0) return { points: [], labels: [], hint: "", tips: [] };
+
+  // Flatten every revenue line, keeping its booking month (from start_date)
+  // and a tooltip row (charts' TipItem shape) naming who booked what.
+  type Entry = { month: string | null; amount: number; tip: OfferingTrendTip };
+  const entries: Entry[] = [];
+  for (const c of r.customers) {
+    for (const l of c.lines) {
+      const amount = Number(l.amount) || 0;
+      if (amount <= 0) continue;
+      const month =
+        l.start_date && /^\d{4}-\d{2}/.test(l.start_date)
+          ? l.start_date.slice(0, 7)
+          : null;
+      entries.push({
+        month,
+        amount,
+        tip: {
+          name: c.name,
+          logo: c.name,
+          value: formatMoney(amount),
+          sub: l.description || REVENUE_TYPE_META[l.revenue_type].label,
+        },
+      });
+    }
+  }
+
+  const allDated = entries.length > 0 && entries.every((e) => e.month != null);
+  if (allDated) {
+    const months = Array.from(
+      new Set(entries.map((e) => e.month as string))
+    ).sort();
+    // Keep it a sparkline: at most the last 7 booked months. The leading
+    // point is still a true cumulative — everything booked through the month
+    // before the window (a genuine $0 when the window starts at the first
+    // booking; nothing existed before the earliest real start_date).
+    const shown = months.slice(-7);
+    const baseMonth =
+      months.length > shown.length
+        ? months[months.length - shown.length - 1]
+        : monthBefore(shown[0]);
+    const axis = [baseMonth, ...shown];
+    const points: number[] = [];
+    const labels: string[] = [];
+    const tips: OfferingTrendTip[][] = [];
+    for (const mo of axis) {
+      // yyyy-mm compares lexicographically — cumulative through this month.
+      points.push(
+        entries.reduce(
+          (s, e) => ((e.month as string) <= mo ? s + e.amount : s),
+          0
+        )
+      );
+      labels.push(monthLabel(mo));
+      tips.push(
+        entries.filter((e) => e.month === mo).map((e) => e.tip)
+      );
+    }
+    return { points, labels, hint: `since ${monthLabel(months[0])}`, tips };
+  }
+
+  // No usable dates on every line — the honest alternative: how the book
+  // built account by account (report order: largest first).
+  const rows = r.customers.filter((c) => c.revenue > 0);
+  let running = 0;
+  return {
+    points: rows.map((c) => (running += c.revenue)),
+    labels: rows.map((c) => c.name),
+    hint: "how the book built",
+    tips: rows.map((c) => [
+      { name: c.name, logo: c.name, value: formatMoney(c.revenue) },
+    ]),
+  };
+}
+
+// ------------------------------------------------------------ revenue mix
+// The offering's money split by CONTRACT TYPE (annual / project / service /
+// license). It's the honest second cut for the hover panel's bar chart when
+// nobody licenses seats — a different question ("what kind of revenue is
+// this?") rather than a re-plot of the pie's revenue-per-customer. Straight
+// from the same revenue lines; nothing derived or invented.
+function revenueByType(r: OfferingReport): OfferingCommerce["revenueByType"] {
+  const totals: Record<string, number> = {};
+  for (const c of r.customers) {
+    for (const l of c.lines) {
+      const amount = Number(l.amount) || 0;
+      if (amount <= 0) continue;
+      totals[l.revenue_type] = (totals[l.revenue_type] ?? 0) + amount;
+    }
+  }
+  return REVENUE_TYPES.filter((t) => (totals[t] ?? 0) > 0).map((t) => ({
+    label: REVENUE_TYPE_META[t].short,
+    value: totals[t],
+  }));
+}
 
 function Stat({
   label,
@@ -110,7 +239,7 @@ export default async function OfferingsPage() {
   // page."). Aggregated server-side from the same revenue lines the offering
   // Reports tab uses; only compact plain data crosses to the client.
   const allCustomers = await getDb().customers.list();
-  const commerce = Object.fromEntries(
+  const commerce: Record<string, OfferingCommerce> = Object.fromEntries(
     offerings.map((o) => {
       const r = reportForOffering(allCustomers, o.id);
       return [
@@ -119,10 +248,22 @@ export default async function OfferingsPage() {
           totalRevenue: r.totalRevenue,
           totalLicenses: r.totalLicenses,
           customerCount: r.customerCount,
+          // Seats travel with each account so the hover panel can plot
+          // "licensed seats per customer" beside the revenue pie — same
+          // accounts, second dimension.
           customers: [...r.customers]
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 3)
-            .map((c) => ({ id: c.id, name: c.name, revenue: c.revenue })),
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              revenue: c.revenue,
+              licenses: c.licenses,
+            })),
+          revenueByType: revenueByType(r),
+          // The revenue build over time (real start_date months) powering the
+          // hover line chart + the grid Trend column. Plain arrays only.
+          trend: buildTrend(r),
         },
       ];
     })

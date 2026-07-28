@@ -1,0 +1,374 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, ChevronUp, ListChecks } from "lucide-react";
+import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
+import { offeringMark } from "@/components/ui/OfferingIcon";
+import { cn } from "@/lib/utils";
+
+// ---------------------------------------------------------------------------
+// The parser
+// ---------------------------------------------------------------------------
+// Suren's offering descriptions came straight out of the spreadsheet as bullet
+// LISTS, and the page used to dump them as pre-wrapped text — which read
+// exactly like what it was, a paste (Suren: "it looks like you just
+// copy-pasted whatever they said from the spreadsheet"). His read was right:
+// each bullet is a SERVICE WITHIN THE SERVICE, so it belongs on the page as a
+// real list of things, not as prose.
+//
+// Three shapes exist in the catalog, and the parser handles each on its own
+// terms:
+//   1. A flat bullet list            → one capability per bullet.
+//   2. A bullet with a numbered
+//      parenthetical                 → the text before "(" is the capability,
+//                                      the "1. … 2. …" inside are its parts.
+//   3. Intro prose + a section
+//      heading + indented "–" lines  → the heading groups its own capabilities.
+// Anything with no list markers at all stays prose — never force-split.
+
+export type Capability = {
+  /** The capability itself, e.g. "Regulatory Toxicology". Never truncated. */
+  title: string;
+  /** Parts named inside a parenthetical, e.g. "F-Value Reports for CRP". */
+  subItems: string[];
+  /**
+   * The source line with its bullet stripped and nothing else touched. The
+   * editor round-trips THIS, never the split pieces — re-joining sub-items on
+   * commas would corrupt a part that contains one of its own.
+   */
+  raw: string;
+};
+
+export type CapabilityGroup = {
+  /** Section heading from the source, e.g. "Product & Portfolio Strategy". */
+  title: string;
+  items: Capability[];
+};
+
+export type ParsedBrief =
+  | { kind: "prose"; text: string }
+  | {
+      kind: "capabilities";
+      /** Lead-in paragraph(s) that sat above the list, kept as prose. */
+      intro: string;
+      groups: CapabilityGroup[];
+      count: number;
+    };
+
+// A glyph + a space, or a "1." / "1)" style number + a space. The trailing
+// space matters: without it "Non-clinical Development Strategy" would read as
+// a bullet, and "eCTD 4.0" as a numbered item.
+const BULLET_RE = /^[\s ]*[•▪◦‣*–—-][\s ]+/;
+const NUMBER_RE = /^[\s ]*\d+[.)][\s ]+/;
+// Splits the inside of a parenthetical on its "1." "2." "3." markers.
+const ENUM_SPLIT_RE = /\s*\b\d+\.\s+/;
+const ENUM_TEST_RE = /\b\d+\.\s/;
+
+function isListLine(line: string) {
+  return BULLET_RE.test(line) || NUMBER_RE.test(line);
+}
+
+function stripMarker(line: string) {
+  return line.replace(BULLET_RE, "").replace(NUMBER_RE, "").trim();
+}
+
+// Find the parenthetical that opens at `from`, honouring nesting — the
+// toxicology bullet has "(CRP)", "(TRA)" and "(ERA)" nested inside the outer
+// one, so a naive indexOf(")") would cut it in half.
+function matchParen(line: string, from: number): number {
+  let depth = 0;
+  for (let i = from; i < line.length; i++) {
+    if (line[i] === "(") depth++;
+    else if (line[i] === ")") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+// Split one list line into its capability title and any sub-items named in a
+// parenthetical. A parenthetical is only lifted out when it is genuinely a
+// list — enumerated ("1. … 2. …") or a comma-separated clarifier that closes
+// the line. An inline acronym must stay put, or "Structured Product Labeling
+// (SPL) and Structured Product Monograph (SPM)" would lose half its meaning.
+export function splitCapability(source: string): Capability {
+  const line = source.trim();
+  const whole: Capability = { title: line, subItems: [], raw: line };
+  const open = line.indexOf("(");
+  if (open <= 0) return whole;
+  const close = matchParen(line, open);
+  if (close === -1) return whole;
+
+  const title = line.slice(0, open).trim();
+  const inner = line.slice(open + 1, close).trim();
+  const tail = line.slice(close + 1).trim();
+  if (!title || !inner) return whole;
+
+  const clean = (parts: string[]) =>
+    parts
+      .map((p) => p.trim().replace(/[;,]$/, "").trim())
+      .filter((p) => p && !/^etc\.?$/i.test(p));
+
+  if (ENUM_TEST_RE.test(inner)) {
+    const parts = clean(inner.split(ENUM_SPLIT_RE));
+    if (parts.length >= 2)
+      return { title: tail ? `${title} ${tail}` : title, subItems: parts, raw: line };
+  }
+  // Only a trailing parenthetical can be a sub-list; anything mid-sentence is
+  // an aside that belongs to the title.
+  if (!tail && inner.includes(",")) {
+    const parts = clean(inner.split(/\s*,\s*/));
+    if (parts.length >= 2) return { title, subItems: parts, raw: line };
+  }
+  return whole;
+}
+
+// A short, unpunctuated line sitting directly above a run of list lines is a
+// SECTION HEADING ("Product & Portfolio Strategy"), not a capability. A long
+// paragraph in the same position is the offering's lead-in and stays prose.
+const HEADING_MAX = 90;
+const GENERIC_LEAD_IN = /^(services|offerings|capabilities|these)?\s*(include|includes|are)$/i;
+
+function asHeading(line: string): string | null {
+  const t = line.trim().replace(/[:：]$/, "").trim();
+  if (!t || t.length > HEADING_MAX || /[.!?]$/.test(t)) return null;
+  // "Services include:" is a lead-in, not a name worth showing as a label.
+  return GENERIC_LEAD_IN.test(t) ? "" : t;
+}
+
+export function parseCapabilities(text: string): ParsedBrief {
+  const source = (text || "").replace(/\r\n?/g, "\n");
+  const lines = source.split("\n");
+  const hasList = lines.some(isListLine);
+  // One prose paragraph, or several — with no list markers anywhere there is
+  // nothing to structure, so it renders exactly as it always has.
+  if (!hasList) return { kind: "prose", text: source.trim() };
+
+  const introParts: string[] = [];
+  const groups: CapabilityGroup[] = [];
+  let current: CapabilityGroup | null = null;
+  let seenList = false;
+
+  const push = (item: Capability) => {
+    let group = current;
+    if (!group) {
+      group = { title: "", items: [] };
+      groups.push(group);
+      current = group;
+    }
+    group.items.push(item);
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+
+    if (isListLine(line)) {
+      seenList = true;
+      const body = stripMarker(line);
+      if (body) push(splitCapability(body));
+      continue;
+    }
+
+    // A non-list line: heading if a list follows immediately, else prose.
+    const next = lines.slice(i + 1).find((l) => l.trim());
+    const heading = next && isListLine(next) ? asHeading(line) : null;
+    if (heading !== null) {
+      current = { title: heading, items: [] };
+      groups.push(current);
+      continue;
+    }
+    // Trailing prose after the list would read as an orphan; only the lead-in
+    // is kept, which is where every description in the catalog puts it.
+    if (!seenList) introParts.push(line.trim());
+  }
+
+  const kept = groups.filter((g) => g.items.length > 0);
+  const count = kept.reduce((n, g) => n + g.items.length, 0);
+  if (count === 0) return { kind: "prose", text: source.trim() };
+  return { kind: "capabilities", intro: introParts.join("\n\n"), groups: kept, count };
+}
+
+// ---------------------------------------------------------------------------
+// The card
+// ---------------------------------------------------------------------------
+
+function CapabilityCard({ item }: { item: Capability }) {
+  // Every tile carries a colour AND an icon, never flat gray — offeringMark is
+  // the app's stable name→glyph+hue map, the same one the offering cards and
+  // ServiceTag use, so a capability reads as the mini-offering it is.
+  const { icon: Icon, color, light } = offeringMark(item.title);
+  const many = item.subItems.length >= 3;
+  // Titles run from three words ("Building QMS") to a full sentence that wraps
+  // onto two lines, so a row used to pair a squat card with a tall one and the
+  // icon tiles stopped lining up (Suren: "some of them are one line, and some
+  // of them are two lines… especially with the alignment with the icon").
+  // Two rules fix it without truncating a single service name:
+  //   • one floor height for every card, so a row of short titles is exactly as
+  //     tall as a row with a wrapped one (`h-full` then matches them inside the
+  //     stretched grid row);
+  //   • a title-only card centres its icon + text as a pair, so a one-line and
+  //     a two-line card both read as icon-beside-title. Cards that carry
+  //     sub-items keep the icon at the TOP, where a list belongs.
+  const hasSubs = item.subItems.length > 0;
+  return (
+    <li
+      className={cn(
+        "flex h-full min-h-[64px] gap-2.5 rounded-xl border border-border-light bg-white p-3 transition-colors hover:border-blue-subtle",
+        hasSubs ? "items-start" : "items-center",
+        many && "md:col-span-2"
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]",
+          hasSubs && "mt-px"
+        )}
+        style={{ backgroundImage: `linear-gradient(135deg, ${color}, ${light})` }}
+        aria-hidden="true"
+      >
+        <Icon size={14} strokeWidth={2} />
+      </span>
+      <span className="min-w-0 flex-1">
+        {/* Wraps, never truncates — these are full service names. */}
+        <span className="block break-words text-[13.5px] font-semibold leading-snug text-text-primary">
+          {item.title}
+        </span>
+        {item.subItems.length > 0 &&
+          (many ? (
+            <span className="mt-2 grid grid-cols-1 gap-1.5 md:grid-cols-2">
+              {item.subItems.map((sub, si) => (
+                <span key={`${si}-${sub}`} className="flex items-start gap-1.5">
+                  <span
+                    className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: color }}
+                  />
+                  <span className="break-words text-[11.5px] leading-snug text-text-secondary">
+                    {sub}
+                  </span>
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span className="mt-1.5 flex flex-wrap gap-1.5">
+              {item.subItems.map((sub, si) => (
+                <span
+                  key={`${si}-${sub}`}
+                  className="inline-block break-words rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-snug"
+                  style={{ background: `${color}14`, color }}
+                >
+                  {sub}
+                </span>
+              ))}
+            </span>
+          ))}
+      </span>
+    </li>
+  );
+}
+
+const PREVIEW = 6;
+
+export function OfferingCapabilities({
+  text,
+  offeringName,
+  className,
+}: {
+  text: string;
+  offeringName: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const parsed = parseCapabilities(text);
+
+  // Plain prose keeps the behaviour it always had, Show more and all.
+  if (parsed.kind === "prose")
+    return <CollapsibleDescription text={parsed.text} threshold={520} className={className} />;
+
+  const accent = offeringMark(offeringName).color;
+  const collapsible = parsed.count > PREVIEW;
+  const limit = !collapsible || open ? parsed.count : PREVIEW;
+
+  let seen = 0;
+  const visibleGroups = parsed.groups.map((group) => {
+    const items = group.items.filter(() => seen++ < limit);
+    return { title: group.title, items };
+  });
+
+  return (
+    <div className={className}>
+      {parsed.intro && (
+        <p className="whitespace-pre-line text-[14px] leading-relaxed text-text-secondary">
+          {parsed.intro}
+        </p>
+      )}
+
+      <div className={cn("flex items-center gap-2", parsed.intro && "mt-5")}>
+        <span
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+          style={{ background: `${accent}1F`, color: accent }}
+        >
+          <ListChecks size={13} strokeWidth={2.1} aria-hidden="true" />
+        </span>
+        <h3 className="text-[12.5px] font-semibold uppercase tracking-[0.05em] text-text-secondary">
+          What&apos;s included
+        </h3>
+        <span
+          className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+          style={{ background: `${accent}14`, color: accent }}
+        >
+          {parsed.count} {parsed.count === 1 ? "capability" : "capabilities"}
+        </span>
+      </div>
+
+      <div className="mt-3 space-y-4">
+        {visibleGroups.map((group, gi) =>
+          group.items.length === 0 ? null : (
+            <div key={group.title || `group-${gi}`}>
+              {group.title && (
+                <p
+                  className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em]"
+                  style={{ color: accent }}
+                >
+                  <span
+                    className="h-[3px] w-5 rounded-full"
+                    style={{ background: accent }}
+                    aria-hidden="true"
+                  />
+                  {group.title}
+                </p>
+              )}
+              {/* `items-stretch` is the grid default, but it is the thing that
+                  makes `h-full` on the card mean "as tall as my neighbour" —
+                  spelled out so a later refactor can't quietly drop it. */}
+              <ul className="grid grid-cols-1 items-stretch gap-2.5 md:grid-cols-2">
+                {group.items.map((item, ii) => (
+                  <CapabilityCard key={`${ii}-${item.title}`} item={item} />
+                ))}
+              </ul>
+            </div>
+          )
+        )}
+      </div>
+
+      {collapsible && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-blue-primary hover:underline"
+        >
+          {open ? (
+            <>
+              Show less <ChevronUp size={14} strokeWidth={2} />
+            </>
+          ) : (
+            <>
+              Show {parsed.count - PREVIEW} more <ChevronDown size={14} strokeWidth={2} />
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}

@@ -17,11 +17,16 @@ export function HealthBadge({
   const drivers = health.factors
     .map((f) => `${f.delta > 0 ? "+" : ""}${f.delta} ${f.label}`)
     .join(" · ");
+  // The drivers line is `text-text-secondary`, NOT `text-white/70` — Tooltip's
+  // surface is `bg-white`, so the old white-on-white left this line invisible
+  // in light mode. The token also flips correctly under `.dark`.
   const label = (
     <span>
       {base}
       {drivers ? (
-        <span className="block mt-1 text-white/70">What&apos;s driving it: {drivers}</span>
+        <span className="block mt-1 text-text-secondary">
+          What&apos;s driving it: {drivers}
+        </span>
       ) : null}
     </span>
   );
@@ -66,6 +71,8 @@ export function HealthBar({
     .join(" · ");
   const pct = Math.max(0, Math.min(100, health.score));
 
+  // Same white-on-white fix as HealthBadge above: the drivers line reads on the
+  // tooltip's white surface only with a text token, not `text-white/70`.
   return (
     <Tooltip
       className="block w-full"
@@ -73,7 +80,7 @@ export function HealthBar({
         <span>
           {base}
           {drivers ? (
-            <span className="block mt-1 text-white/70">
+            <span className="block mt-1 text-text-secondary">
               What&apos;s driving it: {drivers}
             </span>
           ) : null}

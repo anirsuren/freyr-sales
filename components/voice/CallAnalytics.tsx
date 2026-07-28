@@ -89,8 +89,10 @@ export function CallAnalytics({
   const overall = Math.round(sentiment.reduce((s, v) => s + v, 0) / sentiment.length);
   const overallBand =
     overall >= 62 ? "Positive" : overall >= 45 ? "Neutral" : "Negative";
+  // "Neutral" is rendered as text on a 9% tint of this colour, so the middle
+  // band is burnt orange rather than amber (banned yellow, Suren Jul 27).
   const overallColor =
-    overall >= 62 ? "#1A7A35" : overall >= 45 ? "#F59E0B" : "#B02020";
+    overall >= 62 ? "#1A7A35" : overall >= 45 ? "#C2410C" : "#B02020";
 
   // Talk ratio (words spoken).
   const words = (arr: Turn[]) =>
@@ -285,6 +287,10 @@ export function CallAnalytics({
                     <span
                       className="block h-5 min-w-[3px] rounded-[3px] transition-transform hover:scale-y-125"
                       style={{
+                        // Green / yellow / red sentiment ramp. The middle band
+                        // is bright #FFCC00, not the banned mustard — same
+                        // distinction as In Progress: the hue is fine, the
+                        // mustard band and brown-on-yellow text are not.
                         background:
                           v >= 62 ? "#34C759" : v >= 45 ? "#FFCC00" : "#FF453A",
                         opacity: 0.35 + (Math.abs(v - 50) / 50) * 0.65,

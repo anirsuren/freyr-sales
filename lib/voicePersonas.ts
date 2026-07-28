@@ -53,7 +53,9 @@ export const VOICE_PERSONAS: VoicePersona[] = [
     slug: "leo-labeling-artwork",
     category: "Labeling and Artwork",
     tagline: "Handles label change, artwork and multi-market compliance calls.",
-    color: "#FF9F0A",
+    // Leo's colour fills a solid avatar tile behind a white glyph; amber left
+    // that glyph at 2.1:1. Burnt orange keeps him warm and distinct.
+    color: "#C2410C",
     icon: Palette,
   },
   {

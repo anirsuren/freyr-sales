@@ -64,10 +64,10 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
           <BriefcaseBusiness size={16} strokeWidth={1.9} />
         </span>
         <span className="min-w-0">
-          <span className="block line-clamp-2 text-[14px] font-semibold leading-[1.25] text-text-primary">
+          <span className="block break-words text-[14px] font-semibold leading-[1.25] text-text-primary">
             {deal.name}
           </span>
-          <span className="mt-0.5 block truncate text-[11.5px] text-text-tertiary">
+          <span className="mt-0.5 block break-words text-[11.5px] text-text-tertiary">
             {deal.offering || "Commercial opportunity"}
           </span>
         </span>
@@ -112,7 +112,7 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
             name={deal.contact || deal.owner || "Unassigned"}
             className="h-7 w-7 shrink-0 text-[9px]"
           />
-          <span className="truncate">{deal.contact || deal.owner || "No contact"}</span>
+          <span className="min-w-0 break-words">{deal.contact || deal.owner || "No contact"}</span>
         </span>
         <span className="mt-1 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
           <Clock3 size={11} strokeWidth={1.8} className="shrink-0" />
@@ -206,7 +206,7 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
                 name={deal.owner || "Unassigned"}
                 className="h-6 w-6 shrink-0 text-[8px]"
               />
-              <span className="truncate">{deal.owner || "Unassigned"}</span>
+              <span className="min-w-0 break-words">{deal.owner || "Unassigned"}</span>
             </span>
           </span>
         </div>

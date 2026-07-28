@@ -87,6 +87,10 @@ export function AddMaterialButton({
     }
     setBusy(true);
     try {
+      // Note: "added by" is NOT sent from here. The PATCH route stamps the
+      // uploader from the server session and restores every existing row's
+      // attribution from the store, so a client can neither credit itself for
+      // someone else's upload nor wipe an existing one.
       const next: OfferingMaterial[] = [
         // Preserve the existing materials' tags verbatim — untagged legacy
         // materials stay untagged rather than being silently re-tagged.

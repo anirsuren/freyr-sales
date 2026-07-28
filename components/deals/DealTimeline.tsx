@@ -1,47 +1,42 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  BadgeCheck,
-  CalendarCheck,
-  CalendarClock,
-  CalendarDays,
-  MapPin,
-  MessagesSquare,
-  Radar,
-  XCircle,
-} from "lucide-react";
+import { CalendarClock, CalendarDays } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { GLOSSARY, stageKey } from "@/lib/glossary";
-import { OPEN_STAGES, STAGE_COLOR, type Stage } from "@/lib/pipeline";
+import {
+  OPEN_STAGES,
+  STAGE_COLOR,
+  STAGE_ICON,
+  type Stage,
+} from "@/lib/pipeline";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { daysLabel, daysSince, whenLabel } from "./dealTime";
 
-// Every stage carries a colour AND an icon — a stage is a status chip, and a
-// status chip is never plain type on a plain background (standing rule).
-export const STAGE_ICON: Record<Stage, LucideIcon> = {
-  Prospect: Radar,
-  Engaged: MessagesSquare,
-  Qualified: BadgeCheck,
-  "Meeting Booked": CalendarCheck,
-  "Closed Lost": XCircle,
-};
+/* ---------------------------------------------------------------------------
+   ONE AXIS, AND IT IS THE FUNNEL.
 
-const TODAY_BLUE = "#0071E3";
-const OVERDUE_RED = "#FF3B30";
+   The old rail read Prospect → Engaged → Today → Next step → Qualified →
+   Meeting Booked. A date marker and a calendar item were sitting in the line as
+   if they were pipeline stages, and the stages the deal hadn't reached yet came
+   AFTER them. Nobody could say what the axis was.
 
-type Fill = "solid" | "soft" | "outline";
+   Now the rail is the funnel and nothing else, always in funnel order. Time
+   lives on its own line underneath, visually separate, because time is not a
+   stage. Stage colours and glyphs come from lib/pipeline so a stage can never
+   look like two different things on two different screens.
+--------------------------------------------------------------------------- */
 
-type Node = {
-  key: string;
-  label: string;
+const OVERDUE_RED = "#FF3B30"; // = --error, and only for an overdue follow-up
+const NEXT_BLUE = "#0071E3"; // = --blue-primary
+
+type State = "done" | "current" | "todo";
+
+type Rung = {
+  stage: Stage;
   Icon: LucideIcon;
   color: string;
-  fill: Fill;
-  /** Drives the marker shape on the rail. */
-  kind: "stage" | "today" | "step";
-  /** Bigger dot for the stage the deal is actually sitting on. */
-  isCurrent?: boolean;
+  state: State;
   dateLine: string;
   subLine: string;
   hint: string;
@@ -50,18 +45,13 @@ type Node = {
 export function DealTimeline({
   stage,
   stageDates,
-  stageStartedAt,
   nextStep,
-  lastActivityAt,
   nowIso,
 }: {
   stage: Stage;
   stageDates: Record<string, string | undefined>;
-  /** When the deal entered the stage it's in now. */
-  stageStartedAt: string;
   /** Scheduled follow-up date, if a rep booked one (yyyy-mm-dd). */
   nextStep: string | null;
-  lastActivityAt: string | null;
   nowIso: string;
 }) {
   const lost = stage === "Closed Lost";
@@ -71,87 +61,45 @@ export function DealTimeline({
   const path: Stage[] = lost ? [...OPEN_STAGES, "Closed Lost"] : [...OPEN_STAGES];
   const currentIdx = path.indexOf(stage);
 
-  const nextStepDays = daysSince(nextStep, nowIso);
-  const nextStepOverdue = nextStepDays != null && nextStepDays > 0;
-
-  const nodes: Node[] = [];
-  path.forEach((s, i) => {
+  const rungs: Rung[] = path.map((s, i) => {
     const date = stageDates[s];
     const days = daysSince(date, nowIso);
     const reached = i <= currentIdx;
-    const isCurrent = i === currentIdx;
-    const color = STAGE_COLOR[s];
-    nodes.push({
-      key: `stage-${s}`,
-      label: s,
+    const state: State = i === currentIdx ? "current" : reached ? "done" : "todo";
+    const def = GLOSSARY[stageKey(s)]?.def ?? "";
+    return {
+      stage: s,
       Icon: STAGE_ICON[s],
-      color,
-      fill: isCurrent ? "solid" : reached ? "soft" : "outline",
-      kind: "stage",
-      isCurrent,
-      // Short lines only — every column prints the same two rows, so long
-      // sentences would leave the row ragged. The full story is in the hover.
+      color: STAGE_COLOR[s],
+      state,
+      // Two short rows per column and nothing else — a sentence here would leave
+      // the rail ragged. The full story is in the hover.
       dateLine: date ? formatDate(date) : reached ? "Not logged" : "Not yet",
-      subLine: date ? whenLabel(days) : reached ? "skipped" : "still ahead",
+      subLine: date ? whenLabel(days) : reached ? "skipped" : "",
       hint: date
-        ? `${GLOSSARY[stageKey(s)]?.def ?? ""} Logged ${formatDateTime(date)}.`
+        ? `${def} Logged ${formatDateTime(date)}.`
         : reached
-          ? `${GLOSSARY[stageKey(s)]?.def ?? ""} Nothing was logged at this step — the deal moved straight past it.`
-          : `${GLOSSARY[stageKey(s)]?.def ?? ""} This deal hasn't got here yet.`,
-    });
-
-    if (!isCurrent) return;
-
-    // An overdue follow-up belongs BEFORE the today line; a booked one after it.
-    // That is the whole point of the marker: you read the gap at a glance.
-    if (nextStep && nextStepOverdue) nodes.push(stepNode(nextStep, nextStepDays));
-    nodes.push({
-      key: "today",
-      label: "Today",
-      Icon: MapPin,
-      color: TODAY_BLUE,
-      fill: "solid",
-      kind: "today",
-      dateLine: formatDate(nowIso),
-      subLine: "you are here",
-      hint: `Today is ${formatDate(nowIso)}. Everything to the left already happened; everything to the right hasn't.`,
-    });
-    if (nextStep && !nextStepOverdue) nodes.push(stepNode(nextStep, nextStepDays));
+          ? `${def} Nothing was logged at this step — the deal moved straight past it.`
+          : `${def} This deal hasn't got here yet.`,
+    };
   });
 
-  const todayIdx = nodes.findIndex((n) => n.kind === "today");
-  const lastIdx = nodes.length - 1;
-
-  // The one-line read under the rail, in Suren's words rather than CRM words.
-  const enteredDays = daysSince(stageStartedAt, nowIso);
-  const quietDays = daysSince(lastActivityAt, nowIso);
-  const sentences: string[] = [
-    lost
-      ? `This deal was marked lost ${whenLabel(enteredDays) || "recently"}.`
-      : `It reached ${stage} ${whenLabel(enteredDays) || "recently"} and has been sitting there ${
-          enteredDays != null && enteredDays > 0 ? `for ${daysLabel(enteredDays)}` : "since today"
-        }.`,
-    quietDays == null
-      ? "Nothing has been logged on it yet."
-      : quietDays === 0
-        ? "Something was logged on it today."
-        : `Nothing has been logged for ${daysLabel(quietDays)}.`,
-    nextStep == null
-      ? "No next step is on the calendar."
-      : nextStepOverdue
-        ? `The follow-up set for ${formatDate(nextStep)} is ${daysLabel(nextStepDays ?? 0)} overdue.`
-        : `The next step is booked for ${formatDate(nextStep)}, ${whenLabel(nextStepDays)}.`,
-  ];
+  const lastIdx = rungs.length - 1;
+  const nextStepDays = daysSince(nextStep, nowIso);
+  const nextStepOverdue = nextStepDays != null && nextStepDays > 0;
+  const nextColor = nextStepOverdue ? OVERDUE_RED : NEXT_BLUE;
 
   return (
     <Card className="mb-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-[13px] font-semibold text-text-primary">Deal stage</h2>
-          <InfoHint text="Every step this deal has taken, left to right. Solid steps already happened and show the date they happened. Dashed steps haven't happened yet. The blue Today line shows exactly where we are on that path right now." />
-          <span className="text-[12px] text-text-tertiary">
-            — every step it has taken, and where today sits on that line
-          </span>
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-[15px] font-semibold text-text-primary">Deal stage</h2>
+            <InfoHint text="The four steps every deal walks, in order. Filled steps already happened and show the date; outlined steps are still ahead." />
+          </div>
+          <p className="mt-0.5 text-[11px] text-text-tertiary">
+            How far this deal has got, and what&apos;s booked next
+          </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary">
           <CalendarDays size={13} strokeWidth={2} />
@@ -163,10 +111,10 @@ export function DealTimeline({
           connectors flex, so the tracker can never scroll sideways. */}
       <div
         className="grid items-start"
-        style={{ gridTemplateColumns: `repeat(${nodes.length}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: `repeat(${rungs.length}, minmax(0, 1fr))` }}
       >
-        {nodes.map((n, i) => (
-          <div key={n.key} className="flex min-w-0 flex-col items-center">
+        {rungs.map((n, i) => (
+          <div key={n.stage} className="flex min-w-0 flex-col items-center">
             <div className="flex h-8 items-center justify-center">
               <Tooltip label={n.hint} side="top">
                 <span
@@ -174,27 +122,34 @@ export function DealTimeline({
                   style={chipStyle(n)}
                 >
                   <n.Icon size={12} strokeWidth={2.1} />
-                  {n.label}
+                  {n.stage}
                 </span>
               </Tooltip>
             </div>
 
+            {/* The walked path is drawn in the colours of the stages it walked
+                through; everything past the deal's current position is a quiet
+                dashed line, because it hasn't happened. */}
             <div className="flex h-7 w-full items-center">
-              <Rail show={i > 0} filled={i <= todayIdx} />
-              <Marker node={n} />
-              <Rail show={i < lastIdx} filled={i < todayIdx} />
+              <Rail show={i > 0} color={n.color} filled={i <= currentIdx} />
+              <Dot rung={n} />
+              <Rail show={i < lastIdx} color={n.color} filled={i < currentIdx} />
             </div>
 
             <div className="mt-1 flex flex-col items-center px-1 text-center">
               <span
                 className={cn(
                   "text-[11.5px] font-semibold tnum",
-                  n.fill === "outline" ? "text-text-tertiary" : "text-text-primary"
+                  n.state === "todo" || !stageDates[n.stage]
+                    ? "text-text-tertiary"
+                    : "text-text-primary"
                 )}
               >
                 {n.dateLine}
               </span>
-              <span className="text-[10.5px] leading-snug text-text-tertiary">
+              {/* Reserved height keeps every column's baseline level even when a
+                  step has nothing to say underneath it. */}
+              <span className="min-h-[15px] text-[10.5px] leading-snug text-text-tertiary">
                 {n.subLine}
               </span>
             </div>
@@ -202,32 +157,38 @@ export function DealTimeline({
         ))}
       </div>
 
-      <p className="mt-5 rounded-lg bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-text-secondary">
-        {sentences.join(" ")}
-      </p>
+      {/* Time, on its own line, under a divider — it is not a stage, so it is
+          not on the rail. This one line replaces the three-sentence paragraph
+          that used to restate the graphic above it. */}
+      <div className="mt-5 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-border-light pt-3.5 text-[12.5px]">
+        <span
+          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-semibold"
+          style={{ background: `${nextColor}14`, color: nextColor }}
+        >
+          <CalendarClock size={13} strokeWidth={2.1} />
+          {nextStepOverdue ? "Follow-up overdue" : "Next step"}
+        </span>
+        {nextStep == null ? (
+          <span className="text-text-secondary">Nothing booked yet.</span>
+        ) : (
+          <>
+            <span className="font-semibold text-text-primary tnum">
+              {formatDate(nextStep)}
+            </span>
+            <span className="text-text-secondary">
+              {nextStepOverdue
+                ? `${daysLabel(nextStepDays ?? 0)} overdue`
+                : whenLabel(nextStepDays)}
+            </span>
+          </>
+        )}
+      </div>
     </Card>
   );
 }
 
-function stepNode(nextStep: string, days: number | null): Node {
-  const overdue = days != null && days > 0;
-  return {
-    key: "next-step",
-    label: overdue ? "Follow-up overdue" : "Next step",
-    Icon: CalendarClock,
-    color: overdue ? OVERDUE_RED : TODAY_BLUE,
-    fill: overdue ? "solid" : "outline",
-    kind: "step",
-    dateLine: formatDate(nextStep),
-    subLine: whenLabel(days),
-    hint: overdue
-      ? `A follow-up was set for ${formatDate(nextStep)} and it hasn't happened. That was ${daysLabel(days ?? 0)} ago.`
-      : `The follow-up on the calendar for this deal: ${formatDate(nextStep)}, ${whenLabel(days)}.`,
-  };
-}
-
-function chipStyle(n: Node): React.CSSProperties {
-  if (n.fill === "solid") {
+function chipStyle(n: Rung): React.CSSProperties {
+  if (n.state === "current") {
     return {
       background: n.color,
       color: "#FFFFFF",
@@ -235,14 +196,14 @@ function chipStyle(n: Node): React.CSSProperties {
       boxShadow: `0 0 0 3px ${n.color}22`,
     };
   }
-  if (n.fill === "soft") {
+  if (n.state === "done") {
     return {
       background: `${n.color}14`,
       color: n.color,
       border: `1px solid ${n.color}4D`,
     };
   }
-  // Un-reached steps stay colour-coded (never gray) but read as "not yet"
+  // Steps still ahead stay colour-coded (never gray) but read as "not yet"
   // through a dashed outline and an empty fill.
   return {
     background: "transparent",
@@ -251,17 +212,25 @@ function chipStyle(n: Node): React.CSSProperties {
   };
 }
 
-/** Half a connector. Dashed once you're past today — the future isn't drawn as
- *  a solid line the deal has already walked. */
-function Rail({ show, filled }: { show: boolean; filled: boolean }) {
+/** Half a connector. Solid in the stage's own colour once the deal has walked
+ *  it; dashed and quiet for the part of the funnel still ahead. */
+function Rail({
+  show,
+  color,
+  filled,
+}: {
+  show: boolean;
+  color: string;
+  filled: boolean;
+}) {
   if (!show) return <span aria-hidden className="h-[3px] min-w-[8px] flex-1" />;
   return (
     <span
       aria-hidden
-      className={cn("h-[3px] min-w-[8px] flex-1 rounded-full", filled && "bg-blue-primary")}
+      className="h-[3px] min-w-[8px] flex-1 rounded-full"
       style={
         filled
-          ? undefined
+          ? { background: color }
           : {
               backgroundImage:
                 "repeating-linear-gradient(90deg, var(--border) 0 5px, transparent 5px 11px)",
@@ -271,31 +240,13 @@ function Rail({ show, filled }: { show: boolean; filled: boolean }) {
   );
 }
 
-function Marker({ node }: { node: Node }) {
-  if (node.kind === "today") {
-    return (
-      <span
-        aria-hidden
-        className="mx-1 h-6 w-[3px] shrink-0 rounded-full"
-        style={{ background: node.color, boxShadow: `0 0 0 3px ${node.color}1F` }}
-      />
-    );
-  }
-  if (node.kind === "step") {
-    return (
-      <span
-        aria-hidden
-        className="mx-1 h-2.5 w-2.5 shrink-0 rotate-45 rounded-[2px]"
-        style={{ background: node.color }}
-      />
-    );
-  }
-  if (node.fill === "outline") {
+function Dot({ rung }: { rung: Rung }) {
+  if (rung.state === "todo") {
     return (
       <span
         aria-hidden
         className="mx-1 h-2.5 w-2.5 shrink-0 rounded-full border-2 bg-white"
-        style={{ borderColor: `${node.color}80` }}
+        style={{ borderColor: `${rung.color}80` }}
       />
     );
   }
@@ -304,11 +255,11 @@ function Marker({ node }: { node: Node }) {
       aria-hidden
       className={cn(
         "mx-1 shrink-0 rounded-full",
-        node.isCurrent ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
+        rung.state === "current" ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
       )}
       style={{
-        background: node.color,
-        boxShadow: node.isCurrent ? `0 0 0 4px ${node.color}26` : undefined,
+        background: rung.color,
+        boxShadow: rung.state === "current" ? `0 0 0 4px ${rung.color}26` : undefined,
       }}
     />
   );

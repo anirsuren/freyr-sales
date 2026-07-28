@@ -18,7 +18,9 @@
   --text-tertiary: #8a8a8e;
 
   --success: #34c759;
-  --warning: #ff9f0a;
+  /* Burnt orange — the old #ff9f0a rendered warning text at 2.1:1 (banned
+     yellow band, Suren Jul 27). Keeps the caution meaning, gains legibility. */
+  --warning: #c2410c;
   --error: #ff3b30;
   --neutral: #8e8e93;
 
@@ -564,7 +566,14 @@ select:focus-visible,
    these carry the whole breakdown a rep reads, they now get real elevation and
    room to breathe (Anir, Jul 25: "i dont like how the popup graph looks"). */
 .chart-tip {
-  white-space: nowrap;
+  /* Was `nowrap`. PortalTip already forced `normal` inline, so this only ever
+     sat here as a trap for the next person who dropped `.chart-tip` on
+     something without that inline override — and an un-wrapped tip is the
+     screen-wide strip Suren banned Jul 27. Prose wraps; the fixed 210/260px
+     card width does the rest. */
+  white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.99);
   color: var(--text-primary, #1d1d1f);

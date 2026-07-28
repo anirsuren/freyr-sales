@@ -10,7 +10,6 @@ import {
   XCircle,
   SearchX,
   ArrowLeft,
-  ArrowRight,
   Sparkles,
   MapPin,
   Target,
@@ -19,6 +18,8 @@ import {
   Award,
   FlaskConical,
   Tag,
+  Briefcase,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
@@ -30,13 +31,12 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { ContactSessions } from "@/components/sessions/ContactSessions";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
-import { ContactAgentCard } from "@/components/agent/ContactAgentCard";
-import { BriefingCard } from "@/components/agent/BriefingCard";
 import { personaFor } from "@/lib/persona";
-import { suggestForContact, buildContactBriefing } from "@/lib/agent";
 import { RecordView } from "@/components/RecordView";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { ContactOutreachPanel } from "@/components/contacts/ContactOutreachPanel";
+import { ContactEngagement } from "@/components/contacts/ContactEngagement";
+import { buildDeals } from "@/lib/pipeline";
 import { rankOfferingsForContact } from "@/lib/outreach";
 import { listCustomerTypes, listOfferings } from "@/lib/offerings";
 import { hasElevenLabs } from "@/lib/env";
@@ -50,7 +50,8 @@ export const dynamic = "force-dynamic";
 const SKILL_STYLES: { test: RegExp; bg: string; color: string; icon: LucideIcon }[] = [
   { test: /complian|audit|gxp|gvp|inspection/i, bg: "rgba(225,29,72,0.10)", color: "#BE123C", icon: ShieldCheck },
   { test: /submiss|document|dossier|publish|ectd/i, bg: "rgba(124,58,237,0.10)", color: "#6D28D9", icon: FileText },
-  { test: /quality|qa\b|cmc|manufactur|gmp/i, bg: "rgba(217,119,6,0.12)", color: "#B45309", icon: Award },
+  // was #B45309 on an amber wash — the brown-mustard chip Suren banned Jul 27
+  { test: /quality|qa\b|cmc|manufactur|gmp/i, bg: "rgba(194,65,12,0.12)", color: "#C2410C", icon: Award },
   { test: /clinical|medical|scientif|pharmacovig|safety|drug/i, bg: "rgba(5,150,105,0.12)", color: "#047857", icon: FlaskConical },
   { test: /label|artwork|packag/i, bg: "rgba(15,157,140,0.12)", color: "#0F766E", icon: Tag },
   { test: /regulat|strategy|affairs|intellig|policy/i, bg: "rgba(0,113,227,0.10)", color: "#0040A0", icon: Target },
@@ -58,6 +59,20 @@ const SKILL_STYLES: { test: RegExp; bg: string; color: string; icon: LucideIcon 
 function skillStyle(skill: string): { bg: string; color: string; icon: LucideIcon } {
   const hit = SKILL_STYLES.find((s) => s.test.test(skill));
   return hit ?? { bg: "rgba(100,116,139,0.12)", color: "#475569", icon: Sparkles };
+}
+
+// A role bucket is a category chip too, so it carries an icon alongside its
+// colour. Same keyword buckets the deal page reads a role by, so the same
+// person wears the same glyph wherever they appear.
+const ROLE_ICONS: { test: RegExp; icon: LucideIcon }[] = [
+  { test: /exec|chief|officer|president|founder|coo|ceo|cmo|vp|head/i, icon: Briefcase },
+  { test: /complian|audit|legal/i, icon: ShieldCheck },
+  { test: /quality|qa\b|cmc|manufactur/i, icon: Award },
+  { test: /clinical|medical|scientif|safety|pharmacovig/i, icon: FlaskConical },
+  { test: /regulat|affairs|strategy|submiss|intellig/i, icon: Target },
+];
+function roleIcon(role: string): LucideIcon {
+  return ROLE_ICONS.find((r) => r.test.test(role))?.icon ?? UserRound;
 }
 
 // Human "3 days ago" / "in 5 days" for the where-things-stand timeline.
@@ -115,6 +130,14 @@ export default async function ContactDetailPage({
   const persona = personaFor(contact.role_bucket);
   const lastContacted = interactions[0]?.created_at || null;
   const nextStep = interactions.find((i) => i.follow_up_date)?.follow_up_date || null;
+  const firstName = contact.full_name
+    .replace(/^(Dr|Mr|Ms|Mrs)\.?\s+/i, "")
+    .split(/\s+/)[0];
+  // The deals this person sits on — the same pipeline derivation every other
+  // page uses, scoped to the sessions/interactions already loaded above.
+  const contactDeals = customer
+    ? buildDeals(sessions, [customer], [contact], interactions)
+    : [];
 
   // Contact⇄offering link (Suren, Jul 3): the contact inherits the customer's
   // applicable offerings; their role keywords rank which fit THIS person best.
@@ -138,27 +161,6 @@ export default async function ContactDetailPage({
       materials: offering.materials.length,
     })
   );
-
-  // Pre-call contact briefing (#74) — the agent's read on this individual.
-  const contactSuggestion = suggestForContact({
-    fullName: contact.full_name,
-    company: customer?.company_name || "this account",
-    hasFollowUp: !!nextStep,
-    everContacted: interactions.length > 0,
-    siblingCount: siblings.length,
-  });
-  const contactBriefing = buildContactBriefing({
-    fullName: contact.full_name,
-    jobTitle: contact.job_title,
-    company: customer?.company_name || "this account",
-    buyingStyle: persona.label,
-    engageTip: persona.engage[0],
-    lastContacted: lastContacted ? formatDateTime(lastContacted) : null,
-    nextStep: nextStep ? formatDate(nextStep) : null,
-    siblingCount: siblings.length,
-    everContacted: interactions.length > 0,
-    recommendation: contactSuggestion.title,
-  });
 
   return (
     <div>
@@ -185,52 +187,56 @@ export default async function ContactDetailPage({
                   label={contact.role_bucket}
                   bg="rgba(0,113,227,0.10)"
                   color="#0040A0"
+                  icon={roleIcon(contact.role_bucket)}
                   className="!normal-case tracking-normal"
                 />
               )}
               {customer && (
+                // Reads as plain text at rest — the hover shift to blue +
+                // underline IS the "you can click this" cue (Suren, Jul 27:
+                // "I don't need the fucking arrow, and I don't need it to be
+                // a blue thing").
                 <Link
                   href={`/customers/${customer.id}`}
-                  className="group inline-flex items-center gap-1.5 text-[13px] text-blue-primary hover:underline"
+                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-primary hover:text-blue-primary hover:underline transition-colors"
                 >
                   <CompanyLogo name={customer.company_name} className="w-4 h-4 text-[7px] shrink-0" />
                   {customer.company_name}
-                  <ArrowRight size={13} strokeWidth={1.8} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               )}
             </div>
           </div>
         </div>
-        {/* Quick actions */}
-        <div className="flex gap-2 shrink-0">
-          <a
-            href={contact.email ? `mailto:${contact.email}` : "#"}
-            aria-disabled={!contact.email}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors"
-          >
-            <Mail size={16} strokeWidth={1.5} /> Email
-          </a>
-          <a
-            href={contact.phone ? `tel:${contact.phone}` : "#"}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors"
-          >
-            <Phone size={16} strokeWidth={1.5} /> Call
-          </a>
+        {/* Quick actions — the ACTUAL number and address, the Team-roster chip
+            idiom (Suren, Jul 27: "just actually put the fucking email address
+            and the call number… you have it correctly on the teams page"). */}
+        <div className="flex flex-wrap justify-end gap-2 shrink-0">
+          {contact.phone && (
+            <a
+              href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`}
+              title={`Call ${contact.phone}`}
+              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors tnum whitespace-nowrap"
+            >
+              <Phone size={13} strokeWidth={2} />
+              {contact.phone}
+            </a>
+          )}
+          {contact.email && (
+            <a
+              href={`mailto:${contact.email}`}
+              title={`Email ${contact.email}`}
+              className="inline-flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors"
+            >
+              <Mail size={13} strokeWidth={2} className="shrink-0" />
+              <span className="truncate max-w-[240px]">{contact.email}</span>
+            </a>
+          )}
         </div>
       </div>
 
-      {/* One-line next move (Anir's audit: identity first, no text wall up
-          top). The FULL pre-call brief stays — it moved below the working
-          area, right where a rep preps before dialing. */}
-      <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-blue-subtle bg-blue-light/40 px-4 py-2.5">
-        <span className="w-6 h-6 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
-          <Sparkles size={14} strokeWidth={1.9} />
-        </span>
-        <p className="text-[13px] text-text-primary min-w-0 truncate">
-          <span className="font-semibold">Next move:</span>{" "}
-          {contactSuggestion.title}
-        </p>
-      </div>
+      {/* The one-line "Next move" strip is gone (Suren, Jul 27: "I don't want
+          no next move" — stripping per-record agent nags app-wide). The
+          suggestion itself still feeds the pre-call brief below. */}
 
       {/* Where things stand — a small timeline: last contacted → today → next
           step (Suren: "I want a whole timeline… where we are right now"). */}
@@ -315,13 +321,23 @@ export default async function ContactDetailPage({
         </div>
       </Card>
 
+      {/* Engagement graphs (Suren, Jul 27: "there are no graphs on the
+          contacts page… it probably needs some sort of graph") — outcome mix +
+          touch cadence + the open deals this person is on, all computed from
+          the interactions/sessions already loaded for this page. */}
+      <ContactEngagement
+        firstName={firstName}
+        interactions={interactions}
+        deals={contactDeals}
+      />
+
       {/* Offerings for this person + on-demand outreach (Suren, Jul 3) — his
           first-level requirement on a contact, so it LEADS the working area;
           the profile/persona reference cards follow below. */}
       <ContactOutreachPanel
         contactId={contact.id}
         customerId={customer?.id || null}
-        firstName={contact.full_name.replace(/^(Dr|Mr|Ms|Mrs)\.?\s+/i, "").split(/\s+/)[0]}
+        firstName={firstName}
         companyName={customer?.company_name || "their account"}
         classified={!!matchedType}
         offerings={rankedOfferings}
@@ -359,9 +375,19 @@ export default async function ContactDetailPage({
                   <li key={i} className="relative">
                     <span className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-blue-primary" />
                     <p className="text-[14px] font-medium text-text-primary">{e.title}</p>
-                    <p className="text-[13px] text-text-secondary">
-                      {e.company}
-                      {e.duration ? ` · ${e.duration}` : ""}
+                    {/* Each employer is a company, so it wears that company's
+                        logo here exactly like it does everywhere else. */}
+                    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-text-secondary">
+                      {e.company && (
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                          <CompanyLogo
+                            name={e.company}
+                            className="w-5 h-5 text-[8px] shrink-0"
+                          />
+                          {e.company}
+                        </span>
+                      )}
+                      {e.duration && <span>· {e.duration}</span>}
                     </p>
                     {e.description && (
                       <p className="text-[13px] text-text-tertiary mt-1 leading-relaxed">
@@ -437,25 +463,24 @@ export default async function ContactDetailPage({
           </Card>
         </div>
 
-        {/* Right: the agent's read — recommendation + how to engage */}
+        {/* Right: how to engage. The per-contact "Agent recommends" card is
+            gone (Anir, Jul 27: agent nags off every record page — the agent
+            keeps its own page and the dock). */}
         <div className="space-y-8">
-          {customer && (
-            <ContactAgentCard
-              customerId={customer.id}
-              fullName={contact.full_name}
-              company={customer.company_name}
-              hasFollowUp={!!nextStep}
-              everContacted={!!lastContacted}
-              siblingCount={siblings.length}
-            />
-          )}
           <Card>
             <h2 className="text-[17px] font-semibold text-text-primary mb-1 flex items-center gap-2">
               <Brain size={18} strokeWidth={1.75} className="text-blue-primary" />
               How to engage
             </h2>
-            <p className="text-[12px] text-text-tertiary mb-3">
-              Inferred buying style: <span className="font-semibold text-text-secondary">{persona.label}</span>
+            {/* The buying style is a category, so it reads as the same
+                colour + icon chip the timeline card uses above — not gray
+                emphasis text. */}
+            <p className="flex flex-wrap items-center gap-1.5 text-[12px] text-text-tertiary mb-3">
+              Inferred buying style:
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-semibold text-blue-primary">
+                <Brain size={13} strokeWidth={1.9} className="shrink-0" />
+                {persona.code} · {persona.label}
+              </span>
             </p>
             <p className="text-[14px] text-text-secondary leading-relaxed mb-4">{persona.blurb}</p>
             <div className="space-y-2 mb-4">
@@ -477,12 +502,6 @@ export default async function ContactDetailPage({
           </Card>
 
         </div>
-      </div>
-
-      {/* Full pre-call brief — everything the agent knows, right before the
-          rep preps the call (moved down from the top; nothing removed). */}
-      <div className="mt-8">
-        <BriefingCard briefing={contactBriefing} label="Pre-call brief" />
       </div>
 
       {/* Pitch sessions */}

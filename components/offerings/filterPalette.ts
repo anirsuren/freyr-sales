@@ -16,13 +16,16 @@
 //      blue-green vs index 7 yellow-green) and differ in lightness too.
 //   3. Every entry must hold contrast on white for a 10px dot and 13px text.
 //   4. LEGIBILITY OUTRANKS ORDERING. These accents are used as chip TEXT on a
-//      pale tint of themselves, and yellow-band hues (amber #F59E0B, lime
-//      #65A30D) simply cannot carry text at that lightness — the amber category
-//      chip was effectively unreadable (Anir, Jul 26: "this yellow color is
-//      really poor. Can't even see the text properly"). Darkening them turns
-//      them brown, which is banned. So both are pushed to the tail of the list:
-//      only six offering categories exist, so slots 0-5 are what actually get
-//      used, and every one of them holds contrast as text.
+//      pale tint of themselves, so every entry must survive that on its own.
+//   5. NO YELLOW BAND AT ALL (Anir, Jul 27). Hiding amber/lime in the tail was
+//      not enough: offering TYPES read this list at an offset of +3, so slot 8
+//      was the live colour of the "Freyr Service" chip and it shipped as
+//      mustard-on-cream. Suren: "Change this color. This color sucks. That
+//      yellow, never use that yellow." Hues 35°-95° (#F59E0B, #EAB308,
+//      #CA8A04, #D97706, #65A30D, #F5A623) are now banned everywhere as text
+//      or chip accent, and darkening them into brown is banned too — so the
+//      tail was rehued instead of reordered. Slots 8 and 9 are the ONLY two
+//      that changed; 0-7 keep the colours the six categories already wear.
 export const FILTER_PALETTE = [
   "#2563EB", // blue        · 220°
   "#E11D48", // rose        · 348°
@@ -32,8 +35,16 @@ export const FILTER_PALETTE = [
   "#0891B2", // cyan        · 192°
   "#C026D3", // fuchsia     · 292°
   "#4F46E5", // indigo      · 244°
-  "#F59E0B", // amber       ·  38°  (tail — dot/fill use only, weak as text)
-  "#65A30D", // lime        ·  82°  (tail — same reason)
+  "#166534", // forest      · 145°  (was amber; 7.1:1 on white, 47° clear of
+  //                                 every hue within three slots — with yellow
+  //                                 gone, 95°-192° is the only clean window
+  //                                 left. Second green is allowed by rule 2:
+  //                                 emerald sits six slots away and is far
+  //                                 lighter, so they never read as one colour.)
+  "#9E1A72", // magenta     · 320°  (was lime; 7.4:1 on white, and the widest
+  //                                 remaining gap — 28° from both fuchsia and
+  //                                 rose, and much darker than either, so the
+  //                                 three never collapse into one pink.)
 ];
 
 export const listAccent = (i: number) =>

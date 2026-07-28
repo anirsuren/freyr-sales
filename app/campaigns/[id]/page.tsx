@@ -5,18 +5,21 @@ import {
   Send,
   Clock,
   PhoneCall,
-  Package,
+  FileEdit,
   Check,
   X,
   SearchX,
   BarChart3,
   Building2,
   ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EngagementChart } from "@/components/campaigns/EngagementChart";
 import { ChartInspector } from "@/components/charts/ChartInspector";
@@ -28,6 +31,24 @@ import { formatDateTime, cn } from "@/lib/utils";
 
 export const metadata = { title: "Campaign" };
 export const dynamic = "force-dynamic";
+
+// A campaign's send status is a category, so every pill carries an icon as well
+// as its colour — never colour alone (standing chip rule).
+const STATUS_PILL: Record<
+  string,
+  { label: string; icon: LucideIcon; className: string }
+> = {
+  sent: { label: "Sent", icon: Send, className: "text-success bg-success/10" },
+  queued: { label: "Queued", icon: Clock, className: "text-warning bg-warning/10" },
+  draft: {
+    label: "Draft",
+    icon: FileEdit,
+    className: "text-text-secondary bg-surface border border-border-light",
+  },
+};
+function statusPill(status: string) {
+  return STATUS_PILL[status] ?? STATUS_PILL.draft;
+}
 
 // One campaign, one page (Anir's audit: "click View more and it takes me to a
 // page with only that campaign — graphs, beautiful visuals"). Every number and
@@ -87,6 +108,10 @@ export default async function CampaignDetailPage({
   const sent = Math.min(campaign.sent_count, total);
   const queued = campaign.status === "queued" ? total - sent : 0;
   const offering = campaign.offering_id ? getOffering(campaign.offering_id) : null;
+  // One status chip definition (colour + icon) drives the header pill and every
+  // recipient row below.
+  const headerPill = statusPill(campaign.status);
+  const HeaderPillIcon = headerPill.icon;
   const openRate = sent ? Math.round((campaign.opens / sent) * 100) : 0;
   const replyRate = sent ? Math.round((campaign.replies / sent) * 100) : 0;
   const engagementBars = [
@@ -238,28 +263,24 @@ export default async function CampaignDetailPage({
           </h1>
           <span
             className={cn(
-              "text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
-              campaign.status === "sent"
-                ? "text-success bg-success/10"
-                : campaign.status === "queued"
-                ? "text-warning bg-warning/10"
-                : "text-text-secondary bg-surface border border-border-light"
+              "inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.04em] rounded-full px-2.5 py-0.5",
+              headerPill.className
             )}
           >
-            {campaign.status === "sent"
-              ? "Sent"
-              : campaign.status === "queued"
-              ? "Queued"
-              : "Draft"}
+            <HeaderPillIcon size={11} strokeWidth={2.4} className="shrink-0" />
+            {headerPill.label}
           </span>
         </div>
         <p className="flex flex-wrap items-center gap-3 text-[13px] text-text-secondary mt-1.5">
           {offering && (
             <Link
               href={`/offerings/${offering.id}`}
-              className="inline-flex items-center gap-1 text-blue-primary hover:underline"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap text-blue-primary hover:underline"
             >
-              <Package size={13} strokeWidth={1.8} />
+              <OfferingIcon
+                name={offering.offering_name}
+                className="w-[18px] h-[18px] shrink-0"
+              />
               {offering.offering_name}
             </Link>
           )}
@@ -378,10 +399,16 @@ export default async function CampaignDetailPage({
                       className="w-2.5 h-2.5 rounded-sm shrink-0"
                       style={{ background: VIZ_SERIES[i % VIZ_SERIES.length] }}
                     />
-                    <span className="text-text-secondary truncate max-w-[150px]">
-                      {company}
+                    {/* The slice IS a company — it carries the account's logo,
+                        not just a colour square. */}
+                    <CompanyLogo
+                      name={company}
+                      className="w-5 h-5 text-[8px] shrink-0"
+                    />
+                    <span className="text-text-secondary">{company}</span>
+                    <span className="text-text-primary font-medium tnum ml-auto pl-2">
+                      {n}
                     </span>
-                    <span className="text-text-primary font-medium tnum ml-auto">{n}</span>
                   </span>
                 ))}
               </div>
@@ -441,15 +468,24 @@ export default async function CampaignDetailPage({
                     <div className="min-w-0">
                       <Link
                         href={`/contacts/${p.id}`}
-                        className="text-[13.5px] font-medium text-text-primary hover:text-blue-primary truncate block"
+                        className="block whitespace-nowrap text-[13.5px] font-medium text-text-primary hover:text-blue-primary"
                       >
                         {p.name}
                       </Link>
-                      <p className="text-[11.5px] text-text-tertiary truncate">
-                        <Link href={`/customers/${p.customerId}`} className="hover:text-blue-primary">
+                      <p className="flex flex-wrap items-center gap-x-1 text-[11.5px] text-text-tertiary">
+                        {/* The company is its own entity on this line — it gets
+                            the account's logo, not bare text. */}
+                        <Link
+                          href={`/customers/${p.customerId}`}
+                          className="inline-flex items-center gap-1.5 whitespace-nowrap hover:text-blue-primary"
+                        >
+                          <CompanyLogo
+                            name={p.company}
+                            className="w-4 h-4 text-[7px] shrink-0"
+                          />
                           {p.company}
-                        </Link>{" "}
-                        · {p.email}
+                        </Link>
+                        <span>· {p.email}</span>
                       </p>
                     </div>
                   </div>
@@ -462,19 +498,12 @@ export default async function CampaignDetailPage({
                     )}
                     <span
                       className={cn(
-                        "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
-                        campaign.status === "sent"
-                          ? "text-success bg-success/10"
-                          : campaign.status === "queued"
-                          ? "text-warning bg-warning/10"
-                          : "text-text-secondary bg-surface border border-border-light"
+                        "inline-flex items-center gap-1 whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
+                        headerPill.className
                       )}
                     >
-                      {campaign.status === "sent"
-                        ? "Sent"
-                        : campaign.status === "queued"
-                        ? "Queued"
-                        : "Draft"}
+                      <HeaderPillIcon size={10} strokeWidth={2.4} className="shrink-0" />
+                      {headerPill.label}
                     </span>
                   </div>
                 </li>
@@ -507,20 +536,27 @@ export default async function CampaignDetailPage({
               const called = q.status === "called";
               const row = (
                 <>
-                  <span className="flex items-center gap-2.5 min-w-0">
-                    <Avatar name={q.contact_name} className="w-7 h-7 text-[10px] shrink-0" />
-                    <span className="min-w-0 truncate">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                    <span className="inline-flex items-center gap-2.5 whitespace-nowrap">
+                      <Avatar name={q.contact_name} className="w-7 h-7 text-[10px] shrink-0" />
                       <span className="font-medium text-text-primary">{q.contact_name}</span>
-                      <span className="text-text-tertiary"> · {q.offering_name}</span>
                     </span>
+                    {/* The service they were called about wears its own mark and
+                        colour instead of trailing gray text. */}
+                    <ServiceTag name={q.offering_name} className="text-[11.5px]" />
                   </span>
                   <span className="flex items-center gap-3 shrink-0">
                     <span
                       className={cn(
-                        "text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
+                        "inline-flex items-center gap-1 whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.04em] rounded-full px-2 py-0.5",
                         called ? "text-success bg-success/10" : "text-warning bg-warning/10"
                       )}
                     >
+                      {called ? (
+                        <PhoneCall size={10} strokeWidth={2.4} className="shrink-0" />
+                      ) : (
+                        <Clock size={10} strokeWidth={2.4} className="shrink-0" />
+                      )}
                       {called ? "Called" : "Waiting for number"}
                     </span>
                     <span className="text-[11.5px] text-text-tertiary tnum">

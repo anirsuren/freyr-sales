@@ -11,7 +11,6 @@ import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { OutcomeBadge } from "@/components/ui/Badge";
-import { nextBestActions, focusActions } from "@/lib/agent";
 import { DashboardToggle } from "@/components/dashboard/DashboardToggle";
 import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import {
@@ -38,7 +37,6 @@ import { DashboardKpis } from "@/components/dashboard/DashboardKpis";
 import { KpiCustomize } from "@/components/dashboard/KpiCustomize";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { WeeklyDigest } from "@/components/dashboard/WeeklyDigest";
-import { AgentAttentionQueue } from "@/components/dashboard/AgentAttentionQueue";
 import { AccountAttentionPreview } from "@/components/dashboard/AccountAttentionPreview";
 import { DashboardMoreActions } from "@/components/dashboard/DashboardMoreActions";
 import { HoverCard } from "@/components/ui/HoverCard";
@@ -106,22 +104,6 @@ export default async function DashboardPage({
   const priorInteractions = days
     ? allInteractionsRaw.filter((i) => inPrior(i.created_at))
     : [];
-
-  // Agent surface on the dashboard (V9) — lead with the agent's top moves so
-  // the rep sees recommended next-best-actions the moment they land, not buried
-  // behind a separate page. Uses the full book (not the date filter).
-  const agentActions = focusActions(
-    nextBestActions({
-      sessions: allSessions,
-      customers,
-      contacts,
-      interactions: allInteractionsRaw,
-    }),
-    customers,
-    agentPrefs,
-    currentUser.name,
-    scope.userId
-  ).actions.slice(0, 4);
 
   const customerById = Object.fromEntries(customers.map((c) => [c.id, c]));
   const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
@@ -499,21 +481,6 @@ export default async function DashboardPage({
     },
   ];
 
-  const attentionRows = agentActions.slice(0, 3).map((action) => {
-    const accountDeals = healthDeals.filter(
-      (deal) => deal.customerId === action.customerId && deal.stage !== "Closed Lost"
-    );
-    const value = accountDeals.reduce((sum, deal) => sum + deal.value, 0);
-    const staleDays = Math.max(0, ...accountDeals.map((deal) => deal.staleDays));
-    const overdue = action.kind === "reengage" || action.kind === "stabilize" || staleDays > 14;
-    return {
-      ...action,
-      value: formatMoney(value),
-      due: overdue ? "Overdue" : action.kind === "send" ? "Ready" : "Today",
-      overdue,
-    };
-  });
-
   const mustCloseDeals = healthDeals
     .filter((deal) => deal.stage !== "Closed Lost")
     .sort((a, b) => {
@@ -565,7 +532,9 @@ export default async function DashboardPage({
       <DashboardKpis kpis={kpis} comparable={!!days} />
       <GettingStarted established={allSessions.length > 0} />
 
-      {attentionRows.length > 0 && <AgentAttentionQueue actions={attentionRows} />}
+      {/* No agent attention queue on the dashboard any more (Anir, Jul 27:
+          "remove the agent notifications about each deal… I don't want no
+          next move") — the agent lives on its own page and in the dock. */}
 
       <section className="space-y-4">
         <Card className="overflow-visible p-0">

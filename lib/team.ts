@@ -34,6 +34,19 @@ export function repPhone(name: string): string {
   return `+1 (${area}) ${mid}-${String(last).padStart(4, "0")}`;
 }
 
+// Demo LinkedIn profile per SYNTHETIC rep — same generated-identity spirit as
+// repEmail/repPhone (slug straight from the name, deterministic across
+// renders). The REAL signed-in member never gets one of these: their row shows
+// the LinkedIn URL they pasted in Settings › Profile, or no chip at all.
+export function repLinkedIn(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z ]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+  return `https://www.linkedin.com/in/${slug}`;
+}
+
 // Deep-link straight into a Microsoft Teams chat with this teammate.
 export function teamsChatUrl(name: string, verifiedEmail?: string | null): string {
   return `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(

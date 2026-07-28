@@ -7,8 +7,9 @@ import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { OutcomeBadge } from "@/components/ui/Badge";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { cn } from "@/lib/utils";
+import { cn, OUTCOME_META } from "@/lib/utils";
 
 export type ChartRecord = {
   id: string;
@@ -18,6 +19,11 @@ export type ChartRecord = {
   href?: string;
   avatar?: string;
   logo?: string;
+  /** OUTCOME_META key ("interested", "follow_up", …) — a STRING, not a
+   *  component, so server components can pass it. Renders the app's colour +
+   *  icon outcome pill instead of the outcome as plain text (Suren: "the
+   *  outcome should be color-coded properly"). */
+  outcome?: string;
 };
 
 export function ChartInspector({
@@ -28,6 +34,7 @@ export function ChartInspector({
   records = [],
   searchPlaceholder = "Search records...",
   showSearch = true,
+  inlineSearch = true,
   className,
   bodyClassName,
 }: {
@@ -38,6 +45,11 @@ export function ChartInspector({
   records?: ChartRecord[];
   searchPlaceholder?: string;
   showSearch?: boolean;
+  /** Drop the search box from the CARD while keeping it in the expanded
+   *  modal (Suren, Jul 27: "you can remove the search bar — it's already there
+   *  when I open the extended version… I do not need a search bar on this pie
+   *  chart"). The card then always charts the FULL record set. */
+  inlineSearch?: boolean;
   className?: string;
   bodyClassName?: string;
 }) {
@@ -47,7 +59,9 @@ export function ChartInspector({
     const needle = query.trim().toLowerCase();
     if (!needle) return records;
     return records.filter((record) =>
-      `${record.label} ${record.meta || ""} ${record.value || ""}`
+      `${record.label} ${record.meta || ""} ${record.value || ""} ${
+        record.outcome ? OUTCOME_META[record.outcome]?.label || record.outcome : ""
+      }`
         .toLowerCase()
         .includes(needle)
     );
@@ -71,6 +85,7 @@ export function ChartInspector({
             <span className="block truncate text-[10.5px] text-text-tertiary">{record.meta}</span>
           )}
         </span>
+        {record.outcome && <OutcomeBadge outcome={record.outcome} />}
         {record.value && (
           <span className="shrink-0 text-[11.5px] font-semibold text-text-secondary tnum">
             {record.value}
@@ -113,7 +128,7 @@ export function ChartInspector({
             </Tooltip>
           </div>
         </div>
-        {showSearch && records.length > 0 && (
+        {showSearch && inlineSearch && records.length > 0 && (
           <div className="relative mt-3 mb-3 w-full">
             <Search size={13} strokeWidth={1.8} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
             <input
@@ -125,8 +140,8 @@ export function ChartInspector({
             />
           </div>
         )}
-        {records.length === 0 && <div className="mb-3" />}
-        {showSearch && query && records.length > 0 && (
+        {(records.length === 0 || !inlineSearch) && <div className="mb-3" />}
+        {showSearch && inlineSearch && query && records.length > 0 && (
           <div className="mb-3 grid grid-cols-2 gap-2 rounded-md bg-surface/70 p-2">
             {matches.slice(0, 4).map((record) => recordRow(record, true))}
             {matches.length === 0 && (

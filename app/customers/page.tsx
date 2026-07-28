@@ -35,9 +35,14 @@ export default async function CustomersPage() {
             label: stage as string,
             value: ds.reduce((s, d) => s + d.value, 0),
             color: STAGE_COLOR[stage as Stage],
+            // The person carries their own headshot and the offering wears its
+            // ServiceTag — this row used to put the contact in `sub` (flat text,
+            // no face) and the offering in `name` (flat text, no glyph), which is
+            // exactly what TipItem tells call sites not to do.
             tip: ds.map<TipItem>((d) => ({
-              name: d.service,
-              sub: d.contactName,
+              avatar: d.contactName,
+              name: d.contactName,
+              service: d.service,
               value: formatMoney(d.value),
             })),
           };

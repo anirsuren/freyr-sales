@@ -7,6 +7,8 @@ import {
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AgentActions } from "@/components/agent/AgentActions";
 import { AutopilotPanel } from "@/components/agent/AutopilotPanel";
@@ -121,8 +123,16 @@ export default async function AgentInboxPage() {
                     <RotateCcw size={17} strokeWidth={1.8} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-semibold text-text-primary truncate">
-                      Rework the pitch for {r.company}
+                    {/* The account is this row's subject, so it wears its logo;
+                        the RotateCcw tile stays as the ACTION glyph. Wraps
+                        instead of truncating — a clipped account name is the one
+                        thing a rep can't act on. */}
+                    <p className="text-[14px] font-semibold text-text-primary">
+                      Rework the pitch for{" "}
+                      <span className="inline-flex items-center gap-1.5 align-middle whitespace-nowrap">
+                        <CompanyLogo name={r.company} className="w-5 h-5 text-[9px]" />
+                        {r.company}
+                      </span>
                     </p>
                     {r.note && (
                       <p className="text-[12px] text-text-secondary mt-0.5">
@@ -134,7 +144,11 @@ export default async function AgentInboxPage() {
                     )}
                     {r.reviewer && (
                       <p className="text-[11px] text-text-tertiary mt-0.5">
-                        Sent back by {r.reviewer}
+                        Sent back by{" "}
+                        <span className="inline-flex items-center gap-1 align-middle whitespace-nowrap">
+                          <Avatar name={r.reviewer} className="w-4 h-4 text-[7px]" />
+                          {r.reviewer}
+                        </span>
                       </p>
                     )}
                   </div>

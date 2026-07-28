@@ -3,9 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SearchX, Search, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3 } from "lucide-react";
+import { SearchX, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3 } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import {
+  SearchPriority,
+  PrioritySearchInput,
+  PriorityLabel,
+  PriorityTooltip,
+} from "@/components/ui/SearchPriority";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -53,7 +59,7 @@ const COL_HINTS: Record<string, string> = {
 const SIGNAL: Record<string, { label: string; bars: number; color: string }> = {
   large: { label: "High", bars: 3, color: "#34C759" }, // green
   mid: { label: "Medium", bars: 2, color: "#0071E3" }, // blue
-  small: { label: "Low", bars: 1, color: "#FF9F0A" }, // amber
+  small: { label: "Low", bars: 1, color: "#C2410C" }, // burnt orange — tracks the warning token
 };
 
 // Color-code industries so the table scans at a glance (Suren).
@@ -373,19 +379,21 @@ export function CustomersBrowser({
             Every company in your pipeline.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        {/* Search priority — press the search and the filters to its right
+            compress to their colour + glyph (Suren, Jul 27). */}
+        <SearchPriority
+          query={query}
+          className="flex items-center gap-2 flex-wrap shrink-0"
+        >
           {/* Compact search sits inline with the filters — no dedicated row
               hogging space (Suren: the top-bar search already covers global
               search; this just filters the grid). */}
-          <div className="relative w-[190px]">
-            <Search size={15} strokeWidth={1.6} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
-            <input
-              placeholder="Search customers…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
-            />
-          </div>
+          <PrioritySearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Search customers…"
+            ariaLabel="Search customers"
+          />
           <ColorSelect
             value={healthFilter}
             onChange={setHealthFilter}
@@ -393,7 +401,10 @@ export function CustomersBrowser({
             options={[
               { value: "all", label: "All health", color: "#0071E3" },
               { value: "healthy", label: "Healthy", color: HEALTH_COLOR.healthy.color },
-              { value: "watch", label: "Watch", color: "#EAB308" },
+              // Pulled from HEALTH_COLOR like its neighbours instead of a
+              // hardcoded yellow — the option label is rendered AS this colour,
+              // and #EAB308 was both illegible and out of sync with the badge.
+              { value: "watch", label: "Watch", color: HEALTH_COLOR.watch.color },
               { value: "at_risk", label: "At risk", color: HEALTH_COLOR.at_risk.color },
             ]}
           />
@@ -404,7 +415,9 @@ export function CustomersBrowser({
             options={[
               // Icons alone rendered as a gray list — every option needs its
               // colour (standing rule: chips and dropdowns are never gray).
-              { value: "recent", label: "Newest", icon: CalendarClock, color: "#F59E0B" },
+              // Dark teal, not amber: this label is drawn in its own colour, and
+              // it must not echo the caution orange in the health filter beside it.
+              { value: "recent", label: "Newest", icon: CalendarClock, color: "#0F766E" },
               { value: "company", label: "Company A–Z", icon: ArrowDownAZ, color: "#0071E3" },
               { value: "size", label: "Opportunity", icon: Target, color: "#7C3AED" },
               { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },
@@ -418,8 +431,13 @@ export function CustomersBrowser({
               value: String(n),
               label: `${n} / page`,
               icon: Rows3,
+              // Rows3 alone would collapse every page size to one identical
+              // glyph, so the compressed square shows the number itself.
+              short: String(n),
+              color: "#0071E3",
             }))}
           />
+          {/* Already icon-only — nothing to shed, so it just holds its ground. */}
           <div className="flex border border-border rounded-md overflow-hidden">
             <button
               onClick={() => setView("grid")}
@@ -438,31 +456,37 @@ export function CustomersBrowser({
               <Table2 size={16} strokeWidth={1.5} />
             </button>
           </div>
-          <button
-            onClick={() => {
-              const next = !selectMode;
-              setSelectMode(next);
-              setSelected(new Set());
-              if (next) setView("table");
-            }}
-            className={cn(
-              "inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border transition-colors",
-              selectMode
-                ? "border-blue-primary bg-blue-light text-blue-primary"
-                : "border-border text-text-secondary hover:bg-surface"
-            )}
-          >
-            <CheckSquare size={15} strokeWidth={1.8} />
-            {selectMode ? "Done" : "Select"}
-          </button>
-          <button
-            onClick={exportCsv}
-            className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-          >
-            <Download size={16} strokeWidth={1.5} />
-            CSV
-          </button>
-        </div>
+          <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
+            <button
+              onClick={() => {
+                const next = !selectMode;
+                setSelectMode(next);
+                setSelected(new Set());
+                if (next) setView("table");
+              }}
+              aria-label={selectMode ? "Done" : "Select"}
+              className={cn(
+                "inline-flex items-center text-[13px] font-medium px-3 py-2 rounded-md border transition-colors",
+                selectMode
+                  ? "border-blue-primary bg-blue-light text-blue-primary"
+                  : "border-border text-text-secondary hover:bg-surface"
+              )}
+            >
+              <CheckSquare size={15} strokeWidth={1.8} />
+              <PriorityLabel gap="ml-1.5">{selectMode ? "Done" : "Select"}</PriorityLabel>
+            </button>
+          </PriorityTooltip>
+          <PriorityTooltip label="Export CSV">
+            <button
+              onClick={exportCsv}
+              aria-label="Export CSV"
+              className="flex items-center text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+            >
+              <Download size={16} strokeWidth={1.5} />
+              <PriorityLabel>CSV</PriorityLabel>
+            </button>
+          </PriorityTooltip>
+        </SearchPriority>
       </div>
       {/* Bulk action bar */}
       {selectMode && selected.size > 0 && (

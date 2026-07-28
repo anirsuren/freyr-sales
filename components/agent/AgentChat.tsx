@@ -684,7 +684,8 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
                       onClick={() => send("What's waiting for my approval?")}
                       className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      {/* orange, not amber-500 — banned yellow as a status dot */}
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-600" />
                       {summary.needsApproval} waiting for your approval
                     </button>
                   )}

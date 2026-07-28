@@ -6,6 +6,7 @@ import {
   Timer,
   CircleSlash,
   CalendarCheck,
+  CalendarClock,
   PhoneCall,
   PhoneMissed,
 } from "lucide-react";
@@ -104,15 +105,25 @@ export const OUTCOME_META: Record<
     icon: ThumbsDown,
   },
   in_progress: {
+    // In Progress IS yellow — "it only makes sense" (Anir, Jul 27). What he
+    // struck out was never yellow itself: it was the MUSTARD band
+    // (#F59E0B/#EAB308/#CA8A04/#D97706) and, worse, the #705600 brown text sat
+    // on top of it. Yellow cannot be a text colour on a light chip, which is
+    // exactly how that brown got there — so the yellow moves to the FILL and
+    // the text goes near-black. Reads unmistakably yellow, ~13:1 contrast, and
+    // no brown anywhere near it.
     label: "In Progress",
-    bg: "rgba(255,204,0,0.28)",
-    color: "#705600",
+    bg: "rgba(255,204,0,0.38)",
+    color: "#1D1D1F",
     icon: Timer,
   },
   no_response: {
+    // Was #4A4A4A on a gray wash — gray-on-gray, which is banned for anything
+    // categorical. Violet matches the soft violet this outcome already wears as
+    // a chart fill, so the chip and the segment finally agree.
     label: "No Response",
-    bg: "rgba(142,142,147,0.12)",
-    color: "#4A4A4A",
+    bg: "rgba(124,58,237,0.12)",
+    color: "#6D28D9",
     icon: CircleSlash,
   },
   meeting_booked: {
@@ -133,17 +144,44 @@ export const OUTCOME_META: Record<
     color: "#B02020",
     icon: PhoneMissed,
   },
+  // How a VOICE call ended (lib/voice VoiceOutcome). These lived only as local
+  // maps inside the voice pages, so <OutcomeBadge> painted "Follow-up" /
+  // "No answer" / "Declined" the same fallback gray with no icon — Suren, Jul
+  // 27: "the outcome should be color-coded properly". Same labels the voice
+  // tables already use, so the two never disagree.
+  follow_up: {
+    label: "Follow-up",
+    bg: "rgba(0,113,227,0.12)",
+    color: "#0040A0",
+    icon: CalendarClock,
+  },
+  no_answer: {
+    // Burnt orange — the app-wide caution token (--warning). NEVER the banned
+    // yellow band (#F59E0B / #EAB308 / #CA8A04 / #D97706).
+    label: "No answer",
+    bg: "rgba(194,65,12,0.12)",
+    color: "#C2410C",
+    icon: PhoneMissed,
+  },
+  declined: {
+    label: "Declined",
+    bg: "rgba(255,59,48,0.12)",
+    color: "#B02020",
+    icon: ThumbsDown,
+  },
 };
 
 // Bright, saturated fills for OUTCOME donut/pie segments. OUTCOME_META.color is
 // deliberately DARK (it's badge *text* on a light chip, needs contrast) — reusing
 // it as a chart fill looked dim + muddy (Suren: "why is that pie chart so dim…
-// don't use that brown for In Progress, use yellow, and a lighter version of every
-// colour"). Chart fills get their own vivid palette.
+// don't use that brown for In Progress"). Chart fills get their own vivid
+// palette. "That yellow, never use that yellow" was about the MUSTARD band and
+// the brown text on it — not about yellow as a hue, so In Progress keeps a
+// bright, clean yellow fill here.
 export const OUTCOME_CHART_COLOR: Record<string, string> = {
   interested: "#34C759", // bright green
   meeting_booked: "#0A84FF", // bright blue
-  in_progress: "#FFCC00", // yellow (was an ugly brown)
+  in_progress: "#FFCC00", // bright yellow — the mustard band stays banned
   not_interested: "#FF453A", // bright red
   no_response: "#AF9BF5", // soft violet (never gray)
   ai_call_completed: "#0A84FF",

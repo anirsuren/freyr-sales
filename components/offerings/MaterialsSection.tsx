@@ -11,6 +11,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { Avatar } from "@/components/ui/Avatar";
+import { timeAgo } from "@/lib/utils";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -240,6 +242,27 @@ export function MaterialsSection({
                           />
                         )}
                       </span>
+                      {/* Who put this here (Suren: "I should say who added it,
+                          with pfp"). Rendered ONLY for materials a real person
+                          uploaded through the app — the seeded catalog assets
+                          carry no uploader and must not be credited to anyone,
+                          so their rows simply have no attribution line. */}
+                      {material.addedBy && (
+                        <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                          <Avatar
+                            name={material.addedBy}
+                            className="h-5 w-5 text-[8px]"
+                          />
+                          <span className="truncate">
+                            Added by {material.addedBy}
+                          </span>
+                          {material.addedAt && (
+                            <span className="shrink-0 tnum">
+                              · {timeAgo(material.addedAt)}
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </span>
                     <span className="hidden shrink-0 text-[11px] font-medium text-text-tertiary lg:block">
                       Open asset

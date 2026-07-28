@@ -49,10 +49,12 @@ const ACTION_META: Record<
     bg: "#E9F8F2",
   },
   reengage: {
+    // "Deal cooling" is drawn as uppercase label text in this colour — amber
+    // was the banned yellow. Burnt orange keeps the warm warning read.
     label: "Deal cooling",
     icon: Flame,
-    color: "#F59E0B",
-    bg: "#FFF4E5",
+    color: "#C2410C",
+    bg: "#FEF0E7",
   },
   stabilize: {
     label: "Account health",
@@ -126,8 +128,10 @@ export function AgentAttentionQueue({ actions }: { actions: AttentionRow[] }) {
           const canAct = action.kind === "approve" || DRAFTABLE.includes(action.kind);
           const preview = ACTION_META[action.kind];
           const PreviewIcon = preview.icon;
-          const priorityColor = index === 0 ? "#B42318" : index === 1 ? "#F59E0B" : "#0057B8";
-          const priorityBg = index === 0 ? "#FEF3F2" : index === 1 ? "#FFF4E5" : "#EAF4FF";
+          // Mid priority is burnt orange, not amber: this pair is text-on-tint,
+          // and it still sits clearly between the red #1 and the blue #3.
+          const priorityColor = index === 0 ? "#B42318" : index === 1 ? "#C2410C" : "#0057B8";
+          const priorityBg = index === 0 ? "#FEF3F2" : index === 1 ? "#FEF0E7" : "#EAF4FF";
           return (
             <HoverCard
               key={action.id}

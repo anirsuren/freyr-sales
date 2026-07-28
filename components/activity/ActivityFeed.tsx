@@ -460,7 +460,6 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
             {outcomes.map((key) => {
               const selected = outcome === key;
               const accent = outcomeAccent(key);
-              const inProgress = key === "in_progress";
               return (
                 <button
                   key={key}
@@ -469,12 +468,12 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                   aria-pressed={selected}
                   className="inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-semibold transition-[transform,box-shadow] hover:-translate-y-px"
                   style={{
+                    // in_progress used to need its own dark-olive pair here
+                    // (#3E3300 / #765B00) because its accent was mustard and
+                    // white text died on it. The accent is the caution orange
+                    // now, so white reads cleanly and the special case is gone.
                     color: selected
-                      ? inProgress
-                        ? "#3E3300"
-                        : "#FFFFFF"
-                      : inProgress
-                      ? "#765B00"
+                      ? "#FFFFFF"
                       : OUTCOME_META[key]?.color || accent,
                     background: selected ? accent : `${accent}1A`,
                     borderColor: selected ? accent : `${accent}55`,
@@ -611,10 +610,12 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                         <div>
                           <span
                             className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.04em]"
-                            style={{
-                              color: inProgress ? "#705600" : meta?.color,
-                              background: inProgress ? "#FFF0A8" : meta?.bg,
-                            }}
+                            // No special-case for in_progress any more: it used
+                            // to be hand-painted #705600 brown on #FFF0A8
+                            // yellow here, overriding the shared map. That map
+                            // now carries the caution token, so the chip just
+                            // reads it like every other outcome does.
+                            style={{ color: meta?.color, background: meta?.bg }}
                           >
                             <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
                             {meta?.label || item.outcome}

@@ -7,8 +7,25 @@ import {
   commitOfferingsChange,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { getCurrentUser } from "@/lib/currentUser";
+import { GENERIC_USER_IDENTITY } from "@/lib/userIdentity";
+import {
+  stampMaterialAttribution,
+  type OfferingMaterial,
+} from "@/lib/offeringMaterials";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * The signed-in member's display name, or null when the session carries no
+ * verified identity. Null means "we don't know who this is" — the caller must
+ * then leave the attribution blank rather than credit a placeholder.
+ */
+async function uploaderName(): Promise<string | null> {
+  const user = await getCurrentUser();
+  if (user.id === GENERIC_USER_IDENTITY.id) return null;
+  return user.name.trim() || null;
+}
 
 const FORBIDDEN = NextResponse.json(
   { error: "View only — admin access required" },
@@ -40,6 +57,16 @@ export async function PATCH(
     Object.keys(body).length === 1 && Array.isArray(body.materials);
   if (!materialsOnly && !(await canManageOfferings())) return FORBIDDEN;
   const { id } = await params;
+  // "Who added this" is stamped here, from the session — never from the body.
+  // Existing rows keep the attribution already on file, so re-saving the list
+  // (which every material edit does) can't re-credit someone else's upload.
+  if (Array.isArray(body.materials)) {
+    body.materials = stampMaterialAttribution(
+      body.materials as OfferingMaterial[],
+      getOffering(id)?.materials ?? [],
+      await uploaderName()
+    );
+  }
   try {
     const offering = await commitOfferingsChange(() => updateOffering(id, body));
     if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });

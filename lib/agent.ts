@@ -361,6 +361,8 @@ export function buildDealBriefing(d: {
     },
   ];
 
+  // The recommendation is DATA for the /agent surfaces — record pages no
+  // longer display it (Anir, Jul 27: "I don't want no next move").
   const recommendation = d.topAction
     ? d.topAction
     : d.rotting
@@ -369,7 +371,7 @@ export function buildDealBriefing(d: {
     ? "Lock in a clear next step with the buyer."
     : "Keep the deal moving toward the next stage.";
 
-  const narrative = `${headline} Recommended next move: ${asClause(recommendation)}.`;
+  const narrative = headline;
 
   return { headline, reads, recommendation, narrative };
 }

@@ -138,20 +138,16 @@ export function AccountAttentionPreview(
         </div>
       )}
 
-      <div className="mt-3 rounded-lg border border-blue-subtle bg-blue-light/45 px-3 py-2.5">
-        <p className="flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.06em] text-blue-primary">
-          <CheckCircle2 size={12} strokeWidth={2.2} />
-          Recommended next move
-        </p>
-        <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
-          {account.recommendedAction}
-        </p>
-        {account.latestNote && (
-          <p className="mt-1.5 line-clamp-2 text-[10px] italic text-text-tertiary">
-            Latest note: “{account.latestNote}”
+      {account.latestNote && (
+        <div className="mt-3 rounded-lg border border-border-light bg-surface px-3 py-2.5">
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+            Latest note
           </p>
-        )}
-      </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
+            {account.latestNote}
+          </p>
+        </div>
+      )}
 
       <div className="mt-3 flex items-center gap-2 border-t border-border-light pt-3">
         <Avatar name={account.primaryContact} className="h-7 w-7 shrink-0 text-[8px]" />

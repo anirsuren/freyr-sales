@@ -10,9 +10,6 @@ import {
   Newspaper,
   FileText,
   CalendarClock,
-  BarChart3,
-  Presentation,
-  ClipboardList,
   ArrowRight,
   Swords,
   Paperclip,
@@ -31,8 +28,6 @@ import {
   type TabOffering,
 } from "@/components/customers/CustomerOfferingsTab";
 import { CustomerAnalyzePanel } from "@/components/customers/CustomerAnalyzePanel";
-import { AskAgentDrawer } from "@/components/customers/AskAgentDrawer";
-import { AccountAgentChat } from "@/components/agent/AccountAgentChat";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
@@ -49,7 +44,7 @@ import {
 } from "@/components/customers/CustomerDealRow";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
-import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR, SIZE_TIER_LABEL } from "@/lib/utils";
+import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import { AreaChart, DonutChart, DonutLegend, LineChart, Sparkline, type TipItem } from "@/components/charts/Charts";
 import {
   buildDeals,
@@ -62,17 +57,14 @@ import {
 } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries, HEALTH_COLOR } from "@/lib/health";
 import { HealthBadge, HealthBar } from "@/components/ui/HealthBadge";
-import { nextBestActions, weeklyOutcomeSummary } from "@/lib/agent";
-import { AgentActions } from "@/components/agent/AgentActions";
-import { AgentRunHistory } from "@/components/agent/AgentRunHistory";
-import { AccountBriefing } from "@/components/agent/AccountBriefing";
 import { TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
-import { GeographyText } from "@/components/ui/GeographyText";
 import { AttributeTag } from "@/components/ui/AttributeTag";
-import { segmentColor } from "@/components/customers/CustomerOfferingsTab";
 
 import { industryMeta } from "@/components/ui/IndustryTag";
-import { flagForGeography } from "@/lib/countryFlags";
+import {
+  countryOnlyGeography,
+  flagForGeography,
+} from "@/lib/countryFlags";
 import type {
   Customer,
   Contact,
@@ -82,7 +74,6 @@ import type {
   AccountNote,
   AccountAttachment,
   AccountDeal,
-  AgentRun,
 } from "@/lib/types";
 
 // "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
@@ -114,45 +105,53 @@ const NOTE_KIND_META: Record<
   note: { label: "Note", icon: FileText, color: "#8E98A8" },
 };
 
-const SERVICE_TAG_COLORS = ["#0071E3", "#0D9488", "#7C3AED", "#E11D48", "#F59E0B"];
+// Last slot renders as chip TEXT on a 6% tint of itself — amber was the banned
+// yellow there (Suren, Jul 27). Burnt orange is the only warm hue in the set,
+// so it still reads distinct from the rose beside it, and it is legible.
+const SERVICE_TAG_COLORS = ["#0071E3", "#0D9488", "#7C3AED", "#E11D48", "#C2410C"];
 
-const DELIVERABLES = [
-  {
-    label: "Account Brief",
-    icon: ClipboardList,
-    ask: "Prepare an account brief for",
-    color: "#0071E3",
-    bg: "rgba(0,113,227,0.07)",
-  },
-  {
-    label: "Market Report",
-    icon: BarChart3,
-    ask: "Draft a market report for",
-    color: "#0F9E8E",
-    bg: "rgba(15,158,142,0.07)",
-  },
-  {
-    label: "ABM Plan",
-    icon: FileText,
-    ask: "Outline an ABM plan for",
-    color: "#7C3AED",
-    bg: "rgba(124,58,237,0.07)",
-  },
-  {
-    label: "Slide Outline",
-    icon: Presentation,
-    ask: "Draft a slide outline for",
-    color: "#F59E0B",
-    bg: "rgba(217,119,6,0.07)",
-  },
-];
+// No DELIVERABLES tiles here any more. "Account Brief / Market Report / ABM
+// Plan / Slide Outline — one click, the agent drafts it right in your chat" was
+// an agent surface sitting on an account page, and the standing rule is that the
+// ONLY agent surfaces in the app are the chat bubble bottom-right and the /agent
+// pages (Anir, Jul 27). The dock still takes any of those asks.
+
+/**
+ * Geography is ONE chip: the flag and the country, nothing else.
+ *
+ * The raw field is free text carrying cities and prose — "United States
+ * (Princeton, NJ) — offices in London, Singapore" is a real value — and this
+ * used to spell all of it out across two lines. Suren, Jul 27: "I don't think
+ * you need to see Cambridge. I don't think we care about cities. We only care
+ * about countries, so just remove cities." `countryOnlyGeography` does the
+ * reducing at the source, so every geography in the app reads the same.
+ */
+function GeographyValue({ value }: { value: string }) {
+  const country = countryOnlyGeography(value);
+  const flag = flagForGeography(country);
+
+  return (
+    <div className="mt-0.5 min-w-0">
+      <span
+        className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-normal break-words"
+        // Inline because the palette is a runtime value, not a Tailwind class.
+        // 1A ≈ 10% alpha — a tint that stays readable in both themes.
+        style={{ color: "#0891B2", background: "#0891B21A" }}
+        title={`Geography: ${country}`}
+      >
+        <span className="sr-only">Geography: </span>
+        {flag && <span aria-hidden="true">{flag}</span>}
+        {country}
+      </span>
+    </div>
+  );
+}
 
 export function CustomerTabs({
   customer,
   contacts,
   sessions,
   interactions,
-  agentRuns = [],
   offeringsCatalog,
   includeDemoTeam,
 }: {
@@ -160,7 +159,6 @@ export function CustomerTabs({
   contacts: Contact[];
   sessions: PitchSession[];
   interactions: Interaction[];
-  agentRuns?: AgentRun[];
   includeDemoTeam: boolean;
   // Customer⇄offering link (Suren, Jul 3): the master-list type options + the
   // offerings applicable to this customer's type + the ones already in use,
@@ -220,7 +218,6 @@ export function CustomerTabs({
   const [attModalOpen, setAttModalOpen] = useState(false);
   const [attUrl, setAttUrl] = useState("");
   const [busy, setBusy] = useState(false);
-  const [askOpen, setAskOpen] = useState(false);
 
   // multiple deals per account (#58)
   const [accountDeals, setAccountDeals] = useState<AccountDeal[]>(
@@ -262,7 +259,6 @@ export function CustomerTabs({
     setAttName("");
     setAttUrl("");
     setBusy(false);
-    setAskOpen(false);
     setShowDeal(false);
     setDealForm({
       name: "",
@@ -399,43 +395,6 @@ export function CustomerTabs({
         .map((i) => touchTip(i, false));
     });
   })();
-  const agentActions = useMemo(
-    () =>
-      nextBestActions({
-        sessions,
-        customers: [customer],
-        contacts,
-        interactions,
-      }),
-    [sessions, customer, contacts, interactions]
-  );
-  const agentContext = useMemo(
-    () => ({
-      company: customer.company_name,
-      healthLabel: health.label,
-      healthScore: health.score,
-      openValue: formatMoney(allDealsValue),
-      dealCount,
-      contactCount: contacts.length,
-      topContact: contacts[0]?.full_name,
-      lastActivity: interactions[0]
-        ? formatDateTime(interactions[0].created_at)
-        : undefined,
-      topAction: agentActions[0]?.title,
-      competitor: customer.competitor,
-      owner: customer.owner || ownerFor(customer),
-    }),
-    [
-      customer,
-      health,
-      allDealsValue,
-      dealCount,
-      contacts,
-      interactions,
-      agentActions,
-    ]
-  );
-
   async function patchCustomer(payload: Record<string, unknown>) {
     try {
       const res = await fetch(`/api/customers/${customer.id}`, {
@@ -633,17 +592,23 @@ export function CustomerTabs({
               <h3 className="text-[15px] font-semibold text-text-primary mb-3">
                 About this account
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <div className="flex items-start gap-2">
-                  <Building2 size={16} className="text-text-tertiary mt-0.5" strokeWidth={1.5} />
-                  <div>
+              {/* Auto-fitting columns, not a fixed three: each field keeps a
+                  220px floor and the row drops to two columns, then one, rather
+                  than squeezing values into each other. Every cell is min-w-0 so
+                  a long value shrinks its own column instead of overflowing into
+                  its neighbour — which is exactly how Geography ended up sitting
+                  on top of Website. */}
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-6 gap-y-4 mb-4">
+                <div className="flex items-start gap-2 min-w-0">
+                  <Building2 size={16} className="text-text-tertiary mt-0.5 shrink-0" strokeWidth={1.5} />
+                  <div className="min-w-0">
                     <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Industry</p>
                     {customer.industry ? (
                       <AttributeTag
                         value={customer.industry}
                         icon={industryMeta(customer.industry).icon}
                         label="Industry"
-                        className="mt-0.5"
+                        className="mt-0.5 max-w-full"
                         color={industryMeta(customer.industry).color}
                       />
                     ) : (
@@ -651,30 +616,28 @@ export function CustomerTabs({
                     )}
                   </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <MapPin size={16} className="text-text-tertiary mt-0.5" strokeWidth={1.5} />
-                  <div>
+                <div className="flex items-start gap-2 min-w-0">
+                  <MapPin size={16} className="text-text-tertiary mt-0.5 shrink-0" strokeWidth={1.5} />
+                  <div className="min-w-0">
                     <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Geography</p>
                     {customer.geography ? (
-                      <AttributeTag
-                        value={customer.geography}
-                        prefix={flagForGeography(customer.geography)}
-                        icon={MapPin}
-                        label="Geography"
-                        className="mt-0.5"
-                        color="#0891B2"
-                      />
+                      <GeographyValue value={customer.geography} />
                     ) : (
                       <p className="text-[14px] text-text-primary">—</p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <Globe size={16} className="text-text-tertiary mt-0.5" strokeWidth={1.5} />
-                  <div>
+                <div className="flex items-start gap-2 min-w-0">
+                  <Globe size={16} className="text-text-tertiary mt-0.5 shrink-0" strokeWidth={1.5} />
+                  <div className="min-w-0">
                     <p className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">Website</p>
                     {customer.website_url ? (
-                      <a href={customer.website_url} target="_blank" rel="noopener noreferrer" className="text-[14px] text-blue-primary hover:underline break-all">
+                      <a
+                        href={customer.website_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block max-w-full text-[14px] text-blue-primary hover:underline whitespace-normal break-words"
+                      >
                         {customer.website_url.replace(/^https?:\/\//, "")}
                       </a>
                     ) : (
@@ -683,33 +646,13 @@ export function CustomerTabs({
                   </div>
                 </div>
               </div>
-              {/* Customer type and size are two different facts and were being
-                  joined into one string elsewhere, so a rep couldn't filter or
-                  scan on either (Anir, Jul 25: "you should have tags for the
-                  customer type and the customer size"). Each is its own tag,
-                  each with its own stable colour. */}
-              {/* No standalone size tag here: the header badge already says
-                  the size, and a second copy in a hash-picked colour read as a
-                  random red pill (Anir: "why the fuck is it there?"). The
-                  classified customer type carries family+size in one tag,
-                  coloured by its family. */}
-              {/* The classified type is shown as its FAMILY only ("Pharmaceutical"),
-                  not the raw "Pharmaceutical - Large". The size half was already
-                  said by the LARGE badge in the header two inches above, so the
-                  full string repeated it (Anir, Jul 26: "why are you saying
-                  'pharmaceutical large'? You already have 'large' next to the
-                  health bar, and then you're saying it again"). One fact, one
-                  home: size = header badge, family = this tag. */}
-              {customer.customer_type && (
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <AttributeTag
-                    value={customer.customer_type.split(/\s+-\s+/)[0]}
-                    icon={Briefcase}
-                    label="Customer type"
-                    color={segmentColor(customer.customer_type)}
-                  />
-                </div>
-              )}
+              {/* No customer-type chip here. Its family half is the SAME word
+                  as the Industry chip directly above it, so a classified pharma
+                  account showed "Pharmaceutical" twice, one under the other
+                  (Suren, Jul 27: "where are the tags?… same thing" — one chip,
+                  once). Customer type now has one home: the colour + icon chip
+                  on the Company profile card below, where it sits beside
+                  Ownership and Revenue and carries its full value. */}
               <p className="text-[14px] text-text-secondary leading-relaxed">
                 {customer.enrichment_summary}
               </p>
@@ -795,8 +738,6 @@ export function CustomerTabs({
               />
             )}
 
-            <AccountBriefing context={agentContext} />
-
             {contacts.length > 0 && (
               <div>
                 <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
@@ -817,13 +758,13 @@ export function CustomerTabs({
                               aria-label={`View ${c.full_name}`}
                               className="min-w-0 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary"
                             >
-                              <span className="block truncate">{c.full_name}</span>
+                              <span className="block break-words">{c.full_name}</span>
                             </Link>
                             <span className="relative z-10 shrink-0">
                               <LinkedInLink url={c.linkedin_url} size={14} />
                             </span>
                           </p>
-                          <p className="text-[12px] text-text-secondary truncate">
+                          <p className="text-[12px] text-text-secondary break-words">
                             {c.job_title}
                           </p>
                           {(c.email || c.phone) && (
@@ -834,7 +775,7 @@ export function CustomerTabs({
                                   className="relative z-10 flex items-center gap-1.5 text-[12px] text-text-tertiary hover:text-blue-primary w-fit max-w-full"
                                 >
                                   <Mail size={12.5} strokeWidth={1.6} className="shrink-0" />
-                                  <span className="truncate">{c.email}</span>
+                                  <span className="break-all">{c.email}</span>
                                 </a>
                               )}
                               {c.phone && (
@@ -1209,13 +1150,13 @@ export function CustomerTabs({
                         aria-label={`View ${c.full_name}`}
                         className="min-w-0 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary"
                       >
-                        <span className="block truncate">{c.full_name}</span>
+                        <span className="block break-words">{c.full_name}</span>
                       </Link>
                       <span className="relative z-10 shrink-0">
                         <LinkedInLink url={c.linkedin_url} size={14} />
                       </span>
                     </p>
-                    <p className="text-[13px] text-text-secondary truncate">{c.job_title}</p>
+                    <p className="text-[13px] text-text-secondary break-words">{c.job_title}</p>
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2">
@@ -1227,7 +1168,7 @@ export function CustomerTabs({
                   {c.email && (
                     <span className="flex items-center gap-1.5 min-w-0 text-[12px] text-text-tertiary">
                       <Mail size={12} strokeWidth={1.6} className="shrink-0" />
-                      <span className="truncate">{c.email}</span>
+                      <span className="break-all">{c.email}</span>
                     </span>
                   )}
                 </div>
@@ -1784,12 +1725,12 @@ export function CustomerTabs({
                           href={a.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-primary hover:underline truncate"
+                          className="min-w-0 text-blue-primary hover:underline break-words"
                         >
                           {a.name}
                         </a>
                       ) : (
-                        <span className="text-text-primary truncate">{a.name}</span>
+                        <span className="min-w-0 text-text-primary break-words">{a.name}</span>
                       )}
                       <span className="ml-auto text-[12px] text-text-tertiary tnum shrink-0">
                         {formatDateTime(a.created_at)}
@@ -1818,22 +1759,8 @@ export function CustomerTabs({
             quick actions) over the page, reachable from any tab. The global
             dock stays for cross-app asks; this one is pre-loaded with THIS
             account's context (Anir). */}
-        <button
-          onClick={() => setAskOpen(true)}
-          className="w-full flex items-center gap-2.5 rounded-xl border border-blue-subtle bg-blue-light/50 hover:bg-blue-light px-4 py-3 text-left transition-colors active:scale-[0.99]"
-        >
-          <span className="w-9 h-9 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0">
-            <Sparkles size={17} strokeWidth={1.9} />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[13.5px] font-semibold text-text-primary">
-              Ask the agent
-            </span>
-            <span className="block text-[11.5px] text-text-secondary truncate">
-              Health, next steps, deals — about {customer.company_name}
-            </span>
-          </span>
-        </button>
+        {/* The "Ask the agent" launcher is gone from the account rail —
+            the dock in the bottom-right is the one way to reach the agent. */}
 
         {/* Account snapshot — health ring + trend + why + the glance numbers,
             one visual card instead of two stacked text boxes. */}
@@ -1961,58 +1888,10 @@ export function CustomerTabs({
           </dl>
         </Card>
 
-        <div>
-          {/* No "Let the agent work" button: nobody pressed it because nobody
-              could tell what it would do (Anir, Jul 25). The per-suggestion
-              actions below say exactly what they do, so they stand alone. */}
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary flex items-center gap-1.5">
-              <Sparkles size={14} strokeWidth={1.8} className="text-blue-primary" />
-              Agent
-            </h3>
-          </div>
-          {agentActions.length > 0 ? (
-            <AgentActions actions={agentActions} compact />
-          ) : (
-            <p className="text-[12px] text-text-secondary">
-              No suggested actions — run a play to start outreach.
-            </p>
-          )}
-          {agentRuns.length > 0 &&
-            (() => {
-              const wk = weeklyOutcomeSummary(agentRuns);
-              if (wk.runs === 0) return null;
-              const parts = [
-                wk.handled > 0 && `${wk.handled} handled`,
-                wk.sent > 0 && `${wk.sent} sent`,
-                wk.escalated > 0 && `${wk.escalated} escalated`,
-              ].filter(Boolean) as string[];
-              return (
-                <div className="mt-3 flex items-center gap-2 rounded-lg bg-blue-light/50 px-3 py-2">
-                  <Sparkles
-                    size={13}
-                    strokeWidth={1.9}
-                    className="text-blue-primary shrink-0"
-                  />
-                  <p className="text-[12px] text-text-secondary">
-                    <span className="font-semibold text-text-primary">
-                      This week:
-                    </span>{" "}
-                    {wk.runs} run{wk.runs === 1 ? "" : "s"}
-                    {parts.length > 0 && ` · ${parts.join(" · ")}`}
-                  </p>
-                </div>
-              );
-            })()}
-          {agentRuns.length > 0 && (
-            <div className="mt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
-                Recent agent runs
-              </p>
-              <AgentRunHistory runs={agentRuns} />
-            </div>
-          )}
-        </div>
+        {/* No Agent block on an account page any more — no suggested
+            actions, no "This week" run summary, no "Recent agent runs"
+            (Anir, Jul 27: "only agent stuff should be the chat bot in the
+            bottom right and the agent tab"). */}
         <Card>
           <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
             Account
@@ -2068,7 +1947,7 @@ export function CustomerTabs({
                 >
                   <Swords size={14} strokeWidth={1.6} className="text-text-tertiary shrink-0" />
                   {competitor ? (
-                    <span className="truncate">{competitor}</span>
+                    <span className="min-w-0 break-words">{competitor}</span>
                   ) : (
                     <span className="text-text-tertiary">Add competitor</span>
                   )}
@@ -2078,41 +1957,8 @@ export function CustomerTabs({
             </div>
           </div>
         </Card>
-        <Card>
-          <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-            Deliverables
-          </h3>
-          <p className="text-[11.5px] text-text-tertiary -mt-2 mb-3">
-            One click — the agent drafts it right in your chat.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {DELIVERABLES.map((d) => {
-              const Icon = d.icon;
-              return (
-                <button
-                  key={d.label}
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent("freyr:ask-agent", {
-                        detail: { prompt: `${d.ask} ${customer.company_name}` },
-                      })
-                    )
-                  }
-                  className="flex flex-col items-start gap-1.5 px-2.5 py-2.5 rounded-lg border border-border-light text-[12.5px] font-medium text-text-primary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors text-left"
-                  style={{ borderColor: `${d.color}35`, background: d.bg }}
-                >
-                  <span
-                    className="flex h-8 w-8 items-center justify-center rounded-md"
-                    style={{ color: d.color, background: `${d.color}14` }}
-                  >
-                    <Icon size={16} strokeWidth={1.8} />
-                  </span>
-                  <span>{d.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </Card>
+        {/* The Deliverables tiles that used to sit here are gone — see the note
+            at the top of this file. Agent asks belong in the dock. */}
       </aside>
 
       {/* New deal modal (#58) — full deal detail, not just name/stage/value */}
@@ -2281,29 +2127,9 @@ export function CustomerTabs({
         })()}
       </Modal>
 
-      {/* Account-scoped agent drawer — chat pre-loaded with this account's
-          context, plus quick actions (Analyze) pinned under the header. */}
-      <AskAgentDrawer
-        open={askOpen}
-        onClose={() => setAskOpen(false)}
-        company={customer.company_name}
-        actions={
-          offeringsCatalog ? (
-            <CustomerAnalyzePanel
-              variant="action"
-              customerId={customer.id}
-              customerType={customer.customer_type ?? null}
-              ownership={customer.ownership ?? null}
-              revenue={customer.revenue ?? null}
-              analyzed={!!customer.analyzed_at}
-              typeOptions={offeringsCatalog.typeOptions}
-              applicableOfferings={applicableSlim}
-            />
-          ) : undefined
-        }
-      >
-        <AccountAgentChat context={agentContext} customerId={customer.id} embedded />
-      </AskAgentDrawer>
+      {/* The account-scoped agent drawer is gone with its launcher — the
+          bottom-right dock is the only agent surface outside /agent
+          (Anir, Jul 27). */}
     </div>
   );
 }

@@ -22,8 +22,9 @@ import {
   Phone,
   MessageSquarePlus,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, OUTCOME_META } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -51,6 +52,13 @@ const TABS = [
 ];
 const RATES = [1, 1.25, 1.5, 2];
 const DIALERS = ["Aircall", "RingCentral", "Dialpad"];
+
+// Recordings carry their outcome as a display string ("Not Interested"), while
+// OUTCOME_META is keyed snake_case — so the call outcome used to render as flat
+// gray text here instead of the colour + icon chip it wears everywhere else.
+function outcomeMeta(outcome: string) {
+  return OUTCOME_META[outcome.trim().toLowerCase().replace(/\s+/g, "_")] || null;
+}
 
 interface RecComment {
   id: string;
@@ -407,17 +415,26 @@ export function RecordingsWorkspace() {
                 r.id === selectedId ? "bg-blue-light" : "hover:bg-white"
               )}
             >
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-[14px] font-semibold text-text-primary truncate flex items-center gap-1.5">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="text-[14px] font-semibold text-text-primary flex items-center gap-1.5 min-w-0">
                   {r.score < 65 && (
                     <Flag size={12} className="text-error shrink-0" strokeWidth={2} />
                   )}
+                  <CompanyLogo name={r.company} className="w-5 h-5 text-[9px]" />
                   {r.company}
                 </span>
                 <ScorePill score={r.score} />
               </div>
-              <p className="text-[12px] text-text-secondary truncate">
-                {r.contact} · {r.contactTitle}
+              {/* The person the call was WITH gets their face, same as the rep
+                  does in the detail header (Anir: "Claudia Hofmann doesn't have a
+                  profile picture next to it"). Name + avatar stay on one line;
+                  the title wraps beneath rather than truncating. */}
+              <p className="text-[12px] text-text-secondary">
+                <span className="inline-flex items-center gap-1.5 align-middle whitespace-nowrap">
+                  <Avatar name={r.contact} className="w-5 h-5 text-[9px]" />
+                  {r.contact}
+                </span>
+                <span className="align-middle"> · {r.contactTitle}</span>
               </p>
               <p className="text-[11px] text-text-tertiary mt-1 flex items-center gap-2">
                 <Clock size={12} strokeWidth={1.5} /> {r.duration}
@@ -442,14 +459,41 @@ export function RecordingsWorkspace() {
                   Score {rec.score}/100
                 </span>
                 <span className="text-text-tertiary">·</span>
-                <span className="text-text-secondary">{rec.outcome}</span>
+                {(() => {
+                  const meta = outcomeMeta(rec.outcome);
+                  if (!meta)
+                    return <span className="text-text-secondary">{rec.outcome}</span>;
+                  const OutcomeIcon = meta.icon;
+                  return (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold"
+                      style={{ background: meta.bg, color: meta.color }}
+                    >
+                      <OutcomeIcon size={12} strokeWidth={2.2} />
+                      {meta.label}
+                    </span>
+                  );
+                })()}
               </div>
               <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
                 {rec.title}
               </h1>
-              <div className="flex items-center gap-2 mt-2 text-[13px] text-text-secondary">
-                <Avatar name={rec.rep} className="w-6 h-6 text-[10px]" />
-                {rec.rep} · {rec.contact} ({rec.contactTitle}) · {rec.date}
+              {/* Both people on the call carry their face — the rep already did,
+                  the contact was bare text. Each avatar+name pair is nowrap so a
+                  name never breaks across two lines; the row wraps between pairs. */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2 text-[13px] text-text-secondary">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                  <Avatar name={rec.rep} className="w-6 h-6 text-[10px]" />
+                  {rec.rep}
+                </span>
+                <span className="text-text-tertiary">·</span>
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                  <Avatar name={rec.contact} className="w-6 h-6 text-[10px]" />
+                  {rec.contact}
+                </span>
+                <span>({rec.contactTitle})</span>
+                <span className="text-text-tertiary">·</span>
+                <span>{rec.date}</span>
               </div>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -624,15 +668,24 @@ export function RecordingsWorkspace() {
                       <span className="text-[12px] font-semibold tnum text-blue-primary w-10 shrink-0 pt-0.5">
                         {l.at}
                       </span>
+                      {/* Who is talking is a category, so it gets colour + a mark
+                          — and the mark is the REAL person's face (the rep for
+                          "Rep", the contact for "Prospect") rather than a generic
+                          glyph. Prospect was flat gray on gray, which is banned
+                          for anything categorical. */}
                       <span className="shrink-0 pt-0.5">
                         <span
-                          className={cn(
-                            "text-[11px] font-semibold rounded px-1.5 py-0.5",
+                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+                          style={
                             l.speaker === "Rep"
-                              ? "bg-blue-light text-blue-primary"
-                              : "bg-surface text-text-secondary border border-border-light"
-                          )}
+                              ? { background: "rgba(0,113,227,0.12)", color: "#0040A0" }
+                              : { background: "rgba(15,158,142,0.14)", color: "#0F766E" }
+                          }
                         >
+                          <Avatar
+                            name={l.speaker === "Rep" ? rec.rep : rec.contact}
+                            className="w-[14px] h-[14px] text-[6px]"
+                          />
                           {l.speaker}
                         </span>
                       </span>
@@ -705,7 +758,14 @@ export function RecordingsWorkspace() {
                         <p className="text-[14px] text-text-primary leading-relaxed whitespace-pre-wrap">
                           {c.body}
                         </p>
-                        <p className="text-[12px] text-text-tertiary mt-1">{c.author}</p>
+                        {/* Whoever left the coaching note is a person — their
+                            face travels with their name. */}
+                        <p className="text-[12px] text-text-tertiary mt-1">
+                          <span className="inline-flex items-center gap-1.5 align-middle whitespace-nowrap">
+                            <Avatar name={c.author} className="w-4 h-4 text-[7px]" />
+                            {c.author}
+                          </span>
+                        </p>
                       </div>
                     </li>
                   ))}
@@ -717,7 +777,9 @@ export function RecordingsWorkspace() {
           {tab === "moments" && (
             <div className="relative pl-6 space-y-5 max-w-3xl before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-px before:bg-border-light">
               {rec.keyMoments.map((m, i) => {
-                const c = m.tone === "good" ? "#34C759" : m.tone === "warn" ? "#FF9F0A" : "#8E8E93";
+                // "warn" moment marker: burnt orange, not amber — a yellow dot on
+                // the white timeline rail all but disappeared.
+                const c = m.tone === "good" ? "#34C759" : m.tone === "warn" ? "#C2410C" : "#8E8E93";
                 return (
                   <button
                     key={i}

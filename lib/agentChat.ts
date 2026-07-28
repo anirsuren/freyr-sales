@@ -728,7 +728,7 @@ export function answerAgentChat(
     // app's own components, so "what's my pipeline worth" SHOWS the shape of
     // the number instead of only stating it.
     const STAGE_CHART_COLOR: Record<string, string> = {
-      Prospect: "#F59E0B",
+      Prospect: "#C2410C", // mirrors STAGE_COLOR — one stage, one colour everywhere
       Engaged: "#0071E3",
       Qualified: "#7C3AED",
       "Meeting Booked": "#059669",

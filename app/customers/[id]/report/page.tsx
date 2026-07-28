@@ -1,12 +1,56 @@
+import { CircleDot } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { ReportToolbar } from "@/components/customers/ReportToolbar";
-import { buildDeals, formatMoney, ownerFor } from "@/lib/pipeline";
-import { formatDate, formatDateTime, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
+import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { OutcomeBadge } from "@/components/ui/Badge";
+import { ServiceTag } from "@/components/ui/OfferingIcon";
+import {
+  buildDeals,
+  formatMoney,
+  ownerFor,
+  STAGE_COLOR,
+  STAGE_ICON,
+  type Stage,
+} from "@/lib/pipeline";
+import {
+  formatDate,
+  formatDateTime,
+  OUTCOME_META,
+  SIZE_TIER_LABEL,
+} from "@/lib/utils";
 import type { RecommendedService } from "@/lib/types";
 import { geographyWithFlag } from "@/lib/countryFlags";
 
 export const metadata = { title: "Account report" };
 export const dynamic = "force-dynamic";
+
+/**
+ * A deal stage, as a chip that carries the stage's own colour AND its own glyph
+ * — never a plain word on a plain background (standing chip rule). Reads the
+ * one STAGE_COLOR / STAGE_ICON pair the board, the forecast and the deal
+ * timeline already share, so the report can never drift into its own palette.
+ * `stage` is a string because account deals store a free-text stage; anything
+ * outside the funnel falls back to blue rather than to gray.
+ */
+function StageChip({ stage }: { stage: string }) {
+  const color = STAGE_COLOR[stage as Stage] || "#0071E3";
+  const Icon = STAGE_ICON[stage as Stage] || CircleDot;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full py-0.5 pl-1 pr-2 text-[11px] font-semibold leading-tight"
+      style={{ color, background: `${color}14` }}
+    >
+      <span
+        className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full text-white"
+        style={{ background: color }}
+      >
+        <Icon size={9} strokeWidth={2.4} />
+      </span>
+      {stage}
+    </span>
+  );
+}
 
 export default async function AccountReportPage({
   params,

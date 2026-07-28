@@ -109,7 +109,7 @@ export function segmentColor(type: string): string {
   if (t.includes("bio pharma") || t.includes("biopharma")) return "#7C3AED"; // violet
   if (t.includes("biologic")) return "#E11D48"; // rose
   if (t.includes("pharma")) return "#0071E3"; // blue
-  if (t.includes("device")) return "#F59E0B"; // amber
+  if (t.includes("device")) return "#C2410C"; // burnt orange (amber was illegible as chip text)
   if (t.includes("consumer")) return "#0F9E8E"; // teal
   return "#8E98A8"; // slate
 }
@@ -796,7 +796,7 @@ export function CustomerOfferingsTab({
           <Link
             href={`/offerings/${o.id}`}
             title={o.name}
-            className="text-[14.5px] font-semibold text-text-primary leading-snug hover:text-blue-primary line-clamp-2"
+            className="text-[14.5px] font-semibold text-text-primary leading-snug break-words hover:text-blue-primary"
           >
             {o.name}
           </Link>
@@ -813,7 +813,7 @@ export function CustomerOfferingsTab({
               </span>
             )}
             {(o.category || o.type) && (
-              <span className="text-[11.5px] text-text-tertiary truncate">
+              <span className="min-w-0 text-[11.5px] text-text-tertiary break-words">
                 {[o.category, o.type].filter(Boolean).join(" · ")}
               </span>
             )}
@@ -830,7 +830,7 @@ export function CustomerOfferingsTab({
         <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface px-2 py-1 text-[11.5px]">
           <Avatar name={o.poc} className="h-6 w-6 shrink-0 text-[8px]" />
           <span className="text-text-tertiary">POC</span>
-          <span className="truncate font-medium text-text-secondary">{o.poc}</span>
+          <span className="min-w-0 break-words font-medium text-text-secondary">{o.poc}</span>
         </div>
       )}
 

@@ -1,7 +1,6 @@
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TasksWorkspace } from "@/components/tasks/TasksWorkspace";
-import { nextBestActions, focusActions } from "@/lib/agent";
 import type { RecommendedService } from "@/lib/types";
 import { getCurrentUser } from "@/lib/currentUser";
 import { requireServerMemberScope } from "@/lib/memberScope";
@@ -59,14 +58,6 @@ export default async function TasksPage() {
     })
     .sort((a, b) => new Date(a.due).getTime() - new Date(b.due).getTime());
 
-  const agentActions = focusActions(
-    nextBestActions({ sessions, customers, contacts, interactions }),
-    customers,
-    agentPrefs,
-    currentUser.name,
-    scope.userId
-  ).actions.slice(0, 4);
-
   const now = new Date();
   const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const total = reviewTasks.length + followUps.length;
@@ -80,7 +71,6 @@ export default async function TasksPage() {
       <TasksWorkspace
         reviewTasks={reviewTasks}
         followUps={followUps}
-        agentActions={agentActions}
         todayMs={todayMs}
       />
     </div>

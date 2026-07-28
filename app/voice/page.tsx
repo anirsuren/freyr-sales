@@ -44,6 +44,12 @@ import { listStoredVoiceConversations, storedVoiceCall } from "@/lib/voiceEvents
 export const metadata = { title: "Voice agents" };
 export const dynamic = "force-dynamic";
 
+// Same dial-link helper the contacts grid and the team roster use, so a number
+// behaves identically everywhere in the app.
+function tel(phone: string) {
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
 // One place to define how each call outcome renders — donut, legend, table.
 // Each outcome owns a colour AND an icon (Anir, Jul 26: "the status here is
 // clearly not color-coded, and it doesn't have icons").
@@ -53,7 +59,9 @@ const OUTCOME_META: Record<
 > = {
   interested: { label: "Interested", color: "#34C759", chip: "text-success bg-success/10", icon: ThumbsUp },
   follow_up: { label: "Follow-up", color: "#0071E3", chip: "text-blue-primary bg-blue-light", icon: CalendarClock },
-  no_answer: { label: "No answer", color: "#FF9F0A", chip: "text-warning bg-warning/10", icon: PhoneMissed },
+  // colour must track the `chip` beside it — both are now the burnt-orange
+  // warning token, and donut legends render this colour as chip TEXT.
+  no_answer: { label: "No answer", color: "#C2410C", chip: "text-warning bg-warning/10", icon: PhoneMissed },
   declined: { label: "Declined", color: "#FF3B30", chip: "text-error bg-error/10", icon: ThumbsDown },
 };
 const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer", "declined"];
@@ -334,7 +342,7 @@ export default async function VoicePage() {
             const OUT_COLORS: Record<string, string> = {
               interested: "#34C759",
               follow_up: "#0071E3",
-              no_answer: "#FF9F0A",
+              no_answer: "#C2410C", // matches OUTCOME_META — donut legend rows are colour-on-tint text
               declined: "#FF3B30",
             };
             const OUT_LABELS: Record<string, string> = {
@@ -428,7 +436,7 @@ export default async function VoicePage() {
             return (
               <HoverExpandCard
                 key={p.slug}
-                href={`/voice/agents/${p.slug}`}
+                stretchSummary
                 summary={
                   <>
                     <div className="flex items-start justify-between gap-2">
@@ -450,27 +458,50 @@ export default async function VoicePage() {
                         {status.phoneConnected ? "Live" : "Ready — awaiting number"}
                       </span>
                     </div>
-                    <p className="text-[16px] font-semibold text-text-primary mt-3 group-hover:text-blue-primary transition-colors">
+                    {/* Stretched nav link — the whole card opens the agent, and
+                        the phone line below stays its own, separately clickable
+                        link (the house pattern from the team roster). */}
+                    <Link
+                      href={`/voice/agents/${p.slug}`}
+                      className="mt-3 block rounded-sm text-[16px] font-semibold text-text-primary outline-none transition-colors after:absolute after:inset-0 after:content-[''] group-hover:text-blue-primary"
+                    >
                       {p.name}
                       <span className="text-[12px] font-medium text-text-tertiary">
                         {" "}
                         · {p.category}
                       </span>
-                    </p>
-                    <p className="text-[12.5px] text-text-secondary mt-1 leading-relaxed">
+                    </Link>
+                    {/* Two-line floor: Nina's and Kai's taglines run one line
+                        and Arjun's two, which used to leave the divider, the
+                        phone row and the card bottom at different heights
+                        across the row (Suren). Longer taglines still wrap —
+                        nothing is clamped or truncated. */}
+                    <p className="mb-3 mt-1 min-h-[41px] text-[12.5px] leading-relaxed text-text-secondary">
                       {p.tagline}
                     </p>
-                    <p className="flex items-center justify-between text-[12px] mt-3 pt-3 border-t border-border-light">
-                      <span className="text-text-tertiary">
-                        {line ? (
-                          <span className="tnum font-medium text-text-secondary">
-                            {formatPhone(line.number)}
-                          </span>
-                        ) : (
-                          `Knows ${cat?.count || 0} offering${(cat?.count || 0) === 1 ? "" : "s"}`
-                        )}
-                      </span>
-                      <span className="font-semibold text-blue-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* mt-auto pins this row (and its divider) to the card's
+                        bottom edge, so all six line up even if one tagline
+                        ever runs three lines. */}
+                    <p className="mt-auto flex items-center justify-between gap-2 border-t border-border-light pt-3 text-[12px]">
+                      {line ? (
+                        <a
+                          href={tel(line.number)}
+                          title={`Call ${formatPhone(line.number)}`}
+                          className="relative z-10 inline-flex w-fit cursor-pointer items-center gap-1.5 font-medium text-text-secondary tnum transition-colors hover:text-blue-primary"
+                        >
+                          <Phone
+                            size={12}
+                            strokeWidth={1.9}
+                            className="shrink-0 text-blue-primary"
+                          />
+                          {formatPhone(line.number)}
+                        </a>
+                      ) : (
+                        <span className="text-text-tertiary">
+                          {`Knows ${cat?.count || 0} offering${(cat?.count || 0) === 1 ? "" : "s"}`}
+                        </span>
+                      )}
+                      <span className="font-semibold text-blue-primary opacity-0 transition-opacity group-hover:opacity-100">
                         Hover for stats
                       </span>
                     </p>
@@ -818,7 +849,7 @@ export default async function VoicePage() {
                 <p className="text-[12px] text-text-tertiary mb-3">
                   How calls ended, and what they were about. Hover for details.
                 </p>
-                <div className="flex-1 grid grid-cols-2 gap-4 content-center">
+                <div className="flex-1 grid grid-cols-2 items-start gap-4 content-start">
                   <div className="flex flex-col items-center">
                     <DonutChart
                       segments={outcomeCounts.map((o) => ({
@@ -848,16 +879,16 @@ export default async function VoicePage() {
                         .map((o) => (
                           <li
                             key={o.outcome}
-                            className="-mx-1 flex items-start gap-1.5 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
+                            className="-mx-1 grid grid-cols-[8px_minmax(0,1fr)_auto] items-baseline gap-x-2 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
                           >
                             <span
-                              className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                              className="h-2 w-2 shrink-0 translate-y-[1px] rounded-full"
                               style={{ background: OUTCOME_META[o.outcome].color }}
                             />
-                            <span className="leading-[1.25] text-text-secondary">
+                            <span className="min-w-0 leading-[1.35] text-text-secondary">
                               {OUTCOME_META[o.outcome].label}
                             </span>
-                            <span className="tnum shrink-0 font-semibold leading-[1.25] text-text-primary">
+                            <span className="tnum text-right font-semibold leading-[1.35] text-text-primary">
                               {o.n}
                             </span>
                           </li>
@@ -891,16 +922,16 @@ export default async function VoicePage() {
                       {catCounts.map((c, i) => (
                           <li
                             key={c.category}
-                            className="-mx-1 flex items-start gap-1.5 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
+                            className="-mx-1 grid grid-cols-[8px_minmax(0,1fr)_auto] items-baseline gap-x-2 rounded px-1 text-[12px] transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-surface"
                           >
                             <span
-                              className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                              className="h-2 w-2 shrink-0 translate-y-[1px] rounded-full"
                               style={{ background: VIZ_SERIES[i % VIZ_SERIES.length] }}
                             />
-                            <span className="min-w-0 leading-[1.25] text-text-secondary">
+                            <span className="min-w-0 leading-[1.35] text-text-secondary">
                               {c.category}
                             </span>
-                            <span className="tnum shrink-0 font-semibold leading-[1.25] text-text-primary">
+                            <span className="tnum text-right font-semibold leading-[1.35] text-text-primary">
                               {c.n}
                             </span>
                         </li>
@@ -960,26 +991,48 @@ export default async function VoicePage() {
                     None owed — every follow-up is handled.
                   </p>
                 ) : (
-                  <ul className="flex-1 divide-y divide-border-light max-h-[300px] overflow-y-auto -mr-2 pr-2">
+                  // `max-h-[300px]` was fighting `flex-1`: the cap won, so the
+                  // list stopped 300px in while the card still had room and a
+                  // whole further row visibly fitted underneath (Anir, Jul 27:
+                  // "literally another one could fit there"). min-h-0 lets the
+                  // flex child actually shrink, so the list now fills whatever
+                  // height the card has and only then scrolls.
+                  <ul className="min-h-0 flex-1 divide-y divide-border-light overflow-y-auto -mr-2 pr-2">
                     {callbacks.map((q) => (
-                      <li key={q.id} className="group/callback -mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-blue-light/30">
+                      <li key={q.id} className="group/callback -mx-2 flex items-start gap-3 rounded-md px-2 py-2.5 transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-blue-light/30">
                         <Avatar name={q.contact_name} className="w-9 h-9 text-[12px] shrink-0 transition-[transform,box-shadow] duration-150 group-hover/callback:scale-105 group-hover/callback:shadow-sm" />
+                        {/* Three lines, one fact each. The company used to be
+                            `truncate`d next to the phone and came out as a
+                            single letter — "S…", "C…" — which is both the
+                            banned ellipsis and a total loss of the information
+                            (Anir: "the name is getting fucking cut off. The
+                            number should probably be on the next line to help
+                            the name stand out"). Nothing truncates now; long
+                            names wrap. */}
                         <span className="min-w-0 flex-1">
                           <Link
                             href={`/contacts/${q.contact_id}`}
-                            className="block text-[13px] font-semibold text-text-primary transition-colors group-hover/callback:text-blue-primary truncate"
+                            className="block text-[13px] font-semibold leading-snug text-text-primary transition-colors group-hover/callback:text-blue-primary"
                           >
                             {q.contact_name}
                           </Link>
-                          <span className="flex items-center gap-1.5 text-[11.5px] text-text-tertiary min-w-0">
-                            <CompanyLogo name={q.company || "?"} className="w-3.5 h-3.5 text-[7px] shrink-0" />
-                            <span className="truncate">{q.company || q.category}</span>
-                            {q.phone && <span className="shrink-0 tnum">· {q.phone}</span>}
+                          <span className="mt-0.5 flex items-start gap-1.5 text-[11.5px] leading-snug text-text-secondary">
+                            <CompanyLogo name={q.company || "?"} className="mt-px w-3.5 h-3.5 text-[7px] shrink-0" />
+                            <span className="min-w-0">{q.company || q.category}</span>
                           </span>
+                          {q.phone && (
+                            <a
+                              href={`tel:${q.phone}`}
+                              className="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] leading-snug tnum text-text-secondary cursor-pointer hover:text-blue-primary transition-colors"
+                            >
+                              <Phone size={12} strokeWidth={1.9} className="shrink-0 text-blue-primary" />
+                              {formatPhone(q.phone)}
+                            </a>
+                          )}
                         </span>
                         <a
                           href={q.phone ? `tel:${q.phone}` : undefined}
-                          className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2.5 py-1 transition-[background-color,color,transform] group-hover/callback:scale-[1.03] hover:bg-blue-primary hover:text-white"
+                          className="mt-0.5 shrink-0 cursor-pointer text-[11px] font-semibold uppercase tracking-[0.04em] text-blue-primary bg-blue-light rounded-full px-2.5 py-1 transition-[background-color,color,transform] group-hover/callback:scale-[1.03] hover:bg-blue-primary hover:text-white"
                         >
                           Call back
                         </a>

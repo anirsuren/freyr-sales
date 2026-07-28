@@ -14,7 +14,7 @@ const GRADIENTS: [string, string][] = [
   ["#7C3AED", "#A78BFA"], // violet
   ["#0891B2", "#22D3EE"], // cyan
   ["#059669", "#34D399"], // emerald
-  ["#D97706", "#F5A623"], // amber
+  ["#C2410C", "#F97316"], // orange — white initials sat at 2.1:1 on the amber tile
   ["#DB2777", "#F472B6"], // pink
   ["#475569", "#94A3B8"], // slate
   ["#C026D3", "#E879F9"], // fuchsia

@@ -2,6 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check, type LucideIcon } from "lucide-react";
+import {
+  PriorityLabel,
+  PriorityTooltip,
+  SP_COMPACT_SIZE,
+  useSearchPriority,
+} from "@/components/ui/SearchPriority";
 import { cn } from "@/lib/utils";
 
 export type ColorOption = {
@@ -12,7 +18,15 @@ export type ColorOption = {
   description?: string;
   badge?: string;
   badgeColor?: string;
+  /** What the trigger shows when the toolbar compresses and the words go —
+   *  e.g. "12" for "12 / page", so the collapsed square still tells you the
+   *  value instead of repeating one generic glyph for every option. */
+  short?: string;
 };
+
+/** Shared motion for the compress/expand — see components/ui/SearchPriority. */
+const SP_MOTION =
+  "duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
 
 // A custom, color-coded dropdown to replace cheap gray <select>s (Suren: "color
 // code all the dropdowns"). Each option carries a colour dot (and optional icon);
@@ -24,6 +38,7 @@ export function ColorSelect({
   className,
   minWidth = 170,
   ariaLabel,
+  collapsible = true,
 }: {
   value: string;
   options: ColorOption[];
@@ -31,11 +46,19 @@ export function ColorSelect({
   className?: string;
   minWidth?: number;
   ariaLabel?: string;
+  /** Opt out of the search-priority compression (default: follow the toolbar). */
+  collapsible?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? options[0];
   const detailed = options.some((o) => o.description);
+  // The two-line "detailed" trigger never compacts — it isn't a toolbar shape.
+  const searchHasPriority = useSearchPriority();
+  const compact = collapsible && searchHasPriority && !detailed;
+  // The full label still reaches a screen reader (aria-label) and the mouse
+  // (tooltip), so a collapsed control is never a mystery box.
+  const fullLabel = ariaLabel || selected?.label || "Filter";
 
   useEffect(() => {
     if (!open) return;
@@ -51,8 +74,31 @@ export function ColorSelect({
     };
   }, [open]);
 
-  const Dot = ({ o, prominent = false }: { o: ColorOption; prominent?: boolean }) => {
+  const Dot = ({
+    o,
+    prominent = false,
+    // On the collapsed trigger the glyph IS the control, so it earns a little
+    // more presence than it has sitting next to a word.
+    solo = false,
+  }: {
+    o: ColorOption;
+    prominent?: boolean;
+    solo?: boolean;
+  }) => {
     const Icon = o.icon;
+    // A value that reads better as itself than as a glyph ("12 / page" → "12").
+    if (solo && o.short)
+      return (
+        <span
+          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold tnum"
+          style={{
+            background: `${o.color || "#0071E3"}1F`,
+            color: o.color || "#0071E3",
+          }}
+        >
+          {o.short}
+        </span>
+      );
     if (Icon)
       return (
         <span
@@ -67,55 +113,83 @@ export function ColorSelect({
       );
     return (
       <span
-        className="w-2.5 h-2.5 rounded-full shrink-0"
+        className={cn(
+          "rounded-full shrink-0 transition-[width,height]",
+          SP_MOTION,
+          solo ? "w-3 h-3" : "w-2.5 h-2.5"
+        )}
         style={{ background: o.color || "#C7CDD6" }}
       />
     );
   };
 
   return (
-    <div ref={ref} className={cn("relative", className)} style={{ minWidth }}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={ariaLabel}
-        className={cn(
-          "w-full flex items-center bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow,background-color]",
-          detailed ? "h-12 gap-2.5 px-2.5" : "h-10 gap-2 px-3 text-[13px]"
-        )}
-      >
-        {selected && <Dot o={selected} prominent={detailed} />}
-        <span className="flex-1 min-w-0 text-left">
-          <span className={cn("block truncate", detailed && "text-[12.5px] font-semibold leading-tight")}>
-            {selected?.label}
-          </span>
-          {detailed && selected?.description && (
-            <span className="mt-0.5 block truncate text-[9.5px] leading-tight text-text-tertiary">
-              {selected.description}
-            </span>
+    <div
+      ref={ref}
+      className={cn("relative transition-[min-width]", SP_MOTION, className)}
+      style={{ minWidth: compact ? SP_COMPACT_SIZE : minWidth }}
+    >
+      <PriorityTooltip label={fullLabel} className="w-full">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          // Compressed, the words are gone from view but never from the
+          // accessibility tree — the trigger still announces what it filters.
+          aria-label={compact ? fullLabel : ariaLabel}
+          className={cn(
+            "w-full flex items-center justify-center bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow,background-color,padding]",
+            SP_MOTION,
+            detailed
+              ? "h-12 gap-2.5 px-2.5"
+              : cn("h-10 text-[13px] overflow-hidden", compact ? "px-0" : "px-3")
           )}
-        </span>
-        {selected?.badge && (
-          <span
-            className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold"
-            style={{
-              color: selected.badgeColor || selected.color || "#59616E",
-              background: `${selected.badgeColor || selected.color || "#8E98A8"}14`,
-            }}
+        >
+          {selected && <Dot o={selected} prominent={detailed} solo={compact} />}
+          <PriorityLabel
+            collapsed={compact}
+            // `detailed` keeps the button's own flex gap; the compact shape
+            // trades that gap for a collapsing margin so the glyph centres.
+            gap={detailed ? false : "ml-2"}
+            className="min-w-0 text-left"
+            // Same as `flex-1`, with the grow factor animated rather than
+            // switched, so the slack drains smoothly instead of vanishing.
+            style={{ flexGrow: compact ? 0 : 1, flexShrink: 1, flexBasis: "0%" }}
           >
-            {selected.badge}
-          </span>
-        )}
-        <span className={cn("flex items-center justify-center shrink-0", detailed && "w-7 h-7 rounded-md bg-surface")}>
-          <ChevronDown
-            size={15}
-            strokeWidth={2}
-            className={cn("text-text-tertiary transition-transform duration-150", open && "rotate-180")}
-          />
-        </span>
-      </button>
+            <span className={cn("block truncate", detailed && "text-[12.5px] font-semibold leading-tight")}>
+              {selected?.label}
+            </span>
+            {detailed && selected?.description && (
+              <span className="mt-0.5 block truncate text-[9.5px] leading-tight text-text-tertiary">
+                {selected.description}
+              </span>
+            )}
+          </PriorityLabel>
+          {selected?.badge && (
+            <PriorityLabel collapsed={compact} gap={detailed ? false : "ml-2"} className="shrink-0">
+              <span
+                className="block rounded-md px-2 py-0.5 text-[10px] font-semibold"
+                style={{
+                  color: selected.badgeColor || selected.color || "#59616E",
+                  background: `${selected.badgeColor || selected.color || "#8E98A8"}14`,
+                }}
+              >
+                {selected.badge}
+              </span>
+            </PriorityLabel>
+          )}
+          <PriorityLabel collapsed={compact} gap={detailed ? false : "ml-2"} className="shrink-0">
+            <span className={cn("flex items-center justify-center", detailed && "w-7 h-7 rounded-md bg-surface")}>
+              <ChevronDown
+                size={15}
+                strokeWidth={2}
+                className={cn("text-text-tertiary transition-transform duration-150", open && "rotate-180")}
+              />
+            </span>
+          </PriorityLabel>
+        </button>
+      </PriorityTooltip>
 
       {open && (
         <div
@@ -195,6 +269,9 @@ export function MultiColorSelect({
   className,
   minWidth = 170,
   ariaLabel,
+  allIcon: AllIcon,
+  allColor = "#0071E3",
+  collapsible = true,
 }: {
   values: string[];
   options: ColorOption[];
@@ -204,9 +281,17 @@ export function MultiColorSelect({
   className?: string;
   minWidth?: number;
   ariaLabel?: string;
+  /** The unrestricted state's glyph. Without one it collapses to a bare gray
+   *  dot, which is both ambiguous and against the colour+icon rule. */
+  allIcon?: LucideIcon;
+  allColor?: string;
+  /** Opt out of the search-priority compression (default: follow the toolbar). */
+  collapsible?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const searchHasPriority = useSearchPriority();
+  const compact = collapsible && searchHasPriority;
 
   useEffect(() => {
     if (!open) return;
@@ -234,41 +319,70 @@ export function MultiColorSelect({
     onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
 
   return (
-    <div ref={ref} className={cn("relative", className)} style={{ minWidth }}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={ariaLabel}
-        className="w-full h-10 flex items-center gap-2 px-3 text-[13px] bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow]"
-      >
-        {/* Stacked colour dots preview which families are active. */}
-        {picked.length > 0 ? (
-          <span className="flex shrink-0 items-center">
-            {picked.slice(0, 3).map((o, i) => (
-              <span
-                key={o.value}
-                className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-white", i > 0 && "-ml-1")}
-                style={{ background: o.color || "#C7CDD6" }}
-              />
-            ))}
-          </span>
-        ) : (
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-border" />
-        )}
-        <span className="flex-1 min-w-0 truncate text-left">{summary}</span>
-        {picked.length > 0 && (
-          <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-bold text-blue-primary tnum">
-            {picked.length}
-          </span>
-        )}
-        <ChevronDown
-          size={15}
-          strokeWidth={2}
-          className={cn("shrink-0 text-text-tertiary transition-transform duration-150", open && "rotate-180")}
-        />
-      </button>
+    <div
+      ref={ref}
+      className={cn("relative transition-[min-width]", SP_MOTION, className)}
+      style={{ minWidth: compact ? SP_COMPACT_SIZE : minWidth }}
+    >
+      <PriorityTooltip label={ariaLabel || allLabel} className="w-full">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={ariaLabel || allLabel}
+          className={cn(
+            "w-full h-10 flex items-center justify-center overflow-hidden text-[13px] bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow,padding]",
+            SP_MOTION,
+            compact ? "px-0" : "px-3"
+          )}
+        >
+          {/* Stacked colour dots preview which families are active. */}
+          {picked.length > 0 ? (
+            <span className="flex shrink-0 items-center">
+              {picked.slice(0, 3).map((o, i) => (
+                <span
+                  key={o.value}
+                  className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-white", i > 0 && "-ml-1")}
+                  style={{ background: o.color || "#C7CDD6" }}
+                />
+              ))}
+            </span>
+          ) : AllIcon ? (
+            // Unrestricted, but never a gray blank: the filter keeps its own
+            // colour + icon, so collapsed it still says what it filters.
+            <span
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+              style={{ background: `${allColor}1F`, color: allColor }}
+            >
+              <AllIcon size={12} strokeWidth={2.1} />
+            </span>
+          ) : (
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-border" />
+          )}
+          <PriorityLabel
+            collapsed={compact}
+            className="min-w-0 text-left"
+            style={{ flexGrow: compact ? 0 : 1, flexShrink: 1, flexBasis: "0%" }}
+          >
+            <span className="block truncate">{summary}</span>
+          </PriorityLabel>
+          {picked.length > 0 && (
+            <PriorityLabel collapsed={compact} className="shrink-0">
+              <span className="block rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-bold text-blue-primary tnum">
+                {picked.length}
+              </span>
+            </PriorityLabel>
+          )}
+          <PriorityLabel collapsed={compact} className="shrink-0">
+            <ChevronDown
+              size={15}
+              strokeWidth={2}
+              className={cn("text-text-tertiary transition-transform duration-150", open && "rotate-180")}
+            />
+          </PriorityLabel>
+        </button>
+      </PriorityTooltip>
 
       {open && (
         <div
@@ -292,7 +406,16 @@ export function MultiColorSelect({
               values.length === 0 ? "bg-surface font-semibold" : "hover:bg-surface"
             )}
           >
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-border" />
+            {AllIcon ? (
+              <span
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                style={{ background: `${allColor}1F`, color: allColor }}
+              >
+                <AllIcon size={12} strokeWidth={2.1} />
+              </span>
+            ) : (
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-border" />
+            )}
             {allLabel}
           </button>
           {options.map((o) => {

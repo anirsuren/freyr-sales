@@ -13,6 +13,7 @@ import {
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { BarChart } from "@/components/charts/Charts";
 import {
@@ -220,8 +221,14 @@ export default async function AgentImpactPage({
                       >
                         {i + 1}
                       </span>
+                      {/* The rank stays; the account's own mark sits beside it
+                          so the row reads as a company, not a number. */}
+                      <CompanyLogo
+                        name={r.company}
+                        className="w-7 h-7 text-[9px]"
+                      />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[13px] font-semibold text-text-primary truncate">
+                        <span className="block text-[13px] font-semibold text-text-primary">
                           {r.company}
                         </span>
                         <span className="block text-[12px] text-text-secondary">

@@ -1,4 +1,4 @@
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import type { AccountBriefing } from "@/lib/agent";
 
 // Presentational agent briefing card (V9 #73) — renders a deterministic briefing
@@ -35,13 +35,8 @@ export function BriefingCard({
         ))}
       </div>
 
-      <div className="flex items-center gap-2 pt-2.5 border-t border-blue-subtle">
-        <ArrowRight size={14} strokeWidth={2} className="text-blue-primary shrink-0" />
-        <p className="text-[12px] text-text-primary">
-          <span className="font-semibold">Recommended:</span>{" "}
-          {briefing.recommendation}
-        </p>
-      </div>
+      {/* The "Recommended:" coaching row is gone (Anir, Jul 27: "I don't want
+          no next move") — the brief states facts; the rep decides the move. */}
     </div>
   );
 }

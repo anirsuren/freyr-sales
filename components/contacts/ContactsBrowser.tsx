@@ -2,10 +2,16 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownWideNarrow } from "lucide-react";
+import { Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownAZ, Building2, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import {
+  SearchPriority,
+  PrioritySearchInput,
+  PriorityLabel,
+  PriorityTooltip,
+} from "@/components/ui/SearchPriority";
 import { FILTER_PALETTE as CATEGORY_ACCENTS } from "@/components/offerings/filterPalette";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -174,22 +180,31 @@ export function ContactsBrowser({
             Decision-makers across your accounts.
           </p>
         </div>
-        <div className="flex items-center justify-end gap-2 flex-wrap min-w-0">
-          <div className="relative w-[190px]">
-            <Search size={15} strokeWidth={1.6} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search contacts…"
-              className="w-full text-[13px] bg-surface border border-border rounded-md pl-8 pr-3 py-2 outline-none focus:border-blue-primary"
-            />
-          </div>
+        {/* Search priority (Suren, Jul 27): the moment you press the search
+            bar, everything to its right sheds its words and keeps its colour
+            and glyph, so a long name has room to breathe. See
+            components/ui/SearchPriority.tsx. */}
+        <SearchPriority
+          query={q}
+          className="flex items-center justify-end gap-2 flex-wrap min-w-0"
+        >
+          <PrioritySearchInput
+            value={q}
+            onChange={setQ}
+            placeholder="Search contacts…"
+            ariaLabel="Search contacts"
+          />
           <ColorSelect
             value={role}
             onChange={setRole}
+            // No ariaLabel on purpose: the accessible name stays the visible
+            // label ("All roles"), in BOTH states — collapsing must never
+            // rename a control out from under a screen reader or a test.
             minWidth={150}
             options={[
-              { value: "all", label: "All roles" },
+              // "All roles" carries its own colour + icon so the collapsed
+              // square reads as people, never as a gray blank.
+              { value: "all", label: "All roles", color: "#0071E3", icon: Users },
               ...roles.map<ColorOption>((r) => ({
                 value: r,
                 label: r,
@@ -202,65 +217,77 @@ export function ContactsBrowser({
             onChange={setSort}
             minWidth={150}
             options={[
-              { value: "name", label: "Name A–Z", icon: ArrowDownWideNarrow },
-              { value: "company", label: "Company A–Z", icon: ArrowDownWideNarrow },
+              // One icon for both sorts made them identical once collapsed —
+              // each sort now owns a distinct glyph and colour.
+              { value: "name", label: "Name A–Z", icon: ArrowDownAZ, color: "#0071E3" },
+              { value: "company", label: "Company A–Z", icon: Building2, color: "#7C3AED" },
             ]}
           />
           {/* Grid ↔ list view (Suren: "we need a grid view on this or whatever
               the other view is"). */}
           <div className="inline-flex items-center rounded-md border border-border overflow-hidden">
-            <button
-              onClick={() => setLayout("grid")}
-              aria-label="Grid view"
-              aria-pressed={layout === "grid"}
-              className={cn(
-                "inline-flex items-center gap-1.5 text-[13px] font-medium px-2.5 py-2 transition-colors",
-                layout === "grid"
-                  ? "bg-blue-light text-blue-primary"
-                  : "text-text-secondary hover:bg-surface"
-              )}
-            >
-              <LayoutGrid size={15} strokeWidth={1.8} />
-              Grid
-            </button>
-            <button
-              onClick={() => setLayout("list")}
-              aria-label="List view"
-              aria-pressed={layout === "list"}
-              className={cn(
-                "inline-flex items-center gap-1.5 text-[13px] font-medium px-2.5 py-2 border-l border-border transition-colors",
-                layout === "list"
-                  ? "bg-blue-light text-blue-primary"
-                  : "text-text-secondary hover:bg-surface"
-              )}
-            >
-              <List size={15} strokeWidth={1.8} />
-              List
-            </button>
+            <PriorityTooltip label="Grid view">
+              <button
+                onClick={() => setLayout("grid")}
+                aria-label="Grid view"
+                aria-pressed={layout === "grid"}
+                className={cn(
+                  "inline-flex items-center text-[13px] font-medium px-2.5 py-2 transition-colors",
+                  layout === "grid"
+                    ? "bg-blue-light text-blue-primary"
+                    : "text-text-secondary hover:bg-surface"
+                )}
+              >
+                <LayoutGrid size={15} strokeWidth={1.8} />
+                <PriorityLabel gap="ml-1.5">Grid</PriorityLabel>
+              </button>
+            </PriorityTooltip>
+            <PriorityTooltip label="List view">
+              <button
+                onClick={() => setLayout("list")}
+                aria-label="List view"
+                aria-pressed={layout === "list"}
+                className={cn(
+                  "inline-flex items-center text-[13px] font-medium px-2.5 py-2 border-l border-border transition-colors",
+                  layout === "list"
+                    ? "bg-blue-light text-blue-primary"
+                    : "text-text-secondary hover:bg-surface"
+                )}
+              >
+                <List size={15} strokeWidth={1.8} />
+                <PriorityLabel gap="ml-1.5">List</PriorityLabel>
+              </button>
+            </PriorityTooltip>
           </div>
-          <button
-            onClick={() => {
-              setSelectMode((m) => !m);
-              setSelected(new Set());
-            }}
-            className={cn(
-              "inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-md border transition-colors",
-              selectMode
-                ? "border-blue-primary bg-blue-light text-blue-primary"
-                : "border-border text-text-secondary hover:bg-surface"
-            )}
-          >
-            <CheckSquare size={15} strokeWidth={1.8} />
-            {selectMode ? "Done" : "Select"}
-          </button>
-          <button
-            onClick={exportCsv}
-            className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
-          >
-            <Download size={16} strokeWidth={1.5} />
-            Export CSV
-          </button>
-        </div>
+          <PriorityTooltip label={selectMode ? "Done selecting" : "Select contacts"}>
+            <button
+              onClick={() => {
+                setSelectMode((m) => !m);
+                setSelected(new Set());
+              }}
+              aria-label={selectMode ? "Done" : "Select"}
+              className={cn(
+                "inline-flex items-center text-[13px] font-medium px-3 py-2 rounded-md border transition-colors",
+                selectMode
+                  ? "border-blue-primary bg-blue-light text-blue-primary"
+                  : "border-border text-text-secondary hover:bg-surface"
+              )}
+            >
+              <CheckSquare size={15} strokeWidth={1.8} />
+              <PriorityLabel gap="ml-1.5">{selectMode ? "Done" : "Select"}</PriorityLabel>
+            </button>
+          </PriorityTooltip>
+          <PriorityTooltip label="Export CSV">
+            <button
+              onClick={exportCsv}
+              aria-label="Export CSV"
+              className="flex items-center text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+            >
+              <Download size={16} strokeWidth={1.5} />
+              <PriorityLabel>Export CSV</PriorityLabel>
+            </button>
+          </PriorityTooltip>
+        </SearchPriority>
       </div>
       {/* Bulk action bar — shows the moment Select is on, with SELECT ALL and
           the voice-agent run INLINE (Suren: "select a bunch of contacts, then
@@ -523,14 +550,15 @@ export function ContactsBrowser({
                     </p>
                     <p className="text-[13px] text-text-secondary truncate">{c.title}</p>
                   </div>
-                  {/* LinkedIn as a labelled button chip in the card's top-right
-                      corner (Suren: not glued to the name), lifted above the
-                      stretched card link so it stays independently clickable. */}
+                  {/* LinkedIn as a button chip in the card's top-right corner
+                      (Suren: not glued to the name) — logo only, no text
+                      (Anir: "you don't need the text. Just a logo's enough"),
+                      but still unmistakably a button: border + hover. Lifted
+                      above the stretched card link so it stays clickable. */}
                   <LinkedInLink
                     url={c.linkedin}
-                    size={14}
-                    label="LinkedIn"
-                    className="relative z-10 ml-auto self-start whitespace-nowrap rounded-lg border border-border-light bg-white px-2 py-1 text-[11px] font-semibold text-text-secondary cursor-pointer hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary transition-colors"
+                    size={15}
+                    className="relative z-10 ml-auto self-start rounded-lg border border-border-light bg-white px-2 py-1.5 text-text-secondary cursor-pointer hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary transition-colors"
                   />
                 </div>
                 <div className="flex items-center justify-between gap-2">

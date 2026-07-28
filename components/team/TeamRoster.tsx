@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Phone, Mail, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
+import { Phone, Mail, MapPin, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Badge } from "@/components/ui/Badge";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
+import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { HoverCard } from "@/components/ui/HoverCard";
 import {
@@ -30,6 +31,10 @@ export type RosterRep = {
   region: string;
   email: string;
   phone: string;
+  // Empty string = no chip. Synthetic reps carry a stable demo profile URL;
+  // the real signed-in member only ever shows the URL they pasted in
+  // Settings › Profile (never a fabricated one).
+  linkedin: string;
   teamsUrl: string;
   openValue: number;
   weighted: number;
@@ -59,10 +64,13 @@ const ROLE_COLOR: Record<string, { bg: string; color: string }> = {
   Rep: { bg: "rgba(5,150,105,0.12)", color: "#047857" },
 };
 
-// Attainment colour band — red under target, amber near, green ahead.
+// Attainment colour band — red under target, burnt orange near, green ahead.
+// The mid band is painted as TEXT on the quota row, and amber can't hold text
+// (Anir, Jul 27: "that yellow, never use that yellow"); #C2410C is the app-wide
+// caution token — warm, legible, and clearly not the error red.
 function attainColor(pct: number): string {
   if (pct >= 50) return "#1A7A35";
-  if (pct >= 35) return "#F59E0B";
+  if (pct >= 35) return "#C2410C";
   return "#B02020";
 }
 
@@ -70,18 +78,27 @@ function tel(phone: string) {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
+// One chrome for both contact chips (Teams, LinkedIn) so the pair reads as
+// siblings — border, padding, radius and hover lifted from the Contacts grid's
+// LinkedIn chip, the version Suren approved. Icon-only on purpose (Suren:
+// "you don't even need to say Teams; the logo is enough… they'll save some
+// space") — the accessible name lives on aria-label/title instead.
+const CONTACT_CHIP =
+  "rounded-lg border border-border-light bg-white px-2 py-1.5 text-text-secondary cursor-pointer hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary transition-colors";
+
 function TeamsButton({ url, name }: { url: string; name: string }) {
+  const label = `Message ${name.split(" ")[0]} on Teams`;
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
-      title={`Message ${name.split(" ")[0]} on Teams`}
-      className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+      aria-label={label}
+      title={label}
+      className={cn("inline-flex items-center", CONTACT_CHIP)}
     >
       <TeamsIcon size={15} />
-      Teams
     </a>
   );
 }
@@ -375,11 +392,16 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
         </div>
       </div>
 
-      {/* key=view re-mounts the panel so switching grid↔table fades/rises in
-          (Suren: "switching between grid and table view should have animations"). */}
-      <div key={view} className="page-in">
+      {/* key=view re-mounts the panel so switching grid↔table animates. It used
+          `page-in`, which is OPACITY-ONLY by design (a transform there would
+          trap fixed/sticky descendants app-wide) — at 0.24s with no movement
+          the switch read as nothing happening (Anir, Jul 27: "what happened to
+          the animation here when I go from tiles to grid? There's nothing").
+          `tab-panel` is the app's own view-switch animation: it lifts 6px AND
+          fades, and it's the class the customer tabs already use. */}
+      <div key={view}>
       {view === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4 stagger">
           {reps.map((r) => {
             const rc = ROLE_COLOR[r.role];
             const pct = Math.round((r.wonFY / r.quota) * 100);
@@ -408,12 +430,18 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             className="!normal-case tracking-normal !text-[10px] !px-1.5 !py-0 relative z-10"
                           />
                         </div>
+                        {/* Title alone — the region moved to its own full-width
+                            row under the rule so "UK & Ireland" never truncates
+                            to "UK & Irela…" up here (Suren: "put the flag and
+                            the country below the rule so that it never gets
+                            cut off"). */}
                         <p className="text-[12px] text-text-secondary truncate">
-                          {r.title}{r.region ? ` · ${flagForGeography(r.region) || ""} ${r.region}` : ""}
+                          {r.title}
                         </p>
                       </div>
-                      <span className="relative z-10">
+                      <span className="relative z-10 flex shrink-0 items-center gap-1.5">
                         <TeamsButton url={r.teamsUrl} name={r.name} />
+                        <LinkedInLink url={r.linkedin} size={15} className={CONTACT_CHIP} />
                       </span>
                     </div>
 
@@ -478,6 +506,20 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           {r.phone}
                         </a>
                       )}
+                      {/* Flag + FULL region on its own row — full width and
+                          allowed to wrap, so it can never be cut off. Reps with
+                          no region (the real signed-in person) get no row and
+                          no dangling separator. */}
+                      {r.region && (
+                        <span className="inline-flex items-start gap-1.5 text-[12px] text-text-secondary whitespace-normal">
+                          <MapPin size={12} strokeWidth={1.9} className="mt-0.5 shrink-0" />
+                          <span className="min-w-0">
+                            {flagForGeography(r.region)
+                              ? `${flagForGeography(r.region)} ${r.region}`
+                              : r.region}
+                          </span>
+                        </span>
+                      )}
                     </div>
                   </>
                 }
@@ -518,25 +560,32 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse">
             <thead>
-              <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary border-b border-border-light bg-surface/50">
-                <th className="px-5 py-3">Rep</th>
-                <th className="px-5 py-3">Contact</th>
-                <th className="px-5 py-3 w-[230px]">Open pipeline</th>
-                <th className="px-5 py-3 text-right">Weighted</th>
-                <th className="px-5 py-3 text-right">Open deals</th>
-                <th className="px-5 py-3 text-right">Meetings</th>
-                <th className="px-5 py-3 w-[120px]">Activity · 10w</th>
-                <th className="px-5 py-3" />
+              {/* One line, always. "Open deals" was wrapping in its own column
+                  and doubling the header's height, so the rows appeared to
+                  start halfway down the table (Anir, Jul 27: "that header row
+                  is too thick… the actual data starts halfway through").
+                  whitespace-nowrap forbids the wrap, the tighter tracking and
+                  px-4 buy back the width it needs, and py-2.5 trims the strip
+                  to a single text line's worth of padding. */}
+              <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary border-b border-border-light bg-surface/50 [&>th]:whitespace-nowrap">
+                <th className="px-4 py-2.5">Rep</th>
+                <th className="px-4 py-2.5">Contact</th>
+                <th className="px-4 py-2.5 w-[230px]">Open pipeline</th>
+                <th className="px-4 py-2.5 text-right">Weighted</th>
+                <th className="px-4 py-2.5 text-right">Open deals</th>
+                <th className="px-4 py-2.5 text-right">Meetings</th>
+                <th className="px-4 py-2.5 w-[120px]">Activity · 10w</th>
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-light">
+            <tbody className="divide-y divide-border-light stagger">
               {reps.map((r) => {
                 const rc = ROLE_COLOR[r.role];
                 const pct = Math.round((r.wonFY / r.quota) * 100);
                 const ac = attainColor(pct);
                 return (
                   <tr key={r.identityKey} className="hover:bg-surface transition-colors">
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3.5">
                       {/* Row hover popover (Suren: "on the rows page there's no
                           pop-up like the grid") — the rep's mix + headline stats. */}
                       <HoverCard
@@ -551,8 +600,18 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                   {r.name}
                                 </p>
                                 <p className="text-[11.5px] text-text-tertiary truncate">
-                                  {r.title}{r.region ? ` · ${flagForGeography(r.region) || ""} ${r.region}` : ""}
+                                  {r.title}
                                 </p>
+                                {/* Region gets its OWN line — no middot. Sharing a
+                                    line with the title meant long titles wrapped and
+                                    split the flag from its place (Anir: "the country
+                                    and the role should always be on separate lines.
+                                    You don't need that dot separator"). */}
+                                {r.region ? (
+                                  <p className="text-[11.5px] text-text-tertiary whitespace-nowrap">
+                                    {flagForGeography(r.region) || ""} {r.region}
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
                             <div className="flex items-center justify-between mb-1">
@@ -594,13 +653,22 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                           photo while the account got a mark
                                           (Anir, Jul 26: "profile pictures,
                                           hello"). Every person shows a face. */}
-                                      <span className="relative flex shrink-0 items-center">
-                                        <CompanyLogo name={d.company} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
-                                        <Avatar name={d.contact} className="-ml-1.5 h-[18px] w-[18px] shrink-0 text-[7px] ring-2 ring-white" />
-                                      </span>
+                                      {/* The company logo stands alone; the
+                                          person's face sits WITH their name on
+                                          the line below (Anir, Jul 27: "the
+                                          profile picture of the person needs to
+                                          come next to the name, and then just
+                                          leave the company logo where it is by
+                                          itself"). Overlapping the two marks
+                                          read as one blob and attached the face
+                                          to the wrong label. */}
+                                      <CompanyLogo name={d.company} className="h-[20px] w-[20px] shrink-0 text-[7px]" />
                                       <span className="min-w-0 flex-1">
                                         <span className="block truncate text-[10.5px] font-medium text-text-primary">{d.company}</span>
-                                        <span className="block truncate text-[9px] text-text-tertiary">{d.contact}</span>
+                                        <span className="mt-0.5 flex min-w-0 items-center gap-1">
+                                          <Avatar name={d.contact} className="h-[14px] w-[14px] shrink-0 text-[6px]" />
+                                          <span className="min-w-0 truncate text-[9px] text-text-tertiary">{d.contact}</span>
+                                        </span>
                                       </span>
                                       <span className="shrink-0 text-[9.5px] text-text-secondary tnum">{formatMoney(d.value)}</span>
                                     </div>
@@ -631,17 +699,30 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                               </span>
                               <Badge label={r.role} bg={rc.bg} color={rc.color} className="!normal-case tracking-normal !text-[10px] !px-1.5 !py-0" />
                             </span>
-                            <span className="block text-[12px] text-text-secondary truncate">
-                              {r.title}{r.region ? ` · ${flagForGeography(r.region) || ""} ${r.region}` : ""}
+                            {/* Inline is fine here — the table column has the
+                                width — but wrap instead of ellipsizing so a
+                                long region never clips mid-word. */}
+                            <span className="block text-[12px] text-text-secondary whitespace-normal break-normal">
+                              {r.title}
                             </span>
+                            {/* Region on its OWN line, no middot — sharing the
+                                line let long titles wrap and strand the flag
+                                from its place (Anir: "the country and the role
+                                should always be on separate lines"). */}
+                            {r.region ? (
+                              <span className="block text-[12px] text-text-secondary whitespace-nowrap">
+                                {flagForGeography(r.region) || ""} {r.region}
+                              </span>
+                            ) : null}
                           </span>
                         </Link>
                       </HoverCard>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3.5">
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-2">
                           <TeamsButton url={r.teamsUrl} name={r.name} />
+                          <LinkedInLink url={r.linkedin} size={15} className={CONTACT_CHIP} />
                           {r.phone && (
                             <a
                               href={tel(r.phone)}
@@ -663,7 +744,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         </a>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3.5">
                       <p className="text-[14px] font-semibold text-text-primary tnum">
                         {formatMoney(r.openValue)}
                       </p>
@@ -671,19 +752,19 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <PipelineBarInspector rep={r} />
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
+                    <td className="px-4 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
                       {formatMoney(r.weighted)}
                     </td>
-                    <td className="px-5 py-3.5 text-right text-[14px] text-text-secondary tnum">
+                    <td className="px-4 py-3.5 text-right text-[14px] text-text-secondary tnum">
                       {r.openCount}
                     </td>
-                    <td className="px-5 py-3.5 text-right text-[14px] text-text-secondary tnum">
+                    <td className="px-4 py-3.5 text-right text-[14px] text-text-secondary tnum">
                       {r.meetings}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3.5">
                       <ActivityTrendInspector rep={r} />
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-4 py-3.5 text-right">
                       <Link
                         href={`/analytics/reps/${r.slug}`}
                         aria-label={`Open ${r.name}'s analytics`}

@@ -70,7 +70,8 @@ export function TelegramCard() {
         >
           <span
             className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: configured ? "#34C759" : "#FF9F0A" }}
+            // not-configured dot: burnt orange, not the banned amber
+            style={{ backgroundColor: configured ? "#34C759" : "#C2410C" }}
           />
           {configured ? "Connected" : "Not configured"}
         </span>

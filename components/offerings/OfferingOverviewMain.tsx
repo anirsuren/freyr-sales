@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   BarChart3,
   BookOpen,
+  CalendarCheck,
   ChevronRight,
   DollarSign,
   FolderOpen,
@@ -11,18 +12,41 @@ import {
   Building2,
 } from "lucide-react";
 import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
-import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
+import { OfferingCapabilities } from "@/components/offerings/OfferingCapabilities";
 import { MaterialsSection } from "@/components/offerings/MaterialsSection";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { formatMoney } from "@/lib/pipeline";
-import { DonutChart, DonutLegend, BarChart, VIZ_SERIES } from "@/components/charts/Charts";
+import { DonutChart, DonutLegend, VIZ_SERIES } from "@/components/charts/Charts";
 import { type Offering, hydrateOffering } from "@/lib/offerings";
 import type { OfferingReport } from "@/lib/revenue";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
 import { formatDate } from "@/lib/utils";
+
+// The availability comment arrives from Suren's sheet as one middot-joined
+// run-on ("Available in various markets via in-house delivery team / FreyrX /
+// both · CSV & CSA Validation Services: Provided through FreyrX in all
+// markets"). Printed as a single gray sentence next to a pill it read as an
+// afterthought (Suren: "the 'Available now' part looks horrible"). Split it
+// back into the clauses it was joined from, and lift a short "Label: value"
+// prefix out so every line has a subject of its own.
+function availabilityNotes(text: string): { label: string | null; body: string }[] {
+  return text
+    .split(/\s*[·•|;]\s*|\n+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const at = part.indexOf(":");
+      // A colon inside a URL ("https://") is punctuation, not a label.
+      const isLabel =
+        at > 0 && at <= 60 && part.slice(at + 1, at + 3) !== "//" && !!part.slice(at + 1).trim();
+      return isLabel
+        ? { label: part.slice(0, at).trim(), body: part.slice(at + 1).trim() }
+        : { label: null, body: part };
+    });
+}
 
 function SectionHeading({
   icon: Icon,
@@ -128,16 +152,13 @@ export function OfferingOverviewMain({
     const live = allLines.filter((entry) => lineActiveAt(entry.line, month));
     return {
       label: month.toLocaleDateString("en-US", { month: "short" }),
+      longLabel: month.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
       value: live.reduce((sum, entry) => sum + entry.line.amount, 0),
       color: VIZ_SERIES[0],
-      tip: live.map((entry) => ({
-        logo: entry.customer,
-        name: entry.customer,
-        sub: REVENUE_TYPE_META[entry.line.revenue_type]?.short,
-        value: formatMoney(entry.line.amount),
-      })),
+      entries: live,
     };
   });
+  const outlookMax = Math.max(...outlook.map((month) => month.value), 1);
 
   return (
     <div className="min-w-0">
@@ -148,13 +169,52 @@ export function OfferingOverviewMain({
           description="The positioning a seller needs before taking this to an account."
         />
         <div className="mt-5 max-w-[900px] pl-11">
-          <CollapsibleDescription text={description} threshold={520} />
-          {o.future_availability && (
-            <div className="mt-5 flex items-start gap-3 border-l-2 border-blue-primary bg-blue-light/45 px-4 py-3">
-              <AvailabilityPill value={o.current_availability} size="sm" />
-              <p className="text-[12.5px] leading-relaxed text-text-secondary">
-                {o.future_availability}
-              </p>
+          {/* The descriptions came out of Suren's sheet as bullet LISTS — each
+              bullet a service within the service. They render as real
+              capability cards now instead of a pasted block of text; a plain
+              prose description still renders as prose. */}
+          <OfferingCapabilities text={description} offeringName={o.offering_name} />
+          {/* AVAILABILITY — a titled block in the app's card language, not a
+              pill glued to the front of a run-on sentence. The eyebrow says
+              what the block is, the pill says the status, and each caveat from
+              the sheet gets its own line. */}
+          {(o.current_availability || o.future_availability) && (
+            <div className="mt-5 rounded-xl border border-border-light bg-blue-light px-4 py-3.5">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <CalendarCheck
+                  size={13}
+                  strokeWidth={2.1}
+                  className="shrink-0 text-blue-primary"
+                  aria-hidden="true"
+                />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary">
+                  Availability
+                </p>
+                <AvailabilityPill value={o.current_availability} size="sm" />
+              </div>
+              {o.future_availability && (
+                <ul className="mt-2.5 space-y-1.5 border-t border-border-light pt-2.5">
+                  {availabilityNotes(o.future_availability).map((note, index) => (
+                    <li
+                      key={`${index}-${note.body}`}
+                      className="flex items-start gap-2 text-[12.5px] leading-relaxed"
+                    >
+                      <span
+                        className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary"
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0">
+                        {note.label && (
+                          <span className="font-semibold text-text-primary">
+                            {note.label}:{" "}
+                          </span>
+                        )}
+                        <span className="text-text-secondary">{note.body}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>
@@ -224,12 +284,15 @@ export function OfferingOverviewMain({
 
             {/* Both panels add something the table below cannot: the KIND of
                 revenue, and how far out it stays under contract. */}
-            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-              <div className="rounded-xl border border-border-light px-4 py-4">
+            {/* Both panels stretch to one shared height and their contents
+                FILL it — the donut used to sit at the top of its box with a
+                dead band underneath (Suren: "a lot of empty space below"). */}
+            <div className="mt-5 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+              <div className="flex h-full flex-col rounded-xl border border-border-light px-4 py-4">
                 <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                   What kind of revenue
                 </p>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-1 items-center gap-4">
                   <DonutChart
                     syncId="offering-types"
                     segments={typeSegments}
@@ -249,16 +312,137 @@ export function OfferingOverviewMain({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border-light px-4 py-4">
-                <div className="mb-2 flex items-baseline justify-between gap-3">
+              <div className="flex h-full flex-col rounded-xl border border-border-light px-4 py-4">
+                <div className="flex items-baseline justify-between gap-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                     Still under contract
                   </p>
-                  <p className="text-[10px] text-text-tertiary">
-                    Next six months
-                  </p>
+                  <p className="text-[10px] text-text-tertiary">Next six months</p>
                 </div>
-                <BarChart data={outlook} height={132} format="money" />
+                {/* Units at rest, so the column reads without hovering. */}
+                <p className="mt-0.5 text-[10px] text-text-tertiary">
+                  Contracted value per month (USD)
+                </p>
+                {/* Each month's money label is pinned to the top of ITS OWN
+                    column instead of sharing one flat row far above the bars
+                    (Suren: "shouldn't the number be right above the bar here?
+                    Why is it all in line?"). Same idiom as /forecast's by-stage
+                    plot: a stretchy track with the bar pinned to the baseline,
+                    percentage heights so the chart fills whatever height the
+                    row gives it — never a fixed pixel block with dead space. */}
+                <div className="mt-3 flex flex-1 flex-col">
+                  <div
+                    data-outlook-plot
+                    className="relative flex min-h-[136px] flex-1 items-stretch gap-2.5 border-b border-border-light"
+                  >
+                    {outlook.map((month, index) => {
+                      // 78% ceiling leaves headroom for the tallest bar's own
+                      // label; every bar keeps a visible stub at zero.
+                      const barPct = Math.max(
+                        (month.value / outlookMax) * 78,
+                        month.value > 0 ? 5 : 2
+                      );
+                      const hover = (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            {month.longLabel}
+                          </p>
+                          <p className="mt-0.5 text-[17px] font-bold text-text-primary tnum">
+                            {formatMoney(month.value)}
+                          </p>
+                          <p className="mt-0.5 text-[11.5px] text-text-secondary">
+                            Booked value still under contract that month
+                          </p>
+                          <div className="mt-2.5 border-t border-border-light pt-2.5">
+                            <p className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                              Accounts under contract
+                            </p>
+                            {month.entries.length === 0 ? (
+                              <p className="text-[11.5px] text-text-tertiary">
+                                Nothing under contract this month.
+                              </p>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {month.entries.map((entry) => (
+                                  <div
+                                    key={`${entry.customer}-${entry.line.id}`}
+                                    className="flex items-center gap-2 text-[11.5px]"
+                                  >
+                                    <CompanyLogo
+                                      name={entry.customer}
+                                      className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                                    />
+                                    {/* Wraps, never truncates — a full account
+                                        name is the point of the breakdown. */}
+                                    <span className="min-w-0 flex-1 leading-tight">
+                                      <span className="block break-words font-medium text-text-primary">
+                                        {entry.customer}
+                                      </span>
+                                      <span className="block text-[10px] text-text-tertiary">
+                                        {REVENUE_TYPE_META[entry.line.revenue_type]?.short}
+                                      </span>
+                                    </span>
+                                    <span className="shrink-0 tnum text-text-secondary">
+                                      {formatMoney(entry.line.amount)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                      return (
+                        <div
+                          key={month.label}
+                          // A stretched column with its own floor height: the
+                          // bar's %-height then always resolves against a real
+                          // box, however tall the row grows.
+                          className="group relative min-h-[136px] min-w-0 flex-1"
+                        >
+                          <span
+                            className="pointer-events-none absolute inset-x-0 text-center text-[10.5px] font-semibold tnum text-text-primary"
+                            style={{ bottom: `calc(${barPct}% + 5px)` }}
+                          >
+                            {formatMoney(month.value)}
+                          </span>
+                          <div
+                            className="absolute inset-x-0 bottom-0 flex justify-center"
+                            style={{ height: `${barPct}%` }}
+                          >
+                            <HoverCard
+                              side="top"
+                              width={266}
+                              delayMs={0}
+                              content={hover}
+                              clearAncestor="[data-outlook-plot]"
+                              tightAbove={20}
+                              className="h-full w-[70%] max-w-[52px] cursor-pointer"
+                            >
+                              <div
+                                className="chart-bar h-full w-full rounded-t-md transition-[filter,transform] group-hover:brightness-105"
+                                style={{
+                                  background: month.color,
+                                  animationDelay: `${index * 60}ms`,
+                                }}
+                              />
+                            </HoverCard>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-1.5 flex gap-2.5">
+                    {outlook.map((month) => (
+                      <p
+                        key={month.label}
+                        className="min-w-0 flex-1 text-center text-[10.5px] text-text-tertiary"
+                      >
+                        {month.label}
+                      </p>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 

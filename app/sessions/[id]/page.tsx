@@ -94,52 +94,72 @@ export default async function SessionPage({
   ];
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <RecordView
-        type="Session"
-        label={`${shortName} — pitch session`}
-        sublabel={contact?.full_name || ""}
-        href={`/sessions/${session.id}`}
-      />
-      {customer && (
-        <IntelligenceRail
-          customer={customer}
-          contact={contact}
-          services={services}
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      {/* This workspace is reached from the deal page, and it fills the whole
+          window — so without this line there is no way back and no label saying
+          what you're now looking at. Suren, after clicking through: "how the
+          fuck did I get to this screen, I'm so confused. I can't go back." */}
+      {/* Just the arrow, like every other detail page — the old version was a
+          full-width bordered white bar with a breadcrumb sentence, which
+          stacked yet another line under the top bar (Anir: "that white
+          background looks weird because there are so many fucking lines").
+          No border, no caption; the workspace says what it is. */}
+      <div className="shrink-0 px-6 pb-1 pt-3">
+        <Link
+          href={`/deals/${session.id}`}
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
+        >
+          <ArrowLeft size={16} strokeWidth={1.8} />
+          Back to the deal
+        </Link>
+      </div>
+      <div className="rise-in flex min-h-0 flex-1 overflow-hidden">
+        <RecordView
+          type="Session"
+          label={`${shortName} — pitch session`}
+          sublabel={contact?.full_name || ""}
+          href={`/sessions/${session.id}`}
         />
-      )}
+        {customer && (
+          <IntelligenceRail
+            customer={customer}
+            contact={contact}
+            services={services}
+          />
+        )}
 
-      <div className="flex-1 min-w-0 bg-white overflow-hidden">
-        <PitchWorkspace
+        <div className="flex-1 min-w-0 bg-white overflow-hidden">
+          <PitchWorkspace
+            sessionId={session.id}
+            title={`Executive Briefing: ${shortName} Submission Dossiers`}
+            lastActivityAt={
+              [...interactions].sort(
+                (a, b) =>
+                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )[0]?.created_at || session.created_at
+            }
+            pitch5min={session.pitch_5min_script}
+            pitchEmail={session.pitch_email}
+            pitchCall={session.pitch_call_script}
+            accountBrief={accountBrief}
+            objections={objections}
+            initialReviewStatus={session.review_status || "draft"}
+            initialReviewNote={session.review_note || null}
+            recipientEmail={contact?.email || ""}
+            recipientName={contact?.full_name || ""}
+            companyName={customer?.company_name || ""}
+          />
+        </div>
+
+        {/* Right rail — log a real call/meeting outcome against this session. Opt-in
+            (collapsed) so it never clutters the pitch, but always one click away. */}
+        <EngagementRail
           sessionId={session.id}
-          title={`Executive Briefing: ${shortName} Submission Dossiers`}
-          lastActivityAt={
-            [...interactions].sort(
-              (a, b) =>
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            )[0]?.created_at || session.created_at
-          }
-          pitch5min={session.pitch_5min_script}
-          pitchEmail={session.pitch_email}
-          pitchCall={session.pitch_call_script}
-          accountBrief={accountBrief}
-          objections={objections}
-          initialReviewStatus={session.review_status || "draft"}
-          initialReviewNote={session.review_note || null}
-          recipientEmail={contact?.email || ""}
-          recipientName={contact?.full_name || ""}
-          companyName={customer?.company_name || ""}
+          customerId={session.customer_id}
+          contactId={session.contact_id}
+          initialInteractions={interactions}
         />
       </div>
-
-      {/* Right rail — log a real call/meeting outcome against this session. Opt-in
-          (collapsed) so it never clutters the pitch, but always one click away. */}
-      <EngagementRail
-        sessionId={session.id}
-        customerId={session.customer_id}
-        contactId={session.contact_id}
-        initialInteractions={interactions}
-      />
     </div>
   );
 }

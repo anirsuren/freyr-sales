@@ -36,6 +36,11 @@ const BADGE: Record<NotificationType, string> = {
  * generic calendar icon told a rep nothing — the logo tells them which account
  * this is before they read a word (Anir, Jul 25: "make sure that there are
  * logos and images and stuff like the company logo").
+ *
+ * Sized at 32px, not 36px: at the old size the square logo plus its overlapping
+ * headshot outweighed the two lines of text beside it and the row read as a
+ * picture with a caption (Suren, Jul 27: "the notifications are really weird").
+ * One mark, one small badge, text leads.
  */
 export function NotificationMark({
   type,
@@ -52,11 +57,11 @@ export function NotificationMark({
   const badge = (
     <span
       className={cn(
-        "absolute -bottom-0.5 -right-0.5 w-[15px] h-[15px] rounded-full flex items-center justify-center ring-2 ring-white",
+        "absolute -bottom-0.5 -right-0.5 w-[13px] h-[13px] rounded-full flex items-center justify-center ring-2 ring-white",
         BADGE[type] || "bg-blue-primary text-white"
       )}
     >
-      <Icon size={9} strokeWidth={2.4} />
+      <Icon size={8} strokeWidth={2.4} />
     </span>
   );
 
@@ -66,23 +71,23 @@ export function NotificationMark({
     return (
       <span
         className={cn(
-          "relative w-9 h-9 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0",
+          "relative w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0",
           className
         )}
       >
-        <Icon size={17} strokeWidth={1.7} />
+        <Icon size={15} strokeWidth={1.8} />
       </span>
     );
   }
 
   if (company) {
     return (
-      <span className={cn("relative shrink-0 w-9 h-9", className)}>
-        <CompanyLogo name={company} className="w-9 h-9 rounded-lg text-[12px]" />
+      <span className={cn("relative shrink-0 w-8 h-8", className)}>
+        <CompanyLogo name={company} className="w-8 h-8 rounded-lg text-[11px]" />
         {person ? (
           <Avatar
             name={person}
-            className="absolute -bottom-1 -right-1 w-[17px] h-[17px] text-[7px] ring-2 ring-white"
+            className="absolute -bottom-1 -right-1 w-[15px] h-[15px] text-[6.5px] ring-2 ring-white"
           />
         ) : (
           badge
@@ -92,8 +97,8 @@ export function NotificationMark({
   }
 
   return (
-    <span className={cn("relative shrink-0 w-9 h-9", className)}>
-      <Avatar name={person!} className="w-9 h-9 text-[12px]" />
+    <span className={cn("relative shrink-0 w-8 h-8", className)}>
+      <Avatar name={person!} className="w-8 h-8 text-[11px]" />
       {badge}
     </span>
   );

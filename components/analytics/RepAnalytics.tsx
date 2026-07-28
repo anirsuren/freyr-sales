@@ -288,7 +288,9 @@ export function RepAnalytics({
               { label: "Weighted", value: formatMoney(rep.weighted), pct: Math.round((rep.weighted / teamMax.weighted) * 100), color: "#0071E3" },
               { label: "Avg deal", value: formatMoney(rep.avgDeal), pct: Math.round((rep.avgDeal / teamMax.avgDeal) * 100), color: "#7C3AED" },
               { label: "Qualified+", value: String(rep.qualifiedPlus), pct: Math.round((rep.qualifiedPlus / teamMax.qualifiedPlus) * 100), color: "#1A7A35" },
-              { label: "Meetings", value: String(rep.meetings), pct: Math.round((rep.meetings / teamMax.meetings) * 100), color: "#F59E0B" },
+              // Burnt orange, not amber: the yellow band is banned app-wide,
+              // fills included, so a KPI bar never reads mustard (Anir, Jul 27).
+              { label: "Meetings", value: String(rep.meetings), pct: Math.round((rep.meetings / teamMax.meetings) * 100), color: "#C2410C" },
             ];
             return (
               <div key={rep.key}>
@@ -408,7 +410,12 @@ export function RepAnalytics({
                               tip: (repStageDeals?.[rep.key]?.[s.stage] ?? []).map((d) => ({
                                 logo: d.company,
                                 name: d.company,
-                                sub: d.contact,
+                                // The contact is a PERSON — they belong in
+                                // `avatar`, the field that draws the headshot
+                                // and gives the name its own unbreakable line.
+                                // Buried in `sub` they rendered as flat text
+                                // with no face (TipItem's own contract).
+                                avatar: d.contact,
                                 value: formatMoney(d.value),
                               })),
                             }))}
@@ -428,11 +435,19 @@ export function RepAnalytics({
                                   label: s.stage,
                                   value: s.count,
                                   color: s.color,
-                                  // WHO's in this stage for this rep.
-                                  tip: (repStageDeals?.[rep.name]?.[s.stage] ?? []).map((d) => ({
+                                  // WHO's in this stage for this rep. Keyed by
+                                  // rep.key, NOT rep.name: app/analytics/page.tsx
+                                  // builds repStageDeals under
+                                  // repIdentityForDeal(d).key ("member:…",
+                                  // "current:…", "legacy:…"), which a display
+                                  // name can never match — so this donut's
+                                  // breakdown was always empty.
+                                  tip: (repStageDeals?.[rep.key]?.[s.stage] ?? []).map((d) => ({
                                     logo: d.company,
                                     name: d.company,
-                                    sub: d.contact,
+                                    // Person → `avatar`, so the contact gets a
+                                    // headshot and an unbreakable name line.
+                                    avatar: d.contact,
                                     value: formatMoney(d.value),
                                   })),
                                 }))}

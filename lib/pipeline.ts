@@ -1,3 +1,11 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  BadgeCheck,
+  CalendarCheck,
+  MessagesSquare,
+  Radar,
+  XCircle,
+} from "lucide-react";
 import type { Customer, Contact, PitchSession, Interaction } from "./types";
 
 export const STAGES = [
@@ -41,11 +49,27 @@ export const STAGE_PROBABILITY: Record<Stage, number> = {
 // a donut (Suren: teal vs sky vs green were indistinguishable). Amber → blue →
 // violet → green → red follows the funnel from cold to won-adjacent to lost.
 export const STAGE_COLOR: Record<Stage, string> = {
-  Prospect: "#F59E0B",
+  // Prospect is burnt orange, not amber: forecast and account rows draw the
+  // stage name AS this colour on a 8% tint, where amber was unreadable. It is
+  // 20 lightness points darker than the Closed Lost red, so the two never blur.
+  Prospect: "#C2410C",
   Engaged: "#0071E3",
   Qualified: "#7C3AED",
   "Meeting Booked": "#16A34A",
   "Closed Lost": "#EF4444",
+};
+
+// Every stage carries a colour AND an icon — a stage is a status chip, and a
+// status chip is never plain type on a plain background (standing rule). This
+// map lives beside STAGE_COLOR so the board, the deal timeline and any future
+// stage renderer read one glyph set instead of inventing their own. Funnel
+// semantics: scanning → talking → verified → booked → dead.
+export const STAGE_ICON: Record<Stage, LucideIcon> = {
+  Prospect: Radar,
+  Engaged: MessagesSquare,
+  Qualified: BadgeCheck,
+  "Meeting Booked": CalendarCheck,
+  "Closed Lost": XCircle,
 };
 
 // The advancing (still-open) stages, in funnel order.

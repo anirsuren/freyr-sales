@@ -3,21 +3,23 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  AlarmClock,
   AlertTriangle,
   ArrowRight,
   CalendarClock,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
+  Inbox,
   Search,
-  Sparkles,
+  Timer,
 } from "lucide-react";
-import { AgentActions } from "@/components/agent/AgentActions";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { cn, formatDate } from "@/lib/utils";
-import type { AgentAction } from "@/lib/agent";
 
 type ReviewTask = {
   id: string;
@@ -40,27 +42,47 @@ type FollowUpTask = {
 
 type Filter = "all" | "review" | "followup" | "overdue";
 
+// How urgent a due date is, as its own band. Every follow-up used to land in
+// one "soon" bucket, so "Tomorrow" and "In 6 days" wore the identical blue pill
+// and the column carried no signal at all (Anir, Jul 27: "the due status should
+// be colour-coded based on how important it is"). Five bands now, each with its
+// own colour AND its own icon — the standing rule for anything categorical.
+type DueKind = "overdue" | "today" | "tomorrow" | "week" | "later";
+
 function dueInfo(due: string, todayMs: number) {
   const d = new Date(due);
   const dayMs = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((dayMs - todayMs) / 86400000);
   if (days < 0)
-    return { kind: "overdue" as const, label: `${Math.abs(days)}d overdue`, days };
-  if (days === 0) return { kind: "today" as const, label: "Due today", days };
-  if (days === 1) return { kind: "soon" as const, label: "Tomorrow", days };
-  if (days <= 7) return { kind: "soon" as const, label: `In ${days} days`, days };
-  return { kind: "later" as const, label: formatDate(due), days };
+    return { kind: "overdue" as DueKind, label: `${Math.abs(days)}d overdue`, days };
+  if (days === 0) return { kind: "today" as DueKind, label: "Due today", days };
+  if (days === 1) return { kind: "tomorrow" as DueKind, label: "Tomorrow", days };
+  if (days <= 7) return { kind: "week" as DueKind, label: `In ${days} days`, days };
+  return { kind: "later" as DueKind, label: formatDate(due), days };
 }
+
+// Red → burnt orange → blue → green → violet: hot to cool, so the column can be
+// read at a glance without reading a single word. Never amber — #C2410C is the
+// app-wide caution token.
+const DUE_STYLE: Record<
+  DueKind | "review",
+  { cls: string; icon: typeof AlertTriangle }
+> = {
+  overdue: { cls: "bg-red-50 text-red-700", icon: AlertTriangle },
+  today: { cls: "bg-[#C2410C]/10 text-[#C2410C]", icon: AlarmClock },
+  tomorrow: { cls: "bg-blue-light text-blue-primary", icon: Timer },
+  week: { cls: "bg-emerald-50 text-emerald-700", icon: CalendarClock },
+  later: { cls: "bg-violet-50 text-violet-700", icon: CalendarDays },
+  review: { cls: "bg-[#C2410C]/10 text-[#C2410C]", icon: ClipboardCheck },
+};
 
 export function TasksWorkspace({
   reviewTasks,
   followUps,
-  agentActions,
   todayMs,
 }: {
   reviewTasks: ReviewTask[];
   followUps: FollowUpTask[];
-  agentActions: AgentAction[];
   todayMs: number;
 }) {
   const [query, setQuery] = useState("");
@@ -112,7 +134,9 @@ export function TasksWorkspace({
 
   const overdue = queue.filter((task) => task.kind === "followup" && task.status === "overdue").length;
   const dueSoon = queue.filter(
-    (task) => task.kind === "followup" && ["overdue", "today", "soon"].includes(task.status)
+    (task) =>
+      task.kind === "followup" &&
+      ["overdue", "today", "tomorrow", "week"].includes(task.status)
   ).length;
 
   const visible = useMemo(() => {
@@ -139,11 +163,23 @@ export function TasksWorkspace({
     );
   }
 
-  const filters: { key: Filter; label: string; count: number; color: string; active: string }[] = [
-    { key: "all", label: "All", count: queue.length, color: "bg-blue-light text-blue-primary", active: "ring-blue-primary/25" },
-    { key: "review", label: "Reviews", count: reviewTasks.length, color: "bg-violet-50 text-violet-700", active: "ring-violet-500/25" },
-    { key: "followup", label: "Follow-ups", count: followUps.length, color: "bg-emerald-50 text-emerald-700", active: "ring-emerald-500/25" },
-    { key: "overdue", label: "Overdue", count: overdue, color: "bg-red-50 text-red-700", active: "ring-red-500/25" },
+  // These read as chips now, not as four washed-out lozenges with a halo around
+  // the selected one (Anir, Jul 27: "I don't like the way these four tags look.
+  // They don't look anything like the other tags you have throughout the
+  // website"). Same anatomy as every other chip in the app: a solid icon bubble
+  // in the chip's own colour, the label, then the count — and the colour is
+  // carried at full strength when selected instead of by an outline ring.
+  const filters: {
+    key: Filter;
+    label: string;
+    count: number;
+    color: string;
+    icon: typeof Inbox;
+  }[] = [
+    { key: "all", label: "All", count: queue.length, color: "#0071E3", icon: Inbox },
+    { key: "review", label: "Reviews", count: reviewTasks.length, color: "#6D28D9", icon: ClipboardCheck },
+    { key: "followup", label: "Follow-ups", count: followUps.length, color: "#047857", icon: CalendarClock },
+    { key: "overdue", label: "Overdue", count: overdue, color: "#B02020", icon: AlertTriangle },
   ];
 
   return (
@@ -173,23 +209,6 @@ export function TasksWorkspace({
         })}
       </div>
 
-      {agentActions.length > 0 && (
-        <section>
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <h2 className="text-[15px] font-semibold text-text-primary flex items-center gap-2">
-                <Sparkles size={17} className="text-blue-primary" /> Agent-ready actions
-              </h2>
-              <p className="text-[12px] text-text-secondary mt-0.5">Draft, review, or clear the next move without leaving the queue.</p>
-            </div>
-            <Link href="/agent" className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline">
-              Open Agent <ArrowRight size={13} />
-            </Link>
-          </div>
-          <AgentActions actions={agentActions} />
-        </section>
-      )}
-
       <section ref={queueRef} className="scroll-mt-24">
         <div className="flex items-center justify-between gap-4 mb-3">
           <div>
@@ -208,23 +227,49 @@ export function TasksWorkspace({
               />
             </div>
             <div className="flex items-center gap-1.5" role="group" aria-label="Filter tasks">
-              {filters.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => applyFilter(item.key)}
-                  aria-pressed={filter === item.key}
-                  className={cn(
-                    "h-8 rounded-full px-3 text-[12px] font-semibold transition-all",
-                    item.color,
-                    filter === item.key
-                      ? `ring-2 ring-offset-1 ${item.active}`
-                      : "opacity-70 hover:opacity-100"
-                  )}
-                >
-                  {item.label} <span className="ml-1 tnum opacity-75">{item.count}</span>
-                </button>
-              ))}
+              {filters.map((item) => {
+                const on = filter === item.key;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => applyFilter(item.key)}
+                    aria-pressed={on}
+                    style={
+                      on
+                        ? {
+                            background: `${item.color}14`,
+                            borderColor: `${item.color}59`,
+                            color: item.color,
+                          }
+                        : undefined
+                    }
+                    className={cn(
+                      "inline-flex h-8 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border py-1 pl-1.5 pr-2.5 text-[12.5px] font-semibold leading-tight transition-colors",
+                      !on &&
+                        "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:bg-surface"
+                    )}
+                  >
+                    <span
+                      className="flex h-[1.45em] w-[1.45em] shrink-0 items-center justify-center rounded-full text-white"
+                      style={{ backgroundColor: item.color }}
+                    >
+                      <Icon size={11} strokeWidth={2.2} className="h-[0.85em] w-[0.85em]" />
+                    </span>
+                    {item.label}
+                    <span
+                      className="tnum rounded-full px-1.5 py-px text-[11px] font-bold"
+                      style={{
+                        background: on ? `${item.color}1F` : "rgba(0,0,0,0.05)",
+                        color: on ? item.color : undefined,
+                      }}
+                    >
+                      {item.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -270,23 +315,41 @@ export function TasksWorkspace({
                   </div>
 
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-text-primary truncate" title={task.task}>{task.task}</p>
+                    {/* A review row's whole Task cell IS the offering being
+                        pitched — an offering name is a CATEGORY and can never
+                        be flat text, so it wears the same glyph + colour chip
+                        it carries on the pipeline cards and sessions table.
+                        A follow-up's task ("Follow up with …") is a sentence,
+                        not an offering, and stays plain. Neither truncates:
+                        a clipped task is the one thing a rep can't act on. */}
+                    {task.kind === "review" ? (
+                      <ServiceTag name={task.service} />
+                    ) : (
+                      <p className="text-[13px] font-medium text-text-primary">{task.task}</p>
+                    )}
                     <p className="text-[11.5px] text-text-secondary mt-0.5">
                       {isReview ? "Open the pitch, verify claims, and approve or return it." : "Open the contact and log the next interaction."}
                     </p>
                   </div>
 
-                  <span className={cn(
-                    "inline-flex w-fit items-center gap-1.5 text-[11.5px] font-semibold px-2 py-1 rounded",
-                    isReview && "bg-amber-50 text-amber-800",
-                    !isReview && task.status === "overdue" && "bg-red-50 text-red-700",
-                    !isReview && task.status === "today" && "bg-amber-50 text-amber-800",
-                    !isReview && task.status === "soon" && "bg-blue-light text-blue-primary",
-                    !isReview && task.status === "later" && "bg-surface text-text-secondary"
-                  )}>
-                    {!isReview && task.status === "overdue" && <AlertTriangle size={11} />}
-                    {task.dueLabel}
-                  </span>
+                  {(() => {
+                    const due =
+                      DUE_STYLE[
+                        isReview ? "review" : (task.status as DueKind)
+                      ] ?? DUE_STYLE.later;
+                    const DueIcon = due.icon;
+                    return (
+                      <span
+                        className={cn(
+                          "inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded px-2 py-1 text-[11.5px] font-semibold",
+                          due.cls
+                        )}
+                      >
+                        <DueIcon size={12} strokeWidth={2.2} className="shrink-0" />
+                        {task.dueLabel}
+                      </span>
+                    );
+                  })()}
 
                   <Link href={task.href} aria-label={`Open task for ${task.company}`} className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary group-hover:text-blue-primary group-hover:bg-white transition-colors">
                     <ArrowRight size={16} />

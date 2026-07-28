@@ -153,16 +153,25 @@ export function Tooltip({
       {children}
       {anchor &&
         typeof document !== "undefined" &&
+        // ONE source of truth for the popup's width, and it lives in the class
+        // list below — never in the inline `style`. There used to be a
+        // `maxWidth: calc(100vw - 16px)` in that style object, and an inline
+        // declaration beats any class, so the `max-w-[260px]` next to `w-max`
+        // never applied and a hint sized itself to its own content: a
+        // 170-character explanation rendered as one ~1900px strip across the
+        // whole screen (Suren, Jul 27: "you don't have to fucking put it all
+        // in one line"). `w-max` still keeps SHORT labels — a name, a stage —
+        // on one tight line; the cap only bites once the text is real prose,
+        // which then wraps to a compact 2-5 line block.
         createPortal(
           <span
             ref={popupRef}
             id={tooltipId}
             role="tooltip"
-            className="pointer-events-none fixed z-[9999] w-max max-w-[260px] rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-left text-[12px] font-normal normal-case leading-snug tracking-normal text-text-primary shadow-[0_12px_32px_rgba(0,0,0,0.14),0_2px_6px_rgba(0,0,0,0.08)]"
+            className="pointer-events-none fixed z-[9999] w-max max-w-[min(280px,calc(100vw-24px))] whitespace-normal break-words text-pretty rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-left text-[12px] font-normal normal-case leading-snug tracking-normal text-text-primary shadow-[0_12px_32px_rgba(0,0,0,0.14),0_2px_6px_rgba(0,0,0,0.08)]"
             style={{
               left: position?.left ?? 0,
               top: position?.top ?? 0,
-              maxWidth: "calc(100vw - 16px)",
               visibility: position ? "visible" : "hidden",
               opacity: position ? 1 : 0,
               transition: "opacity 130ms ease-out",

@@ -1,30 +1,32 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, CalendarClock, Plus, Sparkles, Building2, UserPlus, Menu, ClipboardCheck, Flame, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, PhoneCall, LogOut, CheckCircle2, Hammer } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, Plus, Sparkles, Building2, UserPlus, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, LogOut, CheckCircle2, Hammer } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { NotificationMark } from "@/components/notifications/NotificationMark";
+import {
+  NotificationGroupHeading,
+  NotificationRow,
+} from "@/components/notifications/NotificationRow";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
 import {
+  groupByUrgency,
   NOTIF_READ_KEY,
   type AppNotification,
-  type NotificationType,
 } from "@/lib/notifications";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { userScopedStorageKey } from "@/lib/userIdentity";
 
-const NOTIF_ICON: Record<NotificationType, typeof Bell> = {
-  review: ClipboardCheck,
-  rotting: Flame,
-  signal: Sparkles,
-  followup: CalendarClock,
-  voice: PhoneCall,
-};
+/** How many alerts the bell panel shows before "View all notifications". */
+const PANEL_LIMIT = 6;
+// Stable identities so the "not ready yet" render doesn't churn the memos and
+// re-fire the prefetch effect on every keystroke elsewhere in the header.
+const NO_NOTIFS: AppNotification[] = [];
+const NO_READ_IDS: ReadonlySet<string> = new Set<string>();
 
 const SHORTCUTS = [
   { keys: ["⌘", "K"], label: "Open command palette — search records & jump to any page" },
@@ -67,6 +69,7 @@ export function TopBar({
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const currentUser = useCurrentUser();
+  const router = useRouter();
   // Quick mock/real switch lives here so nobody has to dig into Settings
   // (Suren). Mode drives what the whole app shows — see lib/release.ts.
   const [dataMode, setDataModeState] = useState<"mock" | "live" | null>(null);
@@ -146,9 +149,33 @@ export function TopBar({
 
   const notificationStateReady =
     loadedNotificationKey === notificationReadKey;
-  const visibleNotifs = notificationStateReady ? notifs : [];
-  const visibleReadIds = notificationStateReady ? readIds : new Set<string>();
+  const visibleNotifs = notificationStateReady ? notifs : NO_NOTIFS;
+  const visibleReadIds = notificationStateReady ? readIds : NO_READ_IDS;
   const unread = visibleNotifs.filter((n) => !visibleReadIds.has(n.id)).length;
+  const panelItems = useMemo(
+    () => visibleNotifs.slice(0, PANEL_LIMIT),
+    [visibleNotifs]
+  );
+  const panelGroups = useMemo(() => groupByUrgency(panelItems), [panelItems]);
+
+  // THE fix for "it takes a while for it to actually take me there": every
+  // destination here is a `force-dynamic` page, and some (a deal, a session, a
+  // call) have no loading.tsx — so a cold click is a blocking transition where
+  // the old screen just sits there until the server render comes back. Warming
+  // the router the moment the panel opens (and again on hover) means the payload
+  // is usually already in hand when the click lands. Nothing is awaited ON the
+  // click itself; see the row handler below.
+  useEffect(() => {
+    if (!notifOpen) return;
+    for (const n of panelItems) {
+      try {
+        router.prefetch(n.href);
+      } catch {}
+    }
+    try {
+      router.prefetch("/notifications");
+    } catch {}
+  }, [notifOpen, panelItems, router]);
   // offerings-only release: every remaining entry duplicates a control the
   // offerings page already shows (Import), so the button is pure noise there
   // (Anir, Jul 25: "this button is completely useless") — render nothing.
@@ -159,20 +186,26 @@ export function TopBar({
   const newItems =
     offeringsOnly || pathname?.startsWith("/offerings") ? [] : NEW_ITEMS;
 
-  function markRead(id: string) {
-    if (!notificationStateReady) return;
-    setReadIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
+  const markRead = useCallback(
+    (id: string) => {
+      if (!notificationStateReady) return;
+      // Optimistic and non-blocking. The dot clears immediately; the write is a
+      // plain side effect kept OUT of the state updater (an updater runs during
+      // render, so a localStorage write in there is a render-phase side effect
+      // React may re-run or interleave with the navigation it just started).
+      setReadIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
       try {
+        const raw = localStorage.getItem(notificationReadKey);
+        const stored = new Set<string>(raw ? JSON.parse(raw) : []);
+        stored.add(id);
         localStorage.setItem(
           notificationReadKey,
-          JSON.stringify(Array.from(next))
+          JSON.stringify(Array.from(stored))
         );
       } catch {}
-      return next;
-    });
-  }
+    },
+    [notificationReadKey, notificationStateReady]
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -292,50 +325,72 @@ export function TopBar({
           {notifOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-              <div className="absolute right-0 mt-2 w-[340px] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden">
-                <div className="px-4 py-3 border-b border-border-light flex items-center justify-between">
+              <div className="absolute right-0 mt-2 w-[380px] max-w-[calc(100vw-2rem)] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-border-light flex items-center justify-between gap-3">
                   <span className="text-[14px] font-semibold text-text-primary">Notifications</span>
-                  <span className="text-[11px] font-semibold text-blue-primary tnum">
-                    {unread} new
-                  </span>
-                </div>
-                <ul className="max-h-[340px] overflow-y-auto">
-                  {visibleNotifs.slice(0, 5).map((n) => {
-                    const isRead = visibleReadIds.has(n.id);
-                    return (
-                      <li key={n.id} className="border-b border-border-light last:border-0">
-                        <Link
-                          href={n.href}
-                          onClick={() => {
-                            markRead(n.id);
-                            setNotifOpen(false);
-                          }}
-                          className="px-4 py-3 flex gap-3 hover:bg-surface transition-colors"
-                        >
-                          <NotificationMark
-                            type={n.type}
-                            company={n.company}
-                            person={n.person}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className={cn("text-[13px] text-text-primary", isRead ? "font-medium" : "font-semibold")}>
-                              {n.title}
-                            </p>
-                            <p className="text-[12px] text-text-secondary leading-snug">{n.body}</p>
-                          </div>
-                          {!isRead && <span className="w-2 h-2 rounded-full bg-blue-primary shrink-0 mt-1.5" />}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                  {visibleNotifs.length === 0 && (
-                    <li className="px-4 py-6 text-[13px] text-text-secondary text-center">
-                      You&apos;re all caught up.
-                    </li>
+                  {unread > 0 && (
+                    <span className="text-[11px] font-semibold text-blue-primary tnum whitespace-nowrap">
+                      {unread} new
+                    </span>
                   )}
-                </ul>
+                </div>
+                <div className="max-h-[420px] overflow-y-auto">
+                  {/* Grouped by how pressing it is, most pressing first, with the
+                      grouping printed so you can see it (Suren: the old list was
+                      five identical-looking rows in no obvious order). */}
+                  {panelGroups.map((group) => (
+                    <div key={group.urgency}>
+                      <NotificationGroupHeading
+                        label={group.label}
+                        count={group.items.length}
+                        urgency={group.urgency}
+                        className="px-4 pt-3 pb-1.5"
+                      />
+                      <ul>
+                        {group.items.map((n) => {
+                          const isRead = visibleReadIds.has(n.id);
+                          return (
+                            <li
+                              key={n.id}
+                              className="border-b border-border-light last:border-0"
+                            >
+                              <Link
+                                href={n.href}
+                                prefetch
+                                onPointerEnter={() => {
+                                  try {
+                                    router.prefetch(n.href);
+                                  } catch {}
+                                }}
+                                onClick={() => {
+                                  // Both of these are local and instant — no
+                                  // fetch stands between the click and the
+                                  // route change.
+                                  setNotifOpen(false);
+                                  markRead(n.id);
+                                }}
+                                className="block px-4 py-3 hover:bg-surface transition-colors"
+                              >
+                                <NotificationRow
+                                  notification={n}
+                                  unread={!isRead}
+                                />
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                  {visibleNotifs.length === 0 && (
+                    <p className="px-4 py-6 text-[13px] text-text-secondary text-center">
+                      You&apos;re all caught up.
+                    </p>
+                  )}
+                </div>
                 <Link
                   href="/notifications"
+                  prefetch
                   onClick={() => setNotifOpen(false)}
                   className="block px-4 py-2.5 text-[13px] font-semibold text-blue-primary text-center border-t border-border-light hover:bg-surface transition-colors"
                 >

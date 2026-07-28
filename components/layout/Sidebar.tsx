@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   CalendarClock,
@@ -11,7 +11,6 @@ import {
   Contact,
   UsersRound,
   Settings,
-  Plus,
   ChartColumnBig,
   FileBarChart,
   Rss,
@@ -92,7 +91,6 @@ export function Sidebar({
   const currentUser = useCurrentUser();
   const offeringsOnly = isOfferingsOnly(dataMode);
   const navItems = ALL_NAV_ITEMS.filter((item) => isReleased(item.href, dataMode));
-  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
   const collapseStorageKey = userScopedStorageKey(COLLAPSE_KEY, currentUser.id);
@@ -181,10 +179,12 @@ export function Sidebar({
         collapsed ? "lg:w-[72px]" : "lg:w-[240px]"
       )}
     >
-      {/* Logo + collapse toggle */}
+      {/* Logo + collapse toggle. The gap below is the brand-to-nav rhythm now
+          that nothing sits between them — one clean step, not the leftover
+          hole where the CTA used to be. */}
       <div
         className={cn(
-          "mb-6 flex items-center",
+          "mb-5 flex items-center",
           collapsed ? "px-0 flex-col gap-3" : "px-6 justify-between"
         )}
       >
@@ -224,23 +224,13 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* New Session CTA — hidden in the offerings-only rollout (intake isn't released) */}
-      {!offeringsOnly && (
-      <div className={cn("mb-5", collapsed ? "px-3" : "px-4")}>
-        <button
-          data-tour="new-session"
-          onClick={() => router.push("/intake")}
-          title={collapsed ? "New Session" : undefined}
-          className={cn(
-            "w-full py-2 bg-blue-primary text-white rounded-lg flex items-center justify-center gap-2 text-[14px] font-semibold hover:bg-blue-hover transition-all active:scale-[0.98] shadow-[0_1px_2px_rgba(0,113,227,0.25)] hover:shadow-[0_4px_14px_rgba(0,113,227,0.32)]",
-            collapsed ? "px-0" : "px-4"
-          )}
-        >
-          <Plus size={18} strokeWidth={2.25} />
-          {!collapsed && "New Session"}
-        </button>
-      </div>
-      )}
+      {/* No New Session CTA here. Starting a session is an action that belongs
+          to the Sessions page, not a button pinned above the nav on every
+          screen — pressing it from Teams threw you out of Teams (Suren, Jul 27:
+          "if I'm on the Teams page and I press New Session, that's kind of a
+          problem… that should just stay on the sessions page. That way, you can
+          move all the shit in the sidebar up too"). See
+          components/sessions/NewSessionLauncher.tsx. */}
 
       {/* Nav */}
       <nav aria-label="Primary" className="flex-1 px-3 overflow-y-auto">

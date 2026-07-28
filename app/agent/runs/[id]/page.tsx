@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   ArrowUpRight,
   Circle,
-  Building2,
   Clock,
   Hash,
   Undo2,
@@ -21,6 +20,8 @@ import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
+import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { RunDetailActions } from "@/components/agent/RunDetailActions";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
@@ -165,9 +166,11 @@ export default async function AgentRunDetailPage({
         {run.customer_id && run.company ? (
           <Link
             href={`/customers/${run.customer_id}`}
-            className="inline-flex items-center gap-2 text-[13px] font-semibold text-blue-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-primary hover:underline"
           >
-            <Building2 size={15} strokeWidth={1.9} />
+            {/* The account's own mark, not a generic building glyph — every
+                company name carries its logo (standing identity-mark rule). */}
+            <CompanyLogo name={run.company} className="w-5 h-5 text-[8px]" />
             {run.company}
             <ArrowUpRight size={13} strokeWidth={2} />
           </Link>
@@ -278,10 +281,14 @@ export default async function AgentRunDetailPage({
                           <Link
                             href={`/customers/${it.customer_id}`}
                             className={cn(
-                              "text-[13px] font-semibold text-blue-primary hover:underline inline-flex items-center gap-1",
+                              "text-[13px] font-semibold text-blue-primary hover:underline inline-flex items-center gap-1.5",
                               run.reverted && "line-through"
                             )}
                           >
+                            <CompanyLogo
+                              name={company}
+                              className="w-5 h-5 text-[8px] no-underline"
+                            />
                             {company}
                             <ArrowUpRight size={12} strokeWidth={2} />
                           </Link>
@@ -298,7 +305,16 @@ export default async function AgentRunDetailPage({
                     )}
                     {it.logged_by && (
                       <p className="text-[12px] text-text-tertiary mt-2">
-                        Logged by {it.logged_by}
+                        {/* Same shape the account timeline uses: the person's
+                            face travels with their name, and the pair never
+                            breaks across two lines. */}
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                          <Avatar
+                            name={it.logged_by}
+                            className="h-5 w-5 text-[7px]"
+                          />
+                          Logged by {it.logged_by}
+                        </span>
                       </p>
                     )}
                   </Card>

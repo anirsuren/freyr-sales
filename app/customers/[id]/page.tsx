@@ -4,7 +4,6 @@ import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
 import { IndustryTag } from "@/components/ui/IndustryTag";
-import { HealthBar } from "@/components/ui/HealthBadge";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { NewSessionButton } from "@/components/sessions/NewSessionButton";
@@ -16,8 +15,6 @@ import {
   MATERIAL_META,
   type Offering,
 } from "@/lib/offerings";
-import { buildDeals } from "@/lib/pipeline";
-import { accountHealth } from "@/lib/health";
 import { getDataMode } from "@/lib/dataMode";
 
 export const metadata = { title: "Customer" };
@@ -55,16 +52,14 @@ export default async function CustomerDetailPage({
   const contacts = await db.contacts.list(id);
   const interactions = await db.interactions.list(id);
   const sessions = await db.pitchSessions.list(id);
-  const allRuns = await db.agentRuns.list();
-  const agentRuns = allRuns.filter((r) => r.customer_id === id);
-
-  // Account health for the header — the most important signal, so it's visible
-  // the moment you land (matches the customers list cards).
-  const health = accountHealth({
-    interactions,
-    deals: buildDeals(sessions, [customer], contacts, interactions),
-    contactCount: contacts.length,
-  });
+  // No agent-run fetch here any more: the account rail's agent block and its
+  // Deliverables tiles are both gone, so this page listed every agent run in
+  // the workspace on each load and used none of it. The only agent surfaces are
+  // the dock and /agent (standing rule).
+  //
+  // No header health calc either — the score already leads the Account snapshot
+  // rail and the Relationship health card, and the header bar that used this
+  // was removed.
 
   // Customer analysis (Suren's Jun 27 ask): the customer-type definitions feed
   // the "Analyze the customer" dropdown, and once an account is qualified to a
@@ -142,15 +137,11 @@ export default async function CustomerDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-4">
-          {/* Health gets its own labelled slot on the right — still the first
-              number you see, but read as a measure of the account rather than
-              part of its name. */}
-          <div className="hidden w-[200px] shrink-0 md:block">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Account health
-            </p>
-            <HealthBar health={health} />
-          </div>
+          {/* No health bar in the header: the same score already leads the
+              Account snapshot rail AND the Relationship health card below, so a
+              third copy beside the buttons was pure duplication (Anir, Jul 27:
+              "remove the health bar from next to the New session — it's already
+              below"). */}
           {/* Start a pitch session for THIS account — the button first explains
               what a session is (Suren #89), then prefills the intake with the
               company + primary contact. */}
@@ -182,7 +173,6 @@ export default async function CustomerDetailPage({
         contacts={contacts}
         sessions={sessions}
         interactions={interactions}
-        agentRuns={agentRuns}
         includeDemoTeam={getDataMode() === "mock"}
         offeringsCatalog={{
           typeOptions: customerTypes.map((t) => t.name),

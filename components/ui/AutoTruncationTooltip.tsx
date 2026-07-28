@@ -13,6 +13,10 @@ type Popup = {
 
 const TRUNCATED_SELECTOR = ".truncate, [class*='line-clamp-']";
 
+// Same cap every hover surface in the app uses (see components/ui/Tooltip).
+// A tip is a compact block of a few short lines, never a strip across the page.
+const TIP_MAX_WIDTH = 280;
+
 function isClipped(element: HTMLElement) {
   return (
     element.scrollWidth > element.clientWidth + 1 ||
@@ -62,9 +66,14 @@ export function AutoTruncationTooltip() {
         if (active !== element || !document.body.contains(element)) return;
         const rect = element.getBoundingClientRect();
         const below = rect.top < 90;
+        // The card is centred on the element (translateX(-50%)), so it must
+        // stay at least half its own width plus a gutter away from either
+        // edge. Derived from the cap instead of hard-coded, and never more
+        // than half the viewport, so it also holds on a narrow window.
+        const inset = Math.min(TIP_MAX_WIDTH / 2 + 12, window.innerWidth / 2);
         setPopup({
           text,
-          x: Math.max(190, Math.min(window.innerWidth - 190, rect.left + rect.width / 2)),
+          x: Math.max(inset, Math.min(window.innerWidth - inset, rect.left + rect.width / 2)),
           y: below ? rect.bottom + 8 : rect.top - 8,
           below,
         });
@@ -136,7 +145,7 @@ export function AutoTruncationTooltip() {
   return createPortal(
     <div
       role="tooltip"
-      className="autotip-in pointer-events-none fixed z-[120] max-w-[360px] rounded-lg bg-text-primary px-3 py-2 text-[12px] font-normal leading-snug text-white shadow-lg"
+      className="autotip-in pointer-events-none fixed z-[120] max-w-[min(280px,calc(100vw-24px))] whitespace-normal break-words text-pretty rounded-lg bg-text-primary px-3 py-2 text-[12px] font-normal leading-snug text-white shadow-lg"
       style={{
         left: popup.x,
         top: popup.y,

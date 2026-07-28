@@ -29,16 +29,17 @@ export function CollapsibleDescription({
   return (
     <div>
       <div className="relative">
+        {/* The fade is a MASK, not a white overlay — a `from-white` gradient
+            painted a pale smear across the collapsed text in dark mode. */}
         <p
           className={`text-[14px] text-text-secondary leading-relaxed whitespace-pre-line ${
-            open ? "" : "max-h-[9rem] overflow-hidden"
+            open
+              ? ""
+              : "max-h-[9rem] overflow-hidden [mask-image:linear-gradient(to_bottom,black_72%,transparent_100%)]"
           } ${className}`}
         >
           {text}
         </p>
-        {!open && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-transparent" />
-        )}
       </div>
       <button
         onClick={() => setOpen((v) => !v)}

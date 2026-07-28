@@ -86,7 +86,7 @@ export default async function ReportsPage() {
   const TYPE_COLOR: Record<string, string> = {
     annual: "#2563EB", // blue
     project: "#7C3AED", // violet
-    annual_service: "#F59E0B", // amber
+    annual_service: "#C2410C", // burnt orange — this colour is also the Type chip's TEXT (below), and amber was unreadable there
     license: "#059669", // emerald
   };
   const typeSegments = report.byType.map((t) => ({

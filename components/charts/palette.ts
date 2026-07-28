@@ -17,7 +17,13 @@ export const VIZ = {
   // Jul 26: "why are you using that weird green color?"). #22C55E is a clean
   // green that still sits ~30° off teal's blue-green and never looks drab.
   green: "#22C55E",
-  amber: "#F59E0B",
+  // Not a true amber any more, and deliberately so: this key is a categorical
+  // SERIES colour, and DonutLegend paints every series colour as chip text on
+  // its own tint — amber measured 2.2:1 there, and it also colours the dashed
+  // goal line's label (Anir, Jul 27: "that yellow, never use that yellow").
+  // #C2410C is the app-wide caution/warm token: legible as text, still clearly
+  // orange rather than brown, and 30°+ off both rose and the green below.
+  amber: "#C2410C",
   // Was a gray (#8E98A8) — Suren: never gray in a graph. Now a real violet.
   slate: "#A855F7",
   rose: "#E11D48",

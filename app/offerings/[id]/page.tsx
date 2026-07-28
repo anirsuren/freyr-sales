@@ -18,7 +18,6 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { RecordView } from "@/components/RecordView";
-import { DuplicateButton } from "@/components/offerings/DuplicateButton";
 import { OfferingOverviewMain } from "@/components/offerings/OfferingOverviewMain";
 import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { OfferingActions } from "@/components/offerings/OfferingActions";
@@ -75,7 +74,9 @@ export default async function OfferingDetailPage({
             days < 0
               ? { color: "#B02020", bg: "rgba(176,32,32,0.10)" }
               : days <= 90
-                ? { color: "#F59E0B", bg: "rgba(245,158,11,0.12)" }
+                ? // Caution reads in orange-700, never the yellow band — this
+                  // status renders as TEXT and amber failed on white.
+                  { color: "#C2410C", bg: "rgba(194,65,12,0.12)" }
                 : { color: "#1A7A35", bg: "rgba(26,122,53,0.10)" };
           return {
             id: line.id,
@@ -182,15 +183,22 @@ export default async function OfferingDetailPage({
         sublabel={o.offering_type || ""}
         href={`/offerings/${o.id}`}
       />
+      {/* The page had no entrance at all — clicking an offering swapped one
+          static screen for another (Suren: "even when I just click on an
+          offering, there's no transition"). The identity block + tab bar lift
+          in with the app's shared `rise-in`; the panel below carries
+          `tab-panel`, so it also replays on every Overview↔Reports switch.
+          Existing classes only — the reduced-motion guards in globals.css
+          already cover both. */}
       <Link
         href="/offerings"
-        className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
+        className="rise-in inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
       >
         <ArrowLeft size={15} strokeWidth={1.8} /> All offerings
       </Link>
 
       {/* Header: identity on the left, primary actions on the right */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+      <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
         <div className="min-w-0">
           <h1 className="flex items-center gap-3 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
             <OfferingIcon name={o.offering_name} className="w-11 h-11 shrink-0" />
@@ -247,35 +255,15 @@ export default async function OfferingDetailPage({
             customers={customerPickList}
             commercialActionsEnabled={commercialActionsEnabled}
             extra={
+              /* Duplicate is gone (Suren, Jul 27: "the duplicate button is
+                 useless"). Editing is the only admin action left up here. */
               admin ? (
-                <>
-                  <DuplicateButton
-                    offering={{
-                      offering_type: o.offering_type,
-                      offering_category: o.offering_category,
-                      offering_name: o.offering_name,
-                      offering_description: o.offering_description,
-                      current_availability: o.current_availability,
-                      future_availability: o.future_availability,
-                      poc: o.poc,
-                      customer_type_ids: raw.customer_type_ids,
-                      market_ids: raw.market_ids,
-                      materials: raw.materials.map((m) => ({
-                        kind: m.kind,
-                        label: m.label,
-                        url: m.url,
-                        journeyStage: m.journeyStage,
-                        accessLevel: m.accessLevel,
-                      })),
-                    }}
-                  />
-                  <Link
-                    href={`/offerings/${o.id}/edit`}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-medium rounded-md px-3 py-2 bg-white border border-border-light text-text-primary hover:bg-surface hover:border-blue-subtle transition-colors"
-                  >
-                    <Pencil size={14} strokeWidth={1.8} /> Edit offering
-                  </Link>
-                </>
+                <Link
+                  href={`/offerings/${o.id}/edit`}
+                  className="inline-flex items-center gap-1.5 text-[13px] font-medium rounded-md px-3 py-2 bg-white border border-border-light text-text-primary hover:bg-surface hover:border-blue-subtle transition-colors"
+                >
+                  <Pencil size={14} strokeWidth={1.8} /> Edit offering
+                </Link>
               ) : null
             }
           />
@@ -286,7 +274,7 @@ export default async function OfferingDetailPage({
       <div
         role="tablist"
         aria-label="Offering sections"
-        className="flex gap-8 border-b border-border-light mt-6"
+        className="rise-in flex gap-8 border-b border-border-light mt-6"
       >
         {[
           { key: "overview", label: "Overview", href: `/offerings/${o.id}` },
@@ -316,15 +304,19 @@ export default async function OfferingDetailPage({
         ))}
       </div>
 
-      {tab === "reports" ? (
-        <OfferingReports
-          report={report}
-          offeringName={o.offering_name}
-          // In-progress mode shows a labelled sample report when there's no
-          // revenue yet, so people know what the tab will look like.
-          showExample={getDataMode() === "mock"}
-        />
-      ) : (
+      {/* Keyed on the active tab so React re-mounts the panel and the
+          `tabPanelIn` keyframes replay on every switch — the tabs had no
+          transition at all before. */}
+      <div key={tab} className="tab-panel">
+        {tab === "reports" ? (
+          <OfferingReports
+            report={report}
+            offeringName={o.offering_name}
+            // In-progress mode shows a labelled sample report when there's no
+            // revenue yet, so people know what the tab will look like.
+            showExample={getDataMode() === "mock"}
+          />
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
           {/* ---------------------------------------------------- MAIN column */}
           <OfferingOverviewMain
@@ -334,7 +326,9 @@ export default async function OfferingDetailPage({
             admin={admin}
           />
           {/* ---------------------------------------------------- SIDE rail */}
-          <div className="space-y-5">
+          {/* `stagger` — the rail's cards lift in one after another, the same
+              entrance the dashboard's lists use. */}
+          <div className="space-y-5 stagger">
             {/* Internal owner — only when a real person is on file */}
             {ownerName && (
               <SectionCard title="Internal owner" icon={UserRound}>
@@ -545,7 +539,8 @@ export default async function OfferingDetailPage({
             )}
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

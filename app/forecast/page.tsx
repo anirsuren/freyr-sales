@@ -8,7 +8,7 @@ import { HoverCard } from "@/components/ui/HoverCard";
 import { DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { ForecastExport } from "@/components/forecast/ForecastExport";
 import { ByRepChart } from "@/components/forecast/ByRepChart";
-import { CoverageViz } from "@/components/forecast/CoverageViz";
+import { ForecastRisk } from "@/components/forecast/ForecastRisk";
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
@@ -16,7 +16,6 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   CircleCheck,
-  Clock3,
   Flag,
   ShieldAlert,
   Target,
@@ -37,13 +36,22 @@ import {
 } from "@/lib/pipeline";
 import { getDataMode } from "@/lib/dataMode";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatDateTime } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata = { title: "Forecast" };
 export const dynamic = "force-dynamic";
 
 const QUOTA = 3_000_000;
+
+// Stage → the chart layer's serializable icon key, so every stage legend/tip
+// carries its own glyph rather than an anonymous coloured dot (Anir, Jul 27).
+const TIP_ICON_KEY: Record<string, string> = {
+  Prospect: "prospect",
+  Engaged: "engaged",
+  Qualified: "qualified",
+  "Meeting Booked": "meeting",
+  "Closed Lost": "lost",
+};
 
 // Representative open deals for a rep who has no real ones in the seed (the
 // synthetic roster) — so hovering ANY rep's bar shows the deals behind it, not
@@ -341,6 +349,13 @@ export default async function ForecastPage() {
             </div>
             {(() => {
               const maxV = Math.max(...byStage.map((s) => s.value), 1);
+              // Share of the track the TALLEST bar is allowed to take. The
+              // remainder is the room every bar's own value label lives in —
+              // the label is now a child of its bar (see below), so it needs
+              // headroom above the tallest column or it would ride out of the
+              // top of the plot. Same idea as BarChart's `labelRoom`, expressed
+              // as a % because this track is stretchy rather than fixed.
+              const PLOT_CEILING = 88;
               return (
                 <div data-stage-plot className="flex-1 flex justify-center gap-4">
                   {byStage.map((s, i) => {
@@ -348,7 +363,7 @@ export default async function ForecastPage() {
                     // Percent of the stretchy track, not fixed pixels — the
                     // tallest stage always reaches the top of whatever height
                     // the row gives us.
-                    const barPct = Math.max((s.value / maxV) * 100, 3);
+                    const barPct = Math.max((s.value / maxV) * PLOT_CEILING, 3);
                     const wFrac = s.value > 0 ? s.weighted / s.value : 0;
                     const stageHover = (
                       <div>
@@ -414,9 +429,6 @@ export default async function ForecastPage() {
                         key={s.stage}
                         className="group flex w-[104px] shrink-0 flex-col items-center"
                       >
-                        <span className="text-[12px] font-semibold text-text-primary tnum mb-1.5">
-                          {formatMoney(s.weighted)}
-                        </span>
                         {/* Stretchy track: fills the row height (so the chart
                             is always as tall as the donut panel beside it) with
                             a floor for small screens. The bar is absolutely
@@ -435,18 +447,43 @@ export default async function ForecastPage() {
                               delayMs={0}
                               content={stageHover}
                               clearAncestor="[data-stage-plot]"
+                              // Hug THIS bar's own top edge, lifted past its own
+                              // value label, instead of clearing the whole plot.
+                              // A tall column's card sits high and a short
+                              // column's card drops down to meet it, rather than
+                              // every card parking at one fixed height above the
+                              // graph (Suren, Jul 27: "same thing as what I said
+                              // before"). `clearAncestor` still governs the
+                              // flip-below case, so it never lands on the names.
+                              tightAbove={24}
                               className="h-full w-full flex items-end justify-center cursor-pointer"
                             >
-                              {/* Growth wrapper grows the whole column up from the
-                                  baseline on load; hover-lift lives on the inner
-                                  column so the two transforms don't fight. */}
-                              <div
-                                className="chart-bar h-full w-full flex justify-center"
-                                style={{ animationDelay: `${i * 70}ms` }}
-                              >
+                              {/* The value label and the column are ONE object.
+                                  The label is pinned to the top edge of THIS
+                                  bar — so a short column's number sits just
+                                  above that column instead of floating in a
+                                  flat row at the top of the plot, and when the
+                                  bar lifts under the cursor the number rides up
+                                  with it, exactly as far and at exactly the
+                                  same speed (Suren, Jul 27: "the numbers are
+                                  supposed to go above the bar"). It is a
+                                  SIBLING of the growth wrapper, not a child, so
+                                  the load animation's scaleY never squashes the
+                                  type. Closed Lost's $0 keeps its own legible
+                                  label above its 3%-floor stub. */}
+                              <div className="relative h-full w-full rounded-t-lg flex justify-center transition-all duration-150 hover:-translate-y-1 hover:shadow-[0_12px_28px_-8px_rgba(0,0,0,0.18)]">
+                                <span className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap text-[12px] font-semibold text-text-primary tnum">
+                                  {formatMoney(s.weighted)}
+                                </span>
+                                {/* Growth wrapper grows the column up from the
+                                    baseline on load; the lift lives on the
+                                    parent so the two transforms don't fight. */}
                                 <div
-                                  className="relative h-full w-full rounded-t-lg flex items-end justify-center transition-all hover:-translate-y-1 hover:shadow-[0_12px_28px_-8px_rgba(0,0,0,0.18)]"
-                                  style={{ background: `${color}33` }}
+                                  className="chart-bar h-full w-full rounded-t-lg flex items-end justify-center"
+                                  style={{
+                                    background: `${color}33`,
+                                    animationDelay: `${i * 70}ms`,
+                                  }}
                                 >
                                   {/* Weighted (likely) fill sits at the base of the value column */}
                                   <div
@@ -493,6 +530,11 @@ export default async function ForecastPage() {
                   label: s.stage,
                   value: s.weighted,
                   color: STAGE_COLOR[s.stage],
+                  // A glyph in the stage's own colour instead of a bare dot
+                  // (Anir: "put an icon instead of just a purple dot"). The key
+                  // is a plain string — a component can't cross the server
+                  // boundary, same rule as `format`.
+                  icon: TIP_ICON_KEY[s.stage],
                   // hovering a slice shows the actual deals driving it (Suren)
                   tip: s.deals.map((d) => ({
                     logo: d.company,
@@ -581,149 +623,19 @@ export default async function ForecastPage() {
             })()}
           </div>
 
-          {/* THIRD — risk, freshness, and quality in one compact analysis band. */}
-          <div className="border-t border-border-light pt-5 xl:col-span-2 xl:mt-5">
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h2 className="text-[15px] font-semibold text-text-primary">Forecast risk</h2>
-                  <InfoHint text={`The probability-adjusted commit, split by activity recency. A deal becomes stale after ${ROTTING_DAYS} days without a logged touch.`} />
-                </div>
-                <p className="mt-0.5 text-[11px] text-text-tertiary">
-                  What is exposed, how fresh the book is, and whether the commit is dependable
-                </p>
-              </div>
-              <p className="text-[11px] font-medium text-text-secondary">
-                {staleOpen.length === 0
-                  ? "No stale deals in the open book"
-                  : `${staleOpen.length} stale ${staleOpen.length === 1 ? "deal" : "deals"} need a touch`}
-              </p>
-            </div>
-
-            {(() => {
-              const rankedRiskDeals = [...staleOpen]
-                .sort((a, b) => {
-                  const aWeighted = a.value * (STAGE_PROBABILITY[a.stage] ?? 0);
-                  const bWeighted = b.value * (STAGE_PROBABILITY[b.stage] ?? 0);
-                  return bWeighted - aWeighted;
-                })
-                .slice(0, 4);
-              const activePct = Math.max(0, 100 - riskPct);
-
-              return (
-                <div className="grid items-stretch gap-4 lg:grid-cols-2">
-                  <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white">
-                    <div className="flex min-h-[54px] items-center justify-between gap-3 border-b border-border-light px-4 py-3">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Commit activity health</p>
-                        <p className="mt-0.5 text-[10.5px] text-text-secondary">How much of the forecast is backed by recent activity</p>
-                      </div>
-                      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-700 tnum">
-                        {staleOpen.length} {staleOpen.length === 1 ? "deal needs" : "deals need"} a touch
-                      </span>
-                    </div>
-
-                    <div className="flex flex-1 flex-col p-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-lg border border-green-100 bg-green-50/45 p-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-green-800">
-                              <CircleCheck size={14} /> Active
-                            </span>
-                            <span className="text-[10px] font-semibold text-green-700 tnum">{activePct}%</span>
-                          </div>
-                          <p className="mt-2 text-[20px] font-bold leading-none text-text-primary tnum">{formatMoney(activeWeighted)}</p>
-                          <p className="mt-1.5 text-[9.5px] text-text-secondary">Touched in the last {ROTTING_DAYS} days</p>
-                        </div>
-                        <div className="rounded-lg border border-orange-100 bg-orange-50/45 p-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-orange-800">
-                              <ShieldAlert size={14} /> Exposed
-                            </span>
-                            <span className="text-[10px] font-semibold text-orange-700 tnum">{riskPct}%</span>
-                          </div>
-                          <p className="mt-2 text-[20px] font-bold leading-none text-text-primary tnum">{formatMoney(riskWeighted)}</p>
-                          <p className="mt-1.5 text-[9.5px] text-text-secondary">No touch for more than {ROTTING_DAYS} days</p>
-                        </div>
-                      </div>
-
-                      <CoverageViz
-                        activeWeighted={activeWeighted}
-                        riskWeighted={riskWeighted}
-                        activePct={activePct}
-                        riskPct={riskPct}
-                        commit={commit}
-                      />
-
-                      <div className="mt-auto pt-4">
-                        <div className="flex items-center gap-3 border-t border-border-light pt-3">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-700">
-                            <ShieldAlert size={15} />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Next move</span>
-                            <span className="mt-0.5 block text-[10px] leading-snug text-text-secondary">Reconnect with the {staleOpen.length} idle {staleOpen.length === 1 ? "deal" : "deals"} before keeping their revenue in commit.</span>
-                          </span>
-                          <Link href="/pipeline" className="shrink-0 rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[10px] font-semibold text-blue-primary hover:bg-blue-light">
-                            Review deals
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white">
-                    <div className="flex min-h-[54px] items-center justify-between gap-3 border-b border-border-light px-4 py-3">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Deals driving the risk</p>
-                        <p className="mt-0.5 text-[10.5px] text-text-secondary">Ranked by probability-adjusted value exposed</p>
-                      </div>
-                      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-700 tnum">
-                        {rankedRiskDeals.length} priority {rankedRiskDeals.length === 1 ? "deal" : "deals"}
-                      </span>
-                    </div>
-                    <div className="flex-1 divide-y divide-border-light">
-                      {rankedRiskDeals.length > 0 ? rankedRiskDeals.map((deal) => {
-                        const weighted = deal.value * (STAGE_PROBABILITY[deal.stage] ?? 0);
-                        const exposureShare = riskWeighted > 0 ? Math.round((weighted / riskWeighted) * 100) : 0;
-                        return (
-                          <Link
-                            key={deal.sessionId}
-                            href={`/sessions/${deal.sessionId}`}
-                            className="group grid min-h-[72px] grid-cols-[34px_minmax(0,1fr)_96px] items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-surface/60"
-                          >
-                            <CompanyLogo name={deal.company} className="h-8 w-8 text-[7px]" />
-                            <span className="min-w-0">
-                              <span className="flex min-w-0 items-center gap-2">
-                                <span className="truncate text-[11.5px] font-semibold text-text-primary">{deal.company}</span>
-                                <span
-                                  className="shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-semibold"
-                                  style={{ color: STAGE_COLOR[deal.stage], background: `${STAGE_COLOR[deal.stage]}14` }}
-                                >
-                                  {deal.stage === "Meeting Booked" ? "Meeting" : deal.stage}
-                                </span>
-                              </span>
-                              <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[9.5px] text-text-secondary">
-                                <Avatar name={deal.contactName} className="h-4 w-4 text-[6px]" />
-                                <span className="truncate">{deal.contactName}</span>
-                                <span className="text-text-tertiary">·</span>
-                                <span className="truncate text-text-tertiary">{deal.service}</span>
-                              </span>
-                            </span>
-                            <span className="text-right">
-                              <span className="block text-[11.5px] font-bold text-text-primary tnum">{formatMoney(weighted)}</span>
-                              <span className="mt-0.5 block text-[9px] font-semibold text-error tnum">{deal.staleDays}d idle</span>
-                              <span className="mt-0.5 block text-[8.5px] text-text-tertiary tnum">{exposureShare}% of risk · {formatMoney(deal.value)} open</span>
-                            </span>
-                          </Link>
-                        );
-                      }) : <p className="px-4 py-7 text-center text-[11.5px] text-success">No stale deals are putting the commit at risk.</p>}
-                    </div>
-                  </section>
-                </div>
-              );
-            })()}
-          </div>
+          {/* THIRD — forecast risk. Rebuilt end to end (Suren, Jul 27) to the
+              standard of the By-stage block above it: one measure in the app's
+              own blue, red earned only past the quiet line, a real plot of the
+              open book, and rows that carry logo, headshot, offering, stage and
+              money together. See components/forecast/ForecastRisk.tsx. */}
+          <ForecastRisk
+            open={open}
+            commit={commit}
+            activeWeighted={activeWeighted}
+            riskWeighted={riskWeighted}
+            riskPct={riskPct}
+            rottingDays={ROTTING_DAYS}
+          />
         </div>
       </Card>
 
@@ -747,7 +659,7 @@ export default async function ForecastPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-[minmax(220px,1.5fr)_110px_minmax(150px,1fr)_minmax(96px,.6fr)_18px] gap-3 border-b border-border-light bg-surface/70 px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+          <div className="grid grid-cols-[minmax(220px,1.5fr)_110px_minmax(150px,1fr)_minmax(96px,.6fr)_18px] gap-3 border-b border-border-light bg-[var(--surface)] px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
             <span>Opportunity</span>
             <span>Stage</span>
             <span>Contribution</span>
@@ -803,7 +715,7 @@ export default async function ForecastPage() {
                 >
                 <Link
                   href={`/deals/${deal.sessionId}`}
-                  className="group grid min-h-[62px] grid-cols-[minmax(220px,1.5fr)_110px_minmax(150px,1fr)_minmax(96px,.6fr)_18px] items-center gap-3 px-5 py-2.5 transition-colors hover:bg-surface/60"
+                  className="group grid min-h-[62px] grid-cols-[minmax(220px,1.5fr)_110px_minmax(150px,1fr)_minmax(96px,.6fr)_18px] items-center gap-3 px-5 py-2.5 transition-colors hover:bg-[var(--surface)]"
                 >
                   {/* Company, then the person, then what we're selling them —
                       one fact per line. Sharing a line squeezed both (Anir:
@@ -877,9 +789,8 @@ export default async function ForecastPage() {
                       })}
                     </span>
                     <span
-                      className={`mt-0.5 block text-[9.5px] font-medium ${
-                        stale ? "text-orange-600" : "text-green-700"
-                      }`}
+                      className="mt-0.5 block text-[9.5px] font-medium"
+                      style={{ color: stale ? "#C2410C" : "#1A7A35" }}
                     >
                       {stale ? `${deal.staleDays} days stale` : "Recently active"}
                     </span>
@@ -933,7 +844,7 @@ export default async function ForecastPage() {
                 label: "Top-three concentration",
                 value: concentrationPct,
                 detail: "Commit carried by three deals",
-                color: "#FF9500",
+                color: "#C2410C",
               },
             ].map((signal) => (
               <div key={signal.label}>
@@ -953,7 +864,7 @@ export default async function ForecastPage() {
           </div>
 
           <div className="mt-5 flex gap-2.5 border-t border-border-light pt-4">
-            <ShieldAlert size={15} className="mt-0.5 shrink-0 text-orange-500" />
+            <ShieldAlert size={15} className="mt-0.5 shrink-0" style={{ color: "#C2410C" }} />
             <p className="text-[10.5px] leading-relaxed text-text-secondary">
               <span className="font-semibold text-text-primary">{formatMoney(gap)} remains to quota.</span>{" "}
               {staleOpen.length > 0

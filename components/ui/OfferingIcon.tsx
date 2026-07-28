@@ -31,7 +31,9 @@ const GRADIENTS: [string, string][] = [
   ["#7C3AED", "#A78BFA"], // violet
   ["#0891B2", "#22D3EE"], // cyan
   ["#059669", "#34D399"], // emerald
-  ["#D97706", "#F5A623"], // amber
+  ["#C2410C", "#F97316"], // orange — was amber, but offeringMark() hands the
+  //                          first stop out as TEXT colour (forecast rows,
+  //                          capability tiles) and amber failed there.
   ["#DB2777", "#F472B6"], // pink
   ["#DC2626", "#F87171"], // red — never gray (Suren: kill the gray icons)
   ["#C026D3", "#E879F9"], // fuchsia
@@ -75,11 +77,14 @@ export function ServiceTag({
       )}
       style={{ backgroundColor: `${color}14`, color }}
     >
+      {/* The glyph bubble scales with the chip: callers that shrink the text
+          (the pipeline cards, to keep long offering names on one line) would
+          otherwise keep a fixed 18px circle that no longer fits the pill. */}
       <span
-        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-white"
+        className="flex h-[1.45em] w-[1.45em] shrink-0 items-center justify-center rounded-full text-white"
         style={{ backgroundColor: color }}
       >
-        <Icon size={11} strokeWidth={2.2} />
+        <Icon size={11} strokeWidth={2.2} className="h-[0.85em] w-[0.85em]" />
       </span>
       {name}
     </span>

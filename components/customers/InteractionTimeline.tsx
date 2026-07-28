@@ -51,7 +51,7 @@ export function InteractionTimeline({
                           name={contactNames[it.contact_id]}
                           className="h-7 w-7 shrink-0 text-[9px]"
                         />
-                        <span className="truncate">{contactNames[it.contact_id]}</span>
+                        <span className="min-w-0 break-words">{contactNames[it.contact_id]}</span>
                       </span>
                     )}
                   </div>

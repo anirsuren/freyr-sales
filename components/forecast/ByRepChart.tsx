@@ -75,7 +75,11 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
 
   return (
     <Card>
-      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      {/* items-start, not items-center: the sort control is a two-line chip, so
+          centring dropped "By rep" half a row and opened a canyon above the
+          bars (Anir, Jul 27: "the By rep should be in the top-left corner, just
+          like the weighted forecast is"). */}
+      <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
         <div className="flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">By rep</h2>
           <InfoHint text="Every teammate's realistic (weighted) quarter forecast. Click a rep for their full breakdown." />
@@ -102,7 +106,11 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
             r.memberId === currentUser.memberId;
           const first = r.name.split(" ")[0];
           const color = you ? VIZ.blue : VIZ_SERIES[i % VIZ_SERIES.length];
-          const barH = Math.max((r.weighted / max) * 140, 6);
+          // Fill the track. At 140 of a 240px plot the tallest rep only reached
+          // 58% of the height, leaving a band of dead space under the heading
+          // (Anir, Jul 27: "so much empty space above… it looks funky"). 178
+          // keeps room for the value label + the hover lift and nothing more.
+          const barH = Math.max((r.weighted / max) * 178, 6);
           const hover = (
             <div>
               <div className="flex items-center gap-2.5 mb-2.5">
@@ -183,8 +191,13 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                 You
               </span>
               <div className="flex-1 min-h-0 w-full flex flex-col justify-end items-center gap-1">
+                {/* The value rides UP with its own bar. Lifting only the bar
+                    closed the gap under the label, so the number looked like it
+                    was being clipped by the column (Anir, Jul 27: "the number
+                    is supposed to move with it… it's almost getting cut off").
+                    Same distance, same duration — they move as one object. */}
                 <span
-                  className={`text-[10.5px] font-semibold tnum shrink-0 transition-colors ${
+                  className={`text-[10.5px] font-semibold tnum shrink-0 transition-all duration-150 group-hover:-translate-y-1.5 ${
                     you ? "text-blue-primary" : "text-text-secondary group-hover:text-blue-primary"
                   }`}
                 >

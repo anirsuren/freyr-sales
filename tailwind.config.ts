@@ -26,7 +26,10 @@ const config: Config = {
           tertiary: "#8A8A8E",
         },
         success: "#34C759",
-        warning: "#FF9F0A",
+        // Burnt orange, not amber. `text-warning` is used as chip TEXT on
+        // `bg-warning/10` in ~25 places; at the old #FF9F0A that was 2.1:1 —
+        // the yellow Suren banned Jul 27. #C2410C is 5.2:1 and still warm.
+        warning: "#C2410C",
         error: "#FF3B30",
         neutral: "#8E8E93",
       },

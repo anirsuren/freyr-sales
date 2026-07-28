@@ -7,11 +7,13 @@ import {
   Sparkles,
   Building2,
   Landmark,
+  Lock,
   DollarSign,
   Layers,
   ChevronRight,
   Check,
   Info,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
@@ -19,6 +21,46 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { useToast } from "@/components/ui/Toast";
+import { segmentColor } from "@/components/customers/CustomerOfferingsTab";
+
+// Ownership is a category, so Public and Private each get their own colour AND
+// their own icon — never the same gray tile with different words in it (Suren,
+// Jul 27: "where are the tags? Where are the colors? Where are the icons?").
+// Teal for Public: listed, open to the market. Violet for Private: closely
+// held. Both are clear of the segment blue the customer-type chip wears, and
+// clear of the banned yellow band.
+const OWNERSHIP_META: Record<string, { color: string; icon: LucideIcon }> = {
+  Public: { color: "#0F9E8E", icon: Landmark },
+  Private: { color: "#7C3AED", icon: Lock },
+};
+
+// The house chip: colour + icon on a 10%-alpha tint of itself, same shape as
+// AttributeTag / IndustryTag / SizeBadge. Wraps rather than truncating — no
+// value on this page is ever cut off with "…".
+function FactChip({
+  value,
+  icon: Icon,
+  label,
+  color,
+}: {
+  value: string;
+  icon: LucideIcon;
+  label: string;
+  color: string;
+}) {
+  return (
+    <span
+      className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-normal break-words text-left"
+      // Inline because the colour is a runtime value, not a Tailwind class.
+      style={{ color, background: `${color}1A` }}
+      title={`${label}: ${value}`}
+    >
+      <span className="sr-only">{label}: </span>
+      <Icon size={13} strokeWidth={2} className="shrink-0" aria-hidden="true" />
+      {value}
+    </span>
+  );
+}
 
 interface Analysis {
   customer_type: string;
@@ -136,29 +178,39 @@ export function CustomerAnalyzePanel({
   const labelCls =
     "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1";
 
-  const Stat = ({
+  // One profile fact: a coloured icon tile, its label, and its value. The tile
+  // used to be a gray square for all three, which is exactly the gray-on-gray
+  // the chip rule bans — each fact now carries its own colour through both the
+  // tile and the chip beside it.
+  const Fact = ({
     icon: Icon,
     label,
-    value,
+    color,
+    children,
   }: {
-    icon: typeof Building2;
+    icon: LucideIcon;
     label: string;
-    value: string | null;
+    color: string;
+    children: React.ReactNode;
   }) => (
     <div className="flex items-start gap-2.5">
-      <span className="w-8 h-8 rounded-md bg-surface text-text-tertiary flex items-center justify-center shrink-0">
-        <Icon size={15} strokeWidth={1.8} />
+      <span
+        className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+        style={{ color, background: `${color}14` }}
+      >
+        <Icon size={15} strokeWidth={1.8} aria-hidden="true" />
       </span>
       <div className="min-w-0">
         <p className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
           {label}
         </p>
-        <p className="text-[14px] font-medium text-text-primary truncate">
-          {value || <span className="text-text-tertiary">Not analyzed yet</span>}
-        </p>
+        <div className="mt-1">{children}</div>
       </div>
     </div>
   );
+
+  const notSet = <span className="text-[14px] text-text-tertiary">—</span>;
+  const ownershipMeta = ownership ? OWNERSHIP_META[ownership] : null;
 
   // Once qualified, show the full profile + applicable offerings. Before that,
   // a normal profile card with the Analyze action — content in the page flow,
@@ -185,7 +237,7 @@ export function CustomerAnalyzePanel({
         </p>
       )}
       {meta.sources && meta.sources.length > 0 && (
-        <p className="text-[11.5px] text-text-tertiary mb-4 truncate">
+        <p className="text-[11.5px] text-text-tertiary mb-4 break-words">
           Sources:{" "}
           {meta.sources.map((s, i) => (
             <span key={s}>
@@ -355,29 +407,62 @@ export function CustomerAnalyzePanel({
         </Card>
       ) : (
         <Card>
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div>
-              <h2 className="text-[15px] font-semibold text-text-primary">
-                Company profile
-              </h2>
-              <p className="text-[12.5px] text-text-secondary mt-0.5">
-                Qualified against your customer-type definitions — researched
-                from the web, approved by you.
-              </p>
-            </div>
-            {canEdit && (
-              <Button variant="secondary" onClick={runAnalysis} loading={loading}>
-                <Sparkles size={15} strokeWidth={1.8} className="mr-1.5" />
-                Re-analyze
-              </Button>
-            )}
+          {/* No Re-analyze button and no "researched from the web, approved by
+              you" line: this is a plain record of what this company is, not an
+              AI surface (Suren, Jul 27: "Why is there a 'Re-analyze' button? I
+              told you no AI stuff at all, please"). The facts themselves stay. */}
+          <div className="mb-4">
+            <h2 className="text-[15px] font-semibold text-text-primary">
+              Company profile
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Stat icon={Layers} label="Customer type" value={customerType} />
-        <Stat icon={Landmark} label="Ownership" value={ownership} />
-        <Stat icon={DollarSign} label="Revenue" value={revenue} />
-      </div>
+            <Fact
+              icon={Layers}
+              label="Customer type"
+              color={customerType ? segmentColor(customerType) : "#0071E3"}
+            >
+              {customerType ? (
+                <FactChip
+                  value={customerType}
+                  icon={Layers}
+                  label="Customer type"
+                  color={segmentColor(customerType)}
+                />
+              ) : (
+                notSet
+              )}
+            </Fact>
+            <Fact
+              icon={ownershipMeta?.icon || Landmark}
+              label="Ownership"
+              color={ownershipMeta?.color || "#0F9E8E"}
+            >
+              {ownership && ownershipMeta ? (
+                <FactChip
+                  value={ownership}
+                  icon={ownershipMeta.icon}
+                  label="Ownership"
+                  color={ownershipMeta.color}
+                />
+              ) : (
+                notSet
+              )}
+            </Fact>
+            {/* Revenue is a figure, not a category — it stays a number (tnum so
+                the digits line up), with a tile that matches the chips beside
+                it rather than the old gray square. */}
+            <Fact icon={DollarSign} label="Revenue" color="#1A7A35">
+              {revenue ? (
+                <p className="text-[15px] font-semibold text-text-primary tnum break-words">
+                  {revenue}
+                </p>
+              ) : (
+                notSet
+              )}
+            </Fact>
+          </div>
 
       {/* Applicable offerings — once qualified, everything that fits this
           customer type shows automatically (Suren's ask). */}
@@ -388,8 +473,8 @@ export function CustomerAnalyzePanel({
         </h3>
         {!customerType ? (
           <p className="text-[13px] text-text-tertiary">
-            Analyze the customer to qualify its type — the offerings that apply
-            will show here automatically.
+            Pick this account&apos;s customer type on the Offerings tab and
+            everything that applies to it shows here automatically.
           </p>
         ) : applicableOfferings.length === 0 ? (
           <p className="text-[13px] text-text-tertiary">
@@ -405,11 +490,15 @@ export function CustomerAnalyzePanel({
               >
                 <span className="flex items-center gap-2.5 min-w-0">
                   <OfferingIcon name={o.name} className="w-8 h-8 shrink-0" />
+                  {/* Offering names are long — "Freya.GRR-PAC (Global Regulatory
+                      Requirements for Product Approval Change)" — and used to be
+                      cut off mid-word with "…", which is banned app-wide (Suren,
+                      Jul 27). They wrap onto a second line instead. */}
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-medium text-text-primary truncate group-hover:text-blue-primary">
+                    <span className="block text-[13px] font-medium text-text-primary leading-snug break-words group-hover:text-blue-primary">
                       {o.name}
                     </span>
-                    <span className="block text-[11px] text-text-tertiary truncate">
+                    <span className="block text-[11px] text-text-tertiary break-words">
                       {o.type}
                     </span>
                   </span>

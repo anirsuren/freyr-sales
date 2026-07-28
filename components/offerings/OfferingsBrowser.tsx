@@ -21,25 +21,41 @@ import {
   Layers,
   LayoutGrid,
   Table2,
-  Globe,
   KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { TeamsIcon } from "@/components/ui/TeamsIcon";
+import {
+  AreaChart,
+  BarChart,
+  DonutChart,
+  DonutLegend,
+  Sparkline,
+} from "@/components/charts/Charts";
 import { formatMoney } from "@/lib/pipeline";
+import { flagForGeography } from "@/lib/countryFlags";
+import { teamsChatUrl } from "@/lib/team";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import {
+  SearchPriority,
+  PrioritySearchInput,
+  PriorityLabel,
+  PriorityTooltip,
+} from "@/components/ui/SearchPriority";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 // Distinct palette so each category / type gets its own colour dot in the
 // dropdowns (Suren: "color code all the dropdowns"). Shared with the
 // master-list managers so colours match everywhere.
-import { FILTER_PALETTE } from "./filterPalette";
+import { FILTER_PALETTE, listAccent } from "./filterPalette";
 const familyColor = (fam: string): string => {
   const f = (fam || "").toLowerCase();
   if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED";
@@ -139,12 +155,144 @@ const MATERIAL_ICON: Record<string, typeof Video> = {
   reference: Quote,
 };
 
+// One row of a trend-point breakdown — the SAME shape as the charts' TipItem
+// so it feeds Sparkline's pointTips directly, while staying a plain
+// serializable object the server page can build.
+export type OfferingTrendTip = {
+  name: string;
+  value?: string;
+  sub?: string;
+  logo?: string;
+};
+
+// One slice / bar in the hover panel's commerce charts. Plain data only — the
+// server page builds these arrays, so nothing here may be a function.
+type MixDatum = {
+  label: string;
+  value: number;
+  color: string;
+  /** TIP_ICONS key ("company", "money") — a string, not a component. */
+  icon?: string;
+  tip?: { name: string; logo?: string; value?: string; sub?: string }[];
+};
+
 export type OfferingCommerce = {
   totalRevenue: number;
   totalLicenses: number;
   customerCount: number;
-  customers: { id: string; name: string; revenue: number }[];
+  customers: {
+    id: string;
+    name: string;
+    revenue: number;
+    /** Seats this account licenses — the bar chart beside the revenue pie. */
+    licenses: number;
+  }[];
+  /** Revenue split by contract type (Annual / Project / Service / License) —
+   *  the bar chart's honest fallback when no account licenses seats. */
+  revenueByType: { label: string; value: number }[];
+  /** Cumulative revenue build for the hover chart — honest numbers only:
+   *  derived from real revenue-line start dates when every line carries one,
+   *  else cumulative by account ("how the book built"). Server-computed. */
+  trend: {
+    points: number[];
+    labels: string[];
+    hint: string;
+    tips: OfferingTrendTip[][];
+  };
 };
+
+// Multi-POC values arrive as one string ("Sathya K / Harshvardhan Gummadi").
+// Split for display only — never alter or complete the names themselves (real
+// employees; the seed spelling is the source of truth).
+function parsePocs(poc: string): string[] {
+  return poc
+    .split(/[/&,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// The hover behind a POC avatar — who they are + a straight line to them on
+// Teams (POCs are internal Freyr people, so a Teams chip is always right).
+// Mirrors the Team roster's person popover.
+function PocHoverContent({
+  name,
+  offeringName,
+}: {
+  name: string;
+  offeringName: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2.5">
+        <Avatar name={name} className="w-9 h-9 text-[11px] shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[13.5px] font-semibold text-text-primary truncate">
+            {name}
+          </p>
+          <p className="text-[11.5px] text-text-tertiary truncate">
+            Service delivery POC · {offeringName}
+          </p>
+        </div>
+      </div>
+      <a
+        href={teamsChatUrl(name)}
+        target="_blank"
+        rel="noopener noreferrer"
+        // The popover portals to <body>, so this never sits inside the card's
+        // stretched link — stopPropagation is belt-and-braces so the chat
+        // click can never double as card navigation.
+        onClick={(e) => e.stopPropagation()}
+        title={`Message ${name.split(" ")[0]} on Teams`}
+        className="relative z-10 mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold px-2.5 py-1.5 rounded-lg border border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+      >
+        <TeamsIcon size={15} />
+        Teams
+      </a>
+    </div>
+  );
+}
+
+// The tile's POC row: label + overlapping avatar stack (the campaigns
+// "Going to" pattern), each face hoverable for the full identity + Teams
+// link. Single-POC keeps the name inline; multi-POC shows faces only.
+function PocStrip({
+  poc,
+  offeringName,
+}: {
+  poc: string;
+  offeringName: string;
+}) {
+  const pocs = parsePocs(poc);
+  if (pocs.length === 0) return null;
+  return (
+    <div
+      role="group"
+      aria-label={`POC: ${poc}`}
+      className="relative z-10 flex items-center gap-2 min-w-0"
+    >
+      <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary shrink-0">
+        POC
+      </span>
+      <span className="flex items-center -space-x-1.5">
+        {pocs.map((name) => (
+          <HoverCard
+            key={name}
+            side="top"
+            delayMs={0}
+            width={250}
+            className="inline-flex"
+            content={<PocHoverContent name={name} offeringName={offeringName} />}
+          >
+            <Avatar name={name} className="w-6 h-6 text-[8px] ring-2 ring-white" />
+          </HoverCard>
+        ))}
+      </span>
+      {pocs.length === 1 && (
+        <span className="text-[11px] text-text-tertiary truncate">{pocs[0]}</span>
+      )}
+    </div>
+  );
+}
 
 export function OfferingsBrowser({
   offerings,
@@ -398,6 +546,75 @@ export function OfferingsBrowser({
     ];
     const hasCt = o.customerTypes.length > 0;
     const com = commerce?.[o.id];
+    // The commercial mix behind the hover panel. Suren: "for the 'who is using
+    // it' part, you can definitely make that a pie chart… I think you can have
+    // a pie chart on the left and, on the right, maybe a vertical bar chart."
+    // So: LEFT = revenue share per account, RIGHT = how many seats each of
+    // those same accounts licenses. Same accounts, same order, same colour on
+    // both sides, so a colour means one customer wherever you look.
+    const payingCustomers = (com?.customers ?? []).filter((c) => c.revenue > 0);
+    const shownRevenue = payingCustomers.reduce((s, c) => s + c.revenue, 0);
+    // The rollup ships the top accounts only — the tail still has to occupy its
+    // share of the ring, or every percentage on it would be a lie.
+    const tailRevenue = Math.max((com?.totalRevenue ?? 0) - shownRevenue, 0);
+    const tailAccounts = Math.max(
+      (com?.customerCount ?? 0) - payingCustomers.length,
+      0
+    );
+    // One id links the donut and its legend: hover a legend row and the slice
+    // lights up, and vice versa.
+    const mixSyncId = `offering-mix-${o.id}`;
+    const revenueSegments: MixDatum[] = payingCustomers.map((c, ci) => ({
+      label: c.name,
+      value: c.revenue,
+      color: FILTER_PALETTE[ci % FILTER_PALETTE.length],
+      icon: "company",
+      tip: [
+        {
+          name: c.name,
+          logo: c.name,
+          value: formatMoney(c.revenue),
+          sub:
+            c.licenses > 0
+              ? `${c.licenses} licensed seat${c.licenses === 1 ? "" : "s"}`
+              : undefined,
+        },
+      ],
+    }));
+    if (tailRevenue > 0) {
+      revenueSegments.push({
+        label: `${tailAccounts} more account${tailAccounts === 1 ? "" : "s"}`,
+        value: tailRevenue,
+        color: "#8E98A8",
+        icon: "company",
+      });
+    }
+    // Seats are the richer second dimension — but only when someone actually
+    // licenses them. When nobody does, re-plotting revenue as bars would just
+    // restate the pie, so the bars answer a different question instead: what
+    // KIND of revenue this offering earns.
+    const hasSeats = payingCustomers.some((c) => c.licenses > 0);
+    const mixBars: MixDatum[] = hasSeats
+      ? payingCustomers.map((c, ci) => ({
+          label: c.name,
+          value: c.licenses,
+          color: FILTER_PALETTE[ci % FILTER_PALETTE.length],
+          icon: "company",
+          tip: [
+            {
+              name: c.name,
+              logo: c.name,
+              value: `${c.licenses} seat${c.licenses === 1 ? "" : "s"}`,
+              sub: `${formatMoney(c.revenue)} a year`,
+            },
+          ],
+        }))
+      : (com?.revenueByType ?? []).map((t, ti) => ({
+          label: t.label,
+          value: t.value,
+          color: FILTER_PALETTE[(ti + 4) % FILTER_PALETTE.length],
+          icon: "money",
+        }));
     // The hover is the Customers-card pattern (HoverExpandCard): the card pops
     // out over its neighbours and opens a mini-dashboard — revenue, who's
     // using it, seats, materials — not just a pop-out animation (Anir: "I
@@ -483,13 +700,11 @@ export function OfferingsBrowser({
                 />
               )}
             </div>
-            {/* Service-delivery POC */}
-            {o.poc && (
-              <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
-                <Avatar name={o.poc} className="h-5 w-5 text-[7px]" />
-                POC: {o.poc}
-              </p>
-            )}
+            {/* Service-delivery POC(s) — hover a face for who's there + a
+                Teams line to them (Suren: "if there's multiple, make it look
+                like the campaigns page so when I hover over it I can see
+                who's there"). */}
+            {o.poc && <PocStrip poc={o.poc} offeringName={o.offering_name} />}
             {/* Materials count + type icons */}
             {o.materials.length > 0 && (
               <div className="flex items-center justify-between gap-2">
@@ -555,45 +770,161 @@ export function OfferingsBrowser({
                     color: "#0F766E",
                   },
                 ].map((f) => (
-                  <div key={f.label} className="rounded-lg bg-surface px-2.5 py-2">
+                  <div key={f.label} className="rounded-lg bg-surface px-2.5 py-1.5">
                     <p className="flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                       <f.icon size={11} strokeWidth={2.2} style={{ color: f.color }} />
                       {f.label}
                     </p>
-                    <p className="mt-0.5 text-[14px] font-semibold text-text-primary tnum">
+                    <p className="text-[13.5px] font-semibold text-text-primary tnum">
                       {f.value}
                     </p>
                   </div>
                 ))}
               </div>
 
-              {/* WHO is paying for it — the Customers-page substance. */}
-              {com && com.customers.length > 0 ? (
-                <div className="mt-3">
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                    Who&apos;s using it
-                  </p>
-                  <div className="space-y-1.5">
-                    {com.customers.map((c) => (
-                      <div key={c.id} className="flex items-center gap-2 text-[12px]">
-                        <CompanyLogo name={c.name} className="w-[18px] h-[18px] text-[7px] shrink-0" />
-                        <span className="min-w-0 flex-1 truncate font-medium text-text-primary">
-                          {c.name}
+              {/* How the revenue built — a real line, like the customer cards
+                  (Suren: "need graph like line chart for revenue like the
+                  customers"). Points are cumulative annual revenue keyed off
+                  the revenue lines' real start dates (or account-by-account
+                  when lines carry no dates) — never an invented curve.
+                  It used to be a bare Sparkline: a curve with no scale and no
+                  dates on it (Suren: "for the line chart, there are no units or
+                  anything, it looks kind of weird"). AreaChart is the same
+                  series with the axes /forecast draws — the money value at the
+                  top, $0 on the baseline, and the first/last period underneath.
+                  `yMax` pins the ceiling to the real total so the top label is
+                  the actual book, not a 10%-headroom number nobody booked; the
+                  old duplicate value beside the heading is gone with it. */}
+              {com &&
+                com.totalRevenue > 0 &&
+                com.trend &&
+                com.trend.points.length >= 2 && (
+                  <div className="mt-2.5">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                      Revenue{com.trend.hint ? ` · ${com.trend.hint}` : ""}
+                    </p>
+                    {/* AreaChart hangs its x-axis labels just below its own box,
+                        so the wrapper reserves that strip. */}
+                    <div className="pb-4">
+                      <AreaChart
+                        id={`offering-revenue-${o.id}`}
+                        data={com.trend.points}
+                        color="#16A34A"
+                        height={84}
+                        format="money"
+                        yMax={Math.max(...com.trend.points)}
+                        xLabels={com.trend.labels}
+                        pointTips={com.trend.tips}
+                      />
+                    </div>
+                  </div>
+                )}
+
+              {/* WHO is paying for it — the Customers-page substance, now read
+                  as charts instead of a text list (Suren: "for the 'who is
+                  using it' part, you can definitely make that a pie chart, it'll
+                  look better… a pie chart on the left and, on the right, maybe
+                  a vertical bar chart"). The legend under both names every
+                  account with its money, so the old list said nothing the
+                  legend doesn't. */}
+              {com && payingCustomers.length > 0 ? (
+                <div className="mt-2.5">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <p className="text-[11.5px] font-semibold text-text-primary">
+                      Who&apos;s using it
+                    </p>
+                    {/* Every company wears its own mark (standing rule: a
+                        company on screen always brings its logo). */}
+                    <span className="flex shrink-0 items-center -space-x-1.5">
+                      {payingCustomers.map((c) => (
+                        <CompanyLogo
+                          key={c.id}
+                          name={c.name}
+                          className="w-5 h-5 text-[7px] ring-2 ring-white"
+                        />
+                      ))}
+                      {tailAccounts > 0 && (
+                        <span className="flex h-5 w-5 items-center justify-center rounded-xl bg-blue-light text-[8px] font-semibold text-blue-primary ring-2 ring-white tnum">
+                          +{tailAccounts}
                         </span>
-                        <span className="tnum text-text-secondary shrink-0">
-                          {formatMoney(c.revenue)}
-                        </span>
-                      </div>
-                    ))}
-                    {com.customerCount > com.customers.length && (
-                      <p className="text-[10.5px] text-text-tertiary">
-                        +{com.customerCount - com.customers.length} more{" "}
-                        {com.customerCount - com.customers.length === 1
-                          ? "account"
-                          : "accounts"}
+                      )}
+                    </span>
+                  </div>
+                  {/* Two equal halves so the row reads symmetrical: the ring and
+                      the bars are the same height, each under its own subtitle. */}
+                  <div
+                    className={`grid items-start gap-3 ${
+                      mixBars.length > 0 ? "grid-cols-2" : "grid-cols-1"
+                    }`}
+                  >
+                    <div>
+                      <p className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                        Revenue share
                       </p>
+                      <div className="flex justify-center">
+                        <DonutChart
+                          syncId={mixSyncId}
+                          segments={revenueSegments}
+                          size={78}
+                          thickness={10}
+                          format="money"
+                          centerLabel={String(com.customerCount)}
+                          centerSub={
+                            com.customerCount === 1 ? "customer" : "customers"
+                          }
+                        />
+                      </div>
+                    </div>
+                    {mixBars.length > 0 && (
+                      <div>
+                        <p className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                          {hasSeats ? "Licensed seats" : "Revenue by type"}
+                        </p>
+                        <BarChart
+                          data={mixBars}
+                          height={78}
+                          format={hasSeats ? "number" : "money"}
+                          unit={hasSeats ? "seats" : undefined}
+                          tipRecordsLabel={
+                            hasSeats
+                              ? "Account behind this bar"
+                              : "Records behind this bar"
+                          }
+                        />
+                      </div>
                     )}
                   </div>
+                  {/* The ring's key — name, money, share — linked to the slices
+                      by mixSyncId, and the same colours the bars wear. */}
+                  <div className="mt-1.5">
+                    <DonutLegend
+                      items={revenueSegments}
+                      format="money"
+                      syncId={mixSyncId}
+                    />
+                  </div>
+                </div>
+              ) : com && com.customers.length > 0 ? (
+                // Marked in use, but no money against it yet — still say WHO,
+                // with their logos, rather than dropping to "no revenue".
+                <div className="mt-3">
+                  <p className="text-[11.5px] font-semibold text-text-primary">
+                    Who&apos;s using it
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {com.customers.map((c) => (
+                      <span
+                        key={c.id}
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-blue-light/60 px-1.5 py-0.5 text-[11px] font-medium text-text-primary"
+                      >
+                        <CompanyLogo name={c.name} className="w-4 h-4 text-[6px]" />
+                        {c.name}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-[10.5px] leading-snug text-text-tertiary">
+                    In use today — no revenue recorded against it yet.
+                  </p>
                 </div>
               ) : (
                 <p className="mt-3 text-[11px] leading-snug text-text-tertiary">
@@ -604,12 +935,36 @@ export function OfferingsBrowser({
 
               {/* Where it sells + any availability caveat. */}
               {(o.markets.length > 0 || o.future_availability) && (
-                <div className="mt-3 space-y-1.5">
+                <div className="mt-2.5 space-y-1.5">
+                  {/* A flag belongs next to its OWN place (Suren's standing
+                      rule) — so each market is its own chip carrying its own
+                      flag, not one globe in front of a middot list. Flag and
+                      name never separate (whitespace-nowrap); a market with no
+                      flag match shows its name alone rather than a placeholder.
+                      The chip colour is the market's colour in the markets
+                      manager, so a market reads the same everywhere. */}
                   {o.markets.length > 0 && (
-                    <p className="flex flex-wrap items-center gap-1 text-[10.5px] text-text-tertiary">
-                      <Globe size={10} strokeWidth={2} className="shrink-0" />
-                      {o.markets.map((m) => m.name).join(" · ")}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {o.markets.map((m) => {
+                        const flag = flagForGeography(m.name);
+                        const accent = listAccent(
+                          Math.max(
+                            markets.findIndex((mm) => mm.id === m.id),
+                            0
+                          )
+                        );
+                        return (
+                          <span
+                            key={m.id}
+                            className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight"
+                            style={{ background: `${accent}14`, color: accent }}
+                          >
+                            {flag && <span aria-hidden="true">{flag}</span>}
+                            {m.name}
+                          </span>
+                        );
+                      })}
+                    </div>
                   )}
                   {o.future_availability && (
                     <p className="text-[10.5px] leading-snug text-text-tertiary">
@@ -655,28 +1010,32 @@ export function OfferingsBrowser({
 
   return (
     <div>
-      {/* Filter bar */}
-      <div className="rounded-xl border border-border-light bg-surface/50 p-2.5 mb-4 flex flex-wrap items-center gap-2.5">
-        <div className="relative flex-1 min-w-[190px]">
-          <Search
-            size={16}
-            strokeWidth={1.8}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-          />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search offerings…"
-            aria-label="Search offerings"
-            className={`${inputCls} w-full pl-9 pr-3`}
-          />
-        </div>
+      {/* Filter bar — search priority (Suren, Jul 27): pressing the search
+          compresses every control to its right, and this box is already
+          `flex-1`, so it simply absorbs the width they release. */}
+      <SearchPriority
+        query={q}
+        className="rounded-xl border border-border-light bg-surface/50 p-2.5 mb-4 flex flex-wrap items-center gap-2.5"
+      >
+        <PrioritySearchInput
+          grow
+          value={q}
+          onChange={setQ}
+          placeholder="Search offerings…"
+          ariaLabel="Search offerings"
+          iconSize={16}
+          className="flex-1 min-w-[190px]"
+          iconClassName="left-3"
+          inputClassName={`${inputCls} w-full pl-9 pr-3`}
+        />
         <MultiColorSelect
           values={ctIds}
           onChange={(next) => setCtId(next.join(","))}
           minWidth={150}
           allLabel="All customer types"
           ariaLabel="Filter by customer type"
+          allIcon={Users}
+          allColor="#0071E3"
           options={[
             // Colour says the FAMILY, the icon says the SIZE — the list used
             // to encode only family, so Small/Mid/Large read identically
@@ -703,6 +1062,8 @@ export function OfferingsBrowser({
           minWidth={150}
           allLabel="All categories"
           ariaLabel="Filter by offering category"
+          allIcon={SortLayers}
+          allColor="#0F6E56"
           options={[
             ...offeringCategories.map((c, i) => ({
               value: c.id,
@@ -717,6 +1078,8 @@ export function OfferingsBrowser({
           minWidth={150}
           allLabel="All offering types"
           ariaLabel="Filter by offering type"
+          allIcon={SortPackage}
+          allColor="#C2410C"
           options={[
             ...offeringTypes.map((t, i) => ({
               value: t.id,
@@ -738,12 +1101,16 @@ export function OfferingsBrowser({
           </span>
         )}
         {activeFilters && (
-          <button
-            onClick={clearAll}
-            className="h-10 px-3 rounded-lg text-[13px] font-semibold text-text-secondary hover:text-blue-primary hover:bg-blue-light transition-colors inline-flex items-center gap-1"
-          >
-            <X size={14} strokeWidth={2} /> Clear
-          </button>
+          <PriorityTooltip label="Clear filters">
+            <button
+              onClick={clearAll}
+              aria-label="Clear filters"
+              className="h-10 px-3 rounded-lg text-[13px] font-semibold text-text-secondary hover:text-blue-primary hover:bg-blue-light transition-colors inline-flex items-center"
+            >
+              <X size={14} strokeWidth={2} />
+              <PriorityLabel gap="ml-1">Clear</PriorityLabel>
+            </button>
+          </PriorityTooltip>
         )}
         {/* Sort, view and export live IN the filter bar — two stacked control
             rows read as clutter (Anir, Jul 25: "everything should be on one
@@ -778,13 +1145,14 @@ export function OfferingsBrowser({
               aria-label="Tile view"
               aria-pressed={view === "tile"}
               title="Tile view"
-              className={`inline-flex items-center gap-1 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-colors ${
+              className={`inline-flex items-center text-[12px] font-semibold rounded-md px-2.5 py-1 transition-colors ${
                 view === "tile"
                   ? "bg-white text-blue-primary shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
-              <LayoutGrid size={14} strokeWidth={2} /> Tiles
+              <LayoutGrid size={14} strokeWidth={2} />
+              <PriorityLabel gap="ml-1">Tiles</PriorityLabel>
             </button>
             <button
               type="button"
@@ -792,13 +1160,14 @@ export function OfferingsBrowser({
               aria-label="Grid view"
               aria-pressed={view === "grid"}
               title="Grid view"
-              className={`inline-flex items-center gap-1 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-colors ${
+              className={`inline-flex items-center text-[12px] font-semibold rounded-md px-2.5 py-1 transition-colors ${
                 view === "grid"
                   ? "bg-white text-blue-primary shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
-              <Table2 size={14} strokeWidth={2} /> Grid
+              <Table2 size={14} strokeWidth={2} />
+              <PriorityLabel gap="ml-1">Grid</PriorityLabel>
             </button>
           </div>
           {sorted.length > 0 && (
@@ -812,7 +1181,7 @@ export function OfferingsBrowser({
             </button>
           )}
         </div>
-      </div>
+      </SearchPriority>
 
       <p className="mb-3 text-[12px] text-text-tertiary tnum">
         Showing {filtered.length} of {offerings.length} offerings
@@ -864,15 +1233,17 @@ export function OfferingsBrowser({
             {/* table-fixed + explicit widths so all six columns fit the card —
                 auto layout let "Availability" grab all the slack and shoved the
                 last two columns off-screen behind a horizontal scroll. */}
-            <table className="w-full min-w-[1080px] table-fixed text-[13px] border-collapse">
+            <table className="w-full min-w-[1280px] table-fixed text-[13px] border-collapse">
               <thead>
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="px-4 py-2.5 w-[26%]">Offering</th>
-                  <th className="px-4 py-2.5 w-[21%]">Category</th>
-                  <th className="px-4 py-2.5 w-[15%]">Type</th>
-                  <th className="px-4 py-2.5 w-[12%]">Availability</th>
-                  <th className="px-4 py-2.5 w-[18%]">Who it&apos;s for</th>
-                  <th className="px-4 py-2.5 w-[8%]">Materials</th>
+                  <th className="px-4 py-2.5 w-[22%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[15%]">Category</th>
+                  <th className="px-4 py-2.5 w-[12%]">Type</th>
+                  <th className="px-4 py-2.5 w-[10%]">Availability</th>
+                  <th className="px-4 py-2.5 w-[14%]">Who it&apos;s for</th>
+                  <th className="px-4 py-2.5 w-[12%]">Revenue</th>
+                  <th className="px-4 py-2.5 w-[9%]">Trend</th>
+                  <th className="px-4 py-2.5 w-[6%]">Materials</th>
                 </tr>
               </thead>
               <tbody>
@@ -900,6 +1271,27 @@ export function OfferingsBrowser({
                     ...FAMILY_ORDER.filter((f) => fams.includes(f)),
                     ...fams.filter((f) => !FAMILY_ORDER.includes(f)),
                   ];
+                  // Commercial columns (Team-roster pattern: number + stacked
+                  // share bar + trend spark) — same server rollup as the tile
+                  // hover, so both views tell one story.
+                  const com = commerce?.[o.id];
+                  const revCustomers = (com?.customers ?? []).filter(
+                    (c) => c.revenue > 0
+                  );
+                  const shownRevenue = revCustomers.reduce(
+                    (s, c) => s + c.revenue,
+                    0
+                  );
+                  // The rollup ships the top accounts only — the tail still
+                  // has to occupy its share of the bar to stay honest.
+                  const restRevenue = Math.max(
+                    (com?.totalRevenue ?? 0) - shownRevenue,
+                    0
+                  );
+                  const restAccounts = Math.max(
+                    (com?.customerCount ?? 0) - revCustomers.length,
+                    0
+                  );
                   return (
                     <tr
                       key={o.id}
@@ -918,11 +1310,32 @@ export function OfferingsBrowser({
                             <span className="block font-semibold text-text-primary group-hover/name:text-blue-primary">
                               {o.offering_name}
                             </span>
-                            {o.poc && (
-                              <span className="block text-[11px] text-text-tertiary mt-0.5">
-                                POC: {o.poc}
-                              </span>
-                            )}
+                            {o.poc &&
+                              (() => {
+                                const pocs = parsePocs(o.poc);
+                                return (
+                                  <span
+                                    className="mt-1 flex items-center gap-1.5 min-w-0"
+                                    title={`POC: ${o.poc}`}
+                                    aria-label={`POC: ${o.poc}`}
+                                  >
+                                    <span className="flex items-center -space-x-1">
+                                      {pocs.map((n) => (
+                                        <Avatar
+                                          key={n}
+                                          name={n}
+                                          className="w-[18px] h-[18px] text-[7px] ring-2 ring-white"
+                                        />
+                                      ))}
+                                    </span>
+                                    {pocs.length === 1 && (
+                                      <span className="text-[11px] text-text-tertiary truncate">
+                                        {pocs[0]}
+                                      </span>
+                                    )}
+                                  </span>
+                                );
+                              })()}
                           </span>
                         </Link>
                       </td>
@@ -994,6 +1407,67 @@ export function OfferingsBrowser({
                           <span className="text-text-secondary">—</span>
                         )}
                       </td>
+                      <td className="px-4 py-3">
+                        {com && com.totalRevenue > 0 ? (
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-semibold text-text-primary tnum">
+                              {formatMoney(com.totalRevenue)}
+                            </p>
+                            {/* Who that money comes from — a slim stacked bar
+                                (the Team table's pipeline-bar treatment), one
+                                segment per account, hover a segment for the
+                                name + amount. */}
+                            <div className="mt-1.5 flex h-1.5 w-full max-w-[150px] overflow-hidden rounded-full bg-surface">
+                              {revCustomers.map((c, ci) => (
+                                <span
+                                  key={c.id}
+                                  title={`${c.name} · ${formatMoney(c.revenue)}`}
+                                  className="h-full"
+                                  style={{
+                                    width: `${(c.revenue / com.totalRevenue) * 100}%`,
+                                    background:
+                                      FILTER_PALETTE[ci % FILTER_PALETTE.length],
+                                  }}
+                                />
+                              ))}
+                              {restRevenue > 0 && (
+                                <span
+                                  title={`${restAccounts} more account${
+                                    restAccounts === 1 ? "" : "s"
+                                  } · ${formatMoney(restRevenue)}`}
+                                  className="h-full"
+                                  style={{
+                                    width: `${(restRevenue / com.totalRevenue) * 100}%`,
+                                    background: "#8E98A8",
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-text-tertiary">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {com &&
+                        com.totalRevenue > 0 &&
+                        com.trend &&
+                        com.trend.points.length >= 2 ? (
+                          <div
+                            className="w-[92px]"
+                            aria-label={`${o.offering_name} revenue trend`}
+                          >
+                            <Sparkline
+                              points={com.trend.points}
+                              color="#16A34A"
+                              height={30}
+                              interactive={false}
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-text-tertiary">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 tnum">
                         {o.materials.length ? (
                           <span className="inline-flex items-center rounded-full bg-blue-light px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary">
@@ -1014,8 +1488,16 @@ export function OfferingsBrowser({
         <div className="space-y-6">
           {catGroups.map((g) => (
             <div key={g.cat}>
+              {/* The group's icon wears its category's colour — the same hue the
+                  category chip has on every card and in the filter dropdown, so
+                  a section is identifiable before you read it (standing rule: a
+                  category is never plain gray). */}
               <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary mb-2.5">
-                <Layers size={12} strokeWidth={2} className="text-text-tertiary" />
+                <Layers
+                  size={12}
+                  strokeWidth={2.2}
+                  style={{ color: categoryColorByName[g.cat] || "#2563EB" }}
+                />
                 {g.cat || "Uncategorized"}
                 <span className="text-text-tertiary/70 tnum">
                   ({g.items.length})
@@ -1031,7 +1513,14 @@ export function OfferingsBrowser({
         <div className="space-y-6">
           {typeGroups.map((g) => (
             <div key={g.type}>
+              {/* An offering type is a SERVICE, so it never appears bare —
+                  same icon + colour it wears as a chip on the cards. */}
               <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary mb-2.5">
+                <Sparkles
+                  size={12}
+                  strokeWidth={2.2}
+                  style={{ color: typeColorByName[g.type] || "#7C3AED" }}
+                />
                 {g.type || "Other"}
                 <span className="text-text-tertiary/70 tnum">
                   ({g.items.length})

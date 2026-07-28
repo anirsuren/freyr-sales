@@ -30,6 +30,7 @@ import {
   isCurrentRep,
   repOwnsDeal,
   STAGE_COLOR,
+  STAGE_ICON,
   STAGE_PROBABILITY,
   salesTeamFor,
   formatMoney,
@@ -156,7 +157,9 @@ export default async function RepPage({
   const quota = repQuota(name);
   const wonFY = repWonFY(name);
   const attain = Math.round((wonFY / quota) * 100);
-  const attainColor = attain >= 50 ? "#1A7A35" : attain >= 35 ? "#F59E0B" : "#B02020";
+  // Painted on a 34px attainment number — amber text was barely visible on
+  // white. Burnt orange keeps "mid tier" warm and legible.
+  const attainColor = attain >= 50 ? "#1A7A35" : attain >= 35 ? "#C2410C" : "#B02020";
 
   const tiles = [
     { label: "Open pipeline", value: formatMoney(me.openValue), sub: `${me.openCount} live deal${me.openCount === 1 ? "" : "s"}`, icon: DollarSign },
@@ -187,7 +190,9 @@ export default async function RepPage({
   const outcomes = [
     { label: "Interested", value: Math.max(1, Math.round(me.qualifiedPlus * 1.3)), color: "#34C759" },
     { label: "Meeting booked", value: me.meetings, color: "#0071E3" },
-    { label: "Follow-up", value: Math.max(1, Math.round(me.openCount * 0.4)), color: "#FF9F0A" },
+    // DonutLegend draws each label as colour-on-tint text, so this is a text
+    // colour too — amber was illegible there.
+    { label: "Follow-up", value: Math.max(1, Math.round(me.openCount * 0.4)), color: "#C2410C" },
     { label: "No response", value: Math.max(1, Math.round(me.openCount * 0.28)), color: "#A855F7" },
   ]
     .filter((o) => o.value > 0)
@@ -525,6 +530,7 @@ export default async function RepPage({
               <tbody className="divide-y divide-border-light">
                 {sortedDeals.map((d) => {
                   const prob = STAGE_PROBABILITY[d.stage] ?? 0;
+                  const StageIcon = STAGE_ICON[d.stage];
                   return (
                     <tr key={d.sessionId} className="hover:bg-surface transition-colors group">
                       <td className="px-5 py-3">
@@ -537,16 +543,23 @@ export default async function RepPage({
                         </Link>
                       </td>
                       <td className="px-5 py-3 text-[13px] whitespace-nowrap">
+                        {/* The account above already wears its logo; the person
+                            in this cell was the one bare name in the row. */}
                         <Link
                           href={`/contacts/${d.contactId}`}
-                          className="text-text-secondary hover:text-blue-primary"
+                          className="inline-flex items-center gap-2 whitespace-nowrap text-text-secondary hover:text-blue-primary"
                         >
+                          <Avatar name={d.contactName} className="w-6 h-6 text-[9px]" />
                           {d.contactName}
                         </Link>
                       </td>
                       <td className="px-5 py-3 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: STAGE_COLOR[d.stage] }} />
+                        {/* Stage is a category: colour AND icon, never a bare dot. */}
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12.5px] font-semibold"
+                          style={{ background: `${STAGE_COLOR[d.stage]}1F`, color: STAGE_COLOR[d.stage] }}
+                        >
+                          <StageIcon size={13} strokeWidth={2.1} className="shrink-0" />
                           {d.stage}
                         </span>
                       </td>

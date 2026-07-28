@@ -1,8 +1,18 @@
 import Link from "next/link";
-import { CircleDashed, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  CircleDashed,
+  TrendingUp,
+  TrendingDown,
+  Target,
+  Package,
+  MapPin,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { SizeBadge, OutcomeBadge, Badge } from "@/components/ui/Badge";
+import { IndustryTag } from "@/components/ui/IndustryTag";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import {
   DonutChart,
@@ -22,6 +32,69 @@ const SIZE_OPP: Record<string, string> = {
   mid: "Medium",
   small: "Low",
 };
+
+// Opportunity is a TIER, so it wears a colour + an icon like every other
+// category chip in the app (standing rule) instead of sitting there as flat
+// gray text. Semantic ramp — green for the biggest prize, blue for the middle,
+// violet for the smallest. Deliberately no amber/yellow band (banned), and
+// deliberately not red either: a small account is not a failing one.
+const OPP_TIER: Record<string, { color: string; bg: string }> = {
+  High: { color: "#15803D", bg: "rgba(21,128,61,0.12)" },
+  Medium: { color: "#0071E3", bg: "rgba(0,113,227,0.12)" },
+  Low: { color: "#7C3AED", bg: "rgba(124,58,237,0.12)" },
+};
+
+/**
+ * One fact tile in the hover panel's 2×2 grid. Every tile carries an icon and
+ * a colour (Suren's chip rule); the value may also be a person, in which case
+ * their face stands in for the icon.
+ */
+function FactTile({
+  label,
+  value,
+  icon: Icon,
+  color,
+  bg,
+  avatar,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  color: string;
+  /** Tinted plate behind the icon — its own colour at ~12%. */
+  bg: string;
+  /** Render this person's headshot instead of the glyph. */
+  avatar?: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-lg bg-surface px-2.5 py-2">
+      {avatar ? (
+        <Avatar name={avatar} className="h-[26px] w-[26px] shrink-0 text-[9px]" />
+      ) : (
+        <span
+          className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md"
+          style={{ color, background: bg }}
+          aria-hidden="true"
+        >
+          <Icon size={14} strokeWidth={2.2} />
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className="block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+          {label}
+        </span>
+        {/* Wraps rather than ellipsizes — a clipped region string is unusable
+            (Suren's no-"…" rule). */}
+        <span
+          className="mt-0.5 block break-normal text-[12.5px] font-semibold leading-tight"
+          style={{ color }}
+        >
+          {value}
+        </span>
+      </span>
+    </div>
+  );
+}
 
 export function CustomerCard({
   customer,
@@ -54,12 +127,46 @@ export function CustomerCard({
     ? mix.reduce((s, m) => s + m.tip.length, 0)
     : mix.reduce((s, m) => s + m.value, 0);
   const opp = customer.size_tier ? SIZE_OPP[customer.size_tier] ?? "—" : "—";
+  const oppTier = OPP_TIER[opp];
   const offeringsCount = customer.offerings_in_use?.length ?? 0;
-  const facts: { label: string; value: string }[] = [
-    { label: "Opportunity", value: opp },
-    { label: "Offerings in use", value: String(offeringsCount) },
-    { label: "Region", value: geographyWithFlag(customer.geography) },
-    { label: "Owner", value: customer.owner || "Unassigned" },
+  const owner = customer.owner || "Unassigned";
+  // Every tile is a colour + icon chip, never flat gray text (Suren, Jul 27:
+  // "for opportunity colour code, add an icon for region… I would use the
+  // colour code for things like that"). Region keeps whatever
+  // `geographyWithFlag` gives it — the flag, and country-only once that helper
+  // changes — so nothing here parses the string itself.
+  const facts = [
+    {
+      label: "Opportunity",
+      value: opp,
+      icon: Target,
+      color: oppTier?.color ?? "#6E6E73",
+      bg: oppTier?.bg ?? "rgba(110,110,115,0.12)",
+    },
+    {
+      label: "Offerings in use",
+      value: String(offeringsCount),
+      icon: Package,
+      color: "#0891B2",
+      bg: "rgba(8,145,178,0.12)",
+    },
+    {
+      label: "Region",
+      value: geographyWithFlag(customer.geography),
+      icon: MapPin,
+      color: "#0D9488",
+      bg: "rgba(13,148,136,0.12)",
+    },
+    {
+      label: "Owner",
+      value: owner,
+      icon: UserRound,
+      color: "#4F46E5",
+      bg: "rgba(79,70,229,0.12)",
+      // A person always shows a face (standing rule) — the glyph is only the
+      // fallback for an unassigned account.
+      avatar: customer.owner || undefined,
+    },
   ];
 
   // Scale-up hover (Suren: "do what you did on the voice station for the
@@ -89,9 +196,19 @@ export function CustomerCard({
                 </Link>
                 <SizeBadge tier={customer.size_tier} />
               </div>
-              <p className="text-[13px] text-text-secondary mt-0.5">
-                {customer.industry || "—"}
-              </p>
+              {/* Industry is a category, so it wears its colour + icon like
+                  every other chip in the app — it was the last place still
+                  rendering as flat gray text (Anir, Jul 27: "shouldn't that be
+                  like a color and an icon? Like a tag?"). IndustryTag already
+                  existed and is used on the customer detail header; the grid
+                  card simply never adopted it. */}
+              <div className="mt-1">
+                {customer.industry ? (
+                  <IndustryTag industry={customer.industry} />
+                ) : (
+                  <span className="text-[13px] text-text-tertiary">—</span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center justify-between gap-2 text-[13px] text-text-tertiary">
@@ -221,14 +338,20 @@ export function CustomerCard({
               touches logged that week. */}
           {healthTrend && healthTrend.length > 1 && (
             <div className="mb-3.5">
-              <div className="flex items-center justify-between mb-1.5">
+              {/* The delta sits right after the heading it belongs to, not
+                  pushed to the far edge (same canyon rule as the factor rows
+                  below). */}
+              <div className="mb-1.5 flex items-center gap-2">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                   Health · last 5 weeks
                 </p>
                 <span
-                  className="text-[10.5px] tnum font-semibold"
+                  className="whitespace-nowrap rounded-full px-1.5 py-[1px] text-[10.5px] font-bold tnum"
                   style={{
                     color: health ? HEALTH_COLOR[health.band].color : undefined,
+                    background: health
+                      ? `${HEALTH_COLOR[health.band].color}1F`
+                      : undefined,
                   }}
                 >
                   {healthTrend[healthTrend.length - 1] - healthTrend[0] >= 0 ? "+" : ""}
@@ -256,20 +379,40 @@ export function CustomerCard({
               <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-2">
                 What&apos;s moving this account&apos;s health
               </p>
-              <div className="space-y-1.5">
+              {/* Two columns, not one: a single column of short factors left a
+                  half-card of dead space to the right (Suren). Paired up, the
+                  rows fill the width and each factor's number sits right
+                  beside its own words. */}
+              <div className="grid grid-cols-2 gap-1.5">
                 {health.factors.map((f) => {
                   const up = f.delta >= 0;
                   const color = up ? "#1A7A35" : "#B02020";
+                  const Trend = up ? TrendingUp : TrendingDown;
                   return (
-                    <div key={f.label} className="flex items-center gap-2 text-[12.5px]">
-                      {up ? (
-                        <TrendingUp size={13} strokeWidth={2} style={{ color }} className="shrink-0" />
-                      ) : (
-                        <TrendingDown size={13} strokeWidth={2} style={{ color }} className="shrink-0" />
-                      )}
-                      <span className="text-text-secondary truncate">{f.label}</span>
-                      <span className="ml-auto tnum font-semibold shrink-0" style={{ color }}>
-                        {up ? `+${f.delta}` : f.delta}
+                    <div
+                      key={f.label}
+                      className="flex min-w-0 items-start gap-1.5 rounded-md bg-surface px-2 py-1.5 text-[12px]"
+                    >
+                      <Trend
+                        size={13}
+                        strokeWidth={2}
+                        style={{ color }}
+                        className="mt-[2px] shrink-0"
+                      />
+                      {/* The number rides WITH the words — never flung to the
+                          opposite edge with a canyon in between (Suren, Jul
+                          27: "the number here is way too far from the text on
+                          the left. You can never do that"). It is a tinted
+                          pill so the pair reads as one object, and the label
+                          wraps instead of ellipsizing. */}
+                      <span className="min-w-0 break-normal leading-snug text-text-secondary">
+                        {f.label}{" "}
+                        <span
+                          className="ml-0.5 inline-block whitespace-nowrap rounded-full px-1.5 py-[1px] text-[11px] font-bold tnum align-[1px]"
+                          style={{ color, background: `${color}1F` }}
+                        >
+                          {up ? `+${f.delta}` : f.delta}
+                        </span>
                       </span>
                     </div>
                   );
@@ -279,14 +422,15 @@ export function CustomerCard({
           )}
           <div className="grid grid-cols-2 gap-2">
             {facts.map((f) => (
-              <div key={f.label} className="rounded-lg bg-surface px-2.5 py-2">
-                <p className="text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                  {f.label}
-                </p>
-                <p className="text-[13px] font-semibold text-text-primary truncate mt-0.5">
-                  {f.value}
-                </p>
-              </div>
+              <FactTile
+                key={f.label}
+                label={f.label}
+                value={f.value}
+                icon={f.icon}
+                color={f.color}
+                bg={f.bg}
+                avatar={"avatar" in f ? f.avatar : undefined}
+              />
             ))}
           </div>
         </>

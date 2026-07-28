@@ -51,7 +51,8 @@ function lineStatus(line: OfferingRevenueLine, now: Date) {
   if (!line.end_date) return { label: "Ongoing", className: "bg-blue-light text-blue-primary" };
   const days = Math.ceil((Date.parse(line.end_date) - now.getTime()) / 86_400_000);
   if (days < 0) return { label: "Expired", className: "bg-red-50 text-red-700" };
-  if (days <= 90) return { label: `${days}d left`, className: "bg-amber-50 text-amber-700" };
+  // orange-700 not amber-700: amber-700 is the brown-mustard Suren banned.
+  if (days <= 90) return { label: `${days}d left`, className: "bg-orange-50 text-orange-700" };
   return { label: "Active", className: "bg-green-50 text-green-700" };
 }
 
@@ -313,11 +314,14 @@ export function OfferingReports({
         <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr]">
         {/* LEFT — the split as a picture: donut with its legend BESIDE it
             (Suren: labels to the right of the pie, table to the right of that). */}
-        <div className="border-b xl:border-b-0 xl:border-r border-border-light px-5 py-4">
+        <div className="flex h-full flex-col border-b xl:border-b-0 xl:border-r border-border-light px-5 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
             Revenue split
           </p>
-          <div className="flex items-center gap-4">
+          {/* `flex-1` + centred: when the table beside it runs longer, the
+              donut centres in the panel instead of sitting at the top with a
+              dead band underneath (Suren: "a lot of empty space below"). */}
+          <div className="flex flex-1 items-center gap-4">
             <DonutChart
               syncId="offering-revenue"
               segments={revenueSegments}
@@ -431,10 +435,14 @@ export function OfferingReports({
             </div>
             <CalendarRange size={17} strokeWidth={1.8} className="shrink-0 text-blue-primary" />
           </div>
-          <div className="mt-4 flex-1 flex flex-col justify-center pb-5">
+          {/* No `pb-5` reserve any more — the padding under the plot was dead
+              space the card could not use, and the chart now runs taller so it
+              fills the height the Renewal-watch card beside it sets (Suren:
+              "there's a lot of empty space below"). */}
+          <div className="mt-4 flex flex-1 flex-col justify-center">
             <AreaChart
               data={coverage}
-              height={210}
+              height={248}
               id={`offering-coverage-${offeringName.replace(/[^a-z0-9]/gi, "-")}`}
               color={VIZ.teal}
               format="money"
@@ -444,7 +452,7 @@ export function OfferingReports({
           </div>
         </Card>
 
-        <Card className="h-full p-0 overflow-hidden">
+        <Card className="flex h-full flex-col p-0 overflow-hidden">
           <div className="flex items-start justify-between gap-4 border-b border-border-light px-4 py-3.5">
             <div>
               <h2 className="text-[15px] font-semibold text-text-primary">Renewal watch</h2>
@@ -452,7 +460,15 @@ export function OfferingReports({
             </div>
             <CalendarClock size={17} strokeWidth={1.8} className="shrink-0 text-blue-primary" />
           </div>
-          <div className="divide-y divide-border-light">
+          <div className="flex-1 divide-y divide-border-light">
+            {/* Never a hollow box: with nothing expiring the card says so
+                instead of leaving an empty panel beside a full-height chart. */}
+            {renewals.length === 0 && (
+              <p className="px-4 py-5 text-[12.5px] leading-relaxed text-text-secondary">
+                Nothing is up for renewal — every contract on this offering is
+                ongoing or already past its end date.
+              </p>
+            )}
             {renewals.slice(0, 4).map((item) => {
               const status = lineStatus(item.line, now);
               return (
@@ -481,8 +497,10 @@ export function OfferingReports({
                         glance (Suren: "I have to visually SEE the 38 days"). */}
                     {(() => {
                       const runway = renewalRunway(item.line, now);
+                      // Matches the pill directly above it (orange-700), so the
+                      // bar and its label are never two different warnings.
                       const barColor = status.label.endsWith("d left")
-                        ? "#F59E0B"
+                        ? "#C2410C"
                         : status.label === "Expired"
                           ? "#EF4444"
                           : status.label === "Ongoing"

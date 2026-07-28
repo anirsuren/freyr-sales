@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Wallet, Briefcase, Target, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HoverCard } from "@/components/ui/HoverCard";
-import { BarChart, DonutChart, DonutLegend, VIZ, VIZ_SERIES,
+import { BarChart, DonutChart, DonutLegend,
   donutSyncBroadcast,
   useDonutSync,
 } from "@/components/charts/Charts";
@@ -27,6 +27,23 @@ interface OutcomeStat {
 }
 type StageDeal = { company: string; contact: string; value: number; customerId: string };
 type OutcomeContact = { name: string; company: string; contactId: string };
+
+// A stage is a SEMANTIC value, not a slot in a categorical series: Prospect is
+// burnt orange, Engaged is blue, Qualified is violet — everywhere, on every
+// chart. These charts used to paint stages with VIZ_SERIES[i], so "Pipeline by
+// Stage" showed Prospect blue and Engaged orange while the Conversion Funnel
+// three inches below showed the same two stages their real colours. One screen,
+// two stories. Every stage renderer on this page now reads the one map.
+const stageColor = (stage: string) =>
+  STAGE_COLOR[stage as keyof typeof STAGE_COLOR] || "#0071E3";
+
+// The unfilled share of a rate ring. A light wash of the SAME hue as the
+// achieved arc (Qualified violet at 15%), so it reads as "this measure, not yet
+// earned" rather than a second, unrelated category. Alpha rather than a baked
+// tint on purpose: it composites over whatever card it sits on, so it stays
+// quiet in dark mode instead of turning into the brightest thing in the ring.
+// Never red — a shortfall on a rate donut is not an alarm.
+const RATE_SHORTFALL = `${STAGE_COLOR.Qualified}26`;
 
 // The "who" reveal — the deals or contacts behind a bar/segment.
 function WhoPanel({ children }: { children: React.ReactNode }) {
@@ -97,20 +114,20 @@ export function AnalyticsView({
     }));
   };
   const weightedByStage = openStages
-    .map((s, i) => ({
+    .map((s) => ({
       label: s.stage,
       value: Math.round(
         s.value * (STAGE_PROBABILITY[s.stage as keyof typeof STAGE_PROBABILITY] ?? 0)
       ),
-      color: VIZ_SERIES[i % VIZ_SERIES.length],
+      color: stageColor(s.stage),
       tip: weightedStageTip(s.stage),
     }))
     .filter((s) => s.value > 0);
   const totalWeighted = weightedByStage.reduce((t, x) => t + x.value, 0);
-  const avgByStage = openStages.map((s, i) => ({
+  const avgByStage = openStages.map((s) => ({
     label: s.stage,
     value: s.count > 0 ? Math.round(s.value / s.count) : 0,
-    color: VIZ_SERIES[i % VIZ_SERIES.length],
+    color: stageColor(s.stage),
     // An AVERAGE can never be the sum of the deals listed under it, so the bar
     // says what it is at rest and the tooltip spells out the arithmetic in
     // full — the count it averages over AND the stage total those deals do add
@@ -178,8 +195,15 @@ export function AnalyticsView({
           </div>
           <DonutChart
             segments={[
-              { label: "Qualified or further", value: winRate, color: VIZ.blue },
-              { label: "Did not reach Qualified", value: Math.max(0, 100 - winRate), color: VIZ.slate },
+              // The achieved arc IS the Qualified stage — so it wears Qualified's
+              // colour. Pairing a generic blue against a generic violet said
+              // nothing about what either arc measured.
+              { label: "Qualified or further", value: winRate, color: STAGE_COLOR.Qualified },
+              {
+                label: "Did not reach Qualified",
+                value: Math.max(0, 100 - winRate),
+                color: RATE_SHORTFALL,
+              },
             ]}
             size={130}
             thickness={12}
@@ -201,10 +225,10 @@ export function AnalyticsView({
             <InfoHint text="Where your open dollars sit across the steps of your process. Click a stage to see the deals in it — including who you closed and lost." />
           </h2>
           <BarChart
-            data={stages.map((s, i) => ({
+            data={stages.map((s) => ({
               label: s.stage,
               value: s.value,
-              color: VIZ_SERIES[i % VIZ_SERIES.length],
+              color: stageColor(s.stage),
               // Breakdown: WHO is in this stage — logo + company + contact + value.
               tip: (stageDeals?.[s.stage] ?? []).map((d) => ({
                 logo: d.company,
@@ -228,10 +252,10 @@ export function AnalyticsView({
                   orphan wrap (Suren: "the closed tag on the next line looks
                   weird"). Each is a drill trigger into who's in that stage. */}
               <div className="grid grid-cols-5 gap-1.5 mt-4">
-                {stages.map((s, i) => {
+                {stages.map((s) => {
                   const k = `stage:${s.stage}`;
                   const active = open === k;
-                  const color = VIZ_SERIES[i % VIZ_SERIES.length];
+                  const color = stageColor(s.stage);
                   const short =
                     s.stage === "Closed Lost"
                       ? "Closed"
@@ -421,7 +445,7 @@ export function AnalyticsView({
             const prev = i > 0 ? funnel[i - 1] : null;
             const conv =
               prev && prev.count > 0 ? Math.round((s.count / prev.count) * 100) : null;
-            const color = STAGE_COLOR[s.stage as keyof typeof STAGE_COLOR] || "#0071E3";
+            const color = stageColor(s.stage);
             const k = `funnel:${s.stage}`;
             const active = open === k;
             const Row = (

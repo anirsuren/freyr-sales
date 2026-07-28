@@ -114,7 +114,8 @@ export function AgentActivityPopup({
               <div key={i} className="flex items-start gap-2 step-in">
                 <span className="shrink-0 mt-0.5">
                   {needs ? (
-                    <Clock size={14} strokeWidth={1.9} className="text-amber-500" />
+                    // orange-700, not amber-500: a 14px glyph in banned yellow was invisible
+                    <Clock size={14} strokeWidth={1.9} className="text-orange-700" />
                   ) : (
                     <CheckCircle2 size={14} strokeWidth={1.9} className="text-success" />
                   )}

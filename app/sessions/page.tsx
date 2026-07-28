@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { SessionsBrowser, type SessionRow } from "@/components/sessions/SessionsBrowser";
+import { NewSessionLauncher } from "@/components/sessions/NewSessionLauncher";
 import type { RecommendedService } from "@/lib/types";
 
 export const metadata = { title: "Sessions" };
@@ -81,6 +82,13 @@ export default async function SessionsPage() {
 
   return (
     <div>
+      {/* Starting a session lives HERE now, not in the sidebar — and it opens
+          over the list instead of throwing you onto another page (Suren, Jul
+          27). Right-aligned so it shares a vertical edge with the search and
+          filter row underneath it. */}
+      <div className="flex items-center justify-end mb-4">
+        <NewSessionLauncher />
+      </div>
       <SessionsBrowser rows={rows} />
     </div>
   );
