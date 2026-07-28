@@ -341,11 +341,11 @@ export default async function VoiceContactPage({
             showSearch={false}
             bodyClassName="pt-3"
             className="lg:col-span-7"
-            expandedChildren={engagementTrend.length > 0 ? <AreaChart data={engagementTrend} height={390} color={VIZ.blue} format="percent" yMax={100} xLabels={engagementLabels} pointTips={engagementTips} /> : null}
+            expandedChildren={engagementTrend.length > 0 ? <AreaChart data={engagementTrend} height={390} color={VIZ.blue} format="percent" unit="engagement %" yMax={100} xLabels={engagementLabels} pointTips={engagementTips} /> : null}
           >
             <div>
               {engagementTrend.length > 0 ? (
-                <AreaChart data={engagementTrend} height={126} color={VIZ.blue} format="percent" yMax={100} xLabels={engagementLabels} pointTips={engagementTips} />
+                <AreaChart data={engagementTrend} height={126} color={VIZ.blue} format="percent" unit="engagement %" yMax={100} xLabels={engagementLabels} pointTips={engagementTips} />
               ) : (
                 <p className="flex h-[108px] items-center text-[13px] text-text-secondary">No finished calls to evaluate yet.</p>
               )}

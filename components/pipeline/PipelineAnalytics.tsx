@@ -201,6 +201,7 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
               xLabels={xLabels}
               pointTips={pointTips}
               format="money"
+              unit="USD"
               color={VIZ.blue}
               height={AREA_H}
             />
@@ -225,6 +226,7 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
             <BarChart
               data={stageBars}
               format="money"
+              unit="USD"
               height={BAR_H}
               tipRecordsLabel="Deals in this step"
             />

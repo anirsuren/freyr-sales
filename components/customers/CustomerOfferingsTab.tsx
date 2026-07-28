@@ -637,7 +637,10 @@ export function CustomerOfferingsTab({
               </span>
             )}
             {using && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success bg-success/10 rounded-full px-2.5 py-0.5">
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                style={{ background: "rgba(34,197,94,0.14)", color: "#16A34A" }}
+              >
                 <CheckCircle2 size={12} strokeWidth={2.2} />
                 In use
               </span>

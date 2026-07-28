@@ -785,6 +785,7 @@ export function OfferingsBrowser({
                         color="#16A34A"
                         height={84}
                         format="money"
+                        unit="USD"
                         yMax={Math.max(...com.trend.points)}
                         xLabels={com.trend.labels}
                         pointTips={com.trend.tips}
@@ -835,7 +836,7 @@ export function OfferingsBrowser({
                     <DonutChart
                       syncId={mixSyncId}
                       segments={revenueSegments}
-                      size={92}
+                      size={106}
                       thickness={8}
                       format="money"
                       centerLabel={String(com.customerCount)}

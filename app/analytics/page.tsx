@@ -216,6 +216,7 @@ export default async function AnalyticsPage({
           goal={3.0}
           goalLabel="Quota $3.0M"
           format="millions"
+          unit="USD"
           xLabels={trendLabels}
           pointTips={trendPointTips}
         />

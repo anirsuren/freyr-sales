@@ -311,7 +311,7 @@ export function OfferingReports({
             })}
           </div>
         </div>
-        <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr]">
+        <div className="grid grid-cols-1 xl:grid-cols-[440px_1fr]">
         {/* LEFT — the split as a picture: donut with its legend BESIDE it
             (Suren: labels to the right of the pie, table to the right of that). */}
         <div className="flex h-full flex-col border-b xl:border-b-0 xl:border-r border-border-light px-5 py-4">
@@ -321,12 +321,12 @@ export function OfferingReports({
           {/* `flex-1` + centred: when the table beside it runs longer, the
               donut centres in the panel instead of sitting at the top with a
               dead band underneath (Suren: "a lot of empty space below"). */}
-          <div className="flex flex-1 items-center gap-4">
+          <div className="flex flex-1 items-center gap-2.5">
             <DonutChart
               syncId="offering-revenue"
               segments={revenueSegments}
-              size={126}
-              thickness={15}
+              size={132}
+              thickness={10}
               format="money"
               centerLabel={formatMoney(report.totalRevenue)}
               centerSub="booked"
@@ -344,7 +344,7 @@ export function OfferingReports({
         </div>
         <div className="overflow-x-auto max-h-[340px] overflow-y-auto">
           <div className="min-w-[920px]">
-            <div className="grid grid-cols-[minmax(220px,1.3fr)_minmax(190px,1fr)_80px_110px_165px_20px] items-center gap-4 border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+            <div className="grid grid-cols-[minmax(220px,1.3fr)_minmax(190px,1fr)_92px_110px_165px_20px] items-center gap-6 border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
               <span>Customer</span>
               <span>Booked revenue</span>
               <span>Seats</span>
@@ -362,7 +362,7 @@ export function OfferingReports({
                     key={customer.id}
                     data-testid="offering-customer-commercial-row"
                     href={`/customers/${customer.id}?tab=offerings`}
-                    className="group grid grid-cols-[minmax(220px,1.3fr)_minmax(190px,1fr)_80px_110px_165px_20px] items-center gap-4 px-5 py-3 transition-colors hover:bg-surface/60"
+                    className="group grid grid-cols-[minmax(220px,1.3fr)_minmax(190px,1fr)_92px_110px_165px_20px] items-center gap-6 px-5 py-3 transition-colors hover:bg-surface/60"
                   >
                     <span className="flex min-w-0 items-center gap-2.5">
                       <CompanyLogo name={customer.name} className="h-8 w-8 shrink-0 text-[8px]" />
@@ -446,6 +446,7 @@ export function OfferingReports({
               id={`offering-coverage-${offeringName.replace(/[^a-z0-9]/gi, "-")}`}
               color={VIZ.teal}
               format="money"
+              unit="USD"
               xLabels={monthLabels}
               pointTips={coverageTips}
             />

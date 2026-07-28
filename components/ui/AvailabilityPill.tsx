@@ -8,7 +8,10 @@ import { Tooltip } from "@/components/ui/Tooltip";
 type Kind = "available" | "upcoming" | "tbd";
 
 const STYLE: Record<Kind, { bg: string; color: string; icon: LucideIcon }> = {
-  available: { bg: "rgba(52,199,89,0.14)", color: "#1A7A35", icon: CircleCheck },
+  // Same pair as the HEALTHY badge — Suren, Jul 28: "that green is very
+  // unpleasant, hard to see. What you have in healthy is good, put that for
+  // currently available and in use."
+  available: { bg: "rgba(34,197,94,0.14)", color: "#16A34A", icon: CircleCheck },
   upcoming: { bg: "rgba(255,159,10,0.16)", color: "#7A4A00", icon: Clock },
   tbd: { bg: "rgba(79,70,229,0.12)", color: "#4338CA", icon: CircleHelp },
 };
