@@ -182,25 +182,41 @@ export function OfferingOwners({
           </div>
         ))}
 
+      {/* Taking it is the primary action on this card, so it looks like one:
+          a real blue button, not a text link (Anir, Jul 28: "the Take
+          Ownership button should be better looking, probably like a blue
+          button"). */}
       {myMemberId && !mine && (
         <button
           onClick={request}
           disabled={busy === "self"}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white shadow-card transition-colors hover:bg-blue-hover disabled:opacity-50"
         >
-          <UserPlus size={13} strokeWidth={2} />
+          <UserPlus size={14} strokeWidth={2.1} />
           {isAdmin ? "Take ownership" : "Ask to own this"}
         </button>
       )}
 
+      {/* When it IS yours, say so plainly before offering the way out, and make
+          giving it up read as the destructive action it is: red. */}
       {mine?.status === "owner" && (
-        <button
-          onClick={() => release(mine.memberId)}
-          disabled={busy === mine.memberId}
-          className="text-[12px] font-semibold text-text-tertiary transition-colors hover:text-[color:#B02020] disabled:opacity-50"
-        >
-          Give up ownership
-        </button>
+        <div className="space-y-2">
+          <p
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold"
+            style={{ color: "#0071E3", background: "rgba(0,113,227,0.10)" }}
+          >
+            <ShieldCheck size={14} strokeWidth={2.2} />
+            You own this offering, so you can edit it.
+          </p>
+          <button
+            onClick={() => release(mine.memberId)}
+            disabled={busy === mine.memberId}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color:#B02020]/30 px-3.5 py-2 text-[13px] font-semibold text-[color:#B02020] transition-colors hover:bg-[color:#B02020]/10 disabled:opacity-50"
+          >
+            <X size={14} strokeWidth={2.2} />
+            Give up ownership
+          </button>
+        </div>
       )}
 
       {error && (

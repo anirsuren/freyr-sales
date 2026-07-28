@@ -23,6 +23,8 @@ import {
   Table2,
   KeyRound,
   type LucideIcon,
+  ShieldCheck,
+  UserRound,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -147,6 +149,8 @@ export interface HydratedOffering {
   customerTypes: CustomerType[];
   markets: Market[];
   materials: { id: string; kind: string; label: string; url: string }[];
+  /** Who may edit this offering. Empty until someone is granted it. */
+  owners?: { memberId: string; name: string; status: "requested" | "owner" }[];
 }
 
 const MATERIAL_ICON: Record<string, typeof Video> = {
@@ -293,6 +297,41 @@ function PocStrip({
   );
 }
 
+// WHO OWNS THIS, on the card itself. Editing an offering is gated on ownership,
+// so "can I change this?" is a question every tile should answer without a
+// click (Anir, Jul 28: "when I own an offering, it should show up like that:
+// I own it"). Blue = mine and editable; neutral slate = someone else holds it;
+// nothing at all when it is unclaimed, so the row stays quiet.
+function OwnershipChip({
+  owners,
+  myMemberId,
+}: {
+  owners?: { memberId: string; name: string; status: "requested" | "owner" }[];
+  myMemberId: string | null;
+}) {
+  const granted = (owners || []).filter((o) => o.status === "owner");
+  if (granted.length === 0) return null;
+  const mine = myMemberId ? granted.some((o) => o.memberId === myMemberId) : false;
+  const label = mine
+    ? "You own this"
+    : granted.length === 1
+    ? `Owned by ${granted[0].name}`
+    : `${granted.length} owners`;
+  return (
+    <span
+      className="no-auto-tip inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+      style={
+        mine
+          ? { color: "#0071E3", background: "rgba(0,113,227,0.12)" }
+          : { color: "#4B5563", background: "rgba(75,85,99,0.10)" }
+      }
+    >
+      {mine ? <ShieldCheck size={11} strokeWidth={2.2} /> : <UserRound size={11} strokeWidth={2.1} />}
+      {label}
+    </span>
+  );
+}
+
 export function OfferingsBrowser({
   offerings,
   customerTypes,
@@ -300,6 +339,7 @@ export function OfferingsBrowser({
   offeringTypes,
   offeringCategories,
   commerce,
+  myMemberId = null,
 }: {
   offerings: HydratedOffering[];
   customerTypes: CustomerType[];
@@ -309,6 +349,11 @@ export function OfferingsBrowser({
   /** Per-offering revenue/usage rollup (server-computed) powering the hover
    *  mini-dashboard. */
   commerce?: Record<string, OfferingCommerce>;
+  /** The signed-in account id, so a card can say "You own this" instead of
+   *  making people open the offering to find out (Anir, Jul 28: "I just took
+   *  ownership of the Freya Intelligence one, but then it doesn't even say
+   *  that I own it"). Null when the session carries no workspace account. */
+  myMemberId?: string | null;
 }) {
   // Seed filters from the URL so chips elsewhere can deep-link into a filtered
   // view (e.g. /offerings?market=mkt-europe from a market chip on an offering).
@@ -652,13 +697,14 @@ export function OfferingsBrowser({
             </p>
           )}
 
-          {o.current_availability && (
-            <div className="flex flex-wrap gap-1.5">
-              {/* The clean timing status only: market-coverage / version notes
-                  (future_availability) are free-form and live on the detail page. */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* The clean timing status only: market-coverage / version notes
+                (future_availability) are free-form and live on the detail page. */}
+            {o.current_availability && (
               <AvailabilityPill value={o.current_availability} size="sm" />
-            </div>
-          )}
+            )}
+            <OwnershipChip owners={o.owners} myMemberId={myMemberId} />
+          </div>
 
           <div className="mt-auto pt-3 border-t border-border-light space-y-2">
             {/* Offering category, Suren's Jun 27 grouping (replaces markets on
@@ -1321,8 +1367,11 @@ export function OfferingsBrowser({
                             className="h-8 w-8 shrink-0"
                           />
                           <span className="min-w-0">
-                            <span className="block font-semibold text-text-primary group-hover/name:text-blue-primary">
-                              {o.offering_name}
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-semibold text-text-primary group-hover/name:text-blue-primary">
+                                {o.offering_name}
+                              </span>
+                              <OwnershipChip owners={o.owners} myMemberId={myMemberId} />
                             </span>
                             {o.poc &&
                               (() => {

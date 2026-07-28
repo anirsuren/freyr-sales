@@ -25,6 +25,7 @@ import {
   hydrateOffering,
 } from "@/lib/offerings";
 import { getRole } from "@/lib/role";
+import { getCurrentUser } from "@/lib/currentUser";
 import { getDb } from "@/lib/db";
 import {
   reportForOffering,
@@ -231,6 +232,9 @@ export default async function OfferingsPage() {
   const offeringTypes = listOfferingTypes();
   const offeringCategories = listOfferingCategories();
   const role = await getRole();
+  // Who is looking, so a card can say "You own this" rather than making people
+  // open the offering to find out who holds it.
+  const me = await getCurrentUser();
   const canEdit = role === "admin" || role === "editor";
 
   // Commercial reality per offering — revenue, seats, and WHO is using it —
@@ -341,6 +345,7 @@ export default async function OfferingsPage() {
           offeringTypes={offeringTypes}
           offeringCategories={offeringCategories}
           commerce={commerce}
+          myMemberId={me.memberId}
         />
       </Suspense>
     </div>
