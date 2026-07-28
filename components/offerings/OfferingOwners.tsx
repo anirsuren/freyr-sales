@@ -109,8 +109,18 @@ export function OfferingOwners({
             <li key={o.memberId} className="flex items-center gap-2.5">
               <Avatar name={o.name} className="h-8 w-8 shrink-0 text-[11px]" />
               <span className="flex min-w-0 flex-col leading-tight">
-                <span className="break-words text-[13px] font-semibold text-text-primary">
-                  {o.name}
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <span className="break-words text-[13px] font-semibold text-text-primary">
+                    {o.name}
+                  </span>
+                  {o.memberId === myMemberId && (
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                      style={{ color: "#0071E3", background: "rgba(0,113,227,0.14)" }}
+                    >
+                      You
+                    </span>
+                  )}
                 </span>
                 <span className="text-[11.5px] text-text-secondary">
                   Owner since {formatDate(o.claimed_at)}
@@ -199,45 +209,19 @@ export function OfferingOwners({
 
       {/* When it IS yours, say so plainly before offering the way out, and make
           giving it up read as the destructive action it is: red. */}
+      {/* Just the way out. The person is already listed above with a "You"
+          badge; repeating their face and name in a second panel underneath
+          said nothing new (Anir, Jul 28: "why does it say my name twice? It's
+          so redundant"). */}
       {mine?.status === "owner" && (
-        <div className="space-y-2">
-          {/* SHOW THE PERSON, not just the fact. A line of text that says "you
-              own this" tells you nothing you can point at; the face and the
-              name are what make it read like the POC card does (Anir, Jul 28:
-              "if I had a profile picture, I should be able to see my profile
-              picture there, just like it does for point of contact"). */}
-          <div
-            className="flex items-center gap-2.5 rounded-lg px-2.5 py-2"
-            style={{ background: "rgba(0,113,227,0.10)" }}
-          >
-            <Avatar name={mine.name} className="h-9 w-9 shrink-0 text-[12px]" />
-            <span className="min-w-0 flex-1 leading-tight">
-              <span className="flex flex-wrap items-center gap-1.5">
-                <span className="break-words text-[13.5px] font-semibold text-text-primary">
-                  {mine.name}
-                </span>
-                <span
-                  className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                  style={{ color: "#0071E3", background: "rgba(0,113,227,0.16)" }}
-                >
-                  You
-                </span>
-              </span>
-              <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-[color:#0071E3]">
-                <ShieldCheck size={12} strokeWidth={2.2} />
-                Owns this offering, so can edit it
-              </span>
-            </span>
-          </div>
-          <button
-            onClick={() => release(mine.memberId)}
-            disabled={busy === mine.memberId}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color:#B02020]/30 px-3.5 py-2 text-[13px] font-semibold text-[color:#B02020] transition-colors hover:bg-[color:#B02020]/10 disabled:opacity-50"
-          >
-            <X size={14} strokeWidth={2.2} />
-            Give up ownership
-          </button>
-        </div>
+        <button
+          onClick={() => release(mine.memberId)}
+          disabled={busy === mine.memberId}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color:#B02020]/30 px-3.5 py-2 text-[13px] font-semibold text-[color:#B02020] transition-colors hover:bg-[color:#B02020]/10 disabled:opacity-50"
+        >
+          <X size={14} strokeWidth={2.2} />
+          Give up ownership
+        </button>
       )}
 
       {error && (
