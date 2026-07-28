@@ -23,8 +23,6 @@ import {
   Table2,
   KeyRound,
   type LucideIcon,
-  ShieldCheck,
-  UserRound,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -251,18 +249,13 @@ function PocStrip({
 // because "can I edit this?" is the question the card is answering.
 function OwnerStrip({
   owners,
-  myMemberId,
   offeringName,
 }: {
   owners?: { memberId: string; name: string; status: "requested" | "owner" }[];
-  myMemberId: string | null;
   offeringName: string;
 }) {
   const granted = (owners || []).filter((o) => o.status === "owner");
   if (granted.length === 0) return null;
-  const mine = myMemberId
-    ? granted.some((o) => o.memberId === myMemberId)
-    : false;
   return (
     <div
       role="group"
@@ -279,14 +272,6 @@ function OwnerStrip({
           context: offeringName,
         }))}
       />
-      {mine && (
-        <span
-          className="no-auto-tip shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-          style={{ color: "#0071E3", background: "rgba(0,113,227,0.12)" }}
-        >
-          You
-        </span>
-      )}
     </div>
   );
 }
@@ -298,7 +283,6 @@ export function OfferingsBrowser({
   offeringTypes,
   offeringCategories,
   commerce,
-  myMemberId = null,
 }: {
   offerings: HydratedOffering[];
   customerTypes: CustomerType[];
@@ -308,11 +292,6 @@ export function OfferingsBrowser({
   /** Per-offering revenue/usage rollup (server-computed) powering the hover
    *  mini-dashboard. */
   commerce?: Record<string, OfferingCommerce>;
-  /** The signed-in account id, so a card can say "You own this" instead of
-   *  making people open the offering to find out (Anir, Jul 28: "I just took
-   *  ownership of the Freya Intelligence one, but then it doesn't even say
-   *  that I own it"). Null when the session carries no workspace account. */
-  myMemberId?: string | null;
 }) {
   // Seed filters from the URL so chips elsewhere can deep-link into a filtered
   // view (e.g. /offerings?market=mkt-europe from a market chip on an offering).
@@ -704,11 +683,7 @@ export function OfferingsBrowser({
                 Teams line to them (Suren: "if there's multiple, make it look
                 like the campaigns page so when I hover over it I can see
                 who's there"). */}
-            <OwnerStrip
-              owners={o.owners}
-              myMemberId={myMemberId}
-              offeringName={o.offering_name}
-            />
+            <OwnerStrip owners={o.owners} offeringName={o.offering_name} />
             {o.poc && <PocStrip poc={o.poc} offeringName={o.offering_name} />}
             {/* Materials count + type icons */}
             {o.materials.length > 0 && (
@@ -1336,7 +1311,6 @@ export function OfferingsBrowser({
                               </span>
                               <OwnerStrip
                                 owners={o.owners}
-                                myMemberId={myMemberId}
                                 offeringName={o.offering_name}
                               />
                             </span>

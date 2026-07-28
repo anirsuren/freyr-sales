@@ -358,6 +358,7 @@ export default async function OfferingDetailPage({
                 offeringId={o.id}
                 owners={o.owners ?? []}
                 isAdmin={workspaceAdmin}
+                people={people}
                 myMemberId={me.memberId ?? null}
               />
             </SectionCard>

@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Clock3, UserPlus, X, Check } from "lucide-react";
+import { ShieldCheck, Clock3, UserPlus, X, Check, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 
 export type OwnerRow = {
   memberId: string;
@@ -30,16 +33,79 @@ export function OfferingOwners({
   owners,
   isAdmin,
   myMemberId,
+  people = [],
 }: {
   offeringId: string;
   owners: OwnerRow[];
   isAdmin: boolean;
   /** Null when the session carries no verified workspace account. */
   myMemberId: string | null;
+  /** Everyone with a real account, so an admin can hand ownership to them. */
+  people?: { name: string; email?: string; memberId?: string; role?: string }[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [granting, setGranting] = useState(false);
+  const [query, setQuery] = useState("");
+  const [chosen, setChosen] = useState<string[]>([]);
+
+  // AN OFFERING CAN HAVE SEVERAL OWNERS. Anyone already on the list is not
+  // offered again, which is also what stops you handing yourself an offering
+  // you already own. Only people with a real ACCOUNT can be granted: ownership
+  // decides who may edit, and a name off a spreadsheet is not something
+  // permissions can be keyed to.
+  const grantable = useMemo(() => {
+    const held = new Set(owners.map((o) => o.memberId));
+    const q = query.trim().toLowerCase();
+    return people
+      .filter((p) => p.memberId && !held.has(p.memberId))
+      .filter(
+        (p) =>
+          !q ||
+          p.name.toLowerCase().includes(q) ||
+          (p.email || "").toLowerCase().includes(q)
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [people, owners, query]);
+
+  async function grant() {
+    if (chosen.length === 0) {
+      setError("Pick who you're making an owner");
+      return;
+    }
+    setBusy("grant");
+    setError(null);
+    try {
+      for (const id of chosen) {
+        const person = grantable.find((p) => p.memberId === id);
+        if (!person) continue;
+        const res = await fetch(`/api/offerings/${offeringId}/owners`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            memberId: person.memberId,
+            name: person.name,
+            email: person.email ?? null,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setError(body.error || `Could not make ${person.name} an owner.`);
+          router.refresh();
+          return;
+        }
+      }
+      setChosen([]);
+      setQuery("");
+      setGranting(false);
+      router.refresh();
+    } catch {
+      setError("That did not go through.");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const granted = owners.filter((o) => o.status === "owner");
   const pending = owners.filter((o) => o.status === "requested");
@@ -113,14 +179,6 @@ export function OfferingOwners({
                   <span className="break-words text-[13px] font-semibold text-text-primary">
                     {o.name}
                   </span>
-                  {o.memberId === myMemberId && (
-                    <span
-                      className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                      style={{ color: "#0071E3", background: "rgba(0,113,227,0.14)" }}
-                    >
-                      You
-                    </span>
-                  )}
                 </span>
                 <span className="text-[11.5px] text-text-secondary">
                   Owner since {formatDate(o.claimed_at)}
@@ -223,6 +281,113 @@ export function OfferingOwners({
           Give up ownership
         </button>
       )}
+
+      {/* AN OFFERING CAN HAVE SEVERAL OWNERS, and an admin hands them out.
+          Only people with a real account are offered, because ownership is
+          what grants edit rights and permissions cannot key off a name from a
+          spreadsheet. Anyone already on the list is filtered out, which is
+          also what stops you granting yourself something you already own. */}
+      {isAdmin && (
+        <button
+          onClick={() => {
+            setChosen([]);
+            setQuery("");
+            setError(null);
+            setGranting(true);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+        >
+          <UserPlus size={13} strokeWidth={2.1} />
+          Add an owner
+        </button>
+      )}
+
+      <Modal
+        open={granting}
+        onClose={() => setGranting(false)}
+        title="Add an owner"
+        size="workflow"
+      >
+        <div className="flex h-[min(60vh,480px)] flex-col">
+          <div className="mb-2 flex shrink-0 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2">
+            <Search size={15} strokeWidth={2} className="shrink-0 text-text-tertiary" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search people with an account…"
+              className="w-full bg-transparent text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:outline-none"
+            />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border-light p-1.5">
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+              {grantable.map((p) => {
+                const on = chosen.includes(p.memberId!);
+                return (
+                  <button
+                    key={p.memberId}
+                    type="button"
+                    onClick={() =>
+                      setChosen((l) =>
+                        on
+                          ? l.filter((id) => id !== p.memberId)
+                          : [...l, p.memberId!]
+                      )
+                    }
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition-colors",
+                      on
+                        ? "border-blue-primary bg-blue-light"
+                        : "border-transparent hover:bg-[var(--surface)]"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                        on
+                          ? "border-blue-primary bg-blue-primary text-white"
+                          : "border-border-light"
+                      )}
+                    >
+                      {on && <Check size={13} strokeWidth={3} />}
+                    </span>
+                    <Avatar name={p.name} className="h-10 w-10 shrink-0 text-[12px]" />
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span className="block break-words text-[13.5px] font-semibold text-text-primary">
+                        {p.name}
+                      </span>
+                      <span className="block break-words text-[11.5px] text-text-tertiary">
+                        {p.role || p.email || "Workspace member"}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+              {grantable.length === 0 && (
+                <p className="col-span-full px-3 py-6 text-center text-[13px] text-text-secondary">
+                  Everyone with an account already owns this offering.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 flex shrink-0 flex-wrap items-center gap-3 border-t border-border-light pt-3">
+            <span className="text-[12.5px] text-text-tertiary">
+              An owner can edit this offering&apos;s content, materials and
+              contacts.
+            </span>
+            <button
+              type="button"
+              onClick={() => setGranting(false)}
+              className="ml-auto text-[13.5px] font-semibold text-text-secondary hover:text-text-primary"
+            >
+              Cancel
+            </button>
+            <Button onClick={grant} loading={busy === "grant"}>
+              {chosen.length > 1 ? `Add ${chosen.length} owners` : "Add owner"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {error && (
         <p className="text-[12px] font-medium text-[color:#B02020]">{error}</p>
