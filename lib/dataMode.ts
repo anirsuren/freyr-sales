@@ -61,6 +61,8 @@ function modeClient() {
 /** Write the choice down. Failure is not fatal: the process still honours it. */
 export async function persistDataMode(mode: DataMode): Promise<void> {
   if (isDataModeLocked()) return;
+  // Same boundary as hydrate: a local toggle is local.
+  if (process.env.NODE_ENV !== "production") return;
   const client = modeClient();
   if (!client) return;
   await client
@@ -76,6 +78,17 @@ export async function persistDataMode(mode: DataMode): Promise<void> {
 /** Restore the remembered choice at boot, before anything renders. */
 export async function hydrateDataMode(): Promise<DataMode> {
   if (isDataModeLocked()) return configuredDataMode();
+  // ONLY A DEPLOYED SERVER REMEMBERS.
+  //
+  // The row lives in the workspace database, which a laptop and the test
+  // runner also point at — so the first version of this handed production's
+  // choice to every environment that shared the database. The verify suite
+  // booted into live mode and a dozen mock-data tests failed, which is a
+  // polite version of what it would have done to a developer mid-debug.
+  //
+  // A running deployment remembers what its operator chose; anywhere else,
+  // DEFAULT_DATA_MODE is the whole answer, as it always was.
+  if (process.env.NODE_ENV !== "production") return getDataMode();
   const client = modeClient();
   if (!client) return getDataMode();
   try {
