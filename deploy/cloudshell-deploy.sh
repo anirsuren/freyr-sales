@@ -24,13 +24,15 @@ CLUSTER="freyr-sales-cluster"
 SERVICE="freyr-sales-svc"
 FAMILY="freyr-sales"
 REGISTRY="$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
-TARBALL="https://codeload.github.com/anirsuren/freyr-sales/tar.gz/refs/heads/main"
+# Pinned to the exact commit this script stamps, so the image that gets
+# built is byte-for-byte the code the version label claims.
+TARBALL="https://codeload.github.com/anirsuren/freyr-sales/tar.gz/8c1932b5a709ec1dff8b66ec0b5bb3c31413db74"
 
 # Pinned to the release image that is already built and sitting in ECR, so the
 # common case skips the slow (~10 min) rebuild. If that image is ever missing,
 # the script rebuilds it from the same commit automatically.
-TAG="5f164f9"
-SHA="5f164f92d201cf1907140acd244da5ee9b6bfd2f"
+TAG="8c1932b"
+SHA="8c1932b5a709ec1dff8b66ec0b5bb3c31413db74"
 
 step() { printf '\n\033[1;34m== %s ==\033[0m\n' "$1"; }
 
@@ -48,7 +50,7 @@ else
   step "Image not found — building it from commit $SHA (~5-10 min)"
   WORK=$(mktemp -d); cd "$WORK"
   curl -fsSL "$TARBALL" | tar -xz
-  cd freyr-sales-main
+  cd freyr-sales-*
   TD_BUILD=$(aws ecs describe-task-definition --task-definition "$FAMILY" \
     --query taskDefinition --output json)
   # NEXT_PUBLIC_* values ship to every visitor's browser — they are not secrets.
