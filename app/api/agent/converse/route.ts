@@ -52,12 +52,18 @@ export async function POST(req: NextRequest) {
   if (!message) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
   }
-  // Sources this chat is scoped to, chosen in the Knowledge base panel.
-  // Never a filter on WHAT EXISTS — only on what this conversation may draw
-  // from, so narrowing one chat leaves every other chat whole.
-  const scopedSourceIds: string[] = Array.isArray(body.sources)
-    ? body.sources.filter((v: unknown) => typeof v === "string").slice(0, 200)
+  // Sources THIS chat has switched off in the Knowledge base panel. Sent as
+  // exclusions so the default — nothing sent — means the assistant uses
+  // everything, and one narrowed conversation never narrows another.
+  const excludedSourceIds: string[] = Array.isArray(body.excludeSources)
+    ? body.excludeSources
+        .filter((v: unknown) => typeof v === "string")
+        .slice(0, 500)
     : [];
+  const isAllowed = (p: { id: string; href: string }) =>
+    !excludedSourceIds.some(
+      (id) => p.id === id || p.id.startsWith(`${id}#`) || p.href.endsWith(id)
+    );
 
   // Recent turns for continuity (e.g. "save it" → the account we just drafted for).
   const history: ChatTurn[] = Array.isArray(body.history)
@@ -190,14 +196,8 @@ export async function POST(req: NextRequest) {
   const knowledgeGrounding = await (async () => {
     try {
       const corpus = await buildKnowledgeBaseAsync();
-      const scoped = scopedSourceIds.length
-        ? corpus.filter((p) =>
-            scopedSourceIds.some(
-              (id) => p.id === id || p.id.startsWith(`${id}#`) || p.href.includes(id)
-            )
-          )
-        : corpus;
-      const hits = searchKnowledge(message, 5, scoped.length ? scoped : corpus);
+      const scoped = excludedSourceIds.length ? corpus.filter(isAllowed) : corpus;
+      const hits = searchKnowledge(message, 5, scoped);
       if (!hits.length) return "";
       return (
         "\n\nFREYR'S OWN KNOWLEDGE (offerings catalogue and the contents of " +
@@ -436,14 +436,8 @@ export async function POST(req: NextRequest) {
       // chunks carry the material id, so matching on the prefix keeps every
       // chunk of a chosen document.
       const corpus = await buildKnowledgeBaseAsync();
-      const scoped = scopedSourceIds.length
-        ? corpus.filter((p) =>
-            scopedSourceIds.some(
-              (id) => p.id === id || p.id.startsWith(`${id}#`) || p.href.includes(id)
-            )
-          )
-        : corpus;
-      const hits = searchKnowledge(q, 6, scoped.length ? scoped : corpus);
+      const scoped = excludedSourceIds.length ? corpus.filter(isAllowed) : corpus;
+      const hits = searchKnowledge(q, 6, scoped);
       if (!hits.length)
         return { content: `Nothing in the offerings catalogue matches "${q}".` };
       return {

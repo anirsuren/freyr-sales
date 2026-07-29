@@ -25,7 +25,20 @@ import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number };
-type Convo = { id: string; title: string; messages: Msg[]; updated: number };
+type Convo = {
+  id: string;
+  title: string;
+  messages: Msg[];
+  updated: number;
+  /**
+   * Sources this CHAT has switched OFF, stored as exclusions so the default —
+   * an empty list — means everything is on. Kept on the conversation, not in
+   * component state, because "it depends per chat" is the whole point: one
+   * thread narrowed to a single offering must stay narrowed when you come back
+   * to it, and must not narrow the thread beside it (Anir, Jul 29).
+   */
+  excludedSources?: string[];
+};
 
 const KEY = "freyr.agent.conversations";
 const EMPTY_CONVOS: Convo[] = [];
@@ -399,9 +412,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  /** Sources this chat may use. Empty = the whole knowledge base. */
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
-  const [scopedSources, setScopedSources] = useState<string[]>([]);
 
   const [suggestions, setSuggestions] = useState<string[]>(STARTERS);
   const [typingTs, setTypingTs] = useState<number | null>(null);
@@ -450,6 +461,18 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
   const visibleConvos =
     loadedStorageKey === storageKey ? convos : EMPTY_CONVOS;
   const active = visibleConvos.find((c) => c.id === activeId) || null;
+  /** What THIS chat has switched off. Empty = the whole knowledge base. */
+  const excludedSources = active?.excludedSources ?? [];
+  const setExcludedSources = (ids: string[]) => {
+    if (!activeId) return;
+    setConvos((prev) => {
+      const next = prev.map((c) =>
+        c.id === activeId ? { ...c, excludedSources: ids } : c
+      );
+      save(storageKey, next);
+      return next;
+    });
+  };
 
   const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -511,7 +534,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
             history: prior,
             // Empty means the whole knowledge base; a selection scopes THIS
             // chat to it without hiding anything from any other chat.
-            sources: scopedSources,
+            excludeSources: excludedSources,
           }),
           signal: controller.signal,
         });
@@ -839,8 +862,10 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
       <KnowledgePanel
         open={knowledgeOpen}
         onClose={() => setKnowledgeOpen(false)}
-        selected={scopedSources}
-        onSelectedChange={setScopedSources}
+        excluded={excludedSources}
+        onExcludedChange={setExcludedSources}
+        chatTitle={active?.title}
+        disabled={!activeId}
       />
     </div>
   );

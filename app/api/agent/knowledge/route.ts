@@ -46,7 +46,12 @@ export async function GET() {
         material.docsPath
       ];
       files.push({
-        id: material.docsPath,
+        // The MATERIAL id, not the storage path: that is the key the retrieval
+        // passages are built from (the offering's material row, plus one
+        // chunk per part as `${id}#n`). Keying this list on docsPath instead
+        // meant a ticked-off document still answered, because nothing it was
+        // compared against ever carried that string.
+        id: material.id,
         title: material.label,
         offering: offering.offering_name,
         href: `/offerings/${offering.id}`,

@@ -52,14 +52,26 @@ type Knowledge = {
 export function KnowledgePanel({
   open,
   onClose,
-  selected,
-  onSelectedChange,
+  excluded,
+  onExcludedChange,
+  chatTitle,
+  disabled = false,
 }: {
   open: boolean;
   onClose: () => void;
-  /** Empty = the whole base. Anything else scopes this chat to those ids. */
-  selected: string[];
-  onSelectedChange: (ids: string[]) => void;
+  /**
+   * What THIS chat has switched OFF. Stored as exclusions so the default —
+   * an empty list — means every box is ticked, which is the truth: the
+   * assistant does use all of it. Storing inclusions instead made an untouched
+   * chat render as though nothing was selected (Anir, Jul 29: "shouldn't it be,
+   * by default, that everything's checked?").
+   */
+  excluded: string[];
+  onExcludedChange: (ids: string[]) => void;
+  /** Named in the header, because the choice belongs to this chat alone. */
+  chatTitle?: string;
+  /** No conversation open yet, so there is nothing to scope. */
+  disabled?: boolean;
 }) {
   const [data, setData] = useState<Knowledge | null>(null);
   const [loading, setLoading] = useState(false);
@@ -74,11 +86,12 @@ export function KnowledgePanel({
       .finally(() => setLoading(false));
   }, [open, data]);
 
+  const isOn = (id: string) => !excluded.includes(id);
   const toggle = (id: string) =>
-    onSelectedChange(
-      selected.includes(id)
-        ? selected.filter((x) => x !== id)
-        : [...selected, id]
+    onExcludedChange(
+      excluded.includes(id)
+        ? excluded.filter((x) => x !== id)
+        : [...excluded, id]
     );
 
   const groups: {
@@ -137,16 +150,18 @@ export function KnowledgePanel({
             </p>
             <div className="flex items-center gap-2">
               <span className="text-[12px] text-text-tertiary">
-                {selected.length === 0
-                  ? "This chat uses everything"
-                  : `This chat uses ${selected.length} selected`}
+                {disabled
+                  ? "Start a chat to choose what it uses"
+                  : excluded.length === 0
+                    ? `${chatTitle ? `“${chatTitle}”` : "This chat"} uses everything`
+                    : `${excluded.length} turned off for ${chatTitle ? `“${chatTitle}”` : "this chat"}`}
               </span>
-              {selected.length > 0 && (
+              {excluded.length > 0 && (
                 <button
-                  onClick={() => onSelectedChange([])}
+                  onClick={() => onExcludedChange([])}
                   className="inline-flex cursor-pointer items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
                 >
-                  <CheckCheck size={13} strokeWidth={2.1} /> Use everything
+                  <CheckCheck size={13} strokeWidth={2.1} /> Turn everything back on
                 </button>
               )}
             </div>
@@ -176,7 +191,7 @@ export function KnowledgePanel({
                   </header>
                   <ul className="divide-y divide-border-light rounded-lg border border-border-light">
                     {rows.map((row) => {
-                      const picked = selected.includes(row.id);
+                      const picked = isOn(row.id);
                       const blind = row.readByAgent === false;
                       return (
                         <li
@@ -187,8 +202,9 @@ export function KnowledgePanel({
                             type="checkbox"
                             checked={picked}
                             onChange={() => toggle(row.id)}
+                            disabled={disabled}
                             aria-label={`Use ${row.title} in this chat`}
-                            className="h-4 w-4 shrink-0 cursor-pointer accent-[color:#0071E3]"
+                            className="h-4 w-4 shrink-0 cursor-pointer accent-[color:#0071E3] disabled:cursor-not-allowed disabled:opacity-40"
                           />
                           <span className="min-w-0 flex-1">
                             <span className="block break-words text-[13px] font-medium text-text-primary">
