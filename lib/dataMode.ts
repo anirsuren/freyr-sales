@@ -27,3 +27,70 @@ export function setDataMode(mode: DataMode): DataMode {
   globalThis.__FREYR_DATA_MODE__ = mode;
   return mode;
 }
+
+/**
+ * REMEMBER AN ADMIN'S CHOICE ACROSS RESTARTS.
+ *
+ * DEFAULT_DATA_MODE is a deployment default, not a decision. The deploy
+ * pipeline writes "mock" onto every task definition, so each release quietly
+ * put production back into the demo catalogue and somebody had to notice and
+ * flip it again — which is exactly what happened after the Jul 29 deploy, with
+ * real Freyr people about to look at it.
+ *
+ * An explicit choice made in the app therefore outlives the process. The env
+ * default applies only until somebody chooses; DATA_MODE_LOCKED still wins
+ * absolutely, because that is a deliberate lock rather than a default.
+ */
+const MODE_ROW = "workspace-data-mode";
+
+function modeClient() {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+    return null;
+  // Imported lazily: this module is pulled into client bundles for its types.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createClient } = require("@supabase/supabase-js");
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
+
+/** Write the choice down. Failure is not fatal: the process still honours it. */
+export async function persistDataMode(mode: DataMode): Promise<void> {
+  if (isDataModeLocked()) return;
+  const client = modeClient();
+  if (!client) return;
+  await client
+    .from("offering_catalog_state")
+    .upsert({
+      id: MODE_ROW,
+      catalog: { mode },
+      updated_at: new Date().toISOString(),
+    })
+    .then(() => undefined, () => undefined);
+}
+
+/** Restore the remembered choice at boot, before anything renders. */
+export async function hydrateDataMode(): Promise<DataMode> {
+  if (isDataModeLocked()) return configuredDataMode();
+  const client = modeClient();
+  if (!client) return getDataMode();
+  try {
+    const { data } = await client
+      .from("offering_catalog_state")
+      .select("catalog")
+      .eq("id", MODE_ROW)
+      .maybeSingle();
+    const stored = (data?.catalog as { mode?: string } | null)?.mode;
+    if (stored === "live" || stored === "mock") {
+      globalThis.__FREYR_DATA_MODE__ = stored;
+      return stored;
+    }
+  } catch {
+    // Unreachable database: the env default stands, which is the old behaviour.
+  }
+  return getDataMode();
+}

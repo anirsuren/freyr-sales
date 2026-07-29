@@ -4,6 +4,7 @@ import {
   getDataMode,
   isDataModeLocked,
   setDataMode,
+  persistDataMode,
   type DataMode,
 } from "@/lib/dataMode";
 export async function GET() {
@@ -28,6 +29,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const mode: DataMode = body.mode === "live" ? "live" : "mock";
   setDataMode(mode);
+  // Outlive the process, so the next deploy does not undo the choice.
+  await persistDataMode(mode);
   const response = NextResponse.json({ ok: true, mode });
   response.cookies.set(DATA_MODE_COOKIE, mode, {
     httpOnly: true,
