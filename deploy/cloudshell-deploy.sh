@@ -29,8 +29,8 @@ TARBALL="https://codeload.github.com/anirsuren/freyr-sales/tar.gz/refs/heads/mai
 # Pinned to the release image that is already built and sitting in ECR, so the
 # common case skips the slow (~10 min) rebuild. If that image is ever missing,
 # the script rebuilds it from the same commit automatically.
-TAG="052b11d"
-SHA="052b11d90a9a42a00d3064628fea8c4c783a2cd9"
+TAG="5f164f9"
+SHA="5f164f92d201cf1907140acd244da5ee9b6bfd2f"
 
 step() { printf '\n\033[1;34m== %s ==\033[0m\n' "$1"; }
 
@@ -84,6 +84,11 @@ TD=$(aws ecs describe-task-definition --task-definition "$FAMILY" \
 #   FIRECRAWL_API_KEY   web research
 #   SUPABASE_SERVICE_ROLE_KEY / AUTH_COOKIE_SECRET / FREYR_WORKSPACE_ID
 #                       needed only to switch prod to real Supabase sign-in
+#   DOCS_API_BASE_URL / DOCS_TOKEN_URL / DOCS_CLIENT_ID / DOCS_CLIENT_SECRET
+#   DOCS_SCOPE / DOCS_MODULE_ID / DOCS_BUCKET
+#                       Freya.Docs storage. Without these the app still takes
+#                       file uploads, but stores them in its own bucket instead
+#                       of FreyaFusion's — pass all seven together, once.
 #
 # A key that is NOT supplied is left exactly as the live task definition has it,
 # so a routine redeploy never wipes a key that is already set. Nothing is ever
@@ -118,6 +123,14 @@ add_key FIRECRAWL_API_KEY "${FIRECRAWL_API_KEY:-}"
 add_key SUPABASE_SERVICE_ROLE_KEY "${SUPABASE_SERVICE_ROLE_KEY:-}"
 add_key AUTH_COOKIE_SECRET "${AUTH_COOKIE_SECRET:-}"
 add_key FREYR_WORKSPACE_ID "${FREYR_WORKSPACE_ID:-}"
+# Freya.Docs — where uploaded sales materials actually live.
+add_key DOCS_API_BASE_URL "${DOCS_API_BASE_URL:-}"
+add_key DOCS_TOKEN_URL "${DOCS_TOKEN_URL:-}"
+add_key DOCS_CLIENT_ID "${DOCS_CLIENT_ID:-}"
+add_key DOCS_CLIENT_SECRET "${DOCS_CLIENT_SECRET:-}"
+add_key DOCS_SCOPE "${DOCS_SCOPE:-}"
+add_key DOCS_MODULE_ID "${DOCS_MODULE_ID:-}"
+add_key DOCS_BUCKET "${DOCS_BUCKET:-}"
 
 if [ -n "$SET_KEYS" ]; then
   echo "Setting service keys:$SET_KEYS"
