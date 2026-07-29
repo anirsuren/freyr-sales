@@ -12,6 +12,7 @@ import {
   MATERIAL_META,
   type MaterialKind,
 } from "./offerings";
+import { servesMarket } from "./offeringCatalogue";
 
 export interface OfferingsAnswer {
   reply: string;
@@ -291,12 +292,17 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
           ],
         };
       }
-      const inMkt = o.markets.some((x) => x.id === mkt.id);
+      // "Global" is an answer to every market question, not a fifth region.
+      const inMkt = servesMarket(o.markets.map((x) => x.id), mkt.id);
+      const worldwide =
+        inMkt && !o.markets.some((x) => x.id === mkt.id);
       const all = o.markets.map((x) => x.name).join(", ");
       return {
         reply:
           (inMkt
-            ? `Yes. **${o.offering_name}** is available in ${mkt.name}.`
+            ? worldwide
+              ? `Yes. **${o.offering_name}** is sold globally, so that includes ${mkt.name}.`
+              : `Yes. **${o.offering_name}** is available in ${mkt.name}.`
             : `No. **${o.offering_name}** isn't mapped to ${mkt.name}.`) +
           ` Its markets: ${all}.\n\n[Open ${o.offering_name} →](/offerings/${o.id})`,
         suggestions: [
@@ -384,7 +390,8 @@ export function offeringsAnswer(message: string): OfferingsAnswer | null {
     new RegExp(`\\b${x.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(m)
   );
   if (market) {
-    const matches = offs.filter((o) => o.market_ids.includes(market.id));
+    // Includes everything sold globally — those cover this market too.
+    const matches = offs.filter((o) => servesMarket(o.market_ids, market.id));
     if (matches.length === 0) {
       return {
         reply: `No offerings are mapped to ${market.name} yet. Map markets on each offering in the repository.\n\n[Open Offerings →](/offerings?market=${market.id})`,

@@ -39,6 +39,7 @@ import { flagForGeography } from "@/lib/countryFlags";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { servesMarket } from "@/lib/offeringCatalogue";
 import {
   SearchPriority,
   PrioritySearchInput,
@@ -392,7 +393,17 @@ export function OfferingsBrowser({
     return offerings.filter((o) => {
       // OR inside a filter, AND across them (Saras, change-log row 5).
       if (ctIds.length && !o.customerTypes.some((c) => ctIds.includes(c.id))) return false;
-      if (mktIds.length && !o.markets.some((m) => mktIds.includes(m.id))) return false;
+      // A Global offering answers every market filter (see servesMarket).
+      if (
+        mktIds.length &&
+        !mktIds.some((id) =>
+          servesMarket(
+            o.markets.map((m) => m.id),
+            id
+          )
+        )
+      )
+        return false;
       if (otNames.length && !otNames.includes(o.offering_type)) return false;
       if (catNames.length && !catNames.includes(o.offering_category)) return false;
       if (

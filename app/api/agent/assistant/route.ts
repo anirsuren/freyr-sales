@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { agentAnswer } from "@/lib/claude";
-import { searchKnowledge, knowledgeBlock } from "@/lib/knowledgeBase";
+import {
+  searchKnowledge,
+  knowledgeBlock,
+  buildKnowledgeBaseAsync,
+} from "@/lib/knowledgeBase";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +32,10 @@ export async function POST(req: Request) {
   // catalogue itself and answers from those, citing where each fact came from
   // (Wajeed, Jul 29: an AI chat layer answering from all the content and
   // materials in the app).
-  const passages = searchKnowledge(question, 6);
+  // Retrieval runs over the catalogue AND the contents of every uploaded
+  // deck, transcript and document, so "what does the Freya.Register demo say
+  // about validation?" is answered from the deck itself.
+  const passages = searchKnowledge(question, 6, await buildKnowledgeBaseAsync());
   const knowledge = knowledgeBlock(passages);
 
   const where = subject

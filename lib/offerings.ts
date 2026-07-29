@@ -186,6 +186,12 @@ function seedCustomerTypes(): CustomerType[] {
 
 function seedMarkets(): Market[] {
   return [
+    // GLOBAL IS A REAL ANSWER, not shorthand for "all five" (Wajeed + Eeswar,
+    // change request 11: "some Freyr offerings are available globally").
+    // Listing USA/Europe/Japan/China/Korea on Freya.Register implied those are
+    // the only places it can be bought, which is wrong and reads as a limit.
+    // It sorts first because it is the widest answer, and any owner can pick it.
+    { id: "mkt-global", name: "Global" },
     { id: "mkt-usa", name: "USA" },
     { id: "mkt-europe", name: "Europe" },
     { id: "mkt-japan", name: "Japan" },
@@ -246,6 +252,14 @@ function seedOfferingTypes(): OfferingType[] {
 const CAT_RIM = "Regulatory Information Management";
 const CAT_SUBMISSIONS = "Submissions and Document Operations";
 const CAT_GRI = "Global Regulatory Intelligence";
+// FIVE OFFERINGS CARRY NO CATEGORY IN SUREN'S SHEET — pharmacovigilance,
+// both medical-writing lines, compliance/audit and medical communication
+// (Wajeed, Jul 29: "in Suren's excel these weren't tagged to any offering
+// category... you can just tag this to Others and leave it that way"). They had
+// been filed under Submissions or Regulatory Affairs on nobody's authority,
+// which quietly put words in the sheet's mouth. "Others" says the true thing:
+// Freyr sells it, and it does not sit under one of the six.
+const CAT_OTHERS = "Others";
 const CAT_LABELING = "Labeling and Artwork";
 const CAT_PLATFORM = "Freya Fusion Platform and Agents";
 const CAT_RA = "Regulatory Affairs";
@@ -294,6 +308,15 @@ function seedOfferingCategories(): OfferingCategory[] {
         "Offers broad consultative expertise to help companies navigate complex regulatory landscapes, develop market access strategies, manage product registrations, and ensure ongoing compliance across various industries like pharma, medical devices, and consumer products.",
       owner: "",
     },
+    // LAST, deliberately: the six real categories keep the accent colours they
+    // already wear (the palette is indexed by position, filterPalette.ts).
+    {
+      id: "oc-others",
+      name: CAT_OTHERS,
+      description:
+        "Specialist services that stand on their own rather than under one of the six categories — pharmacovigilance, medical writing, compliance and audit, and medical communication.",
+      owner: "",
+    },
   ];
 }
 
@@ -303,6 +326,8 @@ const ALL_CT = [
   "ct-biopharma-s", "ct-biopharma-m", "ct-biopharma-l",
 ];
 const ALL_MKT = ["mkt-usa", "mkt-europe", "mkt-japan", "mkt-china", "mkt-korea"];
+// Sold everywhere: one market, not five (change request 11).
+const GLOBAL_MKT = ["mkt-global"];
 // Suren's sheet marks Freya.Label and Freya.Artwork "Not Applicable" for the
 // Small segment of every family — those start at mid-size.
 const NO_SMALL_CT = [
@@ -402,7 +427,7 @@ function seedOfferings(): Offering[] {
       current_availability: "Currently available",
       future_availability: "Version 1",
       customer_type_ids: ALL_CT,
-      market_ids: ALL_MKT,
+      market_ids: GLOBAL_MKT,
       // Every seeded material carries its buyer's-journey stage + access level
       // (CR-3): overviews open the conversation (awareness), references and
       // case studies prove it (evaluation) — all safe to share with a client.
@@ -593,7 +618,7 @@ function seedOfferings(): Offering[] {
       // writing / communication lines author and publish regulatory content →
       // Submissions and Document Operations. Re-map here if Suren later wants
       // dedicated PV / Medical Writing categories.
-      offering_category: CAT_RA,
+      offering_category: CAT_OTHERS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · PV team focus is on small & mid-sized companies; Current PV team size can't support multiple large clients without leveraging FreyrX - MSD is their only large client",
       poc: "Gurpreet Kaur",
@@ -604,7 +629,7 @@ function seedOfferings(): Offering[] {
       // Clinical summaries, CSRs, protocols and briefing packages are the
       // authored documents a dossier is built from — same family as Publishing
       // and Submissions Planning & Management.
-      offering_category: CAT_SUBMISSIONS,
+      offering_category: CAT_OTHERS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both",
       poc: "Seema Gurbani",
@@ -614,7 +639,7 @@ function seedOfferings(): Offering[] {
     off("of-026", SERVICE, "Medical Writing - Non Clinical & Toxicology", "• Regulatory Toxicology (1. ADE/PDE/Determination/ Report Services 2. F-Value Reports for Child Resistant Packaging (CRP) 3. Toxicological Risk Assessment (TRA) of impurities, Extractables & Leachables 4. Environmental Risk Assessment (ERA) of medicinal products)\n• Scientific and Regulatory Review of Non-clinical Documents\n• Development and Review of Study Plans/Protocols for Non-clinical Studies\n• Non-clinical Development Strategy for Regulatory Submissions\n• Consultation on Non-clinical Issues in the Submissions\n• Consultation and Responses to Regulatory Queries\n• GLP Audits of Test Facilities\n• CRO Identification and Qualification for Non-clinical Regulatory Studies", {
       // Non-clinical study plans, tox reports and query responses are written
       // for the submission dossier — same family as its clinical counterpart.
-      offering_category: CAT_SUBMISSIONS,
+      offering_category: CAT_OTHERS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · SEND compilation & submission: No in-house capability currently",
       poc: "Jaiprakash Bhelonde",
@@ -625,7 +650,7 @@ function seedOfferings(): Offering[] {
       // GxP audits, SOP authoring, CSV/CSA validation and QMS build-out are
       // the compliance-and-governance side of RA — the same consulting family
       // as Regulatory Affairs Strategy's transformation/process work.
-      offering_category: CAT_RA,
+      offering_category: CAT_OTHERS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · CSV & CSA Validation Services: Provided through FreyrX in all markets",
       poc: "Anushta Chandrapalan",
@@ -636,7 +661,7 @@ function seedOfferings(): Offering[] {
       // Medical copywriting, publications and Ad Promo HA submissions are
       // content authored, reviewed and filed — document operations, not a
       // labeling or artwork deliverable.
-      offering_category: CAT_SUBMISSIONS,
+      offering_category: CAT_OTHERS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · Medical & Scientific Content Management: No in-house capability currently (no previous clients)",
       poc: "Padmaja Jagannathan",
@@ -672,6 +697,15 @@ declare global {
   var __FREYR_LIVE_OFFERINGS_STORE__: OfferingsStore | undefined;
   // eslint-disable-next-line no-var
   var __FREYR_OFFERINGS_INIT__: Promise<void> | undefined;
+  /** `updated_at` of the catalog revision this process currently holds. */
+  // eslint-disable-next-line no-var
+  var __FREYR_OFFERINGS_REV__: string | undefined;
+  /** When we last checked the database for a newer revision. */
+  // eslint-disable-next-line no-var
+  var __FREYR_OFFERINGS_CHECKED__: number | undefined;
+  /** True while THIS process is mid-write, so a refresh can't clobber it. */
+  // eslint-disable-next-line no-var
+  var __FREYR_OFFERINGS_WRITING__: boolean | undefined;
   // eslint-disable-next-line no-var
   var __FREYR_OFFERINGS_WRITE_QUEUE__: Promise<void> | undefined;
 }
@@ -755,6 +789,43 @@ if (!store.offeringCategories)
 // (initializeLiveOfferings → replaceStore) bypassed the init-time loop, so live
 // records arrived without `contacts` while seeded ones had it.
 function healOfferings(s: OfferingsStore): void {
+  // A catalogue persisted before "Global" existed has no such market, so an
+  // owner opening the picker today would not find it (change request 11). Add
+  // it back rather than reseeding — every other market and every edit stays.
+  if (!s.markets.some((m) => m.id === "mkt-global")) {
+    s.markets.unshift({ id: "mkt-global", name: "Global" });
+  }
+  // "Others" and its five offerings landed after the first live catalogue was
+  // persisted, so heal both — but only where the row still carries the tag we
+  // put there ourselves. An owner who has since chosen a category keeps it.
+  if (!s.offeringCategories.some((c) => c.id === "oc-others")) {
+    s.offeringCategories.push({
+      id: "oc-others",
+      name: CAT_OTHERS,
+      description:
+        "Specialist services that stand on their own rather than under one of the six categories — pharmacovigilance, medical writing, compliance and audit, and medical communication.",
+      owner: "",
+    });
+  }
+  for (const [id, wrong] of [
+    ["of-024", CAT_RA],
+    ["of-025", CAT_SUBMISSIONS],
+    ["of-026", CAT_SUBMISSIONS],
+    ["of-027", CAT_RA],
+    ["of-028", CAT_SUBMISSIONS],
+  ] as const) {
+    const row = s.offerings.find((o) => o.id === id);
+    if (row && row.offering_category === wrong) row.offering_category = CAT_OTHERS;
+  }
+  // Freya.Register is sold worldwide; the five regional chips were read as a
+  // restriction (Wajeed + Eeswar). Collapse them ONCE, and only when the row
+  // still carries exactly the old regional set — an owner who has since chosen
+  // their own markets keeps them.
+  const register = s.offerings.find((o) => o.id === "of-001");
+  if (register?.market_ids && register.market_ids.length === 5) {
+    const set = new Set(register.market_ids);
+    if (ALL_MKT.every((m) => set.has(m))) register.market_ids = [...GLOBAL_MKT];
+  }
   for (const o of s.offerings) {
     if (!o.owners) o.owners = [];
     if (!o.materials) o.materials = [];
@@ -813,12 +884,17 @@ export async function persistLiveOfferings(): Promise<void> {
   if (!hasSupabase()) {
     throw new Error("Live offering changes require the configured Supabase database.");
   }
+  const stamp = new Date().toISOString();
   const { error } = await catalogClient().from("offering_catalog_state").upsert({
     id: "default",
     catalog: structuredClone(liveStore),
-    updated_at: new Date().toISOString(),
+    updated_at: stamp,
   });
   if (error) throw new Error(`Could not persist the offering catalog: ${error.message}`);
+  // We are now, by definition, holding the newest revision — remember it so
+  // the staleness check below doesn't immediately re-read our own write.
+  globalThis.__FREYR_OFFERINGS_REV__ = stamp;
+  globalThis.__FREYR_OFFERINGS_CHECKED__ = Date.now();
 }
 
 export async function initializeLiveOfferings(): Promise<void> {
@@ -827,10 +903,12 @@ export async function initializeLiveOfferings(): Promise<void> {
     globalThis.__FREYR_OFFERINGS_INIT__ = (async () => {
       const { data, error } = await catalogClient()
         .from("offering_catalog_state")
-        .select("catalog")
+        .select("catalog, updated_at")
         .eq("id", "default")
         .maybeSingle();
       if (error) throw new Error(`Could not load the offering catalog: ${error.message}`);
+      globalThis.__FREYR_OFFERINGS_REV__ = data?.updated_at ?? undefined;
+      globalThis.__FREYR_OFFERINGS_CHECKED__ = Date.now();
       if (isOfferingsStore(data?.catalog)) {
         replaceStore(liveStore, data.catalog);
         // The persisted catalog can predate newer offering fields: heal it
@@ -848,6 +926,64 @@ export async function initializeLiveOfferings(): Promise<void> {
     })();
   }
   await globalThis.__FREYR_OFFERINGS_INIT__;
+  await refreshStaleCatalog();
+}
+
+/** How long this process may serve its cached catalog before checking whether
+ *  somebody else has written a newer one. Short, because the read is a single
+ *  indexed column on one row; long enough that a page with a dozen server
+ *  components does one check, not a dozen. */
+const CATALOG_FRESH_MS = 5_000;
+
+/**
+ * RE-READ THE CATALOG WHEN ANOTHER PROCESS HAS CHANGED IT.
+ *
+ * The first load was memoised forever, which meant a server only ever saw the
+ * catalog as it stood the moment it booted. Anir granted Eeswar ownership of
+ * Freya.Register at 10:12; his dev server had started at 09:58 and kept
+ * serving the 09:58 snapshot, so the grant looked like it had not saved
+ * (Jul 29: "I gave him owner status and it's gone... this is a problem if it
+ * doesn't save"). It had saved — nothing was re-reading it.
+ *
+ * This is not a dev-only nicety: production runs behind a load balancer, so
+ * the moment there is more than one task, Eeswar's upload on one container
+ * would be invisible on the other until the next deploy.
+ *
+ * The check is a single `updated_at` read, rate-limited, and skipped entirely
+ * while this process is mid-write so an in-flight change can never be
+ * clobbered by a stale copy.
+ */
+async function refreshStaleCatalog(): Promise<void> {
+  if (globalThis.__FREYR_OFFERINGS_WRITING__) return;
+  const checked = globalThis.__FREYR_OFFERINGS_CHECKED__ ?? 0;
+  if (Date.now() - checked < CATALOG_FRESH_MS) return;
+  globalThis.__FREYR_OFFERINGS_CHECKED__ = Date.now();
+  try {
+    const { data } = await catalogClient()
+      .from("offering_catalog_state")
+      .select("updated_at")
+      .eq("id", "default")
+      .maybeSingle();
+    const rev = data?.updated_at as string | undefined;
+    if (!rev || rev === globalThis.__FREYR_OFFERINGS_REV__) return;
+
+    const fresh = await catalogClient()
+      .from("offering_catalog_state")
+      .select("catalog, updated_at")
+      .eq("id", "default")
+      .maybeSingle();
+    // A write may have started while we were fetching; abandon rather than
+    // overwrite it with what we just read.
+    if (globalThis.__FREYR_OFFERINGS_WRITING__) return;
+    if (isOfferingsStore(fresh.data?.catalog)) {
+      replaceStore(liveStore, fresh.data.catalog);
+      healOfferings(liveStore);
+      globalThis.__FREYR_OFFERINGS_REV__ = fresh.data.updated_at ?? rev;
+    }
+  } catch {
+    // A blip in the freshness check must never take a page down: the cached
+    // catalog is still perfectly serviceable.
+  }
 }
 
 export async function commitOfferingsChange<T>(
@@ -862,6 +998,9 @@ export async function commitOfferingsChange<T>(
 
   const target = activeStore();
   const before = structuredClone(target);
+  // Hold off the freshness re-read for the duration of the write: reloading
+  // the database copy mid-change would drop the change on the floor.
+  globalThis.__FREYR_OFFERINGS_WRITING__ = true;
   try {
     const result = await change();
     await persistLiveOfferings();
@@ -870,6 +1009,7 @@ export async function commitOfferingsChange<T>(
     replaceStore(target, before);
     throw error;
   } finally {
+    globalThis.__FREYR_OFFERINGS_WRITING__ = false;
     resolveQueue();
   }
 }

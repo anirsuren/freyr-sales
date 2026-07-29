@@ -18,8 +18,15 @@ function escapeRe(s: string): string {
 // Turn a plain-text string into nodes where any known company/person name
 // becomes an inline entity pill (logo/headshot + link). Matched longest-first so
 // "Cortexa Biopharma" wins over "Cortexa". Case-insensitive, word-bounded.
-function injectEntities(text: string, entities: Entity[], keyBase: string): ReactNode[] {
-  if (!entities.length || !text) return [text];
+function injectEntities(
+  text: string,
+  entities: Entity[],
+  keyBase: string,
+  /** In the offerings-only release there are no customer or contact pages, so
+   *  a pill would be a link to a 404. The name still reads normally. */
+  linkable = true
+): ReactNode[] {
+  if (!entities.length || !text || !linkable) return [text];
   const re = new RegExp(
     `\\b(${entities.map((e) => escapeRe(e.name)).join("|")})\\b`,
     "gi"
@@ -93,7 +100,22 @@ function pageLabel(path: string): string {
   return "Freyr";
 }
 
-function suggestionsFor(label: string): string[] {
+function suggestionsFor(label: string, offeringsOnly = false): string[] {
+  // Real mode is the offerings repository plus the assistant, so the prompts
+  // have to be about what a rep can actually do there: understand an offering,
+  // find the right collateral, work out who it suits.
+  if (offeringsOnly)
+    return label === "an offering"
+      ? [
+          "Explain this offering in plain English",
+          "What materials do we have for it?",
+          "Which customers is it a fit for?",
+        ]
+      : [
+          "What do we offer for labelling?",
+          "Which offerings are available today?",
+          "Who owns Freya.Register?",
+        ];
   if (label.includes("customer") || label.includes("contact"))
     return ["Summarize this account", "Draft an intro email", "What's the next best action?"];
   if (label.includes("Pipeline") || label.includes("Forecast"))
@@ -107,7 +129,11 @@ function suggestionsFor(label: string): string[] {
 
 // Minimal, safe markdown: **bold**, `code`, and line breaks. Content is our own
 // agent's reply, but we still build React nodes (no dangerouslySetInnerHTML).
-function renderRich(text: string, entities: Entity[] = []): ReactNode {
+function renderRich(
+  text: string,
+  entities: Entity[] = [],
+  linkable = true
+): ReactNode {
   return text.split("\n").map((line, li) => {
     const nodes: ReactNode[] = [];
     // **bold**, *italic*, `code` — match bold before italic so ** wins over *.
@@ -115,7 +141,8 @@ function renderRich(text: string, entities: Entity[] = []): ReactNode {
     let last = 0;
     let m: RegExpExecArray | null;
     let k = 0;
-    const plain = (s: string, kb: string) => nodes.push(...injectEntities(s, entities, kb));
+    const plain = (s: string, kb: string) =>
+      nodes.push(...injectEntities(s, entities, kb, linkable));
     while ((m = re.exec(line))) {
       if (m.index > last) plain(line.slice(last, m.index), `${li}-${k}`);
       if (m[2] != null) nodes.push(<strong key={k++}>{m[2]}</strong>);
@@ -176,12 +203,15 @@ export function AgentDock({
   onOpenChange,
   hidden,
   pathname,
+  offeringsOnly = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   hidden: boolean;
   onHide: () => void;
   pathname: string;
+  /** The offerings-only release: keep answers inside pages that exist. */
+  offeringsOnly?: boolean;
 }) {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
@@ -331,7 +361,7 @@ export function AgentDock({
 
   if (hidden) return null;
 
-  const suggestions = suggestionsFor(label);
+  const suggestions = suggestionsFor(label, offeringsOnly);
   const greeting = subject
     ? `Hi ${firstName}. I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
     : `Hi ${firstName}. I'm on **${label}** with you. Ask me anything, or pick a starting point below.`;
@@ -366,7 +396,7 @@ export function AgentDock({
             className="flex-1 overflow-y-auto px-4 py-4 space-y-2.5 h-[400px] max-h-[58vh]"
           >
             <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-surface text-text-primary px-3.5 py-2.5 text-[13px] leading-relaxed">
-              {renderRich(greeting, entities)}
+              {renderRich(greeting, entities, !offeringsOnly)}
             </div>
             {visibleMsgs.map((m, i) => (
               <div
@@ -378,7 +408,9 @@ export function AgentDock({
                     : "rounded-2xl rounded-br-md bg-blue-primary text-white ml-auto"
                 )}
               >
-                {m.role === "agent" ? renderRich(m.text, entities) : m.text}
+                {m.role === "agent"
+                  ? renderRich(m.text, entities, !offeringsOnly)
+                  : m.text}
               </div>
             ))}
             {busy && (

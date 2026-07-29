@@ -38,9 +38,10 @@
     ".next-local-preview/types/**/*.ts",
     ".next-onboarding-test/types/**/*.ts",
     ".next-test/types/**/*.ts",
+    ".next-verify/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-verify/types/**/*.ts"
+    ".next-live/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

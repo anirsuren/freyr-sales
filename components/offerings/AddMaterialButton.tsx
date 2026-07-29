@@ -65,7 +65,15 @@ export function AddMaterialButton({
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
+  // THE ACTUAL FILE. Owners upload the deck or video itself, not a link to it
+  // (Wajeed, Jul 29: "it's going to be actual files": Eeswar's SharePoint decks
+  // land here and the file is stored by the workspace, so the link never rots
+  // when a SharePoint folder moves). A pasted link still works as before.
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** 0-100 while bytes are moving, null when nothing is uploading. */
+  const [progress, setProgress] = useState<number | null>(null);
 
   function reset() {
     setKind("video");
@@ -74,15 +82,156 @@ export function AddMaterialButton({
     setLabel("");
     setDescription("");
     setUrl("");
+    setFile(null);
+    setDragOver(false);
+  }
+
+  // Picking a file fills in what the file already says: its name and format.
+  // Both stay editable.
+  function takeFile(f: File | null) {
+    if (!f) return;
+    setFile(f);
+    if (!label.trim()) setLabel(f.name.replace(/\.[^.]+$/, ""));
+    const ext = (f.name.split(".").pop() || "").toLowerCase();
+    if (["mp4", "mov", "webm", "m4v", "avi", "mkv"].includes(ext)) setKind("video");
+    else if (["ppt", "pptx", "key", "odp"].includes(ext)) setKind("presentation");
+    else if (["doc", "docx", "pdf", "txt", "rtf", "md", "odt"].includes(ext))
+      setKind("document");
+    else setKind("other");
+  }
+
+
+  /**
+   * PUT THE FILE STRAIGHT INTO STORAGE FROM THE BROWSER.
+   *
+   * Three calls: ask our server for a signed URL (it decides you may, and
+   * where it lands), send the bytes to S3, tell our server it landed. The file
+   * never passes through the app, so THERE IS NO SIZE LIMIT — a full recorded
+   * demo uploads the same way a one-pager does.
+   *
+   * If direct upload isn't configured in this environment the signing call
+   * answers 503 and we fall back to posting the file through the server, which
+   * still works and is what a laptop without the Docs credentials uses.
+   */
+  async function uploadFile(f: File) {
+    const signed = await fetch(
+      `/api/offerings/${offeringId}/materials/upload-url`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: f.name,
+          contentType: f.type || "application/octet-stream",
+        }),
+      }
+    );
+    const grant = await signed.json();
+
+    if (signed.status === 503) return uploadThroughServer(f);
+    if (!signed.ok || !grant.uploadUrl) {
+      toast(grant.error || "Couldn't start that upload", "error");
+      return null;
+    }
+
+    setProgress(0);
+    const sent = await putWithProgress(grant.uploadUrl, grant.uploadHeaders, f);
+    if (!sent) {
+      // Clear the half-finished path or this same file can never be re-sent.
+      await fetch(`/api/offerings/${offeringId}/materials/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: grant.path, failed: true }),
+      }).catch(() => undefined);
+      setProgress(null);
+      toast("The upload didn't finish, try again", "error");
+      return null;
+    }
+
+    setProgress(100);
+    const done = await fetch(
+      `/api/offerings/${offeringId}/materials/complete`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: grant.path, filename: f.name }),
+      }
+    );
+    const stored = await done.json();
+    setProgress(null);
+    if (!done.ok || !stored.url) {
+      toast(stored.error || "Couldn't finish that upload", "error");
+      return null;
+    }
+    return stored;
+  }
+
+  /** XHR, not fetch: it is the only way to report upload progress, and a
+   *  multi-GB file with no progress bar reads as a frozen app. */
+  function putWithProgress(
+    url: string,
+    headers: Record<string, string>,
+    f: File
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url);
+      for (const [k, v] of Object.entries(headers || {}))
+        xhr.setRequestHeader(k, v);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable)
+          setProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+      xhr.onerror = () => resolve(false);
+      xhr.onabort = () => resolve(false);
+      xhr.send(f);
+    });
+  }
+
+  /** The no-Docs-credentials fallback: through our own server, which has to
+   *  hold the file in memory, so this one keeps a cap. */
+  async function uploadThroughServer(f: File) {
+    const fd = new FormData();
+    fd.append("file", f);
+    const up = await fetch(`/api/offerings/${offeringId}/materials/upload`, {
+      method: "POST",
+      body: fd,
+    });
+    const stored = await up.json();
+    if (!up.ok || !stored.url) {
+      toast(stored.error || "Couldn't upload that file", "error");
+      return null;
+    }
+    return stored;
   }
 
   async function save() {
-    if (!url.trim() && !label.trim()) {
-      toast("Add a link or a name first", "error");
+    if (!file && !url.trim() && !label.trim()) {
+      toast("Drop in a file, or add a link or a name first", "error");
       return;
     }
     setBusy(true);
     try {
+      // The file's bytes go up first; the material row then references where
+      // they landed, through the same PATCH as a pasted link.
+      let storedUrl = url.trim();
+      let storedPath: string | undefined;
+      // Whether the assistant could actually READ the file. Worth saying out
+      // loud: an owner uploading a deck so the agent can answer from it needs
+      // to know when it was a scan or a video and there were no words to take.
+      let wasRead = false;
+      let readWords = 0;
+      if (file) {
+        const stored = await uploadFile(file);
+        if (!stored) {
+          setBusy(false);
+          return;
+        }
+        storedUrl = stored.url;
+        storedPath = stored.docsPath;
+        readWords = typeof stored.words === "number" ? stored.words : 0;
+        wasRead = Boolean(stored.readable);
+      }
       // Note: "added by" is NOT sent from here. The PATCH route stamps the
       // uploader from the server session and restores every existing row's
       // attribution from the store, so a client can neither credit itself for
@@ -96,6 +245,7 @@ export function AddMaterialButton({
           kind: m.kind,
           label: m.label,
           url: m.url,
+          docsPath: m.docsPath,
           description: m.description,
           journeyStage: m.journeyStage,
           accessLevel: m.accessLevel,
@@ -103,8 +253,9 @@ export function AddMaterialButton({
         {
           id: "",
           kind,
-          label: label.trim() || MATERIAL_META[kind].label,
-          url: url.trim(),
+          label: label.trim() || (file ? file.name : MATERIAL_META[kind].label),
+          url: storedUrl,
+          ...(storedPath ? { docsPath: storedPath } : {}),
           // Optional, and left off entirely when it's blank — an empty note is
           // no note, not an empty line under the title.
           ...(description.trim() ? { description: description.trim() } : {}),
@@ -119,7 +270,13 @@ export function AddMaterialButton({
       });
       const data = await res.json();
       if (data.ok) {
-        toast("Material added");
+        toast(
+          !file
+            ? "Material added"
+            : wasRead
+              ? `Material added — the agent read ${readWords.toLocaleString()} words from it`
+              : "Material added — the agent can't read this file type, so it won't answer from it"
+        );
         setOpen(false);
         reset();
         router.refresh();
@@ -274,14 +431,105 @@ export function AddMaterialButton({
 
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-              Link
+              File
             </label>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://…"
-              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
-            />
+            {/* Drag the actual file in, or click to browse. The workspace
+                stores it and the material links to the stored copy. */}
+            <label
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                takeFile(e.dataTransfer.files?.[0] ?? null);
+              }}
+              className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-5 text-center transition-colors ${
+                dragOver
+                  ? "border-blue-primary bg-blue-light/50"
+                  : file
+                    ? "border-blue-subtle bg-blue-light/30"
+                    : "border-border-light hover:border-blue-subtle hover:bg-blue-light/20"
+              }`}
+            >
+              <input
+                type="file"
+                className="hidden"
+                accept=".mp4,.mov,.webm,.m4v,.ppt,.pptx,.key,.doc,.docx,.pdf,.txt,.rtf,.xls,.xlsx,.csv,.zip"
+                onChange={(e) => takeFile(e.target.files?.[0] ?? null)}
+              />
+              {file ? (
+                <>
+                  <span className="max-w-full break-words text-[13.5px] font-semibold text-text-primary">
+                    {file.name}
+                  </span>
+                  <span className="text-[11.5px] text-text-tertiary">
+                    {(file.size / 1024 / 1024).toFixed(1)}MB · click to swap, or{" "}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="font-semibold text-[color:#B02020]"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setFile(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setFile(null);
+                        }
+                      }}
+                    >
+                      remove
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[13.5px] font-semibold text-text-primary">
+                    Drop the file here, or click to browse
+                  </span>
+                  <span className="text-[11.5px] text-text-tertiary">
+                    PPT, Word, Excel, PDF or video · any size
+                  </span>
+                </>
+              )}
+            </label>
+            {/* A multi-gigabyte demo takes minutes. Without a bar the app looks
+                frozen and people close the tab mid-upload. */}
+            {progress !== null && (
+              <div className="mt-2" aria-live="polite">
+                <div className="flex items-center justify-between text-[11.5px] font-medium text-text-secondary">
+                  <span>
+                    {progress < 100 ? "Uploading…" : "Reading the file…"}
+                  </span>
+                  <span className="tnum">{progress}%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface)]">
+                  <div
+                    className="h-full rounded-full bg-blue-primary transition-[width] duration-200"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            {!file && (
+              <div className="mt-2">
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
+                  Or paste a link
+                </label>
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://…"
+                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">
@@ -297,7 +545,7 @@ export function AddMaterialButton({
               className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-60"
             >
               <Plus size={14} strokeWidth={2.2} />
-              {busy ? "Adding…" : "Add material"}
+              {busy ? (file ? "Uploading…" : "Adding…") : "Add material"}
             </button>
           </div>
         </div>

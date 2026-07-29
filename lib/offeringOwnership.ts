@@ -38,10 +38,12 @@ export async function canEditOffering(
 }
 
 /**
- * May the signed-in account claim this offering for itself? Only a verified
- * workspace account can, and only when it does not already own it. Claiming is
- * self-service by design so an owner can start work without waiting on an admin
- * grant; admins can additionally assign and revoke on someone else's behalf.
+ * May the signed-in account ASK for this offering? Any verified workspace
+ * account may, and only when it does not already own it — but asking is all it
+ * is. Ownership itself is granted by an admin (see the owners route): a rep who
+ * signs up gets read access and a request button, never write access (Wajeed,
+ * Jul 29: "10-15 sales people will be registering... we only want them to have
+ * viewing access and nothing else").
  */
 export async function canClaimOffering(
   offering: Pick<Offering, "owners"> | null | undefined

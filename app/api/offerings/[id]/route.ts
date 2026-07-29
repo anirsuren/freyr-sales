@@ -7,6 +7,7 @@ import {
   commitOfferingsChange,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { forgetMaterialText } from "@/lib/materialText";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { getCurrentUser } from "@/lib/currentUser";
 import { GENERIC_USER_IDENTITY } from "@/lib/userIdentity";
@@ -68,9 +69,25 @@ export async function PATCH(
       await uploaderName()
     );
   }
+  // A material that is being REMOVED takes its extracted text with it: the
+  // assistant must stop answering from a deck the owner just deleted.
+  const droppedPaths = Array.isArray(body.materials)
+    ? existing.materials
+        .map((m) => m.docsPath)
+        .filter(
+          (p): p is string =>
+            !!p &&
+            !(body.materials as OfferingMaterial[]).some(
+              (m) => m.docsPath === p
+            )
+        )
+    : [];
+
   try {
     const offering = await commitOfferingsChange(() => updateOffering(id, body));
     if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (droppedPaths.length)
+      await forgetMaterialText(droppedPaths).catch(() => undefined);
     return NextResponse.json({ ok: true, offering });
   } catch (error) {
     return NextResponse.json(

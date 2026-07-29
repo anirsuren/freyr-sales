@@ -11,8 +11,12 @@ import {
   Search,
   Plus,
   UserRound,
+  Mail,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { HoverCard } from "@/components/ui/HoverCard";
+import { TeamsIcon } from "@/components/ui/TeamsIcon";
+import { teamsChatUrl } from "@/lib/team";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
@@ -55,6 +59,104 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
     >
       <Plus size={15} strokeWidth={2.6} />
     </button>
+  );
+}
+
+
+/**
+ * The person behind an owner row: who they are, the address their account is
+ * registered under, when they were granted it and by whom, and the usual ways
+ * to reach them. Everything here is a RECORD, never derived — the email shown
+ * is the one ownership is actually keyed to.
+ */
+function OwnerHoverCard({
+  owner,
+  isYou,
+  children,
+}: {
+  owner: OwnerRow;
+  isYou: boolean;
+  children: React.ReactNode;
+}) {
+  const email = (owner.email || "").trim();
+  return (
+    <HoverCard
+      side="left"
+      width={288}
+      content={
+        <div className="w-[288px] p-3.5">
+          <div className="flex items-center gap-2.5">
+            <Avatar name={owner.name} className="h-10 w-10 shrink-0 text-[13px]" />
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-semibold leading-tight text-text-primary">
+                {owner.name}
+                {isYou && (
+                  <span className="ml-1.5 text-[11px] font-medium text-text-tertiary">
+                    (this is you)
+                  </span>
+                )}
+              </p>
+              <p className="text-[11.5px] leading-tight text-text-secondary">
+                {owner.status === "owner" ? "Can edit this offering" : "Asked to own this"}
+              </p>
+            </div>
+          </div>
+
+          <dl className="mt-3 space-y-1.5 border-t border-border-light pt-2.5 text-[11.5px]">
+            <div className="flex gap-2">
+              <dt className="w-[74px] shrink-0 text-text-tertiary">Email</dt>
+              <dd className="min-w-0 break-all font-medium text-text-primary">
+                {email || "Not on the account"}
+              </dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-[74px] shrink-0 text-text-tertiary">
+                {owner.status === "owner" ? "Owner since" : "Asked on"}
+              </dt>
+              <dd className="font-medium text-text-primary">
+                {formatDate(owner.claimed_at)}
+              </dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-[74px] shrink-0 text-text-tertiary">Account</dt>
+              {/* The stable id permissions are keyed to. Two people with the
+                  same name are two ids, and this is where you see that. */}
+              <dd className="min-w-0 break-all font-mono text-[10.5px] text-text-secondary">
+                {owner.memberId}
+              </dd>
+            </div>
+          </dl>
+
+          {email && (
+            <div className="mt-2.5 flex items-center gap-1.5 border-t border-border-light pt-2.5">
+              <a
+                href={teamsChatUrl(owner.name, email)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Message ${owner.name.split(" ")[0]} on Teams`}
+                title={`Message ${owner.name.split(" ")[0]} on Teams`}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                <TeamsIcon size={14} />
+              </a>
+              <a
+                href={`mailto:${email}`}
+                aria-label={email}
+                title={email}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                <Mail size={14} strokeWidth={1.9} />
+              </a>
+              <span className="min-w-0 break-all text-[11px] text-text-tertiary">
+                {email}
+              </span>
+            </div>
+          )}
+        </div>
+      }
+    >
+      {children}
+    </HoverCard>
   );
 }
 
@@ -229,17 +331,31 @@ export function OfferingOwners({
         <ul className="space-y-2.5">
           {granted.map((o) => (
             <li key={o.memberId} className="flex items-center gap-2.5">
-              <Avatar name={o.name} className="h-8 w-8 shrink-0 text-[11px]" />
-              <span className="flex min-w-0 flex-col leading-tight">
-                <span className="flex flex-wrap items-center gap-1.5">
-                  <span className="break-words text-[13px] font-semibold text-text-primary">
-                    {o.name}
+              {/* HOVER A NAME, SEE WHO IT ACTUALLY IS — address included
+                  (Anir, Jul 29: "I want to be able to see email addresses
+                  here when I hover over the person... I think there's a
+                  duplicate of me"). Two colleagues can share a display name;
+                  the address is the only thing that tells them apart, so it
+                  should never take a database query to find out which account
+                  is on the list. */}
+              <OwnerHoverCard owner={o} isYou={o.memberId === myMemberId}>
+                <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <Avatar
+                    name={o.name}
+                    className="h-8 w-8 shrink-0 text-[11px]"
+                  />
+                  <span className="flex min-w-0 flex-col leading-tight">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="break-words text-[13px] font-semibold text-text-primary">
+                        {o.name}
+                      </span>
+                    </span>
+                    <span className="text-[11.5px] text-text-secondary">
+                      Owner since {formatDate(o.claimed_at)}
+                    </span>
                   </span>
                 </span>
-                <span className="text-[11.5px] text-text-secondary">
-                  Owner since {formatDate(o.claimed_at)}
-                </span>
-              </span>
+              </OwnerHoverCard>
               <Tooltip label="Can edit this offering" side="top">
                 <span
                   className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"

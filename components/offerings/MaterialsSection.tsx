@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
+  Download,
+  X,
   ExternalLink,
   Files,
   FilterX,
@@ -21,6 +24,7 @@ import {
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
   MATERIAL_ICON,
+  isSalesVisible,
   legacyKindLabel,
   materialFormat,
   type MaterialFormat,
@@ -80,17 +84,71 @@ function TagPill({
 export function MaterialsSection({
   materials,
   action,
+  offeringId,
+  canEdit = false,
 }: {
   materials: OfferingMaterial[];
   /** Rendered at the right end of the filter row (the "+" add button). */
   action?: React.ReactNode;
+  /** Needed to delete a row through the offering PATCH. */
+  offeringId?: string;
+  /** Owners add and remove. EVERYONE downloads: sales materials exist to be
+   *  handed to customers (Anir, Jul 29: "people who are not the owner, just
+   *  normal sales, they can download all this stuff"). */
+  canEdit?: boolean;
 }) {
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
 
+  const router = useRouter();
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  /** Take a material off the offering. Owner-only: the button is not rendered
+   *  for anyone else, and the PATCH refuses them regardless. */
+  async function removeMaterial(target: OfferingMaterial) {
+    if (!offeringId || removing) return;
+    if (!confirm(`Remove "${target.label}" from this offering?`)) return;
+    setRemoving(target.id);
+    try {
+      const next = materials
+        .filter((m) => m.id !== target.id)
+        .map((m) => ({
+          id: m.id,
+          kind: m.kind,
+          label: m.label,
+          url: m.url,
+          docsPath: m.docsPath,
+          description: m.description,
+          journeyStage: m.journeyStage,
+          accessLevel: m.accessLevel,
+        }));
+      const res = await fetch(`/api/offerings/${offeringId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ materials: next }),
+      });
+      const data = await res.json();
+      if (data.ok) router.refresh();
+      else alert(data.error || "Could not remove that material.");
+    } finally {
+      setRemoving(null);
+    }
+  }
+
   const anyFilter = formats.length > 0 || stages.length > 0 || levels.length > 0;
-  const visible = materials
+  // Agent-training uploads never reach a rep's list. They are background
+  // knowledge for the assistant, not collateral, so only an owner — who has
+  // to be able to manage them — sees them here at all.
+  const mine = canEdit ? materials : materials.filter(isSalesVisible);
+  // How many of the rows an OWNER is looking at are invisible to everyone
+  // else. Counted from the rows themselves, not from what the filter removed:
+  // for an owner nothing is removed, which is exactly when this line needs to
+  // be said out loud.
+  const hiddenTraining = canEdit
+    ? materials.filter((m) => !isSalesVisible(m)).length
+    : 0;
+  const visible = mine
     .filter((m) => {
       if (formats.length && !formats.includes(materialFormat(m.kind))) return false;
       // An untagged material matches only "no restriction" — it is never
@@ -173,8 +231,15 @@ export function MaterialsSection({
       <div className="mt-3 flex items-center justify-between gap-3">
         <p className="text-[12px] text-text-secondary" aria-live="polite">
           Showing <span className="tnum font-semibold">{visible.length}</span> of{" "}
-          <span className="tnum font-semibold">{materials.length}</span>{" "}
-          {materials.length === 1 ? "material" : "materials"}
+          <span className="tnum font-semibold">{mine.length}</span>{" "}
+          {mine.length === 1 ? "material" : "materials"}
+          {hiddenTraining > 0 && (
+            <span className="text-text-tertiary">
+              {" "}
+              · <span className="tnum">{hiddenTraining}</span> training{" "}
+              {hiddenTraining === 1 ? "file" : "files"} hidden from sales
+            </span>
+          )}
         </p>
         {anyFilter && (
           <button
@@ -189,8 +254,8 @@ export function MaterialsSection({
 
       {visible.length === 0 ? (
         <p className="mt-3 border-y border-border-light py-5 text-[13px] text-text-tertiary">
-          None of the {materials.length}{" "}
-          {materials.length === 1 ? "material" : "materials"} on this offering
+          None of the {mine.length}{" "}
+          {mine.length === 1 ? "material" : "materials"} on this offering
           match all three filters, clear one to see the rest.
         </p>
       ) : (
@@ -209,12 +274,16 @@ export function MaterialsSection({
               ? ACCESS_LEVEL_META[material.accessLevel]
               : null;
             const internal = material.accessLevel === "internal_only";
+            // An UPLOADED file is fetched through our download route, which
+            // mints a fresh signed URL per click; a pasted link is just a link.
+            const uploaded = Boolean(material.docsPath);
             return (
               <a
                 key={material.id}
                 href={material.url}
-                target="_blank"
+                target={uploaded ? undefined : "_blank"}
                 rel="noopener noreferrer"
+                download={uploaded ? material.label : undefined}
                 className="group flex min-h-[64px] cursor-pointer items-center gap-3 border-l-2 px-1 py-3 pl-2.5 transition-colors hover:bg-[var(--surface)]"
                 // An internal-only file gets its own rail down the left edge,
                 // so a row that must never be forwarded is obvious before you
@@ -311,13 +380,44 @@ export function MaterialsSection({
                   )}
                 </span>
                 <span className="hidden shrink-0 text-[11px] font-medium text-text-tertiary lg:block">
-                  Open asset
+                  {uploaded ? "Download" : "Open asset"}
                 </span>
-                <ExternalLink
-                  size={14}
-                  strokeWidth={1.7}
-                  className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
-                />
+                {uploaded ? (
+                  <Download
+                    size={14}
+                    strokeWidth={1.8}
+                    className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                  />
+                ) : (
+                  <ExternalLink
+                    size={14}
+                    strokeWidth={1.7}
+                    className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                  />
+                )}
+                {canEdit && offeringId && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Remove ${material.label}`}
+                    title="Remove this material"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void removeMaterial(material);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void removeMaterial(material);
+                      }
+                    }}
+                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
+                  >
+                    <X size={14} strokeWidth={2} />
+                  </span>
+                )}
               </a>
             );
           })}

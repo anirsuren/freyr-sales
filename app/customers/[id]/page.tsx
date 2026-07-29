@@ -15,6 +15,7 @@ import {
   MATERIAL_META,
   type Offering,
 } from "@/lib/offerings";
+import { isSalesVisible } from "@/lib/offeringMaterials";
 import { getDataMode } from "@/lib/dataMode";
 
 export const metadata = { title: "Customer" };
@@ -81,7 +82,9 @@ export default async function CustomerDetailPage({
     availability: o.current_availability,
     poc: o.poc,
     description: o.offering_description,
-    materials: o.materials.map((m) => ({
+    // Agent-training uploads never leave the offering page: they exist to make
+    // the assistant smarter, not to be handed to a customer (Wajeed, Jul 29).
+    materials: o.materials.filter(isSalesVisible).map((m) => ({
       id: m.id,
       kind: MATERIAL_META[m.kind]?.label || m.kind,
       // The raw kind travels alongside its label so the tab can resolve the

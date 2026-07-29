@@ -1,6 +1,7 @@
 import "server-only";
 
 import { listOfferings, listCustomerTypes, listMarkets } from "./offerings";
+import { loadMaterialText } from "./materialText";
 
 /**
  * WHAT THE ASSISTANT KNOWS, beyond what is on screen.
@@ -27,7 +28,7 @@ export type KnowledgePassage = {
   /** Stable id of the record this text came from. */
   id: string;
   /** What kind of thing it is, for the citation line. */
-  kind: "offering" | "material" | "customer-type" | "market";
+  kind: "offering" | "material" | "file" | "customer-type" | "market";
   /** Human title, e.g. the offering name. */
   title: string;
   /** Where a person can go to read it themselves. */
@@ -36,8 +37,46 @@ export type KnowledgePassage = {
   text: string;
 };
 
-/** Everything the assistant may quote, built fresh from the live store. */
-export function buildKnowledgeBase(): KnowledgePassage[] {
+/** How much of an uploaded file goes into one passage. Small enough that a
+ *  retrieved chunk is about one idea, big enough to carry the sentence around
+ *  the answer — a deck cut into single bullets loses the context that makes
+ *  the bullet mean anything. */
+const CHUNK = 1100;
+
+/** Split a file's text at paragraph boundaries, never mid-sentence. */
+function chunkText(text: string): string[] {
+  const out: string[] = [];
+  let buf = "";
+  for (const para of text.split(/\n{1,}/)) {
+    const line = para.trim();
+    if (!line) continue;
+    if (buf.length + line.length + 1 > CHUNK && buf) {
+      out.push(buf);
+      buf = "";
+    }
+    // A single paragraph longer than a chunk (a wall-of-text PDF page) is cut
+    // on whitespace rather than dropped.
+    if (line.length > CHUNK) {
+      for (const piece of line.match(new RegExp(`[\\s\\S]{1,${CHUNK}}(\\s|$)`, "g")) || [])
+        out.push(piece.trim());
+      continue;
+    }
+    buf = buf ? `${buf}\n${line}` : line;
+  }
+  if (buf) out.push(buf);
+  return out.filter(Boolean);
+}
+
+/** Everything the assistant may quote, built fresh from the live store.
+ *
+ *  `fileText` is the words pulled out of uploaded decks, transcripts and
+ *  documents, keyed by storage path. Pass it (see buildKnowledgeBaseAsync) and
+ *  the assistant can answer FROM THE FILES, which is the entire point of
+ *  uploading them; omit it and it answers from the catalogue alone, exactly as
+ *  it did before. */
+export function buildKnowledgeBase(
+  fileText: Record<string, { text: string; filename: string }> = {}
+): KnowledgePassage[] {
   const out: KnowledgePassage[] = [];
 
   for (const o of listOfferings()) {
@@ -101,6 +140,23 @@ export function buildKnowledgeBase(): KnowledgePassage[] {
           .filter(Boolean)
           .join(". "),
       });
+
+      // THE FILE ITSELF. Each chunk is its own passage and carries the deck
+      // name and the offering, so a retrieved paragraph can always be cited
+      // as "page 4 of the Freya.Register demo deck" rather than floating free.
+      const doc = m.docsPath ? fileText[m.docsPath] : undefined;
+      if (doc?.text) {
+        const chunks = chunkText(doc.text);
+        chunks.forEach((chunk, i) => {
+          out.push({
+            id: `${m.id}#${i}`,
+            kind: "file",
+            title: `${m.label}${chunks.length > 1 ? ` (part ${i + 1} of ${chunks.length})` : ""}`,
+            href: `/offerings/${o.id}`,
+            text: `From "${doc.filename}", a ${m.kind} uploaded to ${o.offering_name}:\n${chunk}`,
+          });
+        });
+      }
     }
   }
 
@@ -135,6 +191,13 @@ export function buildKnowledgeBase(): KnowledgePassage[] {
   }
 
   return out;
+}
+
+/** The knowledge base INCLUDING the contents of every uploaded file. Async
+ *  because the file text is loaded from the database once per process. */
+export async function buildKnowledgeBaseAsync(): Promise<KnowledgePassage[]> {
+  const index = await loadMaterialText().catch(() => ({}));
+  return buildKnowledgeBase(index);
 }
 
 const STOP = new Set([

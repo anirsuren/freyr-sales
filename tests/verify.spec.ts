@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import { readFile } from "fs/promises";
+import { crc32, deflateRawSync } from "zlib";
 
 const PORT = Number(process.env.PORT || 3001);
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -3389,8 +3390,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       page.getByText("Bio Pharmaceutical", { exact: true })
     ).toBeVisible();
     // market chip is a link; its flag emoji is aria-hidden so the accessible
-    // name is exactly the market.
-    await expect(page.getByRole("link", { name: "Korea", exact: true })).toBeVisible();
+    // name is exactly the market. Freya.Register is sold worldwide, so it
+    // carries one chip — "Global" — not the five regional ones (change
+    // request 11, Wajeed + Eeswar).
+    await expect(page.getByRole("link", { name: "Global", exact: true })).toBeVisible();
     // sales material is a real, clickable external link
     await expect(
       page.getByText(/Sales materials/i).first()
@@ -3469,6 +3472,60 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(res.ok()).toBeTruthy();
   }
 
+
+  /**
+   * Build a REAL .docx in memory: a ZIP whose entries are deflated exactly the
+   * way Word writes them. Building it here rather than committing a binary
+   * fixture means the test proves the extractor against a genuine archive, and
+   * a reviewer can read what the document says.
+   */
+  const DOCX_MIME =
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+  function buildDocx(documentXml: string): Buffer {
+    const files: [string, Buffer][] = [
+      ["[Content_Types].xml", Buffer.from("<Types/>")],
+      ["word/document.xml", Buffer.from(documentXml)],
+    ];
+    const locals: Buffer[] = [];
+    const central: Buffer[] = [];
+    let offset = 0;
+    for (const [name, raw] of files) {
+      const data = deflateRawSync(raw);
+      const nameBuf = Buffer.from(name);
+      const local = Buffer.alloc(30);
+      local.writeUInt32LE(0x04034b50, 0);
+      local.writeUInt16LE(20, 4); // version needed
+      local.writeUInt16LE(8, 8); // deflate
+      local.writeUInt32LE(crc32(raw) >>> 0, 14);
+      local.writeUInt32LE(data.length, 18);
+      local.writeUInt32LE(raw.length, 22);
+      local.writeUInt16LE(nameBuf.length, 26);
+      locals.push(local, nameBuf, data);
+
+      const dir = Buffer.alloc(46);
+      dir.writeUInt32LE(0x02014b50, 0);
+      dir.writeUInt16LE(20, 6);
+      dir.writeUInt16LE(8, 10);
+      dir.writeUInt32LE(crc32(raw) >>> 0, 16);
+      dir.writeUInt32LE(data.length, 20);
+      dir.writeUInt32LE(raw.length, 24);
+      dir.writeUInt16LE(nameBuf.length, 28);
+      dir.writeUInt32LE(offset, 42);
+      central.push(dir, nameBuf);
+      offset += local.length + nameBuf.length + data.length;
+    }
+    const body = Buffer.concat(locals);
+    const dirBuf = Buffer.concat(central);
+    const end = Buffer.alloc(22);
+    end.writeUInt32LE(0x06054b50, 0);
+    end.writeUInt16LE(files.length, 8);
+    end.writeUInt16LE(files.length, 10);
+    end.writeUInt32LE(dirBuf.length, 12);
+    end.writeUInt32LE(body.length, 16);
+    return Buffer.concat([body, dirBuf, end]);
+  }
+
   /** Hand it back, so a later test still sees the read-only state. */
   async function disown(request: APIRequestContext, id: string) {
     await request.delete(`${BASE}/api/offerings/${id}/owners`);
@@ -3510,9 +3567,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // A ?market= deep link pre-filters the list to that market.
     await page.goto(`${BASE}/offerings?market=mkt-europe`);
     await page.waitForTimeout(400);
+    // Freya.Register is mapped to "Global", and global covers every region —
+    // filtering by Europe must still find it (lib/offeringCatalogue.servesMarket).
     await expect(
       page.getByText("Freya.Register", { exact: true })
-    ).toBeVisible(); // every offering is available across all five markets
+    ).toBeVisible();
     await expect(page.getByText("Freya.Submit").first()).toBeVisible();
     // A market chip on an offering links into that filtered view.
     await page.goto(`${BASE}/offerings/of-003`);
@@ -3537,13 +3596,17 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, "of-001");
   });
 
-  test("244 — 'awaiting details' opens an actionable worklist (V17)", async ({
+  test("244 — the unmapped worklist filters to offerings still awaiting details (V17)", async ({
     page,
   }) => {
-    await page.goto(`${BASE}/offerings`);
-    // the "X awaiting details" stat sub-link → the worklist of offerings
-    // still needing their team data entered
-    await page.locator('a[href="/offerings?status=unmapped"]').click();
+    // The "X awaiting details" counter was REMOVED from the stat card (Saras,
+    // change request 12: it read "27 fully detailed" when nothing had been
+    // uploaded, which "can mislead the end users"). The worklist behind it is
+    // still real and still linked from the cards, so this pins the filter.
+    await expect(
+      page.locator('a[href="/offerings?status=unmapped"]')
+    ).toHaveCount(0);
+    await page.goto(`${BASE}/offerings?status=unmapped`);
     await page.waitForURL(/status=unmapped/, { timeout: 8000 });
     await expect(page.getByText("Awaiting details").first()).toBeVisible();
     // a blank-in-the-sheet offering still awaiting its applicability shows;
@@ -3662,6 +3725,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const d = await res.json();
     expect(d.source).toBe("offerings");
     expect(d.reply.toLowerCase()).toContain("europe");
+    // Freya.Register is "Global", which covers Europe — it must still be listed.
     expect(d.reply).toContain("Freya.Register");
   });
 
@@ -4719,11 +4783,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("304 — the agent answers per-offering market availability (V51)", async ({
     request,
   }) => {
+    // Freya.Register is sold GLOBALLY (change request 11), so a question about
+    // any single market still answers yes and says why.
     const yes = await ask(request, "is Freya.Register available in Japan?");
     expect(yes.source).toBe("offerings");
     expect(yes.reply).toMatch(/yes/i);
+    expect(yes.reply).toMatch(/global/i);
     expect(yes.reply).toContain("Japan");
-    // every offering in the master sheet is available across all five markets
+    // the regional offerings in the master sheet cover all five markets
     const china = await ask(request, "is Freya.Label available in China?");
     expect(china.reply).toMatch(/yes/i);
     expect(china.reply).toContain("China");
@@ -6013,6 +6080,134 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       await expect(
         main.getByText("seats under contract", { exact: false }).first()
       ).toBeVisible();
+    }
+  });
+
+  test("354 — an uploaded file is READ, and the assistant answers from its contents (V52)", async ({
+    request,
+  }) => {
+    // The whole reason uploads exist rather than links (Wajeed, Jul 29: "the AI
+    // should be able to use the content of each of the files uploaded and
+    // answer any query the user has"). A .docx is built here in-process so the
+    // test proves the extractor, not a fixture that ships with the repo.
+    const id = "of-016";
+    await own(request, id);
+
+    const doc =
+      '<?xml version="1.0"?><w:document xmlns:w="x"><w:body>' +
+      "<w:p><w:r><w:t>Submissions Planning cheat sheet</w:t></w:r></w:p>" +
+      "<w:p><w:r><w:t>The zephyrine gateway milestone must clear QC fourteen days " +
+      "before the health authority filing window opens.</w:t></w:r></w:p>" +
+      "</w:body></w:document>";
+    const docx = buildDocx(doc);
+
+    const up = await request.post(`${BASE}/api/offerings/${id}/materials/upload`, {
+      multipart: {
+        file: { name: "planning.docx", mimeType: DOCX_MIME, buffer: docx },
+      },
+    });
+    expect(up.ok()).toBeTruthy();
+    const stored = await up.json();
+    // The server says, in plain terms, whether it could read the file.
+    expect(stored.readable).toBe(true);
+    expect(stored.words).toBeGreaterThan(10);
+    expect(stored.docsPath).toBeTruthy();
+
+    // Attach it the way the dialog does.
+    const patch = await request.patch(`${BASE}/api/offerings/${id}`, {
+      data: {
+        materials: [
+          {
+            id: "",
+            kind: "document",
+            label: "QA planning cheat sheet",
+            url: stored.url,
+            docsPath: stored.docsPath,
+            accessLevel: "agent_only",
+          },
+        ],
+      },
+    });
+    const saved = await patch.json();
+    // docsPath MUST survive the save — it is the only handle on the file.
+    expect(saved.offering.materials[0].docsPath).toBe(stored.docsPath);
+
+    // The assistant answers from inside the document, and says where it got it.
+    const ask = await request.post(`${BASE}/api/agent/assistant`, {
+      data: {
+        question: "how many days before the filing window must the zephyrine gateway milestone clear QC?",
+        pageLabel: "an offering",
+        path: `/offerings/${id}`,
+      },
+    });
+    const answer = await ask.json();
+    expect(answer.answer).toMatch(/fourteen|14/i);
+
+    // Removing the material takes its text with it.
+    await request.patch(`${BASE}/api/offerings/${id}`, { data: { materials: [] } });
+    await disown(request, id);
+  });
+
+  test("355 — agent-training uploads are hidden from sales, not from the agent (V52)", async ({
+    page,
+    request,
+  }) => {
+    // Eeswar's old customer-demo transcripts: background knowledge, never
+    // collateral (Wajeed, Jul 29: "three transcripts of old demos which no
+    // salesperson will see... useful to train this chatbot").
+    const id = "of-017";
+    await own(request, id);
+    await request.patch(`${BASE}/api/offerings/${id}`, {
+      data: {
+        materials: [
+          {
+            id: "",
+            kind: "document",
+            label: "QA client-facing sheet",
+            url: "https://www.freyrsolutions.com/",
+            accessLevel: "client_facing",
+          },
+          {
+            id: "",
+            kind: "document",
+            label: "QA training transcript",
+            url: "https://www.freyrsolutions.com/",
+            accessLevel: "agent_only",
+          },
+        ],
+      },
+    });
+    // An owner manages both, and is told the training file is hidden.
+    await page.goto(`${BASE}/offerings/${id}`);
+    await expect(page.getByText("QA training transcript")).toBeVisible();
+    await expect(page.getByText(/hidden from sales/i)).toBeVisible();
+
+    // A rep who does NOT own it sees only the client-facing one.
+    await disown(request, id);
+    await page.goto(`${BASE}/offerings/${id}`);
+    await expect(page.getByText("QA client-facing sheet")).toBeVisible();
+    await expect(page.getByText("QA training transcript")).toHaveCount(0);
+
+    await own(request, id);
+    await request.patch(`${BASE}/api/offerings/${id}`, { data: { materials: [] } });
+    await disown(request, id);
+  });
+
+  test("356 — Global is one market that answers every market (V52)", async ({
+    request,
+  }) => {
+    // Change request 11: Freya.Register's five regional chips became one
+    // "Global", and global has to keep meaning "yes" for each region.
+    const res = await request.get(`${BASE}/api/offerings/of-001`);
+    const o = (await res.json()).offering;
+    expect(o.markets.map((m: { name: string }) => m.name)).toEqual(["Global"]);
+    for (const market of ["Japan", "Europe", "China"]) {
+      const ask = await request.post(`${BASE}/api/agent/converse`, {
+        data: { mock: true, message: `is Freya.Register available in ${market}?` },
+      });
+      const d = await ask.json();
+      expect(d.reply).toMatch(/yes/i);
+      expect(d.reply).toContain(market);
     }
   });
 

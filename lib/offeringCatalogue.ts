@@ -41,3 +41,29 @@ export const OFFERING_CATALOGUE_ORDER: string[] = [
   "Medical & Scientific Communication",
   "RIMS Data Services",
 ];
+
+/** The market that means "everywhere". */
+export const GLOBAL_MARKET_ID = "mkt-global";
+
+/**
+ * Does an offering sold in `marketIds` cover `marketId`?
+ *
+ * GLOBAL COVERS EVERYTHING. Freya.Register is sold worldwide, so asking "is it
+ * available in Japan?" must answer yes even though the record now says one
+ * word instead of five (change request 11). Without this, collapsing the five
+ * regional chips into "Global" would have silently made every market filter
+ * and every agent answer say NO for the flagship offering.
+ *
+ * Lives here — the zero-import catalogue module — so the browser filter, the
+ * agent and the server all apply one rule.
+ */
+export function servesMarket(
+  marketIds: readonly string[] | undefined,
+  marketId: string
+): boolean {
+  if (!marketIds?.length) return false;
+  if (marketIds.includes(marketId)) return true;
+  // Asking FOR Global is asking "is it sold everywhere" — a regional-only
+  // offering is not, so this is deliberately one-directional.
+  return marketId !== GLOBAL_MARKET_ID && marketIds.includes(GLOBAL_MARKET_ID);
+}

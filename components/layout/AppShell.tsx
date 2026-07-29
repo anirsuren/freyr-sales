@@ -238,15 +238,20 @@ export function AppShell({
             )}
           </div>
         </div>
-        {!offeringsOnly && (
-          <AgentDock
-            open={visibleAgentOpen}
-            onOpenChange={setAgentOpen}
-            hidden={visibleAgentHidden}
-            onHide={hideAgent}
-            pathname={pathname}
-          />
-        )}
+        {/* THE ASSISTANT BUBBLE IS ON IN REAL MODE TOO (Anir, Jul 29: "I want
+            an AI chatbot in the bottom right when I click on an offering, in
+            addition to the Freyr agent AI page"). It was gated off with every
+            unreleased module; the agent itself has shipped, so the gate now
+            only tells the dock to keep its answers inside what real mode can
+            actually open. */}
+        <AgentDock
+          open={visibleAgentOpen}
+          onOpenChange={setAgentOpen}
+          hidden={visibleAgentHidden}
+          onHide={hideAgent}
+          pathname={pathname}
+          offeringsOnly={offeringsOnly}
+        />
         <ProductTourProvider
           offeringsOnly={offeringsOnly}
           autoStart={approvalEnabled}

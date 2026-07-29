@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import {
   Package,
+  Shapes,
   CheckCircle2,
   Layers,
   Users,
@@ -270,14 +271,14 @@ export default async function OfferingsPage() {
     })
   );
 
-  // Repository completeness — useful as Suren rolls this out and has the data entered.
-  const mapped = offerings.filter(
-    (o) =>
-      o.customerTypes.length > 0 ||
-      o.markets.length > 0 ||
-      o.materials.length > 0
-  ).length;
-  const toMap = offerings.length - mapped;
+  // "FULLY DETAILED" MEANS ITS SALES MATERIAL IS IN (Saras, change request 12).
+  // It used to count an offering as detailed if it had a customer type OR a
+  // market OR a file, so 27 of 29 read as done when nothing had been uploaded
+  // at all — "these numbers can mislead the end users, since technically 0
+  // offerings are currently fully detailed". The material is the thing a rep
+  // actually comes here for, so that is the bar, and the misleading
+  // "# awaiting details" counter is gone.
+  const mapped = offerings.filter((o) => o.materials.length > 0).length;
 
   return (
     <div>
@@ -306,8 +307,10 @@ export default async function OfferingsPage() {
         }
       />
 
-      {/* Repository at a glance — four distinct, compact cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      {/* Repository at a glance. Offering TYPES earns a card of its own
+          (Saras, change request 13: "'Offering Types' list needs as much
+          visibility as 'Offering categories' and 'Customer Types'"). */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         <Stat
           label="Offerings"
           value={offerings.length}
@@ -317,9 +320,14 @@ export default async function OfferingsPage() {
         <Stat
           label="Fully detailed"
           value={mapped}
-          sub={toMap > 0 ? `${toMap} awaiting details` : "all detailed"}
-          subHref={toMap > 0 ? "/offerings?status=unmapped" : undefined}
+          sub="sales material uploaded"
           icon={CheckCircle2}
+        />
+        <Stat
+          label="Offering types"
+          value={offeringTypes.length}
+          href="/offerings/offering-types"
+          icon={Shapes}
         />
         <Stat
           label="Categories"

@@ -273,6 +273,8 @@ export function OfferingOverviewMain({
         ) : (
           <MaterialsSection
             materials={o.materials}
+            offeringId={o.id}
+            canEdit={admin}
             action={
               admin ? (
                 <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
