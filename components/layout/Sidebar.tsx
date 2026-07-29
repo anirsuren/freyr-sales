@@ -10,7 +10,6 @@ import {
   Building2,
   Contact,
   UsersRound,
-  Settings,
   ChartColumnBig,
   FileBarChart,
   Rss,
@@ -29,7 +28,10 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import type { DataMode } from "@/lib/dataMode";
 import { getHomePath, isOfferingsOnly, isReleased } from "@/lib/release";
-import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import {
+  useCurrentUser,
+  useMyPhoto,
+} from "@/components/auth/CurrentUserProvider";
 import { userScopedStorageKey } from "@/lib/userIdentity";
 
 // One flat, scannable list — no section headers, no scrolling. Reference/tool
@@ -89,6 +91,8 @@ export function Sidebar({
 }) {
   const pathname = usePathname() || "";
   const currentUser = useCurrentUser();
+  // The signed-in user's uploaded picture, shared by every avatar of them.
+  const { photo: myPhoto } = useMyPhoto();
   const offeringsOnly = isOfferingsOnly(dataMode);
   const navItems = ALL_NAV_ITEMS.filter((item) => isReleased(item.href, dataMode));
   const [collapsed, setCollapsed] = useState(false);
@@ -239,21 +243,9 @@ export function Sidebar({
 
       {/* Footer: settings + profile */}
       <div className="mt-auto px-3 pt-4 border-t border-border-light space-y-0.5">
-        <Link
-          href="/settings"
-          data-tour="nav-settings"
-          title={collapsed ? "Settings" : undefined}
-          className={cn(
-            "flex items-center gap-3 py-2 rounded-md text-[14px] border-l-[3px] transition-colors",
-            collapsed ? "justify-center px-0" : "pl-3 pr-3",
-            isActive(pathname, "/settings")
-              ? "border-blue-primary bg-blue-light text-blue-primary font-semibold"
-              : "border-transparent text-text-secondary hover:bg-surface"
-          )}
-        >
-          <Settings size={20} strokeWidth={1.5} className="shrink-0" />
-          {!collapsed && "Settings"}
-        </Link>
+        {/* Settings moved to the account menu, top right, where a person
+            looks for their own profile (Anir, Jul 29: "I don't see a point in
+            having settings at the bottom left"). */}
         {!offeringsOnly && (
         <Link
           href="/settings?tab=profile"
@@ -263,7 +255,7 @@ export function Sidebar({
             collapsed ? "justify-center px-0" : "px-3"
           )}
         >
-          <Avatar name={currentUser.name} className="w-8 h-8 text-[12px] shrink-0" />
+          <Avatar src={myPhoto} name={currentUser.name} className="w-8 h-8 text-[12px] shrink-0" />
           {!collapsed && (
             <div className="leading-tight min-w-0">
               <p className="text-[13px] text-text-primary font-medium truncate">{currentUser.name}</p>

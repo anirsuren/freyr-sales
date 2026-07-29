@@ -11,7 +11,10 @@ import { isOfferingsOnly, isReleasedPath } from "@/lib/release";
 import { useHoverPreference } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
-import { CurrentUserProvider } from "@/components/auth/CurrentUserProvider";
+import {
+  CurrentUserProvider,
+  MyPhotoProvider,
+} from "@/components/auth/CurrentUserProvider";
 import {
   userScopedStorageKey,
   type UserIdentity,
@@ -170,7 +173,7 @@ export function AppShell({
   ) {
     return (
       <CurrentUserProvider user={currentUser}>
-        {children}
+        <MyPhotoProvider>{children}</MyPhotoProvider>
       </CurrentUserProvider>
     );
   }
@@ -183,6 +186,7 @@ export function AppShell({
 
   return (
     <CurrentUserProvider user={currentUser}>
+      <MyPhotoProvider>
       <ToastProvider>
         <a
           href="#main-content"
@@ -244,6 +248,9 @@ export function AppShell({
             unreleased module; the agent itself has shipped, so the gate now
             only tells the dock to keep its answers inside what real mode can
             actually open. */}
+        {/* Not on the agent's own page: a floating mini agent on top of the
+            full agent is the same thing twice (Anir, Jul 29). */}
+        {!pathname.startsWith("/agent") && (
         <AgentDock
           open={visibleAgentOpen}
           onOpenChange={setAgentOpen}
@@ -252,12 +259,14 @@ export function AppShell({
           pathname={pathname}
           offeringsOnly={offeringsOnly}
         />
+        )}
         <ProductTourProvider
           offeringsOnly={offeringsOnly}
           autoStart={approvalEnabled}
         />
         <AutoTruncationTooltip />
       </ToastProvider>
+      </MyPhotoProvider>
     </CurrentUserProvider>
   );
 }

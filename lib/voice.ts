@@ -141,7 +141,7 @@ function seedCalls(): VoiceCall[] {
     ["cont-007", "Stefan Bauer", "Aether Medical Devices"],
     ["cont-011", "Owen Bradley", "Northwind Biosciences"],
     ["cont-008", "Megan Ruiz", "Solara Consumer Health"],
-    ["cont-001", "Dr. Priya Mehta", "BioNex Therapeutics"],
+    ["cont-001", "Dr. Patricia Mayhew", "BioNex Therapeutics"],
   ];
   const CATS = Object.keys(agentIds);
   const PATTERN: VoiceOutcome[] = [

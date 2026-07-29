@@ -1,25 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus,
-  X,
-  Loader2,
-  Pencil,
-  Headset,
-  GraduationCap,
   Briefcase,
-  Package,
-  LifeBuoy,
-  UserRound,
-  Search,
   Check,
+  GraduationCap,
+  Headset,
+  LifeBuoy,
+  Link2,
+  Loader2,
+  Mail,
+  MessagesSquare,
+  Package,
+  Pencil,
+  Phone,
+  Plus,
+  Search,
+  UserRound,
+  X,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import type { PickablePerson } from "@/components/ui/PeoplePicker";
@@ -28,12 +33,19 @@ import type { OfferingContact } from "@/lib/offerings";
 
 // What a person DOES on an offering. A colour and an icon each, like every
 // other picker in the app.
+/** Sentinel: not a role, a request to type one. */
+const CUSTOM_ROLE = "__custom__";
+
 const ROLE_OPTIONS: ColorOption[] = [
   { value: "Service delivery POC", label: "Service delivery POC", color: "#0071E3", icon: Headset },
   { value: "Subject matter expert", label: "Subject matter expert", color: "#7C3AED", icon: GraduationCap },
   { value: "Commercial lead", label: "Commercial lead", color: "#0F766E", icon: Briefcase },
   { value: "Product owner", label: "Product owner", color: "#C2410C", icon: Package },
   { value: "Escalation contact", label: "Escalation contact", color: "#4338CA", icon: LifeBuoy },
+  // The five above are the common cases, not every case. Choosing this reveals
+  // a text field so a team can name a role we never thought of (Anir, Jul 29:
+  // "there should be an option to add another rule, like custom").
+  { value: CUSTOM_ROLE, label: "Custom role…", color: "#6E6E73", icon: Pencil },
 ];
 
 /**
@@ -90,6 +102,25 @@ export function OfferingContacts({
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * REFUSAL SHOWN ON THE BUTTON THAT REFUSED.
+   *
+   * Pressing Next with nobody chosen used to append a red sentence under the
+   * footer, which pushed the whole dialog up and read as a layout glitch (Anir,
+   * Jul 29: "it looks kind of awkward, it moves everything up"). Flashing the
+   * button itself red says the same thing where the click happened, costs no
+   * height, and settles back on its own.
+   */
+  const [reject, setReject] = useState(false);
+  /** Taking a contact off an offering asks first: it is a real record. */
+  const [confirmRemove, setConfirmRemove] = useState<OfferingContact | null>(
+    null
+  );
+  useEffect(() => {
+    if (!reject) return;
+    const t = setTimeout(() => setReject(false), 900);
+    return () => clearTimeout(t);
+  }, [reject]);
   // You PICK a person and PICK their role. You do not type their email or
   // phone: those belong to their account and are carried across automatically
   // (Anir, Jul 28: "why would I want to enter their email and phone? That
@@ -278,7 +309,7 @@ export function OfferingContacts({
             )}
             {canEdit && (
               <button
-                onClick={() => remove(c)}
+                onClick={() => setConfirmRemove(c)}
                 disabled={busy === c.id}
                 aria-label={`Remove ${c.name} from this offering`}
                 className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020] disabled:opacity-50"
@@ -302,6 +333,26 @@ export function OfferingContacts({
           scroll in order to choose the role... I can scroll within the
           container of the people, but I shouldn't have to scroll the entire
           thing"). */}
+      <ConfirmDialog
+        open={!!confirmRemove}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={() => {
+          const target = confirmRemove;
+          setConfirmRemove(null);
+          if (target) void remove(target);
+        }}
+        busy={!!confirmRemove && busy === confirmRemove.id}
+        title={`Remove ${confirmRemove?.name || "this contact"}?`}
+        confirmLabel="Remove contact"
+        body={
+          <>
+            <strong>{confirmRemove?.name}</strong> will no longer be listed as
+            a contact for <strong>{offeringName}</strong>.
+          </>
+        }
+        detail="Their account is untouched. You can add them again at any time."
+      />
+
       <Modal
         open={canEdit && adding}
         onClose={() => setAdding(false)}
@@ -393,12 +444,45 @@ export function OfferingContacts({
                       {on && <Check size={13} strokeWidth={3} />}
                     </span>
                     <Avatar name={p.name} className="h-10 w-10 shrink-0 text-[12px]" />
+                    {/* Name, role, then every way to reach them as its own
+                        floating pill (Anir, Jul 29: "email, teams... each of
+                        them should be in its own kind of floating pill"). Only
+                        real values render: an invented address on a real
+                        colleague is how somebody emails a stranger. */}
                     <span className="min-w-0 flex-1 leading-tight">
                       <span className="block break-words text-[13.5px] font-semibold text-text-primary">
                         {p.name}
                       </span>
-                      <span className="block break-words text-[11.5px] text-text-tertiary">
-                        {p.role || p.email || "Workspace member"}
+                      {p.role && (
+                        <span className="block break-words text-[11.5px] text-text-secondary">
+                          {p.role}
+                        </span>
+                      )}
+                      <span className="mt-1 flex flex-wrap items-center gap-1">
+                        {p.email && (
+                          <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[10.5px] text-text-secondary">
+                            <Mail size={10} strokeWidth={2} className="shrink-0" />
+                            <span className="break-all">{p.email}</span>
+                          </span>
+                        )}
+                        {p.phone && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[10.5px] text-text-secondary">
+                            <Phone size={10} strokeWidth={2} className="shrink-0" />
+                            {p.phone}
+                          </span>
+                        )}
+                        {p.email && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[10.5px] text-text-secondary">
+                            <MessagesSquare size={10} strokeWidth={2} className="shrink-0" />
+                            Teams
+                          </span>
+                        )}
+                        {p.linkedin && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[10.5px] text-text-secondary">
+                            <Link2 size={10} strokeWidth={2} className="shrink-0" />
+                            LinkedIn
+                          </span>
+                        )}
                       </span>
                     </span>
                   </button>
@@ -455,7 +539,7 @@ export function OfferingContacts({
                 <Button
                   onClick={() => {
                     if (pick.length === 0) {
-                      setError("Pick who you're adding");
+                      setReject(true);
                       return;
                     }
                     setError(null);
@@ -467,8 +551,13 @@ export function OfferingContacts({
                     });
                     setStep(2);
                   }}
+                  className={
+                    reject
+                      ? "!bg-[color:#B02020] hover:!bg-[color:#B02020]"
+                      : undefined
+                  }
                 >
-                  Next: assign roles
+                  {reject ? "Choose someone first" : "Next: assign roles"}
                 </Button>
               ) : (
                 <Button onClick={add} loading={busy === "add"}>

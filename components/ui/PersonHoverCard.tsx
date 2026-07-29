@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Phone } from "lucide-react";
+import { Mail, Package, Phone } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
@@ -79,9 +79,22 @@ export function PersonHoverCard({
               <p className="break-words text-[13.5px] font-semibold leading-tight text-text-primary">
                 {name}
               </p>
-              <p className="mt-0.5 break-words text-[11.5px] leading-snug text-text-tertiary">
-                {[role, context].filter(Boolean).join(" · ")}
-              </p>
+              {/* Role on its own line, directly under the name: it is the
+                  first thing you want after knowing who someone is (Anir,
+                  Jul 29: "the role should always show up right under the name
+                  of myself"). The offering follows as a proper tag, because it
+                  is an ASSET, not a sentence fragment. */}
+              {role && (
+                <p className="mt-0.5 break-words text-[11.5px] font-medium leading-snug text-text-secondary">
+                  {role}
+                </p>
+              )}
+              {context && (
+                <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-blue-light px-1.5 py-0.5 text-[11px] font-semibold text-blue-primary">
+                  <Package size={11} strokeWidth={2.1} className="shrink-0" />
+                  <span className="break-words">{context}</span>
+                </span>
+              )}
             </div>
           </div>
           <div className="mt-2.5 flex items-center gap-1.5">

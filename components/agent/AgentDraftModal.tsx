@@ -238,7 +238,7 @@ export function AgentDraftModal({
             value={text}
             onChange={(e) => setBody(e.target.value)}
             aria-label="Draft body"
-            className="w-full min-h-[220px] max-h-[46vh] whitespace-pre-wrap break-words text-[13px] leading-relaxed text-text-primary bg-surface border border-border-light rounded-xl p-4 font-sans resize-y focus:outline-none focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
+            className="w-full min-h-[220px] max-h-[46vh] whitespace-pre-wrap break-words text-[13px] leading-relaxed text-text-primary bg-surface border border-border-light rounded-xl p-4 font-sans resize-y focus:outline-none focus:border-blue-primary"
           />
 
           <div className="flex items-center gap-2 text-[12px] text-text-secondary bg-success/[0.06] border border-success/20 rounded-lg px-3 py-2">

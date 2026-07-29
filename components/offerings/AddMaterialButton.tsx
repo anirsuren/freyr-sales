@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Info, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
@@ -550,26 +551,37 @@ export function AddMaterialButton({
             )}
           </div>
 
-          {/* WHETHER THE ASSISTANT LEARNS FROM IT — a different question from
-              who may see it, so it gets its own control rather than another
-              value in the access list. */}
-          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border-light p-3">
+          {/* WHETHER THE ASSISTANT LEARNS FROM IT: a different question from
+              who may see it, so it keeps its own control rather than becoming
+              another value in the access list.
+
+              ONE LINE, NOT A PARAGRAPH. Three lines of explanation sat at the
+              bottom of an already tall dialog and pushed the buttons off screen
+              (Anir, Jul 29: "the entire thing is too vertical... just a simple
+              checkbox, if they want more information they can click the i").
+              The detail moved into the icon, where it costs no height. */}
+          <label className="flex cursor-pointer items-center gap-2.5">
             <input
               type="checkbox"
               checked={readByAgent}
               onChange={(e) => setReadByAgent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[color:#0071E3]"
+              className="h-4 w-4 shrink-0 cursor-pointer accent-[color:#0071E3]"
             />
-            <span className="min-w-0">
-              <span className="block text-[13px] font-semibold text-text-primary">
-                Let the Freyr assistant read this file
-              </span>
-              <span className="block text-[11.5px] leading-relaxed text-text-secondary">
-                On, it can answer questions from what is inside and cite it.
-                Off, the file is still here for the team — the assistant simply
-                never uses it.
-              </span>
+            <span className="text-[13px] font-medium text-text-primary">
+              Let the Freyr assistant read this file
             </span>
+            <Tooltip
+              side="top"
+              label="On: the assistant can answer questions from what is inside this file, and say which file it came from. Off: the file stays here for the team to open, and the assistant never reads it."
+            >
+              <span
+                tabIndex={0}
+                aria-label="What this means"
+                className="inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full text-text-tertiary transition-colors hover:text-blue-primary"
+              >
+                <Info size={14} strokeWidth={2} />
+              </span>
+            </Tooltip>
           </label>
 
           <div className="flex items-center justify-end gap-2 pt-1">

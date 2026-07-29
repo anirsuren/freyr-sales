@@ -24,6 +24,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 
 export type OwnerRow = {
@@ -92,9 +93,9 @@ function OwnerHoverCard({
   return (
     <HoverCard
       side="left"
-      width={280}
+      width={360}
       content={
-        <div className="w-[280px] p-3.5">
+        <div className="w-[360px] p-3.5">
           <div className="flex items-center gap-2.5">
             <Avatar name={owner.name} className="h-11 w-11 shrink-0 text-[14px]" />
             <div className="min-w-0">
@@ -142,7 +143,15 @@ function OwnerHoverCard({
               className="flex items-center gap-2 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
             >
               <Mail size={13.5} strokeWidth={1.9} className="shrink-0 text-text-tertiary" />
-              <span className="min-w-0 break-all font-medium">{email}</span>
+              {/* One line, always. A wrapped address splits mid-domain and reads as
+                  two broken strings (Anir, Jul 29: "it has to be on one line").
+                  The full value stays available on hover and on copy. */}
+              <span
+                title={email}
+                className="min-w-0 flex-1 truncate font-medium"
+              >
+                {email}
+              </span>
             </a>
             <a
               href={teamsChatUrl(owner.name, email)}
@@ -173,6 +182,7 @@ function OwnerHoverCard({
 
 export function OfferingOwners({
   offeringId,
+  offeringName,
   owners,
   isAdmin,
   myMemberId,
@@ -180,6 +190,8 @@ export function OfferingOwners({
   canEdit,
 }: {
   offeringId: string;
+  /** Named in the confirmation, so it is obvious what access is being lost. */
+  offeringName: string;
   owners: OwnerRow[];
   isAdmin: boolean;
   /** Null when the session carries no verified workspace account. */
@@ -191,6 +203,15 @@ export function OfferingOwners({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  /**
+   * REMOVING EDIT ACCESS ASKS FIRST.
+   *
+   * The X and "Give up ownership" both revoked immediately, so one stray click
+   * silently took away a person's ability to edit the offering, with no undo
+   * (Anir, Jul 29: "I pressed the X, it didn't even ask me for a confirmation").
+   * Losing a permission is exactly the kind of thing that must be deliberate.
+   */
+  const [confirmOwner, setConfirmOwner] = useState<OwnerRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [granting, setGranting] = useState(false);
   const [query, setQuery] = useState("");
@@ -385,12 +406,19 @@ export function OfferingOwners({
                   Can edit
                 </span>
               </Tooltip>
-              {isAdmin && (
+              {/* YOU CAN ONLY TAKE AWAY YOUR OWN ACCESS.
+                  This used to appear on every row for an admin, so one stray
+                  click could strip a colleague's edit rights without them ever
+                  knowing (Anir, Jul 29: "I shouldn't be able to remove other
+                  owners, like only myself"). Ownership is now given by an
+                  admin and surrendered by the person holding it, which means a
+                  permission never disappears behind someone's back. */}
+              {o.memberId === myMemberId && (
                 <button
-                  onClick={() => release(o.memberId)}
+                  onClick={() => setConfirmOwner(o)}
                   disabled={busy === o.memberId}
                   className="shrink-0 rounded-md p-1 text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-[color:#B02020] disabled:opacity-50"
-                  aria-label={`Remove ${o.name} as an owner`}
+                  aria-label="Give up your ownership"
                 >
                   <X size={14} strokeWidth={2} />
                 </button>
@@ -430,7 +458,7 @@ export function OfferingOwners({
                   Approve
                 </button>
                 <button
-                  onClick={() => release(o.memberId)}
+                  onClick={() => setConfirmOwner(o)}
                   disabled={busy === o.memberId}
                   className="rounded-md p-1 text-text-tertiary transition-colors hover:text-[color:#B02020] disabled:opacity-50"
                   aria-label={`Decline ${o.name}`}
@@ -465,7 +493,7 @@ export function OfferingOwners({
           so redundant"). */}
       {mine?.status === "owner" && (
         <button
-          onClick={() => release(mine.memberId)}
+          onClick={() => setConfirmOwner(mine)}
           disabled={busy === mine.memberId}
           className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color:#B02020]/30 px-3.5 py-2 text-[13px] font-semibold text-[color:#B02020] transition-colors hover:bg-[color:#B02020]/10 disabled:opacity-50"
         >
@@ -473,6 +501,48 @@ export function OfferingOwners({
           Give up ownership
         </button>
       )}
+
+      {/* Asking before a permission disappears. Wording differs for yourself
+          versus a teammate, because the consequences differ: you lose your own
+          access, they lose theirs without being told. */}
+      <ConfirmDialog
+        open={!!confirmOwner}
+        onClose={() => setConfirmOwner(null)}
+        onConfirm={() => {
+          const target = confirmOwner;
+          setConfirmOwner(null);
+          if (target) void release(target.memberId);
+        }}
+        busy={!!confirmOwner && busy === confirmOwner.memberId}
+        title={
+          confirmOwner?.memberId === mine?.memberId
+            ? "Give up ownership?"
+            : `Remove ${confirmOwner?.name || "this owner"}?`
+        }
+        confirmLabel={
+          confirmOwner?.memberId === mine?.memberId
+            ? "Give up ownership"
+            : "Remove access"
+        }
+        body={
+          confirmOwner?.memberId === mine?.memberId ? (
+            <>
+              You will no longer be able to edit{" "}
+              <strong>{offeringName}</strong>, including its sales materials.
+            </>
+          ) : (
+            <>
+              <strong>{confirmOwner?.name}</strong> will no longer be able to
+              edit <strong>{offeringName}</strong> or its sales materials.
+            </>
+          )
+        }
+        detail={
+          confirmOwner?.memberId === mine?.memberId
+            ? "An admin, or another owner, has to grant it back."
+            : "They are not notified. You can add them again at any time."
+        }
+      />
 
       {/* AN OFFERING CAN HAVE SEVERAL OWNERS, and an admin hands them out.
           Only people with a real account are offered, because ownership is

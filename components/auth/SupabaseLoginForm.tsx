@@ -221,7 +221,7 @@ export function SupabaseLoginForm({
   }
 
   const inputClass =
-    "mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[14px] text-text-primary outline-none focus:border-blue-primary focus:ring-2 focus:ring-blue-100";
+    "mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[14px] text-text-primary outline-none focus:border-blue-primary";
 
   return (
     <form onSubmit={submit} className="space-y-4">

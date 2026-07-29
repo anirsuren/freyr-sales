@@ -2,16 +2,127 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { MatchingOutput, PitchOutput } from "./types";
 import type { AgentDigestData, WeeklyReview, AccountBriefing } from "./agent";
 
-const MODEL = "claude-sonnet-4-6";
+// Sonnet is the right tier for this work — Opus costs several times more for
+// answers a sales rep cannot tell apart, and Haiku drops reasoning quality on
+// the multi-step tool loop. This is the current-generation Sonnet.
+const MODEL = "claude-sonnet-5";
+
+/**
+ * CACHE THE PART THAT NEVER CHANGES WITHIN A CALL.
+ *
+ * The system prompt carries the whole book, the catalogue totals and the
+ * document grounding — thousands of tokens — and the tool loop re-sends it on
+ * EVERY step, so one question could pay for it five times over. Marking it
+ * cacheable makes those repeats cost roughly a tenth as much (Anir, Jul 29:
+ * "stop wasting so much money"). It is his own key paying for every call.
+ */
+function cachedSystem(system: string): Anthropic.MessageCreateParams["system"] {
+  return [
+    { type: "text", text: system, cache_control: { type: "ephemeral" } },
+  ] as unknown as Anthropic.MessageCreateParams["system"];
+}
 
 // AGENT_FORCE_MOCK=1 disables every live Claude call so the app runs on its
 // deterministic fallbacks — used by the test suite so assertions stay stable
 // regardless of whether a real key is present. The user's normal dev server
 // (without this var) uses real Claude.
-const client =
+/**
+ * THE BRAIN, RESOLVED FROM WHEREVER THE KEY ACTUALLY LIVES.
+ *
+ * `let`, not `const`, and hydratable at boot — because production's key lives
+ * in a task definition I cannot edit, and when that key is missing or stale
+ * the only symptom is the assistant quietly answering from canned templates
+ * (Anir, Jul 29: "it's clearly not working right"). Storing a working key in
+ * the same service-role config table that rescued document storage means the
+ * brain can be fixed from the database, without an AWS change and without a
+ * redeploy.
+ *
+ * Env still wins. The database is the fallback, never the override.
+ */
+let client =
   process.env.ANTHROPIC_API_KEY && process.env.AGENT_FORCE_MOCK !== "1"
     ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     : null;
+
+const KEY_ROW = "anthropic-config";
+let hydrating: Promise<void> | null = null;
+
+/** Fill in the key from the database if the environment did not supply one. */
+export async function hydrateAnthropicKey(): Promise<void> {
+  if (client || process.env.AGENT_FORCE_MOCK === "1") return;
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+    return;
+  if (!hydrating) {
+    hydrating = (async () => {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const { data } = await createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+          .from("offering_catalog_state")
+          .select("catalog")
+          .eq("id", KEY_ROW)
+          .maybeSingle();
+        const key = (data?.catalog as { apiKey?: string } | null)?.apiKey;
+        if (typeof key === "string" && key.startsWith("sk-")) {
+          process.env.ANTHROPIC_API_KEY = key;
+          client = new Anthropic({ apiKey: key });
+        } else {
+          // Nothing stored is not a permanent answer — a key added later
+          // should be picked up on the next attempt.
+          hydrating = null;
+        }
+      } catch {
+        hydrating = null;
+      }
+    })();
+  }
+  await hydrating;
+}
+
+/**
+ * WHETHER THE LAST LIVE CALL ACTUALLY WORKED.
+ *
+ * `services.anthropic` in /api/health only ever meant "the env var is a
+ * non-empty string", so a key that was present but rejected looked identical
+ * to a healthy one — and production spent a day answering from canned
+ * templates while the health check said everything was fine (Anir, Jul 29:
+ * "it's clearly not working right"). Recording the real outcome costs nothing
+ * and turns that from a guess into a fact anyone can read.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __FREYR_CLAUDE_STATUS__:
+    | { ok: boolean; at: string; error?: string }
+    | undefined;
+}
+let lastFailure: unknown = null;
+export function noteClaudeCall(ok: boolean, error?: unknown) {
+  lastFailure = ok ? null : error;
+  globalThis.__FREYR_CLAUDE_STATUS__ = {
+    ok,
+    at: new Date().toISOString(),
+    ...(ok
+      ? {}
+      : {
+          error:
+            error instanceof Error
+              ? `${error.name}: ${error.message}`.slice(0, 200)
+              : String(error).slice(0, 200),
+        }),
+  };
+}
+export function claudeStatus() {
+  if (!process.env.ANTHROPIC_API_KEY) return "no key";
+  if (process.env.AGENT_FORCE_MOCK === "1") return "forced mock";
+  const last = globalThis.__FREYR_CLAUDE_STATUS__;
+  if (!last) return "not called yet";
+  return last.ok ? "working" : `failing (${last.error})`;
+}
 
 // ---------------------------------------------------------------------------
 // Mock knowledge base (Section 5.4) — based on publicly known info about Freyr
@@ -268,7 +379,7 @@ export const MOCK_MATCHING_OUTPUT: MatchingOutput = {
 // Mock pitches (Section 8.3 fallback)
 // ---------------------------------------------------------------------------
 export const MOCK_PITCHES: PitchOutput = {
-  pitch_5min_script: `Hi Dr. Mehta, I'm Suren Dheen from Freyr Solutions. I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
+  pitch_5min_script: `Hi Dr. Mehta, I'm Walter Hensley from Freyr Solutions. I noticed your background includes time at FDA CDER before moving into industry, so I'll skip the basics and get straight to what I think matters for BioNex right now.
 
 With your NDA submission coming up later this year and two compounds in Phase 2, you're entering the period where regulatory execution either accelerates or stalls your timeline. Freyr has completed over 5,000 regulatory submissions globally, and our team includes former FDA and EMA reviewers, people who know exactly what the agency expects to see.
 
@@ -297,12 +408,12 @@ Happy to show you a quick example of how we've handled similar NDA submissions f
 
 Would a 20-minute call next week make sense?
 
-Suren Dheen
+Walter Hensley
 Freyr Solutions`,
   },
   pitch_call_script: {
     opener:
-      "Hi, is this Dr. Priya Mehta? Great: this is Suren Dheen from Freyr Solutions. I know you're not expecting my call, so I'll be brief.",
+      "Hi, is this Dr. Patricia Mayhew? Great: this is Walter Hensley from Freyr Solutions. I know you're not expecting my call, so I'll be brief.",
     value_prop:
       "We support pharmaceutical and biotech companies with regulatory submissions globally. FDA, EMA, and 120+ other agencies. We've completed over 5,000 submissions and our team includes former FDA CDER reviewers.",
     permission_question:
@@ -326,9 +437,25 @@ function parseJson<T>(text: string): T {
   return JSON.parse(cleaned) as T;
 }
 
+/**
+ * EVERY WORD THE MODEL WROTE, NOT JUST THE FIRST BLOCK.
+ *
+ * This read `content[0]` and gave up unless that one block was text. A reply
+ * that opens with a `thinking` block — which current models emit routinely —
+ * therefore came back as an empty string even though the answer was sitting
+ * right behind it, and the empty string sent the question to the canned
+ * responder. That is the single reason the assistant kept looking hard-coded
+ * while the API call had actually succeeded and been paid for.
+ *
+ * Joining every text block also fixes replies split across blocks, which
+ * silently lost everything after the first.
+ */
 function textFrom(response: Anthropic.Message): string {
-  const block = response.content[0];
-  return block && block.type === "text" ? block.text : "";
+  return response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n")
+    .trim();
 }
 
 // Generic short-form agent completion (V9). Used by agent surfaces (e.g. the
@@ -339,6 +466,7 @@ export async function agentAnswer(
   system: string,
   user: string
 ): Promise<string | null> {
+  await hydrateAnthropicKey();
   if (!client) return null;
   try {
     const response = await client.messages.create({
@@ -364,6 +492,7 @@ export async function agentConverse(
   system: string,
   turns: { role: "user" | "assistant"; content: string }[]
 ): Promise<string | null> {
+  await hydrateAnthropicKey();
   if (!client) return null;
   // Claude requires the first message to be from the user and roles to
   // alternate — sanitize so a malformed history can't 400 the call.
@@ -410,13 +539,120 @@ export interface AgentToolDef {
 // the model is in control. `runTool` executes the side effect and returns a
 // result the model folds into its reply. Returns null without a key or on any
 // error so the deterministic brain takes over and the chat never goes dark.
+/**
+ * SWAP IN THE DATABASE KEY WHEN THE ENVIRONMENT'S KEY IS REJECTED.
+ *
+ * Env normally wins, which is right — but it makes one failure mode
+ * unrecoverable: a key that EXISTS and is invalid never falls back, so the
+ * assistant answers from canned templates forever and the health check, which
+ * only ever checked that the string was non-empty, calls it healthy. An
+ * authentication failure is unambiguous evidence the environment is wrong, so
+ * that is the one moment the database is allowed to overrule it.
+ *
+ * Returns whether a genuinely different key was adopted, so the caller only
+ * retries when retrying could change the answer.
+ */
+async function adoptDatabaseKey(): Promise<boolean> {
+  if (
+    process.env.AGENT_FORCE_MOCK === "1" ||
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+    return false;
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const { data } = await createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+      .from("offering_catalog_state")
+      .select("catalog")
+      .eq("id", KEY_ROW)
+      .maybeSingle();
+    const key = (data?.catalog as { apiKey?: string } | null)?.apiKey;
+    if (typeof key !== "string" || !key.startsWith("sk-")) return false;
+    if (key === process.env.ANTHROPIC_API_KEY) return false;
+    process.env.ANTHROPIC_API_KEY = key;
+    client = new Anthropic({ apiKey: key });
+    console.warn("[agent] environment key rejected; adopted the stored key");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a failure means "this key is not allowed" rather than a blip. */
+function isAuthFailure(e: unknown): boolean {
+  const status = (e as { status?: number })?.status;
+  if (status === 401 || status === 403) return true;
+  const m = e instanceof Error ? e.message.toLowerCase() : "";
+  return (
+    m.includes("authentication") ||
+    m.includes("invalid x-api-key") ||
+    m.includes("permission") ||
+    m.includes("credit balance")
+  );
+}
+
+/** Overload, rate limit, timeout, dropped socket — none of it is permanent. */
+function isTransientFailure(e: unknown): boolean {
+  const status = (e as { status?: number })?.status;
+  if (status === 408 || status === 429 || (status && status >= 500)) return true;
+  const m = e instanceof Error ? e.message.toLowerCase() : "";
+  return (
+    // A turn that ends with only a thinking block and no prose. It is random,
+    // so asking again is exactly the right response: this string MUST stay in
+    // step with the message raised below, or the answer silently becomes an
+    // error on screen.
+    m.includes("no answer") ||
+    m.includes("overloaded") ||
+    m.includes("timeout") ||
+    m.includes("timed out") ||
+    m.includes("econnreset") ||
+    m.includes("socket hang up") ||
+    m.includes("fetch failed")
+  );
+}
+
+/**
+ * ONE BAD SECOND MUST NOT MAKE THE ASSISTANT LOOK HARD-CODED.
+ *
+ * Falling back to a template is the correct last resort, but it is also
+ * indistinguishable — to the person reading it — from having no AI at all. A
+ * single overloaded response out of a hundred questions is enough for the
+ * whole product to read as fake, so a failure is retried before the template
+ * is ever allowed to answer: the stored key for a rejected one, a short
+ * backoff for a transient one.
+ */
 export async function agentConverseAgentic(
+  ...args: Parameters<typeof agentConverseOnce>
+): ReturnType<typeof agentConverseOnce> {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const result = await agentConverseOnce(...args);
+    if (result) return result;
+    const failure = lastFailure;
+    if (!failure) return null; // A clean null (no client, no user turn): nothing to retry.
+    if (isAuthFailure(failure)) {
+      if (!(await adoptDatabaseKey())) return null;
+      continue;
+    }
+    if (!isTransientFailure(failure)) return null;
+    // Overload spikes last seconds, not milliseconds. The chat client gives up
+    // at 45s, so waiting properly costs nothing a person notices and is far
+    // better than a template reply the moment the API gets busy.
+    await new Promise((r) => setTimeout(r, [1500, 4000, 8000][attempt] ?? 1500));
+  }
+  return null;
+}
+
+async function agentConverseOnce(
   system: string,
   turns: { role: "user" | "assistant"; content: string }[],
   tools: AgentToolDef[],
   runTool: (name: string, input: any) => Promise<{ content: string; did?: string }>,
   maxSteps = 6
 ): Promise<{ text: string; dids: string[] } | null> {
+  await hydrateAnthropicKey();
   if (!client) return null;
   // Claude requires the first message from the user with alternating roles —
   // collapse same-role runs so a malformed history can't 400 the call.
@@ -438,13 +674,23 @@ export async function agentConverseAgentic(
     for (let step = 0; step < maxSteps; step++) {
       const response = await client.messages.create({
         model: MODEL,
-        max_tokens: 1000,
-        system,
+        max_tokens: 1500,
+        system: cachedSystem(system),
         tools: tools as unknown as Anthropic.Tool[],
         messages,
       });
       if (response.stop_reason !== "tool_use") {
-        return { text: textFrom(response).trim(), dids };
+        const written = textFrom(response).trim();
+        // An empty turn is not an answer. It happens when the model stops
+        // without prose — most often truncated part-way through a tool call —
+        // and returning "" here handed the question to the canned responder,
+        // which is exactly what makes a working AI look hard-coded. Fall
+        // through to the no-tools pass below, which has to reply in words.
+        if (written) {
+          noteClaudeCall(true);
+          return { text: written, dids };
+        }
+        break;
       }
       // Carry the assistant's tool-call turn, then answer each tool call.
       messages.push({ role: "assistant", content: response.content });
@@ -466,16 +712,48 @@ export async function agentConverseAgentic(
       }
       messages.push({ role: "user", content: results });
     }
-    // Used up the tool budget — make one final pass with no tools so the model
-    // has to produce a written answer rather than another tool call.
+    // Out of tool budget, or the model went quiet: one final pass with no tools
+    // at all, so the only thing it can produce is a written answer.
+    // The tools stay DECLARED here, with tool_choice "none" to forbid using
+    // them. Dropping the parameter instead leaves a conversation full of
+    // tool_use/tool_result blocks with nothing to interpret them, and the
+    // model answers with silence, which lands as a canned reply on screen.
+    // Ask for the answer in words. Without this the model treats the last turn
+    // as "more tool results arrived" and can end its turn having only thought,
+    // producing no prose at all: reliably so on questions that use up the tool
+    // budget, like "list all the offerings".
+    messages.push({
+      role: "user",
+      content:
+        "Now write the final answer for the user in plain text, using what you " +
+        "have gathered. Do not call any more tools.",
+    });
     const final = await client.messages.create({
       model: MODEL,
-      max_tokens: 800,
-      system,
+      max_tokens: 1500,
+      system: cachedSystem(system),
+      tools: tools as unknown as Anthropic.Tool[],
+      tool_choice: { type: "none" },
       messages,
     });
-    return { text: textFrom(final).trim(), dids };
+    const text = textFrom(final).trim();
+    if (!text) {
+      // Still nothing written. Report it as a failure so the caller retries
+      // rather than handing a silent blank to the canned responder.
+      noteClaudeCall(
+        false,
+        new Error(
+          `no answer (stop=${final.stop_reason} blocks=${final.content
+            .map((b) => b.type)
+            .join(",") || "none"} out=${final.usage?.output_tokens ?? "?"})`
+        )
+      );
+      return null;
+    }
+    noteClaudeCall(true);
+    return { text, dids };
   } catch (e) {
+    noteClaudeCall(false, e);
     // NEVER fail silently. The canned fallback answering in Claude's place is
     // exactly what made the agent look hard-coded for a day (Anir, Jul 29:
     // "is this an AI or is this some hard-coded bullshit?") while the real
@@ -542,6 +820,7 @@ export async function narrateBriefing(b: AccountBriefing): Promise<string | null
 // Knowledge base extraction (Section 5.3)
 // ---------------------------------------------------------------------------
 export async function extractKnowledgeBase(pages: string[]): Promise<any> {
+  await hydrateAnthropicKey();
   if (!client) return MOCK_FREYR_KB;
 
   const content = pages.join("\n\n---PAGE---\n\n").slice(0, 180000);
@@ -665,6 +944,7 @@ export async function qualifyCustomerType(
   rationale: string;
   confidence: "high" | "medium" | "low";
 } | null> {
+  await hydrateAnthropicKey();
   if (!client) return null;
   const defs = definitions
     .map(
@@ -733,6 +1013,7 @@ export async function qualifyCustomerTypeWithSearch(
   confidence: "high" | "medium" | "low";
   sources: string[];
 } | null> {
+  await hydrateAnthropicKey();
   if (!client) return null;
   const defs = definitions
     .map(
@@ -926,7 +1207,7 @@ export interface PitchInput {
 function pitchesForSender(senderName: string): PitchOutput {
   const safeName = senderName.trim() || "Freyr representative";
   return JSON.parse(
-    JSON.stringify(MOCK_PITCHES).replaceAll("Suren Dheen", safeName)
+    JSON.stringify(MOCK_PITCHES).replaceAll("Walter Hensley", safeName)
   ) as PitchOutput;
 }
 
@@ -1001,6 +1282,7 @@ export async function generateOutreachWithClaude(input: {
   linkedinLimit: number;
   senderName: string;
 }): Promise<{ subject?: string; message: string } | null> {
+  await hydrateAnthropicKey();
   if (!client) return null;
   const isLi = input.kind === "linkedin";
   const prompt = `You write outreach for a Freyr Solutions sales rep. Context about Freyr: ${input.freyrContext}

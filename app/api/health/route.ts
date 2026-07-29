@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { claudeStatus } from "@/lib/claude";
 import { getDb } from "@/lib/db";
 import { getServiceStatus } from "@/lib/env";
 import { getDataMode } from "@/lib/dataMode";
@@ -85,6 +86,9 @@ export async function GET() {
         dataMode,
         durableStorageConfigured,
         services: getServiceStatus(),
+        // Whether the agent's brain is ACTUALLY reachable, not merely
+        // configured — a present-but-rejected key used to be invisible.
+        agentBrain: claudeStatus(),
         durationMs: Date.now() - started,
       },
       { headers: { "Cache-Control": "no-store" } }

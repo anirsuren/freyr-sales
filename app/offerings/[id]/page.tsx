@@ -354,6 +354,7 @@ export default async function OfferingDetailPage({
                 contact name off the spreadsheet. */}
             <OfferingOwners
               offeringId={o.id}
+              offeringName={o.offering_name}
               owners={o.owners ?? []}
               isAdmin={workspaceAdmin}
               canEdit={admin}

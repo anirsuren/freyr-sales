@@ -66,13 +66,13 @@ const TITLES = [
 // Suren shows as "Senior Sales Rep" in the sidebar; Mark Miller is the manager
 // (matches Settings › Team). Everyone else gets a stable sales title.
 export function repTitle(name: string): string {
-  if (name === "Suren Dheen") return "Senior Sales Rep";
+  if (name === "Walter Hensley") return "Senior Sales Rep";
   if (name === "Mark Miller") return "Regional Sales Manager";
   return TITLES[hashName(name) % TITLES.length];
 }
 
 export function repRole(name: string): "Admin" | "Manager" | "Rep" {
-  if (name === "Suren Dheen") return "Admin";
+  if (name === "Walter Hensley") return "Admin";
   if (name === "Mark Miller") return "Manager";
   return "Rep";
 }

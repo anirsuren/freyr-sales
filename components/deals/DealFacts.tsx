@@ -111,7 +111,7 @@ export function DealFacts({
               className="h-6 w-6 shrink-0 text-[9px]"
               tooltip={`Owner: ${owner}${isCurrentOwner ? ", that's you" : ""}`}
             />
-            {/* Wraps rather than truncating — a rep is never "Priya N…". */}
+            {/* Wraps rather than truncating — a rep is never "Patricia M…". */}
             <span className={`${VALUE} min-w-0 break-normal`}>
               {owner}
               {isCurrentOwner ? " · you" : ""}

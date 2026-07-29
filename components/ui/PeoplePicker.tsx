@@ -5,7 +5,14 @@ import { Check, ChevronDown, Search, UserRound, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 
-export type PickablePerson = { name: string; role?: string; email?: string };
+export type PickablePerson = {
+  name: string;
+  role?: string;
+  email?: string;
+  /** Only ever a real number the account carries; never generated. */
+  phone?: string | null;
+  linkedin?: string | null;
+};
 
 /**
  * PICK PEOPLE, DON'T TYPE THEM.

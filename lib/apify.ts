@@ -5,7 +5,7 @@ const APIFY_BASE = "https://api.apify.com/v2";
 const LINKEDIN_ACTOR = "thirdwatch~linkedin-profile-scraper";
 
 export const MOCK_LINKEDIN_PROFILE = {
-  fullName: "Dr. Priya Mehta",
+  fullName: "Dr. Patricia Mayhew",
   headline:
     "Vice President, Regulatory Affairs | Global Drug Development | FDA & EMA Expert",
   currentCompany: "BioNex Therapeutics",

@@ -1,5 +1,8 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { useMyPhoto } from "@/components/auth/CurrentUserProvider";
 
 // Real generated profile photos, keyed by person name (lowercased). People with
 // a photo show it; everyone else falls back to initials. Every seeded contact
@@ -88,14 +91,35 @@ export function Avatar({
   name,
   className,
   tooltip,
+  src,
 }: {
   name: string;
   className?: string;
+  /** An explicit image (e.g. the signed-in user's upload) beats the name map. */
+  src?: string | null;
   // When set, hovering the avatar explains who it is (e.g. "Owner: Anir Suren").
   // Pass `true` to use the name itself; pass a string for a custom label.
   tooltip?: string | boolean;
 }) {
-  const photo = photoFor(name);
+  /**
+   * THE SIGNED-IN USER'S UPLOAD WINS, WHEREVER THEY APPEAR.
+   *
+   * Passing the photo in at each call site could never mean "everywhere": the
+   * header got it and the owner chip on an offering card still drew initials
+   * (Anir, Jul 29: "my name is everywhere... it should show my profile
+   * picture"). Deciding it here means one rule covers every avatar in the app,
+   * including the ones rendered from server pages, with nothing to remember at
+   * the call site.
+   *
+   * Outside the provider (the login screen) the context default is empty and
+   * this quietly falls through to the name map, then to initials.
+   */
+  const { photo: myPhoto, name: myName } = useMyPhoto();
+  const isMe =
+    !!myPhoto &&
+    !!name &&
+    name.trim().toLowerCase() === myName.trim().toLowerCase();
+  const photo = src || (isMe ? myPhoto : null) || photoFor(name);
   const words = name.split(/\s+/).filter(Boolean);
   const nameWords = words.filter((w) => NAME_WORD.test(w));
   const initials =

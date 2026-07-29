@@ -43,6 +43,16 @@ type Convo = {
 const KEY = "freyr.agent.conversations";
 const EMPTY_CONVOS: Convo[] = [];
 
+// Real mode has no pipeline, so its prompts ask about the only things that
+// exist here: the catalogue and the uploaded documents.
+const OFFERINGS_STARTERS = [
+  "What offerings do we have?",
+  "Which offerings suit a small biotech?",
+  "What does Freya.Register do?",
+  "Which offerings are available in Japan?",
+  "Write a short pitch for Freya.Submit",
+];
+
 const STARTERS = [
   "What should I focus on today?",
   // Offerings-first (Suren's north star): surface the offering repository high
@@ -403,7 +413,10 @@ function ThinkingDots() {
   );
 }
 
-export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
+export function AgentChat({
+  initialAsk,
+  offeringsOnly = false,
+}: { initialAsk?: string; offeringsOnly?: boolean } = {}) {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
   const storageKey = userScopedStorageKey(KEY, currentUser.id);
@@ -411,10 +424,24 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
   const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
+  /**
+   * WHICH conversation is waiting, not merely THAT one is.
+   *
+   * This was a bare boolean, so the three dots were painted on whatever chat
+   * happened to be open. Click into an old thread while a reply is in flight
+   * and that finished conversation appears to be typing at you forever (Anir,
+   * Jul 29: "when i click on an old chat says its typing"). The id makes the
+   * indicator belong to the thread that actually asked.
+   */
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  // One request at a time: the composer and the send guard still care only
+  // whether anything is in flight.
+  const sending = sendingId !== null;
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
 
-  const [suggestions, setSuggestions] = useState<string[]>(STARTERS);
+  const [suggestions, setSuggestions] = useState<string[]>(
+    offeringsOnly ? OFFERINGS_STARTERS : STARTERS
+  );
   const [typingTs, setTypingTs] = useState<number | null>(null);
   const [summary, setSummary] = useState<{
     needsApproval: number;
@@ -434,8 +461,8 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
     setLoadedStorageKey(storageKey);
     setActiveId(null);
     setInput("");
-    setSending(false);
-    setSuggestions(STARTERS);
+    setSendingId(null);
+    setSuggestions(offeringsOnly ? OFFERINGS_STARTERS : STARTERS);
     setTypingTs(null);
     setSummary(null);
     return () => {
@@ -445,7 +472,11 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
   }, [currentUser.id, storageKey]);
 
   // Proactive greeting: what's on the rep's plate (deterministic, no LLM call).
+  // Not fetched at all in real mode: nothing would be rendered from it, and a
+  // request whose only possible effect is a late layout shift is worse than no
+  // request.
   useEffect(() => {
+    if (offeringsOnly) return;
     let cancelled = false;
     fetch("/api/agent/summary")
       .then((r) => r.json())
@@ -515,7 +546,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
         save(storageKey, next);
         return next;
       });
-      setSending(true);
+      setSendingId(id);
 
       // Never let a slow or hung request freeze the composer — bail after 45s.
       const controller = new AbortController();
@@ -538,9 +569,14 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
           }),
           signal: controller.signal,
         });
+        // An unreachable assistant is an error, not a message. Throwing sends
+        // it to the catch below, which says so plainly instead of printing
+        // something that looks like the agent talking.
+        if (!res.ok) throw new Error("assistant unreachable");
         const data = await res.json();
         if (activeUserIdRef.current !== requestUserId) return;
-        const reply: string = data.reply || "Sorry. I couldn't answer that one.";
+        const reply: string = data.reply;
+        if (!reply) throw new Error("empty reply");
         if (Array.isArray(data.suggestions) && data.suggestions.length)
           setSuggestions(data.suggestions);
         const replyTs = Date.now();
@@ -565,7 +601,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
             c.id === id
               ? {
                   ...c,
-                  messages: [...c.messages, { role: "agent" as const, text: "Something went wrong reaching the agent. Try again in a moment.", ts: Date.now() }],
+                  messages: [...c.messages, { role: "agent" as const, text: "I couldn't reach the assistant just then. Please try that again.", ts: Date.now() }],
                   updated: Date.now(),
                 }
               : c
@@ -578,7 +614,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
         if (requestControllerRef.current === controller) {
           requestControllerRef.current = null;
         }
-        if (activeUserIdRef.current === requestUserId) setSending(false);
+        if (activeUserIdRef.current === requestUserId) setSendingId(null);
       }
     },
     [
@@ -593,7 +629,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
 
   function newChat() {
     setActiveId(null);
-    setSuggestions(STARTERS);
+    setSuggestions(offeringsOnly ? OFFERINGS_STARTERS : STARTERS);
     setInput("");
   }
 
@@ -707,12 +743,19 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
               className="text-[14px] text-text-secondary mt-2 text-center max-w-[520px] rise-in"
               style={{ animationDelay: "120ms" }}
             >
-              Ask about your pipeline, an account, or have me draft outreach. I&apos;ll
-              do the work and leave everything for you to review.
+              {offeringsOnly
+                ? "Ask about an offering, who it suits, or what an uploaded document says. I'll do the work and leave everything for you to review."
+                : "Ask about your pipeline, an account, or have me draft outreach. I'll do the work and leave everything for you to review."}
             </p>
 
-            {/* Proactive: what's on the rep's plate right now — clickable. */}
-            {summary &&
+            {/* Proactive: what's on the rep's plate right now — clickable.
+                Hidden in real mode for two reasons at once: there is no
+                pipeline there, so "9 at-risk" points at records nobody can
+                open; and it is fetched after mount, so it popped in half a
+                second late and broke the entrance animation (Anir, Jul 29:
+                "it kind of ruins the premium animation"). */}
+            {!offeringsOnly &&
+              summary &&
               (summary.needsApproval > 0 || summary.cooling > 0 || summary.atRisk > 0) && (
                 <div
                   className="flex flex-wrap justify-center gap-2 mt-6 rise-in"
@@ -792,7 +835,7 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
                   </div>
                 )
               )}
-              {sending && (
+              {sendingId === active?.id && (
                 <div className="flex gap-3 justify-start">
                   <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0 mt-0.5">
                     <Sparkles size={16} strokeWidth={1.9} />
@@ -835,7 +878,11 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
                 }}
                 rows={1}
                 aria-label="Message the agent"
-                placeholder="Ask the agent anything about your pipeline…"
+                placeholder={
+                  offeringsOnly
+                    ? "Ask about an offering, a market, or an uploaded document…"
+                    : "Ask the agent anything about your pipeline…"
+                }
                 className="flex-1 bg-transparent outline-none focus:shadow-none focus-visible:shadow-none resize-none text-[14px] text-text-primary placeholder:text-text-tertiary py-1.5 max-h-40"
               />
               <button

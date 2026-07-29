@@ -121,32 +121,32 @@ export interface Deal {
 // signed-in person is deliberately not encoded here: "you" must always come
 // from the verified session, and a new user must never inherit another user's
 // identity just because they opened the same demo workspace.
-export const REPS = ["Suren Dheen", "Mark Miller", "Priya Nair", "Diego Alvarez"];
+export const REPS = ["Walter Hensley", "Mark Miller", "Margaret Whitfield", "Gordon Ashby"];
 
 // The full sales floor (Suren: "put like 20 reps, it has to look full"). The
 // first four are the real, deal-owning reps; the rest fill out the org so the
 // team charts read like a real enterprise sales team rather than a demo of four.
 export const SALES_TEAM = [
-  "Suren Dheen",
-  "Diego Alvarez",
-  "Priya Nair",
+  "Walter Hensley",
+  "Gordon Ashby",
+  "Margaret Whitfield",
   "Mark Miller",
-  "Elena Rossi",
-  "Marcus Chen",
-  "Sofia Almeida",
+  "Eleanor Rutherford",
+  "Marcus Bramwell",
+  "Sylvia Ashcroft",
   "James O'Brien",
-  "Aisha Khan",
-  "Tomas Becker",
-  "Nina Kowalski",
-  "Rajesh Patel",
-  "Grace Liu",
+  "Audrey Kingsley",
+  "Thomas Beckett",
+  "Nancy Caldwell",
+  "Russell Pemberton",
+  "Grace Lockwood",
   "Daniel Foster",
-  "Yuki Tanaka",
-  "Omar Haddad",
-  "Clara Mendez",
-  "Viktor Petrov",
+  "Yvonne Thatcher",
+  "Oliver Hastings",
+  "Clara Middleton",
+  "Victor Prescott",
   "Hannah Schmidt",
-  "Leo Santos",
+  "Leonard Stanton",
 ];
 
 /** Include the verified current user in mock analytics without relabelling any

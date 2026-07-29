@@ -18,7 +18,10 @@ import {
   NOTIF_READ_KEY,
   type AppNotification,
 } from "@/lib/notifications";
-import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import {
+  useCurrentUser,
+  useMyPhoto,
+} from "@/components/auth/CurrentUserProvider";
 import { userScopedStorageKey } from "@/lib/userIdentity";
 import { canSwitchWorkspaceMode } from "@/lib/release";
 
@@ -70,6 +73,8 @@ export function TopBar({
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const currentUser = useCurrentUser();
+  // The signed-in user's uploaded picture, shared by every avatar of them.
+  const { photo: myPhoto } = useMyPhoto();
   const router = useRouter();
   // Quick mock/real switch lives here so nobody has to dig into Settings
   // (Suren). Mode drives what the whole app shows — see lib/release.ts.
@@ -421,7 +426,7 @@ export function TopBar({
             onClick={() => setUserOpen((o) => !o)}
             className="flex items-center gap-2 group rounded-full hover:bg-surface transition-colors py-1 pl-1 pr-2"
           >
-            <Avatar name={currentUser.name} className="w-8 h-8 text-[12px]" />
+            <Avatar src={myPhoto} name={currentUser.name} className="w-8 h-8 text-[12px]" />
             <span className="text-[14px] font-medium text-text-primary hidden md:block">
               {currentUser.name}
             </span>
@@ -434,7 +439,7 @@ export function TopBar({
               className="absolute right-0 mt-2 w-[248px] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden"
             >
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-border-light">
-                  <Avatar name={currentUser.name} className="w-9 h-9 text-[13px]" />
+                  <Avatar src={myPhoto} name={currentUser.name} className="w-9 h-9 text-[13px]" />
                   <div className="min-w-0">
                     <p className="text-[14px] font-semibold text-text-primary leading-tight">
                       {currentUser.name}
@@ -507,17 +512,21 @@ export function TopBar({
                   </div>
                 )}
                 <div className="p-1.5">
-                  {!offeringsOnly && (
-                    <>
+                  {/* Settings is ALWAYS here, in every mode. It was inside the
+                      !offeringsOnly gate, so in real mode the only door was the
+                      sidebar link, and removing that would have stranded the
+                      user with no way to reach their own profile. */}
                   <Link
                     role="menuitem"
-                    href="/settings"
+                    href="/settings?tab=profile"
                     onClick={() => setUserOpen(false)}
                     className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
                   >
                     <Settings size={16} strokeWidth={1.7} className="text-text-secondary" />
-                    Settings
+                    Profile and settings
                   </Link>
+                  {!offeringsOnly && (
+                    <>
                   <Link
                     role="menuitem"
                     href="/agent/settings"

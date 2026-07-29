@@ -96,7 +96,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("06 — session results page renders both columns", async ({ page }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
     await expect(page.locator("text=BioNex Therapeutics").first()).toBeVisible();
-    await expect(page.locator("text=Dr. Priya Mehta").first()).toBeVisible();
+    await expect(page.locator("text=Dr. Patricia Mayhew").first()).toBeVisible();
     await expect(page.locator("text=5-Min Script")).toBeVisible();
     await expect(page.locator("text=Intro Email")).toBeVisible();
     await expect(page.locator("text=Cold Call Script")).toBeVisible();
@@ -204,7 +204,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("11 — customer detail page renders correctly", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     await expect(page.locator("text=BioNex Therapeutics").first()).toBeVisible();
-    await expect(page.locator("text=Dr. Priya Mehta").first()).toBeVisible();
+    await expect(page.locator("text=Dr. Patricia Mayhew").first()).toBeVisible();
     await expect(
       page
         .locator("#main-content")
@@ -217,7 +217,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("12 — contact detail page renders correctly", async ({ page }) => {
     await page.goto(`${BASE}/contacts/cont-001`);
-    await expect(page.locator("text=Dr. Priya Mehta")).toBeVisible();
+    await expect(page.locator("text=Dr. Patricia Mayhew")).toBeVisible();
     await expect(page.locator("text=VP Regulatory Affairs").first()).toBeVisible();
     // skills chips render (e.g. "Regulatory Strategy")
     await expect(page.getByText("Regulatory Strategy").first()).toBeVisible();
@@ -1876,7 +1876,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("button", { name: "Account menu" }).click();
-    const settings = page.getByRole("menuitem", { name: "Settings", exact: true });
+    const settings = page.getByRole("menuitem", {
+      name: "Profile and settings",
+      exact: true,
+    });
     await expect(settings).toBeVisible();
     await expect(
       page.getByRole("menuitem", { name: "Agent settings" })
@@ -1944,7 +1947,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     const bodyEl = page.getByLabel("Draft body");
     await expect(bodyEl).toBeVisible({ timeout: 8000 });
     await page.getByRole("button", { name: /^formal$/i }).click();
-    await expect(bodyEl).toHaveValue(/Dear Priya|Kind regards/, {
+    await expect(bodyEl).toHaveValue(/Dear Patricia|Kind regards/, {
       timeout: 8000,
     });
   });
@@ -4854,7 +4857,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     contactCount: 1,
     topContact: "Dr. Lena Vogt",
     competitor: "LegacyRIM Co",
-    owner: "Priya Nair",
+    owner: "Margaret Whitfield",
     topAction: "Follow up with Helix Biologics",
   };
   async function askAccount(request: any, question: string) {
@@ -4873,7 +4876,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       "Dr. Lena Vogt"
     );
     // bare "who" no longer swallows the owner question
-    expect(await askAccount(request, "who's the owner?")).toContain("Priya Nair");
+    expect(await askAccount(request, "who's the owner?")).toContain("Margaret Whitfield");
     // "competition" (not just "competitor") now resolves
     expect(await askAccount(request, "who is the competition?")).toContain(
       "LegacyRIM Co"
@@ -5498,7 +5501,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     // owner — custom avatar dropdown (#95): open + pick from the listbox
     const owner = page.getByLabel("Account owner");
     await owner.click();
-    await page.getByRole("option", { name: "Priya Nair" }).click();
+    await page.getByRole("option", { name: "Margaret Whitfield" }).click();
     // competitor
     await page.getByRole("button", { name: "Edit competitor" }).click();
     await page.getByRole("textbox", { name: "Competitor" }).fill("Veeva QA");
@@ -5519,7 +5522,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.waitForURL(/dashboard/);
     await page.goto(`${BASE}/customers/cust-006`);
 
-    await expect(page.getByLabel("Account owner")).toContainText("Priya Nair");
+    await expect(page.getByLabel("Account owner")).toContainText("Margaret Whitfield");
     await expect(page.getByText("Veeva QA").first()).toBeVisible();
     await page.getByRole("tab", { name: "Notes" }).click();
     await expect(
@@ -5635,8 +5638,8 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
     await page.getByRole("tab", { name: "Activity" }).click();
     await expect(page.getByRole("img", { name: "Megan Ruiz" }).first()).toBeVisible();
-    await expect(page.getByRole("img", { name: "Suren Dheen" }).last()).toBeVisible();
-    await expect(page.getByText("Logged by Suren Dheen")).toBeVisible();
+    await expect(page.getByRole("img", { name: "Walter Hensley" }).last()).toBeVisible();
+    await expect(page.getByText("Logged by Walter Hensley")).toBeVisible();
   });
 
   test("343 — dashboard metrics and priority rows explain their data on hover (V64)", async ({

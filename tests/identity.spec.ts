@@ -39,7 +39,7 @@ const ANIR: Identity = {
 const SUREN: Identity = {
   subject: "auth-suren",
   memberId: "member-suren",
-  name: "Suren Dheen",
+  name: "Walter Hensley",
   email: "suren.dheen@freyrsolutions.com",
   role: "sales",
   firstName: "Suren",

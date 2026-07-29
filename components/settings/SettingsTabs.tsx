@@ -42,7 +42,10 @@ import {
   saveHoverPreference,
   useHoverPreference,
 } from "@/lib/hoverPreferences";
-import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import {
+  useCurrentUser,
+  useMyPhoto,
+} from "@/components/auth/CurrentUserProvider";
 import {
   userScopedStorageKey,
   type UserIdentity,
@@ -117,10 +120,10 @@ type AccessDirectory = {
 // (Dana Whitfield @ NovaGene, Owen Bradley @ Northwind), which read as if our
 // prospects were on staff.
 const MOCK_TEAMMATES: Member[] = [
-  { name: "Suren Dheen", email: "suren.dheen@freyrsolutions.com", role: "Admin" },
+  { name: "Walter Hensley", email: "suren.dheen@freyrsolutions.com", role: "Admin" },
   { name: "Mark Miller", email: "mark.miller@freyrsolutions.com", role: "Manager" },
-  { name: "Priya Nair", email: "priya.nair@freyrsolutions.com", role: "Rep" },
-  { name: "Diego Alvarez", email: "diego.alvarez@freyrsolutions.com", role: "Rep" },
+  { name: "Margaret Whitfield", email: "priya.nair@freyrsolutions.com", role: "Rep" },
+  { name: "Gordon Ashby", email: "diego.alvarez@freyrsolutions.com", role: "Rep" },
 ];
 
 const MOCK_ACCESS: AccessDirectory = {
@@ -151,12 +154,27 @@ const DEFAULT_NOTIFICATIONS: Record<string, boolean> = {
   weeklyDigest: false,
 };
 
+/**
+ * REAL MODE SHOWS REAL PEOPLE, OR NOBODY.
+ *
+ * The sample directory used to appear whenever the approval gate was off,
+ * regardless of mode, so real mode listed invented teammates and a pending
+ * access request from a person who does not exist (Anir, Jul 29: "is the fake
+ * fucking account, bro? make sure everything in this real mode is actually
+ * real"). A fake name beside an Approve button is not a placeholder, it is a
+ * lie about who is asking for access.
+ *
+ * The samples now belong to mock mode alone. Real mode starts with the signed
+ * in user and fills in from the server.
+ */
 function initialAccessDirectory(
   currentUser: UserIdentity,
-  approvalEnabled: boolean
+  approvalEnabled: boolean,
+  offeringsOnly: boolean
 ): AccessDirectory {
+  const samples = approvalEnabled || offeringsOnly;
   return {
-    ...(approvalEnabled
+    ...(samples
       ? { members: [], requests: [], invitations: [] }
       : MOCK_ACCESS),
     members: [
@@ -168,7 +186,7 @@ function initialAccessDirectory(
         active: true,
         lastSeenAt: new Date().toISOString(),
       },
-      ...(approvalEnabled
+      ...(samples
         ? []
         : MOCK_ACCESS.members.filter(
             (member) =>
@@ -337,7 +355,7 @@ export function SettingsTabs({
   });
   const [connectors, setConnectors] = useState<Record<string, boolean>>({});
   const [accessDirectory, setAccessDirectory] = useState<AccessDirectory>(() =>
-    initialAccessDirectory(currentUser, authConfig.approvalEnabled)
+    initialAccessDirectory(currentUser, authConfig.approvalEnabled, offeringsOnly)
   );
   const [accessBusy, setAccessBusy] = useState<string | null>(null);
   const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
@@ -395,7 +413,7 @@ export function SettingsTabs({
     });
     setConnectors({});
     setAccessDirectory(
-      initialAccessDirectory(currentUser, authConfig.approvalEnabled)
+      initialAccessDirectory(currentUser, authConfig.approvalEnabled, offeringsOnly)
     );
     setAccessBusy(null);
     try {
@@ -547,6 +565,89 @@ export function SettingsTabs({
         ok: false,
         message: "Couldn't reach the profile service. Try saving again.",
       });
+    }
+  }
+
+  /**
+   * PROFILE PHOTO, UPLOADED FROM THIS MACHINE.
+   *
+   * Downscaled in the browser to a 256px square before it is sent: a phone
+   * photo is several megabytes, the avatar renders at 56px, and shipping the
+   * original would be slow for no visible gain.
+   */
+  // Shared with the header and sidebar: one upload, every avatar.
+  const { photo, refresh: refreshPhoto } = useMyPhoto();
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function squareDataUrl(file: File): Promise<string> {
+    const bitmap = await createImageBitmap(file);
+    const side = Math.min(bitmap.width, bitmap.height);
+    const size = Math.min(256, side);
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no canvas");
+    // Centre-crop to a square so faces are not squashed into the circle.
+    ctx.drawImage(
+      bitmap,
+      (bitmap.width - side) / 2,
+      (bitmap.height - side) / 2,
+      side,
+      side,
+      0,
+      0,
+      size,
+      size
+    );
+    bitmap.close?.();
+    return canvas.toDataURL("image/jpeg", 0.85);
+  }
+
+  async function onPickPhoto(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast("Pick an image file", "error");
+      return;
+    }
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await squareDataUrl(file);
+      const res = await fetch("/api/profile/photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photo: dataUrl }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "upload failed");
+      refreshPhoto();
+      toast("Profile picture updated");
+      router.refresh();
+    } catch (error) {
+      toast(
+        error instanceof Error && error.message !== "upload failed"
+          ? error.message
+          : "Couldn't save that picture. Try another one.",
+        "error"
+      );
+    } finally {
+      setPhotoBusy(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  }
+
+  async function removePhoto() {
+    setPhotoBusy(true);
+    try {
+      await fetch("/api/profile/photo", { method: "DELETE" });
+      refreshPhoto();
+      toast("Back to your initials");
+      router.refresh();
+    } catch {
+      toast("Couldn't remove the picture. Try again.", "error");
+    } finally {
+      setPhotoBusy(false);
     }
   }
 
@@ -964,10 +1065,50 @@ export function SettingsTabs({
       {tab === "profile" && (
         <Card>
           <div className="flex items-center gap-4 mb-5">
-            <Avatar name={profile.name} className="w-14 h-14 text-[18px]" />
-            <div>
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={photoBusy}
+              title="Upload a profile picture"
+              className="group relative h-14 w-14 shrink-0 rounded-full disabled:opacity-60"
+            >
+              {photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photo}
+                  alt={profile.name}
+                  className="h-14 w-14 rounded-full object-cover"
+                />
+              ) : (
+                <Avatar name={profile.name} className="w-14 h-14 text-[18px]" />
+              )}
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-[11px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
+                {photoBusy ? "…" : "Change"}
+              </span>
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => void onPickPhoto(e.target.files?.[0] ?? null)}
+            />
+            <div className="min-w-0">
               <p className="text-[15px] font-semibold text-text-primary">{profile.name}</p>
               <p className="text-[13px] text-text-secondary">{profile.title}</p>
+              {/* The avatar itself is the control: hover it and it says Change
+                  (Anir, Jul 29: "it shouldn't be an upload a picture button").
+                  Remove only appears once there is something to remove. */}
+              {photo && (
+                <button
+                  type="button"
+                  onClick={() => void removePhoto()}
+                  disabled={photoBusy}
+                  className="mt-1 text-[12px] font-semibold text-text-secondary hover:underline disabled:opacity-60"
+                >
+                  Remove picture
+                </button>
+              )}
             </div>
           </div>
           <div className="space-y-4">
@@ -1018,7 +1159,7 @@ export function SettingsTabs({
               >
                 Paste your LinkedIn address. The agent reads it to learn your
                 role and background, so what it writes sounds like you, and it
-                picks up your photo instead of your initials.
+                can pick up your photo. Optional: you can upload a picture above instead.
               </span>
               {linkedinStatus && (
                 <span

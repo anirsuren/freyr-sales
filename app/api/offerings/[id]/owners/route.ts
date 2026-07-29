@@ -9,8 +9,17 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
+import { isOfferingsOnly } from "@/lib/release";
+import { getDataMode } from "@/lib/dataMode";
 
 export const dynamic = "force-dynamic";
+
+/** app_users ids are UUIDs. Anything else is a local placeholder identity. */
+function isRealAccountId(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    id
+  );
+}
 
 /**
  * CLAIMING AN OFFERING.
@@ -41,6 +50,24 @@ export async function POST(
 
   const user = await getCurrentUser();
   if (!user.memberId) return UNIDENTIFIED;
+  /**
+   * A GRANT MUST NAME A REAL ACCOUNT.
+   *
+   * `local-anir-suren` is the placeholder identity used before a session is
+   * bound to an app_users row. One of those got written as an owner, so the
+   * offering listed "Anir Suren" as owner while the permission check compared
+   * that placeholder against the real account id, failed, and offered "Take
+   * ownership" to the person already holding it (Anir, Jul 29: "why is it
+   * asking me to take ownership? I am the owner"). A row keyed to a string
+   * that is not an account can never grant anything, so refuse to write one.
+   */
+  // Only where real accounts exist. In mock mode the local identity IS the
+  // account, so demanding a UUID there breaks ownership entirely (it did:
+  // twelve verification tests went red because the test session carries the
+  // local id). Live mode is the one that must never store a placeholder.
+  if (isOfferingsOnly(getDataMode()) && !isRealAccountId(user.memberId)) {
+    return UNIDENTIFIED;
+  }
 
   const body = (await req.json().catch(() => ({}))) as {
     memberId?: string;
@@ -116,9 +143,20 @@ export async function DELETE(
   const url = new URL(req.url);
   const target = url.searchParams.get("memberId") || user.memberId;
 
-  if (target !== user.memberId && !(await canManageOfferings())) {
+  /**
+   * OWNERSHIP IS SURRENDERED, NEVER TAKEN.
+   *
+   * An admin used to be able to release anyone's claim, and the UI offered it
+   * on every row. Hiding that button is not a permission — the request still
+   * worked — so the rule belongs here: this endpoint releases the caller's own
+   * claim and nothing else (Anir, Jul 29: "I shouldn't be able to remove other
+   * owners, like only myself"). A pending REQUEST is different and is still
+   * declined by an admin through its own path; that is refusing to grant, not
+   * revoking something already held.
+   */
+  if (target !== user.memberId) {
     return NextResponse.json(
-      { error: "Only an admin can remove someone else's claim" },
+      { error: "You can only give up your own ownership." },
       { status: 403 }
     );
   }

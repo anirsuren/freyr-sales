@@ -82,7 +82,7 @@ function seed(): MockStore {
     {
       id: "cont-001",
       customer_id: "cust-001",
-      full_name: "Dr. Priya Mehta",
+      full_name: "Dr. Patricia Mayhew",
       email: "p.mehta@bionextherapeutics.com",
       linkedin_url: "https://linkedin.com/in/drpriyamehta",
       phone: "+1 (617) 424-9903",
@@ -186,7 +186,7 @@ function seed(): MockStore {
       // days ago, with a comfortably-upcoming follow-up (~3 weeks out so it
       // stays in the future as the demo date drifts) — not months overdue.
       follow_up_date: iso(-21).slice(0, 10),
-      logged_by: "Suren Dheen",
+      logged_by: "Walter Hensley",
       created_at: isoAt(5, "int-001"),
     },
   ];
@@ -254,7 +254,7 @@ function seed(): MockStore {
     { id: "006", company: "NovaGene Therapeutics", size: "mid", industry: "Biotechnology", geo: "United States (Princeton, NJ)", csum: "Gene-therapy biotech, first BLA in 18 months, lean RA team.", contact: "Dana Whitfield", title: "VP Regulatory Affairs", role: "Regulatory Affairs", csumc: "Built RA from scratch; needs scalable submission capacity.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "interested", days: 19, note: "Wants IND-to-BLA roadmap.", follow: 6 },
     { id: "007", company: "Aether Medical Devices", size: "mid", industry: "Medical Device", geo: "Germany (Munich)", csum: "Class III cardiovascular devices, navigating EU MDR transition.", contact: "Stefan Bauer", title: "Head of Regulatory", role: "Regulatory Affairs", csumc: "MDR specialist under technical-documentation deadline pressure.", service: "Regulatory Intelligence", score: 7, outcome: "no_response", days: 22 },
     { id: "008", company: "Solara Consumer Health", size: "small", industry: "Consumer Health", geo: "United States (Chicago, IL)", csum: "OTC and supplements brand expanding into EU and Canada.", contact: "Megan Ruiz", title: "Compliance Manager", role: "Compliance", csumc: "Owns OTC labeling and ingredient compliance.", service: "Labeling and Artwork Management", score: 7, outcome: "in_progress", days: 5, note: "Multi-market labeling pain across 6 SKUs.", follow: 3 },
-    { id: "009", company: "Quantum Oncology", size: "mid", industry: "Biotechnology", geo: "United States (South SF, CA)", csum: "Precision-oncology biotech, ADC platform, two pivotal trials.", contact: "Dr. Arun Pillai", title: "Chief Medical Officer", role: "Medical Affairs", csumc: "Physician-scientist; cares about trial regulatory de-risking.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "meeting_booked", days: 2, note: "Exec sponsor engaged; aligning on scope.", follow: 8, review: "approved" },
+    { id: "009", company: "Quantum Oncology", size: "mid", industry: "Biotechnology", geo: "United States (South SF, CA)", csum: "Precision-oncology biotech, ADC platform, two pivotal trials.", contact: "Dr. Arthur Pennington", title: "Chief Medical Officer", role: "Medical Affairs", csumc: "Physician-scientist; cares about trial regulatory de-risking.", service: "Clinical Trial Regulatory Support", score: 8, outcome: "meeting_booked", days: 2, note: "Exec sponsor engaged; aligning on scope.", follow: 8, review: "approved" },
     { id: "010", company: "Meridian Pharmaceuticals", size: "large", industry: "Pharmaceutical", geo: "Switzerland (Basel)", csum: "Global generics + specialty; high-volume ANDA/MAA submissions.", contact: "Claudia Hofmann", title: "Global Head, Reg Submissions", role: "Executive", csumc: "Runs a high-throughput global submissions factory.", service: "Regulatory Submission Services", score: 9, outcome: "not_interested", days: 18, note: "Has incumbent vendor mid-contract.", inUse: ["of-001"], usage: [
       { offering_id: "of-001", revenue_lines: [
         { id: "rev-m1", revenue_type: "license", amount: 260000, num_licenses: 32, start_date: "2026-03-01", end_date: "2027-02-28", description: "Freya.Register licenses for the submissions team." },
@@ -417,7 +417,7 @@ function seed(): MockStore {
       contactTitle: s.title,
       service: s.service,
       context: s.csum,
-      repName: "Suren Dheen",
+      repName: "Walter Hensley",
     });
     pitchSessions.push({
       id: sid,
@@ -453,7 +453,7 @@ function seed(): MockStore {
         outcome: s.outcome,
         notes: s.note || null,
         follow_up_date: s.follow ? iso(-s.follow) : null,
-        logged_by: "Suren Dheen",
+        logged_by: "Walter Hensley",
         created_at: isoAt(Math.max(0, s.days - 1), `int-${s.id}`),
       });
     }

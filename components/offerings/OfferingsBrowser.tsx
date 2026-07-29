@@ -252,7 +252,13 @@ function OwnerStrip({
   owners,
   offeringName,
 }: {
-  owners?: { memberId: string; name: string; status: "requested" | "owner" }[];
+  owners?: {
+    memberId: string;
+    name: string;
+    status: "requested" | "owner";
+    /** Their workspace role (Admin / Manager / Rep), shown under the name. */
+    role?: string | null;
+  }[];
   offeringName: string;
 }) {
   const granted = (owners || []).filter((o) => o.status === "owner");
@@ -269,7 +275,9 @@ function OwnerStrip({
       <PersonFan
         people={granted.map((o) => ({
           name: o.name,
-          role: "Owns this offering",
+          // Their actual role, not a restatement of the row they are sitting
+          // in: "Owns this offering" was already obvious from the OWNER label.
+          role: o.role || "Owns this offering",
           context: offeringName,
         }))}
       />

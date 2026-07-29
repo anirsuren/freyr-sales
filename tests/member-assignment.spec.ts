@@ -107,7 +107,7 @@ test("live account and deal ownership use the signed member id and reject spoofe
     `/api/customers/${customer!.id}`,
     {
       data: {
-        owner: "Suren Dheen",
+        owner: "Walter Hensley",
         owner_user_id: "00000000-0000-4000-8000-000000000202",
       },
     }
@@ -137,7 +137,7 @@ test("live account and deal ownership use the signed member id and reject spoofe
       data: {
         addDeal: {
           name: "Spoofed deal",
-          owner: "Suren Dheen",
+          owner: "Walter Hensley",
           owner_user_id: "00000000-0000-4000-8000-000000000202",
         },
       },
@@ -179,7 +179,7 @@ test("live account and deal ownership use the signed member id and reject spoofe
     `/api/customers/${customer!.id}`,
     {
       data: {
-        owner: "Suren Dheen",
+        owner: "Walter Hensley",
         owner_user_id: "00000000-0000-4000-8000-000000000202",
       },
     }
@@ -235,7 +235,7 @@ test("signed Suren does not inherit seeded name-only analytics", () => {
   const signedSuren = {
     id: "auth-suren",
     memberId: "member-suren",
-    name: "Suren Dheen",
+    name: "Walter Hensley",
   };
   const legacyDeal: Deal = {
     sessionId: "seed-session",
@@ -250,7 +250,7 @@ test("signed Suren does not inherit seeded name-only analytics", () => {
     stage: "Qualified",
     lastActivity: "2026-07-20T12:00:00.000Z",
     staleDays: 4,
-    owner: "Suren Dheen",
+    owner: "Walter Hensley",
     ownerUserId: null,
     createdAt: "2026-07-01T12:00:00.000Z",
   };
@@ -263,13 +263,13 @@ test("signed Suren does not inherit seeded name-only analytics", () => {
   );
 
   expect(current).toMatchObject({
-    name: "Suren Dheen",
+    name: "Walter Hensley",
     memberId: "member-suren",
     deals: 0,
     openValue: 0,
   });
   expect(seeded).toMatchObject({
-    name: "Suren Dheen",
+    name: "Walter Hensley",
     memberId: null,
     deals: 1,
     openValue: 250_000,

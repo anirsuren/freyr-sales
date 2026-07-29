@@ -277,7 +277,7 @@ test("the canonical workspace name overrides mutable provider metadata", async (
     session: appSession(
       expiration,
       "owner@freyrsolutions.com",
-      "Suren Dheen"
+      "Walter Hensley"
     ),
     access: accessGrant(
       expiration,
@@ -293,7 +293,7 @@ test("the canonical workspace name overrides mutable provider metadata", async (
     sidebar.getByText("Anir Suren", { exact: true })
   ).toBeVisible();
   await expect(
-    sidebar.getByText("Suren Dheen", { exact: true })
+    sidebar.getByText("Walter Hensley", { exact: true })
   ).toHaveCount(0);
 });
 

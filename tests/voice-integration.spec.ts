@@ -27,7 +27,7 @@ test.describe.serial("ElevenLabs voice lifecycle", () => {
     expect(response.ok()).toBeTruthy();
     const result = await response.json();
     expect(result.type).toBe("conversation_initiation_client_data");
-    expect(result.dynamic_variables.contact_name).toBe("Dr. Priya Mehta");
+    expect(result.dynamic_variables.contact_name).toBe("Dr. Patricia Mayhew");
     expect(result.dynamic_variables.company).toBe("BioNex Therapeutics");
 
     const records = await request.get("/api/voice/conversations");
@@ -49,7 +49,7 @@ test.describe.serial("ElevenLabs voice lifecycle", () => {
         conversation_id: conversationId,
         status: "processing",
         transcript: [
-          { role: "agent", message: "Hi Priya, this is Maya from Freyr.", time_in_call_secs: 0 },
+          { role: "agent", message: "Hi Patricia, this is Maya from Freyr.", time_in_call_secs: 0 },
           { role: "user", message: "Hi Maya, yes, I have a minute.", time_in_call_secs: 4 },
         ],
         metadata: {
@@ -68,7 +68,7 @@ test.describe.serial("ElevenLabs voice lifecycle", () => {
             call_direction: "inbound",
             contact_id: "cont-001",
             customer_id: "cust-001",
-            contact_name: "Dr. Priya Mehta",
+            contact_name: "Dr. Patricia Mayhew",
             company: "BioNex Therapeutics",
             category: "Regulatory Affairs",
           },
@@ -92,7 +92,7 @@ test.describe.serial("ElevenLabs voice lifecycle", () => {
         expect.objectContaining({
           conversation_id: conversationId,
           status: "analyzing",
-          contact_name: "Dr. Priya Mehta",
+          contact_name: "Dr. Patricia Mayhew",
         }),
       ])
     );
@@ -111,7 +111,7 @@ test.describe.serial("ElevenLabs voice lifecycle", () => {
         has_user_audio: true,
         has_response_audio: true,
         transcript: [
-          { role: "agent", message: "Hi Priya, this is Maya from Freyr.", time_in_call_secs: 0 },
+          { role: "agent", message: "Hi Patricia, this is Maya from Freyr.", time_in_call_secs: 0 },
           { role: "user", message: "We need support for our filing next quarter.", time_in_call_secs: 5 },
           { role: "agent", message: "I will arrange a working session with the team.", time_in_call_secs: 11 },
         ],
@@ -126,7 +126,7 @@ test.describe.serial("ElevenLabs voice lifecycle", () => {
         },
         analysis: {
           call_successful: "success",
-          transcript_summary: "Priya is interested in filing support and agreed to a working session.",
+          transcript_summary: "Patricia is interested in filing support and agreed to a working session.",
           data_collection_results: {
             outcome: { value: "interested" },
           },
@@ -137,7 +137,7 @@ test.describe.serial("ElevenLabs voice lifecycle", () => {
             call_direction: "inbound",
             contact_id: "cont-001",
             customer_id: "cust-001",
-            contact_name: "Dr. Priya Mehta",
+            contact_name: "Dr. Patricia Mayhew",
             company: "BioNex Therapeutics",
             category: "Regulatory Affairs",
           },
@@ -183,7 +183,7 @@ test.describe.serial("ElevenLabs voice lifecycle", () => {
     await page.goto(`/voice/c/${conversationId}`);
     await expect(page.getByText("Analysis ready")).toBeVisible();
     await expect(page.getByText("We need support for our filing next quarter.")).toBeVisible();
-    await expect(page.getByText(/Priya is interested in filing support/)).toBeVisible();
+    await expect(page.getByText(/Patricia is interested in filing support/)).toBeVisible();
   });
 
   test("rejects a forged webhook", async ({ request }) => {

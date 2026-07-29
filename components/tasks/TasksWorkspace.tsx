@@ -223,7 +223,7 @@ export function TasksWorkspace({
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search tasks, accounts, contacts..."
                 aria-label="Search tasks"
-                className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-white text-[13px] outline-none focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
+                className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-white text-[13px] outline-none focus:border-blue-primary"
               />
             </div>
             <div className="flex items-center gap-1.5" role="group" aria-label="Filter tasks">

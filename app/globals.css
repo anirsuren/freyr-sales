@@ -36,7 +36,13 @@
   --radius-xl: 16px;
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-input-focus: 0 0 0 3px rgba(0, 113, 227, 0.15);
+  /* No blue halo when a field is focused. It fired on every search box in the
+     app and drew attention to the act of clicking a text field, which needs no
+     announcement (Anir, Jul 29: "remove this stupid blue thing... it's just a
+     search bar"). Kept as a token, set to nothing, so the seventeen places
+     that reference it all go quiet at once and none of them break. The border
+     colour still changes on focus, which is enough to see where you are. */
+  --shadow-input-focus: none;
 }
 
 html,
@@ -131,15 +137,27 @@ h6 {
   }
 }
 
-/* Consistent keyboard focus rings on every interactive control */
+/* Keyboard focus rings, on the controls that actually need one.
+   TEXT FIELDS ARE DEDUCTED ON PURPOSE. Browsers treat a click into an input as
+   focus-visible, so this rule painted a blue halo every time anyone clicked a
+   search box: an announcement that you are about to type, which nobody needs
+   (Anir, Jul 29: "remove this stupid blue thing... it's just a search bar").
+   A typing caret already shows where you are, and the border still tints.
+   Buttons, links and custom tabbable widgets keep the ring, because there a
+   keyboard user genuinely cannot otherwise tell what is selected. */
 a:focus-visible,
 button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible,
 [tabindex]:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+}
+
+/* Text fields: no halo, just a slightly stronger edge. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Skeleton shimmer */

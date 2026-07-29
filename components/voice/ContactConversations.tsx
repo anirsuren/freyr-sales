@@ -145,7 +145,7 @@ export function ContactConversations({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search conversations, summaries, or transcripts..."
           aria-label="Search conversations, summaries, or transcripts"
-          className="h-11 w-full rounded-lg border border-border bg-white pl-10 pr-10 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
+          className="h-11 w-full rounded-lg border border-border bg-white pl-10 pr-10 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
         />
         {query && (
           <button

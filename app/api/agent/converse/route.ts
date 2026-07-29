@@ -13,6 +13,9 @@ import {
 } from "@/lib/agentChat";
 import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
 import { offeringsAnswer } from "@/lib/offeringsAgent";
+import { listOfferings } from "@/lib/offerings";
+import { isOfferingsOnly } from "@/lib/release";
+import { getDataMode } from "@/lib/dataMode";
 import {
   searchKnowledge,
   knowledgeBlock,
@@ -65,16 +68,40 @@ export async function POST(req: NextRequest) {
       (id) => p.id === id || p.id.startsWith(`${id}#`) || p.href.endsWith(id)
     );
 
-  // Recent turns for continuity (e.g. "save it" → the account we just drafted for).
-  const history: ChatTurn[] = Array.isArray(body.history)
+  // THE WHOLE CHAT IS THE MEMORY.
+  //
+  // This used to keep the last ten turns, which is five exchanges — so by the
+  // sixth question the assistant had quietly forgotten how the conversation
+  // started and began asking what "it" referred to (Anir, Jul 29: "one chat is
+  // the entire memory"). The client already sends every message; the server was
+  // the one throwing them away.
+  //
+  // Nothing crosses a chat boundary: a new conversation starts empty and knows
+  // only the shared knowledge base, never what was said in another thread.
+  //
+  // The only trimming left is a context-window guard, and it drops the OLDEST
+  // turns first so the recent thread — the part "it" and "that one" refer to —
+  // always survives.
+  const HISTORY_BUDGET = 240_000; // characters, ~60k tokens: whole chats fit
+  const claimed: ChatTurn[] = Array.isArray(body.history)
     ? body.history
-        .filter(
-          (t: any) =>
-            t && (t.role === "user" || t.role === "agent") && typeof t.text === "string"
-        )
-        .slice(-10)
-        .map((t: any) => ({ role: t.role, text: t.text }))
+        .map((t: any) => {
+          if (!t || (t.role !== "user" && t.role !== "agent")) return null;
+          // `text` is the contract, but accept `content` too: a caller using
+          // the wrong field name should not silently lose the conversation.
+          const text = typeof t.text === "string" ? t.text : t.content;
+          return typeof text === "string" && text ? { role: t.role, text } : null;
+        })
+        .filter(Boolean)
     : [];
+  let budget = HISTORY_BUDGET;
+  const kept: ChatTurn[] = [];
+  for (let i = claimed.length - 1; i >= 0; i--) {
+    budget -= claimed[i].text.length;
+    if (budget < 0) break;
+    kept.unshift(claimed[i]);
+  }
+  const history: ChatTurn[] = kept;
 
   const db = getDb();
   const [sessions, customers, contacts, interactions, runs, prefs] =
@@ -193,6 +220,57 @@ export async function POST(req: NextRequest) {
   //
   // So the most relevant passages are put in front of it every turn, exactly
   // as the assistant dock does. The tool stays for follow-up searches.
+  // THE CATALOGUE, COUNTED, AS FACT.
+  //
+  // The only offerings tool is a SEARCH, so a question like "how many
+  // offerings do we have?" made the model count its own search hits and answer
+  // 20 when the true number is 29. Totals are cheap and always available, so
+  // they belong in the grounding rather than behind a tool the model has to
+  // guess how to use.
+  /**
+   * THE WHOLE CATALOGUE, HANDED OVER, NOT SEARCHED FOR.
+   *
+   * The only offerings tool is a keyword search, so "list all the offerings"
+   * meant running searches and stitching hits together: it found 26 of 29 and
+   * said so (Anir, Jul 29: "it doesn't even know the offerings"). Anything the
+   * user can see on the Offerings page the assistant must simply know. Twenty
+   * nine rows is nothing to a model, so the full list goes in every time and
+   * the search tool is left for digging into documents.
+   */
+  const catalogueGrounding = (() => {
+    try {
+      const all = listOfferings();
+      if (!all.length) return "";
+      const byType = new Map<string, typeof all>();
+      for (const o of all) {
+        const t = o.offering_type || "Other";
+        if (!byType.has(t)) byType.set(t, []);
+        byType.get(t)!.push(o);
+      }
+      const blocks = [...byType.entries()]
+        .sort((a, b) => b[1].length - a[1].length)
+        .map(
+          ([type, list]) =>
+            `${type} (${list.length}):\n` +
+            list
+              .map(
+                (o) =>
+                  `  - ${o.offering_name} | category: ${o.offering_category || "none"}` +
+                  ` | availability: ${o.current_availability || "unknown"}`
+              )
+              .join("\n")
+        )
+        .join("\n");
+      return (
+        `\n\nFREYR'S COMPLETE OFFERINGS CATALOGUE (${all.length} offerings, ` +
+        `the whole list, authoritative: never search to answer "how many" or ` +
+        `"list them", just read this):\n${blocks}`
+      );
+    } catch {
+      return "";
+    }
+  })();
+
   const knowledgeGrounding = await (async () => {
     try {
       const corpus = await buildKnowledgeBaseAsync();
@@ -210,33 +288,59 @@ export async function POST(req: NextRequest) {
     }
   })();
 
-  const facts = buildFacts(ctx, deals, needsApproval, runs);
+  /**
+   * WHAT THE PERSON CAN ACTUALLY SEE IS WHAT THE AGENT KNOWS.
+   *
+   * In real (offerings-only) mode the app hides the pipeline entirely: no
+   * customers, no deals, no sessions, no to-do. The assistant was still being
+   * handed all of it, so it opened with "9 Launch Biotech accounts at risk"
+   * about records the user cannot open (Anir, Jul 29: "in real mode, just the
+   * shit that's visible to the user should be in the agent"). Talking about
+   * invisible demo data is worse than saying nothing: it reads as either a bug
+   * or a lie.
+   *
+   * The same helper the navigation and search already use decides it here, so
+   * the three can never disagree.
+   */
+  const offeringsOnly = isOfferingsOnly(getDataMode());
+
+  const facts = offeringsOnly ? "" : buildFacts(ctx, deals, needsApproval, runs);
+  // One prompt, six short sections. Every reactive "NEVER do X" patch that
+  // accumulated here has been folded into plain statements of how to behave —
+  // a stack of prohibitions reads like a form and produces a bot that sounds
+  // like one (Anir, Jul 29: "stop confusing with all of these different rules").
   const agentSystem =
-    `You are Freyr's AI sales agent for the signed-in user (${actorName}) in regulatory life-sciences. ` +
-    "You are a sharp, decisive sales partner: warm, concise, plain English, NO jargon. " +
-    // House style (Anir, Jul 28): facts, not metaphors, and never an em dash.
-    "State facts plainly. Never use figures of speech or metaphors for data. " +
-    "NEVER use an em dash (—) in your reply: use a period, a comma or a colon instead. " +
-    "Reply in the SAME language the user writes in (Spanish in → Spanish out, etc.). " +
-    "You are HUMAN-LED: you draft, prep, and recommend; the signed-in user approves everything. You NEVER claim to have " +
-    "sent an email, made a call, or contacted anyone. The only real writes you make are saving a draft, " +
-    "setting a follow-up, and logging a touch the rep ALREADY had: each waits for the signed-in user. " +
-    "Ground every number, name, email, and figure ONLY in the data below or in tool results: never invent. " +
-    "Use your tools: get_account_detail for depth on a named account, list_accounts to filter the book, "+
-    "search_offerings for ANY question about Freyr's offerings, services, sales materials, markets or customer types, and to read what an uploaded deck or transcript actually says (always search before answering those, and quote the file when you use it), " +
-    "save_draft / set_followup / log_touch to take a real action, show_pitch to surface a prepared pitch. " +
-    "When asked to draft/re-engage/reach out, WRITE the full draft yourself (a 'Subject:' line + 3–5 short " +
-    `sentences signed '${actorName} · Freyr'), show it, then offer to save it: don't ask permission first, ` +
-    "and never use bracketed placeholders like [First Name]. If the rep names an account you don't have, " +
-    "say so plainly. Keep non-draft answers to 2–5 sentences.\n" +
-    "FORMATTING: **bold**, *italics*, bullets and Markdown tables all render properly: use a table when listing 3+ records. " +
-    "When you compare 3+ numbers, ALSO include a chart on its own lines, exactly this shape with REAL values from the data below:\n" +
-    '```chart\n{"type":"bar","title":"Open pipeline by stage","format":"money","data":[{"label":"Prospect","value":391000},{"label":"Qualified","value":578000}]}\n```\n' +
-    'Chart types: "bar" (comparisons), "donut" (share of a whole: may add "center":{"label":"10","sub":"open"}), "area" (trend). ' +
-    "Never fabricate numbers for a chart; skip the chart if the data is not in your grounding.\n\n" +
-    "LIVE PIPELINE (your grounding: full book):\n" +
-    facts +
+    `You are Freyr's AI sales assistant, working for ${actorName} in regulatory life-sciences.\n\n` +
+
+    "VOICE. Talk like a trusted colleague: warm, direct, plain English, no jargon, no filler. " +
+    "Answer the question in your first sentence. A greeting gets a short, friendly greeting back " +
+    `(use ${actorName}'s name), nothing more. Reply in English. ` +
+    "Use a period, comma or colon where an em dash would go. Keep answers to 2-5 sentences unless the user asks for depth or a draft.\n\n" +
+
+    "HONESTY. Every number, name and figure comes from your grounding or a tool result; if you don't have it, say so. " +
+    "You draft and recommend; the user approves. You never send anything and never claim to have contacted anyone.\n\n" +
+
+    (offeringsOnly
+      ? "SCOPE. This workspace contains Freyr's offerings catalogue and uploaded sales materials, nothing else: " +
+        "no customers, deals, pipeline or to-do exist here, so never bring them up or quote zeros for them. " +
+        "Use search_offerings before answering anything about offerings, materials, markets or customer types, and name the document when you quote one.\n\n"
+      : "SCOPE. You have the user's full book (below) plus tools: get_account_detail (depth on one account), " +
+        "list_accounts (filter the book), search_offerings (anything about offerings, materials, markets, customer types - " +
+        "search before answering those, and name the document when you quote one), " +
+        "save_draft / set_followup / log_touch (real actions, saved for the user's approval), show_pitch.\n\n") +
+
+    "DRAFTS. When asked to write outreach, write the whole thing: a Subject line plus 3-5 short sentences, " +
+    `signed '${actorName} \u00b7 Freyr', with no placeholders. Show it, then offer to save it.\n\n` +
+
+    "FORMAT. Markdown renders: bold, bullets, tables (use a table for 3+ records). " +
+    "When comparing 3+ numbers from your grounding, also add a chart block:\n" +
+    '```chart\n{"type":"bar","title":"Open pipeline by stage","format":"money","data":[{"label":"Prospect","value":391000}]}\n```\n' +
+    'Types: "bar" (comparisons), "donut" (share of a whole), "area" (trend). Real values only.\n\n' +
+
+    (offeringsOnly ? "" : "THE BOOK (live data):\n" + facts) +
+    catalogueGrounding +
     knowledgeGrounding;
+
   const turns: { role: "user" | "assistant"; content: string }[] = [
     ...history.map((t) => ({
       role: (t.role === "agent" ? "assistant" : "user") as "user" | "assistant",
@@ -247,7 +351,7 @@ export async function POST(req: NextRequest) {
 
   // Resolve whatever the model put in an `account` field to a real customer:
   // a company name (full or partial), an id, OR a CONTACT's name — reps say
-  // "draft something for Priya" or "what's the latest with Lena Vogt" all the time.
+  // "draft something for Patricia" or "what's the latest with Lena Vogt" all the time.
   const resolveAccount = (q: unknown) => {
     const s = String(q || "").trim();
     if (!s) return null;
@@ -450,10 +554,15 @@ export async function POST(req: NextRequest) {
     return { content: `Unknown tool: ${name}.` };
   };
 
+  // Tools that read or write CRM records are withheld in offerings-only mode:
+  // leaving them advertised invites the model to talk about a book that is not
+  // on screen, and to "save a draft" against an account nobody can open.
   const agentResult = await agentConverseAgentic(
     agentSystem,
     turns,
-    AGENT_TOOLS,
+    offeringsOnly
+      ? AGENT_TOOLS.filter((t) => t.name === "search_offerings")
+      : AGENT_TOOLS,
     runTool
   );
   if (agentResult && agentResult.text) {
@@ -466,8 +575,22 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // No key, or the live agent errored → deterministic fallback.
-  return deterministic();
+  // NO PRE-WRITTEN ANSWER EVER REACHES A PERSON.
+  //
+  // Every template that used to answer here was indistinguishable from the
+  // assistant itself, so a bad minute at the API read as "this is not an AI"
+  // (Anir, Jul 29: "no hardcoded messages are allowed, remove all hardcoded
+  // messages"). If Claude cannot answer after its retries, that is an outage,
+  // and it should look like one: the chat shows a plain "couldn't reach the
+  // agent, try again" notice, which is honest, rather than a canned reply
+  // wearing the assistant's face.
+  //
+  // The deterministic brain survives for `mock:true` only, which is the test
+  // suite, never a user.
+  return NextResponse.json(
+    { ok: false, error: "The assistant is unreachable right now." },
+    { status: 503 }
+  );
 }
 
 // Tools the live agent can call. Reads (detail/list/pitch) keep it grounded;
