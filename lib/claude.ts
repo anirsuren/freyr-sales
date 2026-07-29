@@ -475,7 +475,16 @@ export async function agentConverseAgentic(
       messages,
     });
     return { text: textFrom(final).trim(), dids };
-  } catch {
+  } catch (e) {
+    // NEVER fail silently. The canned fallback answering in Claude's place is
+    // exactly what made the agent look hard-coded for a day (Anir, Jul 29:
+    // "is this an AI or is this some hard-coded bullshit?") while the real
+    // cause sat invisible in a swallowed exception. The reply still falls
+    // back so the chat is never dark, but the server log now names the why.
+    console.error(
+      "[agent] live Claude call failed, falling back to canned:",
+      e instanceof Error ? e.message : e
+    );
     return null;
   }
 }

@@ -13,6 +13,7 @@ import {
 } from "@/lib/agentChat";
 import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
 import { offeringsAnswer } from "@/lib/offeringsAgent";
+import { searchKnowledge } from "@/lib/knowledgeBase";
 import {
   verifiedWorkflowActor,
   type VerifiedWorkflowActor,
@@ -98,20 +99,6 @@ export async function POST(req: NextRequest) {
 
   const base = answerAgentChat(message, ctx, history, actorName);
 
-  // Factual offerings questions ("what offerings do we have", "tell me about
-  // Freya Register", "offerings in Europe") are answered straight from the
-  // repository — grounded, no LLM, works with or without a key. Read-only and
-  // tightly scoped, so it never intercepts normal pipeline/account questions.
-  const off = offeringsAnswer(message);
-  if (off) {
-    return NextResponse.json({
-      ok: true,
-      reply: off.reply,
-      suggestions: off.suggestions,
-      source: "offerings",
-    });
-  }
-
   // `mock:true` forces the deterministic brain — used by the test suite so
   // assertions stay reproducible whether or not a key is set.
   const forceMock = body.mock === true;
@@ -121,6 +108,19 @@ export async function POST(req: NextRequest) {
   // so the chat is never silent. It detects actions by pattern as a best effort —
   // the real reasoning lives in the tool-using agent below.
   const deterministic = async () => {
+    // Factual offerings questions answered straight from the repository:
+    // grounded and keyless. This used to run BEFORE Claude, so a rigid
+    // template answered even when the real model was available. Now the model
+    // owns the conversation and this is purely the offline net.
+    const off = offeringsAnswer(message);
+    if (off) {
+      return NextResponse.json({
+        ok: true,
+        reply: off.reply,
+        suggestions: off.suggestions,
+        source: "offerings",
+      });
+    }
     const action = base.action;
     if (action?.type === "show_pitch") {
       const result = showPitch(action, sessions);
@@ -176,7 +176,8 @@ export async function POST(req: NextRequest) {
     "sent an email, made a call, or contacted anyone. The only real writes you make are saving a draft, " +
     "setting a follow-up, and logging a touch the rep ALREADY had: each waits for the signed-in user. " +
     "Ground every number, name, email, and figure ONLY in the data below or in tool results: never invent. " +
-    "Use your tools: get_account_detail for depth on a named account, list_accounts to filter the book, " +
+    "Use your tools: get_account_detail for depth on a named account, list_accounts to filter the book, "+
+    "search_offerings for ANY question about Freyr's offerings, services, sales materials, markets or customer types (always search before answering those), " +
     "save_draft / set_followup / log_touch to take a real action, show_pitch to surface a prepared pitch. " +
     "When asked to draft/re-engage/reach out, WRITE the full draft yourself (a 'Subject:' line + 3–5 short " +
     `sentences signed '${actorName} · Freyr'), show it, then offer to save it: don't ask permission first, ` +
@@ -380,6 +381,19 @@ export async function POST(req: NextRequest) {
       return { content: result.reply, did: "log_touch" };
     }
 
+    if (name === "search_offerings") {
+      const q = String(input?.query || "").trim();
+      if (!q) return { content: "Give search_offerings a query." };
+      const hits = searchKnowledge(q, 6);
+      if (!hits.length)
+        return { content: `Nothing in the offerings catalogue matches "${q}".` };
+      return {
+        content: hits
+          .map((h) => `[${h.kind}] ${h.title} (${h.href}): ${h.text}`)
+          .join("\n\n"),
+      };
+    }
+
     return { content: `Unknown tool: ${name}.` };
   };
 
@@ -407,6 +421,21 @@ export async function POST(req: NextRequest) {
 // writes (draft/follow-up/log) are the only real side effects, and every one is
 // human-led — saved for the signed-in user to review, never sent.
 const AGENT_TOOLS: AgentToolDef[] = [
+  {
+    name: "search_offerings",
+    description:
+      "Search Freyr's own offerings catalogue: every offering with its description, capabilities, availability, markets, customer types and contacts, plus sales materials and master lists. Use for ANY question about what Freyr sells or the materials behind it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "What to look up, e.g. 'labelling artwork Japan' or 'deck for Freya.Submit'",
+        },
+      },
+      required: ["query"],
+    },
+  },
   {
     name: "get_account_detail",
     description:

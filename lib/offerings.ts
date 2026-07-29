@@ -747,14 +747,24 @@ globalThis.__FREYR_LIVE_OFFERINGS_STORE__ = liveStore;
 if (!store.offeringTypes) store.offeringTypes = seedOfferingTypes();
 if (!store.offeringCategories)
   store.offeringCategories = seedOfferingCategories();
-// `owners` arrived after catalogs were already persisted. Without this back-fill
-// an older stored offering loads with `owners` undefined and every ownership
-// check throws on `.some()`.
-for (const o of store.offerings) if (!o.owners) o.owners = [];
-// `contacts` arrived after catalogs were persisted too. Back-fill it from the
-// `poc` cell so an offering that has only ever known the sheet still opens with
-// its people listed, one row per person, rather than an empty card.
-for (const o of store.offerings) if (!o.contacts) o.contacts = contactsFromPoc(o);
+// FIELDS THAT ARRIVED AFTER CATALOGS WERE ALREADY PERSISTED. A stored offering
+// that predates them loads with the field undefined, and the first `.map` or
+// `.some` on it takes the whole page down. This healer runs at EVERY point a
+// store's contents can be replaced, not just module init: the Jul 29 prod
+// white-screen on Freya.Register happened because the Supabase catalog restore
+// (initializeLiveOfferings → replaceStore) bypassed the init-time loop, so live
+// records arrived without `contacts` while seeded ones had it.
+function healOfferings(s: OfferingsStore): void {
+  for (const o of s.offerings) {
+    if (!o.owners) o.owners = [];
+    if (!o.materials) o.materials = [];
+    if (!o.customer_type_ids) o.customer_type_ids = [];
+    if (!o.market_ids) o.market_ids = [];
+    // `poc` cell → real contact rows, so the sheet's people are kept.
+    if (!o.contacts) o.contacts = contactsFromPoc(o);
+  }
+}
+healOfferings(store);
 
 // ONE offerings catalog, always — the mode switch is about which MODULES are
 // finished, not about which data is real (Anir, Jul 27: "if I add or delete a
@@ -823,6 +833,9 @@ export async function initializeLiveOfferings(): Promise<void> {
       if (error) throw new Error(`Could not load the offering catalog: ${error.message}`);
       if (isOfferingsStore(data?.catalog)) {
         replaceStore(liveStore, data.catalog);
+        // The persisted catalog can predate newer offering fields: heal it
+        // BEFORE anything renders from it.
+        healOfferings(liveStore);
         // Heal a catalog persisted while the samples were being deleted: put
         // them back and write the repaired catalog once.
         const before = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);

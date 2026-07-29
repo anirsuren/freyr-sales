@@ -71,7 +71,7 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
 export function OfferingContacts({
   offeringId,
   offeringName,
-  contacts,
+  contacts: contactsProp,
   canEdit,
   people,
 }: {
@@ -83,6 +83,10 @@ export function OfferingContacts({
   people: PickablePerson[];
 }) {
   const router = useRouter();
+  // NEVER trust the array from a persisted record: a catalog stored before
+  // `contacts` existed hands this component undefined, and `.map` on it
+  // white-screened the offering page in prod (Jul 29). Degrade to empty.
+  const contacts = useMemo(() => contactsProp ?? [], [contactsProp]);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

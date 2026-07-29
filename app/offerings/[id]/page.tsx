@@ -372,7 +372,7 @@ export default async function OfferingDetailPage({
             <OfferingContacts
               offeringId={o.id}
               offeringName={o.offering_name}
-              contacts={o.contacts}
+              contacts={o.contacts ?? []}
               canEdit={admin}
               people={people}
             />
