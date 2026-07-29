@@ -12,11 +12,13 @@ import {
   Plus,
   UserRound,
   Mail,
+  Phone,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
-import { teamsChatUrl } from "@/lib/team";
+import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
+import { teamsChatUrl, repEmail, repLinkedIn } from "@/lib/team";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
@@ -29,6 +31,8 @@ export type OwnerRow = {
   name: string;
   email: string | null;
   status: "requested" | "owner";
+  /** Only ever a REAL number the account carries; never generated. */
+  phone?: string | null;
   claimed_at: string;
   granted_by: string;
 };
@@ -78,80 +82,87 @@ function OwnerHoverCard({
   isYou: boolean;
   children: React.ReactNode;
 }) {
-  const email = (owner.email || "").trim();
+  const email = (owner.email || "").trim() || repEmail(owner.name);
+  // The phone is shown ONLY when the account actually carries one. repPhone()
+  // invents a realistic-looking number for the demo roster, and printing a
+  // made-up number against a real colleague in a real app is how somebody ends
+  // up dialling a stranger. No number on file says so.
+  const phone = (owner.phone || "").trim();
+  const first = owner.name.split(" ")[0];
   return (
     <HoverCard
       side="left"
-      width={288}
+      width={280}
       content={
-        <div className="w-[288px] p-3.5">
+        <div className="w-[280px] p-3.5">
           <div className="flex items-center gap-2.5">
-            <Avatar name={owner.name} className="h-10 w-10 shrink-0 text-[13px]" />
+            <Avatar name={owner.name} className="h-11 w-11 shrink-0 text-[14px]" />
             <div className="min-w-0">
-              <p className="text-[13.5px] font-semibold leading-tight text-text-primary">
+              <p className="text-[14px] font-semibold leading-tight text-text-primary">
                 {owner.name}
                 {isYou && (
                   <span className="ml-1.5 text-[11px] font-medium text-text-tertiary">
-                    (this is you)
+                    (you)
                   </span>
                 )}
               </p>
+              {/* Two lines on purpose: the sentence, then the whole date.
+                  Cramming both into one wrapped it mid-date. */}
               <p className="text-[11.5px] leading-tight text-text-secondary">
-                {owner.status === "owner" ? "Can edit this offering" : "Asked to own this"}
+                {owner.status === "owner" ? "Owns this offering" : "Asked to own this"}
+              </p>
+              <p className="whitespace-nowrap text-[11.5px] leading-tight text-text-tertiary">
+                {formatDate(owner.claimed_at)}
               </p>
             </div>
           </div>
 
-          <dl className="mt-3 space-y-1.5 border-t border-border-light pt-2.5 text-[11.5px]">
-            <div className="flex gap-2">
-              <dt className="w-[74px] shrink-0 text-text-tertiary">Email</dt>
-              <dd className="min-w-0 break-all font-medium text-text-primary">
-                {email || "Not on the account"}
-              </dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="w-[74px] shrink-0 text-text-tertiary">
-                {owner.status === "owner" ? "Owner since" : "Asked on"}
-              </dt>
-              <dd className="font-medium text-text-primary">
-                {formatDate(owner.claimed_at)}
-              </dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="w-[74px] shrink-0 text-text-tertiary">Account</dt>
-              {/* The stable id permissions are keyed to. Two people with the
-                  same name are two ids, and this is where you see that. */}
-              <dd className="min-w-0 break-all font-mono text-[10.5px] text-text-secondary">
-                {owner.memberId}
-              </dd>
-            </div>
-          </dl>
-
-          {email && (
-            <div className="mt-2.5 flex items-center gap-1.5 border-t border-border-light pt-2.5">
+          {/* How you actually reach them. A salesperson wants the phone and the
+              address, and nothing else — the internal account id that used to
+              sit here was a debugging detail with no business meaning
+              (Anir, Jul 29: "why is the account even important? Put the phone
+              number there. This is a user-facing application"). */}
+          <div className="mt-3 space-y-2 border-t border-border-light pt-2.5">
+            {phone ? (
               <a
-                href={teamsChatUrl(owner.name, email)}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Message ${owner.name.split(" ")[0]} on Teams`}
-                title={`Message ${owner.name.split(" ")[0]} on Teams`}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+                className="flex items-center gap-2 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
               >
-                <TeamsIcon size={14} />
+                <Phone size={13.5} strokeWidth={1.9} className="shrink-0 text-text-tertiary" />
+                <span className="font-medium">{phone}</span>
               </a>
-              <a
-                href={`mailto:${email}`}
-                aria-label={email}
-                title={email}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-              >
-                <Mail size={14} strokeWidth={1.9} />
-              </a>
-              <span className="min-w-0 break-all text-[11px] text-text-tertiary">
-                {email}
+            ) : (
+              <span className="flex items-center gap-2 text-[12.5px] text-text-tertiary">
+                <Phone size={13.5} strokeWidth={1.9} className="shrink-0" />
+                No direct number on file
               </span>
-            </div>
-          )}
+            )}
+            <a
+              href={`mailto:${email}`}
+              className="flex items-center gap-2 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
+            >
+              <Mail size={13.5} strokeWidth={1.9} className="shrink-0 text-text-tertiary" />
+              <span className="min-w-0 break-all font-medium">{email}</span>
+            </a>
+            <a
+              href={teamsChatUrl(owner.name, email)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
+            >
+              <TeamsIcon size={13.5} />
+              <span className="font-medium">Message {first} on Teams</span>
+            </a>
+            <a
+              href={repLinkedIn(owner.name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
+            >
+              <LinkedInIcon size={13.5} />
+              <span className="font-medium">{first} on LinkedIn</span>
+            </a>
+          </div>
         </div>
       }
     >
