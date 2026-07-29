@@ -6178,15 +6178,18 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       },
     });
     // An owner manages both, and is told the training file is hidden.
+    // Scoped to #main-content and .first(): the dev server briefly renders a
+    // copy into its hidden streaming slot, which trips strict mode otherwise.
+    const main = page.locator("#main-content");
     await page.goto(`${BASE}/offerings/${id}`);
-    await expect(page.getByText("QA training transcript")).toBeVisible();
-    await expect(page.getByText(/hidden from sales/i)).toBeVisible();
+    await expect(main.getByText("QA training transcript").first()).toBeVisible();
+    await expect(main.getByText(/hidden from sales/i).first()).toBeVisible();
 
     // A rep who does NOT own it sees only the client-facing one.
     await disown(request, id);
     await page.goto(`${BASE}/offerings/${id}`);
-    await expect(page.getByText("QA client-facing sheet")).toBeVisible();
-    await expect(page.getByText("QA training transcript")).toHaveCount(0);
+    await expect(main.getByText("QA client-facing sheet").first()).toBeVisible();
+    await expect(main.getByText("QA training transcript")).toHaveCount(0);
 
     await own(request, id);
     await request.patch(`${BASE}/api/offerings/${id}`, { data: { materials: [] } });
@@ -6209,6 +6212,50 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       expect(d.reply).toMatch(/yes/i);
       expect(d.reply).toContain(market);
     }
+  });
+
+
+  test("357 — a material can be EDITED after upload, not just added and deleted (V52)", async ({
+    page,
+    request,
+  }) => {
+    // Upload / edit / delete is the flow Freyr asked for, and edit was the one
+    // missing: a file with the wrong access level could only be deleted and
+    // re-sent, which for a 900MB demo is not a flow.
+    const id = "of-018";
+    await own(request, id);
+    await request.patch(`${BASE}/api/offerings/${id}`, {
+      data: {
+        materials: [
+          {
+            id: "",
+            kind: "document",
+            label: "QA before edit",
+            url: "https://www.freyrsolutions.com/",
+            journeyStage: "awareness",
+            accessLevel: "client_facing",
+          },
+        ],
+      },
+    });
+
+    await page.goto(`${BASE}/offerings/${id}`);
+    await page.getByRole("button", { name: "Edit QA before edit" }).click();
+    const name = page.getByRole("textbox").first();
+    await name.fill("QA after edit");
+    await page.getByRole("button", { name: "Save changes" }).click();
+
+    await expect(
+      page.locator("#main-content").getByText("QA after edit").first()
+    ).toBeVisible({ timeout: 8000 });
+    // The row keeps its identity, which is what carries docsPath and the
+    // uploader's attribution through the save.
+    const after = await (await request.get(`${BASE}/api/offerings/${id}`)).json();
+    expect(after.offering.materials).toHaveLength(1);
+    expect(after.offering.materials[0].label).toBe("QA after edit");
+
+    await request.patch(`${BASE}/api/offerings/${id}`, { data: { materials: [] } });
+    await disown(request, id);
   });
 
 });

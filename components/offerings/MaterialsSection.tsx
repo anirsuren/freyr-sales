@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
+import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { timeAgo } from "@/lib/utils";
 import {
   ACCESS_LEVELS,
@@ -393,6 +394,13 @@ export function MaterialsSection({
                     size={14}
                     strokeWidth={1.7}
                     className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                  />
+                )}
+                {canEdit && offeringId && (
+                  <EditMaterialButton
+                    offeringId={offeringId}
+                    material={material}
+                    materials={materials}
                   />
                 )}
                 {canEdit && offeringId && (
