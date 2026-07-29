@@ -3,6 +3,10 @@
 import { useEffect, useId, useRef, useState, useCallback, type ReactNode } from "react";
 import Link from "next/link";
 import {
+  KnowledgePanel,
+  KnowledgeRailButton,
+} from "@/components/agent/KnowledgePanel";
+import {
   Plus,
   ArrowUp,
   Sparkles,
@@ -395,6 +399,10 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  /** Sources this chat may use. Empty = the whole knowledge base. */
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [scopedSources, setScopedSources] = useState<string[]>([]);
+
   const [suggestions, setSuggestions] = useState<string[]>(STARTERS);
   const [typingTs, setTypingTs] = useState<number | null>(null);
   const [summary, setSummary] = useState<{
@@ -498,7 +506,13 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
         const res = await fetch("/api/agent/converse", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, history: prior }),
+          body: JSON.stringify({
+            message: text,
+            history: prior,
+            // Empty means the whole knowledge base; a selection scopes THIS
+            // chat to it without hiding anything from any other chat.
+            sources: scopedSources,
+          }),
           signal: controller.signal,
         });
         const data = await res.json();
@@ -642,6 +656,8 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
           <Link href="/agent/inbox" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-text-secondary hover:bg-surface transition-colors">
             <Inbox size={16} strokeWidth={1.7} /> To-do
           </Link>
+          {/* What the assistant knows, and what THIS chat is allowed to use. */}
+          <KnowledgeRailButton onClick={() => setKnowledgeOpen(true)} />
           <Link href="/agent/settings" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-text-secondary hover:bg-surface transition-colors">
             <SlidersHorizontal size={16} strokeWidth={1.7} /> Agent settings
           </Link>
@@ -819,6 +835,13 @@ export function AgentChat({ initialAsk }: { initialAsk?: string } = {}) {
           </div>
         </div>
       </div>
+
+      <KnowledgePanel
+        open={knowledgeOpen}
+        onClose={() => setKnowledgeOpen(false)}
+        selected={scopedSources}
+        onSelectedChange={setScopedSources}
+      />
     </div>
   );
 }

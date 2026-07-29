@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { timeAgo } from "@/lib/utils";
 import {
@@ -105,13 +107,17 @@ export function MaterialsSection({
   const [levels, setLevels] = useState<string[]>([]);
 
   const router = useRouter();
+  const { toast } = useToast();
   const [removing, setRemoving] = useState<string | null>(null);
+  /** The row awaiting confirmation, so the dialog can name it. */
+  const [pendingRemoval, setPendingRemoval] = useState<OfferingMaterial | null>(
+    null
+  );
 
   /** Take a material off the offering. Owner-only: the button is not rendered
    *  for anyone else, and the PATCH refuses them regardless. */
   async function removeMaterial(target: OfferingMaterial) {
     if (!offeringId || removing) return;
-    if (!confirm(`Remove "${target.label}" from this offering?`)) return;
     setRemoving(target.id);
     try {
       const next = materials
@@ -132,10 +138,17 @@ export function MaterialsSection({
         body: JSON.stringify({ materials: next }),
       });
       const data = await res.json();
-      if (data.ok) router.refresh();
-      else alert(data.error || "Could not remove that material.");
+      if (data.ok) {
+        toast(`Removed "${target.label}"`);
+        router.refresh();
+      } else {
+        toast(data.error || "Could not remove that material.", "error");
+      }
+    } catch {
+      toast("Could not remove that material.", "error");
     } finally {
       setRemoving(null);
+      setPendingRemoval(null);
     }
   }
 
@@ -425,13 +438,13 @@ export function MaterialsSection({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      void removeMaterial(material);
+                      setPendingRemoval(material);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         e.stopPropagation();
-                        void removeMaterial(material);
+                        setPendingRemoval(material);
                       }
                     }}
                     className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
@@ -444,6 +457,26 @@ export function MaterialsSection({
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingRemoval)}
+        onClose={() => setPendingRemoval(null)}
+        onConfirm={() => pendingRemoval && void removeMaterial(pendingRemoval)}
+        busy={Boolean(removing)}
+        title="Remove this material?"
+        body={
+          <>
+            <span className="font-semibold">{pendingRemoval?.label}</span> comes
+            off this offering, and the sales team stops seeing it.
+          </>
+        }
+        detail={
+          pendingRemoval?.docsPath
+            ? "The assistant also forgets what was inside it. The file stays in storage, but you would have to upload it again to bring it back."
+            : undefined
+        }
+        confirmLabel="Remove material"
+      />
     </div>
   );
 }

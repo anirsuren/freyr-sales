@@ -62,10 +62,14 @@ export async function POST(
     // be able to use the content of each of the files uploaded"). Extraction
     // is best-effort and never blocks the upload: a scanned PDF or a .mov
     // still stores fine, it just isn't searchable, and we say so.
+    // This path still has the bytes in hand, so there is nothing to race and
+    // nothing to retry — but it reports the SAME three outcomes as the direct
+    // path so the dialog never has to guess which one it is talking to.
+    const supported = isReadableFile(file.name);
     let readable = false;
     let words = 0;
     if (stored.docsPath) {
-      const text = isReadableFile(file.name)
+      const text = supported
         ? extractFileText(Buffer.from(await file.arrayBuffer()), file.name)
         : "";
       readable = text.length > 0;
@@ -78,7 +82,14 @@ export async function POST(
       }).catch(() => undefined);
     }
 
-    return NextResponse.json({ ok: true, ...stored, readable, words });
+    return NextResponse.json({
+      ok: true,
+      ...stored,
+      supported,
+      failed: false,
+      readable,
+      words,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Upload failed" },

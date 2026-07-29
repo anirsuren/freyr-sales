@@ -223,6 +223,8 @@ export function AddMaterialButton({
       // to know when it was a scan or a video and there were no words to take.
       let wasRead = false;
       let readWords = 0;
+      let unsupported = false;
+      let readFailed = false;
       if (file) {
         const stored = await uploadFile(file);
         if (!stored) {
@@ -233,6 +235,8 @@ export function AddMaterialButton({
         storedPath = stored.docsPath;
         readWords = typeof stored.words === "number" ? stored.words : 0;
         wasRead = Boolean(stored.readable);
+        unsupported = stored.supported === false;
+        readFailed = Boolean(stored.failed);
       }
       // Note: "added by" is NOT sent from here. The PATCH route stamps the
       // uploader from the server session and restores every existing row's
@@ -274,12 +278,22 @@ export function AddMaterialButton({
       });
       const data = await res.json();
       if (data.ok) {
+        // SAY THE TRUE REASON. The old copy blamed the file type for every
+        // outcome, so a PDF that extracts perfectly was reported as an
+        // unreadable format when the real cause was a failed read-back
+        // (Anir, Jul 29: "it literally just gave me a pop-up that said it
+        // can't read this file type... that thing should never say that").
         toast(
           !file
             ? "Material added"
             : wasRead
-              ? `Material added — the agent read ${readWords.toLocaleString()} words from it`
-              : "Material added — the agent can't read this file type, so it won't answer from it"
+              ? `Material added — the assistant read ${readWords.toLocaleString()} words from it`
+              : unsupported
+                ? "Material added. There is no text in this kind of file, so the assistant answers from its title and tags."
+                : readFailed
+                  ? "Material added. The assistant hasn't read it yet — open Edit and save to try again."
+                  : "Material added. The assistant found no text inside it.",
+          readFailed ? "error" : undefined
         );
         setOpen(false);
         reset();

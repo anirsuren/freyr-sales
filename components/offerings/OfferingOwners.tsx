@@ -360,6 +360,15 @@ export function OfferingOwners({
                       <span className="break-words text-[13px] font-semibold text-text-primary">
                         {o.name}
                       </span>
+                      {/* Which row is ME. Two colleagues can share a first
+                          name, and the list is the thing you scan before
+                          removing somebody (Anir, Jul 29: "put a nice little
+                          blue tag that says You so I know that's me"). */}
+                      {o.memberId === myMemberId && (
+                        <span className="rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-blue-primary">
+                          You
+                        </span>
+                      )}
                     </span>
                     <span className="text-[11.5px] text-text-secondary">
                       Owner since {formatDate(o.claimed_at)}

@@ -75,36 +75,68 @@ export async function POST(
     );
   }
 
+  const supported = isReadableFile(filename);
   let readable = false;
   let words = 0;
   let text = "";
-  if (isReadableFile(filename)) {
-    try {
-      const { presignUrl } = await docsStorage.getDownloadUrl(path);
-      const res = await fetch(presignUrl);
-      const size = Number(res.headers.get("content-length") || 0);
-      if (res.ok && size <= EXTRACT_LIMIT_BYTES) {
-        text = extractFileText(
-          Buffer.from(await res.arrayBuffer()),
-          filename
-        );
+  // `failed` means we could not READ it this time — a different thing from a
+  // format that has no text in it, and the two must never be reported as the
+  // same thing (see the response below).
+  let failed = false;
+
+  if (supported) {
+    // READ IT BACK WITH RETRIES.
+    //
+    // The object was committed a moment ago and the download is a fresh
+    // presign against it; asking for it immediately can lose that race, and
+    // the first version of this treated one unlucky GET as "this file has no
+    // text", wrote an empty entry, and told the owner their PDF was an
+    // unreadable file type. It happened to Anir on a PDF that extracts
+    // perfectly (Jul 29) — 0 words stored, 195 words on a retry of the very
+    // same file 108 seconds later.
+    for (const waitMs of [0, 400, 1200, 3000]) {
+      if (waitMs) await new Promise((r) => setTimeout(r, waitMs));
+      try {
+        const { presignUrl } = await docsStorage.getDownloadUrl(path);
+        const res = await fetch(presignUrl);
+        if (!res.ok) {
+          failed = true;
+          continue;
+        }
+        const size = Number(res.headers.get("content-length") || 0);
+        if (size > EXTRACT_LIMIT_BYTES) {
+          failed = false;
+          break;
+        }
+        text = extractFileText(Buffer.from(await res.arrayBuffer()), filename);
         readable = text.length > 0;
         words = text.match(/\S+/g)?.length ?? 0;
+        failed = false;
+        break;
+      } catch {
+        failed = true;
       }
-    } catch {
-      // The file is stored and downloadable either way; it just won't inform
-      // an answer. Never fail the upload over this.
     }
   }
-  await saveMaterialText(path, {
-    offeringId: id,
-    filename,
-    text,
-    extractedAt: new Date().toISOString(),
-  }).catch(() => undefined);
+
+  // Only record what we actually read. Writing an empty entry for a file we
+  // simply could not fetch would cache the failure: the assistant would treat
+  // a perfectly readable deck as wordless for good.
+  if (!failed) {
+    await saveMaterialText(path, {
+      offeringId: id,
+      filename,
+      text,
+      extractedAt: new Date().toISOString(),
+    }).catch(() => undefined);
+  }
 
   return NextResponse.json({
     ok: true,
+    // Three distinct outcomes, because one flag cannot carry them and the
+    // owner deserves the true one.
+    supported,
+    failed,
     // Downloads go through our own route, which mints a fresh signed URL per
     // click — a stored presign would expire and rot in the record.
     url: `/api/offerings/${id}/materials/download?path=${encodeURIComponent(path)}`,

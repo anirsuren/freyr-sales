@@ -15,6 +15,7 @@ import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
 import { offeringsAnswer } from "@/lib/offeringsAgent";
 import {
   searchKnowledge,
+  knowledgeBlock,
   buildKnowledgeBaseAsync,
 } from "@/lib/knowledgeBase";
 import {
@@ -51,6 +52,13 @@ export async function POST(req: NextRequest) {
   if (!message) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
   }
+  // Sources this chat is scoped to, chosen in the Knowledge base panel.
+  // Never a filter on WHAT EXISTS — only on what this conversation may draw
+  // from, so narrowing one chat leaves every other chat whole.
+  const scopedSourceIds: string[] = Array.isArray(body.sources)
+    ? body.sources.filter((v: unknown) => typeof v === "string").slice(0, 200)
+    : [];
+
   // Recent turns for continuity (e.g. "save it" → the account we just drafted for).
   const history: ChatTurn[] = Array.isArray(body.history)
     ? body.history
@@ -167,6 +175,41 @@ export async function POST(req: NextRequest) {
   // action — instead of us pattern-matching. It answers anything, in any
   // language. Falls through to the deterministic net if there's no key/it errors.
   // -----------------------------------------------------------------------
+  // ALWAYS RETRIEVE, don't wait to be asked.
+  //
+  // The catalogue and the uploaded documents used to reach this page only
+  // through the search_offerings TOOL, which means the model had to decide the
+  // question sounded like an offerings question. Ask "what is my discount
+  // authority?" — a fact sitting in an uploaded one-pager — and it never
+  // called the tool, so it answered "I don't have that information" while the
+  // bubble on the offering page answered correctly from the same file. Same
+  // brain, same documents, two different answers depending on the surface.
+  //
+  // So the most relevant passages are put in front of it every turn, exactly
+  // as the assistant dock does. The tool stays for follow-up searches.
+  const knowledgeGrounding = await (async () => {
+    try {
+      const corpus = await buildKnowledgeBaseAsync();
+      const scoped = scopedSourceIds.length
+        ? corpus.filter((p) =>
+            scopedSourceIds.some(
+              (id) => p.id === id || p.id.startsWith(`${id}#`) || p.href.includes(id)
+            )
+          )
+        : corpus;
+      const hits = searchKnowledge(message, 5, scoped.length ? scoped : corpus);
+      if (!hits.length) return "";
+      return (
+        "\n\nFREYR'S OWN KNOWLEDGE (offerings catalogue and the contents of " +
+        "uploaded sales material — quote it when it answers the question, and " +
+        "say which document it came from):\n" +
+        knowledgeBlock(hits)
+      );
+    } catch {
+      return "";
+    }
+  })();
+
   const facts = buildFacts(ctx, deals, needsApproval, runs);
   const agentSystem =
     `You are Freyr's AI sales agent for the signed-in user (${actorName}) in regulatory life-sciences. ` +
@@ -192,7 +235,8 @@ export async function POST(req: NextRequest) {
     'Chart types: "bar" (comparisons), "donut" (share of a whole: may add "center":{"label":"10","sub":"open"}), "area" (trend). ' +
     "Never fabricate numbers for a chart; skip the chart if the data is not in your grounding.\n\n" +
     "LIVE PIPELINE (your grounding: full book):\n" +
-    facts;
+    facts +
+    knowledgeGrounding;
   const turns: { role: "user" | "assistant"; content: string }[] = [
     ...history.map((t) => ({
       role: (t.role === "agent" ? "assistant" : "user") as "user" | "assistant",
@@ -387,7 +431,19 @@ export async function POST(req: NextRequest) {
     if (name === "search_offerings") {
       const q = String(input?.query || "").trim();
       if (!q) return { content: "Give search_offerings a query." };
-      const hits = searchKnowledge(q, 6, await buildKnowledgeBaseAsync());
+      // A chat can be scoped to particular sources from the Knowledge base
+      // panel. Passages carry the id of the record they came from; a file's
+      // chunks carry the material id, so matching on the prefix keeps every
+      // chunk of a chosen document.
+      const corpus = await buildKnowledgeBaseAsync();
+      const scoped = scopedSourceIds.length
+        ? corpus.filter((p) =>
+            scopedSourceIds.some(
+              (id) => p.id === id || p.id.startsWith(`${id}#`) || p.href.includes(id)
+            )
+          )
+        : corpus;
+      const hits = searchKnowledge(q, 6, scoped.length ? scoped : corpus);
       if (!hits.length)
         return { content: `Nothing in the offerings catalogue matches "${q}".` };
       return {
