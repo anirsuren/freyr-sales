@@ -236,21 +236,47 @@ export function OfferingOverviewMain({
           title={`Sales materials (${o.materials.length})`}
           description="Seller-ready assets, ordered by the way they are typically used."
           action={
-            /* Uploading assets is every member's job — offering owners join as
-               "sales" and must not need an admin to add their own materials
-               (Jul 27 call). Editing/deleting the offering stays admin-only. */
-            o.materials.length === 0 ? (
+            /* ONLY AN OWNER CAN ADD. The button used to render for everybody
+               and then the API refused the save, so a person who had just been
+               given a login clicked it, got an error, and had no idea what to
+               do next (Wajeed, Jul 29, after logging in: "I was wondering if we
+               could connect so that you can guide me in uploading the first set
+               of documents"). A control you cannot use should not look
+               available; the reason and the way forward take its place. */
+            admin && o.materials.length === 0 ? (
               <AddMaterialButton offeringId={o.id} materials={o.materials} />
             ) : null
           }
         />
         {o.materials.length === 0 ? (
-          <p className="mt-5 pl-11 text-[13px] text-text-tertiary">No sales materials have been added.</p>
+          admin ? (
+            <p className="mt-5 pl-11 text-[13px] text-text-tertiary">
+              No sales materials yet. Add the decks, one-pagers, demos and
+              anything else a rep hands a customer.
+            </p>
+          ) : (
+            <div className="mt-5 pl-11">
+              <p className="text-[13px] text-text-secondary">
+                No sales materials yet. Only an owner of this offering can add
+                them, so its content stays with the person accountable for it.
+              </p>
+              <p className="mt-1 text-[12.5px] text-text-tertiary">
+                If these are yours to upload, use{" "}
+                <span className="font-semibold text-text-secondary">
+                  Ask to own this
+                </span>{" "}
+                in &ldquo;Who can edit this&rdquo; on the right, and an admin
+                hands it over.
+              </p>
+            </div>
+          )
         ) : (
           <MaterialsSection
             materials={o.materials}
             action={
-              <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
+              admin ? (
+                <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
+              ) : undefined
             }
           />
         )}
