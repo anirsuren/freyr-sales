@@ -6258,4 +6258,80 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, id);
   });
 
+
+  test("358 — an owner decides whether a file teaches the assistant, separately from who sees it (V52)", async ({
+    request,
+  }) => {
+    // Two independent switches, not one list (Anir, Jul 29: "he can choose if
+    // the documents impact the AI or not... he doesn't want the AI to know
+    // that"). This is the mirror of test 355: there, hidden from sales but
+    // read by the agent. Here, visible to sales and invisible to the agent.
+    const id = "of-019";
+    await own(request, id);
+
+    const doc =
+      '<?xml version="1.0"?><w:document xmlns:w="x"><w:body>' +
+      "<w:p><w:r><w:t>The Marrowgate clause caps liability at eleven percent.</w:t></w:r></w:p>" +
+      "<w:p><w:r><w:t>This wording is not cleared for customers.</w:t></w:r></w:p>" +
+      "</w:body></w:document>";
+    const up = await request.post(`${BASE}/api/offerings/${id}/materials/upload`, {
+      multipart: {
+        file: { name: "marrowgate.docx", mimeType: DOCX_MIME, buffer: buildDocx(doc) },
+      },
+    });
+    const stored = await up.json();
+    expect(stored.readable).toBe(true);
+
+    const attach = (readByAgent: boolean) =>
+      request.patch(`${BASE}/api/offerings/${id}`, {
+        data: {
+          materials: [
+            {
+              id: "",
+              kind: "document",
+              label: "Marrowgate wording",
+              url: stored.url,
+              docsPath: stored.docsPath,
+              // Sales CAN see it — this is not the hidden-from-sales case.
+              accessLevel: "internal_only",
+              readByAgent,
+            },
+          ],
+        },
+      });
+    const ask = async () => {
+      const res = await request.post(`${BASE}/api/agent/assistant`, {
+        data: {
+          question: "What does the Marrowgate clause cap liability at?",
+          pageLabel: "an offering",
+          path: `/offerings/${id}`,
+        },
+      });
+      const body = await res.json();
+      return {
+        answer: body.answer as string,
+        citedAFile: (body.sources || []).some(
+          (x: { kind: string }) => x.kind === "file"
+        ),
+      };
+    };
+
+    await attach(true);
+    const on = await ask();
+    expect(on.citedAFile).toBe(true);
+    expect(on.answer).toMatch(/eleven|11/i);
+
+    // Same file, still listed for the team, now invisible to the assistant.
+    const off = await attach(false);
+    const saved = await off.json();
+    expect(saved.offering.materials[0].readByAgent).toBe(false);
+    expect(saved.offering.materials[0].label).toBe("Marrowgate wording");
+    const blind = await ask();
+    expect(blind.citedAFile).toBe(false);
+    expect(blind.answer).not.toMatch(/eleven percent|11%/i);
+
+    await request.patch(`${BASE}/api/offerings/${id}`, { data: { materials: [] } });
+    await disown(request, id);
+  });
+
 });

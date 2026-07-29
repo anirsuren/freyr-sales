@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  BotOff,
   Download,
   X,
   ExternalLink,
@@ -25,6 +26,7 @@ import {
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
   MATERIAL_ICON,
+  isReadByAgent,
   isSalesVisible,
   legacyKindLabel,
   materialFormat,
@@ -394,6 +396,17 @@ export function MaterialsSection({
                     size={14}
                     strokeWidth={1.7}
                     className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                  />
+                )}
+                {/* An owner must be able to SEE which files the assistant is
+                    blind to, or the switch is a setting nobody can audit. */}
+                {canEdit && !isReadByAgent(material) && (
+                  <TagPill
+                    label="Not used by AI"
+                    color="#475569"
+                    icon={BotOff}
+                    variant="outline"
+                    title="The assistant never reads this file"
                   />
                 )}
                 {canEdit && offeringId && (

@@ -107,7 +107,7 @@ export async function getCurrentUser(): Promise<UserIdentity> {
  * there is no such member. Cached for the life of the process: a member's id
  * never changes, and this sits on every request.
  */
-async function memberIdForEmail(email: string | null): Promise<string | null> {
+export async function memberIdForEmail(email: string | null): Promise<string | null> {
   if (!email || !hasSupabase()) return null;
   const key = email.toLowerCase();
   if (!globalThis.__FREYR_MEMBER_ID_BY_EMAIL__)

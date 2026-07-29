@@ -14,6 +14,7 @@ import {
   JOURNEY_STAGE_META,
   type AccessLevel,
   type JourneyStage,
+  isReadByAgent,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 
@@ -67,12 +68,14 @@ export function EditMaterialButton({
   const [accessLevel, setAccessLevel] = useState<AccessLevel>(
     material.accessLevel || "client_facing"
   );
+  const [readByAgent, setReadByAgent] = useState(isReadByAgent(material));
 
   function reset() {
     setLabel(material.label);
     setDescription(material.description || "");
     setJourneyStage(material.journeyStage || "awareness");
     setAccessLevel(material.accessLevel || "client_facing");
+    setReadByAgent(isReadByAgent(material));
   }
 
   async function save() {
@@ -95,6 +98,7 @@ export function EditMaterialButton({
               description: description.trim(),
               journeyStage,
               accessLevel,
+              readByAgent,
             }
           : {
               id: m.id,
@@ -105,6 +109,7 @@ export function EditMaterialButton({
               description: m.description,
               journeyStage: m.journeyStage,
               accessLevel: m.accessLevel,
+              readByAgent: m.readByAgent,
             }
       );
       const res = await fetch(`/api/offerings/${offeringId}`, {
@@ -213,6 +218,28 @@ export function EditMaterialButton({
               className="w-full resize-y rounded-lg border border-border-light px-3 py-2 text-[13.5px] outline-none transition-colors focus:border-blue-subtle"
             />
           </div>
+
+          {/* WHETHER THE ASSISTANT LEARNS FROM IT — a different question from
+              who may see it, so it gets its own control rather than another
+              value in the access list. */}
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border-light p-3">
+            <input
+              type="checkbox"
+              checked={readByAgent}
+              onChange={(e) => setReadByAgent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[color:#0071E3]"
+            />
+            <span className="min-w-0">
+              <span className="block text-[13px] font-semibold text-text-primary">
+                Let the Freyr assistant read this file
+              </span>
+              <span className="block text-[11.5px] leading-relaxed text-text-secondary">
+                On, it can answer questions from what is inside and cite it.
+                Off, the file is still here for the team — the assistant simply
+                never uses it.
+              </span>
+            </span>
+          </label>
 
           {/* Say what this dialog does NOT do, so nobody hunts for it. */}
           <p className="text-[11.5px] leading-relaxed text-text-tertiary">

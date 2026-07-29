@@ -18,16 +18,40 @@ import {
 import { authenticatedRequestPrincipal } from "./requestPrincipal";
 import type { WorkspaceMemberScope } from "./types";
 import { DEFAULT_LOCAL_USER_IDENTITY } from "./userIdentity";
+import { memberIdForEmail } from "./currentUser";
+import { getDataMode } from "./dataMode";
 
 const LOCAL_SCOPE: WorkspaceMemberScope = {
   workspaceId: "local-workspace",
   userId: DEFAULT_LOCAL_USER_IDENTITY.id,
 };
 
-function localDevelopmentScope(): WorkspaceMemberScope | null {
-  return process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
-    ? LOCAL_SCOPE
-    : null;
+function isLocalDevelopment(): boolean {
+  return process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE;
+}
+
+/**
+ * The scope a local, unauthenticated session gets.
+ *
+ * A placeholder workspace is right only when the data is also placeholder. In
+ * REAL mode the local session reads and writes the actual Freyr workspace, and
+ * `requireMemberScope` compares this workspace id against that one — so the
+ * fake "local-workspace" made every agent route that needs a scope throw
+ * "Workspace member scope does not match this deployment", i.e. the Agent page
+ * 500'd on a developer's machine in exactly the mode Anir tests in.
+ *
+ * So in real mode it resolves the genuine workspace and the genuine member
+ * behind the local identity's email, the same binding getCurrentUser does.
+ * Mock mode keeps the placeholder, because there the data is a placeholder too.
+ */
+async function localDevelopmentScope(): Promise<WorkspaceMemberScope | null> {
+  if (!isLocalDevelopment()) return null;
+  const workspaceId = process.env.FREYR_WORKSPACE_ID;
+  if (getDataMode() === "live" && workspaceId) {
+    const userId = await memberIdForEmail(DEFAULT_LOCAL_USER_IDENTITY.email);
+    if (userId) return { workspaceId, userId };
+  }
+  return LOCAL_SCOPE;
 }
 
 function scopeFor(
@@ -49,7 +73,7 @@ function scopeFor(
 export async function verifiedRequestMemberScope(
   request: NextRequest
 ): Promise<WorkspaceMemberScope | null> {
-  const local = localDevelopmentScope();
+  const local = await localDevelopmentScope();
   if (local) return local;
 
   const [principal, grant] = await Promise.all([
@@ -65,7 +89,7 @@ export async function verifiedRequestMemberScope(
  * is ever broken.
  */
 export async function requireServerMemberScope(): Promise<WorkspaceMemberScope> {
-  const local = localDevelopmentScope();
+  const local = await localDevelopmentScope();
   if (local) return local;
 
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);

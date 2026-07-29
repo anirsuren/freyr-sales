@@ -74,6 +74,8 @@ export function AddMaterialButton({
   const [busy, setBusy] = useState(false);
   /** 0-100 while bytes are moving, null when nothing is uploading. */
   const [progress, setProgress] = useState<number | null>(null);
+  /** New uploads teach the assistant unless the owner says otherwise. */
+  const [readByAgent, setReadByAgent] = useState(true);
 
   function reset() {
     setKind("video");
@@ -249,6 +251,7 @@ export function AddMaterialButton({
           description: m.description,
           journeyStage: m.journeyStage,
           accessLevel: m.accessLevel,
+          readByAgent: m.readByAgent,
         })),
         {
           id: "",
@@ -261,6 +264,7 @@ export function AddMaterialButton({
           ...(description.trim() ? { description: description.trim() } : {}),
           journeyStage,
           accessLevel,
+          readByAgent,
         },
       ];
       const res = await fetch(`/api/offerings/${offeringId}`, {
@@ -531,6 +535,28 @@ export function AddMaterialButton({
               </div>
             )}
           </div>
+
+          {/* WHETHER THE ASSISTANT LEARNS FROM IT — a different question from
+              who may see it, so it gets its own control rather than another
+              value in the access list. */}
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border-light p-3">
+            <input
+              type="checkbox"
+              checked={readByAgent}
+              onChange={(e) => setReadByAgent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[color:#0071E3]"
+            />
+            <span className="min-w-0">
+              <span className="block text-[13px] font-semibold text-text-primary">
+                Let the Freyr assistant read this file
+              </span>
+              <span className="block text-[11.5px] leading-relaxed text-text-secondary">
+                On, it can answer questions from what is inside and cite it.
+                Off, the file is still here for the team — the assistant simply
+                never uses it.
+              </span>
+            </span>
+          </label>
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <button

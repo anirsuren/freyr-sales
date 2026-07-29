@@ -2,6 +2,7 @@ import "server-only";
 
 import { listOfferings, listCustomerTypes, listMarkets } from "./offerings";
 import { loadMaterialText } from "./materialText";
+import { isReadByAgent } from "./offeringMaterials";
 
 /**
  * WHAT THE ASSISTANT KNOWS, beyond what is on screen.
@@ -144,7 +145,10 @@ export function buildKnowledgeBase(
       // THE FILE ITSELF. Each chunk is its own passage and carries the deck
       // name and the offering, so a retrieved paragraph can always be cited
       // as "page 4 of the Freya.Register demo deck" rather than floating free.
-      const doc = m.docsPath ? fileText[m.docsPath] : undefined;
+      // An owner can keep a file out of the assistant's head entirely while
+      // still handing it to sales (isReadByAgent). The text stays on file so
+      // the switch is instant and reversible; it simply is not retrievable.
+      const doc = m.docsPath && isReadByAgent(m) ? fileText[m.docsPath] : undefined;
       if (doc?.text) {
         const chunks = chunkText(doc.text);
         chunks.forEach((chunk, i) => {
