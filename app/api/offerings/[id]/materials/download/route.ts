@@ -52,7 +52,7 @@ export async function GET(
       { status: 404 }
     );
 
-  if (!hasDocsStorage())
+  if (!(await hasDocsStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

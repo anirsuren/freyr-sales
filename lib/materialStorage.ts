@@ -40,8 +40,8 @@ function storageClient() {
 }
 
 /** Is a real file store configured in this environment? */
-export function hasMaterialStorage(): boolean {
-  return hasDocsStorage() || storageClient() !== null;
+export async function hasMaterialStorage(): Promise<boolean> {
+  return (await hasDocsStorage()) || storageClient() !== null;
 }
 
 /** What kind of material a filename is, by its extension. Keeps the four-tile
@@ -94,7 +94,7 @@ export async function uploadMaterialFile(
   // the file lands in FreyaFusion's S3 under our own namespace. Everything
   // else here is the fallback for environments without those credentials, so
   // an unconfigured box still works instead of blocking an owner's upload.
-  if (hasDocsStorage()) {
+  if (await hasDocsStorage()) {
     const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(-120);
     const path = `${offeringId}/${Date.now()}-${safeName}`;
     const contentType = file.type || "application/octet-stream";

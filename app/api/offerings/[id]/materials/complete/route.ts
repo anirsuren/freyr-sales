@@ -38,7 +38,7 @@ export async function POST(
       { error: "Take ownership of this offering to upload its materials" },
       { status: 403 }
     );
-  if (!hasDocsStorage())
+  if (!(await hasDocsStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

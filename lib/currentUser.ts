@@ -125,7 +125,11 @@ async function memberIdForEmail(email: string | null): Promise<string | null> {
       .eq("active", true)
       .maybeSingle();
     const id = (data?.id as string | undefined) ?? null;
-    cache.set(key, id);
+    // Cache ONLY a hit. A miss is very often a transient one — the row is
+    // there, the read failed or raced — and caching it for the life of the
+    // process would leave that container permanently convinced the person owns
+    // nothing, with no way back short of a restart.
+    if (id) cache.set(key, id);
     return id;
   } catch {
     return null;
