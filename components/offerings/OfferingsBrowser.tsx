@@ -784,13 +784,19 @@ export function OfferingsBrowser({
                       Revenue{com.trend.hint ? ` · ${com.trend.hint}` : ""}
                     </p>
                     {/* AreaChart hangs its x-axis labels just below its own box,
-                        so the wrapper reserves that strip. */}
+                        so the wrapper reserves that strip.
+
+                        HEIGHT IS NOT COSMETIC HERE: AreaChart only draws its
+                        axis numbers, its unit and its date labels at 140px or
+                        taller. At 84 this was a bare green line with nothing on
+                        it (Anir, Jul 28: "the line graph, it's not showing me
+                        anything, no numbers... it just showed me a green line"). */}
                     <div className="pb-4">
                       <AreaChart
                         id={`offering-revenue-${o.id}`}
                         data={com.trend.points}
                         color="#16A34A"
-                        height={84}
+                        height={140}
                         format="money"
                         unit="USD"
                         yMax={Math.max(...com.trend.points)}
@@ -852,10 +858,17 @@ export function OfferingsBrowser({
                       }
                     />
                     <div className="min-w-0 flex-1">
+                      {/* No share bar in this panel. Five columns in a
+                          ~200px column squeezed the percentage until only its
+                          last digit showed — "$803K 3" instead of "$803K 35%"
+                          (Anir, Jul 28: "the numbers on the right side next to
+                          the dollar amount are not showing up properly"). The
+                          donut beside it already draws the share. */}
                       <DonutLegend
                         items={revenueSegments}
                         format="money"
                         syncId={mixSyncId}
+                        bars={false}
                       />
                     </div>
                   </div>

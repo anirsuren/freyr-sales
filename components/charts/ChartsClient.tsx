@@ -227,6 +227,11 @@ export const CHART_TIP_OPEN_MS = 500;
 
 function useChartHover() {
   const [hover, setHover] = useState<number | null>(null);
+  // The dot follows the cursor AT ONCE; only the card waits out the dwell
+  // (Anir, Jul 28: "for the hover thing, you can show the dot. You just can't
+  // show the hover thing after .5 seconds"). Without this the chart looked
+  // dead for half a second and nobody could tell it was interactive at all.
+  const [active, setActive] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<ChartAnchor | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -257,6 +262,7 @@ function useChartHover() {
     // The anchor is remembered immediately so the card lands in the right place
     // the instant it does open, but the card itself waits out the dwell.
     if (at !== undefined) setAnchor(at);
+    setActive(index);
     stopOpening();
     openTimer.current = setTimeout(() => {
       openTimer.current = null;
@@ -274,6 +280,8 @@ function useChartHover() {
     (graceMs = 0) => {
       keepOpen();
       stopOpening();
+      // The dot leaves with the cursor either way; only the card lingers.
+      setActive(null);
       if (graceMs <= 0) {
         setHover(null);
         setAnchor(null);
@@ -288,7 +296,7 @@ function useChartHover() {
     [keepOpen, stopOpening]
   );
 
-  return { hover, anchor, show, move, close, keepOpen };
+  return { hover, active, anchor, show, move, close, keepOpen };
 }
 
 // A tooltip rendered into <body> via a portal so it can NEVER be clipped by a
@@ -1154,6 +1162,7 @@ export function AreaChart({
 }) {
   const {
     hover,
+    active,
     anchor: mouse,
     show: showHover,
     close: closeTip,
@@ -1184,7 +1193,9 @@ export function AreaChart({
   const first = data[0];
   const last = data[data.length - 1];
   const trend = last >= first ? "up" : "down";
-  const hi = hover ?? n - 1;
+  // The point being READ follows the cursor immediately; `hover` (delayed)
+  // only decides whether the card is open.
+  const hi = active ?? hover ?? n - 1;
   const priorValue = hi > 0 ? data[hi - 1] : data[hi];
   const pointDelta = data[hi] - priorValue;
   const attainment = goal && goal > 0 ? Math.round((data[hi] / goal) * 100) : null;
@@ -1327,7 +1338,7 @@ export function AreaChart({
           left={`${(px(hi) / w) * 100}%`}
           top={`${(py(data[hi]) / h) * 100}%`}
           color={color}
-          active={hover != null}
+          active={active != null}
         />
       )}
       {hover != null && (

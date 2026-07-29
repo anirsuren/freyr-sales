@@ -21,12 +21,21 @@ export function isOfferingsOnly(dataMode: DataMode): boolean {
 
 export function isReleased(href: string, dataMode: DataMode): boolean {
   if (!isOfferingsOnly(dataMode)) return true;
-  return href === "/offerings" || href.startsWith("/offerings/");
+  return RELEASED_MODULE_PREFIXES.some(
+    (m) => href === m || href.startsWith(`${m}/`)
+  );
 }
 
-// The released module itself. Everything under it travels with it (detail,
+// The released modules. Everything under each one travels with it (detail,
 // edit, and the master lists that define customer types / markets / types).
-const RELEASED_MODULE_PREFIX = "/offerings";
+//
+// AGENT SHIPPED WITH THE SECOND ROLLOUT (Wajeed, Jul 29, via Anir: Freyr asked
+// for "an AI chat layer where end users can ask queries and get responses based
+// on all the content and materials available in the app"). The agent was built
+// and working, it was simply still behind this gate — so releasing it is the
+// feature. It answers grounded in the offerings catalogue itself (see
+// lib/knowledgeBase), which is exactly the content real mode carries.
+const RELEASED_MODULE_PREFIXES = ["/offerings", "/agent"] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,
 // waiting for approval, your own workspace settings, and the product tour.
@@ -56,9 +65,8 @@ export function isReleasedPath(pathname: string, dataMode: DataMode): boolean {
 /** Mode-free variant for callers that already know they are gated. */
 export function isOfferingsReleasePath(pathname: string): boolean {
   if (NON_MODULE_PATHS.has(pathname)) return true;
-  return (
-    pathname === RELEASED_MODULE_PREFIX ||
-    pathname.startsWith(`${RELEASED_MODULE_PREFIX}/`)
+  return RELEASED_MODULE_PREFIXES.some(
+    (m) => pathname === m || pathname.startsWith(`${m}/`)
   );
 }
 
