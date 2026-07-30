@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import {
   CustomerDealRow,
@@ -52,11 +53,12 @@ import {
   STAGES,
   STAGE_PROBABILITY,
   STAGE_COLOR,
+  STAGE_ICON,
   repOptionsFor,
 } from "@/lib/pipeline";
 import { accountHealth, accountHealthSeries, HEALTH_COLOR } from "@/lib/health";
 import { HealthBadge, HealthBar } from "@/components/ui/HealthBadge";
-import { TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Sparkles, Package } from "lucide-react";
 import { AttributeTag } from "@/components/ui/AttributeTag";
 
 import { industryMeta } from "@/components/ui/IndustryTag";
@@ -1986,33 +1988,42 @@ export function CustomerTabs({
               </div>
               <div>
                 <label className={lbl}>Offering</label>
-                <select
+                {/* Dropdown-standard sweep (Anir, Jul 30): every native
+                    <select> in this form becomes the app's own picker —
+                    ColorSelect for categoricals, PeopleSelect for people. */}
+                <ColorSelect
+                  ariaLabel="Offering"
                   value={dealForm.offering}
-                  onChange={(e) => set("offering", e.target.value)}
-                  className={fld}
-                >
-                  <option value="">Select an offering…</option>
-                  {applicableSlim.map((o) => (
-                    <option key={o.id} value={o.name}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => set("offering", v)}
+                  className="w-full"
+                  collapsible={false}
+                  options={[
+                    { value: "", label: "Select an offering…", icon: Package },
+                    ...applicableSlim.map((o) => ({
+                      value: o.name,
+                      label: o.name,
+                      icon: Package,
+                      color: "#0071E3",
+                    })),
+                  ]}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Stage</label>
-                  <select
+                  <ColorSelect
+                    ariaLabel="Stage"
                     value={dealForm.stage}
-                    onChange={(e) => set("stage", e.target.value)}
-                    className={fld}
-                  >
-                    {STAGES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => set("stage", v)}
+                    className="w-full"
+                    collapsible={false}
+                    options={STAGES.map((s) => ({
+                      value: s,
+                      label: s,
+                      color: STAGE_COLOR[s],
+                      icon: STAGE_ICON[s],
+                    }))}
+                  />
                 </div>
                 <div>
                   <label className={lbl}>Value ($)</label>
@@ -2028,19 +2039,16 @@ export function CustomerTabs({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Primary contact</label>
-                  <select
+                  <PeopleSelect
+                    ariaLabel="Primary contact"
                     value={dealForm.contact}
-                    onChange={(e) => set("contact", e.target.value)}
-                    className={fld}
-                  >
-                    <option value="">Select a contact…</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.full_name}>
-                        {c.full_name}
-                        {c.job_title ? ` · ${c.job_title}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => set("contact", v)}
+                    placeholder="Select a contact…"
+                    options={contacts.map((c) => ({
+                      name: c.full_name,
+                      sub: c.job_title || undefined,
+                    }))}
+                  />
                 </div>
                 <div>
                   <label className={lbl}>Expected close</label>
@@ -2054,17 +2062,13 @@ export function CustomerTabs({
               </div>
               <div>
                 <label className={lbl}>Owner</label>
-                <select
+                <PeopleSelect
+                  ariaLabel="Deal owner"
                   value={dealForm.owner}
-                  onChange={(e) => set("owner", e.target.value)}
-                  className={fld}
-                >
-                  {ownerOptions.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => set("owner", v)}
+                  options={ownerOptions}
+                  allowUnassigned={false}
+                />
               </div>
               <div>
                 <label className={lbl}>Next step</label>

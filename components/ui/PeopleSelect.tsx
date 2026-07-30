@@ -9,6 +9,12 @@ import { cn } from "@/lib/utils";
 // the trigger and in every option (Suren: "the dropdown should not look this
 // cheap — custom coded with the person's profile picture"). Replaces the native
 // <select> for owner/assignee pickers.
+//
+// Options may be plain names, or `{ name, sub }` when a second line matters —
+// the contact picker keeps each person's job title that way instead of losing
+// it in the swap away from <select> (Anir, Jul 30 dropdown sweep).
+export type PersonOption = string | { name: string; sub?: string };
+
 export function PeopleSelect({
   value,
   options,
@@ -19,7 +25,7 @@ export function PeopleSelect({
   ariaLabel,
 }: {
   value: string;
-  options: string[];
+  options: PersonOption[];
   onChange: (v: string) => void;
   placeholder?: string;
   allowUnassigned?: boolean;
@@ -45,7 +51,12 @@ export function PeopleSelect({
     };
   }, [open]);
 
-  const items = allowUnassigned ? ["", ...options] : options;
+  const normalized = options.map((o) =>
+    typeof o === "string" ? { name: o, sub: undefined } : o
+  );
+  const items = allowUnassigned
+    ? [{ name: "", sub: undefined }, ...normalized]
+    : normalized;
 
   return (
     <div ref={ref} className={cn("relative", className)}>
@@ -78,15 +89,15 @@ export function PeopleSelect({
           className="absolute z-40 mt-1.5 w-full max-h-[280px] overflow-y-auto rounded-xl border border-border-light bg-white shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)] p-1.5"
         >
           {items.map((m) => {
-            const on = m === value;
+            const on = m.name === value;
             return (
               <button
-                key={m || "__none"}
+                key={m.name || "__none"}
                 type="button"
                 role="option"
                 aria-selected={on}
                 onClick={() => {
-                  onChange(m);
+                  onChange(m.name);
                   setOpen(false);
                 }}
                 className={cn(
@@ -96,12 +107,19 @@ export function PeopleSelect({
                     : "text-text-primary hover:bg-surface"
                 )}
               >
-                {m ? (
-                  <Avatar name={m} className="w-7 h-7 text-[11px] shrink-0" />
+                {m.name ? (
+                  <Avatar name={m.name} className="w-7 h-7 text-[11px] shrink-0" />
                 ) : (
                   <span className="w-7 h-7 rounded-full bg-surface border border-border-light shrink-0" />
                 )}
-                <span className="flex-1 truncate">{m || placeholder}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{m.name || placeholder}</span>
+                  {m.sub && (
+                    <span className={cn("block truncate text-[11px] font-normal", on ? "text-blue-primary/70" : "text-text-tertiary")}>
+                      {m.sub}
+                    </span>
+                  )}
+                </span>
                 {on && <Check size={15} strokeWidth={2.5} className="text-blue-primary shrink-0" />}
               </button>
             );

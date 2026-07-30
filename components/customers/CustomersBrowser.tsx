@@ -26,6 +26,7 @@ import { repOptionsFor } from "@/lib/pipeline";
 import { userScopedStorageKey } from "@/lib/userIdentity";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import type { Customer } from "@/lib/types";
 import type { TipItem } from "@/components/charts/Charts";
 import { geographyWithFlag } from "@/lib/countryFlags";
@@ -505,18 +506,16 @@ export function CustomersBrowser({
             </button>
             <span className="w-px h-5 bg-border-light" />
             <span className="text-[12px] text-text-secondary">Assign owner</span>
-            <select
-              aria-label="Bulk assign owner"
+            {/* The one native <select> left on this page — every rep picker in
+                the app is a PeopleSelect with headshots (Anir, Jul 30: "make
+                sure all the dropdowns are good… some don't have the colors"). */}
+            <PeopleSelect
+              ariaLabel="Bulk assign owner"
               value={bulkOwner}
-              onChange={(e) => setBulkOwner(e.target.value)}
-              className="bg-white border border-border rounded-md px-2 py-1.5 text-[13px] outline-none focus:border-blue-primary"
-            >
-              {ownerOptions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+              options={ownerOptions}
+              onChange={setBulkOwner}
+              allowUnassigned={false}
+            />
             <button
               onClick={assignOwner}
               disabled={assigning}
