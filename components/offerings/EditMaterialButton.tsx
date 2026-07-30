@@ -161,7 +161,9 @@ export function EditMaterialButton({
             setOpen(true);
           }
         }}
-        className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+        // Same 32px square as Download and Remove beside it — the three icon
+        // buttons on a material card are one set and have to sit on one grid.
+        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
       >
         <Pencil size={14} strokeWidth={1.9} />
       </span>

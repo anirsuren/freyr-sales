@@ -14,6 +14,7 @@ export function Modal({
   title,
   children,
   size = "default",
+  actions,
 }: {
   open: boolean;
   onClose: () => void;
@@ -21,6 +22,10 @@ export function Modal({
   children: React.ReactNode;
   // "wide" for content-heavy dialogs (editors, recipient pickers) — 640px.
   size?: "default" | "wide" | "workflow" | "chart";
+  /** Actions that belong to the whole dialog — rendered in the header, left of
+   *  the close button. Document controls (download, open elsewhere) live here
+   *  rather than floating above the content they act on. */
+  actions?: React.ReactNode;
 }) {
   // Portal to <body> so the fixed overlay always covers the whole viewport —
   // if a parent has a CSS transform (e.g. a tab animation), a non-portaled
@@ -113,8 +118,10 @@ export function Modal({
         } max-h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl border border-border-light shadow-[0_24px_64px_-16px_rgba(0,0,0,0.30)] modal-in`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-light shrink-0">
-          <h2 className="text-[16px] font-semibold text-text-primary">{title}</h2>
+        <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border-light shrink-0">
+          <h2 className="min-w-0 truncate text-[16px] font-semibold text-text-primary">{title}</h2>
+          <div className="flex shrink-0 items-center gap-2">
+          {actions}
           <button
             onClick={onClose}
             aria-label="Close dialog"
@@ -122,8 +129,11 @@ export function Modal({
           >
             <X size={18} strokeWidth={1.5} />
           </button>
+          </div>
         </div>
-        <div className="p-5 overflow-y-auto">{children}</div>
+        <div className={`overflow-y-auto ${size === "chart" ? "p-3" : "p-5"}`}>
+          {children}
+        </div>
       </div>
     </div>,
     document.body

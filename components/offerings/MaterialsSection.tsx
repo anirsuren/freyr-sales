@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Download,
   Folder,
+  FolderOpen,
   FolderPlus,
   X,
   ExternalLink,
@@ -21,6 +22,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
+import { MaterialViewer } from "@/components/offerings/MaterialViewer";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import {
   ACCESS_LEVELS,
@@ -185,6 +189,8 @@ export function MaterialsSection({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
+  /** The file being read in the viewer popup. */
+  const [viewing, setViewing] = useState<OfferingMaterial | null>(null);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [savingFolder, setSavingFolder] = useState(false);
@@ -265,6 +271,15 @@ export function MaterialsSection({
 
   return (
     <div className="mt-5 ml-11">
+      {viewing?.docsPath && offeringId && (
+        <MaterialViewer
+          offeringId={offeringId}
+          path={viewing.docsPath}
+          label={viewing.label}
+          downloadUrl={viewing.url}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {/* One row of three compact dropdowns — the app-wide filter pattern.
           Twelve loose chips across two-and-a-half wrapping rows read as chaos,
           and "Access level" landed wherever the wrap dropped it (Anir, Jul 25:
@@ -337,41 +352,52 @@ export function MaterialsSection({
         </div>
       </div>
 
-      {/* Name it, and you land inside it. */}
-      {newFolderOpen && canEdit && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-[var(--surface)] p-2.5">
-          <input
-            autoFocus
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void createFolder();
-              if (e.key === "Escape") setNewFolderOpen(false);
-            }}
-            maxLength={60}
-            placeholder={
-              folder ? `New folder inside ${folder}` : "Folder name, e.g. Case studies"
-            }
-            aria-label="New folder name"
-            className="min-w-[220px] flex-1 rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => void createFolder()}
-            disabled={!cleanFolderName(newFolderName) || savingFolder}
-            className="rounded-lg bg-blue-primary px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover disabled:opacity-50"
-          >
-            {savingFolder ? "Creating…" : "Create folder"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setNewFolderOpen(false)}
-            className="px-1 text-[13px] font-semibold text-text-secondary hover:text-text-primary"
-          >
-            Cancel
-          </button>
+      {/* ANYTHING NEW OPENS IN A POPUP — his standing rule, and I broke it
+          with an inline bar that pushed the whole list down the page. */}
+      <Modal
+        open={newFolderOpen && canEdit}
+        onClose={() => setNewFolderOpen(false)}
+        title={folder ? `New folder inside ${folder}` : "New folder"}
+      >
+        <div className="space-y-4">
+          <p className="text-[12.5px] leading-relaxed text-text-secondary">
+            {folder
+              ? `It will sit inside ${folder}, and you will land in it.`
+              : "It will sit alongside Proposals, Product Demos and Thought Leadership."}
+          </p>
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Folder name
+            </span>
+            <input
+              autoFocus
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void createFolder();
+              }}
+              maxLength={60}
+              placeholder="e.g. Case studies"
+              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
+            />
+          </label>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => setNewFolderOpen(false)}
+              className="ml-auto text-[13.5px] font-semibold text-text-secondary hover:text-text-primary"
+            >
+              Cancel
+            </button>
+            <Button
+              onClick={() => void createFolder()}
+              disabled={!cleanFolderName(newFolderName) || savingFolder}
+            >
+              {savingFolder ? "Creating…" : "Create folder"}
+            </Button>
+          </div>
         </div>
-      )}
+      </Modal>
 
       {/* WHERE YOU ARE. Only rendered once you are inside something, so an
           offering with everything at the top level gains no chrome it doesn't
@@ -418,9 +444,27 @@ export function MaterialsSection({
       {/* Live count + one-click reset */}
       <div className="mt-3 flex items-center justify-between gap-3">
         <p className="text-[12px] text-text-secondary" aria-live="polite">
-          Showing <span className="tnum font-semibold">{visible.length}</span> of{" "}
-          <span className="tnum font-semibold">{mine.length}</span>{" "}
-          {mine.length === 1 ? "material" : "materials"}
+          {anyFilter || folder ? (
+            <>
+              Showing <span className="tnum font-semibold">{visible.length}</span> of{" "}
+              <span className="tnum font-semibold">{mine.length}</span>{" "}
+              {mine.length === 1 ? "material" : "materials"}
+            </>
+          ) : (
+            <>
+              <span className="tnum font-semibold">{mine.length}</span>{" "}
+              {mine.length === 1 ? "material" : "materials"} in{" "}
+              <span className="tnum font-semibold">{subFolders.length}</span>{" "}
+              {subFolders.length === 1 ? "folder" : "folders"}
+              {visible.length > 0 && (
+                <>
+                  {" · "}
+                  <span className="tnum font-semibold">{visible.length}</span> not
+                  filed yet
+                </>
+              )}
+            </>
+          )}
           {hiddenTraining > 0 && (
             <span className="text-text-tertiary">
               {" "}
@@ -455,7 +499,11 @@ export function MaterialsSection({
                 key={path}
                 type="button"
                 onClick={() => goToFolder(path)}
-                className="group flex cursor-pointer items-center gap-3 rounded-xl border border-border-light bg-white p-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-[1px] hover:border-blue-primary/40 hover:shadow-card"
+                // Same card language as the files below them and the related
+                // offerings further down the page — one radius, one shadow,
+                // one lift. A folder that looked like a different species of
+                // card was half of why the section read as busy.
+                className="group flex min-h-[72px] cursor-pointer items-center gap-3 rounded-2xl border border-border-light bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
               >
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
@@ -490,8 +538,23 @@ export function MaterialsSection({
         </div>
       )}
 
+      {/* WHY THE FOLDERS LOOKED DEAD. Files with no folder rendered directly
+          under the folder cards with nothing between them, so the whole thing
+          read as one list and the cards looked like ornaments (Anir: "what the
+          hell do these folders do? It just shows folders"). Naming the loose
+          pile makes the tree obvious without moving anyone's files. */}
+      {!folder && !anyFilter && subFolders.length > 0 && visible.length > 0 && (
+        <p className="mt-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+          <FolderOpen size={13} strokeWidth={2} />
+          Not in a folder
+          <span className="tnum font-semibold text-text-secondary">
+            {visible.length}
+          </span>
+        </p>
+      )}
+
       {visible.length === 0 ? (
-        <p className="mt-3 border-y border-border-light py-5 text-[13px] text-text-tertiary">
+        <p className="mt-3 rounded-2xl border border-dashed border-border-light bg-[var(--surface)] px-4 py-6 text-center text-[13px] text-text-tertiary">
           {anyFilter
             ? `None of the ${mine.length} ${mine.length === 1 ? "material" : "materials"} on this offering match all three filters, clear one to see the rest.`
             : subFolders.length > 0
@@ -501,7 +564,14 @@ export function MaterialsSection({
                 : "No materials yet."}
         </p>
       ) : (
-        <div className="mt-3 border-y border-border-light divide-y divide-border-light">
+        /* FLOATING CARDS, NOT A RULED LIST. Hairline separators stacked twenty
+           files deep read as a spreadsheet, and every row's five controls sat
+           loose in the same gray as the text (Anir, Jul 30: "I don't like those
+           separators... it should be kinda like the related offerings... more
+           aesthetic and separated properly, like floating"). Same radius,
+           shadow and hover lift as the related-offering pills below, one per
+           row so the long file names still get the full width. */
+        <div className="mt-3 flex flex-col gap-2.5">
           {visible.map((material) => {
             const format = materialFormat(material.kind);
             const formatMeta = MATERIAL_FORMAT_META[format];
@@ -535,19 +605,39 @@ export function MaterialsSection({
                 href={viewUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex min-h-[64px] cursor-pointer items-center gap-3 border-l-2 px-1 py-3 pl-2.5 transition-colors hover:bg-[var(--surface)]"
-                // An internal-only file gets its own rail down the left edge,
-                // so a row that must never be forwarded is obvious before you
-                // read a word. Every other row carries the same transparent
-                // border, so nothing shifts and the list stays aligned.
-                style={{
-                  borderLeftColor: internal
-                    ? ACCESS_LEVEL_META.internal_only.color
-                    : "transparent",
+                onClick={(e) => {
+                  // AN UPLOADED FILE OPENS IN THE APP. Word, PowerPoint and
+                  // Excel cannot render in a browser tab at all — it downloads
+                  // them — so the row opens the viewer, which reads a
+                  // server-converted version. Cmd/Ctrl-click still gets the
+                  // raw file in a new tab for anyone who wants that.
+                  if (!uploaded || e.metaKey || e.ctrlKey || e.shiftKey) return;
+                  e.preventDefault();
+                  setViewing(material);
                 }}
+                className="group flex min-h-[72px] cursor-pointer items-center gap-3 rounded-2xl border border-border-light bg-white py-3 pr-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
+                // An internal-only file keeps its rail down the left edge, so a
+                // file that must never be forwarded is obvious before you read
+                // a word — now as a thicker left border on the card itself.
+                // The 2px it gains comes straight out of the padding (3+13 =
+                // 1+15), so the icons still line up down the column and the
+                // card never looks a nudge wider than its neighbours.
+                style={
+                  internal
+                    ? {
+                        borderLeftWidth: 3,
+                        borderLeftColor: ACCESS_LEVEL_META.internal_only.color,
+                        paddingLeft: 13,
+                      }
+                    : { paddingLeft: 15 }
+                }
               >
+                {/* Pinned to the top so it reads beside the file's NAME. A
+                    card with a three-line description is 100px tall, and a
+                    centred icon ended up level with the middle of the blurb,
+                    pointing at nothing. */}
                 <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center self-start rounded-md"
                   style={{
                     background: `${formatMeta.color}14`,
                     color: formatMeta.color,
@@ -617,6 +707,21 @@ export function MaterialsSection({
                         }
                       />
                     )}
+                    {/* An owner must be able to SEE which files the assistant
+                        is blind to, or the switch is a setting nobody can
+                        audit. It sits with the other chips because that is
+                        what it is — a fact about the file, not a control. It
+                        used to sit in the button cluster on the right, where a
+                        chip among four icon buttons read as a broken button. */}
+                    {canEdit && !isReadByAgent(material) && (
+                      <TagPill
+                        label="Not used by AI"
+                        color="#475569"
+                        icon={BotOff}
+                        variant="outline"
+                        title="The assistant never reads this file"
+                      />
+                    )}
                   </span>
                   {/* Who put this here (Suren: "I should say who added it,
                       with pfp"). Rendered ONLY for materials a real person
@@ -642,82 +747,83 @@ export function MaterialsSection({
                     </span>
                   )}
                 </span>
-                <span className="hidden shrink-0 text-[11px] font-medium text-text-tertiary lg:block">
-                  {uploaded ? "Open" : "Open asset"}
-                </span>
-                <ExternalLink
-                  size={14}
-                  strokeWidth={1.7}
-                  className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
-                />
-                {/* Save a copy. A nested <a> is invalid inside the row link, so
-                    this navigates imperatively — the response is an attachment,
-                    so the browser downloads it without leaving the page. Open
-                    to EVERYONE, not just owners: handing files to customers is
-                    the whole point of this list. */}
-                {uploaded && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Download ${material.label}`}
-                    title="Download a copy"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      window.location.href = material.url;
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter" && e.key !== " ") return;
-                      e.preventDefault();
-                      e.stopPropagation();
-                      window.location.href = material.url;
-                    }}
-                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                  >
-                    <Download size={14} strokeWidth={1.8} />
+                {/* ONE CLUSTER, NOT FIVE LOOSE CONTROLS. "Open", its arrow,
+                    Download, Edit and Remove used to float across the right
+                    half of the row in the same weight as the body text, which
+                    is most of why the list read as busy. They now sit together
+                    at the end of the card: the thing you actually came to do
+                    wears a button, the rest are quiet square icon buttons that
+                    only colour on hover. */}
+                <span className="flex shrink-0 items-center gap-1">
+                  <span className="hidden items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors group-hover:border-blue-subtle group-hover:bg-blue-light group-hover:text-blue-primary lg:inline-flex">
+                    {uploaded ? "Open" : "Open asset"}
+                    <ExternalLink size={12} strokeWidth={1.9} />
                   </span>
-                )}
-                {/* An owner must be able to SEE which files the assistant is
-                    blind to, or the switch is a setting nobody can audit. */}
-                {canEdit && !isReadByAgent(material) && (
-                  <TagPill
-                    label="Not used by AI"
-                    color="#475569"
-                    icon={BotOff}
-                    variant="outline"
-                    title="The assistant never reads this file"
+                  {/* Narrow screens have no room for the label, but the row
+                      must still say it opens somewhere. */}
+                  <ExternalLink
+                    size={14}
+                    strokeWidth={1.7}
+                    className="mr-0.5 text-text-tertiary group-hover:text-blue-primary lg:hidden"
                   />
-                )}
-                {canEdit && offeringId && (
-                  <EditMaterialButton
-                    offeringId={offeringId}
-                    material={material}
-                    materials={materials}
-                  />
-                )}
-                {canEdit && offeringId && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Remove ${material.label}`}
-                    title="Remove this material"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setPendingRemoval(material);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
+                  {/* Save a copy. A nested <a> is invalid inside the row link,
+                      so this navigates imperatively — the response is an
+                      attachment, so the browser downloads it without leaving
+                      the page. Open to EVERYONE, not just owners: handing files
+                      to customers is the whole point of this list. */}
+                  {uploaded && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Download ${material.label}`}
+                      title="Download a copy"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.location.href = material.url;
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter" && e.key !== " ") return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.location.href = material.url;
+                      }}
+                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                    >
+                      <Download size={14} strokeWidth={1.8} />
+                    </span>
+                  )}
+                  {canEdit && offeringId && (
+                    <EditMaterialButton
+                      offeringId={offeringId}
+                      material={material}
+                      materials={materials}
+                    />
+                  )}
+                  {canEdit && offeringId && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Remove ${material.label}`}
+                      title="Remove this material"
+                      onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         setPendingRemoval(material);
-                      }
-                    }}
-                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
-                  >
-                    <X size={14} strokeWidth={2} />
-                  </span>
-                )}
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setPendingRemoval(material);
+                        }
+                      }}
+                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
+                    >
+                      <X size={14} strokeWidth={2} />
+                    </span>
+                  )}
+                </span>
               </a>
             );
           })}

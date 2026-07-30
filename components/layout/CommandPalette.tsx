@@ -52,7 +52,6 @@ type AgentCmd = {
 
 const AGENT_CMDS: AgentCmd[] = [
   { key: "console", label: "Open AI Agent console", icon: Bot, kind: "nav", href: "/agent" },
-  { key: "inbox", label: "Open Agent Inbox", icon: Inbox, kind: "nav", href: "/agent/inbox" },
   { key: "new-offering", label: "New offering", icon: Package, kind: "nav", href: "/offerings/new" },
   { key: "autopilot", label: "Run autopilot", icon: Rocket, kind: "run", endpoint: "/api/agent/autopilot" },
   { key: "cadence", label: "Prep the re-engagement sequence", icon: Zap, kind: "run", endpoint: "/api/agent/cadence-run" },

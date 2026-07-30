@@ -249,7 +249,22 @@ export async function POST(req: NextRequest) {
    */
   const catalogueGrounding = (() => {
     try {
-      const all = listOfferings();
+      /**
+       * UNCHECKING AN OFFERING HAS TO ACTUALLY REMOVE IT.
+       *
+       * This block listed the whole catalogue unconditionally while only the
+       * document search respected the Knowledge panel — so a person could
+       * untick an offering, watch the panel say "1 turned off", and still get
+       * answers about it, because its name, category and availability were
+       * sitting in the system prompt regardless (Anir, Jul 30: "make sure that
+       * when I uncheck and stuff, it actually works").
+       *
+       * Offering ids in the panel are the offering's own id, so the same
+       * matcher the corpus uses applies here.
+       */
+      const all = listOfferings().filter((o) =>
+        isAllowed({ id: o.id, href: `/offerings/${o.id}` })
+      );
       if (!all.length) return "";
       const byType = new Map<string, typeof all>();
       for (const o of all) {
@@ -272,9 +287,12 @@ export async function POST(req: NextRequest) {
         )
         .join("\n");
       return (
-        `\n\nFREYR'S COMPLETE OFFERINGS CATALOGUE (${all.length} offerings, ` +
-        `the whole list, authoritative: never search to answer "how many" or ` +
-        `"list them", just read this):\n${blocks}`
+        `\n\nFREYR'S OFFERINGS CATALOGUE (${all.length} offerings` +
+        (excludedSourceIds.length
+          ? ", narrowed to what this chat was told to use"
+          : ", the whole list") +
+        `, authoritative: never search to answer "how many" or "list them", ` +
+        `just read this):\n${blocks}`
       );
     } catch {
       return "";

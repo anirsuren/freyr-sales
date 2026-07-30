@@ -492,10 +492,25 @@ export function AgentChat({
   const visibleConvos =
     loadedStorageKey === storageKey ? convos : EMPTY_CONVOS;
   const active = visibleConvos.find((c) => c.id === activeId) || null;
-  /** What THIS chat has switched off. Empty = the whole knowledge base. */
-  const excludedSources = active?.excludedSources ?? [];
+  /**
+   * What THIS chat has switched off. Empty = the whole knowledge base.
+   *
+   * A chat only gets an id once a message is sent, and this used to refuse
+   * every change until then — so opening the knowledge base before asking
+   * anything showed a list of greyed-out checkboxes that did nothing (Anir,
+   * Jul 30: "when I'm unchecking stuff, why does it not let me change the
+   * documents?"). Choosing what to read BEFORE asking is the natural order, so
+   * the choice is held here and travels into the chat when it starts.
+   */
+  const [pendingExcluded, setPendingExcluded] = useState<string[]>([]);
+  const excludedSources = active
+    ? active.excludedSources ?? []
+    : pendingExcluded;
   const setExcludedSources = (ids: string[]) => {
-    if (!activeId) return;
+    if (!activeId) {
+      setPendingExcluded(ids);
+      return;
+    }
     setConvos((prev) => {
       const next = prev.map((c) =>
         c.id === activeId ? { ...c, excludedSources: ids } : c
@@ -529,7 +544,19 @@ export function AgentChat({
       setActiveId(id);
       setConvos((prev) => {
         let next = isNew
-          ? [{ id, title: derivedTitle, messages: [], updated: Date.now() }, ...prev]
+          ? [
+              {
+                id,
+                title: derivedTitle,
+                messages: [],
+                updated: Date.now(),
+                // Whatever was unticked before the first message still applies.
+                ...(pendingExcluded.length
+                  ? { excludedSources: pendingExcluded }
+                  : {}),
+              },
+              ...prev,
+            ]
           : [...prev];
         next = next.map((c) =>
           c.id === id
@@ -629,6 +656,7 @@ export function AgentChat({
 
   function newChat() {
     setActiveId(null);
+    setPendingExcluded([]);
     setSuggestions(offeringsOnly ? OFFERINGS_STARTERS : STARTERS);
     setInput("");
   }
@@ -709,12 +737,6 @@ export function AgentChat({
           )}
         </div>
         <div className="p-2 border-t border-border-light flex flex-col gap-0.5">
-          <Link href="/agent/plan" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-text-secondary hover:bg-surface transition-colors">
-            <Target size={16} strokeWidth={1.7} /> Goals
-          </Link>
-          <Link href="/agent/inbox" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-text-secondary hover:bg-surface transition-colors">
-            <Inbox size={16} strokeWidth={1.7} /> To-do
-          </Link>
           {/* What the assistant knows, and what THIS chat is allowed to use. */}
           <KnowledgeRailButton onClick={() => setKnowledgeOpen(true)} />
           <Link href="/agent/settings" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-text-secondary hover:bg-surface transition-colors">
@@ -912,7 +934,9 @@ export function AgentChat({
         excluded={excludedSources}
         onExcludedChange={setExcludedSources}
         chatTitle={active?.title}
-        disabled={!activeId}
+        // Always choosable: before a chat exists the choice is held and
+        // applied to the one that starts.
+        disabled={false}
       />
     </div>
   );

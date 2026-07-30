@@ -104,7 +104,8 @@ export function KnowledgePanel({
       key: "files",
       label: "Uploaded documents",
       icon: FileText,
-      blurb: "Decks, one-pagers and transcripts the assistant has read.",
+      blurb:
+        "The sales materials uploaded on each offering — this is their text, and what the assistant actually reads.",
     },
     {
       key: "offerings",
@@ -122,7 +123,7 @@ export function KnowledgePanel({
   ];
 
   return (
-    <Modal open={open} onClose={onClose} title="Knowledge base" size="wide">
+    <Modal open={open} onClose={onClose} title="Knowledge base" size="workflow">
       {loading && !data ? (
         <p className="py-8 text-center text-[13px] text-text-secondary">
           Reading what the assistant knows…
@@ -148,21 +149,25 @@ export function KnowledgePanel({
               </span>{" "}
               {data.totals.filesRead === 1 ? "file" : "files"} read
             </p>
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] text-text-tertiary">
-                {disabled
-                  ? "Start a chat to choose what it uses"
-                  : excluded.length === 0
-                    ? `${chatTitle ? `“${chatTitle}”` : "This chat"} uses everything`
-                    : `${excluded.length} turned off for ${chatTitle ? `“${chatTitle}”` : "this chat"}`}
-              </span>
-              {excluded.length > 0 && (
-                <button
-                  onClick={() => onExcludedChange([])}
-                  className="inline-flex cursor-pointer items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-                >
-                  <CheckCheck size={13} strokeWidth={2.1} /> Turn everything back on
-                </button>
+            {/* A count and its undo, as one settled control rather than a
+                sentence with a naked blue link hanging off it. */}
+            <div className="flex items-center gap-2.5">
+              {excluded.length === 0 ? (
+                <span className="text-[12px] text-text-tertiary">
+                  {chatTitle ? `“${chatTitle}”` : "This chat"} uses everything
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-full bg-blue-light py-1 pl-3 pr-1 text-[12px] font-semibold text-blue-primary">
+                  <span className="tnum">{excluded.length}</span> turned off
+                  <button
+                    onClick={() => onExcludedChange([])}
+                    title="Turn everything back on"
+                    aria-label="Turn everything back on"
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-white"
+                  >
+                    <CheckCheck size={12} strokeWidth={2.4} /> Reset
+                  </button>
+                </span>
               )}
             </div>
           </div>
