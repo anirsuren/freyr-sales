@@ -321,7 +321,7 @@ function inferOutcome(detail: ElConversationDetail): VoiceOutcome | null {
   if (/meeting|booked|interested|qualified/.test(summary)) return "interested";
   if (/follow.?up|call back|callback/.test(summary)) return "follow_up";
   if (/no answer|voicemail|did not connect/.test(summary)) return "no_answer";
-  if (/declined|not interested|not a fit/.test(summary)) return "declined";
+  if (/declined|not interested|not a fit/.test(summary)) return "follow_up";
   return null;
 }
 

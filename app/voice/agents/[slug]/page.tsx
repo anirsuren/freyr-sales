@@ -60,9 +60,8 @@ const OUTCOME_META: Record<
   interested: { label: "Interested", color: VIZ.green, chip: "text-success bg-success/10", icon: ThumbsUp },
   follow_up: { label: "Follow-up", color: VIZ.blue, chip: "text-blue-primary bg-blue-light", icon: CalendarClock },
   no_answer: { label: "No answer", color: VIZ.amber, chip: "text-warning bg-warning/10", icon: PhoneMissed },
-  declined: { label: "Declined", color: "#FF3B30", chip: "text-error bg-error/10", icon: ThumbsDown },
 };
-const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer", "declined"];
+const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer"];
 
 // One team member, one page (Anir, Jul 4): who they are, their number, every
 // conversation they've had — with transcripts — and how their calls are going.

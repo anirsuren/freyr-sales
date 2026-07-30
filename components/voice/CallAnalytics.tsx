@@ -70,7 +70,7 @@ export function CallAnalytics({
   const drift =
     outcome === "interested" || outcome === "meeting_booked"
       ? 1
-      : outcome === "not_interested" || outcome === "declined"
+      : outcome === "not_interested"
       ? -1
       : 0;
   const sentiment = turns.map((t, i) => {

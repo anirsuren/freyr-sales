@@ -62,9 +62,8 @@ const OUTCOME_META: Record<
   // colour must track the `chip` beside it — both are now the burnt-orange
   // warning token, and donut legends render this colour as chip TEXT.
   no_answer: { label: "No answer", color: "#C2410C", chip: "text-warning bg-warning/10", icon: PhoneMissed },
-  declined: { label: "Declined", color: "#FF3B30", chip: "text-error bg-error/10", icon: ThumbsDown },
 };
-const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer", "declined"];
+const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer"];
 
 // Every queue state gets its own colour + icon too. The status pill used to be
 // a dialed/not-dialed binary, so "Called", "Live call" and "Failed" all painted
@@ -343,15 +342,13 @@ export default async function VoicePage() {
               interested: "#34C759",
               follow_up: "#0071E3",
               no_answer: "#C2410C", // matches OUTCOME_META, donut legend rows are colour-on-tint text
-              declined: "#FF3B30",
             };
             const OUT_LABELS: Record<string, string> = {
               interested: "Interested",
               follow_up: "Follow-up",
               no_answer: "No answer",
-              declined: "Declined",
             };
-            const pOutcomes = ["interested", "follow_up", "no_answer", "declined"]
+            const pOutcomes = ["interested", "follow_up", "no_answer"]
               .map((k) => ({
                 label: OUT_LABELS[k],
                 value: pcalls.filter((q) => q.outcome === k).length,
@@ -957,7 +954,6 @@ export default async function VoicePage() {
                     { icon: ThumbsUp, label: "Interested", value: String(interestedN) },
                     { icon: Clock, label: "Follow-ups", value: String(finished.filter((q) => q.outcome === "follow_up").length) },
                     { icon: PhoneMissed, label: "No answer", value: String(finished.filter((q) => q.outcome === "no_answer").length) },
-                    { icon: PhoneOff, label: "Declined", value: String(finished.filter((q) => q.outcome === "declined").length) },
                   ].map((st) => {
                     const StIcon = st.icon;
                     return (

@@ -33,7 +33,11 @@ export type VoiceCallStatus =
 
 // How a finished call ended — filled by ElevenLabs conversation results once
 // the number is live; seeded with sample values so the analytics render now.
-export type VoiceOutcome = "interested" | "follow_up" | "no_answer" | "declined";
+// "Declined" is gone as an outcome (Anir, task #234): from the caller's side
+// an unanswered ring and a hang-up are the same unknowable thing, so they are
+// ONE bucket. A prospect who actually talks and says no is "follow_up" or the
+// rep logs the interaction — that path keeps its own vocabulary.
+export type VoiceOutcome = "interested" | "follow_up" | "no_answer";
 
 export interface VoiceCall {
   id: string;
@@ -115,7 +119,7 @@ function seedCalls(): VoiceCall[] {
     call("vc-seed-02", ["cont-005", "Prithvi Nair", "Solvance Pharma"], "Submissions and Document Operations", "Submissions and Document Operations", "called", "follow_up", 196, 1.2),
     call("vc-seed-03", ["cont-012", "Dr. Hana Kim", "Orion Vaccines"], "Global Regulatory Intelligence", "Global Regulatory Intelligence", "called", "interested", 233, 2),
     call("vc-seed-04", ["cont-003", "Marcus Thorne", "Cortexa Biopharma"], "Regulatory Affairs", "Regulatory Affairs", "called", "follow_up", 172, 2.5),
-    call("vc-seed-05", ["cont-010", "Claudia Hofmann", "Meridian Pharmaceuticals"], "Regulatory Information Management", "Regulatory Information Management", "called", "declined", 58, 3),
+    call("vc-seed-05", ["cont-010", "Claudia Hofmann", "Meridian Pharmaceuticals"], "Regulatory Information Management", "Regulatory Information Management", "called", "no_answer", 0, 3),
     call("vc-seed-06", ["cont-007", "Stefan Bauer", "Aether Medical Devices"], "Global Regulatory Intelligence", "Global Regulatory Intelligence", "called", "no_answer", 0, 3.4),
     call("vc-seed-07", ["cont-011", "Owen Bradley", "Northwind Biosciences"], "Regulatory Affairs", "Regulatory Affairs", "called", "follow_up", 148, 0.3),
     call("vc-seed-08", ["cont-008", "Megan Ruiz", "Solara Consumer Health"], "Labeling and Artwork", "Labeling and Artwork", "called", "interested", 205, 0.5),
@@ -145,9 +149,9 @@ function seedCalls(): VoiceCall[] {
   ];
   const CATS = Object.keys(agentIds);
   const PATTERN: VoiceOutcome[] = [
-    "interested", "follow_up", "no_answer", "interested", "declined",
+    "interested", "follow_up", "no_answer", "interested", "no_answer",
     "follow_up", "interested", "no_answer", "follow_up", "interested",
-    "declined", "interested",
+    "no_answer", "interested",
   ];
   const hash = (s: string) => {
     let h = 0;
@@ -156,7 +160,6 @@ function seedCalls(): VoiceCall[] {
   };
   const durFor = (o: VoiceOutcome, h: number): number | null => {
     if (o === "no_answer") return 0;
-    if (o === "declined") return 35 + (h % 55);
     if (o === "follow_up") return 120 + (h % 120);
     return 180 + (h % 140); // interested
   };
@@ -397,21 +400,6 @@ export function mockCallTranscript(
     };
   }
 
-  if (call.outcome === "declined") {
-    return {
-      summary: `Not a fit right now. ${first} already has a vendor for ${what} and asked us not to follow up this quarter. Polite close, door left open.`,
-      turns: [
-        opener,
-        { role: "user", message: `Hi: honestly this isn't a great time, we already have a partner for that.` },
-        value,
-        { role: "user", message: `Appreciate it, but we're set for now. Maybe revisit next year.` },
-        {
-          role: "agent",
-          message: `Completely understand, ${first}. I'll close this out and check back down the line. Thanks for the couple of minutes.`,
-        },
-      ],
-    };
-  }
 
   if (call.outcome === "follow_up") {
     return {

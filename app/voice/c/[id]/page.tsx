@@ -46,7 +46,6 @@ const OUTCOME_META: Record<VoiceOutcome, { label: string; chip: string }> = {
   interested: { label: "Interested", chip: "text-success bg-success/10" },
   follow_up: { label: "Follow-up", chip: "text-blue-primary bg-blue-light" },
   no_answer: { label: "No answer", chip: "text-warning bg-warning/10" },
-  declined: { label: "Declined", chip: "text-error bg-error/10" },
 };
 
 const CALL_STATUS_META: Record<VoiceLifecycleStatus, { label: string; chip: string }> = {

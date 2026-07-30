@@ -39,9 +39,8 @@ const OUTCOME_META: Record<VoiceOutcome, { label: string; color: string; chip: s
   interested: { label: "Interested", color: VIZ.green, chip: "text-success bg-success/10" },
   follow_up: { label: "Follow-up", color: VIZ.blue, chip: "text-blue-primary bg-blue-light" },
   no_answer: { label: "No answer", color: VIZ.amber, chip: "text-warning bg-warning/10" },
-  declined: { label: "Declined", color: "#FF3B30", chip: "text-error bg-error/10" },
 };
-const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer", "declined"];
+const OUTCOME_ORDER: VoiceOutcome[] = ["interested", "follow_up", "no_answer"];
 
 // Everything a rep needs about ONE contact who was called: who they are, every
 // conversation they've had, and how those calls are trending — the transcript
