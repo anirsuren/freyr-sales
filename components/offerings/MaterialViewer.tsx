@@ -126,6 +126,11 @@ export function MaterialViewer({
   const ext = extensionOf(path);
   const inlineUrl = `${downloadUrl}${downloadUrl.includes("?") ? "&" : "?"}view=1`;
   const isNative = ["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "mp4", "webm", "mov"].includes(ext);
+  // Video gets a cinema treatment: documents and decks FILL the tall viewer,
+  // but a 16:9 video pinned to the top of it left a big dead white block
+  // underneath (Anir: "it's taking up an awkward amount of space"). Centre the
+  // player on black instead, like every native video lightbox.
+  const isVideo = isNative && ["mp4", "webm", "mov"].includes(ext);
 
   useEffect(() => {
     if (isNative) {
@@ -456,7 +461,9 @@ export function MaterialViewer({
         <div className="relative min-h-0 flex-1">
         <div
           ref={scroller}
-          className="material-scroll h-full overflow-auto rounded-xl border border-border-light bg-[var(--surface)]"
+          className={`material-scroll h-full overflow-auto rounded-xl border border-border-light ${
+            isVideo ? "bg-black" : "bg-[var(--surface)]"
+          }`}
         >
           {status === "loading" && (
             <div className="flex h-full flex-col items-center justify-center gap-4 py-20">
@@ -494,15 +501,22 @@ export function MaterialViewer({
               keeps telling the truth about how much document is left.
               A PDF and a video are excluded: the PDF plugin has its own zoom
               and its own page counter, and nobody zooms a video. */}
-          <div style={{ zoom: isNative && ext === "pdf" ? 1 : zoom }}>
+          <div
+            style={{ zoom: isNative && ext === "pdf" ? 1 : zoom }}
+            className={isVideo ? "flex h-full items-center justify-center" : undefined}
+          >
 
           {/* Exact by definition: the browser's own PDF, video and image
               rendering of the very bytes that were uploaded. */}
           {isNative && ext === "pdf" && (
             <iframe src={inlineUrl} title={label} className="h-[calc(100vh-13rem)] w-full rounded-lg bg-white" />
           )}
-          {isNative && ["mp4", "webm", "mov"].includes(ext) && (
-            <video src={inlineUrl} controls autoPlay className="max-h-[68vh] w-full rounded-lg" />
+          {isVideo && (
+            // h-full w-full so the ELEMENT always spans the stage — the browser
+            // letterboxes the picture inside it (object-contain), controls run
+            // the full width, and a slow-loading file is a full black stage
+            // rather than a tiny default-size player floating in one.
+            <video src={inlineUrl} controls autoPlay className="h-full w-full object-contain" />
           )}
           {isNative && ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext) && (
             // eslint-disable-next-line @next/next/no-img-element
