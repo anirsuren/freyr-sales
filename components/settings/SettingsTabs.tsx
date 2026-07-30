@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { useTimeZone } from "@/components/auth/CurrentUserProvider";
 import {
   COMMON_TIME_ZONES,
@@ -59,6 +60,19 @@ import {
 } from "@/lib/userIdentity";
 import { canSwitchWorkspaceMode } from "@/lib/release";
 
+/**
+ * WHAT AN INVITED PERSON MAY DO, as a colour + icon each.
+ *
+ * Ordered by reach, and deliberately NOT red/green/amber: those mean a state in
+ * this app, and a role is an identity. Admin is the widest grant, so it is the
+ * one that has to be unmistakable at a glance.
+ */
+const INVITE_ROLE_OPTIONS: ColorOption[] = [
+  { value: "Rep", label: "Rep", color: "#0071E3", icon: UserRound },
+  { value: "Manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  { value: "Admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
+];
+
 const TABS = [
   { key: "workspace", label: "Workspace", description: "Data and behavior", icon: Settings2 },
   { key: "profile", label: "Profile", description: "Identity and preferences", icon: UserRound },
@@ -91,13 +105,38 @@ const CONNECTORS = [
 
 const ROLES = ["Admin", "Manager", "Rep"];
 const SSO_PROVIDERS = ["Okta", "Google Workspace", "Azure AD", "SAML 2.0"];
-const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean }[] = [
-  { cap: "View pipeline & accounts", admin: true, manager: true, rep: true },
-  { cap: "Generate & send pitches", admin: true, manager: true, rep: true },
-  { cap: "Approve pitches for send", admin: true, manager: true, rep: false },
-  { cap: "Edit offerings & sales materials", admin: true, manager: true, rep: false },
-  { cap: "Invite or approve teammates", admin: true, manager: false, rep: false },
-  { cap: "Configure authentication & security", admin: true, manager: false, rep: false },
+/**
+ * WHAT THE CODE ACTUALLY ENFORCES — checked against lib/role.ts and
+ * lib/offeringOwnership.ts, not written from memory.
+ *
+ * The row this table used to get badly wrong was editing offerings: it claimed
+ * Admin ✓ Manager ✓ Rep ✗, and the truth is neither. Editing is gated on
+ * OWNERSHIP, for everyone — "a workspace admin does not get to edit an offering
+ * merely by being an admin". A Rep who owns one can edit it; an Admin who does
+ * not own it cannot. What admin buys is the right to TAKE ownership, granted on
+ * the spot, and to hand it to someone else. A permissions table that contradicts
+ * the server is worse than no table: it is the page people check before they
+ * trust the product with their access model.
+ */
+const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean; note?: string }[] = [
+  { cap: "Browse offerings & open sales materials", admin: true, manager: true, rep: true },
+  { cap: "Ask the assistant", admin: true, manager: true, rep: true },
+  {
+    cap: "Edit an offering & its materials",
+    admin: false,
+    manager: false,
+    rep: false,
+    note: "Whoever owns that offering, any role",
+  },
+  {
+    cap: "Take ownership of an offering",
+    admin: true,
+    manager: false,
+    rep: false,
+    note: "Others request it; an admin grants it",
+  },
+  { cap: "Invite, approve or suspend teammates", admin: true, manager: false, rep: false },
+  { cap: "Switch the workspace between Real and Mock", admin: true, manager: false, rep: false },
 ];
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -122,37 +161,12 @@ type AccessDirectory = {
     expiresAt: string;
   }[];
 };
-// The real sales team — mirrors REPS in lib/pipeline.ts (the reps who own deals
-// across Forecast/Analytics). Was accidentally seeded with customer CONTACTS
-// (Dana Whitfield @ NovaGene, Owen Bradley @ Northwind), which read as if our
-// prospects were on staff.
-const MOCK_TEAMMATES: Member[] = [
-  { name: "Walter Hensley", email: "suren.dheen@freyrsolutions.com", role: "Admin" },
-  { name: "Mark Miller", email: "mark.miller@freyrsolutions.com", role: "Manager" },
-  { name: "Margaret Whitfield", email: "priya.nair@freyrsolutions.com", role: "Rep" },
-  { name: "Gordon Ashby", email: "diego.alvarez@freyrsolutions.com", role: "Rep" },
-];
-
-const MOCK_ACCESS: AccessDirectory = {
-  members: MOCK_TEAMMATES.map((member, index) => ({
-    id: `member-${index + 1}`,
-    name: member.name,
-    email: member.email,
-    role: member.role === "Admin" ? "admin" : member.role === "Manager" ? "editor" : "sales",
-    active: true,
-    lastSeenAt: new Date(Date.now() - index * 7200000).toISOString(),
-  })),
-  requests: [
-    {
-      id: "request-1",
-      name: "Hannah Schmidt",
-      email: "hannah.schmidt@freyrsolutions.com",
-      requestedRole: "sales",
-      requestedAt: new Date(Date.now() - 55 * 60000).toISOString(),
-    },
-  ],
-  invitations: [],
-};
+// NO INVENTED TEAMMATES. MOCK_TEAMMATES and MOCK_ACCESS put made-up names on
+// REAL Freyr addresses — "Walter Hensley" wearing suren.dheen@freyrsolutions.com
+// — plus a fictional access request with live Approve and Reject buttons. Real
+// mode already hid them, but they shipped in the bundle and were one setting
+// away from being on screen with the CEO's address under someone else's name.
+// The directory now starts from the signed-in user and fills in from the server.
 
 const DEFAULT_NOTIFICATIONS: Record<string, boolean> = {
   newSession: true,
@@ -174,16 +188,10 @@ const DEFAULT_NOTIFICATIONS: Record<string, boolean> = {
  * The samples now belong to mock mode alone. Real mode starts with the signed
  * in user and fills in from the server.
  */
-function initialAccessDirectory(
-  currentUser: UserIdentity,
-  approvalEnabled: boolean,
-  offeringsOnly: boolean
-): AccessDirectory {
-  const samples = approvalEnabled || offeringsOnly;
+function initialAccessDirectory(currentUser: UserIdentity): AccessDirectory {
+  // Just the person reading the page, until the server answers with the real
+  // directory. One honest row beats a padded one.
   return {
-    ...(samples
-      ? { members: [], requests: [], invitations: [] }
-      : MOCK_ACCESS),
     members: [
       {
         id: currentUser.id,
@@ -193,14 +201,9 @@ function initialAccessDirectory(
         active: true,
         lastSeenAt: new Date().toISOString(),
       },
-      ...(samples
-        ? []
-        : MOCK_ACCESS.members.filter(
-            (member) =>
-              member.id !== currentUser.id &&
-              member.email?.toLowerCase() !== currentUser.email?.toLowerCase()
-          )),
     ],
+    requests: [],
+    invitations: [],
   };
 }
 
@@ -322,6 +325,16 @@ export function SettingsTabs({
     }
   }
   const currentUser = useCurrentUser();
+  /**
+   * THE DOMAIN THIS WORKSPACE ACTUALLY USES, for the invite placeholder.
+   *
+   * Read off the signed-in admin's own address rather than written into the
+   * markup: "freyrsolutions.com" typed literally would be a lie the day this
+   * runs anywhere else, and a placeholder reading "name@company.com" is the
+   * kind of stock filler that makes a product look like a template.
+   */
+  const workspaceDomain =
+    (currentUser.email || "").split("@")[1]?.trim() || "freyrsolutions.com";
   const profileStorageKey = userScopedStorageKey(
     "freyr_profile",
     currentUser.id
@@ -417,7 +430,7 @@ export function SettingsTabs({
   });
   const [connectors, setConnectors] = useState<Record<string, boolean>>({});
   const [accessDirectory, setAccessDirectory] = useState<AccessDirectory>(() =>
-    initialAccessDirectory(currentUser, authConfig.approvalEnabled, offeringsOnly)
+    initialAccessDirectory(currentUser)
   );
   const [accessBusy, setAccessBusy] = useState<string | null>(null);
   const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
@@ -475,7 +488,7 @@ export function SettingsTabs({
     });
     setConnectors({});
     setAccessDirectory(
-      initialAccessDirectory(currentUser, authConfig.approvalEnabled, offeringsOnly)
+      initialAccessDirectory(currentUser)
     );
     setAccessBusy(null);
     try {
@@ -542,6 +555,11 @@ export function SettingsTabs({
 
   useEffect(() => {
     if (!authConfig.approvalEnabled) return;
+    // ONLY ADMINS MAY READ THE DIRECTORY, so only admins should ask for it.
+    // Everyone else used to open Settings, get a red "Couldn't load workspace
+    // access" toast from the 403, and then be shown "Active members 1" — an
+    // error and a false roster, for doing nothing but visiting the page.
+    if (currentUser.role !== "admin") return;
     let active = true;
     fetch("/api/settings/access", { cache: "no-store" })
       .then(async (response) => {
@@ -1319,19 +1337,25 @@ export function SettingsTabs({
               </label>
               <label>
                 <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Work email</span>
-                <Input type="email" placeholder="name@company.com" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
+                {/* THIS WORKSPACE'S OWN DOMAIN, not a stock "company.com"
+                    (Anir, Jul 30: "make sure this is personalized for Freyr
+                    Solutions. It shouldn't say add company name"). Taken from
+                    the signed-in admin's address rather than hardcoded, so it
+                    stays true if Freyr ever runs this on another domain. */}
+                <Input type="email" placeholder={`name@${workspaceDomain}`} value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
               </label>
               <label>
                 <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Starting role</span>
-                <select
+                {/* A colour + an icon each, like every other picker in the app.
+                    A bare native select was the last plain-text dropdown left,
+                    and what someone can DO here is exactly the kind of fact the
+                    chip rule exists for. */}
+                <ColorSelect
                   value={invite.role}
-                  onChange={(e) => setInvite({ ...invite, role: e.target.value })}
-                  className="h-[42px] w-full rounded-md border border-border bg-surface px-3 text-[13px] outline-none focus:border-blue-primary"
-                >
-                  <option>Rep</option>
-                  <option>Manager</option>
-                  <option>Admin</option>
-                </select>
+                  onChange={(v) => setInvite({ ...invite, role: v })}
+                  options={INVITE_ROLE_OPTIONS}
+                  ariaLabel="Starting role"
+                />
               </label>
               <Button onClick={addMember} disabled={!canInvite || accessBusy === "invite"} className="h-[42px]">
                 {accessBusy === "invite" ? "Creating…" : "Create invite"}
@@ -1409,8 +1433,17 @@ export function SettingsTabs({
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-success/10 text-success"><Lock size={18} /></span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3"><h2 className="text-[14px] font-semibold text-text-primary">Invite-only workspace</h2><span className={cn("rounded-md px-2 py-1 text-[10px] font-semibold", authConfig.approvalEnabled ? "bg-success/10 text-success" : "bg-warning/10 text-warning")}>{authConfig.approvalEnabled ? "Enforced" : "Ready to enable"}</span></div>
-                  <p className="mt-1 text-[11.5px] leading-relaxed text-text-secondary">Authentication verifies identity. Workspace approval independently controls whether that identity can see any Freyr data.</p>
+                  <div className="flex items-center justify-between gap-3"><h2 className="text-[14px] font-semibold text-text-primary">Invite-only workspace</h2><span className={cn("rounded-md px-2 py-1 text-[10px] font-semibold", authConfig.approvalEnabled ? "bg-success/10 text-success" : "bg-surface text-text-tertiary")}>{authConfig.approvalEnabled ? "On" : "Off on this server"}</span></div>
+                  {/* STATE THE DEPLOYMENT FACT, DON'T IMPLY A BUTTON. This said
+                      "Ready to enable" — but the switch is AUTH_MODE, fixed at
+                      deploy time, with no control anywhere in the product. And
+                      "Enforced" overstated it: anyone with a company address
+                      joins on their own, by design. Say both plainly. */}
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-text-secondary">
+                    {authConfig.approvalEnabled
+                      ? `Anyone with a ${workspaceDomain} address joins automatically. Everyone else needs an invitation from an admin, and is stopped at a pending screen until then.`
+                      : "This server runs without sign-in, so approval is not applied. It is set by the deployment, not from this page."}
+                  </p>
                   <div className="mt-3 flex items-center gap-4 text-[10.5px] font-medium text-text-tertiary">
                     <span className="inline-flex items-center gap-1.5">
                       <ShieldCheck size={13} className={isLocalAuth ? "text-warning" : "text-success"} />
@@ -1450,8 +1483,14 @@ export function SettingsTabs({
                     <div className="flex min-w-0 items-center gap-3"><Avatar name={request.name} className="h-9 w-9 shrink-0 text-[12px]" /><span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{request.name}</span><span className="block truncate text-[11px] text-text-tertiary">{request.email || "Email not asserted by identity provider"}</span></span></div>
                     <div className="flex items-center gap-2">
                       <span className="mr-2 text-[10.5px] text-text-tertiary">Requested {new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(-Math.max(1, Math.round((Date.now() - new Date(request.requestedAt).getTime()) / 60000)), "minute")}</span>
+                      {/* Admins only. The server 403s everyone else, so a Rep
+                          who clicked these got nothing but a red toast. */}
+                      {canInvite && (
+                        <>
                       <button disabled={accessBusy === request.id} onClick={() => reviewRequest(request.id, "reject", request.requestedRole)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-[11.5px] font-semibold text-text-secondary hover:bg-surface disabled:opacity-50"><UserX size={13} /> Reject</button>
                       <button disabled={accessBusy === request.id} onClick={() => reviewRequest(request.id, "approve", request.requestedRole)} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-primary px-3 text-[11.5px] font-semibold text-white hover:bg-blue-hover disabled:opacity-50"><UserCheck size={13} /> Approve</button>
+                        </>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -1461,32 +1500,12 @@ export function SettingsTabs({
             )}
           </Card>
 
-          {!authConfig.approvalEnabled && <Card>
-            <h2 className="text-[15px] font-semibold text-text-primary mb-1 flex items-center gap-2">
-              <ShieldCheck size={18} strokeWidth={1.75} className="text-blue-primary" />
-              Your role
-            </h2>
-            <p className="text-[13px] text-text-secondary mb-3">
-              Determines what you can do across the workspace.
-            </p>
-            <div className="flex gap-2">
-              {ROLES.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => selectRole(r)}
-                  aria-pressed={role === r}
-                  className={cn(
-                    "text-[13px] font-medium px-3.5 py-2 rounded-md border transition-colors",
-                    role === r
-                      ? "border-blue-primary bg-blue-light text-blue-primary"
-                      : "border-border text-text-secondary hover:bg-surface"
-                  )}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </Card>}
+          {/* THE "YOUR ROLE" SELF-SELECT CARD IS GONE. It rendered three
+              buttons — Admin, Manager, Rep — that any Rep could press. It
+              wrote localStorage and unlocked the invite form and security
+              controls in the UI while changing nothing on the server, so it
+              was fake privilege that made this page lie about what someone
+              could do. A role is granted by an admin, never chosen. */}
 
           <Card className="p-0 overflow-hidden">
             <h2 className="text-[15px] font-semibold text-text-primary px-5 pt-4 pb-2.5">
@@ -1511,7 +1530,16 @@ export function SettingsTabs({
               <tbody className="divide-y divide-border-light">
                 {PERMISSIONS.map((p) => (
                   <tr key={p.cap}>
-                    <td className="px-5 py-3 text-[13px] text-text-primary">{p.cap}</td>
+                    <td className="px-5 py-3 text-[13px] text-text-primary">
+                      {p.cap}
+                      {/* A rule that is not "by role" needs saying, or three
+                          dashes read as "nobody can do this". */}
+                      {p.note && (
+                        <span className="mt-0.5 block text-[11.5px] text-text-secondary">
+                          {p.note}
+                        </span>
+                      )}
+                    </td>
                     {(["admin", "manager", "rep"] as const).map((k) => (
                       <td key={k} className="px-3 py-3 text-center">
                         {p[k] ? (
@@ -1527,96 +1555,16 @@ export function SettingsTabs({
             </table>
           </Card>
 
-          {isLocalAuth ? (
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-                    <Lock size={18} strokeWidth={1.75} className="text-blue-primary" />
-                    SSO &amp; security
-                  </h2>
-                  <p className="mt-1 text-[11.5px] text-text-secondary">
-                    Browser-only controls for previewing the local demo. They do not configure a deployment.
-                  </p>
-                </div>
-                <span className="rounded-md bg-warning/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-warning">
-                  Demo only
-                </span>
-              </div>
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <select
-                  aria-label="SSO provider"
-                  value={sso.provider}
-                  onChange={(e) => updateSso({ provider: e.target.value })}
-                  disabled={!canSecurity}
-                  className="bg-surface border border-border rounded-md px-3 py-2 text-[14px] outline-none focus:border-blue-primary disabled:opacity-50"
-                >
-                  {SSO_PROVIDERS.map((p) => (
-                    <option key={p}>{p}</option>
-                  ))}
-                </select>
-                <Button
-                  variant={sso.connected ? "secondary" : "primary"}
-                  disabled={!canSecurity}
-                  onClick={() => {
-                    updateSso({ connected: !sso.connected });
-                    toast(
-                      sso.connected
-                        ? `Disconnected ${sso.provider}`
-                        : `Connected ${sso.provider} SSO`
-                    );
-                  }}
-                  className="px-4 py-2 text-[13px]"
-                >
-                  {sso.connected ? "Disconnect" : "Connect"}
-                </Button>
-                {sso.connected && (
-                  <span
-                    className="inline-flex items-center gap-1.5 text-[13px] font-medium"
-                    style={{ color: "#1A7A35" }}
-                  >
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#34C759" }} />
-                    Connected
-                  </span>
-                )}
-              </div>
-              <ul className="divide-y divide-border-light border-t border-border-light">
-                <li className="flex items-center justify-between gap-4 py-3">
-                  <div>
-                    <p className="text-[14px] font-medium text-text-primary">Enforce SSO for all members</p>
-                    <p className="text-[13px] text-text-secondary">Preview how an SSO-only workspace would appear.</p>
-                  </div>
-                  <Toggle
-                    on={sso.enforce}
-                    onClick={() =>
-                      canSecurity
-                        ? updateSso({ enforce: !sso.enforce })
-                        : toast("Only admins can configure security", "error")
-                    }
-                  />
-                </li>
-                <li className="flex items-center justify-between gap-4 py-3">
-                  <div>
-                    <p className="text-[14px] font-medium text-text-primary">Require two-factor authentication</p>
-                    <p className="text-[13px] text-text-secondary">Preview a second-factor policy in this browser.</p>
-                  </div>
-                  <Toggle
-                    on={sso.twoFactor}
-                    onClick={() =>
-                      canSecurity
-                        ? updateSso({ twoFactor: !sso.twoFactor })
-                        : toast("Only admins can configure security", "error")
-                    }
-                  />
-                </li>
-              </ul>
-              {!canSecurity && (
-                <p className="text-[12px] text-text-tertiary mt-3">
-                  Only admins can use the demo security controls. Switch your role above.
-                </p>
-              )}
-            </Card>
-          ) : (
+          {/* THE "SSO & SECURITY — DEMO ONLY" CARD IS GONE.
+              It offered a provider dropdown, a Connect button that toasted
+              "Connected Azure AD SSO", and toggles for enforcing SSO and
+              two-factor — all of it writing localStorage. Its own subtitle
+              admitted it: "Browser-only controls for previewing the local
+              demo. They do not configure a deployment." It rendered only where
+              AUTH_MODE is unset, i.e. a developer's machine, which is exactly
+              where it got demoed from. What remains is the honest read-only
+              statement of what this deployment actually enforces. */}
+
             <Card>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -1672,7 +1620,7 @@ export function SettingsTabs({
                   : "Sign-in policy is enforced by the configured identity provider before workspace approval is evaluated."}
               </p>
             </Card>
-          )}
+
         </div>
       )}
 

@@ -484,7 +484,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       main.getByRole("button", { name: "Save profile" })
     ).toBeVisible();
     await main.getByRole("tab", { name: /^Team/ }).click();
-    await expect(page.getByText("Mark Miller")).toBeVisible();
+    // The directory lists REAL members only. It used to be padded with invented
+    // teammates wearing real Freyr addresses ("Mark Miller"), which were deleted
+    // — so the roster is whoever is actually signed in.
+    await expect(page.getByText("Member directory")).toBeVisible();
     await main.getByRole("tab", { name: /^Notifications/ }).click();
     await expect(page.getByRole("switch").first()).toBeVisible();
     await main.getByRole("tab", { name: /^Integrations/ }).click();
@@ -976,23 +979,31 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/CRM synced/)).toBeVisible();
   });
 
-  test("72 — settings: roles + SSO access controls (V2)", async ({ page }) => {
+  test("72 — settings access: honest policy, no self-service roles (V2)", async ({ page }) => {
     await page.goto(`${BASE}/settings`);
     await page.locator("main").getByRole("tab", { name: "Access" }).click();
     await expect(page.getByRole("heading", { name: "Invite-only workspace" })).toBeVisible();
     await expect(page.getByText("Identity", { exact: true })).toBeVisible();
     await expect(page.getByText("Approval", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
-    await page.getByRole("button", { name: "Approve" }).click();
-    await expect(page.getByText("Queue clear")).toBeVisible();
     await expect(page.getByText("Role permissions")).toBeVisible();
+
+    // THE SECURITY PROPERTY, PINNED. There used to be a "Your role" card with
+    // Admin / Manager / Rep buttons that anyone could press: it wrote
+    // localStorage and unlocked admin-looking UI while changing nothing on the
+    // server. A role is granted by an admin, never chosen, so no control on
+    // this page may offer to change your own.
+    await expect(page.getByRole("heading", { name: "Your role" })).toHaveCount(0);
+
+    // The SSO card that toasted "Connected Azure AD SSO" and configured nothing
+    // is gone; what remains states what the deployment actually enforces.
+    await expect(page.getByRole("heading", { name: "SSO & security" })).toHaveCount(0);
     await expect(
-      page.getByRole("heading", { name: "SSO & security" })
+      page.getByRole("heading", { name: "Authentication & security" })
     ).toBeVisible();
-    // switch to Rep, then the Team invite is enforced as disabled
-    await page.getByRole("button", { name: "Rep", exact: true }).click();
-    await page.locator("main").getByRole("tab", { name: "Team" }).click();
-    await expect(page.getByRole("button", { name: "Create invite" })).toBeDisabled();
+
+    // Editing an offering is gated on OWNERSHIP, not on role — the table must
+    // say so rather than claiming Manager can and Rep cannot.
+    await expect(page.getByText(/Whoever owns that offering/)).toBeVisible();
   });
 
   test("73 — pipeline: saved views (V2)", async ({ page }) => {

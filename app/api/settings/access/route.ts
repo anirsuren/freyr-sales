@@ -51,6 +51,32 @@ export async function POST(request: NextRequest) {
         role
       );
     } else if (body.action === "change_role") {
+      /**
+       * NEVER LEAVE THE WORKSPACE WITHOUT AN ADMIN.
+       *
+       * Suspending yourself was already blocked; demoting yourself was not, and
+       * it is strictly worse. A sole admin who set their own role to Rep locked
+       * every admin control in the workspace with no way back — the stored role
+       * wins over OWNER_EMAILS for anyone who already has a row, so not even
+       * re-signing-in restores it. Only direct database access would.
+       *
+       * Counted, not guessed: a second active admin makes either move safe.
+       */
+      if (role !== "admin" && body.memberId === grant.userId) {
+        const directory = await listWorkspaceAccess(grant.workspaceId);
+        const otherAdmins = (directory.members || []).filter(
+          (m) => m.role === "admin" && m.active && m.id !== grant.userId
+        ).length;
+        if (otherAdmins === 0) {
+          return NextResponse.json(
+            {
+              error:
+                "You are the only admin. Make someone else an admin before changing your own role.",
+            },
+            { status: 400 }
+          );
+        }
+      }
       await updateWorkspaceMember(grant.workspaceId, body.memberId || "", { role });
     } else if (body.action === "deactivate" || body.action === "reactivate") {
       if (body.action === "deactivate" && body.memberId === grant.userId) {
