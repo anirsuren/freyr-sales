@@ -179,14 +179,14 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 30, 2026, end of day
 
-- **Prod is at `24ced01`** (tabs, floating materials + viewer, rail
-  collapse, agent grounding on the open offering, dock typewriter,
-  admin-only folders, search→agent handoff, /offerings/new deleted).
-- **Unpushed local stack on `gh-push`** (Anir said "don't push"; ask before
-  pushing): video cinema stage `37eac32`, bare-bones Reports `58b5765`,
-  custom video player + Range seeking `98d6960`, Customers module released
-  `aaf8597`, Analyze-the-customer card removed `f804cd4`, dropdown sweep
-  parts 1–2 `35e74be` `c12c8ab`.
+- **Prod is at `71418e2` (deployed Jul 30, evening) and local matches** —
+  the full day shipped: offering tabs + materials/viewer, custom video
+  player with Range seeking, bare-bones Reports, Customers module released
+  with Add customer / Import CSV and the pinned rightward-growing search,
+  Analyze card removed, complete dropdown sweep (zero native selects),
+  voice Declined→No answer, restored catalogue data, this handbook.
+- **No unpushed stack.** If `git log origin/main..HEAD` shows commits,
+  someone worked after this line was written — trust git over this file.
 - Freya.Register's 21 restored materials: 8 files are **unfiled** (only
   unambiguous folder placements were made); ~4 of the original 25 were
   link-only materials whose names are unrecoverable — Eeswar re-adds them.
