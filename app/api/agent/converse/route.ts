@@ -329,8 +329,18 @@ export async function POST(req: NextRequest) {
         "search before answering those, and name the document when you quote one), " +
         "save_draft / set_followup / log_touch (real actions, saved for the user's approval), show_pitch.\n\n") +
 
+    // NEVER OFFER WHAT THE TOOLS CANNOT DO.
+    // This said "offer to save it" in both modes, but real mode withholds
+    // save_draft (there is no account to attach a draft to), so the assistant
+    // offered to save and then admitted it could not: a promise broken one
+    // message after making it (Anir, Jul 29: "is what it did here right?").
+    // The offer now exists only where the tool does.
     "DRAFTS. When asked to write outreach, write the whole thing: a Subject line plus 3-5 short sentences, " +
-    `signed '${actorName} \u00b7 Freyr', with no placeholders. Show it, then offer to save it.\n\n` +
+    `signed '${actorName} \u00b7 Freyr', with no placeholders. ` +
+    (offeringsOnly
+      ? "Show it and stop there. You cannot save, send or file anything in this " +
+        "workspace, so never offer to: the person copies it wherever they need it.\n\n"
+      : "Show it, then offer to save it.\n\n") +
 
     "FORMAT. Markdown renders: bold, bullets, tables (use a table for 3+ records). " +
     "When comparing 3+ numbers from your grounding, also add a chart block:\n" +
