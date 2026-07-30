@@ -27,7 +27,6 @@ import {
   CustomerOfferingsTab,
   type TabOffering,
 } from "@/components/customers/CustomerOfferingsTab";
-import { CustomerAnalyzePanel } from "@/components/customers/CustomerAnalyzePanel";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
@@ -724,19 +723,12 @@ export function CustomerTabs({
               </Card>
             </div>
 
-            {/* Company profile — the analyze flow lives HERE in the page flow
-                now, not in a banner pinned above everything (Anir, Jul 3). */}
-            {offeringsCatalog && (
-              <CustomerAnalyzePanel
-                customerId={customer.id}
-                customerType={customer.customer_type ?? null}
-                ownership={customer.ownership ?? null}
-                revenue={customer.revenue ?? null}
-                analyzed={!!customer.analyzed_at}
-                typeOptions={offeringsCatalog.typeOptions}
-                applicableOfferings={applicableSlim}
-              />
-            )}
+            {/* The "Company profile / Analyze the customer" card is GONE (Anir,
+                Jul 30: "why do you have this thing here? Remove it" — the
+                latest of several passes stripping AI-branded surfaces from this
+                page; see also the removed Analyze banner and 'Let the agent
+                work' button). The analyze API route still exists for the
+                agent's own use; the page simply no longer advertises it. */}
 
             {contacts.length > 0 && (
               <div>
