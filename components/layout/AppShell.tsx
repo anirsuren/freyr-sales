@@ -38,6 +38,9 @@ export function AppShell({
   currentUser: UserIdentity;
 }) {
   const pathname = usePathname() || "";
+  /** Any page whose whole job is a form you fill in and save. */
+  const isEditingForm =
+    pathname.endsWith("/edit") || pathname.endsWith("/new");
   const router = useRouter();
   const offeringsOnly = isOfferingsOnly(dataMode);
   // Same allow-list the middleware redirect uses (lib/release.ts). Keeping one
@@ -253,8 +256,16 @@ export function AppShell({
             only tells the dock to keep its answers inside what real mode can
             actually open. */}
         {/* Not on the agent's own page: a floating mini agent on top of the
-            full agent is the same thing twice (Anir, Jul 29). */}
-        {!pathname.startsWith("/agent") && (
+            full agent is the same thing twice (Anir, Jul 29).
+
+            NOT ON AN EDIT FORM EITHER. A form ends in a Save button in the
+            bottom-right corner, which is exactly where the bubble floats — on
+            the offering editor it sat directly on top of "Save changes" (Anir,
+            Jul 30: "the save changes button is literally getting blocked by
+            the AI assistant. Also, we shouldn't even have an AI on this page
+            for the edit thing"). And there is nothing for it to answer while
+            you are typing your own catalogue in. */}
+        {!pathname.startsWith("/agent") && !isEditingForm && (
         <AgentDock
           open={visibleAgentOpen}
           onOpenChange={setAgentOpen}

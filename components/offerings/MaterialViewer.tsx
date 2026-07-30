@@ -90,6 +90,18 @@ export function MaterialViewer({
   const scroller = useRef<HTMLDivElement>(null);
   /** The page/slide elements the renderer produced, for the position readout. */
   const pageEls = useRef<HTMLElement[]>([]);
+  /**
+   * A WORD FILE WITH NO PAGE BREAKS IS STILL A DOCUMENT WITH PAGES.
+   *
+   * docx-preview only starts a new <section> at an EXPLICIT page break, so a
+   * file that just runs on — most of Eswar's outreach templates — renders as
+   * one very tall section and the counter had nothing to count (Anir, Jul 30:
+   * "I still don't see any page numbers here"). Word itself knows the page
+   * height, and docx-preview writes it onto the section as min-height, so we
+   * number the flow by the document's own page size. Same numbers Word would
+   * print in the corner.
+   */
+  const flow = useRef<{ el: HTMLElement; pxPerPage: number } | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(1);
 
@@ -280,13 +292,43 @@ export function MaterialViewer({
           : ".viewer-page";
     // The renderers finish writing to the DOM a tick after they resolve.
     const measure = () => {
-      pageEls.current = Array.from(el.querySelectorAll<HTMLElement>(selector));
-      setPageCount(pageEls.current.length);
+      const found = Array.from(el.querySelectorAll<HTMLElement>(selector));
+      if (found.length > 1) {
+        pageEls.current = found;
+        flow.current = null;
+        setPageCount(found.length);
+        return;
+      }
+      // One long section: derive the pages from the page height Word stored.
+      const sec = found[0];
+      if (sec) {
+        const declared = parseFloat(getComputedStyle(sec).minHeight);
+        // `zoom` scales what is on screen but not the computed CSS length, so
+        // the on-screen page height has to be scaled to match the rects below.
+        const pxPerPage = declared * zoom;
+        const rendered = sec.getBoundingClientRect().height;
+        if (pxPerPage > 100 && rendered > pxPerPage * 1.2) {
+          flow.current = { el: sec, pxPerPage };
+          pageEls.current = [];
+          setPageCount(Math.max(1, Math.round(rendered / pxPerPage)));
+          return;
+        }
+      }
+      pageEls.current = found;
+      flow.current = null;
+      setPageCount(found.length);
     };
     measure();
     const t = setTimeout(measure, 400);
 
     const sync = () => {
+      if (flow.current) {
+        const { el: sec, pxPerPage } = flow.current;
+        // How far into the section the top of the viewport has travelled.
+        const into = el.getBoundingClientRect().top - sec.getBoundingClientRect().top;
+        setPage(Math.max(1, Math.floor(into / pxPerPage) + 1));
+        return;
+      }
       const pages = pageEls.current;
       if (pages.length === 0) return;
       // The page that owns the top third of the viewport is the page you are
@@ -311,12 +353,23 @@ export function MaterialViewer({
 
   /** Jump to a page the way a PDF viewer does — the same control reads the
    *  position and sets it. */
-  const goToPage = useCallback((n: number) => {
-    const pages = pageEls.current;
-    if (pages.length === 0) return;
-    const target = pages[Math.min(pages.length, Math.max(1, n)) - 1];
-    target?.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, []);
+  const goToPage = useCallback(
+    (n: number) => {
+      const box = scroller.current;
+      if (flow.current && box) {
+        const { el: sec, pxPerPage } = flow.current;
+        const into = box.getBoundingClientRect().top - sec.getBoundingClientRect().top;
+        const want = (Math.max(1, Math.min(pageCount, n)) - 1) * pxPerPage;
+        box.scrollBy({ top: want - into, behavior: "smooth" });
+        return;
+      }
+      const pages = pageEls.current;
+      if (pages.length === 0) return;
+      const target = pages[Math.min(pages.length, Math.max(1, n)) - 1];
+      target?.scrollIntoView({ block: "start", behavior: "smooth" });
+    },
+    [pageCount]
+  );
 
   return (
     <Modal

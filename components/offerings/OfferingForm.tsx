@@ -1150,6 +1150,20 @@ export function OfferingForm({
             customer. The name you give each file says what it is.
           </p>
         )}
+        {/* THE LIST SCROLLS INSIDE ITSELF. Twenty-five materials, each two rows
+            tall, pushed everything below them — including Save — thousands of
+            pixels down the page (Anir, Jul 30: "for the sales material, it's
+            just way too long. It should be contained within a container that I
+            can scroll through"). Capped at roughly four rows so the section
+            reads as one block you scroll, and everything after it stays where
+            you left it. Under five materials it never scrolls at all. */}
+        <div
+          className={cn(
+            "space-y-2",
+            materials.length > 4 &&
+              "material-scroll max-h-[460px] overflow-y-auto rounded-xl border border-border-light bg-white p-2"
+          )}
+        >
         {materials.map((m, i) => (
           <div
             key={i}
@@ -1240,6 +1254,13 @@ export function OfferingForm({
           />
           </div>
         ))}
+        </div>
+        {materials.length > 4 && (
+          <p className="text-[11.5px] text-text-tertiary">
+            <span className="tnum font-semibold">{materials.length}</span>{" "}
+            materials — scroll inside the box above to reach them all.
+          </p>
+        )}
       </FormSection>
 
       {/* Add material: a real dialog with one field per line, instead of a
