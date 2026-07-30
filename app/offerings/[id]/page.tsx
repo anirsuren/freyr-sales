@@ -29,6 +29,8 @@ import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { OfferingAgentPanel } from "@/components/offerings/OfferingAgentPanel";
+import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
+import { OfferingReleasesTab } from "@/components/offerings/OfferingReleasesTab";
 import { OfferingContacts } from "@/components/offerings/OfferingContacts";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
@@ -61,7 +63,14 @@ export default async function OfferingDetailPage({
   if (!raw) notFound();
   const o = hydrateOffering(raw);
 
-  const tab = query?.tab === "reports" ? "reports" : "overview";
+  const tab =
+    query?.tab === "reports"
+      ? "reports"
+      : query?.tab === "materials"
+        ? "materials"
+        : query?.tab === "releases"
+          ? "releases"
+          : "overview";
   const allCustomers = await getDb().customers.list();
 
   // Contract lines for this offering, nearest expiry first — the rail's
@@ -300,6 +309,25 @@ export default async function OfferingDetailPage({
       >
         {[
           { key: "overview", label: "Overview", href: `/offerings/${o.id}` },
+          // SALES MATERIALS IS ITS OWN DESTINATION (Suren, Jul 30: "the heavy
+          // traffic item, I don't want to be a scroll function… I have another
+          // tab called sales materials").
+          {
+            key: "materials",
+            label:
+              o.materials.length > 0
+                ? `Sales materials (${o.materials.length})`
+                : "Sales materials",
+            href: `/offerings/${o.id}?tab=materials`,
+          },
+          // Release notes + version history, everyone (Saras' written item 1).
+          // The restricted Product Roadmap section is NOT here yet — gating who
+          // sees what is a permissions decision and needs Anir's yes first.
+          {
+            key: "releases",
+            label: "Release notes",
+            href: `/offerings/${o.id}?tab=releases`,
+          },
           {
             key: "reports",
             label:
@@ -330,7 +358,17 @@ export default async function OfferingDetailPage({
           `tabPanelIn` keyframes replay on every switch, the tabs had no
           transition at all before. */}
       <div key={tab} className="tab-panel">
-        {tab === "reports" ? (
+        {tab === "materials" ? (
+          <OfferingMaterialsTab offering={o} admin={admin} />
+        ) : tab === "releases" ? (
+          <OfferingReleasesTab
+            offeringId={o.id}
+            offeringName={o.offering_name}
+            releases={o.releases ?? []}
+            contacts={o.contacts ?? []}
+            canEdit={admin}
+          />
+        ) : tab === "reports" ? (
           <OfferingReports
             report={report}
             offeringName={o.offering_name}

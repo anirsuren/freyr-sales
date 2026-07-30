@@ -92,6 +92,21 @@ export interface Offering {
    * freshly made (or newly emptied) folder does not disappear on reload.
    */
   materialFolders?: string[];
+  /**
+   * WHAT SHIPPED, AND WHEN.
+   *
+   * Suren, Jul 30 (11:01): "I need to know for this offering, what is the
+   * latest release, which is the latest customer version, what is the next
+   * customer version, and then what are the version comparison features."
+   * Saras wrote it up as a Release Notes / Version History tab, visible to
+   * everyone.
+   *
+   * `status` is what makes a row a shipped release or the one coming next; the
+   * RESTRICTED roadmap section Sudhir asked for ("anything beyond the current
+   * release in the hands of sales is not good") is a separate, gated thing and
+   * is deliberately not built yet.
+   */
+  releases?: OfferingRelease[];
   /** WHO OWNS THIS OFFERING, as account records rather than a name string.
    *  Editing rights are decided by `memberId`, an exact match against the
    *  signed-in workspace account, never by matching a person's display name
@@ -109,6 +124,27 @@ export interface Offering {
  *  delivery lead a rep should reach when a customer asks something the deck
  *  does not answer. Only the name is required; a row with just a name is still
  *  useful, and demanding an email would push people back to the sheet. */
+/**
+ * ONE VERSION OF AN OFFERING, and what changed in it.
+ *
+ * `released` is a shipped version anybody may read. `next` is the one coming
+ * up — Suren asked for "what is the next customer version" on the same tab, and
+ * Sudhir drew the line at that: everything beyond the next release belongs in
+ * the restricted roadmap, which is not built yet.
+ */
+export interface OfferingRelease {
+  id: string;
+  /** Customer-facing version, e.g. "V2" or "2026.1". */
+  version: string;
+  /** ISO date it shipped, or is expected to. Blank when a date isn't set. */
+  date?: string;
+  status: "released" | "next";
+  /** What this version added or changed, one line per feature. */
+  features: string[];
+  /** Free-text note for anything a feature list can't carry. */
+  note?: string;
+}
+
 export interface OfferingContact {
   id: string;
   name: string;
