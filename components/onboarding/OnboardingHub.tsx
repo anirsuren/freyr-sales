@@ -1,5 +1,6 @@
 "use client";
 
+import { roleLabel } from "@/components/ui/RoleTag";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -280,7 +281,7 @@ export function OnboardingHub({
                       : `${progress}%`}
                 </p>
                 <p className="mt-1 text-[11px] text-text-tertiary">
-                  {role ? `${role === "admin" ? "Admin" : role === "editor" ? "Catalog editor" : "Sales rep"} path` : "Personalized path"}
+                  {role ? `${roleLabel(role)} path` : "Personalized path"}
                 </p>
               </div>
             </div>

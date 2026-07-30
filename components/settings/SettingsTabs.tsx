@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { RoleTag } from "@/components/ui/RoleTag";
 import { useTimeZone } from "@/components/auth/CurrentUserProvider";
 import {
   COMMON_TIME_ZONES,
@@ -1382,7 +1383,10 @@ export function SettingsTabs({
                     <Avatar name={member.name} className="h-9 w-9 shrink-0 text-[12px]" />
                     <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{member.name}</span><span className="block truncate text-[11px] text-text-tertiary">{member.email}</span></span>
                   </div>
-                  <span className="text-[12px] font-medium capitalize text-text-secondary">{member.role === "editor" ? "Catalog editor" : member.role === "sales" ? "Sales rep" : "Admin"}</span>
+                  {/* Same three names, same chip, as the account menu. This
+                      row used to say "Catalog editor" for the role the invite
+                      form calls "Manager". */}
+                  <RoleTag role={member.role} size="sm" />
                   <span className={cn("inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-semibold", member.active ? "bg-success/10 text-success" : "bg-surface text-text-tertiary")}><span className={cn("h-1.5 w-1.5 rounded-full", member.active ? "bg-success" : "bg-text-tertiary")} />{member.active ? "Active" : "Suspended"}</span>
                   <span className="text-[11px] text-text-tertiary">{member.lastSeenAt ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(-Math.max(1, Math.round((Date.now() - new Date(member.lastSeenAt).getTime()) / 3600000)), "hour") : "Not yet"}</span>
                 </li>

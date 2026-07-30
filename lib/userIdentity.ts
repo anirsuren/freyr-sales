@@ -17,7 +17,7 @@ export const DEFAULT_LOCAL_USER_IDENTITY: UserIdentity = {
   name: "Anir Suren",
   email: "anir.s@freyrsolutions.com",
   role: "admin",
-  title: "Workspace Admin",
+  title: "Admin",
 };
 
 export const GENERIC_USER_IDENTITY: UserIdentity = {
@@ -29,10 +29,20 @@ export const GENERIC_USER_IDENTITY: UserIdentity = {
   title: "Workspace User",
 };
 
+/**
+ * There are exactly three roles and each has ONE name — Admin, Manager, Rep
+ * (Anir, Jul 30). This used to answer "Workspace Admin" / "Offering Editor" /
+ * "Sales Representative" while the invite form said Admin / Manager / Rep and
+ * the member directory said Admin / Catalog editor / Sales rep, so the same
+ * person had three different job titles depending on which screen you opened.
+ *
+ * components/ui/RoleTag.tsx holds the colour and icon for the same three; this
+ * stays a plain string for the places that need text (page titles, alt text).
+ */
 export function titleForUserRole(role: UserIdentityRole): string {
-  if (role === "admin") return "Workspace Admin";
-  if (role === "editor") return "Offering Editor";
-  return "Sales Representative";
+  if (role === "admin") return "Admin";
+  if (role === "editor") return "Manager";
+  return "Rep";
 }
 
 export function firstNameForUser(user: Pick<UserIdentity, "name">): string {

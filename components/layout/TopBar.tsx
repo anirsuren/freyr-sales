@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, Bell, CircleHelp, ChevronDown, Plus, Sparkles, Building2, UserPlus, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, LogOut, CheckCircle2, Hammer } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { RoleTag } from "@/components/ui/RoleTag";
 import {
   NotificationGroupHeading,
   NotificationRow,
@@ -444,9 +445,13 @@ export function TopBar({
                     <p className="text-[14px] font-semibold text-text-primary leading-tight">
                       {currentUser.name}
                     </p>
-                    <p className="text-[12px] text-text-secondary leading-tight truncate">
-                      {currentUser.title}
-                    </p>
+                    {/* THE ROLE AS A TAG, not a sentence. What someone may do
+                        is a fact with a fixed set of values, so it wears the
+                        same colour + icon chip every other categorical fact in
+                        this app wears (Anir, Jul 30: "it should show a tag"). */}
+                    <span className="mt-1 flex">
+                      <RoleTag role={currentUser.role} size="sm" />
+                    </span>
                     {currentUser.email && (
                       <p className="text-[11.5px] text-text-tertiary leading-tight truncate mt-0.5">
                         {currentUser.email}
