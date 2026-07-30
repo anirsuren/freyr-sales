@@ -28,7 +28,6 @@ import { listAssignablePeople } from "@/lib/assignablePeople";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
-import { OfferingAgentPanel } from "@/components/offerings/OfferingAgentPanel";
 import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
 import { OfferingReleasesTab } from "@/components/offerings/OfferingReleasesTab";
 import { OfferingContacts } from "@/components/offerings/OfferingContacts";
@@ -388,23 +387,17 @@ export default async function OfferingDetailPage({
           {/* `stagger` — the rail's cards lift in one after another, the same
               entrance the dashboard's lists use. */}
           <div className="space-y-5 stagger">
-            {/* THE AGENT SITS AT THE TOP OF THE RAIL, not behind a trip to
-                /agent (Suren, Jul 30: "I really don't want to go there… ask
-                him to do the stuff here itself… on the right side a chat
-                window here itself"). Everything under it collapses, which is
-                the room this needed: "who can edit this, contacts for this
-                offering — they can be collapsible gadgets." */}
-            <OfferingAgentPanel
-              offeringId={o.id}
-              offeringName={o.offering_name}
-              starters={[
-                `What does ${o.offering_name} do?`,
-                "Which materials should I send a new prospect?",
-                o.offeringCategory?.name
-                  ? `Who else sells ${o.offeringCategory.name}?`
-                  : "Who owns this offering?",
-              ]}
-            />
+            {/* NO SECOND CHAT HERE. Suren asked for context-aware chat on the
+                offering (Jul 30: "the context is already set that the question
+                is related to Register") — but the always-on dock bottom-right
+                already does exactly that: it reads the page's H1 as the subject
+                and sends the whole offering page as context. He simply had not
+                noticed it was there. A panel in the rail was the same feature
+                twice (Anir, Jul 30: "he did not know that there was literally a
+                chatbot at the very bottom right... so we don't need that").
+
+                The cards below stay collapsed regardless — he asked for that on
+                its own merits. */}
 
             {/* Internal owner — only when a real person is on file */}
             {/* WHO CAN EDIT THIS. Real accounts, granted by an admin, not the
