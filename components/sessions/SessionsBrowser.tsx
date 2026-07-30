@@ -318,7 +318,11 @@ export function SessionsBrowser({
                           className="group/company flex items-center gap-3 min-w-[210px]"
                         >
                           <CompanyLogo name={r.company} className="w-8 h-8 shrink-0 text-[11px]" />
-                          <span className="text-[13px] font-semibold leading-snug text-text-primary group-hover/company:text-blue-primary">
+                          {/* One line, always (Anir: names were folding onto
+                              three). No ellipsis either — the standing rule —
+                              so the column simply claims the width it needs
+                              and the wrapper's overflow-x carries the rest. */}
+                          <span className="whitespace-nowrap text-[13px] font-semibold text-text-primary group-hover/company:text-blue-primary">
                             {r.company}
                           </span>
                         </Link>
