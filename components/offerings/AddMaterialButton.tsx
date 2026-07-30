@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Info, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -58,6 +58,10 @@ export function AddMaterialButton({
   compact?: boolean;
 }) {
   const router = useRouter();
+  // Which folder the list is standing in, read from the URL the list writes.
+  // The page is a server component and cannot hand this component a callback,
+  // so the URL is the channel between the two.
+  const uploadFolder = (useSearchParams().get("mf") || "").trim();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<MaterialFormat>("video");
@@ -257,6 +261,9 @@ export function AddMaterialButton({
           journeyStage: m.journeyStage,
           accessLevel: m.accessLevel,
           readByAgent: m.readByAgent,
+          // Without this the siblings come back folderless and one upload
+          // would flatten everything Eswar had filed.
+          folder: m.folder,
         })),
         {
           id: "",
@@ -267,6 +274,10 @@ export function AddMaterialButton({
           // Optional, and left off entirely when it's blank — an empty note is
           // no note, not an empty line under the title.
           ...(description.trim() ? { description: description.trim() } : {}),
+          // STRAIGHT INTO THE OPEN FOLDER. The list keeps the current folder in
+          // the URL, so uploading from inside "Proposals" files it there with
+          // nothing extra to pick — which is what sixty uploads in a row needs.
+          ...(uploadFolder ? { folder: uploadFolder } : {}),
           journeyStage,
           accessLevel,
           readByAgent,

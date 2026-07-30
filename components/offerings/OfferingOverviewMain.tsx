@@ -275,6 +275,9 @@ export function OfferingOverviewMain({
             materials={o.materials}
             offeringId={o.id}
             canEdit={admin}
+            // Folders an owner made that are still empty. The rest are implied
+            // by the files, so this only carries the ones nothing points at.
+            materialFolders={o.materialFolders ?? []}
             action={
               admin ? (
                 <AddMaterialButton offeringId={o.id} materials={o.materials} compact />

@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { allFolders } from "@/lib/offeringMaterials";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -69,10 +70,13 @@ export function EditMaterialButton({
     material.accessLevel || "client_facing"
   );
   const [readByAgent, setReadByAgent] = useState(isReadByAgent(material));
+  /** MOVE A FILE. The folder is a plain path, so moving is a re-save. */
+  const [folder, setFolder] = useState(material.folder || "");
 
   function reset() {
     setLabel(material.label);
     setDescription(material.description || "");
+    setFolder(material.folder || "");
     setJourneyStage(material.journeyStage || "awareness");
     setAccessLevel(material.accessLevel || "client_facing");
     setReadByAgent(isReadByAgent(material));
@@ -96,6 +100,9 @@ export function EditMaterialButton({
               url: m.url,
               docsPath: m.docsPath,
               description: description.trim(),
+              // Always sent, empty string included: that is how "move it back
+              // to the top level" reaches the server.
+              folder,
               journeyStage,
               accessLevel,
               readByAgent,
@@ -107,6 +114,7 @@ export function EditMaterialButton({
               url: m.url,
               docsPath: m.docsPath,
               description: m.description,
+              folder: m.folder,
               journeyStage: m.journeyStage,
               accessLevel: m.accessLevel,
               readByAgent: m.readByAgent,
@@ -165,8 +173,32 @@ export function EditMaterialButton({
       >
         <div className="space-y-4">
           <p className="text-[12.5px] leading-relaxed text-text-secondary">
-            Rename it, describe it, or change who may see it.
+            Rename it, describe it, move it, or change who may see it.
           </p>
+          {/* MOVE IT. Every folder on the offering, plus the top level. A plain
+              select rather than drag-and-drop: sixty files get filed fastest
+              from the row you are already looking at. */}
+          <div>
+            <label
+              htmlFor={`folder-${material.id}`}
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"
+            >
+              Folder
+            </label>
+            <select
+              id={`folder-${material.id}`}
+              value={folder}
+              onChange={(e) => setFolder(e.target.value)}
+              className="w-full cursor-pointer rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
+            >
+              <option value="">All materials (top level)</option>
+              {allFolders(materials, [material.folder || ""]).map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">

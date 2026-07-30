@@ -86,6 +86,12 @@ export interface Offering {
   customer_type_ids: string[]; // applicable customer types (one or more)
   market_ids: string[]; // applicable markets
   materials: OfferingMaterial[];
+  /**
+   * Folders an owner created that hold nothing yet. Folders that DO hold files
+   * are implied by the files themselves, so this list exists purely so a
+   * freshly made (or newly emptied) folder does not disappear on reload.
+   */
+  materialFolders?: string[];
   /** WHO OWNS THIS OFFERING, as account records rather than a name string.
    *  Editing rights are decided by `memberId`, an exact match against the
    *  signed-in workspace account, never by matching a person's display name

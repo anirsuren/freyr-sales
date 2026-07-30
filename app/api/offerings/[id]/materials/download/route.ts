@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOffering } from "@/lib/offerings";
+import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
@@ -31,6 +31,19 @@ export async function GET(
       { status: 403 }
     );
 
+  /**
+   * LOAD THE REAL CATALOGUE BEFORE JUDGING THE FILE.
+   *
+   * In live mode the offerings store starts as the static seed and is replaced
+   * with the persisted catalogue by initializeLiveOfferings() — which, until
+   * now, only /api/health ever called. So on a freshly started server this
+   * route compared a real uploaded file against the SEED, decided the file was
+   * not on the offering, and 404'd every material link until something happened
+   * to hit the health endpoint. Memoised on globalThis, so this is a no-op
+   * after the first call.
+   */
+  await initializeLiveOfferings();
+
   const offering = getOffering(id);
   if (!offering)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -60,6 +73,49 @@ export async function GET(
 
   try {
     const { presignUrl } = await docsStorage.getDownloadUrl(path);
+
+    /**
+     * VIEW IN A TAB, OR SAVE TO DISK — the rep chooses.
+     *
+     * Storage hands back every object with `Content-Disposition: attachment`,
+     * so simply pointing a link at the presigned URL downloads the file even
+     * with target="_blank": the tab opens and immediately closes, leaving a
+     * file in Downloads. A rep who only wants to LOOK at a deck before a call
+     * had no way to (Saras, Jul 30: "can each of the sales materials open in a
+     * new tab when clicked on without automatically downloading? The sales reps
+     * need to be able to simply view them").
+     *
+     * `?view=1` therefore streams the bytes back through this route with an
+     * INLINE disposition, so the browser renders PDFs, images and video in the
+     * tab. Without it the redirect stands and the file downloads as before.
+     * Proxying also keeps the presigned URL off the client.
+     */
+    if (new URL(req.url).searchParams.get("view") === "1") {
+      const upstream = await fetch(presignUrl);
+      if (!upstream.ok || !upstream.body)
+        return NextResponse.json(
+          { error: "Could not open that file" },
+          { status: 502 }
+        );
+      const filename = path.split("/").pop() || "file";
+      const headers = new Headers();
+      headers.set(
+        "Content-Type",
+        upstream.headers.get("content-type") || "application/octet-stream"
+      );
+      const length = upstream.headers.get("content-length");
+      if (length) headers.set("Content-Length", length);
+      // Quotes escaped: a filename containing one would otherwise truncate the
+      // header and browsers would fall back to the URL's last segment.
+      headers.set(
+        "Content-Disposition",
+        `inline; filename="${filename.replace(/"/g, "'")}"`
+      );
+      // Private: a signed-in member fetched this, a shared cache must not keep it.
+      headers.set("Cache-Control", "private, max-age=60");
+      return new NextResponse(upstream.body, { status: 200, headers });
+    }
+
     return NextResponse.redirect(presignUrl, 302);
   } catch (e) {
     return NextResponse.json(

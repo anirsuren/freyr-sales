@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   BotOff,
+  ChevronRight,
   Download,
+  Folder,
+  FolderPlus,
   X,
   ExternalLink,
   Files,
@@ -28,8 +31,14 @@ import {
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
   MATERIAL_ICON,
+  allFolders,
+  childFolders,
+  cleanFolderName,
+  countUnder,
   isReadByAgent,
   isSalesVisible,
+  materialsInFolder,
+  normalizeFolderPath,
   legacyKindLabel,
   materialFormat,
   type MaterialFormat,
@@ -91,8 +100,12 @@ export function MaterialsSection({
   action,
   offeringId,
   canEdit = false,
+  materialFolders = [],
 }: {
   materials: OfferingMaterial[];
+  /** Folders an owner made that hold nothing yet; the rest are implied by the
+   *  files. Passed in so an empty folder survives a reload. */
+  materialFolders?: string[];
   /** Rendered at the right end of the filter row (the "+" add button). */
   action?: React.ReactNode;
   /** Needed to delete a row through the offering PATCH. */
@@ -152,6 +165,60 @@ export function MaterialsSection({
     }
   }
 
+  /**
+   * WHICH FOLDER YOU ARE LOOKING AT — kept in the URL, not in component state.
+   *
+   * Three things fall out of that: a rep can send a colleague a link straight to
+   * "Proposals", back works, and the Add-material dialog (a sibling component
+   * the page renders, which this one cannot hand a callback to — a server
+   * component may not pass functions across) can read the same parameter and
+   * upload INTO the folder that is open.
+   */
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const folder = normalizeFolderPath(searchParams.get("mf") || "");
+  const goToFolder = (next: string) => {
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    if (next) params.set("mf", next);
+    else params.delete("mf");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [savingFolder, setSavingFolder] = useState(false);
+
+  /** Create an empty folder under whatever is open, and step into it. */
+  async function createFolder() {
+    const name = cleanFolderName(newFolderName);
+    if (!name || !offeringId || savingFolder) return;
+    const path = folder ? `${folder}/${name}` : name;
+    setSavingFolder(true);
+    try {
+      const res = await fetch(`/api/offerings/${offeringId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          materialFolders: Array.from(new Set([...materialFolders, path])),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast(body.error || "Could not create that folder", "error");
+        return;
+      }
+      setNewFolderOpen(false);
+      setNewFolderName("");
+      router.refresh();
+      goToFolder(path);
+    } catch {
+      toast("Could not create that folder", "error");
+    } finally {
+      setSavingFolder(false);
+    }
+  }
+
   const anyFilter = formats.length > 0 || stages.length > 0 || levels.length > 0;
   // Agent-training uploads never reach a rep's list. They are background
   // knowledge for the assistant, not collateral, so only an owner — who has
@@ -164,7 +231,19 @@ export function MaterialsSection({
   const hiddenTraining = canEdit
     ? materials.filter((m) => !isSalesVisible(m)).length
     : 0;
-  const visible = mine
+  const folders = useMemo(
+    () => allFolders(mine, materialFolders),
+    [mine, materialFolders]
+  );
+  const subFolders = anyFilter ? [] : childFolders(folders, folder);
+  /**
+   * A FILTER SEARCHES THE WHOLE TREE. Narrowing to "Presentation" and being
+   * shown only the presentations in the folder you happen to be standing in
+   * would hide the very file you are hunting for, so any active filter flattens
+   * the view and each row says which folder it came from.
+   */
+  const scoped = anyFilter ? mine : materialsInFolder(mine, folder);
+  const visible = scoped
     .filter((m) => {
       if (formats.length && !formats.includes(materialFormat(m.kind))) return false;
       // An untagged material matches only "no restriction" — it is never
@@ -240,8 +319,101 @@ export function MaterialsSection({
         />
         {/* Add lives on the same row as the filters (Anir: "put this filter
             inline with the add button"). */}
-        {action && <div className="ml-auto">{action}</div>}
+        <div className="ml-auto flex items-center gap-2">
+          {canEdit && offeringId && (
+            <button
+              type="button"
+              onClick={() => setNewFolderOpen((v) => !v)}
+              title={
+                folder ? `New folder inside ${folder}` : "New top-level folder"
+              }
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary/40 hover:text-blue-primary"
+            >
+              <FolderPlus size={14} strokeWidth={2} />
+              New folder
+            </button>
+          )}
+          {action}
+        </div>
       </div>
+
+      {/* Name it, and you land inside it. */}
+      {newFolderOpen && canEdit && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-[var(--surface)] p-2.5">
+          <input
+            autoFocus
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void createFolder();
+              if (e.key === "Escape") setNewFolderOpen(false);
+            }}
+            maxLength={60}
+            placeholder={
+              folder ? `New folder inside ${folder}` : "Folder name, e.g. Case studies"
+            }
+            aria-label="New folder name"
+            className="min-w-[220px] flex-1 rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => void createFolder()}
+            disabled={!cleanFolderName(newFolderName) || savingFolder}
+            className="rounded-lg bg-blue-primary px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover disabled:opacity-50"
+          >
+            {savingFolder ? "Creating…" : "Create folder"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setNewFolderOpen(false)}
+            className="px-1 text-[13px] font-semibold text-text-secondary hover:text-text-primary"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* WHERE YOU ARE. Only rendered once you are inside something, so an
+          offering with everything at the top level gains no chrome it doesn't
+          need. Filtering hides it too: the results span every folder then. */}
+      {folder && !anyFilter && (
+        <nav
+          aria-label="Folder path"
+          className="mt-3 flex flex-wrap items-center gap-1 text-[12.5px]"
+        >
+          <button
+            type="button"
+            onClick={() => goToFolder("")}
+            className="cursor-pointer font-semibold text-blue-primary hover:underline"
+          >
+            All materials
+          </button>
+          {folder.split("/").map((part, i, parts) => {
+            const upto = parts.slice(0, i + 1).join("/");
+            const last = i === parts.length - 1;
+            return (
+              <span key={upto} className="flex items-center gap-1">
+                <ChevronRight
+                  size={13}
+                  strokeWidth={2}
+                  className="text-text-tertiary"
+                />
+                {last ? (
+                  <span className="font-semibold text-text-primary">{part}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => goToFolder(upto)}
+                    className="cursor-pointer font-semibold text-blue-primary hover:underline"
+                  >
+                    {part}
+                  </button>
+                )}
+              </span>
+            );
+          })}
+        </nav>
+      )}
 
       {/* Live count + one-click reset */}
       <div className="mt-3 flex items-center justify-between gap-3">
@@ -268,11 +440,65 @@ export function MaterialsSection({
         )}
       </div>
 
+      {/* FOLDERS FIRST, then the files that sit in this folder — the shape
+          anyone already knows from a file browser. A folder shows how many
+          files are under it INCLUDING its sub-folders, so a folder whose
+          contents are all one level down never reads as empty. */}
+      {subFolders.length > 0 && (
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {subFolders.map((path) => {
+            const name = path.split("/").pop() as string;
+            const count = countUnder(mine, path);
+            const nested = childFolders(folders, path).length;
+            return (
+              <button
+                key={path}
+                type="button"
+                onClick={() => goToFolder(path)}
+                className="group flex cursor-pointer items-center gap-3 rounded-xl border border-border-light bg-white p-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-[1px] hover:border-blue-primary/40 hover:shadow-card"
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+                  style={{ background: "#2563EB14", color: "#2563EB" }}
+                >
+                  <Folder size={17} strokeWidth={1.9} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                    {name}
+                  </span>
+                  <span className="mt-0.5 block text-[11.5px] text-text-secondary">
+                    <span className="tnum">{count}</span>{" "}
+                    {count === 1 ? "file" : "files"}
+                    {nested > 0 && (
+                      <>
+                        {" · "}
+                        <span className="tnum">{nested}</span>{" "}
+                        {nested === 1 ? "folder" : "folders"}
+                      </>
+                    )}
+                  </span>
+                </span>
+                <ChevronRight
+                  size={15}
+                  strokeWidth={2}
+                  className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {visible.length === 0 ? (
         <p className="mt-3 border-y border-border-light py-5 text-[13px] text-text-tertiary">
-          None of the {mine.length}{" "}
-          {mine.length === 1 ? "material" : "materials"} on this offering
-          match all three filters, clear one to see the rest.
+          {anyFilter
+            ? `None of the ${mine.length} ${mine.length === 1 ? "material" : "materials"} on this offering match all three filters, clear one to see the rest.`
+            : subFolders.length > 0
+              ? "Everything here is inside a folder. Open one above."
+              : folder
+                ? "This folder is empty."
+                : "No materials yet."}
         </p>
       ) : (
         <div className="mt-3 border-y border-border-light divide-y divide-border-light">
@@ -293,13 +519,22 @@ export function MaterialsSection({
             // An UPLOADED file is fetched through our download route, which
             // mints a fresh signed URL per click; a pasted link is just a link.
             const uploaded = Boolean(material.docsPath);
+            // CLICKING A FILE OPENS IT; SAVING IT IS A SEPARATE BUTTON.
+            // An uploaded row used to carry `download`, so a rep who wanted to
+            // glance at a deck got a file in their Downloads folder instead
+            // (Saras, Jul 30, for the reps: "they need to be able to simply
+            // view them if they wish, not only download them"). `?view=1` makes
+            // the route serve the bytes inline; the Download control below is
+            // how you still get a copy.
+            const viewUrl = uploaded
+              ? `${material.url}${material.url.includes("?") ? "&" : "?"}view=1`
+              : material.url;
             return (
               <a
                 key={material.id}
-                href={material.url}
-                target={uploaded ? undefined : "_blank"}
+                href={viewUrl}
+                target="_blank"
                 rel="noopener noreferrer"
-                download={uploaded ? material.label : undefined}
                 className="group flex min-h-[64px] cursor-pointer items-center gap-3 border-l-2 px-1 py-3 pl-2.5 transition-colors hover:bg-[var(--surface)]"
                 // An internal-only file gets its own rail down the left edge,
                 // so a row that must never be forwarded is obvious before you
@@ -335,6 +570,16 @@ export function MaterialsSection({
                     </span>
                   )}
                   <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {/* Filtering flattens the tree, so the row has to say where
+                        the file actually lives or the result is unplaceable. */}
+                    {anyFilter && material.folder && (
+                      <TagPill
+                        label={material.folder}
+                        color="#2563EB"
+                        icon={Folder}
+                        title={`In ${material.folder}`}
+                      />
+                    )}
                     <TagPill
                       label={formatMeta.label}
                       color={formatMeta.color}
@@ -396,20 +641,39 @@ export function MaterialsSection({
                   )}
                 </span>
                 <span className="hidden shrink-0 text-[11px] font-medium text-text-tertiary lg:block">
-                  {uploaded ? "Download" : "Open asset"}
+                  {uploaded ? "Open" : "Open asset"}
                 </span>
-                {uploaded ? (
-                  <Download
-                    size={14}
-                    strokeWidth={1.8}
-                    className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
-                  />
-                ) : (
-                  <ExternalLink
-                    size={14}
-                    strokeWidth={1.7}
-                    className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
-                  />
+                <ExternalLink
+                  size={14}
+                  strokeWidth={1.7}
+                  className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                />
+                {/* Save a copy. A nested <a> is invalid inside the row link, so
+                    this navigates imperatively — the response is an attachment,
+                    so the browser downloads it without leaving the page. Open
+                    to EVERYONE, not just owners: handing files to customers is
+                    the whole point of this list. */}
+                {uploaded && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Download ${material.label}`}
+                    title="Download a copy"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.location.href = material.url;
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.location.href = material.url;
+                    }}
+                    className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                  >
+                    <Download size={14} strokeWidth={1.8} />
+                  </span>
                 )}
                 {/* An owner must be able to SEE which files the assistant is
                     blind to, or the switch is a setting nobody can audit. */}
