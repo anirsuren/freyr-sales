@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
+import {
+  listMaterialArchive,
+  MaterialArchiveError,
+  readMaterialArchiveMember,
+} from "@/lib/materialArchive";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 
 /**
@@ -91,7 +96,9 @@ export async function GET(
   if (!offering)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const path = new URL(req.url).searchParams.get("path");
+  const search = new URL(req.url).searchParams;
+  const path = search.get("path");
+  const member = search.get("member");
   if (!path) return NextResponse.json({ error: "Which file?" }, { status: 400 });
   if (!path.startsWith(`${id}/`))
     return NextResponse.json(
@@ -104,6 +111,11 @@ export async function GET(
       { error: "That file is not on this offering" },
       { status: 404 }
     );
+  if (member && extensionOf(path) !== "zip")
+    return NextResponse.json(
+      { error: "That material is not a ZIP archive" },
+      { status: 400 }
+    );
 
   if (!(await hasDocsStorage()))
     return NextResponse.json(
@@ -111,11 +123,12 @@ export async function GET(
       { status: 503 }
     );
 
-  const ext = extensionOf(path);
+  const contentPath = member || path;
+  const ext = extensionOf(contentPath);
   const inlineUrl = `/api/offerings/${id}/materials/download?path=${encodeURIComponent(path)}&view=1`;
 
   // The browser renders these natively and better than we could.
-  if (["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "mp4", "webm", "mov", "txt", "md", "csv"].includes(ext)) {
+  if (!member && ["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "mp4", "webm", "mov", "txt", "md", "csv"].includes(ext)) {
     const contentType =
       ext === "pdf"
         ? "application/pdf"
@@ -131,11 +144,42 @@ export async function GET(
   }
 
   try {
-    const { presignUrl } = await docsStorage.getDownloadUrl(path);
-    const upstream = await fetch(presignUrl);
-    if (!upstream.ok)
-      return NextResponse.json({ error: "Could not read that file" }, { status: 502 });
-    const buffer = Buffer.from(await upstream.arrayBuffer());
+    if (!member && ext === "zip") {
+      const entries = (await listMaterialArchive(path)).map((entry) => ({
+        name: entry.name,
+        size: humanSize(entry.size),
+      }));
+      return NextResponse.json({
+        preview: { kind: "listing", entries } satisfies Preview,
+        label: material.label,
+      });
+    }
+
+    if (member && ext === "zip") {
+      return NextResponse.json({
+        preview: {
+          kind: "unsupported",
+          reason:
+            "This is another ZIP inside the archive. Download it to open the nested archive.",
+        } satisfies Preview,
+        label: member.split("/").pop() || member,
+      });
+    }
+
+    let buffer: Buffer;
+    if (member) {
+      const extracted = await readMaterialArchiveMember(path, member);
+      buffer = Buffer.from(extracted.bytes);
+    } else {
+      const { presignUrl } = await docsStorage.getDownloadUrl(path);
+      const upstream = await fetch(presignUrl);
+      if (!upstream.ok)
+        return NextResponse.json(
+          { error: "Could not read that file" },
+          { status: 502 }
+        );
+      buffer = Buffer.from(await upstream.arrayBuffer());
+    }
 
     if (buffer.byteLength > MAX_CONVERT_BYTES) {
       return NextResponse.json({
@@ -143,7 +187,7 @@ export async function GET(
           kind: "unsupported",
           reason: `This file is ${humanSize(buffer.byteLength)} — too large to open in the browser. Download it instead.`,
         } satisfies Preview,
-        label: material.label,
+        label: member ? member.split("/").pop() || member : material.label,
       });
     }
 
@@ -204,23 +248,6 @@ export async function GET(
       });
     }
 
-    if (ext === "zip") {
-      const JSZip = (await import("jszip")).default;
-      const zip = await JSZip.loadAsync(buffer);
-      const entries = Object.values(zip.files)
-        .filter((f) => !f.dir)
-        .slice(0, 200)
-        .map((f) => ({
-          name: f.name,
-          // @ts-expect-error _data carries the uncompressed size at runtime
-          size: humanSize(f._data?.uncompressedSize ?? 0),
-        }));
-      return NextResponse.json({
-        preview: { kind: "listing", entries } satisfies Preview,
-        label: material.label,
-      });
-    }
-
     return NextResponse.json({
       preview: {
         kind: "unsupported",
@@ -231,7 +258,7 @@ export async function GET(
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Could not open that file" },
-      { status: 502 }
+      { status: e instanceof MaterialArchiveError ? e.status : 502 }
     );
   }
 }

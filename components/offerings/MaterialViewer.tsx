@@ -6,7 +6,9 @@ import {
   useRef,
   useState } from "react";
 import {
+  ArrowLeft,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Download,
   ExternalLink,
@@ -69,6 +71,9 @@ export function MaterialViewer({
   downloadUrl: string;
   onClose: () => void;
 }) {
+  /** The ZIP remains the material of record. Opening a row swaps only the
+   * bytes rendered in this dialog; Back returns to the archive manifest. */
+  const [archiveMember, setArchiveMember] = useState<string | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState<string | null>(null);
@@ -134,16 +139,41 @@ export function MaterialViewer({
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(1);
 
-  const ext = extensionOf(path);
-  const inlineUrl = `${downloadUrl}${downloadUrl.includes("?") ? "&" : "?"}view=1`;
-  const isNative = ["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "mp4", "webm", "mov"].includes(ext);
+  const currentPath = archiveMember || path;
+  const currentLabel = archiveMember
+    ? archiveMember.split("/").pop() || archiveMember
+    : label;
+  const memberUrl = archiveMember
+    ? `/api/offerings/${offeringId}/materials/archive?path=${encodeURIComponent(path)}&member=${encodeURIComponent(archiveMember)}`
+    : null;
+  const currentDownloadUrl = memberUrl || downloadUrl;
+  const ext = extensionOf(currentPath);
+  const inlineUrl = `${currentDownloadUrl}${currentDownloadUrl.includes("?") ? "&" : "?"}view=1`;
+  const isNative = ["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "mp4", "webm", "mov", "txt", "md", "csv"].includes(ext);
   // Video gets a cinema treatment: documents and decks FILL the tall viewer,
   // but a 16:9 video pinned to the top of it left a big dead white block
   // underneath (Anir: "it's taking up an awkward amount of space"). Centre the
   // player on black instead, like every native video lightbox.
   const isVideo = isNative && ["mp4", "webm", "mov"].includes(ext);
+  const isText = isNative && ["txt", "md", "csv"].includes(ext);
 
   useEffect(() => {
+    setStatus("loading");
+    setMessage(null);
+    setSheets(null);
+    setListing(null);
+    setSlides(null);
+    setSheet(0);
+    setSlideCount(0);
+    setFellBack(false);
+    setPartial(false);
+    setZoom(1);
+    setPage(1);
+    setPageCount(0);
+    pageEls.current = [];
+    flow.current = null;
+    if (host.current) host.current.innerHTML = "";
+
     if (isNative) {
       setStatus("ready");
       return;
@@ -155,7 +185,7 @@ export function MaterialViewer({
     // defeats the renderer.
     const loadServerPreview = async () => {
       const res = await fetch(
-        `/api/offerings/${offeringId}/materials/preview?path=${encodeURIComponent(path)}`,
+        `/api/offerings/${offeringId}/materials/preview?path=${encodeURIComponent(path)}${archiveMember ? `&member=${encodeURIComponent(archiveMember)}` : ""}`,
         { cache: "no-store" }
       );
       const body = await res.json();
@@ -258,7 +288,11 @@ export function MaterialViewer({
     return () => {
       live = false;
     };
-  }, [ext, inlineUrl, isNative, offeringId, path]);
+  }, [archiveMember, ext, inlineUrl, isNative, offeringId, path]);
+
+  useEffect(() => {
+    setArchiveMember(null);
+  }, [path]);
 
   /**
    * A LIBRARY DEFECT MUST NOT LOOK LIKE AN APP CRASH.
@@ -433,16 +467,16 @@ export function MaterialViewer({
     <Modal
       open
       onClose={onClose}
-      title={label}
+      title={currentLabel}
       // The widest dialog the app has: a slide rendered small in a narrow box
       // is a slide nobody reads.
       size="viewer"
       actions={
         <>
           <a
-            href={downloadUrl}
-            title="Download the original file"
-            aria-label="Download the original file"
+            href={currentDownloadUrl}
+            title={`Download ${currentLabel}`}
+            aria-label={`Download ${currentLabel}`}
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-blue-primary"
           >
             <Download size={16} strokeWidth={1.9} />
@@ -469,6 +503,22 @@ export function MaterialViewer({
               : "Part of this deck uses shapes the renderer cannot draw, so it stops early. Download the original for the whole deck."}
           </p>
         )}
+        {archiveMember && (
+          <div className="mb-2 flex min-w-0 shrink-0 items-center gap-2 text-[12px]">
+            <button
+              type="button"
+              onClick={() => setArchiveMember(null)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 font-semibold text-blue-primary transition-colors hover:bg-blue-light"
+            >
+              <ArrowLeft size={13} strokeWidth={2.2} />
+              Back to archive
+            </button>
+            <span className="text-text-tertiary">/</span>
+            <span className="truncate text-text-secondary" title={archiveMember}>
+              {archiveMember}
+            </span>
+          </div>
+        )}
         <div className="relative min-h-0 flex-1">
         <div
           ref={scroller}
@@ -491,7 +541,7 @@ export function MaterialViewer({
               </span>
               <span className="text-center">
                 <span className="block text-[13.5px] font-semibold text-text-primary">
-                  Opening {label}
+                  Opening {currentLabel}
                 </span>
                 <span className="mt-0.5 block text-[12px] text-text-secondary">
                   Rendering the file exactly as it was uploaded
@@ -519,13 +569,13 @@ export function MaterialViewer({
 
           {/* Exact by definition: the browser's own PDF, video and image
               rendering of the very bytes that were uploaded. */}
-          {isNative && ext === "pdf" && (
-            <iframe src={inlineUrl} title={label} className="h-[calc(100vh-13rem)] w-full rounded-lg bg-white" />
+          {isNative && (ext === "pdf" || isText) && (
+            <iframe src={inlineUrl} title={currentLabel} className="h-[calc(100vh-13rem)] w-full rounded-lg bg-white" />
           )}
-          {isVideo && <VideoPlayer src={inlineUrl} label={label} />}
+          {isVideo && <VideoPlayer src={inlineUrl} label={currentLabel} />}
           {isNative && ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext) && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={inlineUrl} alt={label} className="mx-auto max-h-[68vh] rounded-lg" />
+            <img src={inlineUrl} alt={currentLabel} className="mx-auto max-h-[68vh] rounded-lg" />
           )}
 
           {/* Word and PowerPoint render into here, with their own layout. */}
@@ -600,8 +650,8 @@ export function MaterialViewer({
               compact card: per-file type icons, sizes, and the download as a
               real button rather than a hint. */}
           {listing && (
-            <div className="flex h-full items-center justify-center p-6">
-              <div className="w-full max-w-[560px] rounded-2xl border border-border-light bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <div className="flex min-h-full p-6">
+              <div className="m-auto w-full max-w-[560px] rounded-2xl border border-border-light bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
                     <FolderArchive size={19} strokeWidth={1.8} />
@@ -611,7 +661,7 @@ export function MaterialViewer({
                       Archive with {listing.length} {listing.length === 1 ? "file" : "files"} inside
                     </p>
                     <p className="text-[12px] text-text-secondary">
-                      Zip files can&apos;t be opened in the browser — download to unpack them.
+                      Select a file to open it here without downloading or unpacking the archive.
                     </p>
                   </div>
                 </div>
@@ -633,13 +683,24 @@ export function MaterialViewer({
                     return (
                       <li
                         key={e.name}
-                        className="flex items-center gap-3 px-3 py-2.5 text-[13px]"
                       >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface text-text-secondary">
-                          <Icon size={14} strokeWidth={1.9} />
-                        </span>
-                        <span className="min-w-0 flex-1 break-words text-text-primary">{e.name}</span>
-                        <span className="shrink-0 tnum text-[12px] text-text-tertiary">{e.size}</span>
+                        <button
+                          type="button"
+                          onClick={() => setArchiveMember(e.name)}
+                          className="group flex w-full items-center gap-3 px-3 py-2.5 text-left text-[13px] transition-colors hover:bg-blue-light/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary"
+                          aria-label={`Open ${e.name}`}
+                        >
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface text-text-secondary transition-colors group-hover:bg-white group-hover:text-blue-primary">
+                            <Icon size={14} strokeWidth={1.9} />
+                          </span>
+                          <span className="min-w-0 flex-1 break-words text-text-primary">{e.name}</span>
+                          <span className="shrink-0 tnum text-[12px] text-text-tertiary">{e.size}</span>
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={2}
+                            className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
+                          />
+                        </button>
                       </li>
                     );
                   })}
