@@ -5,22 +5,21 @@ import { useRouter } from "next/navigation";
 import {
   Briefcase,
   Check,
+  Crown,
   GraduationCap,
   Headset,
   LifeBuoy,
-  Link2,
   Loader2,
-  Mail,
-  MessagesSquare,
   Package,
   Pencil,
-  Phone,
   Plus,
   Search,
   UserRound,
   X,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { AttributeTag } from "@/components/ui/AttributeTag";
+import { ContactChips } from "@/components/ui/ContactChips";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
 import { Modal } from "@/components/ui/Modal";
@@ -28,6 +27,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import type { PickablePerson } from "@/components/ui/PeoplePicker";
+import type { OwnerRow } from "@/components/offerings/OfferingOwners";
 import { cn } from "@/lib/utils";
 import type { OfferingContact } from "@/lib/offerings";
 
@@ -45,7 +45,9 @@ const ROLE_OPTIONS: ColorOption[] = [
   // The five above are the common cases, not every case. Choosing this reveals
   // a text field so a team can name a role we never thought of (Anir, Jul 29:
   // "there should be an option to add another rule, like custom").
-  { value: CUSTOM_ROLE, label: "Custom role…", color: "#6E6E73", icon: Pencil },
+  // "Custom role…" named the mechanism, not the choice ("custom role doesn't
+  // mean anything" — Anir). This says what happens next: you type it in.
+  { value: CUSTOM_ROLE, label: "Something else — type it in", color: "#0F766E", icon: Pencil },
 ];
 
 /**
@@ -86,6 +88,7 @@ export function OfferingContacts({
   contacts: contactsProp,
   canEdit,
   people,
+  owners = [],
 }: {
   offeringId: string;
   offeringName: string;
@@ -93,6 +96,17 @@ export function OfferingContacts({
   canEdit: boolean;
   /** Everyone assignable, with their account details. */
   people: PickablePerson[];
+  /**
+   * WHO OWNS **THIS** OFFERING.
+   *
+   * Required, because the roster's `role` field comes from a workspace-wide
+   * list that takes the first label it finds for a person across ALL offerings.
+   * So Eswar, who owns Freya.Register, was labelled "Offering owner" on every
+   * other offering's picker — while Anir, who owns the one he was looking at,
+   * showed nothing at all (Anir, Jul 29: "he's not the owner; I'm the owner").
+   * Ownership is a fact about one offering, so it is read from that offering.
+   */
+  owners?: OwnerRow[];
 }) {
   const router = useRouter();
   // NEVER trust the array from a persisted record: a catalog stored before
@@ -133,9 +147,48 @@ export function OfferingContacts({
   // are two screens: you choose everyone, you assign the roles").
   const [step, setStep] = useState<1 | 2>(1);
   const [roles, setRoles] = useState<Record<string, string>>({});
+  /**
+   * WHAT THEY TYPED WHEN THEY CHOSE "SOMETHING ELSE".
+   *
+   * "Custom role" was a dropdown entry and nothing else — no field appeared, so
+   * choosing it would have written the literal sentinel `__custom__` into the
+   * record as somebody's job title (Anir, Jul 29: "custom role doesn't mean
+   * anything. When I press it, it should ask me for some input"). Keyed by
+   * person, because step 2 gives each of them their own role.
+   */
+  const [customRole, setCustomRole] = useState<Record<string, string>>({});
+  const [editCustomRole, setEditCustomRole] = useState("");
+  /** The role that will actually be saved for one person in step 2. */
+  const roleToSave = (name: string) => {
+    const picked = roles[name] || ROLE_OPTIONS[0].value;
+    return picked === CUSTOM_ROLE ? (customRole[name] || "").trim() : picked;
+  };
+  /** Everyone who chose "custom" and hasn't said what it is yet. */
+  const missingCustom = pick.filter(
+    (n) => (roles[n] || "") === CUSTOM_ROLE && !(customRole[n] || "").trim()
+  );
   // The contact whose role is being edited, in its own dialog.
   const [editing, setEditing] = useState<OfferingContact | null>(null);
   const [editRole, setEditRole] = useState(ROLE_OPTIONS[0].value);
+
+  /** Granted owners of THIS offering, by name. Pending requests are not owners. */
+  const ownerNames = useMemo(
+    () =>
+      new Set(
+        owners
+          .filter((o) => o.status === "owner")
+          .map((o) => o.name.trim().toLowerCase())
+      ),
+    [owners]
+  );
+  const ownsThis = (name: string) => ownerNames.has(name.trim().toLowerCase());
+  /**
+   * A workspace role worth showing. "Offering owner" arriving from the shared
+   * roster is discarded outright: on this page it is either true (and the crown
+   * says so) or it belongs to a different offering, which makes it a lie.
+   */
+  const generalRole = (role?: string) =>
+    role && role.trim().toLowerCase() !== "offering owner" ? role : undefined;
 
   // Nobody who is already a contact should show up as addable.
   const roster = useMemo(() => {
@@ -192,7 +245,7 @@ export function OfferingContacts({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
-            role: roles[name] || ROLE_OPTIONS[0].value,
+            role: roleToSave(name),
             // Straight off their account when they have one.
             email: account?.email || "",
             phone: "",
@@ -274,7 +327,13 @@ export function OfferingContacts({
           a long roster never stretches the rail. */}
       <ul className="max-h-[268px] space-y-2.5 overflow-y-auto pr-0.5">
         {contacts.map((c) => (
-          <li key={c.id} className="flex items-center gap-3">
+          <li
+            key={c.id}
+            // Same bubble as the picker, so the person you chose looks like the
+            // person you now see. A bare flex row on white made a roster read as
+            // a paragraph of names.
+            className="flex items-start gap-3 rounded-xl border border-border-light bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-blue-primary/40 hover:shadow-card"
+          >
             {/* Hover a face for who they are and every way to reach them. */}
             <PersonHoverCard
               name={c.name}
@@ -290,15 +349,44 @@ export function OfferingContacts({
                 {c.name}
               </p>
               {/* An owner can change what someone does here without removing
-                  and re-adding them. Everyone else just reads it. */}
-              <p className="break-words text-[12.5px] text-text-secondary">
-                {[c.role, c.email].filter(Boolean).join(" · ")}
-              </p>
+                  and re-adding them. Everyone else just reads it. Role is a
+                  coloured tag and the channels are chips, because "Commercial
+                  lead · someone@freyrsolutions.com" in one gray line is the
+                  thing Anir keeps calling not clearly defined. */}
+              {(ownsThis(c.name) || c.role) && (
+                <span className="mt-1 flex flex-wrap gap-1.5">
+                  {ownsThis(c.name) && (
+                    <AttributeTag
+                      value="Offering owner"
+                      icon={Crown}
+                      label="Owns this offering"
+                      color="#7C3AED"
+                      className="!px-2 !py-[3px] !text-[11px]"
+                    />
+                  )}
+                  {c.role && (
+                    <AttributeTag
+                      value={c.role}
+                      icon={Briefcase}
+                      label="Role"
+                      className="!px-2 !py-[3px] !text-[11px]"
+                    />
+                  )}
+                </span>
+              )}
+              <ContactChips
+                className="mt-1.5"
+                email={c.email}
+                phone={c.phone}
+                teams={Boolean(c.email)}
+              />
             </div>
             {canEdit && (
               <button
                 onClick={() => {
-                  setEditRole(roleValue(c.role));
+                  const known = ROLE_OPTIONS.some((o) => o.value === c.role);
+                  setEditRole(known ? c.role : CUSTOM_ROLE);
+                  setEditCustomRole(known ? "" : c.role || "");
                   setEditing(c);
                 }}
                 aria-label={`Edit ${c.name}`}
@@ -384,8 +472,9 @@ export function OfferingContacts({
               {pick.map((name) => (
                 <div
                   key={name}
-                  className="flex flex-wrap items-center gap-3 rounded-lg bg-[var(--surface)] px-2.5 py-2"
+                  className="rounded-lg bg-[var(--surface)] px-2.5 py-2"
                 >
+                  <div className="flex flex-wrap items-center gap-3">
                   <Avatar name={name} className="h-10 w-10 shrink-0 text-[12px]" />
                   <span className="min-w-0 flex-1 break-words text-[13.5px] font-semibold text-text-primary">
                     {name}
@@ -406,6 +495,25 @@ export function OfferingContacts({
                   >
                     <X size={15} strokeWidth={2} />
                   </button>
+                  </div>
+                  {/* Choosing "Something else" opens the box that asks what it
+                      is. Nothing saves until it's filled, so a custom role is
+                      always a real job title. */}
+                  {(roles[name] || "") === CUSTOM_ROLE && (
+                    <div className="mt-2 pl-[52px]">
+                      <input
+                        autoFocus
+                        value={customRole[name] || ""}
+                        onChange={(e) =>
+                          setCustomRole((c) => ({ ...c, [name]: e.target.value }))
+                        }
+                        placeholder={`What does ${name.split(" ")[0]} do here? e.g. Regulatory strategy lead`}
+                        aria-label={`${name}'s custom role`}
+                        maxLength={60}
+                        className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -427,10 +535,16 @@ export function OfferingContacts({
                       )
                     }
                     className={cn(
-                      "flex items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition-colors",
+                      // EACH PERSON IS A CARD, NOT A LINE (Anir, Jul 29: "each
+                      // person should have their own blurb, like a bubble
+                      // almost"). Borderless rows on white left the modal
+                      // reading as one undifferentiated block; a real edge,
+                      // shadow and lift make the unit obvious before you read a
+                      // word of it, matching the offering tiles he pointed at.
+                      "group flex items-start gap-3 rounded-xl border bg-white p-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all",
                       on
-                        ? "border-blue-primary bg-blue-light"
-                        : "border-transparent hover:bg-[var(--surface)]"
+                        ? "border-blue-primary bg-blue-light ring-1 ring-blue-primary/30"
+                        : "border-border-light hover:-translate-y-[1px] hover:border-blue-primary/40 hover:shadow-card"
                     )}
                   >
                     <span
@@ -443,47 +557,51 @@ export function OfferingContacts({
                     >
                       {on && <Check size={13} strokeWidth={3} />}
                     </span>
-                    <Avatar name={p.name} className="h-10 w-10 shrink-0 text-[12px]" />
-                    {/* Name, role, then every way to reach them as its own
-                        floating pill (Anir, Jul 29: "email, teams... each of
-                        them should be in its own kind of floating pill"). Only
-                        real values render: an invented address on a real
-                        colleague is how somebody emails a stranger. */}
+                    <Avatar name={p.name} className="h-11 w-11 shrink-0 text-[13px]" />
+                    {/* Name, then the role as a coloured tag, then every way to
+                        reach them as its own floating chip — logos where a logo
+                        exists (Anir, Jul 29: "just have the logo"). Only real
+                        values render: an invented address on a real colleague
+                        is how somebody emails a stranger. */}
                     <span className="min-w-0 flex-1 leading-tight">
-                      <span className="block break-words text-[13.5px] font-semibold text-text-primary">
+                      <span className="block break-words text-[14px] font-semibold text-text-primary">
                         {p.name}
                       </span>
-                      {p.role && (
-                        <span className="block break-words text-[11.5px] text-text-secondary">
-                          {p.role}
+                      {(ownsThis(p.name) || generalRole(p.role)) && (
+                        <span className="mt-1 flex flex-wrap gap-1.5">
+                          {/* THE CROWN MEANS OWNER (Anir: "it should be the
+                              crown emoji, like a crown icon"). Violet, not
+                              gold: yellow is banned and green/red/amber are
+                              reserved for status in this app. */}
+                          {ownsThis(p.name) && (
+                            <AttributeTag
+                              value="Offering owner"
+                              icon={Crown}
+                              label="Owns this offering"
+                              color="#7C3AED"
+                              className="!px-2 !py-[3px] !text-[11px]"
+                            />
+                          )}
+                          {generalRole(p.role) && (
+                            <AttributeTag
+                              value={generalRole(p.role) as string}
+                              icon={Briefcase}
+                              label="Role"
+                              className="!px-2 !py-[3px] !text-[11px]"
+                            />
+                          )}
                         </span>
                       )}
-                      <span className="mt-1 flex flex-wrap items-center gap-1">
-                        {p.email && (
-                          <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[10.5px] text-text-secondary">
-                            <Mail size={10} strokeWidth={2} className="shrink-0" />
-                            <span className="break-all">{p.email}</span>
-                          </span>
-                        )}
-                        {p.phone && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[10.5px] text-text-secondary">
-                            <Phone size={10} strokeWidth={2} className="shrink-0" />
-                            {p.phone}
-                          </span>
-                        )}
-                        {p.email && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[10.5px] text-text-secondary">
-                            <MessagesSquare size={10} strokeWidth={2} className="shrink-0" />
-                            Teams
-                          </span>
-                        )}
-                        {p.linkedin && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[10.5px] text-text-secondary">
-                            <Link2 size={10} strokeWidth={2} className="shrink-0" />
-                            LinkedIn
-                          </span>
-                        )}
-                      </span>
+                      <ContactChips
+                        className="mt-1.5"
+                        email={p.email}
+                        phone={p.phone}
+                        linkedin={p.linkedin}
+                        // Everyone in this roster is a Freyr colleague, so Teams
+                        // is real for all of them; client contacts get phone and
+                        // email only (his rule from the Team page).
+                        teams={Boolean(p.email)}
+                      />
                     </span>
                   </button>
                 );
@@ -560,8 +678,28 @@ export function OfferingContacts({
                   {reject ? "Choose someone first" : "Next: assign roles"}
                 </Button>
               ) : (
-                <Button onClick={add} loading={busy === "add"}>
-                  {pick.length > 1 ? `Add ${pick.length} contacts` : "Add contact"}
+                <Button
+                  onClick={() => {
+                    // An unfilled custom role would save an empty job title.
+                    // Same refusal-on-the-button treatment as step 1.
+                    if (missingCustom.length > 0) {
+                      setReject(true);
+                      return;
+                    }
+                    void add();
+                  }}
+                  loading={busy === "add"}
+                  className={
+                    reject
+                      ? "!bg-[color:#B02020] hover:!bg-[color:#B02020]"
+                      : undefined
+                  }
+                >
+                  {reject
+                    ? "Name the custom role first"
+                    : pick.length > 1
+                      ? `Add ${pick.length} contacts`
+                      : "Add contact"}
                 </Button>
               )}
             </div>
@@ -606,6 +744,19 @@ export function OfferingContacts({
                 onChange={setEditRole}
                 ariaLabel={`${editing.name}'s role on this offering`}
               />
+              {/* Same box as the add flow: picking "Something else" has to ask
+                  what it is, or Save would write the sentinel as a job title. */}
+              {editRole === CUSTOM_ROLE && (
+                <input
+                  autoFocus
+                  value={editCustomRole}
+                  onChange={(e) => setEditCustomRole(e.target.value)}
+                  placeholder="e.g. Regulatory strategy lead"
+                  aria-label="Custom role"
+                  maxLength={60}
+                  className="mt-2 w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
+                />
+              )}
             </div>
             {error && (
               <p className="text-[12.5px] font-medium text-[color:#B02020]">{error}</p>
@@ -632,7 +783,13 @@ export function OfferingContacts({
               <Button
                 loading={busy === editing.id}
                 onClick={async () => {
-                  const ok = await setRoleFor(editing, editRole);
+                  const next =
+                    editRole === CUSTOM_ROLE ? editCustomRole.trim() : editRole;
+                  if (!next) {
+                    setError("Type what they do here.");
+                    return;
+                  }
+                  const ok = await setRoleFor(editing, next);
                   if (ok) setEditing(null);
                 }}
               >

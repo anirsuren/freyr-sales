@@ -5,7 +5,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
-import { repEmail, repPhone, repLinkedIn, teamsChatUrl } from "@/lib/team";
+import { repEmail, teamsChatUrl } from "@/lib/team";
 
 /**
  * HOVER A FACE, GET THE PERSON.
@@ -28,6 +28,7 @@ export function PersonHoverCard({
   context,
   email,
   phone,
+  linkedin,
   children,
 }: {
   name: string;
@@ -38,16 +39,39 @@ export function PersonHoverCard({
   /** Real address if one was entered; a demo one is derived when blank. */
   email?: string;
   phone?: string;
+  /** A REAL profile URL. Omitted means no LinkedIn chip, never a guessed one. */
+  linkedin?: string | null;
   children: React.ReactNode;
 }) {
+  /**
+   * NEVER INVENT A WAY TO REACH A REAL PERSON.
+   *
+   * This card used to fill every gap from lib/team's generators, which exist for
+   * the synthetic demo reps: a missing phone became a hashed `+1 (5xx) …` and
+   * LinkedIn was ALWAYS `linkedin.com/in/<name>` because no caller passes one.
+   * On a real colleague that is a fabricated phone number and a link to a
+   * stranger's profile, sitting in a card that looks authoritative — the exact
+   * thing Anir keeps pulling out of real mode ("we cannot have any fake
+   * accounts on the real mode").
+   *
+   * A channel now renders only when someone actually supplied it. Email is the
+   * one derivation kept: every Freyr address is first.last@freyrsolutions.com,
+   * so it is the company's own convention rather than a guess. Callers with
+   * synthetic people pass the generated values in explicitly.
+   */
   const mail = (email || "").trim() || repEmail(name);
-  const tel = (phone || "").trim() || repPhone(name);
+  const tel = (phone || "").trim();
+  const profile = (linkedin || "").trim();
   const links: { href: string; label: string; icon: React.ReactNode }[] = [
-    {
-      href: repLinkedIn(name),
-      label: `${name} on LinkedIn`,
-      icon: <LinkedInIcon size={15} />,
-    },
+    ...(profile
+      ? [
+          {
+            href: profile,
+            label: `${name} on LinkedIn`,
+            icon: <LinkedInIcon size={15} />,
+          },
+        ]
+      : []),
     {
       href: teamsChatUrl(name, mail),
       label: `Message ${name.split(" ")[0]} on Teams`,
@@ -58,11 +82,15 @@ export function PersonHoverCard({
       label: mail,
       icon: <Mail size={15} strokeWidth={1.9} />,
     },
-    {
-      href: `tel:${tel.replace(/[^\d+]/g, "")}`,
-      label: tel,
-      icon: <Phone size={15} strokeWidth={1.9} />,
-    },
+    ...(tel
+      ? [
+          {
+            href: `tel:${tel.replace(/[^\d+]/g, "")}`,
+            label: tel,
+            icon: <Phone size={15} strokeWidth={1.9} />,
+          },
+        ]
+      : []),
   ];
 
   return (

@@ -12,7 +12,8 @@
     "test:auth": "playwright test tests/auth.spec.ts --config=playwright.auth.config.ts --reporter=list",
     "test:onboarding": "playwright test tests/onboarding.spec.ts --config=playwright.onboarding.config.ts --reporter=list",
     "test:real": "playwright test tests/real-mode.spec.ts --config=playwright.real.config.ts --reporter=list",
-    "test:e2e": "playwright test tests/verify.spec.ts --reporter=list"
+    "test:e2e": "playwright test tests/verify.spec.ts --reporter=list",
+    "live": "curl -sS -X POST localhost:3001/api/settings/data-mode -H 'content-type: application/json' -d '{\"mode\":\"live\"}'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

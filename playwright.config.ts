@@ -25,8 +25,12 @@ export default defineConfig({
     // authentication (middleware + /api/health 503 by design), which this
     // open-access suite must not weaken. Validate the deploy build
     // separately with: NEXT_DIST_DIR=.next-test npm run build
-    command: `AGENT_FORCE_MOCK=1 npm run dev -- --port ${PORT} --hostname 127.0.0.1`,
-    env: { AGENT_FORCE_MOCK: "1" },
+    // DEFAULT_DATA_MODE=mock is pinned here, not inherited. .env.local now
+    // boots the developer's own server into real mode, and a shell variable
+    // beats .env.local in Next — so the suite states the mode it asserts
+    // against instead of depending on whichever mode the box happens to prefer.
+    command: `AGENT_FORCE_MOCK=1 DEFAULT_DATA_MODE=mock npm run dev -- --port ${PORT} --hostname 127.0.0.1`,
+    env: { AGENT_FORCE_MOCK: "1", DEFAULT_DATA_MODE: "mock" },
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: true,
     timeout: 120000,

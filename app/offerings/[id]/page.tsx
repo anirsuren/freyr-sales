@@ -376,6 +376,9 @@ export default async function OfferingDetailPage({
               contacts={o.contacts ?? []}
               canEdit={admin}
               people={people}
+              // Ownership is per offering, so the crown is decided by THIS
+              // offering's owner list rather than by a workspace-wide label.
+              owners={o.owners ?? []}
             />
 
             {/* Offering Category — its plain-English description + the family

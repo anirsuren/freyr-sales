@@ -50,6 +50,16 @@ export async function POST(req: NextRequest) {
     userId: actor.userId,
   };
   const actorName = actor.name;
+  /**
+   * WHAT A COLLEAGUE WOULD CALL THEM.
+   *
+   * The prompt handed the assistant a full name and told it to use it, so every
+   * other message opened with "Anir Suren" — nobody talks like that (Anir,
+   * Jul 29: "it doesn't have to refer to me by my full name. It's kind of
+   * annoying, just like a regular friend"). First name for talking; the full
+   * name survives only where it belongs, on the signature of a draft.
+   */
+  const firstName = actorName.trim().split(/\s+/)[0] || actorName;
   const body = await req.json().catch(() => ({}));
   const message = String(body.message || "").trim();
   if (!message) {
@@ -310,37 +320,40 @@ export async function POST(req: NextRequest) {
   // a stack of prohibitions reads like a form and produces a bot that sounds
   // like one (Anir, Jul 29: "stop confusing with all of these different rules").
   const agentSystem =
-    `You are Freyr's AI sales assistant, working for ${actorName} in regulatory life-sciences.\n\n` +
+    `You are Freyr's AI sales assistant, working for ${firstName} in regulatory life-sciences.\n\n` +
 
-    "VOICE. Talk like a trusted colleague: warm, direct, plain English, no jargon, no filler. " +
-    "Answer the question in your first sentence. A greeting gets a short, friendly greeting back " +
-    `(use ${actorName}'s name), nothing more. Reply in English. ` +
+    "VOICE. Talk like a friend who works here: warm, direct, plain English, no jargon, no filler. " +
+    "Answer the question in your first sentence. A greeting gets a short, friendly greeting back, nothing more. " +
+    `Their name is ${firstName}. Do not open messages by addressing them, and never use their surname; ` +
+    "people don't say each other's names in most sentences, so only use it if it genuinely fits. " +
+    "Reply in English. " +
     "Use a period, comma or colon where an em dash would go. Keep answers to 2-5 sentences unless the user asks for depth or a draft.\n\n" +
 
     "HONESTY. Every number, name and figure comes from your grounding or a tool result; if you don't have it, say so. " +
-    "You draft and recommend; the user approves. You never send anything and never claim to have contacted anyone.\n\n" +
+    "You answer questions and write things; you do not save, send, file, schedule or change anything, " +
+    "and you never claim to have contacted anyone.\n\n" +
 
     (offeringsOnly
       ? "SCOPE. This workspace contains Freyr's offerings catalogue and uploaded sales materials, nothing else: " +
         "no customers, deals, pipeline or to-do exist here, so never bring them up or quote zeros for them. " +
         "Use search_offerings before answering anything about offerings, materials, markets or customer types, and name the document when you quote one.\n\n"
-      : "SCOPE. You have the user's full book (below) plus tools: get_account_detail (depth on one account), " +
+      : "SCOPE. You have the user's full book (below) plus tools to read it: get_account_detail (depth on one account), " +
         "list_accounts (filter the book), search_offerings (anything about offerings, materials, markets, customer types - " +
-        "search before answering those, and name the document when you quote one), " +
-        "save_draft / set_followup / log_touch (real actions, saved for the user's approval), show_pitch.\n\n") +
+        "search before answering those, and name the document when you quote one).\n\n") +
 
-    // NEVER OFFER WHAT THE TOOLS CANNOT DO.
-    // This said "offer to save it" in both modes, but real mode withholds
-    // save_draft (there is no account to attach a draft to), so the assistant
-    // offered to save and then admitted it could not: a promise broken one
-    // message after making it (Anir, Jul 29: "is what it did here right?").
-    // The offer now exists only where the tool does.
+    // A CHATBOT, NOT AN OPERATOR (Anir, Jul 29: "just have it like a normal
+    // chatbot for now. I don't know what kind of features they wanted to do and
+    // what kind of actions they wanted to take").
+    //
+    // It used to end drafts with "want me to save that?" \u2014 an offer that was
+    // broken in real mode (no save_draft tool) and, where it did work, decided
+    // on Freyr's behalf that an assistant should be writing to their records.
+    // Until Suren says which actions he actually wants, it writes and hands
+    // over; the person puts it wherever it belongs.
     "DRAFTS. When asked to write outreach, write the whole thing: a Subject line plus 3-5 short sentences, " +
     `signed '${actorName} \u00b7 Freyr', with no placeholders. ` +
-    (offeringsOnly
-      ? "Show it and stop there. You cannot save, send or file anything in this " +
-        "workspace, so never offer to: the person copies it wherever they need it.\n\n"
-      : "Show it, then offer to save it.\n\n") +
+    "Show it and stop there: you have no way to save, send or file it, so never offer to. " +
+    "The person copies it wherever they need it.\n\n" +
 
     "FORMAT. Markdown renders: bold, bullets, tables (use a table for 3+ records). " +
     "When comparing 3+ numbers from your grounding, also add a chart block:\n" +
@@ -564,15 +577,29 @@ export async function POST(req: NextRequest) {
     return { content: `Unknown tool: ${name}.` };
   };
 
-  // Tools that read or write CRM records are withheld in offerings-only mode:
-  // leaving them advertised invites the model to talk about a book that is not
-  // on screen, and to "save a draft" against an account nobody can open.
+  // THE ASSISTANT READS; IT DOES NOT WRITE.
+  //
+  // save_draft / set_followup / log_touch / show_pitch are no longer offered to
+  // the model in either mode. Nobody has decided yet which actions this thing
+  // should be allowed to take on a real workspace (Anir, Jul 29: "does it make
+  // sense for this agent to be able to do that? I don't even know. Just have it
+  // like a normal chatbot for now"), and an assistant that quietly files things
+  // against live records is the wrong default to ship while that is open.
+  //
+  // The handlers below stay: the deterministic brain still drives those actions
+  // from explicit UI buttons, where a person clicked the thing on purpose.
+  // Turning the agent back into an operator is one line here plus the prompt.
+  const readOnlyTools = AGENT_TOOLS.filter((t) =>
+    offeringsOnly
+      ? t.name === "search_offerings"
+      : ["search_offerings", "get_account_detail", "list_accounts"].includes(
+          t.name
+        )
+  );
   const agentResult = await agentConverseAgentic(
     agentSystem,
     turns,
-    offeringsOnly
-      ? AGENT_TOOLS.filter((t) => t.name === "search_offerings")
-      : AGENT_TOOLS,
+    readOnlyTools,
     runTool
   );
   if (agentResult && agentResult.text) {
