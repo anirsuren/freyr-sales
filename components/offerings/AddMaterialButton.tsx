@@ -64,7 +64,7 @@ export function AddMaterialButton({
   const uploadFolder = (useSearchParams().get("mf") || "").trim();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState<MaterialFormat>("video");
+  const [kind, setKind] = useState<MaterialFormat>("other");
   const [journeyStage, setJourneyStage] = useState<JourneyStage>("awareness");
   const [accessLevel, setAccessLevel] = useState<AccessLevel>("client_facing");
   const [label, setLabel] = useState("");
@@ -83,7 +83,7 @@ export function AddMaterialButton({
   const [readByAgent, setReadByAgent] = useState(true);
 
   function reset() {
-    setKind("video");
+    setKind("other");
     setJourneyStage("awareness");
     setAccessLevel("client_facing");
     setLabel("");
@@ -107,6 +107,47 @@ export function AddMaterialButton({
     else setKind("other");
   }
 
+
+  /**
+   * A PASTED LINK SHOULD TAG ITSELF TOO.
+   *
+   * Picking a file sets the format from its extension, but a link kept whatever
+   * the picker happened to be showing — and the picker opened on "Video". So
+   * every link anybody pasted was filed as a video unless they noticed and
+   * changed it, which is how a Minerva COURSE PAGE ended up in the list wearing
+   * a video icon next to a description that begins "This deck explains…"
+   * (Anir, Jul 30: "why does it say this deck... it says video and it shows the
+   * video icon").
+   *
+   * So: read the URL where it genuinely says what it points at — SharePoint and
+   * OneDrive encode the type in the path (/:v:/, /:p:/, /:w:/, /:b:/), and a
+   * Teams recording or a YouTube/Vimeo link is a video by definition. Anything
+   * else falls to "Other" rather than silently claiming to be a video. A guess
+   * nobody can see is worse than no guess.
+   */
+  function takeUrl(next: string) {
+    setUrl(next);
+    const u = next.toLowerCase();
+    if (!u.startsWith("http")) return;
+    if (
+      u.includes("/:v:/") ||
+      u.includes("meetingrecap") ||
+      u.includes("youtube.com") ||
+      u.includes("youtu.be") ||
+      u.includes("vimeo.com") ||
+      /\.(mp4|mov|webm|m4v)(\?|$)/.test(u)
+    )
+      setKind("video");
+    else if (u.includes("/:p:/") || /\.(ppt|pptx|key)(\?|$)/.test(u))
+      setKind("presentation");
+    else if (
+      u.includes("/:w:/") ||
+      u.includes("/:b:/") ||
+      /\.(doc|docx|pdf|txt|rtf)(\?|$)/.test(u)
+    )
+      setKind("document");
+    else setKind("other");
+  }
 
   /**
    * PUT THE FILE STRAIGHT INTO STORAGE FROM THE BROWSER.
@@ -554,7 +595,7 @@ export function AddMaterialButton({
                 </label>
                 <input
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => takeUrl(e.target.value)}
                   placeholder="https://…"
                   className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
                 />
