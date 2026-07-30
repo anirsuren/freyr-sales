@@ -187,22 +187,18 @@ what was written back, `deleted-test-customers.json`).
   link-only materials whose names are unrecoverable — Eeswar re-adds them.
 
 ### Open queue
-1. **Dropdown sweep remainder** (~12 native selects): settings
-   (SettingsTabs), agent (AgentRunHistory ×2, AgentPreferences ×2,
-   AgentDraftModal), campaigns (CampaignsView ×2), sessions
-   (PitchWorkspace), recordings, contacts (ContactOutreachPanel), activity
-   (ActivityFeed). Standard: §7.
-2. **Customers page**: search input must expand to the RIGHT only (left edge
-   pinned — see SearchPriority in components/ui/SearchPriority.tsx), and the
-   empty page needs real "Add a customer" + "Import CSV" actions
-   (`/api/customers` currently has GET only — a POST needs building or the
-   tests' creation path reused).
-3. Main agent page (`/api/agent/converse`) doesn't receive offering context —
+1. Main agent page (`/api/agent/converse`) doesn't receive offering context —
    Suren's fallback option ("if you go there from an offering it should
    already understand the context"). The dock (`/api/agent/assistant`) does.
-4. Older queue: voice outcomes Declined→No answer; sessions-table company
+2. Older queue: voice outcomes Declined→No answer; sessions-table company
    name wrapping; app-wide icon/logo audit.
-5. **Test-suite DB guard** (§1) — proposed to Anir, not yet approved/built.
+3. **Test-suite DB guard** (§1) — proposed to Anir, not yet approved/built.
+
+DONE since first drafted (all in the unpushed stack): the full dropdown
+sweep (zero native selects; ColorSelect/PeopleSelect everywhere — commits
+35e74be c12c8ab 6b2eb3e e09eb44), and the Customers page's pinned
+rightward-growing search + Add customer / Import CSV doors through
+/api/import/crm (642ea20).
 
 ### Blocked on Freyr (asked Jul 30, awaiting answers)
 - The 14 standard folder names; the document-type list; whether folder names
