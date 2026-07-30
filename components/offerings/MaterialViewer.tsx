@@ -13,6 +13,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { VideoPlayer } from "@/components/offerings/VideoPlayer";
 
 /**
  * THE FILE AS IT WAS UPLOADED — not a summary of it.
@@ -511,13 +512,7 @@ export function MaterialViewer({
           {isNative && ext === "pdf" && (
             <iframe src={inlineUrl} title={label} className="h-[calc(100vh-13rem)] w-full rounded-lg bg-white" />
           )}
-          {isVideo && (
-            // h-full w-full so the ELEMENT always spans the stage — the browser
-            // letterboxes the picture inside it (object-contain), controls run
-            // the full width, and a slow-loading file is a full black stage
-            // rather than a tiny default-size player floating in one.
-            <video src={inlineUrl} controls autoPlay className="h-full w-full object-contain" />
-          )}
+          {isVideo && <VideoPlayer src={inlineUrl} label={label} />}
           {isNative && ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext) && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={inlineUrl} alt={label} className="mx-auto max-h-[68vh] rounded-lg" />

@@ -91,7 +91,21 @@ export async function GET(
      * Proxying also keeps the presigned URL off the client.
      */
     if (new URL(req.url).searchParams.get("view") === "1") {
-      const upstream = await fetch(presignUrl);
+      /**
+       * RANGE PASSES THROUGH, so video can SEEK.
+       *
+       * A browser jumps around a video by asking for byte ranges; this proxy
+       * used to swallow the Range header and answer 200-with-everything, so
+       * dragging the scrubber forced the player to buffer the whole file up to
+       * that point (Anir, Jul 30: "letting me skip ahead to the video — gotta
+       * know what's going on with that"). Forward the header and relay the
+       * 206/Content-Range that comes back, and seeking is instant.
+       */
+      const range = req.headers.get("range");
+      const upstream = await fetch(
+        presignUrl,
+        range ? { headers: { Range: range } } : undefined
+      );
       if (!upstream.ok || !upstream.body)
         return NextResponse.json(
           { error: "Could not open that file" },
@@ -105,6 +119,14 @@ export async function GET(
       );
       const length = upstream.headers.get("content-length");
       if (length) headers.set("Content-Length", length);
+      for (const h of ["content-range", "accept-ranges"]) {
+        const v = upstream.headers.get(h);
+        if (v) headers.set(h, v);
+      }
+      // Storage that never advertises ranges would leave the player thinking
+      // seeking is impossible; presigned object stores do support them, so say
+      // so when upstream stayed silent.
+      if (!headers.has("accept-ranges")) headers.set("Accept-Ranges", "bytes");
       // Quotes escaped: a filename containing one would otherwise truncate the
       // header and browsers would fall back to the URL's last segment.
       headers.set(
@@ -113,7 +135,11 @@ export async function GET(
       );
       // Private: a signed-in member fetched this, a shared cache must not keep it.
       headers.set("Cache-Control", "private, max-age=60");
-      return new NextResponse(upstream.body, { status: 200, headers });
+      return new NextResponse(upstream.body, {
+        // 206 must survive the relay or the browser discards the range reply.
+        status: upstream.status,
+        headers,
+      });
     }
 
     return NextResponse.redirect(presignUrl, 302);
