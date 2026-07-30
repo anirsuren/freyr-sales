@@ -341,38 +341,43 @@ export function OfferingOwners({
       // be collapsible gadgets. The gadgets don't have to expand."
       bodyClassName={railOpen ? "space-y-3" : "hidden"}
       action={
-        <span className="flex items-center gap-1">
+        // THE CHEVRON OWNS THE RIGHT EDGE. It sat left of the blue +, so the
+        // control in the spot everyone reaches for to open a collapsed card was
+        // the one that ADDS an owner (Anir, Jul 30: "the plus button is in the
+        // exact spot I would assume the dropdown to be"). Add is also hidden
+        // while the card is shut — you should only be able to add to a list you
+        // can see.
+        <span className="flex items-center gap-1.5">
+          {/* ONLY AN OWNER HANDS OUT OWNERSHIP. Being a workspace admin is not
+              enough: an admin who has not taken this offering cannot quietly
+              grant it to somebody either (Anir, Jul 28: "make sure I can only
+              actually add a contact or even an owner if I am an owner").
+              Bootstrapping an unowned offering still runs through the admin's
+              own claim below. */}
+          {railOpen && canEdit && (
+            <AddButton
+              label="Add an owner"
+              onClick={() => {
+                setChosen([]);
+                setQuery("");
+                setError(null);
+                setGranting(true);
+              }}
+            />
+          )}
           <button
             type="button"
             onClick={() => setRailOpen((v) => !v)}
             aria-expanded={railOpen}
             aria-label={railOpen ? "Collapse owners" : "Expand owners"}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
           >
             <ChevronDown
-              size={14}
+              size={15}
               strokeWidth={2.2}
               className={cn("transition-transform", railOpen && "rotate-180")}
             />
           </button>
-          {
-        // ONLY AN OWNER HANDS OUT OWNERSHIP. Being a workspace admin is not
-        // enough: an admin who has not taken this offering cannot quietly
-        // grant it to somebody either (Anir, Jul 28: "make sure I can only
-        // actually add a contact or even an owner if I am an owner. That's the
-        // only way I have these permissions"). Bootstrapping an unowned
-        // offering still runs through the admin's own claim below.
-        canEdit ? (
-          <AddButton
-            label="Add an owner"
-            onClick={() => {
-              setChosen([]);
-              setQuery("");
-              setError(null);
-              setGranting(true);
-            }}
-          />
-        ) : undefined}
         </span>
       }
     >

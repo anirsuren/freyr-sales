@@ -305,32 +305,34 @@ export function OfferingContacts({
       // gadgets. The gadgets don't have to expand").
       bodyClassName={railOpen ? undefined : "hidden"}
       action={
-        <span className="flex items-center gap-1">
+        // Chevron at the rightmost edge, add tucked inside it and only while
+        // the card is open — same fix as the owners card above.
+        <span className="flex items-center gap-1.5">
+          {railOpen && canEdit && (
+            <AddButton
+              label="Add a contact"
+              onClick={() => {
+                setStep(1);
+                setPick([]);
+                setQuery("");
+                setError(null);
+                setAdding(true);
+              }}
+            />
+          )}
           <button
             type="button"
             onClick={() => setRailOpen((v) => !v)}
             aria-expanded={railOpen}
             aria-label={railOpen ? "Collapse contacts" : "Expand contacts"}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
           >
             <ChevronDown
-              size={14}
+              size={15}
               strokeWidth={2.2}
               className={cn("transition-transform", railOpen && "rotate-180")}
             />
           </button>
-          {canEdit ? (
-          <AddButton
-            label="Add a contact"
-            onClick={() => {
-              setStep(1);
-              setPick([]);
-              setQuery("");
-              setError(null);
-              setAdding(true);
-            }}
-          />
-          ) : undefined}
         </span>
       }
     >
