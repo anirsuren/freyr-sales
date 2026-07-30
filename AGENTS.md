@@ -1,5 +1,10 @@
 # AGENTS.md — read this before touching anything
 
+**New session? Start here:** read §9 (current state + open queue), then run
+`git log origin/main..HEAD --oneline` — the unpushed commits ARE the change
+log, each message says what changed and why. §9 is the master tracker:
+whoever finishes or starts work updates it in the same commit.
+
 This is the agent handbook for **Freyr Sales Intelligence**. Codex, Claude
 Code, and any other coding agent: everything you need that is NOT in the code
 lives here. `CLAUDE.md` is the Claude-specific copy of the working rules — if
