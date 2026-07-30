@@ -104,6 +104,7 @@ export function MaterialsSection({
   action,
   offeringId,
   canEdit = false,
+  canCreateFolders = false,
   materialFolders = [],
 }: {
   materials: OfferingMaterial[];
@@ -118,6 +119,17 @@ export function MaterialsSection({
    *  handed to customers (Anir, Jul 29: "people who are not the owner, just
    *  normal sales, they can download all this stuff"). */
   canEdit?: boolean;
+  /**
+   * MAKING A FOLDER IS AN ADMIN ACT, not an owner one.
+   *
+   * Suren, Jul 30: "system should restrict… every guy is going to create a
+   * folder of his own. You will never be able to control this." Wajeed's
+   * interim call was to switch folder creation off; Anir's is narrower and
+   * better — leave it on, for admins only, until the system-defined folder
+   * type list exists. Owners keep filing files into the folders that are
+   * already there.
+   */
+  canCreateFolders?: boolean;
 }) {
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
@@ -335,7 +347,7 @@ export function MaterialsSection({
         {/* Add lives on the same row as the filters (Anir: "put this filter
             inline with the add button"). */}
         <div className="ml-auto flex items-center gap-2">
-          {canEdit && offeringId && (
+          {canCreateFolders && offeringId && (
             <button
               type="button"
               onClick={() => setNewFolderOpen((v) => !v)}
@@ -355,7 +367,7 @@ export function MaterialsSection({
       {/* ANYTHING NEW OPENS IN A POPUP — his standing rule, and I broke it
           with an inline bar that pushed the whole list down the page. */}
       <Modal
-        open={newFolderOpen && canEdit}
+        open={newFolderOpen && canCreateFolders}
         onClose={() => setNewFolderOpen(false)}
         title={folder ? `New folder inside ${folder}` : "New folder"}
       >

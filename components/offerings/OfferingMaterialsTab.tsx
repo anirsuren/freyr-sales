@@ -19,9 +19,12 @@ import type { Offering } from "@/lib/offerings";
 export function OfferingMaterialsTab({
   offering: o,
   admin,
+  workspaceAdmin,
 }: {
   offering: Offering;
   admin: boolean;
+  /** Only a workspace admin may create folders — see MaterialsSection. */
+  workspaceAdmin: boolean;
 }) {
   return (
     <section className="mt-6">
@@ -73,6 +76,7 @@ export function OfferingMaterialsTab({
           offeringId={o.id}
           canEdit={admin}
           materialFolders={o.materialFolders ?? []}
+          canCreateFolders={workspaceAdmin}
           action={
             admin ? (
               <AddMaterialButton
