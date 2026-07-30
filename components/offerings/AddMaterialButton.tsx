@@ -64,7 +64,18 @@ export function AddMaterialButton({
   const uploadFolder = (useSearchParams().get("mf") || "").trim();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState<MaterialFormat>("other");
+  /**
+   * NOTHING TAGS ITSELF (Anir, Jul 30: "you actually have to make the user tag
+   * it as a video because it shouldn't auto-tag as anything").
+   *
+   * This started as "video" and every pasted link inherited it, so a Minerva
+   * course page went into the catalogue wearing a video icon. The obvious fix
+   * was to guess better — from the file extension, from the URL — but a guess
+   * is still a claim the app makes on the owner's behalf, and the wrong ones
+   * are invisible precisely because nobody was asked. So: empty until picked,
+   * and the form will not submit without it.
+   */
+  const [kind, setKind] = useState<MaterialFormat | "">("");
   const [journeyStage, setJourneyStage] = useState<JourneyStage>("awareness");
   const [accessLevel, setAccessLevel] = useState<AccessLevel>("client_facing");
   const [label, setLabel] = useState("");
@@ -83,7 +94,7 @@ export function AddMaterialButton({
   const [readByAgent, setReadByAgent] = useState(true);
 
   function reset() {
-    setKind("other");
+    setKind("");
     setJourneyStage("awareness");
     setAccessLevel("client_facing");
     setLabel("");
@@ -98,56 +109,11 @@ export function AddMaterialButton({
   function takeFile(f: File | null) {
     if (!f) return;
     setFile(f);
+    // The NAME is prefilled because it is visible and editable in the same
+    // breath. The FORMAT is not: an extension is good evidence, not consent.
     if (!label.trim()) setLabel(f.name.replace(/\.[^.]+$/, ""));
-    const ext = (f.name.split(".").pop() || "").toLowerCase();
-    if (["mp4", "mov", "webm", "m4v", "avi", "mkv"].includes(ext)) setKind("video");
-    else if (["ppt", "pptx", "key", "odp"].includes(ext)) setKind("presentation");
-    else if (["doc", "docx", "pdf", "txt", "rtf", "md", "odt"].includes(ext))
-      setKind("document");
-    else setKind("other");
   }
 
-
-  /**
-   * A PASTED LINK SHOULD TAG ITSELF TOO.
-   *
-   * Picking a file sets the format from its extension, but a link kept whatever
-   * the picker happened to be showing — and the picker opened on "Video". So
-   * every link anybody pasted was filed as a video unless they noticed and
-   * changed it, which is how a Minerva COURSE PAGE ended up in the list wearing
-   * a video icon next to a description that begins "This deck explains…"
-   * (Anir, Jul 30: "why does it say this deck... it says video and it shows the
-   * video icon").
-   *
-   * So: read the URL where it genuinely says what it points at — SharePoint and
-   * OneDrive encode the type in the path (/:v:/, /:p:/, /:w:/, /:b:/), and a
-   * Teams recording or a YouTube/Vimeo link is a video by definition. Anything
-   * else falls to "Other" rather than silently claiming to be a video. A guess
-   * nobody can see is worse than no guess.
-   */
-  function takeUrl(next: string) {
-    setUrl(next);
-    const u = next.toLowerCase();
-    if (!u.startsWith("http")) return;
-    if (
-      u.includes("/:v:/") ||
-      u.includes("meetingrecap") ||
-      u.includes("youtube.com") ||
-      u.includes("youtu.be") ||
-      u.includes("vimeo.com") ||
-      /\.(mp4|mov|webm|m4v)(\?|$)/.test(u)
-    )
-      setKind("video");
-    else if (u.includes("/:p:/") || /\.(ppt|pptx|key)(\?|$)/.test(u))
-      setKind("presentation");
-    else if (
-      u.includes("/:w:/") ||
-      u.includes("/:b:/") ||
-      /\.(doc|docx|pdf|txt|rtf)(\?|$)/.test(u)
-    )
-      setKind("document");
-    else setKind("other");
-  }
 
   /**
    * PUT THE FILE STRAIGHT INTO STORAGE FROM THE BROWSER.
@@ -258,6 +224,14 @@ export function AddMaterialButton({
       toast("Drop in a file, or add a link or a name first", "error");
       return;
     }
+    // The format is the owner's to state. Nothing infers it, so nothing saves
+    // without it — this is the guard that makes "no auto-tag" real rather than
+    // a default sitting one click away from being wrong.
+    if (!kind) {
+      toast("Pick the file format first — video, presentation, document or other", "error");
+      return;
+    }
+    const chosenKind: MaterialFormat = kind;
     setBusy(true);
     try {
       // The file's bytes go up first; the material row then references where
@@ -308,8 +282,8 @@ export function AddMaterialButton({
         })),
         {
           id: "",
-          kind,
-          label: label.trim() || (file ? file.name : MATERIAL_META[kind].label),
+          kind: chosenKind,
+          label: label.trim() || (file ? file.name : MATERIAL_META[chosenKind].label),
           url: storedUrl,
           ...(storedPath ? { docsPath: storedPath } : {}),
           // Optional, and left off entirely when it's blank — an empty note is
@@ -398,8 +372,14 @@ export function AddMaterialButton({
       <Modal open={open} onClose={() => setOpen(false)} title="Add a sales material">
         <div className="space-y-4">
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2">
+            <label className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               File format
+              {/* Say it up front rather than only at the point of refusal. */}
+              {!kind && (
+                <span className="font-semibold normal-case tracking-normal text-[color:#B02020]">
+                  · pick one
+                </span>
+              )}
             </label>
             {/* Four equal, colour-coded tiles on one row (item 9). */}
             <div className="grid grid-cols-4 gap-2">
@@ -472,7 +452,9 @@ export function AddMaterialButton({
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder={`e.g. ${MATERIAL_META[kind].label}. Q3 deck`}
+              placeholder={
+                kind ? `e.g. ${MATERIAL_META[kind].label}. Q3 deck` : "e.g. Q3 deck"
+              }
               className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
             />
           </div>
@@ -595,7 +577,7 @@ export function AddMaterialButton({
                 </label>
                 <input
                   value={url}
-                  onChange={(e) => takeUrl(e.target.value)}
+                  onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://…"
                   className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
                 />
