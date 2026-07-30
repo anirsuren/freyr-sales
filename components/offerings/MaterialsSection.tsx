@@ -21,7 +21,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
-import { timeAgo } from "@/lib/utils";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -633,9 +633,11 @@ export function MaterialsSection({
                         Added by {material.addedBy}
                       </span>
                       {material.addedAt && (
-                        <span className="shrink-0 tnum">
-                          · {timeAgo(material.addedAt)}
-                        </span>
+                        <TimeAgo
+                          value={material.addedAt}
+                          prefix="· "
+                          className="shrink-0 tnum"
+                        />
                       )}
                     </span>
                   )}

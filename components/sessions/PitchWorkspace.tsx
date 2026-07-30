@@ -27,7 +27,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { SubjectLineCarousel } from "@/components/sessions/SubjectLineCarousel";
 import { copyText } from "@/lib/clipboard";
 import { EMAIL_TEMPLATES, fillTemplate } from "@/lib/email-templates";
-import { cn, formatDateTime, timeAgo } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -526,7 +527,8 @@ export function PitchWorkspace({
           </span>
           <span className="text-text-tertiary text-[14px]">•</span>
           <span className="text-text-secondary text-[13px]">
-            Last activity: {lastActivityAt ? timeAgo(lastActivityAt) : "-"}
+            Last activity:{" "}
+            {lastActivityAt ? <TimeAgo value={lastActivityAt} /> : "-"}
           </span>
         </div>
         <div>

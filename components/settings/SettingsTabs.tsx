@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTimeZone } from "@/components/auth/CurrentUserProvider";
+import {
+  COMMON_TIME_ZONES,
+  describeZone,
+  detectTimeZone,
+  formatAbsolute,
+} from "@/lib/timeZone";
 import {
   UserPlus,
   Check,
@@ -259,6 +266,61 @@ export function SettingsTabs({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  /**
+   * TIME ZONE, saved the moment it changes — a preference behind a Save button
+   * that governs every timestamp on every other page is a preference people
+   * set and then wonder why nothing moved.
+   */
+  const { timeZone: activeZone, saved: savedZone, refresh: refreshZone } =
+    useTimeZone();
+  const [detectedZone, setDetectedZone] = useState("UTC");
+  const [savingZone, setSavingZone] = useState(false);
+  const [nowInZone, setNowInZone] = useState("");
+  useEffect(() => {
+    setDetectedZone(detectTimeZone());
+  }, []);
+  // A live clock in the chosen zone: the fastest way to tell you picked right.
+  useEffect(() => {
+    const paint = () => setNowInZone(formatAbsolute(new Date(), activeZone));
+    paint();
+    const id = window.setInterval(paint, 30_000);
+    return () => window.clearInterval(id);
+  }, [activeZone]);
+  // The device's own zone is offered even when it is not on the short list.
+  const zoneChoices = Array.from(
+    new Set(
+      [...COMMON_TIME_ZONES, detectedZone, savedZone].filter(
+        (z): z is string => Boolean(z)
+      )
+    )
+  ).sort();
+
+  async function saveTimeZone(next: string) {
+    setSavingZone(true);
+    try {
+      const res = await fetch("/api/profile/timezone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeZone: next }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast(body.error || "Could not save your time zone", "error");
+        return;
+      }
+      refreshZone();
+      toast(
+        next
+          ? `Times now read in ${describeZone(next)}`
+          : "Times now follow this device"
+      );
+    } catch {
+      toast("Could not save your time zone", "error");
+    } finally {
+      setSavingZone(false);
+    }
+  }
   const currentUser = useCurrentUser();
   const profileStorageKey = userScopedStorageKey(
     "freyr_profile",
@@ -1128,6 +1190,38 @@ export function SettingsTabs({
             <label className="block">
               <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email</span>
               <Input type="email" value={profile.email} readOnly aria-readonly="true" />
+            </label>
+            {/* TIME ZONE. Every timestamp in the app is rendered in this zone,
+                and hovering one shows the exact time (Anir, Jul 30). Automatic
+                follows the device, which is right for almost everyone and stays
+                right when they travel; an explicit zone is for the person who
+                wants their times in head-office hours wherever they are.
+                Either way the app stores a ZONE, never an offset, so daylight
+                saving is handled for it. */}
+            <label className="block">
+              <span className="block text-[13px] font-medium text-text-primary mb-1.5">
+                Time zone
+              </span>
+              <select
+                value={savedZone}
+                onChange={(e) => void saveTimeZone(e.target.value)}
+                disabled={savingZone}
+                aria-label="Time zone"
+                className="w-full cursor-pointer rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none disabled:opacity-60"
+              >
+                <option value="">
+                  Automatic — follow this device ({describeZone(detectedZone)})
+                </option>
+                {zoneChoices.map((z) => (
+                  <option key={z} value={z}>
+                    {describeZone(z)}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1.5 block text-[12px] text-text-secondary">
+                Times read in <strong>{describeZone(activeZone)}</strong>. Right
+                now that is {nowInZone}.
+              </span>
             </label>
             <label className="block">
               <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email signature</span>

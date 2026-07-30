@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { UserIdentity } from "@/lib/userIdentity";
+import { detectTimeZone, isValidTimeZone } from "@/lib/timeZone";
 
 const CurrentUserContext = createContext<UserIdentity | null>(null);
 
@@ -82,4 +83,57 @@ export function useCurrentUser(): UserIdentity {
     throw new Error("useCurrentUser must be used within CurrentUserProvider.");
   }
   return user;
+}
+
+/**
+ * THE ZONE EVERY TIMESTAMP IS READ IN.
+ *
+ * One fetch for the whole app rather than one per row: a list of sixty
+ * materials would otherwise ask sixty times. Starts on the device's own zone so
+ * the first paint is already right, then adopts the saved preference if there
+ * is one.
+ */
+const TimeZoneContext = createContext<{
+  timeZone: string;
+  /** "" when following the device — what Settings shows as "Automatic". */
+  saved: string;
+  refresh: () => void;
+}>({ timeZone: "UTC", saved: "", refresh: () => {} });
+
+export function TimeZoneProvider({ children }: { children: ReactNode }) {
+  // Detected on mount, not at module load: the server has no device zone, and
+  // rendering a server guess first would flash the wrong time.
+  const [detected, setDetected] = useState("UTC");
+  const [saved, setSaved] = useState("");
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    setDetected(detectTimeZone());
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/profile/timezone", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && typeof d?.timeZone === "string") setSaved(d.timeZone);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+  // A saved zone that this browser no longer recognises falls back to the
+  // device rather than throwing on every timestamp on the page.
+  const timeZone = saved && isValidTimeZone(saved) ? saved : detected;
+  return (
+    <TimeZoneContext.Provider
+      value={{ timeZone, saved, refresh: () => setTick((n) => n + 1) }}
+    >
+      {children}
+    </TimeZoneContext.Provider>
+  );
+}
+
+/** The zone to render times in, and the raw preference behind it. */
+export function useTimeZone() {
+  return useContext(TimeZoneContext);
 }

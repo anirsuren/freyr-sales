@@ -14,6 +14,7 @@ import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider
 import {
   CurrentUserProvider,
   MyPhotoProvider,
+  TimeZoneProvider,
 } from "@/components/auth/CurrentUserProvider";
 import {
   userScopedStorageKey,
@@ -173,7 +174,9 @@ export function AppShell({
   ) {
     return (
       <CurrentUserProvider user={currentUser}>
-        <MyPhotoProvider>{children}</MyPhotoProvider>
+        <MyPhotoProvider>
+          <TimeZoneProvider>{children}</TimeZoneProvider>
+        </MyPhotoProvider>
       </CurrentUserProvider>
     );
   }
@@ -187,6 +190,7 @@ export function AppShell({
   return (
     <CurrentUserProvider user={currentUser}>
       <MyPhotoProvider>
+      <TimeZoneProvider>
       <ToastProvider>
         <a
           href="#main-content"
@@ -266,6 +270,7 @@ export function AppShell({
         />
         <AutoTruncationTooltip />
       </ToastProvider>
+      </TimeZoneProvider>
       </MyPhotoProvider>
     </CurrentUserProvider>
   );
