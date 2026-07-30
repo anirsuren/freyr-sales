@@ -96,18 +96,15 @@ export async function readMaterialArchiveMember(
       413
     );
 
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for await (const chunk of entry.nodeStream("nodebuffer")) {
-    const bytes = Buffer.from(chunk);
-    total += bytes.byteLength;
-    if (total > MAX_ARCHIVE_BYTES)
-      throw new MaterialArchiveError(
-        "That file is too large to open in the browser. Download the archive instead.",
-        413
-      );
-    chunks.push(bytes);
-  }
-  const bytes = Buffer.concat(chunks, total);
+  // JSZip's nodeStream is not async-iterable after Next bundles it for the
+  // standalone ECS image. `async("uint8array")` is JSZip's cross-runtime API;
+  // the central-directory size check above rejects oversized members before
+  // this allocation, and the postcondition protects entries without metadata.
+  const bytes = await entry.async("uint8array");
+  if (bytes.byteLength > MAX_ARCHIVE_BYTES)
+    throw new MaterialArchiveError(
+      "That file is too large to open in the browser. Download the archive instead.",
+      413
+    );
   return { bytes, name: entry.name };
 }
