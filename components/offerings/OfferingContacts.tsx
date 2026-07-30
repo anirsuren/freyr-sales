@@ -303,6 +303,9 @@ export function OfferingContacts({
       // Collapsed by default alongside the owners card — both make way for the
       // offering chat above them (Suren, Jul 30: "they can be collapsible
       // gadgets. The gadgets don't have to expand").
+      // The whole header band toggles, not just the chevron.
+      onHeaderClick={() => setRailOpen((v) => !v)}
+      expanded={railOpen}
       bodyClassName={railOpen ? undefined : "hidden"}
       action={
         // Chevron at the rightmost edge, add tucked inside it and only while

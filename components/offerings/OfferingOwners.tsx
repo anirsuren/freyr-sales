@@ -339,6 +339,9 @@ export function OfferingOwners({
       // COLLAPSED BY DEFAULT — this is the room the offering chat needed.
       // Suren, Jul 30: "who can edit this, contacts for this offering… they can
       // be collapsible gadgets. The gadgets don't have to expand."
+      // The whole header band toggles, not just the chevron.
+      onHeaderClick={() => setRailOpen((v) => !v)}
+      expanded={railOpen}
       bodyClassName={railOpen ? "space-y-3" : "hidden"}
       action={
         // THE CHEVRON OWNS THE RIGHT EDGE. It sat left of the blue +, so the
