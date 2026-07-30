@@ -28,6 +28,7 @@ import { listAssignablePeople } from "@/lib/assignablePeople";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
+import { OfferingAgentPanel } from "@/components/offerings/OfferingAgentPanel";
 import { OfferingContacts } from "@/components/offerings/OfferingContacts";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
@@ -349,6 +350,24 @@ export default async function OfferingDetailPage({
           {/* `stagger` — the rail's cards lift in one after another, the same
               entrance the dashboard's lists use. */}
           <div className="space-y-5 stagger">
+            {/* THE AGENT SITS AT THE TOP OF THE RAIL, not behind a trip to
+                /agent (Suren, Jul 30: "I really don't want to go there… ask
+                him to do the stuff here itself… on the right side a chat
+                window here itself"). Everything under it collapses, which is
+                the room this needed: "who can edit this, contacts for this
+                offering — they can be collapsible gadgets." */}
+            <OfferingAgentPanel
+              offeringId={o.id}
+              offeringName={o.offering_name}
+              starters={[
+                `What does ${o.offering_name} do?`,
+                "Which materials should I send a new prospect?",
+                o.offeringCategory?.name
+                  ? `Who else sells ${o.offeringCategory.name}?`
+                  : "Who owns this offering?",
+              ]}
+            />
+
             {/* Internal owner — only when a real person is on file */}
             {/* WHO CAN EDIT THIS. Real accounts, granted by an admin, not the
                 contact name off the spreadsheet. */}

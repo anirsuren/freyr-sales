@@ -16,6 +16,7 @@ import {
   Search,
   UserRound,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { AttributeTag } from "@/components/ui/AttributeTag";
@@ -293,12 +294,32 @@ export function OfferingContacts({
       )
     );
 
+  const [railOpen, setRailOpen] = useState(false);
+
   return (
     <SectionCard
       title="Contacts for this offering"
       icon={UserRound}
+      // Collapsed by default alongside the owners card — both make way for the
+      // offering chat above them (Suren, Jul 30: "they can be collapsible
+      // gadgets. The gadgets don't have to expand").
+      bodyClassName={railOpen ? undefined : "hidden"}
       action={
-        canEdit ? (
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setRailOpen((v) => !v)}
+            aria-expanded={railOpen}
+            aria-label={railOpen ? "Collapse contacts" : "Expand contacts"}
+            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+          >
+            <ChevronDown
+              size={14}
+              strokeWidth={2.2}
+              className={cn("transition-transform", railOpen && "rotate-180")}
+            />
+          </button>
+          {canEdit ? (
           <AddButton
             label="Add a contact"
             onClick={() => {
@@ -309,9 +330,9 @@ export function OfferingContacts({
               setAdding(true);
             }}
           />
-        ) : undefined
+          ) : undefined}
+        </span>
       }
-      bodyClassName="space-y-3"
     >
       {contacts.length === 0 && !adding && (
         <p className="text-[12.5px] leading-relaxed text-text-secondary">

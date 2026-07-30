@@ -13,6 +13,7 @@ import {
   UserRound,
   Mail,
   Phone,
+  ChevronDown,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
@@ -329,11 +330,32 @@ export function OfferingOwners({
       })
     );
 
+  const [railOpen, setRailOpen] = useState(false);
+
   return (
     <SectionCard
       title="Who can edit this"
       icon={UserRound}
+      // COLLAPSED BY DEFAULT — this is the room the offering chat needed.
+      // Suren, Jul 30: "who can edit this, contacts for this offering… they can
+      // be collapsible gadgets. The gadgets don't have to expand."
+      bodyClassName={railOpen ? "space-y-3" : "hidden"}
       action={
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setRailOpen((v) => !v)}
+            aria-expanded={railOpen}
+            aria-label={railOpen ? "Collapse owners" : "Expand owners"}
+            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+          >
+            <ChevronDown
+              size={14}
+              strokeWidth={2.2}
+              className={cn("transition-transform", railOpen && "rotate-180")}
+            />
+          </button>
+          {
         // ONLY AN OWNER HANDS OUT OWNERSHIP. Being a workspace admin is not
         // enough: an admin who has not taken this offering cannot quietly
         // grant it to somebody either (Anir, Jul 28: "make sure I can only
@@ -350,9 +372,9 @@ export function OfferingOwners({
               setGranting(true);
             }}
           />
-        ) : undefined
+        ) : undefined}
+        </span>
       }
-      bodyClassName="space-y-3"
     >
       {granted.length === 0 ? (
         <p className="text-[12.5px] leading-relaxed text-text-secondary">
