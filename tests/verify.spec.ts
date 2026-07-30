@@ -1636,8 +1636,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(
       page.getByText("Prep the re-engagement sequence")
     ).toBeVisible();
-    await page.getByRole("button", { name: "Open Agent Inbox" }).click();
-    await expect(page).toHaveURL(/\/agent\/inbox/);
+    // The Agent Inbox command went with Goals and To-do when the agent was cut
+    // back to Chat + knowledge base (Anir, Jul 30: "remove from the chat bot
+    // goals and to-do"). The console is the agent command that survived, so
+    // that is what the palette has to expose.
+    await page.getByRole("button", { name: "Open AI Agent console" }).click();
+    await expect(page).toHaveURL(/\/agent(\?|$)/);
   });
 
   test("120 — palette goal deep-link auto-runs a plan (V9)", async ({ page }) => {
@@ -1663,11 +1667,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   }) => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("button", { name: /Search offerings, companies/ }).click();
-    await page.keyboard.type("agent inbox");
+    // "AI Agent console" is the one agent nav command left after Goals, To-do
+    // and the Inbox came out, and it is the only entry matching this query —
+    // so arrow-then-Enter lands on it whether the list clamps or wraps.
+    await page.keyboard.type("AI Agent console");
     await page.waitForTimeout(300);
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/agent\/inbox/);
+    await expect(page).toHaveURL(/\/agent(\?|$)/);
   });
 
   test("123 — agent preferences card persists a toggle (V9)", async ({ page }) => {

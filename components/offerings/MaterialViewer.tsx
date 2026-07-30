@@ -102,6 +102,24 @@ export function MaterialViewer({
    * print in the corner.
    */
   const flow = useRef<{ el: HTMLElement; pxPerPage: number } | null>(null);
+
+  /**
+   * WHICH ELEMENT ACTUALLY SCROLLS.
+   *
+   * pptx-preview builds its own scrolling viewport sized to one slide and puts
+   * every slide inside it, so for a deck the outer box has scrollHeight ===
+   * clientHeight and never fires a scroll event. That is why the slide counter
+   * sat on 1 forever, and why the deck looked like it "stopped" at slide one
+   * (Anir, Jul 30: "why are you stopping the demo there?"). Word documents
+   * scroll in the outer box as normal.
+   */
+  const scrollBox = useCallback((): HTMLElement | null => {
+    const outer = scroller.current;
+    if (!outer) return null;
+    return (
+      outer.querySelector<HTMLElement>(".pptx-preview-wrapper") ?? outer
+    );
+  }, []);
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(1);
 
@@ -163,9 +181,23 @@ export function MaterialViewer({
             });
           } else {
             const { init } = await import("pptx-preview");
-            // Sized to the dialog so slides fill it at 16:9 rather than
-            // rendering at some default and sitting in a corner.
-            const width = container.clientWidth || 900;
+            /**
+             * A SLIDE SHOULD FILL THE DIALOG, TOP TO BOTTOM.
+             *
+             * Sizing from width alone left a 16:9 slide short of the bottom of
+             * a tall dialog, with a band of empty grey under every one (Anir,
+             * Jul 30: "why are you stopping the demo there? … It should go all
+             * the way up until the bottom, almost"). A slide is constrained by
+             * BOTH edges, so take whichever binds: on a wide dialog that is the
+             * height, on a narrow one the width.
+             */
+            const box = scroller.current;
+            const availW = box?.clientWidth || container.clientWidth || 900;
+            const availH = box?.clientHeight || 700;
+            const width = Math.max(
+              560,
+              Math.min(availW, Math.floor((availH * 16) / 9))
+            );
             const previewer = init(container, {
               width,
               height: Math.round((width * 9) / 16),
@@ -282,7 +314,7 @@ export function MaterialViewer({
    */
   useEffect(() => {
     if (status !== "ready") return;
-    const el = scroller.current;
+    const el = scrollBox();
     if (!el) return;
     const selector =
       ext === "docx"
@@ -347,7 +379,7 @@ export function MaterialViewer({
       clearTimeout(t);
       el.removeEventListener("scroll", sync);
     };
-  }, [status, ext, slides, zoom]);
+  }, [status, ext, slides, zoom, scrollBox]);
 
   const unit = ext === "pptx" || slides ? "Slide" : "Page";
 
@@ -355,7 +387,7 @@ export function MaterialViewer({
    *  position and sets it. */
   const goToPage = useCallback(
     (n: number) => {
-      const box = scroller.current;
+      const box = scrollBox();
       if (flow.current && box) {
         const { el: sec, pxPerPage } = flow.current;
         const into = box.getBoundingClientRect().top - sec.getBoundingClientRect().top;
@@ -366,9 +398,19 @@ export function MaterialViewer({
       const pages = pageEls.current;
       if (pages.length === 0) return;
       const target = pages[Math.min(pages.length, Math.max(1, n)) - 1];
+      // scrollIntoView would move the OUTER box for a deck, which is not the
+      // element that scrolls — scroll the real one by the measured offset.
+      const box2 = scrollBox();
+      if (box2 && box2 !== scroller.current) {
+        box2.scrollTo({
+          top: target.offsetTop - (pages[0]?.offsetTop ?? 0),
+          behavior: "smooth",
+        });
+        return;
+      }
       target?.scrollIntoView({ block: "start", behavior: "smooth" });
     },
-    [pageCount]
+    [pageCount, scrollBox]
   );
 
   return (
@@ -378,7 +420,7 @@ export function MaterialViewer({
       title={label}
       // The widest dialog the app has: a slide rendered small in a narrow box
       // is a slide nobody reads.
-      size="chart"
+      size="viewer"
       actions={
         <>
           <a
@@ -403,7 +445,7 @@ export function MaterialViewer({
         </>
       }
     >
-      <div className="flex h-[calc(100vh-9rem)] flex-col">
+      <div className="flex h-[calc(100vh-8rem)] flex-col">
         {(fellBack || partial) && (
           <p className="mb-2 shrink-0 rounded-lg bg-[color:#C2410C]/10 px-3 py-2 text-[12px] font-medium text-[color:#C2410C]">
             {fellBack
@@ -574,7 +616,7 @@ export function MaterialViewer({
                     onClick={() => goToPage(page - 1)}
                     disabled={page <= 1}
                     aria-label={`Previous ${unit.toLowerCase()}`}
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30"
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/20 disabled:cursor-default disabled:opacity-30"
                   >
                     <ChevronUp size={15} strokeWidth={2.2} />
                   </button>
@@ -585,6 +627,19 @@ export function MaterialViewer({
                       // viewer ever bothers to add.
                       key={page}
                       defaultValue={page}
+                      // INLINE, NOT A CLASS. As a Tailwind class this field
+                      // computed to an OPAQUE white background with white text
+                      // — an invisible page number in a white pill (Anir, Jul
+                      // 30: "why is that field white? It's probably white on
+                      // white"). Inline wins over whatever was setting it, and
+                      // -webkit-text-fill-color is set too because that is what
+                      // actually paints the glyphs in a text input.
+                      style={{
+                        background: "rgba(255,255,255,0.22)",
+                        color: "#fff",
+                        WebkitTextFillColor: "#fff",
+                        caretColor: "#fff",
+                      }}
                       onKeyDown={(e) => {
                         if (e.key !== "Enter") return;
                         const n = Number((e.target as HTMLInputElement).value);
@@ -593,10 +648,10 @@ export function MaterialViewer({
                       }}
                       onFocus={(e) => e.currentTarget.select()}
                       aria-label={`${unit} number`}
-                      className="w-9 rounded-md bg-white/12 px-1 py-0.5 text-center font-semibold text-white outline-none focus:bg-white/20"
+                      className="w-9 rounded-md bg-white/20 px-1 py-0.5 text-center font-semibold text-white outline-none focus:bg-white/30"
                     />
-                    <span className="text-white/55">
-                      of <span className="font-semibold text-white/85">{pageCount}</span>
+                    <span className="text-white/60">
+                      of <span className="font-semibold text-white/90">{pageCount}</span>
                     </span>
                   </span>
                   <button
@@ -604,7 +659,7 @@ export function MaterialViewer({
                     onClick={() => goToPage(page + 1)}
                     disabled={page >= pageCount}
                     aria-label={`Next ${unit.toLowerCase()}`}
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30"
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/20 disabled:cursor-default disabled:opacity-30"
                   >
                     <ChevronDown size={15} strokeWidth={2.2} />
                   </button>
@@ -616,7 +671,7 @@ export function MaterialViewer({
                 onClick={() => changeZoom(zoom - 0.1)}
                 disabled={zoom <= 0.5}
                 aria-label="Zoom out"
-                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/20 disabled:cursor-default disabled:opacity-30"
               >
                 <Minus size={15} strokeWidth={2.4} />
               </button>
@@ -624,7 +679,7 @@ export function MaterialViewer({
                 type="button"
                 onClick={() => setZoom(1)}
                 title="Back to 100%"
-                className="min-w-[3.2rem] cursor-pointer rounded-full px-1 py-0.5 text-[12px] font-semibold tabular-nums transition-colors hover:bg-white/15"
+                className="min-w-[3.2rem] cursor-pointer rounded-full px-1 py-0.5 text-[12px] font-semibold tabular-nums transition-colors hover:bg-white/20"
               >
                 {Math.round(zoom * 100)}%
               </button>
@@ -633,7 +688,7 @@ export function MaterialViewer({
                 onClick={() => changeZoom(zoom + 0.1)}
                 disabled={zoom >= 3}
                 aria-label="Zoom in"
-                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/20 disabled:cursor-default disabled:opacity-30"
               >
                 <Plus size={15} strokeWidth={2.4} />
               </button>
@@ -642,7 +697,7 @@ export function MaterialViewer({
                 onClick={() => setZoom(1)}
                 title="Fit the page"
                 aria-label="Fit the page"
-                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/20"
               >
                 <Maximize2 size={13} strokeWidth={2.2} />
               </button>

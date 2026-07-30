@@ -21,7 +21,7 @@ export function Modal({
   title: string;
   children: React.ReactNode;
   // "wide" for content-heavy dialogs (editors, recipient pickers) — 640px.
-  size?: "default" | "wide" | "workflow" | "chart";
+  size?: "default" | "wide" | "workflow" | "chart" | "viewer";
   /** Actions that belong to the whole dialog — rendered in the header, left of
    *  the close button. Document controls (download, open elsewhere) live here
    *  rather than floating above the content they act on. */
@@ -108,7 +108,13 @@ export function Modal({
         aria-label={title}
         tabIndex={-1}
         className={`w-full outline-none ${
-          size === "chart"
+          size === "viewer"
+            ? // A 16:9 slide in a 1180px box is only ~660px tall, so a third of
+              // the dialog was empty grey under every slide (Anir, Jul 30: "why
+              // are you stopping the demo there? … it should go all the way up
+              // until the bottom"). The document viewer takes the window.
+              "max-w-[min(1900px,96vw)]"
+            : size === "chart"
             ? "max-w-[1180px]"
             : size === "workflow"
             ? "max-w-[980px]"
@@ -131,7 +137,7 @@ export function Modal({
           </button>
           </div>
         </div>
-        <div className={`overflow-y-auto ${size === "chart" ? "p-3" : "p-5"}`}>
+        <div className={`overflow-y-auto ${size === "chart" || size === "viewer" ? "p-3" : "p-5"}`}>
           {children}
         </div>
       </div>
