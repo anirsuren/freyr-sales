@@ -3,20 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Layers,
-  CheckCircle2,
-  Sparkles,
-  ExternalLink,
-  X,
-  Package,
-  DollarSign,
-  Plus,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
-  Paperclip,
-} from "lucide-react";
+import { Layers, CheckCircle2, Sparkles, ExternalLink, X, Package, DollarSign, Plus, Trash2, ChevronDown, ChevronUp, Paperclip, CalendarClock, Briefcase, Wrench, KeyRound, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -42,6 +29,16 @@ import {
 } from "@/lib/offeringMaterials";
 import type { OfferingUsage, OfferingRevenueLine, RevenueType } from "@/lib/types";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
+
+// One colour + glyph per revenue type — the same accents the offering report's
+// header chips use, so a type reads identically wherever it appears.
+const REVENUE_TYPE_ACCENT: Record<RevenueType, { color: string; icon: LucideIcon }> = {
+  annual: { color: "#0071E3", icon: CalendarClock },
+  project: { color: "#7C3AED", icon: Briefcase },
+  annual_service: { color: "#0F766E", icon: Wrench },
+  license: { color: "#C2410C", icon: KeyRound },
+};
+
 
 // Compact CR-3 tag pills inside a material chip: journey stage + access level,
 // each colour + icon (standing rule — no gray chips). Untagged materials render
@@ -368,18 +365,19 @@ function RevenueSection({
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               Revenue type
-              <select
-                aria-label="Revenue type"
+              <ColorSelect
+                ariaLabel="Revenue type"
                 value={rType}
-                onChange={(e) => setRType(e.target.value as RevenueType)}
-                className={inp}
-              >
-                {REVENUE_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {REVENUE_TYPE_META[t].label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setRType(v as RevenueType)}
+                className="w-full"
+                collapsible={false}
+                options={REVENUE_TYPES.map((t) => ({
+                  value: t,
+                  label: REVENUE_TYPE_META[t].label,
+                  color: REVENUE_TYPE_ACCENT[t].color,
+                  icon: REVENUE_TYPE_ACCENT[t].icon,
+                }))}
+              />
             </label>
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               {rType === "project" ? "Project revenue ($)" : "Revenue ($)"}

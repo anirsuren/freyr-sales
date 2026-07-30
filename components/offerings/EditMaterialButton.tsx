@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Folder, FolderOpen } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -187,19 +187,24 @@ export function EditMaterialButton({
             >
               Folder
             </label>
-            <select
-              id={`folder-${material.id}`}
+            {/* Folder as the house picker, not a grey <select> — same folder
+                glyph the material cards use (Anir, Jul 30 dropdown sweep). */}
+            <ColorSelect
+              ariaLabel="Folder"
               value={folder}
-              onChange={(e) => setFolder(e.target.value)}
-              className="w-full cursor-pointer rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
-            >
-              <option value="">All materials (top level)</option>
-              {allFolders(materials, [material.folder || ""]).map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
+              onChange={setFolder}
+              className="w-full"
+              collapsible={false}
+              options={[
+                { value: "", label: "All materials (top level)", icon: FolderOpen },
+                ...allFolders(materials, [material.folder || ""]).map((f) => ({
+                  value: f,
+                  label: f,
+                  icon: Folder,
+                  color: "#0071E3",
+                })),
+              ]}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

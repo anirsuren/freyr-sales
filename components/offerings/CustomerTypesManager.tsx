@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, ArrowRight, X, Pill, Dna, FlaskConical, Store, Building, Building2, Globe2, type LucideIcon } from "lucide-react";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -209,27 +210,35 @@ export function CustomerTypesManager({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={LABEL}>Family</label>
-                <select
-                  className={FIELD}
+                <ColorSelect
+                  ariaLabel="Family"
+                  className="w-full"
+                  collapsible={false}
                   value={family}
-                  onChange={(e) => setFamily(e.target.value as CustomerFamily)}
-                >
-                  {FAMILIES.map((f) => (
-                    <option key={f}>{f}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setFamily(v as CustomerFamily)}
+                  options={FAMILIES.map((f) => ({
+                    value: f,
+                    label: f,
+                    color: FAMILY_META[f].color,
+                    icon: FAMILY_META[f].icon,
+                  }))}
+                />
               </div>
               <div>
                 <label className={LABEL}>Size</label>
-                <select
-                  className={FIELD}
+                <ColorSelect
+                  ariaLabel="Size"
+                  className="w-full"
+                  collapsible={false}
                   value={size}
-                  onChange={(e) => setSize(e.target.value as CustomerSize)}
-                >
-                  {SIZES.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setSize(v as CustomerSize)}
+                  options={SIZES.map((sz) => ({
+                    value: sz,
+                    label: sz,
+                    color: SIZE_META[sz].color,
+                    icon: SIZE_META[sz].icon,
+                  }))}
+                />
               </div>
             </div>
             <div>
