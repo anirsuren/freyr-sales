@@ -35,7 +35,13 @@ export function isReleased(href: string, dataMode: DataMode): boolean {
 // and working, it was simply still behind this gate — so releasing it is the
 // feature. It answers grounded in the offerings catalogue itself (see
 // lib/knowledgeBase), which is exactly the content real mode carries.
-const RELEASED_MODULE_PREFIXES = ["/offerings", "/agent"] as const;
+// CUSTOMERS SHIPS WITH THE THIRD ROLLOUT (Saras, Jul 30: "The next module to
+// be made will be a 'Customers' module — details on it will come in down the
+// line"; unhidden by Anir the same day). In real mode it renders the honest
+// empty module — no demo companies — which is the point: Freyr sees the real
+// thing it is about to fill, not a mock (same "bare bones" rule as the
+// offering Reports tab). Suren's customer-offering heat map lands here.
+const RELEASED_MODULE_PREFIXES = ["/offerings", "/agent", "/customers"] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,
 // waiting for approval, your own workspace settings, and the product tour.
