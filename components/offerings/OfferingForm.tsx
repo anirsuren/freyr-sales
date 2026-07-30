@@ -467,6 +467,18 @@ export function OfferingForm({
   );
   const [intro, setIntro] = useState(seeded.intro);
   const [capRows, setCapRows] = useState<CapRow[]>(seeded.rows);
+  /**
+   * ADDING SOMETHING OPENS A POPUP. His standing rule, and this row was
+   * breaking it: "Add capability" appended a blank input in the middle of an
+   * already long form, so the thing you had just asked for appeared as an
+   * empty box you had to go find (Anir, Jul 30: "what is this ad capability
+   * thing, and why is that not a pop-up").
+   *
+   * `null` = closed. Otherwise it carries which kind of row is being added, so
+   * one dialog serves both buttons.
+   */
+  const [addingCap, setAddingCap] = useState<null | CapRow["kind"]>(null);
+  const [capDraft, setCapDraft] = useState("");
   const [pasteMode, setPasteMode] = useState(false);
   const [pasted, setPasted] = useState(initial?.offering_description ?? "");
   const description = pasteMode ? pasted : composeDescription(intro, capRows);
@@ -803,12 +815,12 @@ export function OfferingForm({
                         ? "Group heading: e.g. Product & Portfolio Strategy"
                         : "A service inside this offering: e.g. GLP Audits of Test Facilities"
                     }
-                    aria-label={isSection ? "Group heading" : "Capability"}
+                    aria-label={isSection ? "Group heading" : "Service"}
                   />
                   <button
                     type="button"
                     onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
-                    aria-label={isSection ? "Remove group heading" : "Remove capability"}
+                    aria-label={isSection ? "Remove group heading" : "Remove service"}
                     className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
                   >
                     <Trash2 size={15} strokeWidth={1.7} />
@@ -819,24 +831,102 @@ export function OfferingForm({
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <button
                 type="button"
-                onClick={() => setCapRows((l) => [...l, { kind: "item", text: "" }])}
-                className="inline-flex items-center gap-1.5 rounded-md bg-blue-light px-2.5 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-subtle/60"
+                onClick={() => {
+                  setCapDraft("");
+                  setAddingCap("item");
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-light px-2.5 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-subtle/60"
               >
-                <Plus size={14} strokeWidth={2.2} /> Add capability
+                {/* "Capability" was our word, not his — this whole section is
+                    described as "the services inside this offering" two lines
+                    above, and then the button asked for a capability. */}
+                <Plus size={14} strokeWidth={2.2} /> Add a service
               </button>
               <button
                 type="button"
-                onClick={() => setCapRows((l) => [...l, { kind: "section", text: "" }])}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
+                onClick={() => {
+                  setCapDraft("");
+                  setAddingCap("section");
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
               >
                 <Layers size={14} strokeWidth={2} /> Add a group heading
               </button>
               {capCount > 0 && (
                 <span className="ml-auto rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-semibold text-blue-primary">
-                  {capCount} {capCount === 1 ? "capability" : "capabilities"}
+                  {capCount} {capCount === 1 ? "service" : "services"}
                 </span>
               )}
             </div>
+
+            <Modal
+              open={addingCap !== null}
+              onClose={() => setAddingCap(null)}
+              title={
+                addingCap === "section" ? "Add a group heading" : "Add a service"
+              }
+            >
+              <div className="space-y-4">
+                <p className="text-[12.5px] leading-relaxed text-text-secondary">
+                  {addingCap === "section"
+                    ? "A heading groups the services under it on the offering page — use it when the list is long enough to need sections."
+                    : "One thing Freyr actually does inside this offering. Each one becomes its own card on the offering page, so a rep can point at it in a conversation."}
+                </p>
+                <div>
+                  <label className={LABEL}>
+                    {addingCap === "section" ? "Heading" : "Service"}
+                  </label>
+                  <input
+                    autoFocus
+                    className={FIELD}
+                    value={capDraft}
+                    onChange={(e) => setCapDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" || !capDraft.trim()) return;
+                      e.preventDefault();
+                      setCapRows((l) => [
+                        ...l,
+                        { kind: addingCap ?? "item", text: capDraft.trim() },
+                      ]);
+                      // Straight back to an empty box: adding these one at a
+                      // time is the normal case, and closing after every one
+                      // would mean six clicks for six services.
+                      setCapDraft("");
+                    }}
+                    placeholder={
+                      addingCap === "section"
+                        ? "e.g. Product & Portfolio Strategy"
+                        : "e.g. GLP Audits of Test Facilities"
+                    }
+                    aria-label={
+                      addingCap === "section" ? "Group heading" : "Service"
+                    }
+                  />
+                  <p className="mt-1.5 text-[11.5px] text-text-tertiary">
+                    Press Enter to add it and keep going. Adding a lot at once?
+                    Close this and use{" "}
+                    <span className="font-medium">Paste a list</span>.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setAddingCap(null)}>
+                    Done
+                  </Button>
+                  <Button
+                    disabled={!capDraft.trim()}
+                    onClick={() => {
+                      setCapRows((l) => [
+                        ...l,
+                        { kind: addingCap ?? "item", text: capDraft.trim() },
+                      ]);
+                      setAddingCap(null);
+                    }}
+                  >
+                    {addingCap === "section" ? "Add heading" : "Add service"}
+                  </Button>
+                </div>
+              </div>
+            </Modal>
           </div>
         )}
       </FormSection>

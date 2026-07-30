@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Download, ExternalLink, FileText, FileWarning } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  ExternalLink,
+  FileText,
+  FileWarning,
+  Maximize2,
+  Minus,
+  Plus,
+} from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 
 /**
@@ -62,6 +72,26 @@ export function MaterialViewer({
   /** It drew some slides and then failed; what is on screen is incomplete. */
   const [partial, setPartial] = useState(false);
   const [slides, setSlides] = useState<{ title: string; lines: string[] }[] | null>(null);
+
+  /**
+   * ZOOM THAT BELONGS TO THE DOCUMENT, NOT THE BROWSER.
+   *
+   * Cmd-+ inside the dialog zoomed the whole tab — the sidebar, the offering
+   * page behind the dialog, everything — which is exactly what you do not want
+   * when the thing you cannot read is a table inside a Word file (Anir, Jul 30:
+   * "please let me zoom in… when I zoom in, it zooms in the entire tab").
+   *
+   * The CSS `zoom` property, not `transform: scale()`, on purpose: `zoom`
+   * relayouts, so the scroll height and the scrollbar stay honest at 200%.
+   * A transform would leave the page scrollable to its 100% height and clip
+   * everything past it.
+   */
+  const [zoom, setZoom] = useState(1);
+  const scroller = useRef<HTMLDivElement>(null);
+  /** The page/slide elements the renderer produced, for the position readout. */
+  const pageEls = useRef<HTMLElement[]>([]);
+  const [pageCount, setPageCount] = useState(0);
+  const [page, setPage] = useState(1);
 
   const ext = extensionOf(path);
   const inlineUrl = `${downloadUrl}${downloadUrl.includes("?") ? "&" : "?"}view=1`;
@@ -170,6 +200,124 @@ export function MaterialViewer({
     };
   }, [ext, inlineUrl, isNative, offeringId, path]);
 
+  /**
+   * A LIBRARY DEFECT MUST NOT LOOK LIKE AN APP CRASH.
+   *
+   * pptx-preview rejects a promise per slide it cannot draw, and the 68-slide
+   * master deck produces several. We already catch the one we await, but the
+   * others surface as unhandled rejections — which is what Next's overlay was
+   * counting when it said "3 issues" on a deck that had rendered fine. Only
+   * this one known message is swallowed, and only while a deck is open, so a
+   * genuine error anywhere else still shouts.
+   */
+  useEffect(() => {
+    if (ext !== "pptx") return;
+    const swallow = (e: PromiseRejectionEvent) => {
+      const m = e.reason instanceof Error ? e.reason.message : String(e.reason ?? "");
+      if (m.includes("reading 'target'")) e.preventDefault();
+    };
+    window.addEventListener("unhandledrejection", swallow);
+    return () => window.removeEventListener("unhandledrejection", swallow);
+  }, [ext]);
+
+  const changeZoom = useCallback((next: number) => {
+    // 50%–300%. Below 50% a Word page is unreadable anyway; above 300% one
+    // rendered page is taller than any screen and scrolling loses its place.
+    setZoom(Math.min(3, Math.max(0.5, Math.round(next * 100) / 100)));
+  }, []);
+
+  /** Cmd/Ctrl + wheel zooms the DOCUMENT. Registered natively because React's
+   *  synthetic wheel listener is passive, and a passive listener cannot
+   *  preventDefault — so the browser would zoom the tab regardless. */
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setZoom((z) =>
+        Math.min(3, Math.max(0.5, Math.round((z - e.deltaY * 0.01) * 100) / 100))
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [status]);
+
+  /** Cmd-+ / Cmd-- / Cmd-0, intercepted so they land on the document. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        setZoom((z) => Math.min(3, Math.round((z + 0.1) * 100) / 100));
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 100) / 100));
+      } else if (e.key === "0") {
+        e.preventDefault();
+        setZoom(1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  /**
+   * WHICH PAGE AM I ON. A 60-page contract with no position readout is a wall
+   * of text you cannot navigate or talk about (Anir: "it doesn't say page
+   * numbers, anything"). Both renderers emit one element per page or slide, so
+   * the count is real — not an estimate from scroll height.
+   */
+  useEffect(() => {
+    if (status !== "ready") return;
+    const el = scroller.current;
+    if (!el) return;
+    const selector =
+      ext === "docx"
+        ? ".docx-wrapper > section, .docx > section, section.docx"
+        : ext === "pptx"
+          ? ".pptx-preview-wrapper > div"
+          : ".viewer-page";
+    // The renderers finish writing to the DOM a tick after they resolve.
+    const measure = () => {
+      pageEls.current = Array.from(el.querySelectorAll<HTMLElement>(selector));
+      setPageCount(pageEls.current.length);
+    };
+    measure();
+    const t = setTimeout(measure, 400);
+
+    const sync = () => {
+      const pages = pageEls.current;
+      if (pages.length === 0) return;
+      // The page that owns the top third of the viewport is the page you are
+      // reading — not the one that happens to touch the very top edge.
+      const mark = el.getBoundingClientRect().top + el.clientHeight / 3;
+      let current = 1;
+      for (let i = 0; i < pages.length; i++) {
+        if (pages[i].getBoundingClientRect().top <= mark) current = i + 1;
+        else break;
+      }
+      setPage(current);
+    };
+    sync();
+    el.addEventListener("scroll", sync, { passive: true });
+    return () => {
+      clearTimeout(t);
+      el.removeEventListener("scroll", sync);
+    };
+  }, [status, ext, slides, zoom]);
+
+  const unit = ext === "pptx" || slides ? "Slide" : "Page";
+
+  /** Jump to a page the way a PDF viewer does — the same control reads the
+   *  position and sets it. */
+  const goToPage = useCallback((n: number) => {
+    const pages = pageEls.current;
+    if (pages.length === 0) return;
+    const target = pages[Math.min(pages.length, Math.max(1, n)) - 1];
+    target?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, []);
+
   return (
     <Modal
       open
@@ -210,12 +358,11 @@ export function MaterialViewer({
               : "Part of this deck uses shapes the renderer cannot draw, so it stops early. Download the original for the whole deck."}
           </p>
         )}
-        {slideCount > 1 && (
-          <p className="mb-2 shrink-0 text-[12px] font-medium text-text-secondary">
-            {slideCount} slides · scroll to move through the deck
-          </p>
-        )}
-        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border-light bg-[var(--surface)]">
+        <div className="relative min-h-0 flex-1">
+        <div
+          ref={scroller}
+          className="material-scroll h-full overflow-auto rounded-xl border border-border-light bg-[var(--surface)]"
+        >
           {status === "loading" && (
             <div className="flex h-full flex-col items-center justify-center gap-4 py-20">
               {/* A ring that traces itself, over a soft page-shaped pulse. The
@@ -247,10 +394,17 @@ export function MaterialViewer({
             </p>
           )}
 
+          {/* EVERYTHING BELOW SCALES TOGETHER. `zoom` rather than a transform,
+              so the scroll height grows with the content and the scrollbar
+              keeps telling the truth about how much document is left.
+              A PDF and a video are excluded: the PDF plugin has its own zoom
+              and its own page counter, and nobody zooms a video. */}
+          <div style={{ zoom: isNative && ext === "pdf" ? 1 : zoom }}>
+
           {/* Exact by definition: the browser's own PDF, video and image
               rendering of the very bytes that were uploaded. */}
           {isNative && ext === "pdf" && (
-            <iframe src={inlineUrl} title={label} className="h-[68vh] w-full rounded-lg bg-white" />
+            <iframe src={inlineUrl} title={label} className="h-[calc(100vh-13rem)] w-full rounded-lg bg-white" />
           )}
           {isNative && ["mp4", "webm", "mov"].includes(ext) && (
             <video src={inlineUrl} controls autoPlay className="max-h-[68vh] w-full rounded-lg" />
@@ -275,7 +429,10 @@ export function MaterialViewer({
           {slides && (
             <div className="space-y-3 p-3">
               {slides.map((sl, i) => (
-                <div key={i} className="rounded-xl border border-border-light bg-white p-4">
+                // `viewer-page` is what the position readout counts, so the
+                // text fallback gets the same "Slide 12 of 68" the real
+                // renderer does.
+                <div key={i} className="viewer-page rounded-xl border border-border-light bg-white p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                     Slide {i + 1} of {slides.length}
                   </p>
@@ -341,6 +498,104 @@ export function MaterialViewer({
               </ul>
             </div>
           )}
+          </div>
+        </div>
+
+        {/* THE FLOATING CONTROL BAR, THE WAY A PDF VIEWER DOES IT.
+            It sits over the document, bottom centre, and it is LIVE: the page
+            number is recomputed on every scroll from the real page elements,
+            so it always says where you actually are (Anir: "you can't just say
+            the slide number at the top… you have to know what slide I'm on
+            currently — do it like a native PDF viewer"). Typing a number or
+            using the arrows scrolls there, and the same bar carries zoom, so
+            everything you do to the document is in one place. */}
+        {status === "ready" && (pageCount > 1 || !isNative) && (
+          // z-10 because a Word table renders positioned cells that otherwise
+          // paint over the bar and swallow its clicks.
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+            <div className="pointer-events-auto flex items-center gap-0.5 rounded-full bg-[#1D1D1F]/90 px-1.5 py-1 text-white shadow-[0_6px_24px_rgba(0,0,0,0.28)] backdrop-blur-md">
+              {pageCount > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => goToPage(page - 1)}
+                    disabled={page <= 1}
+                    aria-label={`Previous ${unit.toLowerCase()}`}
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30"
+                  >
+                    <ChevronUp size={15} strokeWidth={2.2} />
+                  </button>
+                  <span className="flex items-center gap-1.5 px-1 text-[12px] tabular-nums">
+                    <input
+                      // Typing a page number and pressing Enter jumps there —
+                      // the one thing every PDF reader has and no in-app
+                      // viewer ever bothers to add.
+                      key={page}
+                      defaultValue={page}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        const n = Number((e.target as HTMLInputElement).value);
+                        if (Number.isFinite(n)) goToPage(n);
+                        (e.target as HTMLInputElement).blur();
+                      }}
+                      onFocus={(e) => e.currentTarget.select()}
+                      aria-label={`${unit} number`}
+                      className="w-9 rounded-md bg-white/12 px-1 py-0.5 text-center font-semibold text-white outline-none focus:bg-white/20"
+                    />
+                    <span className="text-white/55">
+                      of <span className="font-semibold text-white/85">{pageCount}</span>
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => goToPage(page + 1)}
+                    disabled={page >= pageCount}
+                    aria-label={`Next ${unit.toLowerCase()}`}
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30"
+                  >
+                    <ChevronDown size={15} strokeWidth={2.2} />
+                  </button>
+                  <span className="mx-1 h-4 w-px bg-white/20" />
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => changeZoom(zoom - 0.1)}
+                disabled={zoom <= 0.5}
+                aria-label="Zoom out"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30"
+              >
+                <Minus size={15} strokeWidth={2.4} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(1)}
+                title="Back to 100%"
+                className="min-w-[3.2rem] cursor-pointer rounded-full px-1 py-0.5 text-[12px] font-semibold tabular-nums transition-colors hover:bg-white/15"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                type="button"
+                onClick={() => changeZoom(zoom + 0.1)}
+                disabled={zoom >= 3}
+                aria-label="Zoom in"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30"
+              >
+                <Plus size={15} strokeWidth={2.4} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(1)}
+                title="Fit the page"
+                aria-label="Fit the page"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/15"
+              >
+                <Maximize2 size={13} strokeWidth={2.2} />
+              </button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
     </Modal>

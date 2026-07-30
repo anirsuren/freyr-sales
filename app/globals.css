@@ -752,6 +752,48 @@ input {
   display: none;
 }
 
+/* THE DOCUMENT VIEWER GETS A SCROLLBAR YOU CAN SEE AND GRAB.
+   The app-wide 8px hairline is right for a sidebar and wrong for a 68-page
+   deck, where the bar is the only thing telling you how much is left and how
+   far in you are (Anir, Jul 30: "scroll bar is not really that noticeable").
+   Wider, a visible track, and a thumb dark enough to find on a white page. */
+.material-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(15, 23, 42, 0.38) rgba(15, 23, 42, 0.06);
+}
+.material-scroll::-webkit-scrollbar {
+  width: 13px;
+  height: 13px;
+}
+.material-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.05);
+  border-radius: 999px;
+}
+.material-scroll::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.34);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+.material-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.55);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* Word pages arrive as bare <section>s. Giving each one an edge and a shadow
+   is what makes "page 4 of 12" mean something you can see, rather than one
+   endless column of text. */
+.material-docx .docx-wrapper {
+  background: transparent;
+  padding: 16px 0 28px;
+}
+.material-docx .docx-wrapper > section {
+  margin: 0 auto 18px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 8px 24px rgba(16, 24, 40, 0.06);
+  border-radius: 4px;
+}
+
 /* The auto-truncation tooltip fades and lifts into place rather than snapping
    on — same easing as the app's other hover cards (Anir: "put a nice hover
    animation, just like there is on the other ones"). */

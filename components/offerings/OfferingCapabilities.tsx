@@ -318,7 +318,7 @@ export function OfferingCapabilities({
           className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
           style={{ background: `${accent}14`, color: accent }}
         >
-          {parsed.count} {parsed.count === 1 ? "capability" : "capabilities"}
+          {parsed.count} {parsed.count === 1 ? "service" : "services"}
         </span>
       </div>
 

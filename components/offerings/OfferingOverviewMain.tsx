@@ -278,9 +278,20 @@ export function OfferingOverviewMain({
             // Folders an owner made that are still empty. The rest are implied
             // by the files, so this only carries the ones nothing points at.
             materialFolders={o.materialFolders ?? []}
+            // Keyed because MaterialsSection renders this element into a list
+            // position beside its own toolbar buttons, and React validates
+            // every element that lands in a children array — an element built
+            // in one component and rendered as a list item in another has to
+            // carry its own key. Without it the console logged a key warning
+            // on every render of this page.
             action={
               admin ? (
-                <AddMaterialButton offeringId={o.id} materials={o.materials} compact />
+                <AddMaterialButton
+                  key="add-material"
+                  offeringId={o.id}
+                  materials={o.materials}
+                  compact
+                />
               ) : undefined
             }
           />
