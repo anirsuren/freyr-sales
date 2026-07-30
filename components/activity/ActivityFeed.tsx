@@ -18,6 +18,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import {
   cn,
   formatDate,
@@ -419,19 +420,14 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
               />
             </div>
             {owners.length > 1 && (
-              <select
-                value={owner}
-                onChange={(event) => setOwner(event.target.value)}
-                aria-label="Filter by relationship owner"
-                className="h-10 shrink-0 rounded-lg border border-border bg-white px-3 text-[12.5px] text-text-secondary outline-none focus:border-blue-primary md:max-w-[190px]"
-              >
-                <option value="all">Every owner</option>
-                {owners.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              <PeopleSelect
+                ariaLabel="Filter by relationship owner"
+                className="shrink-0 md:w-[190px]"
+                value={owner === "all" ? "" : owner}
+                onChange={(v) => setOwner(v || "all")}
+                placeholder="Every owner"
+                options={owners}
+              />
             )}
             <button
               type="button"

@@ -4,21 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Sparkles,
-  Package,
-  Mail,
-  Copy,
-  RefreshCw,
-  Check,
-  PhoneCall,
-  ChevronRight,
-  X,
-} from "lucide-react";
+  Sparkles, Package, Mail, Copy, RefreshCw, Check, PhoneCall, ChevronRight, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { useToast } from "@/components/ui/Toast";
 import { copyText } from "@/lib/clipboard";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 
 // One ranked offering row, serialized by the contact page.
 export type ContactOffering = {
@@ -254,23 +246,27 @@ export function ContactOutreachPanel({
               <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1">
                 Offering to pitch
               </label>
-              <select
-                aria-label="Offering to pitch"
+              <ColorSelect
+                ariaLabel="Offering to pitch"
+                className="w-full"
+                collapsible={false}
                 value={offeringId}
-                onChange={(e) => {
-                  setOfferingId(e.target.value);
+                onChange={(v) => {
+                  setOfferingId(v);
                   setDraft(null);
                   setMessage("");
                 }}
-                className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13.5px] text-text-primary focus:outline-none focus:shadow-input-focus"
-              >
-                {offerings.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                    {o.score >= 2 ? ": strong match" : ""}
-                  </option>
-                ))}
-              </select>
+                options={offerings.map((o) => ({
+                  value: o.id,
+                  label: o.name,
+                  icon: Package,
+                  color: "#0071E3",
+                  // The match strength rides as a badge instead of being glued
+                  // into the label text.
+                  badge: o.score >= 2 ? "Strong match" : undefined,
+                  badgeColor: o.score >= 2 ? "#059669" : undefined,
+                }))}
+              />
             </div>
             {mode !== "voice" && (
               <div>

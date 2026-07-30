@@ -2,26 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Search,
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Gauge,
-  Download,
-  Share2,
-  CheckCircle2,
-  AlertTriangle,
-  Lightbulb,
-  Sparkles,
-  Send,
-  Clock,
-  Flag,
-  Plus,
-  Upload,
-  Phone,
-  MessageSquarePlus,
-} from "lucide-react";
+  Search, Play, Pause, SkipBack, SkipForward, Gauge, Download, Share2, CheckCircle2, AlertTriangle, Lightbulb, Sparkles, Send, Clock, Flag, Plus, Upload, Phone, MessageSquarePlus, CalendarClock, Trophy, Timer } from "lucide-react";
 import { cn, OUTCOME_META } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -32,6 +13,7 @@ import { DonutChart } from "@/components/charts/Charts";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { userScopedStorageKey } from "@/lib/userIdentity";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
   RECORDINGS,
   transcriptFor,
@@ -384,16 +366,18 @@ export function RecordingsWorkspace() {
               </span>
               <InfoHint text="These are sample calls so you can explore the coaching features. Upload a recording or connect your dialer (top-right) to analyze your real ones." />
             </span>
-            <select
+            <ColorSelect
+              ariaLabel="Sort recordings"
+              collapsible={false}
+              minWidth={140}
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="text-[12px] bg-white border border-border-light rounded-md px-2 py-1 outline-none focus:border-blue-primary"
-              aria-label="Sort recordings"
-            >
-              <option value="recent">Recent</option>
-              <option value="score">Top score</option>
-              <option value="duration">Longest</option>
-            </select>
+              onChange={(v) => setSortBy(v as typeof sortBy)}
+              options={[
+                { value: "recent", label: "Recent", icon: CalendarClock, color: "#0F766E" },
+                { value: "score", label: "Top score", icon: Trophy, color: "#7C3AED" },
+                { value: "duration", label: "Longest", icon: Timer, color: "#0071E3" },
+              ]}
+            />
           </div>
           <div className="relative">
             <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />

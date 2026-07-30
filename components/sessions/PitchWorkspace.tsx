@@ -3,26 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Copy,
-  Check,
-  Download,
-  History,
-  Send,
-  Files,
-  ChevronDown,
-  MoreHorizontal,
-  RotateCcw,
-  Mail,
-  CalendarClock,
-  Lock,
-  MessageSquare,
-  CornerDownRight,
-  Pencil,
-  Clock,
-  Phone,
-  FileText,
-  Timer,
-} from "lucide-react";
+  Copy, Check, Download, History, Send, Files, ChevronDown, MoreHorizontal, RotateCcw, Mail, CalendarClock, Lock, MessageSquare, CornerDownRight, Pencil, Clock, Phone, FileText, Timer, PenLine } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SubjectLineCarousel } from "@/components/sessions/SubjectLineCarousel";
 import { copyText } from "@/lib/clipboard";
@@ -41,6 +22,7 @@ import type {
 
 import { REVIEW_META } from "@/lib/review";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 
 const CRM_TARGETS = [
   { key: "hubspot", label: "HubSpot" },
@@ -1021,19 +1003,22 @@ export function PitchWorkspace({
             <label className="block text-[12px] font-medium text-text-secondary mb-1">
               Template
             </label>
-            <select
-              aria-label="Email template"
+            <ColorSelect
+              ariaLabel="Email template"
+              className="w-full"
+              collapsible={false}
               value={composeTemplate}
-              onChange={(e) => applyTemplate(e.target.value)}
-              className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-            >
-              <option value="">From this pitch (current draft)</option>
-              {EMAIL_TEMPLATES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+              onChange={applyTemplate}
+              options={[
+                { value: "", label: "From this pitch (current draft)", icon: PenLine, color: "#0071E3" },
+                ...EMAIL_TEMPLATES.map((t) => ({
+                  value: t.id,
+                  label: t.name,
+                  icon: FileText,
+                  color: "#0F766E",
+                })),
+              ]}
+            />
           </div>
           <div>
             <label className="block text-[12px] font-medium text-text-secondary mb-1">
