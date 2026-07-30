@@ -1,0 +1,223 @@
+# AGENTS.md — read this before touching anything
+
+This is the agent handbook for **Freyr Sales Intelligence**. Codex, Claude
+Code, and any other coding agent: everything you need that is NOT in the code
+lives here. `CLAUDE.md` is the Claude-specific copy of the working rules — if
+you change the rules, change both files.
+
+**This is production software.** Freyr Solutions staff (Eeswar, Saras, Wajeed,
+more coming) use the deployed app today. Suren, Freyr's CEO, reviews it
+personally and judges pages at a glance. Anir owns the product and directs all
+work; you build.
+
+---
+
+## 1. THE ONE WAY TO DESTROY PRODUCTION (it happened on Jul 30, 2026)
+
+`.env.local` contains the **real production Supabase URL + service-role key**
+and the real Freya.Docs credentials. There is no staging database.
+
+- Any local server that comes up in **live mode** reads AND WRITES the
+  production database. The persisted `workspace-data-mode` row says `live`,
+  so servers can adopt live mode on boot.
+- `PORT=3007` / `NEXT_DIST_DIR=.next-test` isolate the **build cache only** —
+  NOT the database.
+- On Jul 30 the Playwright suite, run the "safe" way, **overwrote the
+  production offering catalogue** (25 real sales materials, owners, folders)
+  and left rows literally named "Must not persist" and "Launch Biotech
+  <epoch>" in prod. Recovery took hours.
+
+**Therefore: DO NOT run the Playwright suite (`npx playwright test`) at all**
+until someone builds a guard that points tests at a scratch database or stubs
+persistence. No exceptions for "just one spec" — one spec caused the wipe.
+Verify with `npx tsc --noEmit` + read-only page screenshots instead (§6).
+
+Recovery artifacts from the incident live in `~/freyr-backups/`
+(`prod-catalog-backup.json` = wiped state, `prod-catalog-RESTORED.json` =
+what was written back, `deleted-test-customers.json`).
+
+## 2. Deploying — a push to `main` IS a deploy
+
+- `.github/workflows/deploy.yml` fires on every push to `main`: build → ECR →
+  new ECS task definition (inherits live env verbatim) → roll ECS → verify the
+  live SHA. ~5 minutes. It goes red and auto-rolls-back if `/api/health` fails.
+- **Never push to `main` without Anir's explicit yes for that specific push.**
+  One "deploy it" covers one push. Name what's in the push when asking.
+- Working branch: `gh-push`. Remote `origin` = github.com/anirsuren/freyr-sales.
+  (`azure` remote is legacy — not the deploy source.)
+- Verify a deploy independently:
+  `curl -s https://freyrsales.dev.freyrapps.com/api/health` →
+  `version` must equal the pushed commit SHA; check `status`, `database`,
+  `dataMode`.
+- The git PAT **lacks workflow scope**: you cannot push edits to
+  `.github/workflows/*` (GitHub rejects the push). Workflow edits happen via
+  the GitHub web editor only.
+
+## 3. Environment map
+
+- **Prod**: https://freyrsales.dev.freyrapps.com (AWS ECS). Boots in real
+  ("live") mode. Auth = Supabase; @freyrsolutions.com emails auto-join.
+- **Anir's dev server**: `PORT=3001 npm run dev` (defaults to 3000 without
+  PORT). This is his live view — treat it as shared. It usually runs in live
+  mode, i.e. **writes real data**.
+- Mode is **server-wide, per-process**: flipping it flips it for everyone on
+  that server. Fresh local boots default to **mock**. Flip:
+  `curl -X POST localhost:3001/api/settings/data-mode -H 'Content-Type: application/json' -d '{"mode":"live"}'`
+- Mock mode = seeded demo world (Helix Biologics etc.), safe sandbox.
+  Live mode = the real catalogue from Supabase.
+- **Gotcha:** `/api/offerings` GET serves the process's memoised store and
+  never refreshes. To verify a data change, render a PAGE (e.g.
+  `/offerings/of-001`) — pages call `initializeLiveOfferings()` which
+  re-reads within ~5s. A wedged process may hold stale data; restarting the
+  dev server is the standing remedy (then re-flip mode — see fresh-boot
+  default above).
+- Unstyled pages / 503s on `_next/static/*` = corrupted `.next`:
+  `rm -rf .next` and restart.
+
+## 4. Data model — the parts that bite
+
+- `offering_catalog_state` (Supabase) is a **singleton-document store**, key
+  rows:
+  - `default` — the ENTIRE offering catalogue as one JSON document
+    (offerings, materials, folders, owners, master lists). One bad write here
+    nukes everything; back it up before writing.
+  - `material-text` — extracted text of every uploaded file, keyed by
+    `docsPath` (`of-001/<epoch>-<filename>`). **This is the only index of
+    what's in file storage.**
+  - `docs-storage-config`, `workspace-data-mode`, `anthropic-config`,
+    per-user rows (`profile-photo:*`, `user-timezone:*`).
+- **Freya.Docs** (api.freyafusion.com/docs-storage, bucket/module
+  `freyrsales`): upload via token → presign → PUT → complete; download via
+  per-click presign. **No delete or list endpoints** — `docsPath` is the
+  index; losing a docsPath orphans the file.
+- Sales-material downloads stream through
+  `/api/offerings/[id]/materials/download` (`?view=1` = inline, forwards
+  Range headers so video seeking works).
+- Relational tables: `customers`, `contacts` (cascade on customer delete),
+  `pitch_sessions` and `interactions` (**NO cascade** — delete children
+  first), `app_users` (column is `app_role`: admin | editor | sales).
+- Live mode **strips demo materials** (ids `m-0xx`) at render;
+  `restoreDemoMaterials()` deliberately heals them back into the stored row.
+  Don't "clean" them from the row — mock mode uses them.
+- Release gating: `lib/release.ts`. Real mode shows only
+  `RELEASED_MODULE_PREFIXES` — currently `/offerings`, `/agent`,
+  `/customers` — plus `NON_MODULE_PATHS` (login, settings, onboarding…).
+  Everything else exists but is mock-mode-only until released.
+
+## 5. Working rules (non-negotiable, from Anir)
+
+1. **Scope belongs to Anir.** "Audit/check/look at X" = investigate and
+   REPORT, ranked, with file:line — then stop. Never bundle "found it" with
+   "fixed and shipped it."
+2. **Never change permissions, auth, visibility, or existing user-facing
+   behaviour on your own judgement** — report instead, even when you're sure.
+3. **A push to main needs a yes for that push** (§2).
+4. **Honesty:** say whether something is verified-by-running or only
+   compiled/read. Report test reds as they are. Never invent data about real
+   people (no guessed phone numbers/emails/LinkedIn). If you broke something,
+   say so in the first line.
+5. **Mid-conversation messages fold into the queue** — acknowledge, keep
+   going, drop nothing.
+6. **Lead with the TLDR**, plain English, fix rather than present options.
+   Anir is technical-adjacent; Suren is not — UI copy must be jargon-free.
+7. Don't burn the Anthropic API key on bulk agent sweeps (it's Anir's paid
+   key). Test agent features with 2–5 questions.
+
+## 6. How to verify work (given §1's test ban)
+
+- `npx tsc --noEmit` — must be clean.
+- Read-only Playwright **scripts** (not the suite) against the already-running
+  :3001 for screenshots: launch chromium, goto page, click, screenshot.
+  Import from `@playwright/test`. Never write data; never start extra servers
+  with the real env.
+- Screenshot UI changes and show Anir BEFORE full verification/deploy — he
+  signs off visually first (standing workflow).
+- curl for APIs; check prod only via `/api/health` and real page loads.
+
+## 7. Design system — Suren's non-negotiables
+
+- **No gray** identity elements; every category/status chip and every
+  dropdown option carries **color + icon**. Use `ColorSelect`
+  (components/ui/ColorSelect.tsx) for categoricals and `PeopleSelect`
+  (headshot per person, optional `sub` line) for people. Native `<select>` is
+  banned (sweep in progress — see §9).
+- Red/green/yellow are **reserved for status** — never identity/brand hues.
+- **No fake data in real mode, ever.** Empty ≠ hidden: pages render their
+  full real structure with honest zeros and a one-line explanation (see the
+  offering Reports tab / empty Customers module for the pattern).
+- Glance test: every page shows real stats/graphs without clicking;
+  drill-downs must ADD information, not restate.
+- Charts: fill the card width, units visible at rest, tooltips portal
+  (never clipped), hover shows the who/what breakdown, no "…" truncation,
+  donut legends beside the ring, hover popovers scale UP on the card.
+- Every company mention gets its logo, every person their headshot
+  (CompanyLogo / Avatar resolve by name). Countries get flags.
+- Charts architecture: server components must not pass functions to client
+  charts — `format` is a string kind. Palette in components/charts/palette.ts.
+- Dark mode exists (`.dark` class + `freyr.theme` localStorage): SVG text
+  fills must use `fill-current` + text tokens, never hardcoded hex.
+
+## 8. People
+
+- **Anir Suren** — builds everything, directs agents. Admin
+  (anir.s@freyrsolutions.com, app_users id 6d64db4f-…).
+- **Eswar Subramanian** — Freyr, admin, uploads sales materials
+  (eswar.subramanian@…, id 0657b916-…).
+- **Saras Verma** — Freyr tech coordinator (sales role). Announced the
+  Customers module as the next build.
+- **Wajeed / Sudhir / Hemanth** — Freyr stakeholders (folders list, roadmap
+  gating, offering-owner process).
+- **Suren** — CEO. Vision: agentic platform; three releases he named on
+  Jul 30: (1) AI answering from all offering content, (2) roadmap/version
+  tab with sales-safe gating, (3) customer × offering heat map over ~100
+  named accounts imported from KonnectCo without disrupting it.
+
+## 9. Current state — Jul 30, 2026, end of day
+
+- **Prod is at `24ced01`** (tabs, floating materials + viewer, rail
+  collapse, agent grounding on the open offering, dock typewriter,
+  admin-only folders, search→agent handoff, /offerings/new deleted).
+- **Unpushed local stack on `gh-push`** (Anir said "don't push"; ask before
+  pushing): video cinema stage `37eac32`, bare-bones Reports `58b5765`,
+  custom video player + Range seeking `98d6960`, Customers module released
+  `aaf8597`, Analyze-the-customer card removed `f804cd4`, dropdown sweep
+  parts 1–2 `35e74be` `c12c8ab`.
+- Freya.Register's 21 restored materials: 8 files are **unfiled** (only
+  unambiguous folder placements were made); ~4 of the original 25 were
+  link-only materials whose names are unrecoverable — Eeswar re-adds them.
+
+### Open queue
+1. **Dropdown sweep remainder** (~12 native selects): settings
+   (SettingsTabs), agent (AgentRunHistory ×2, AgentPreferences ×2,
+   AgentDraftModal), campaigns (CampaignsView ×2), sessions
+   (PitchWorkspace), recordings, contacts (ContactOutreachPanel), activity
+   (ActivityFeed). Standard: §7.
+2. **Customers page**: search input must expand to the RIGHT only (left edge
+   pinned — see SearchPriority in components/ui/SearchPriority.tsx), and the
+   empty page needs real "Add a customer" + "Import CSV" actions
+   (`/api/customers` currently has GET only — a POST needs building or the
+   tests' creation path reused).
+3. Main agent page (`/api/agent/converse`) doesn't receive offering context —
+   Suren's fallback option ("if you go there from an offering it should
+   already understand the context"). The dock (`/api/agent/assistant`) does.
+4. Older queue: voice outcomes Declined→No answer; sessions-table company
+   name wrapping; app-wide icon/logo audit.
+5. **Test-suite DB guard** (§1) — proposed to Anir, not yet approved/built.
+
+### Blocked on Freyr (asked Jul 30, awaiting answers)
+- The 14 standard folder names; the document-type list; whether folder names
+  are a locked pick list; roadmap-tab fields; roadmap visibility rule
+  (sales must not see beyond current release); Suren's GSK roadmap format.
+- Later: ~100-account list, KonnectCo export, offering taxonomy bucketing.
+
+## 10. Meeting knowledge (Jul 30 stakeholder meeting, fully transcribed)
+
+Frames + transcript were analyzed second-by-second in a prior session.
+Durable takeaways: folder types AND document types must be system-defined
+pick lists with one "Other" each (Suren: "system should restrict; process
+can fail"); file formats inside folders stay unrestricted; roadmap tab =
+current version, next version, feature comparison, contacts — with anything
+beyond current release hidden from sales; the offering page's AI entry is
+the bottom-right dock (Anir's call: keep the dock, no extra Ask button);
+agent answers must come from the offering's own content; materials tab is
+the "heavy traffic" front door.
