@@ -292,6 +292,7 @@ export function OfferingsBrowser({
   offeringTypes,
   offeringCategories,
   commerce,
+  newOfferingAction,
 }: {
   offerings: HydratedOffering[];
   customerTypes: CustomerType[];
@@ -301,6 +302,15 @@ export function OfferingsBrowser({
   /** Per-offering revenue/usage rollup (server-computed) powering the hover
    *  mini-dashboard. */
   commerce?: Record<string, OfferingCommerce>;
+  /**
+   * The "New offering" pop-up trigger, handed down from the server page (it
+   * needs server-only lists for its pickers, and this is a client component).
+   * The empty state used to link to a standalone /offerings/new PAGE, so the
+   * same action opened as a modal from the header and as a full page from the
+   * empty state (Anir, Jul 30: "new offering has to be a popup which u already
+   * have, but from the search bar it takes me here which is weird").
+   */
+  newOfferingAction?: React.ReactNode;
 }) {
   // Seed filters from the URL so chips elsewhere can deep-link into a filtered
   // view (e.g. /offerings?market=mkt-europe from a market chip on an offering).
@@ -1221,14 +1231,7 @@ export function OfferingsBrowser({
             icon={Package}
             title="No offerings yet."
             description="Build the repository by adding your first offering: its type, who it's for, the markets it covers, and the sales materials behind it."
-            action={
-              <Link
-                href="/offerings/new"
-                className="inline-flex items-center justify-center text-[13px] font-semibold rounded-md px-4 py-2 bg-blue-primary text-white hover:bg-blue-hover transition-colors"
-              >
-                + New offering
-              </Link>
-            }
+            action={newOfferingAction}
           />
         </Card>
       ) : filtered.length === 0 ? (

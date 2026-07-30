@@ -3925,11 +3925,15 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("261 — new-offering form focuses the name field on empty submit (V28)", async ({
     page,
   }) => {
-    await page.goto(`${BASE}/offerings/new`);
+    await page.goto(`${BASE}/offerings`);
+    // "New offering" is a POP-UP on the list now — the standalone
+    // /offerings/new page is gone (Anir, Jul 30: "new offering has to be a
+    // popup which u already have"). Everything below composes in the dialog.
+    await page.getByRole("button", { name: "New offering" }).click();
     await page.getByRole("button", { name: /Save offering/i }).click();
     // submit is blocked and the required name field is focused so the user
     // knows exactly what to fix
-    await expect(page).toHaveURL(/\/offerings\/new/);
+    await expect(page.getByRole("dialog")).toBeVisible();
     await expect(
       page.locator('input[placeholder="e.g. Freya.Register"]')
     ).toBeFocused();
@@ -3938,7 +3942,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   test("262 — half-filled material row blocks save instead of vanishing (V29)", async ({
     page,
   }) => {
-    await page.goto(`${BASE}/offerings/new`);
+    await page.goto(`${BASE}/offerings`);
+    // "New offering" is a POP-UP on the list now — the standalone
+    // /offerings/new page is gone (Anir, Jul 30: "new offering has to be a
+    // popup which u already have"). Everything below composes in the dialog.
+    await page.getByRole("button", { name: "New offering" }).click();
     await page
       .locator('input[placeholder="e.g. Freya.Register"]')
       .fill("QA Material Guard");
@@ -3955,14 +3963,18 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       .click();
     // URL intentionally left blank — must be flagged, not silently dropped
     await page.getByRole("button", { name: /Save offering/i }).click();
-    await expect(page).toHaveURL(/\/offerings\/new/);
+    await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByText(/Add a link for/i)).toBeVisible();
   });
 
   test("263 — bare-domain material links get an https scheme (V30)", async ({
     page,
   }) => {
-    await page.goto(`${BASE}/offerings/new`);
+    await page.goto(`${BASE}/offerings`);
+    // "New offering" is a POP-UP on the list now — the standalone
+    // /offerings/new page is gone (Anir, Jul 30: "new offering has to be a
+    // popup which u already have"). Everything below composes in the dialog.
+    await page.getByRole("button", { name: "New offering" }).click();
     await page
       .locator('input[placeholder="e.g. Freya.Register"]')
       .fill("QA URL Normalize");
@@ -4256,8 +4268,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("link", { name: /Edit offering/ })).toHaveCount(
       0
     );
-    // reaching an editing screen shows a view-only notice
-    await page.goto(`${BASE}/offerings/new`);
+    // Reaching an editing screen by URL shows a view-only notice. This used to
+    // probe /offerings/new; that page is gone (creating an offering is a pop-up
+    // now, and a pop-up has no URL to type), so the edit route carries the
+    // check — same guard, same notice.
+    await page.goto(`${BASE}/offerings/of-003/edit`);
     await expect(page.getByText("View only")).toBeVisible();
     // managers hide their add controls
     await page.goto(`${BASE}/offerings/offering-types`);

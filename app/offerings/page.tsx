@@ -351,6 +351,19 @@ export default async function OfferingsPage() {
           offeringTypes={offeringTypes}
           offeringCategories={offeringCategories}
           commerce={commerce}
+          newOfferingAction={
+            canEdit ? (
+              <NewOfferingButton
+                people={listOfferingPeople()}
+                customerTypes={customerTypes}
+                markets={markets}
+                existingTypes={Array.from(
+                  new Set(offeringTypes.map((t) => t.name))
+                )}
+                offeringCategories={offeringCategories}
+              />
+            ) : undefined
+          }
         />
       </Suspense>
     </div>

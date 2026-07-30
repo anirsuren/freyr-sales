@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Info, Plus } from "lucide-react";
+import { Info, Plus, FileQuestion, FileText } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { DOCUMENT_TYPES, DOCUMENT_TYPE_META, type DocumentType } from "@/lib/offeringMaterials";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -45,6 +46,19 @@ const FORMATS = MATERIAL_FORMATS;
 // Add a sales material to an offering from a POP-UP, right on the offering page
 // (Suren: "this should be a pop-up, not take me to some weird edit page"). Saves
 // via the offering PATCH and refreshes so it shows immediately.
+/** The system-defined document types, as a colour-coded picker. "Not set" is
+ *  first so an owner who has not chosen yet is visibly un-chosen rather than
+ *  silently filed as a proposal. */
+const DOC_TYPE_OPTIONS: ColorOption[] = [
+  { value: "", label: "Not set", color: "#8A8A8E", icon: FileQuestion },
+  ...DOCUMENT_TYPES.map((t) => ({
+    value: t,
+    label: DOCUMENT_TYPE_META[t].label,
+    color: DOCUMENT_TYPE_META[t].color,
+    icon: FileText,
+  })),
+];
+
 export function AddMaterialButton({
   offeringId,
   materials,
@@ -76,6 +90,14 @@ export function AddMaterialButton({
    * and the form will not submit without it.
    */
   const [kind, setKind] = useState<MaterialFormat | "">("");
+  /**
+   * WHAT IT IS, chosen from the system list — never typed. Suren, Jul 30:
+   * "the document type has to be system defined… only other category in the
+   * document type, in that they want to put any miscellaneous stuff."
+   * Defaults to nothing so the uploader makes a real choice rather than
+   * accepting whatever sat at the top of the list.
+   */
+  const [documentType, setDocumentType] = useState<DocumentType | "">("");
   const [journeyStage, setJourneyStage] = useState<JourneyStage>("awareness");
   const [accessLevel, setAccessLevel] = useState<AccessLevel>("client_facing");
   const [label, setLabel] = useState("");
@@ -96,6 +118,7 @@ export function AddMaterialButton({
   function reset() {
     setKind("");
     setJourneyStage("awareness");
+    setDocumentType("");
     setAccessLevel("client_facing");
     setLabel("");
     setDescription("");
@@ -295,6 +318,7 @@ export function AddMaterialButton({
           ...(uploadFolder ? { folder: uploadFolder } : {}),
           journeyStage,
           accessLevel,
+          ...(documentType ? { documentType } : {}),
           readByAgent,
         },
       ];
@@ -413,6 +437,22 @@ export function AddMaterialButton({
                 );
               })}
             </div>
+          </div>
+
+          {/* WHAT THIS DOCUMENT IS — the system-defined list, so twenty owners
+              cannot invent twenty words for "proposal". Separate from the file
+              FORMAT above: format is how it opens, this is what it is. */}
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
+              Document type
+            </label>
+            <ColorSelect
+              value={documentType}
+              options={DOC_TYPE_OPTIONS}
+              onChange={(v) => setDocumentType(v as DocumentType)}
+              ariaLabel="Document type"
+              minWidth={0}
+            />
           </div>
 
           {/* CR-3: every material carries its buyer's-journey stage + who may

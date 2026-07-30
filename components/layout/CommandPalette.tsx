@@ -52,10 +52,20 @@ type AgentCmd = {
 
 const AGENT_CMDS: AgentCmd[] = [
   { key: "console", label: "Open AI Agent console", icon: Bot, kind: "nav", href: "/agent" },
-  { key: "new-offering", label: "New offering", icon: Package, kind: "nav", href: "/offerings/new" },
+  // No "New offering" here. Creating an offering is a POP-UP on the offerings
+  // list, and this row was the last thing still routing to a standalone page
+  // for the same job — two different front doors to one form (Anir, Jul 30:
+  // "new offering has to be a popup which u already have, but from the search
+  // bar it takes me here which is weird"). The page is gone; this row went
+  // with it.
   { key: "autopilot", label: "Run autopilot", icon: Rocket, kind: "run", endpoint: "/api/agent/autopilot" },
   { key: "cadence", label: "Prep the re-engagement sequence", icon: Zap, kind: "run", endpoint: "/api/agent/cadence-run" },
 ];
+
+// Which agent commands survive the offerings-only release. The two "run" plays
+// drive sequences and campaigns — unreleased modules — so they stay behind the
+// gate. Opening the agent console and creating an offering do not.
+const RELEASED_AGENT_CMDS: ReadonlySet<string> = new Set(["console"]);
 
 interface Result {
   type: string;
@@ -201,7 +211,7 @@ export function CommandPalette({
       (q.trim()
         ? AGENT_CMDS.filter((c) => c.label.toLowerCase().includes(q.toLowerCase()))
         : AGENT_CMDS
-      ).filter(() => !offeringsOnly),
+      ).filter((c) => !offeringsOnly || RELEASED_AGENT_CMDS.has(c.key)),
     [offeringsOnly, q]
   );
 
@@ -209,7 +219,14 @@ export function CommandPalette({
   const items = useMemo<Item[]>(() => {
     const list: Item[] = [];
     const query = q.trim();
-    if (query && !offeringsOnly) {
+    // TYPE A QUESTION, HIT ENTER, LAND IN A FRESH AGENT CHAT WITH IT ASKED.
+    // This row used to be stripped in the offerings-only release along with the
+    // rest of the Agent section — but /agent shipped with the second rollout
+    // (lib/release.ts), so the gate was outliving its reason and the top-bar
+    // search silently lost its best trick (Anir, Jul 30: "what happened to the
+    // thing where I could type 'tell me about the offerings' and it would auto
+    // go to the agent with a new chat with that message").
+    if (query) {
       list.push({
         key: "goal",
         section: "Agent",
