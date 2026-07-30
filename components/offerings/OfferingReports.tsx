@@ -143,14 +143,11 @@ export function OfferingReports({
   offeringName: string;
   /** In-progress (mock) mode only: show a labelled sample report when empty. */
 }) {
-  // No early "empty" card any more. The report renders its FULL structure at
-  // zero — real tiles, real chart frames, real table headers — with a one-line
-  // banner saying why everything reads 0 (Anir, Jul 30: "it should still show
-  // the bare bones of it, not fake data, not mock mode"). Every computation
-  // below is zero-safe: reduces over empty arrays and share divisions are all
-  // guarded.
-  const isEmpty = report.customerCount === 0;
-
+  // No early "empty" card, and no banner either (Anir: "remove the thing that
+  // says 'this is a live…'"). The report renders its FULL structure at zero —
+  // real tiles, chart frames and table headers with honest zeros; the tables'
+  // own empty rows carry the one-line explanations. Every computation below is
+  // zero-safe: reduces over empty arrays and share divisions are all guarded.
   const now = new Date();
   const lines: ReportLine[] = report.customers.flatMap((customer) =>
     customer.lines.map((line) => ({
@@ -323,15 +320,6 @@ export function OfferingReports({
 
   return (
     <div className="mt-6 space-y-4">
-      {isEmpty && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-blue-primary/20 bg-blue-light px-4 py-3">
-          <ReceiptText size={15} strokeWidth={1.9} className="mt-0.5 shrink-0 text-blue-primary" />
-          <p className="text-[12.5px] leading-relaxed text-text-secondary">
-            <span className="font-semibold text-text-primary">This is the live report — nothing is recorded yet, so every number reads zero.</span>{" "}
-            It fills in as customers mark {offeringName} as in use and their commercial terms are added.
-          </p>
-        </div>
-      )}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile icon={Users} label="Customers" value={String(report.customerCount)} sub="currently using it" />
         <StatTile icon={DollarSign} label="Total revenue" value={formatMoney(report.totalRevenue)} sub="booked across customers" />
