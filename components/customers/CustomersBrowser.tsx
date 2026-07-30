@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SearchX, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3 } from "lucide-react";
+import { SearchX, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
@@ -27,6 +27,7 @@ import { userScopedStorageKey } from "@/lib/userIdentity";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
+import { Modal } from "@/components/ui/Modal";
 import type { Customer } from "@/lib/types";
 import type { TipItem } from "@/components/charts/Charts";
 import { geographyWithFlag } from "@/lib/countryFlags";
@@ -181,6 +182,68 @@ export function CustomersBrowser({
     } catch {}
   }
   const PER_PAGE = perPage;
+
+  // Adding accounts — both doors go through the SAME approved importer
+  // (/api/import/crm): the CSV picker sends the file as-is, "Add customer"
+  // sends a one-row CSV. One pipeline, one dedupe/skip behaviour.
+  const [addOpen, setAddOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [addForm, setAddForm] = useState({ company: "", website: "", contactName: "", contactEmail: "" });
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function postCrmCsv(file: File | Blob, filename: string) {
+    const body = new FormData();
+    body.append("file", file, filename);
+    const res = await fetch("/api/import/crm", { method: "POST", body });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Import failed");
+    return data as { customers: number; contacts: number; skipped: number };
+  }
+
+  async function importCsv(file: File) {
+    setImporting(true);
+    try {
+      const r = await postCrmCsv(file, file.name);
+      toast(
+        `Imported ${r.customers} account${r.customers === 1 ? "" : "s"}, ${r.contacts} contact${r.contacts === 1 ? "" : "s"}${r.skipped ? ` · ${r.skipped} skipped` : ""}`
+      );
+      router.refresh();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Import failed", "error");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function addCustomer() {
+    const name = addForm.company.trim();
+    if (!name) {
+      toast("Give the company a name", "error");
+      return;
+    }
+    setAdding(true);
+    try {
+      const esc = (v: string) => `"${v.trim().replace(/"/g, '""')}"`;
+      const csv =
+        "company_name,website_url,contact_name,contact_email\n" +
+        [name, addForm.website, addForm.contactName, addForm.contactEmail].map(esc).join(",") +
+        "\n";
+      const r = await postCrmCsv(new Blob([csv], { type: "text/csv" }), "add-customer.csv");
+      if (r.customers === 0 && r.skipped > 0) {
+        toast("That account already exists", "error");
+      } else {
+        toast(`${name} added`);
+        setAddOpen(false);
+        setAddForm({ company: "", website: "", contactName: "", contactEmail: "" });
+        router.refresh();
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't add that", "error");
+    } finally {
+      setAdding(false);
+    }
+  }
 
   // bulk actions (V4 #7)
   const [selectMode, setSelectMode] = useState(false);
@@ -369,8 +432,9 @@ export function CustomersBrowser({
 
   return (
     <div>
-      {/* Title + filters (incl. a compact search) on one row — no standalone
-          search bar eating a whole row (Suren). */}
+      {/* Title left, the two ways an account ENTERS the system right (Anir,
+          Jul 30: "people should want to either import or add a customer, so
+          that should be there"). */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
         <div className="min-w-0">
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
@@ -380,16 +444,51 @@ export function CustomersBrowser({
             Every company in your pipeline.
           </p>
         </div>
-        {/* Search priority — press the search and the filters to its right
-            compress to their colour + glyph (Suren, Jul 27). */}
-        <SearchPriority
-          query={query}
-          className="flex items-center gap-2 flex-wrap shrink-0"
-        >
-          {/* Compact search sits inline with the filters — no dedicated row
-              hogging space (Suren: the top-bar search already covers global
-              search; this just filters the grid). */}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={importing}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface disabled:opacity-50"
+          >
+            <Upload size={15} strokeWidth={1.8} />
+            {importing ? "Importing…" : "Import CSV"}
+          </button>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="inline-flex items-center gap-1 rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white shadow-[0_1px_2px_rgba(0,113,227,0.20)] transition-all hover:bg-blue-hover hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+          >
+            <Plus size={15} strokeWidth={2.2} />
+            Add customer
+          </button>
+          {/* Hidden picker behind Import CSV — same columns the approved
+              importer expects. */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void importCsv(f);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      </div>
+
+      {/* The toolbar is its own FULL-WIDTH bar, the same shape the offerings
+          page uses. The search is `grow`: its left edge is pinned and focusing
+          it expands it RIGHTWARD into the space the compressing filters
+          release (Anir, Jul 30: "the search bar shouldn't move like that — it
+          should only expand to the right"). The old layout right-aligned a
+          width-animated input, so its left edge jumped left on focus. */}
+      <SearchPriority
+        query={query}
+        className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
+      >
           <PrioritySearchInput
+            grow
+            className="flex-1"
             value={query}
             onChange={setQuery}
             placeholder="Search customers…"
@@ -487,8 +586,7 @@ export function CustomersBrowser({
               <PriorityLabel>CSV</PriorityLabel>
             </button>
           </PriorityTooltip>
-        </SearchPriority>
-      </div>
+      </SearchPriority>
       {/* Bulk action bar */}
       {selectMode && selected.size > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light flex-wrap">
@@ -553,6 +651,34 @@ export function CustomersBrowser({
       )}
 
       {filtered.length === 0 ? (
+        customers.length === 0 ? (
+          // A truly empty workspace is an invitation, not a failed search
+          // (Anir, Jul 30). Same two doors as the header.
+          <EmptyState
+            icon={Plus}
+            title="No customers yet"
+            description="Add your first account, or import your whole list from a CSV — columns: company_name, website_url, contact_name, contact_email."
+            action={
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={importing}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface disabled:opacity-50"
+                >
+                  <Upload size={15} strokeWidth={1.8} />
+                  {importing ? "Importing…" : "Import CSV"}
+                </button>
+                <button
+                  onClick={() => setAddOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover"
+                >
+                  <Plus size={15} strokeWidth={2.2} />
+                  Add customer
+                </button>
+              </div>
+            }
+          />
+        ) : (
         <EmptyState
           icon={SearchX}
           title="No customers match"
@@ -571,6 +697,7 @@ export function CustomersBrowser({
             ) : undefined
           }
         />
+        )
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 stagger">
           {paged.map((c) => (
@@ -767,6 +894,75 @@ export function CustomersBrowser({
           </div>
         </div>
       )}
+
+      {/* Add ONE account by hand — a one-row CSV through the same importer
+          the file picker uses, so both doors share dedupe and validation. */}
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add a customer">
+        <div className="space-y-3.5">
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Company name
+            </label>
+            <input
+              autoFocus
+              value={addForm.company}
+              onChange={(e) => setAddForm((f) => ({ ...f, company: e.target.value }))}
+              placeholder="e.g. GSK"
+              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Website (optional)
+            </label>
+            <input
+              value={addForm.website}
+              onChange={(e) => setAddForm((f) => ({ ...f, website: e.target.value }))}
+              placeholder="https://…"
+              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                Contact name (optional)
+              </label>
+              <input
+                value={addForm.contactName}
+                onChange={(e) => setAddForm((f) => ({ ...f, contactName: e.target.value }))}
+                placeholder="Who you talk to there"
+                className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                Contact email (optional)
+              </label>
+              <input
+                value={addForm.contactEmail}
+                onChange={(e) => setAddForm((f) => ({ ...f, contactEmail: e.target.value }))}
+                placeholder="name@company.com"
+                className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={() => setAddOpen(false)}
+              className="rounded-md border border-border px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={addCustomer}
+              disabled={adding}
+              className="rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover disabled:opacity-50"
+            >
+              {adding ? "Adding…" : "Add customer"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
