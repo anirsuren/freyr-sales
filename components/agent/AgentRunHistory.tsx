@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -16,8 +17,18 @@ import {
   Undo2,
   ListChecks,
   Maximize2,
+  ListFilter,
+  PenLine,
+  Send,
+  Rocket,
+  Target,
+  CheckCircle2,
+  AlertTriangle,
+  CircleDot,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
@@ -36,6 +47,23 @@ const OUTCOME_STYLE: Record<AgentRun["outcome"], string> = {
   sent: "bg-success/15 text-success",
   escalated: "bg-warning/15 text-warning",
   mixed: "bg-surface text-text-secondary",
+};
+
+
+// One accent per kind/outcome so the two filters obey the dropdown standard
+// (colour + icon, never a gray list). Outcome hues reuse the pill styles
+// above: handled=blue, sent=green (a real success), escalated=warning.
+const KIND_ACCENT: Record<AgentRun["kind"], { color: string; icon: LucideIcon }> = {
+  act: { color: "#0071E3", icon: PenLine },
+  play: { color: "#7C3AED", icon: Send },
+  autopilot: { color: "#0F766E", icon: Rocket },
+  plan: { color: "#C2410C", icon: Target },
+};
+const OUTCOME_ACCENT: Record<AgentRun["outcome"], { color: string; icon: LucideIcon }> = {
+  handled: { color: "#0071E3", icon: CheckCircle2 },
+  sent: { color: "#059669", icon: Send },
+  escalated: { color: "#B45309", icon: AlertTriangle },
+  mixed: { color: "#59616E", icon: CircleDot },
 };
 
 function StepIcon({ status }: { status: AgentStepStatus }) {
@@ -118,36 +146,38 @@ export function AgentRunHistory({ runs }: { runs: AgentRun[] }) {
     <div>
       {showFilters && (
         <div className="flex items-center gap-2 mb-3">
-          <select
-            aria-label="Filter runs by kind"
+          <ColorSelect
+            ariaLabel="Filter runs by kind"
+            collapsible={false}
+            minWidth={150}
             value={kindFilter}
-            onChange={(e) =>
-              setKindFilter(e.target.value as AgentRun["kind"] | "all")
-            }
-            className="bg-surface border border-border rounded-md px-2.5 py-1 text-[12px] text-text-primary outline-none focus:border-blue-primary transition-colors"
-          >
-            <option value="all">All kinds</option>
-            {kinds.map((k) => (
-              <option key={k} value={k}>
-                {KIND_LABEL[k]}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Filter runs by outcome"
+            onChange={(v) => setKindFilter(v as AgentRun["kind"] | "all")}
+            options={[
+              { value: "all", label: "All kinds", icon: ListFilter },
+              ...kinds.map((k) => ({
+                value: k,
+                label: KIND_LABEL[k],
+                color: KIND_ACCENT[k].color,
+                icon: KIND_ACCENT[k].icon,
+              })),
+            ]}
+          />
+          <ColorSelect
+            ariaLabel="Filter runs by outcome"
+            collapsible={false}
+            minWidth={160}
             value={outcomeFilter}
-            onChange={(e) =>
-              setOutcomeFilter(e.target.value as AgentRun["outcome"] | "all")
-            }
-            className="bg-surface border border-border rounded-md px-2.5 py-1 text-[12px] text-text-primary outline-none focus:border-blue-primary transition-colors capitalize"
-          >
-            <option value="all">All outcomes</option>
-            {outcomes.map((o) => (
-              <option key={o} value={o} className="capitalize">
-                {o}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setOutcomeFilter(v as AgentRun["outcome"] | "all")}
+            options={[
+              { value: "all", label: "All outcomes", icon: ListFilter },
+              ...outcomes.map((o) => ({
+                value: o,
+                label: o.charAt(0).toUpperCase() + o.slice(1),
+                color: OUTCOME_ACCENT[o].color,
+                icon: OUTCOME_ACCENT[o].icon,
+              })),
+            ]}
+          />
           <span className="text-[12px] text-text-tertiary tnum ml-auto">
             {visible.length} of {runs.length}
           </span>

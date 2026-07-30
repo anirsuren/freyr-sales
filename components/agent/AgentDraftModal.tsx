@@ -3,18 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight,
-  BookmarkPlus,
-  Check,
-  ClipboardList,
-  Copy,
-  FileText,
-  RefreshCw,
-} from "lucide-react";
+  ArrowRight, BookmarkPlus, Check, ClipboardList, Copy, FileText, RefreshCw, StickyNote } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 
 export type AgentDraft = {
   title: string;
@@ -211,25 +205,27 @@ export function AgentDraftModal({
                 />
                 {rewriting ? "Rewriting…" : "Rewrite"}
               </button>
+              {/* An action menu, not a value: picking a snippet inserts it and
+                  the trigger snaps back to the placeholder. */}
               {snippets.length > 0 && (
-                <select
-                  aria-label="Insert snippet"
-                  defaultValue=""
-                  onChange={(e) => {
-                    if (e.target.value) insertSnippet(e.target.value);
-                    e.target.value = "";
+                <ColorSelect
+                  ariaLabel="Insert snippet"
+                  collapsible={false}
+                  minWidth={150}
+                  value=""
+                  onChange={(v) => {
+                    if (v) insertSnippet(v);
                   }}
-                  className="h-[30px] rounded-md border border-border-light bg-white px-2 text-[12px] font-semibold text-text-secondary hover:text-text-primary focus:outline-none focus:border-blue-primary"
-                >
-                  <option value="" disabled>
-                    Insert snippet…
-                  </option>
-                  {snippets.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.title}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: "", label: "Insert snippet…", icon: StickyNote },
+                    ...snippets.map((sn) => ({
+                      value: sn.id,
+                      label: sn.title,
+                      icon: StickyNote,
+                      color: "#7C3AED",
+                    })),
+                  ]}
+                />
               )}
             </div>
           )}

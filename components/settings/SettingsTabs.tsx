@@ -11,30 +11,7 @@ import {
   detectTimeZone,
   formatAbsolute,
 } from "@/lib/timeZone";
-import {
-  UserPlus,
-  Check,
-  ShieldCheck,
-  Lock,
-  Mail,
-  CalendarDays,
-  MessageSquare,
-  Building2,
-  Link2,
-  MousePointer2,
-  Settings2,
-  UserRound,
-  UsersRound,
-  Bell,
-  PlugZap,
-  KeyRound,
-  UserCheck,
-  UserX,
-  Clock3,
-  Database,
-  ArrowRight,
-  Rocket,
-} from "lucide-react";
+import { UserPlus, Check, ShieldCheck, Lock, Mail, CalendarDays, MessageSquare, Building2, Link2, MousePointer2, Settings2, UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -1221,22 +1198,27 @@ export function SettingsTabs({
               <span className="block text-[13px] font-medium text-text-primary mb-1.5">
                 Time zone
               </span>
-              <select
+              <ColorSelect
+                ariaLabel="Time zone"
+                className={savingZone ? "pointer-events-none w-full opacity-60" : "w-full"}
+                collapsible={false}
                 value={savedZone}
-                onChange={(e) => void saveTimeZone(e.target.value)}
-                disabled={savingZone}
-                aria-label="Time zone"
-                className="w-full cursor-pointer rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none disabled:opacity-60"
-              >
-                <option value="">
-                  Automatic — follow this device ({describeZone(detectedZone)})
-                </option>
-                {zoneChoices.map((z) => (
-                  <option key={z} value={z}>
-                    {describeZone(z)}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => void saveTimeZone(v)}
+                options={[
+                  {
+                    value: "",
+                    label: `Automatic — follow this device (${describeZone(detectedZone)})`,
+                    icon: MonitorSmartphone,
+                    color: "#0071E3",
+                  },
+                  ...zoneChoices.map((z) => ({
+                    value: z,
+                    label: describeZone(z),
+                    icon: Clock,
+                    color: "#0F766E",
+                  })),
+                ]}
+              />
               <span className="mt-1.5 block text-[12px] text-text-secondary">
                 Times read in <strong>{describeZone(activeZone)}</strong>. Right
                 now that is {nowInZone}.

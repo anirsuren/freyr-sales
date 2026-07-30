@@ -1,13 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState } from "react";
 import { useRouter } from "next/navigation";
-import { BrainCircuit } from "lucide-react";
+import { BrainCircuit,
+  Layers,
+  Building2,
+  Infinity,
+  DollarSign,
+  FlaskConical,
+  Pill,
+  Stethoscope,
+  HeartPulse,
+  type LucideIcon,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/pipeline";
 import type { AgentPrefs } from "@/lib/types";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 
 const INDUSTRIES = [
   "Biotechnology",
@@ -15,6 +28,15 @@ const INDUSTRIES = [
   "Medical Device",
   "Consumer Health",
 ];
+
+// Industry accents mirror the customer table's INDUSTRY_STYLE hues, so an
+// industry reads as the same colour on both surfaces.
+const INDUSTRY_ACCENT: Record<string, { color: string; icon: LucideIcon }> = {
+  Biotechnology: { color: "#0E7C70", icon: FlaskConical },
+  Pharmaceutical: { color: "#0040A0", icon: Pill },
+  "Medical Device": { color: "#8A5A00", icon: Stethoscope },
+  "Consumer Health": { color: "#A31E68", icon: HeartPulse },
+};
 
 // One-tap lens presets — common focus combos the rep can flip between.
 const PRESETS: {
@@ -154,19 +176,22 @@ export function AgentPreferences() {
         <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
           Focus industry
         </label>
-        <select
-          aria-label="Focus industry"
+        <ColorSelect
+          ariaLabel="Focus industry"
+          className="w-full sm:w-[260px]"
+          collapsible={false}
           value={prefs.focus_industry || ""}
-          onChange={(e) => save({ focus_industry: e.target.value || null })}
-          className="w-full sm:w-[260px] bg-surface border border-border rounded-lg px-3 py-2 text-[13px] text-text-primary outline-none focus:border-blue-primary transition-colors"
-        >
-          <option value="">All industries</option>
-          {INDUSTRIES.map((i) => (
-            <option key={i} value={i}>
-              {i}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => save({ focus_industry: v || null })}
+          options={[
+            { value: "", label: "All industries", icon: Layers },
+            ...INDUSTRIES.map((i) => ({
+              value: i,
+              label: i,
+              color: INDUSTRY_ACCENT[i]?.color ?? "#0071E3",
+              icon: INDUSTRY_ACCENT[i]?.icon ?? Building2,
+            })),
+          ]}
+        />
         <p className="text-[12px] text-text-tertiary mt-1.5">
           {prefs.focus_industry
             ? `Autopilot only acts on ${prefs.focus_industry} accounts; others are left for you.`
@@ -218,24 +243,22 @@ export function AgentPreferences() {
         <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
           Always ask above
         </label>
-        <select
-          aria-label="High-value guardrail"
-          value={prefs.autopilot_max_value ?? ""}
-          onChange={(e) =>
-            save({
-              autopilot_max_value: e.target.value
-                ? Number(e.target.value)
-                : null,
-            })
+        <ColorSelect
+          ariaLabel="High-value guardrail"
+          className="w-full"
+          collapsible={false}
+          value={String(prefs.autopilot_max_value ?? "")}
+          onChange={(v) =>
+            save({ autopilot_max_value: v ? Number(v) : null })
           }
-          className="w-full bg-surface border border-border rounded-md px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-blue-primary transition-colors"
-        >
-          <option value="">No limit, autopilot may handle any deal</option>
-          <option value="100000">$100K open pipeline</option>
-          <option value="250000">$250K open pipeline</option>
-          <option value="500000">$500K open pipeline</option>
-          <option value="1000000">$1M open pipeline</option>
-        </select>
+          options={[
+            { value: "", label: "No limit, autopilot may handle any deal", icon: Infinity, color: "#0071E3" },
+            { value: "100000", label: "$100K open pipeline", icon: DollarSign, color: "#0F766E" },
+            { value: "250000", label: "$250K open pipeline", icon: DollarSign, color: "#0F766E" },
+            { value: "500000", label: "$500K open pipeline", icon: DollarSign, color: "#0F766E" },
+            { value: "1000000", label: "$1M open pipeline", icon: DollarSign, color: "#0F766E" },
+          ]}
+        />
         <p className="text-[12px] text-text-tertiary mt-1.5">
           {prefs.autopilot_max_value
             ? `Accounts with more than ${formatMoney(
