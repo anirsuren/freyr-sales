@@ -1,6 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -11,6 +15,12 @@ import {
   Maximize2,
   Minus,
   Plus,
+  FolderArchive,
+  Table2,
+  Presentation,
+  Video,
+  File,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { VideoPlayer } from "@/components/offerings/VideoPlayer";
@@ -504,7 +514,7 @@ export function MaterialViewer({
               and its own page counter, and nobody zooms a video. */}
           <div
             style={{ zoom: isNative && ext === "pdf" ? 1 : zoom }}
-            className={isVideo ? "flex h-full items-center justify-center" : undefined}
+            className={isVideo ? "flex h-full items-center justify-center" : listing ? "h-full" : undefined}
           >
 
           {/* Exact by definition: the browser's own PDF, video and image
@@ -584,22 +594,64 @@ export function MaterialViewer({
             </>
           )}
 
+          {/* An archive can't render page-by-page, so the honest view is its
+              MANIFEST — but a two-line list floating on an ocean of empty
+              looked broken (Anir: "what the hell happened here?"). Centre a
+              compact card: per-file type icons, sizes, and the download as a
+              real button rather than a hint. */}
           {listing && (
-            <div className="rounded-lg bg-white p-3">
-              <p className="mb-2 text-[12.5px] text-text-secondary">
-                {listing.length} files inside this archive. Download it to open them.
-              </p>
-              <ul className="divide-y divide-border-light">
-                {listing.map((e) => (
-                  <li
-                    key={e.name}
-                    className="flex items-center justify-between gap-3 py-1.5 text-[12.5px]"
-                  >
-                    <span className="min-w-0 break-all text-text-primary">{e.name}</span>
-                    <span className="shrink-0 tnum text-text-tertiary">{e.size}</span>
-                  </li>
-                ))}
-              </ul>
+            <div className="flex h-full items-center justify-center p-6">
+              <div className="w-full max-w-[560px] rounded-2xl border border-border-light bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+                    <FolderArchive size={19} strokeWidth={1.8} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold text-text-primary">
+                      Archive with {listing.length} {listing.length === 1 ? "file" : "files"} inside
+                    </p>
+                    <p className="text-[12px] text-text-secondary">
+                      Zip files can&apos;t be opened in the browser — download to unpack them.
+                    </p>
+                  </div>
+                </div>
+                <ul className="mt-4 divide-y divide-border-light rounded-lg border border-border-light">
+                  {listing.map((e) => {
+                    const ext = e.name.split(".").pop()?.toLowerCase() || "";
+                    const Icon =
+                      ext === "pdf" || ext === "docx" || ext === "doc" || ext === "txt"
+                        ? FileText
+                        : ext === "xlsx" || ext === "xls" || ext === "csv"
+                        ? Table2
+                        : ext === "pptx" || ext === "ppt"
+                        ? Presentation
+                        : ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "gif"
+                        ? ImageIcon
+                        : ext === "mp4" || ext === "mov" || ext === "webm"
+                        ? Video
+                        : File;
+                    return (
+                      <li
+                        key={e.name}
+                        className="flex items-center gap-3 px-3 py-2.5 text-[13px]"
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface text-text-secondary">
+                          <Icon size={14} strokeWidth={1.9} />
+                        </span>
+                        <span className="min-w-0 flex-1 break-words text-text-primary">{e.name}</span>
+                        <span className="shrink-0 tnum text-[12px] text-text-tertiary">{e.size}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <a
+                  href={downloadUrl}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-primary px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover"
+                >
+                  <Download size={15} strokeWidth={2} />
+                  Download the archive
+                </a>
+              </div>
             </div>
           )}
           </div>
@@ -613,7 +665,7 @@ export function MaterialViewer({
             currently — do it like a native PDF viewer"). Typing a number or
             using the arrows scrolls there, and the same bar carries zoom, so
             everything you do to the document is in one place. */}
-        {status === "ready" && (pageCount > 1 || !isNative) && (
+        {status === "ready" && (pageCount > 1 || !isNative) && !listing && (
           // z-10 because a Word table renders positioned cells that otherwise
           // paint over the bar and swallow its clicks.
           <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
