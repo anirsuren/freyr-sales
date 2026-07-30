@@ -25,15 +25,34 @@ function applyViewAs(base: Role, viewCookie: string | undefined): Role {
   return ROLE_RANK[viewCookie] < ROLE_RANK[base] ? viewCookie : base;
 }
 
+/**
+ * COOKIE NAMES ARE VERSIONED, AND THAT IS THE FIX.
+ *
+ * The old role switcher wrote `freyr_role` / `freyr_view_role` with a ONE
+ * YEAR max-age and nothing on screen ever said a preview was active — so an
+ * admin who once clicked "Sales (view only)" stayed silently downgraded on
+ * every page until they hand-cleared cookies (Anir, Jul 30: "I'm an admin,
+ * right? Why can't I create folders?"). Nobody can be asked to fix that in
+ * their own browser, so the READ side moved to new names and the stale
+ * year-long cookies became inert for everyone in one deploy. The switcher now
+ * writes session-lived cookies, and PreviewBanner keeps an active preview
+ * visible with a one-click exit.
+ */
 export async function getRole(): Promise<Role> {
+  return (await getRoleInfo()).role;
+}
+
+/** The effective role AND the real one, so the UI can show "viewing as". */
+export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
   const store = await cookies();
-  const viewAs = store.get("freyr_view_role")?.value;
+  const viewAs = store.get("freyr_preview_role")?.value;
   if (isApprovalGateEnabled()) {
     const grant = await verifyAccessGrant(store.get(ACCESS_COOKIE)?.value);
-    if (grant) return applyViewAs(grant.role, viewAs);
+    if (grant)
+      return { role: applyViewAs(grant.role, viewAs), realRole: grant.role };
     // Protected deployments must never turn a missing or invalid grant into
     // administrator access.
-    return "sales";
+    return { role: "sales", realRole: "sales" };
   }
 
   const headerStore = await headers();
@@ -48,21 +67,22 @@ export async function getRole(): Promise<Role> {
         : null;
   if (principal) {
     if (hasAppRole(principal, "Platform-Admins"))
-      return applyViewAs("admin", viewAs);
+      return { role: applyViewAs("admin", viewAs), realRole: "admin" };
     if (hasAppRole(principal, "Offering-Editors"))
-      return applyViewAs("editor", viewAs);
-    return "sales";
+      return { role: applyViewAs("editor", viewAs), realRole: "editor" };
+    return { role: "sales", realRole: "sales" };
   }
 
   if (!process.env.AUTH_MODE) {
-    // Demo harness (no authentication configured): the switcher IS the role.
-    // This branch was dev-only (NODE_ENV check), which silently killed the
-    // switcher on the production demo deployment too — the third way those
-    // buttons did nothing.
-    const role = store.get("freyr_role")?.value;
-    return role === "sales" || role === "editor" ? role : "admin";
+    // Demo harness (no authentication configured): the switcher IS the role,
+    // and its identity defaults to admin.
+    const role = store.get("freyr_as_role")?.value;
+    return {
+      role: role === "sales" || role === "editor" ? role : "admin",
+      realRole: "admin",
+    };
   }
-  return "sales";
+  return { role: "sales", realRole: "sales" };
 }
 
 export async function isAdmin(): Promise<boolean> {

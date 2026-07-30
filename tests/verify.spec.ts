@@ -4283,7 +4283,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   test("277 — sales cannot write via the API (V40)", async ({ request }) => {
     const res = await request.post(`${BASE}/api/offerings`, {
-      headers: { Cookie: "freyr_role=sales" },
+      headers: { Cookie: "freyr_as_role=sales" },
       data: { offering_name: "Should Be Blocked" },
     });
     expect(res.status()).toBe(403);

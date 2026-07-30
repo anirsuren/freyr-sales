@@ -12,13 +12,16 @@ export function RoleSwitcher({ current }: { current: "admin" | "editor" | "sales
 
   function setRole(role: "admin" | "editor" | "sales") {
     if (role === current) return;
-    // Two cookies, one intent. `freyr_role` drives the unauthenticated demo
-    // harness; `freyr_view_role` is the signed-in preview, honored server-side
-    // only when it DOWNGRADES the session's real role — which is why these
-    // buttons finally work in production (Anir, Jul 25: "the viewing as
-    // button doesn't work").
-    document.cookie = `freyr_role=${role}; path=/; max-age=31536000`;
-    document.cookie = `freyr_view_role=${role}; path=/; max-age=31536000`;
+    // Two cookies, one intent. `freyr_as_role` drives the unauthenticated
+    // demo harness; `freyr_preview_role` is the signed-in preview, honored
+    // server-side only when it DOWNGRADES the session's real role. SESSION
+    // cookies, deliberately: the old ones lived for a YEAR with nothing on
+    // screen, so one click of "Sales (view only)" silently locked an admin
+    // out of admin controls until they hand-cleared cookies (Anir, Jul 30).
+    // A preview now dies with the browser, and PreviewBanner keeps it
+    // visible while it lives.
+    document.cookie = `freyr_as_role=${role}; path=/`;
+    document.cookie = `freyr_preview_role=${role}; path=/`;
     start(() => router.refresh());
   }
 
