@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowUp, X, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -198,6 +199,26 @@ function Thinking() {
   );
 }
 
+/**
+ * One agent reply, revealed like the full agent page reveals its own.
+ * A component rather than an inline hook call because hooks cannot run inside
+ * .map(), and each reply needs its own reveal state.
+ */
+function TypedReply({
+  text,
+  active,
+  entities,
+  linksOn,
+}: {
+  text: string;
+  active: boolean;
+  entities: Parameters<typeof renderRich>[1];
+  linksOn: boolean;
+}) {
+  const shown = useTypewriter(text, active);
+  return <>{renderRich(trimStreamingLink(shown), entities, linksOn)}</>;
+}
+
 export function AgentDock({
   open,
   onOpenChange,
@@ -218,6 +239,10 @@ export function AgentDock({
   const threadStorageKey = userScopedStorageKey(THREAD_KEY, currentUser.id);
   const label = pageLabel(pathname);
   const [subject, setSubject] = useState("");
+  /** Index of the reply that should type itself out — set only when a fresh
+   *  answer lands, so reopening the dock or switching threads never replays
+   *  the whole conversation. */
+  const [typingIdx, setTypingIdx] = useState<number | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -347,13 +372,19 @@ export function AgentDock({
       });
       const data = await res.json();
       if (activeUserIdRef.current !== requestUserId) return;
-      setMsgs((m) => [
-        ...m,
-        { role: "agent", text: data.answer || "I couldn't answer that just now." },
-      ]);
+      setMsgs((m) => {
+        setTypingIdx(m.length);
+        return [
+          ...m,
+          { role: "agent", text: data.answer || "I couldn't answer that just now." },
+        ];
+      });
     } catch {
       if (activeUserIdRef.current !== requestUserId) return;
-      setMsgs((m) => [...m, { role: "agent", text: "I couldn't reach the agent just now." }]);
+      setMsgs((m) => {
+        setTypingIdx(m.length);
+        return [...m, { role: "agent", text: "I couldn't reach the agent just now." }];
+      });
     } finally {
       if (activeUserIdRef.current === requestUserId) setBusy(false);
     }
@@ -408,9 +439,18 @@ export function AgentDock({
                     : "rounded-2xl rounded-br-md bg-blue-primary text-white ml-auto"
                 )}
               >
-                {m.role === "agent"
-                  ? renderRich(m.text, entities, !offeringsOnly)
-                  : m.text}
+                {m.role === "agent" ? (
+                  <TypedReply
+                    text={m.text}
+                    // Only the reply that just arrived types out. Restoring a
+                    // saved thread must not replay the whole conversation.
+                    active={i === typingIdx}
+                    entities={entities}
+                    linksOn={!offeringsOnly}
+                  />
+                ) : (
+                  m.text
+                )}
               </div>
             ))}
             {busy && (

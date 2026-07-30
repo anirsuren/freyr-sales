@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { agentAnswer } from "@/lib/claude";
+import { getOffering, hydrateOffering, initializeLiveOfferings } from "@/lib/offerings";
 import {
   searchKnowledge,
   knowledgeBlock,
@@ -35,8 +36,74 @@ export async function POST(req: Request) {
   // Retrieval runs over the catalogue AND the contents of every uploaded
   // deck, transcript and document, so "what does the Freya.Register demo say
   // about validation?" is answered from the deck itself.
-  const passages = searchKnowledge(question, 6, await buildKnowledgeBaseAsync());
+  const passages = searchKnowledge(question, 10, await buildKnowledgeBaseAsync());
   const knowledge = knowledgeBlock(passages);
+
+  /**
+   * STANDING ON A RECORD BEATS SEARCHING FOR IT.
+   *
+   * Retrieval returns the top N passages across the WHOLE catalogue, so on an
+   * offering with 25 materials a question like "what are the sales materials
+   * called" surfaced two of them and the assistant answered — correctly, from
+   * what it had — "only these two are detailed in what I have" (Anir, Jul 30:
+   * "make sure this agent can actually look at the sales materials too. If I'm
+   * on this page, I should know everything about this offering").
+   *
+   * Ranking was never going to fix that: 25 sibling materials all match a
+   * question about materials equally well, so any top-N cut is arbitrary. When
+   * the rep is ON an offering we hand over that offering's COMPLETE record
+   * instead — every material by name, where it is filed, what stage it suits
+   * and whether it is client-facing. Retrieval still runs, for the questions
+   * whose answer lives on some other page.
+   */
+  const onOffering = path.match(/^\/offerings\/([^/?#]+)/)?.[1];
+  let focus = "";
+  if (onOffering && onOffering !== "new") {
+    try {
+      await initializeLiveOfferings();
+      const raw = getOffering(onOffering);
+      if (raw) {
+        const o = hydrateOffering(raw);
+        const mats = o.materials || [];
+        focus = [
+          `THE OFFERING ON SCREEN — complete record, treat as authoritative:`,
+          `Name: ${o.offering_name}`,
+          o.offering_type && `Offering type: ${o.offering_type}`,
+          o.offering_category && `Category: ${o.offering_category}`,
+          o.current_availability && `Availability: ${o.current_availability}`,
+          o.offering_description && `Description: ${o.offering_description}`,
+          o.customerTypes?.length &&
+            `Customer types: ${o.customerTypes.map((c) => c.name).join(", ")}`,
+          o.markets?.length &&
+            `Markets: ${o.markets.map((m) => m.name).join(", ")}`,
+          (o.contacts || []).length &&
+            `Contacts: ${(o.contacts || [])
+              .map((c) => `${c.name}${c.role ? ` (${c.role})` : ""}`)
+              .join(", ")}`,
+          (o.releases || []).length &&
+            `Versions: ${(o.releases || [])
+              .map((r) => `${r.version} (${r.status}${r.date ? `, ${r.date}` : ""})`)
+              .join("; ")}`,
+          "",
+          `ALL ${mats.length} SALES MATERIALS on this offering (this is the complete list — never say you only have some of them):`,
+          ...mats.map((m, i) => {
+            const bits = [
+              m.folder ? `in folder "${m.folder}"` : "not in a folder",
+              m.journeyStage && `${m.journeyStage} stage`,
+              m.accessLevel === "internal_only" ? "INTERNAL ONLY" : "client-facing",
+              m.description || "",
+            ].filter(Boolean);
+            return `${i + 1}. ${m.label} — ${m.kind}; ${bits.join("; ")}`;
+          }),
+        ]
+          .filter(Boolean)
+          .join("\n");
+      }
+    } catch {
+      // A catalogue that will not load must not take the whole answer down;
+      // retrieval below still produces something useful.
+    }
+  }
 
   const where = subject
     ? `${pageLabel}: specifically ${subject}`
@@ -72,6 +139,7 @@ export async function POST(req: Request) {
     (pageContext
       ? `PAGE CONTENT (exactly what is on their screen right now):\n"""\n${pageContext}\n"""\n\n`
       : "") +
+    (focus ? `${focus}\n\n` : "") +
     (knowledge
       ? `CATALOGUE (records from the app that match their question):\n"""\n${knowledge}\n"""\n\n`
       : "") +
