@@ -143,19 +143,13 @@ export function OfferingReports({
   offeringName: string;
   /** In-progress (mock) mode only: show a labelled sample report when empty. */
 }) {
-  if (report.customerCount === 0) {
-    return (
-      <>
-        <Card className="mt-6">
-          <h2 className="text-[15px] font-semibold text-text-primary mb-1">No revenue yet</h2>
-          <p className="text-[13px] text-text-secondary leading-relaxed max-w-[620px]">
-            Once a customer marks {offeringName} as in use and adds commercial terms,
-            customer revenue, licenses, contract coverage, and renewals will appear here.
-          </p>
-        </Card>
-              </>
-    );
-  }
+  // No early "empty" card any more. The report renders its FULL structure at
+  // zero — real tiles, real chart frames, real table headers — with a one-line
+  // banner saying why everything reads 0 (Anir, Jul 30: "it should still show
+  // the bare bones of it, not fake data, not mock mode"). Every computation
+  // below is zero-safe: reduces over empty arrays and share divisions are all
+  // guarded.
+  const isEmpty = report.customerCount === 0;
 
   const now = new Date();
   const lines: ReportLine[] = report.customers.flatMap((customer) =>
@@ -329,6 +323,15 @@ export function OfferingReports({
 
   return (
     <div className="mt-6 space-y-4">
+      {isEmpty && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-blue-primary/20 bg-blue-light px-4 py-3">
+          <ReceiptText size={15} strokeWidth={1.9} className="mt-0.5 shrink-0 text-blue-primary" />
+          <p className="text-[12.5px] leading-relaxed text-text-secondary">
+            <span className="font-semibold text-text-primary">This is the live report — nothing is recorded yet, so every number reads zero.</span>{" "}
+            It fills in as customers mark {offeringName} as in use and their commercial terms are added.
+          </p>
+        </div>
+      )}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile icon={Users} label="Customers" value={String(report.customerCount)} sub="currently using it" />
         <StatTile icon={DollarSign} label="Total revenue" value={formatMoney(report.totalRevenue)} sub="booked across customers" />
@@ -389,11 +392,17 @@ export function OfferingReports({
           </div>
           {/* `flex-1` + centred: the donut centres in whatever height the panel
               beside it sets, instead of sitting at the top with a dead band
-              underneath (Suren: "a lot of empty space below"). */}
+              underneath (Suren: "a lot of empty space below"). At zero the ring
+              still draws — one neutral segment — so the frame of the report is
+              visible before the first dollar lands. */}
           <div className="flex flex-1 items-center gap-2.5">
             <DonutChart
               syncId="offering-revenue"
-              segments={revenueSegments}
+              segments={
+                revenueSegments.length > 0
+                  ? revenueSegments
+                  : [{ label: "No revenue yet", value: 1, color: "var(--border-light)" }]
+              }
               size={132}
               thickness={10}
               format="money"
@@ -483,31 +492,33 @@ export function OfferingReports({
           contracted value reaching its end date in each of the next twelve
           months. The renewals table further down lists every contract; this
           is that list's shape, so a heavy quarter is visible from across the
-          room. Hidden entirely when no dated contract ends in the window. */}
-      {renewalTotal > 0 && (
-        <Card data-testid="offering-renewal-chart">
-          <div className="mb-4 flex items-baseline justify-between gap-3">
-            <div>
-              <h2 className="text-[15px] font-semibold text-text-primary">
-                Renewal exposure, month by month
-              </h2>
-              <p className="mt-0.5 text-[12px] text-text-tertiary">
-                Contracted value reaching its end date, next 12 months. Hover a
-                bar for the contracts behind it.
-              </p>
-            </div>
-            <p className="shrink-0 text-[12px] text-text-tertiary tnum">
-              {formatMoney(renewalTotal)} comes up for renewal in this window
+          room. It used to hide itself entirely at zero; now the 12-month axis
+          stays on screen so the report's full shape is visible before the
+          first contract lands (Anir: "show the bare bones"). */}
+      <Card data-testid="offering-renewal-chart">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <div>
+            <h2 className="text-[15px] font-semibold text-text-primary">
+              Renewal exposure, month by month
+            </h2>
+            <p className="mt-0.5 text-[12px] text-text-tertiary">
+              Contracted value reaching its end date, next 12 months. Hover a
+              bar for the contracts behind it.
             </p>
           </div>
-          <BarChart
-            data={renewalMonths}
-            height={190}
-            format="money"
-            tipRecordsLabel="Contracts ending this month"
-          />
-        </Card>
-      )}
+          <p className="shrink-0 text-[12px] text-text-tertiary tnum">
+            {renewalTotal > 0
+              ? `${formatMoney(renewalTotal)} comes up for renewal in this window`
+              : "No contracts end in this window yet"}
+          </p>
+        </div>
+        <BarChart
+          data={renewalMonths}
+          height={190}
+          format="money"
+          tipRecordsLabel="Contracts ending this month"
+        />
+      </Card>
 
       {/* Band B — the account table, now the full width of the page so it can
           carry the columns the 440px sliver never had room for (Suren: "the
@@ -549,6 +560,14 @@ export function OfferingReports({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
+              {customerSummaries.length === 0 && (
+                <tr>
+                  <td colSpan={99} className="px-5 py-8 text-center text-[12.5px] text-text-tertiary">
+                    No accounts use {offeringName} yet — the first customer marked
+                    as in use starts this table.
+                  </td>
+                </tr>
+              )}
               {customerSummaries.map((customer) => {
                 const renewalStatus = customer.nextRenewal
                   ? lineStatus(customer.nextRenewal, now)
@@ -841,6 +860,14 @@ export function OfferingReports({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
+              {report.customers.length === 0 && (
+                <tr>
+                  <td colSpan={99} className="px-5 py-8 text-center text-[12.5px] text-text-tertiary">
+                    No commercial lines recorded yet — each contract, license and
+                    service agreement lands here as it is added.
+                  </td>
+                </tr>
+              )}
               {report.customers.flatMap((customer) =>
                 (customer.lines.length ? customer.lines : [null]).map((line, index) => {
                   const status = line ? lineStatus(line, now) : null;
