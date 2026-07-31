@@ -26,7 +26,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { listAssignablePeople } from "@/lib/assignablePeople";
-import { canManageOfferings, isAdmin } from "@/lib/role";
+import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
@@ -41,6 +41,7 @@ import { reportForOffering } from "@/lib/revenue";
 import { cn } from "@/lib/utils";
 import { getOffering, hydrateOffering, listOfferings, listOfferingTypes } from "@/lib/offerings";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
+import { canViewNextCustomerVersion } from "@/lib/roadmapAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -68,8 +69,8 @@ export default async function OfferingDetailPage({
       ? "reports"
       : query?.tab === "materials"
         ? "materials"
-        : query?.tab === "releases"
-          ? "releases"
+        : query?.tab === "roadmap" || query?.tab === "releases"
+          ? "roadmap"
           : "overview";
   const allCustomers = await getDb().customers.list();
 
@@ -152,11 +153,8 @@ export default async function OfferingDetailPage({
   // Assigning and approving owners is an admin action; editing content is
   // open to the owners they grant.
   const workspaceAdmin = await canManageOfferings();
-  // Folder creation is ADMIN-only, not Manager-too (Anir, Jul 30: "for the
-  // folders let's just leave it for now only for admins"). canManageOfferings
-  // covers Admin AND Manager, so it is the wrong gate for this one control.
-  const strictAdmin = await isAdmin();
   const me = await getCurrentUser();
+  const canSeeNextCustomerVersion = await canViewNextCustomerVersion(o);
   const commercialActionsEnabled = !isOfferingsOnly(getDataMode());
 
   // Each market + size band reads as its own color so they scan at a glance
@@ -329,13 +327,12 @@ export default async function OfferingDetailPage({
                 : "Sales materials",
             href: `/offerings/${o.id}?tab=materials`,
           },
-          // Release notes + version history, everyone (Saras' written item 1).
-          // The restricted Product Roadmap section is NOT here yet — gating who
-          // sees what is a permissions decision and needs Anir's yes first.
+          // Past/current releases are visible to everyone. The next customer
+          // version inside this tab is restricted server-side.
           {
-            key: "releases",
-            label: "Release notes",
-            href: `/offerings/${o.id}?tab=releases`,
+            key: "roadmap",
+            label: "Roadmap",
+            href: `/offerings/${o.id}?tab=roadmap`,
           },
           {
             key: "reports",
@@ -371,15 +368,14 @@ export default async function OfferingDetailPage({
           <OfferingMaterialsTab
             offering={o}
             admin={admin}
-            workspaceAdmin={strictAdmin}
           />
-        ) : tab === "releases" ? (
+        ) : tab === "roadmap" ? (
           <OfferingReleasesTab
             offeringId={o.id}
             offeringName={o.offering_name}
             releases={o.releases ?? []}
-            contacts={o.contacts ?? []}
             canEdit={admin}
+            canSeeNext={canSeeNextCustomerVersion}
           />
         ) : tab === "reports" ? (
           <OfferingReports

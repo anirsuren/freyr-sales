@@ -9,6 +9,7 @@ import { BarChart, DonutChart, DonutLegend,
   donutSyncBroadcast,
   useDonutSync,
 } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -97,6 +98,22 @@ export function AnalyticsView({
       sub: d.contact,
       value: formatMoney(d.value),
     }));
+  const pipelineStageData = stages.map((s) => ({
+    label: s.stage,
+    value: s.value,
+    color: stageColor(s.stage),
+    tip: stageTip(s.stage),
+  }));
+  const outcomeSegments = outcomes.map((o) => ({
+    label: o.label,
+    value: o.count,
+    color: o.color,
+    tip: (outcomeContacts?.[o.label] ?? []).map((c) => ({
+      avatar: c.name,
+      name: c.name,
+      sub: c.company,
+    })),
+  }));
   // The same deals, but priced at the SAME measure as the weighted chart they
   // sit under, so the rows add up to the segment. Listing full open values
   // under a probability-adjusted total is what Suren caught on the bar chart:
@@ -220,24 +237,24 @@ export function AnalyticsView({
           className="h-full flex flex-col"
           data-tour="analytics-pipeline-stages"
         >
-          <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
-            Pipeline by Stage
-            <InfoHint text="Where your open dollars sit across the steps of your process. Click a stage to see the deals in it: including who you closed and lost." />
-          </h2>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
+              Pipeline by Stage
+              <InfoHint text="Where your open dollars sit across the steps of your process. Click a stage to see the deals in it: including who you closed and lost." />
+            </h2>
+            <ExpandedChartModal
+              title="Pipeline by Stage"
+              subtitle="Where open pipeline value sits across the sales process."
+              chart={{
+                kind: "bar",
+                data: pipelineStageData,
+                format: "money",
+              }}
+              className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+            />
+          </div>
           <BarChart
-            data={stages.map((s) => ({
-              label: s.stage,
-              value: s.value,
-              color: stageColor(s.stage),
-              // Breakdown: WHO is in this stage — logo + company + contact + value.
-              tip: (stageDeals?.[s.stage] ?? []).map((d) => ({
-                logo: d.company,
-                avatar: d.contact,
-                name: d.company,
-                sub: d.contact,
-                value: formatMoney(d.value),
-              })),
-            }))}
+            data={pipelineStageData}
             height={170}
             format="money"
             activeIndex={
@@ -320,26 +337,29 @@ export function AnalyticsView({
 
         {/* Outcome mix — click an outcome to see who */}
         <Card className="h-full flex flex-col">
-          <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
-            Outcome Mix
-            <InfoHint text="What your logged touches led to. Click any outcome to see exactly who: who's interested, who's not, who booked a meeting." />
-          </h2>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
+              Outcome Mix
+              <InfoHint text="What your logged touches led to. Click any outcome to see exactly who: who's interested, who's not, who booked a meeting." />
+            </h2>
+            <ExpandedChartModal
+              title="Outcome Mix"
+              subtitle="What logged customer touches led to."
+              chart={{
+                kind: "donut",
+                segments: outcomeSegments,
+                centerLabel: String(outcomes.reduce((t, o) => t + o.count, 0)),
+                centerSub: "touches",
+              }}
+              className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+            />
+          </div>
           {/* Bigger donut + roomier legend fill the card so it doesn't read as
               empty top-and-bottom next to the taller Pipeline card (Suren). */}
           <div className="flex-1 flex items-center gap-6">
             <DonutChart
               syncId="dash-outcomes"
-              segments={outcomes.map((o) => ({
-                label: o.label,
-                value: o.count,
-                color: o.color,
-                // Who's behind each outcome — headshot + name + company.
-                tip: (outcomeContacts?.[o.label] ?? []).map((c) => ({
-                  avatar: c.name,
-                  name: c.name,
-                  sub: c.company,
-                })),
-              }))}
+              segments={outcomeSegments}
               size={172}
               thickness={18}
               centerLabel={String(outcomes.reduce((t, o) => t + o.count, 0))}
@@ -436,10 +456,27 @@ export function AnalyticsView({
 
       {/* Funnel — click a stage to see the deals that reached it */}
       <Card>
-        <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
-          Conversion Funnel
-          <InfoHint text="How many open deals have reached each step. Click a step to see which deals are there." />
-        </h2>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
+            Conversion Funnel
+            <InfoHint text="How many open deals have reached each step. Click a step to see which deals are there." />
+          </h2>
+          <ExpandedChartModal
+            title="Conversion Funnel"
+            subtitle="How many open deals have reached each step of the sales process."
+            chart={{
+              kind: "bar",
+              data: funnel.map((stage) => ({
+                label: stage.stage,
+                value: stage.count,
+                color: stageColor(stage.stage),
+              })),
+              unit: "deals",
+              format: "number",
+            }}
+            className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+          />
+        </div>
         <div className="space-y-2">
           {funnel.map((s, i) => {
             const prev = i > 0 ? funnel[i - 1] : null;
@@ -559,10 +596,24 @@ export function AnalyticsView({
           money by stage, and how big the average deal is at each step. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <Card className="h-full flex flex-col">
-          <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
-            Weighted Forecast by Stage
-            <InfoHint text="Each stage's open value multiplied by its odds of closing: the realistic pipeline, not the headline number." />
-          </h2>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
+              Weighted Forecast by Stage
+              <InfoHint text="Each stage's open value multiplied by its odds of closing: the realistic pipeline, not the headline number." />
+            </h2>
+            <ExpandedChartModal
+              title="Weighted Forecast by Stage"
+              subtitle="Open pipeline value adjusted by each stage's probability of closing."
+              chart={{
+                kind: "donut",
+                segments: weightedByStage,
+                centerLabel: formatMoney(totalWeighted),
+                centerSub: "weighted",
+                format: "money",
+              }}
+              className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+            />
+          </div>
           {weightedByStage.length > 0 ? (
             <div className="flex-1 flex items-center gap-6">
               <DonutChart
@@ -585,10 +636,23 @@ export function AnalyticsView({
           )}
         </Card>
         <Card className="h-full flex flex-col">
-          <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary mb-4">
-            Average Deal Size by Stage
-            <InfoHint text="The average open-deal value at each step: where the bigger deals sit in your process. Each bar is an average, so the deals listed on hover add up to the stage total shown there, not to the bar." />
-          </h2>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
+              Average Deal Size by Stage
+              <InfoHint text="The average open-deal value at each step: where the bigger deals sit in your process. Each bar is an average, so the deals listed on hover add up to the stage total shown there, not to the bar." />
+            </h2>
+            <ExpandedChartModal
+              title="Average Deal Size by Stage"
+              subtitle="Average open-deal value at each stage of the sales process."
+              chart={{
+                kind: "bar",
+                data: avgByStage,
+                format: "money",
+                tipRecordsLabel: "Deals in this stage",
+              }}
+              className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+            />
+          </div>
           <div className="flex flex-1 items-end w-full">
             <BarChart
               data={avgByStage}

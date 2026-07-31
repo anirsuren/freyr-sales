@@ -20,6 +20,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { formatMoney } from "@/lib/pipeline";
 import { DonutChart, DonutLegend, VIZ_SERIES } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { type Offering, hydrateOffering } from "@/lib/offerings";
 import type { OfferingReport } from "@/lib/revenue";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
@@ -290,9 +291,23 @@ export function OfferingOverviewMain({
                 dead band underneath (Suren: "a lot of empty space below"). */}
             <div className="mt-5 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
               <div className="flex h-full flex-col rounded-xl border border-border-light px-4 py-4">
-                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  What kind of revenue
-                </p>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    What kind of revenue
+                  </p>
+                  <ExpandedChartModal
+                    title="Revenue by type"
+                    subtitle={`${o.offering_name} contracted revenue split by commercial model.`}
+                    chart={{
+                      kind: "donut",
+                      segments: typeSegments,
+                      centerLabel: String(report.lineCount),
+                      centerSub: report.lineCount === 1 ? "line" : "lines",
+                      format: "money",
+                    }}
+                    className="h-8 px-2.5 text-[11px]"
+                  />
+                </div>
                 <div className="flex flex-1 items-center gap-4">
                   <DonutChart
                     syncId="offering-types"

@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DonutChart, type TipItem } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { HEALTH_COLOR } from "@/lib/health";
 import { STAGE_COLOR, STAGE_ICON, formatMoney, type Stage } from "@/lib/pipeline";
 import { formatDate } from "@/lib/utils";
@@ -84,6 +85,36 @@ export function DealSnapshot({
   const gap = Math.max(0, value - weighted);
   const stageColor = STAGE_COLOR[stage];
   const StageIcon = STAGE_ICON[stage];
+  const winChanceSegments = lost
+    ? [{ label: "No chance left", value: 100, color: "transparent" }]
+    : [
+        {
+          label: "Likely to close",
+          value: winProb,
+          color: MEASURE,
+          tip: [
+            {
+              name: company,
+              sub: `Counted in your forecast at ${stage}`,
+              value: formatMoney(weighted),
+              logo: company,
+              avatar: contactName || undefined,
+            } as TipItem,
+          ],
+        },
+        {
+          label: "Might not close",
+          value: 100 - winProb,
+          color: "transparent",
+          tip: [
+            {
+              name: "The part the forecast leaves out",
+              sub: "it only lands if you win the deal",
+              value: formatMoney(gap),
+            } as TipItem,
+          ],
+        },
+      ];
 
   return (
     <Card className="mb-6">
@@ -108,9 +139,23 @@ export function DealSnapshot({
             label="Win chance"
             hint="Set by the stage this deal has reached: every deal at the same stage is counted at the same odds."
           >
-            <Pill color={stageColor} Icon={StageIcon}>
-              {stage}
-            </Pill>
+            <span className="flex items-center gap-2">
+              <ExpandedChartModal
+                title="Win chance"
+                subtitle={`${company} closing probability and forecast weighting.`}
+                chart={{
+                  kind: "donut",
+                  segments: winChanceSegments,
+                  centerLabel: `${winProb}%`,
+                  centerSub: "to close",
+                  format: "percent",
+                }}
+                className="h-8 px-2.5 text-[11px]"
+              />
+              <Pill color={stageColor} Icon={StageIcon}>
+                {stage}
+              </Pill>
+            </span>
           </PanelHead>
 
           <div className="mt-3 flex flex-1 items-center gap-3.5">
@@ -122,38 +167,7 @@ export function DealSnapshot({
                 is not an alarm. */}
             <span className="shrink-0">
               <DonutChart
-                segments={
-                  lost
-                    ? [{ label: "No chance left", value: 100, color: "transparent" }]
-                    : [
-                        {
-                          label: "Likely to close",
-                          value: winProb,
-                          color: MEASURE,
-                          tip: [
-                            {
-                              name: company,
-                              sub: `Counted in your forecast at ${stage}`,
-                              value: formatMoney(weighted),
-                              logo: company,
-                              avatar: contactName || undefined,
-                            } as TipItem,
-                          ],
-                        },
-                        {
-                          label: "Might not close",
-                          value: 100 - winProb,
-                          color: "transparent",
-                          tip: [
-                            {
-                              name: "The part the forecast leaves out",
-                              sub: "it only lands if you win the deal",
-                              value: formatMoney(gap),
-                            } as TipItem,
-                          ],
-                        },
-                      ]
-                }
+                segments={winChanceSegments}
                 size={104}
                 thickness={11}
                 centerLabel={`${winProb}%`}

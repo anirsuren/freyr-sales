@@ -8,7 +8,6 @@ import {
   Download,
   Folder,
   FolderOpen,
-  FolderPlus,
   X,
   ExternalLink,
   Files,
@@ -23,8 +22,6 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import {
   ACCESS_LEVELS,
@@ -37,11 +34,11 @@ import {
   MATERIAL_ICON,
   allFolders,
   childFolders,
-  cleanFolderName,
   countUnder,
   isReadByAgent,
   isSalesVisible,
   materialsInFolder,
+  materialFolderLabel,
   normalizeFolderPath,
   legacyKindLabel,
   materialFormat,
@@ -104,7 +101,6 @@ export function MaterialsSection({
   action,
   offeringId,
   canEdit = false,
-  canCreateFolders = false,
   materialFolders = [],
 }: {
   materials: OfferingMaterial[];
@@ -119,17 +115,6 @@ export function MaterialsSection({
    *  handed to customers (Anir, Jul 29: "people who are not the owner, just
    *  normal sales, they can download all this stuff"). */
   canEdit?: boolean;
-  /**
-   * MAKING A FOLDER IS AN ADMIN ACT, not an owner one.
-   *
-   * Suren, Jul 30: "system should restrict… every guy is going to create a
-   * folder of his own. You will never be able to control this." Wajeed's
-   * interim call was to switch folder creation off; Anir's is narrower and
-   * better — leave it on, for admins only, until the system-defined folder
-   * type list exists. Owners keep filing files into the folders that are
-   * already there.
-   */
-  canCreateFolders?: boolean;
 }) {
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
@@ -158,8 +143,11 @@ export function MaterialsSection({
           url: m.url,
           docsPath: m.docsPath,
           description: m.description,
+          folder: m.folder,
           journeyStage: m.journeyStage,
           accessLevel: m.accessLevel,
+          documentType: m.documentType,
+          readByAgent: m.readByAgent,
         }));
       const res = await fetch(`/api/offerings/${offeringId}`, {
         method: "PATCH",
@@ -203,40 +191,6 @@ export function MaterialsSection({
 
   /** The file being read in the viewer popup. */
   const [viewing, setViewing] = useState<OfferingMaterial | null>(null);
-  const [newFolderOpen, setNewFolderOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [savingFolder, setSavingFolder] = useState(false);
-
-  /** Create an empty folder under whatever is open, and step into it. */
-  async function createFolder() {
-    const name = cleanFolderName(newFolderName);
-    if (!name || !offeringId || savingFolder) return;
-    const path = folder ? `${folder}/${name}` : name;
-    setSavingFolder(true);
-    try {
-      const res = await fetch(`/api/offerings/${offeringId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          materialFolders: Array.from(new Set([...materialFolders, path])),
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        toast(body.error || "Could not create that folder", "error");
-        return;
-      }
-      setNewFolderOpen(false);
-      setNewFolderName("");
-      router.refresh();
-      goToFolder(path);
-    } catch {
-      toast("Could not create that folder", "error");
-    } finally {
-      setSavingFolder(false);
-    }
-  }
-
   const anyFilter = formats.length > 0 || stages.length > 0 || levels.length > 0;
   // Agent-training uploads never reach a rep's list. They are background
   // knowledge for the assistant, not collateral, so only an owner — who has
@@ -347,69 +301,9 @@ export function MaterialsSection({
         {/* Add lives on the same row as the filters (Anir: "put this filter
             inline with the add button"). */}
         <div className="ml-auto flex items-center gap-2">
-          {canCreateFolders && offeringId && (
-            <button
-              type="button"
-              onClick={() => setNewFolderOpen((v) => !v)}
-              title={
-                folder ? `New folder inside ${folder}` : "New top-level folder"
-              }
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary/40 hover:text-blue-primary"
-            >
-              <FolderPlus size={14} strokeWidth={2} />
-              New folder
-            </button>
-          )}
           {action}
         </div>
       </div>
-
-      {/* ANYTHING NEW OPENS IN A POPUP — his standing rule, and I broke it
-          with an inline bar that pushed the whole list down the page. */}
-      <Modal
-        open={newFolderOpen && canCreateFolders}
-        onClose={() => setNewFolderOpen(false)}
-        title={folder ? `New folder inside ${folder}` : "New folder"}
-      >
-        <div className="space-y-4">
-          <p className="text-[12.5px] leading-relaxed text-text-secondary">
-            {folder
-              ? `It will sit inside ${folder}, and you will land in it.`
-              : "It will sit alongside Proposals, Product Demos and Thought Leadership."}
-          </p>
-          <label className="block">
-            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Folder name
-            </span>
-            <input
-              autoFocus
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void createFolder();
-              }}
-              maxLength={60}
-              placeholder="e.g. Case studies"
-              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
-            />
-          </label>
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => setNewFolderOpen(false)}
-              className="ml-auto text-[13.5px] font-semibold text-text-secondary hover:text-text-primary"
-            >
-              Cancel
-            </button>
-            <Button
-              onClick={() => void createFolder()}
-              disabled={!cleanFolderName(newFolderName) || savingFolder}
-            >
-              {savingFolder ? "Creating…" : "Create folder"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* WHERE YOU ARE. Only rendered once you are inside something, so an
           offering with everything at the top level gains no chrome it doesn't
@@ -503,7 +397,7 @@ export function MaterialsSection({
       {subFolders.length > 0 && (
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {subFolders.map((path) => {
-            const name = path.split("/").pop() as string;
+            const name = materialFolderLabel(path).split(" · ").pop() as string;
             const count = countUnder(mine, path);
             const nested = childFolders(folders, path).length;
             return (

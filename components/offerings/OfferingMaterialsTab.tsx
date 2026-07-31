@@ -19,12 +19,9 @@ import type { Offering } from "@/lib/offerings";
 export function OfferingMaterialsTab({
   offering: o,
   admin,
-  workspaceAdmin,
 }: {
   offering: Offering;
   admin: boolean;
-  /** Only a workspace admin may create folders — see MaterialsSection. */
-  workspaceAdmin: boolean;
 }) {
   return (
     <section className="mt-6">
@@ -43,51 +40,28 @@ export function OfferingMaterialsTab({
         {/* Only an owner can add — a control you cannot use should not look
             available. On an empty offering this is the only way in, so it sits
             in the header rather than inside the (absent) list. */}
-        {admin && o.materials.length === 0 && (
-          <AddMaterialButton offeringId={o.id} materials={o.materials} />
-        )}
       </div>
-
-      {o.materials.length === 0 ? (
-        admin ? (
-          <p className="mt-5 pl-11 text-[13px] text-text-tertiary">
-            No sales materials yet. Add the decks, one-pagers, demos and
-            anything else a rep hands a customer.
-          </p>
-        ) : (
-          <div className="mt-5 pl-11">
-            <p className="text-[13px] text-text-secondary">
-              No sales materials yet. Only an owner of this offering can add
-              them, so its content stays with the person accountable for it.
-            </p>
-            <p className="mt-1 text-[12.5px] text-text-tertiary">
-              If these are yours to upload, use{" "}
-              <span className="font-semibold text-text-secondary">
-                Ask to own this
-              </span>{" "}
-              in &ldquo;Who can edit this&rdquo; on the Overview tab, and an
-              admin hands it over.
-            </p>
-          </div>
-        )
-      ) : (
-        <MaterialsSection
-          materials={o.materials}
-          offeringId={o.id}
-          canEdit={admin}
-          materialFolders={o.materialFolders ?? []}
-          canCreateFolders={workspaceAdmin}
-          action={
-            admin ? (
-              <AddMaterialButton
-                key="add-material"
-                offeringId={o.id}
-                materials={o.materials}
-                compact
-              />
-            ) : undefined
-          }
-        />
+      <MaterialsSection
+        materials={o.materials}
+        offeringId={o.id}
+        canEdit={admin}
+        materialFolders={o.materialFolders ?? []}
+        action={
+          admin ? (
+            <AddMaterialButton
+              key="add-material"
+              offeringId={o.id}
+              materials={o.materials}
+              compact
+            />
+          ) : undefined
+        }
+      />
+      {o.materials.length === 0 && !admin && (
+        <p className="mt-3 pl-11 text-[12.5px] text-text-tertiary">
+          The folder structure is ready. An owner of this offering adds the
+          seller-ready files.
+        </p>
       )}
     </section>
   );

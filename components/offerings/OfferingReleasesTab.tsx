@@ -7,38 +7,25 @@ import {
   CircleCheck,
   Clock,
   GitCompareArrows,
-  Headset,
   ListChecks,
   Plus,
   Rocket,
   Trash2,
   X,
 } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
-import type { OfferingContact, OfferingRelease } from "@/lib/offerings";
+import type { OfferingRelease } from "@/lib/offerings";
 
 /**
- * RELEASE NOTES / VERSION HISTORY — Suren's release #2.
+ * PRODUCT ROADMAP — shipped history for everyone, future for approved people.
  *
- * Suren, Jul 30 (11:01): "I need to know for this offering, what is the latest
- * release, which is the latest customer version, what is the next customer
- * version, and then what are the version comparison features between this
- * version of the offering and next version… Who are the people that they can
- * reach out and what are the versions that are running."
- *
- * Saras wrote it up as a Release Notes / Version History tab "accessible to all
- * users", with a separate restricted Product Roadmap under it.
- *
- * THE ROADMAP IS DELIBERATELY NOT HERE. Sudhir: "anything beyond the current
- * release in the hands of sales is not good… it puts risk on us." Restricting
- * who can see what is a permissions decision, and permissions are not mine to
- * design. This tab carries what everyone may read: what shipped, when, and
- * what is coming next.
+ * The Jul 31 response superseded the earlier draft: past and current versions
+ * are open to everyone; "Next Customer Version" is restricted to the approved
+ * group and Offering Owners. Key contacts were explicitly removed.
  */
 
 const FIELD =
@@ -65,14 +52,14 @@ export function OfferingReleasesTab({
   offeringId,
   offeringName,
   releases,
-  contacts,
   canEdit,
+  canSeeNext,
 }: {
   offeringId: string;
   offeringName: string;
   releases: OfferingRelease[];
-  contacts: OfferingContact[];
   canEdit: boolean;
+  canSeeNext: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -100,12 +87,21 @@ export function OfferingReleasesTab({
 
   // Newest first, and a version with no date sorts after ones that have one —
   // an undated row is usually the next release, not the oldest.
-  const sorted = [...releases].sort((a, b) => {
+  const visibleReleases = canSeeNext
+    ? releases
+    : releases.filter((release) => release.status === "released");
+  const sorted = [...visibleReleases].sort((a, b) => {
     if (a.status !== b.status) return a.status === "next" ? -1 : 1;
     return (b.date || "").localeCompare(a.date || "");
   });
   const current = sorted.find((r) => r.status === "released") || null;
-  const next = sorted.find((r) => r.status === "next") || null;
+  const next = canSeeNext
+    ? sorted.find((r) => r.status === "next") || null
+    : null;
+  const past = sorted.filter(
+    (release) =>
+      release.status === "released" && release.id !== current?.id
+  );
 
   function resetAddForm() {
     setVersion("");
@@ -167,11 +163,11 @@ export function OfferingReleasesTab({
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-[19px] font-semibold tracking-[-0.01em] text-text-primary">
-            Release notes
+            Product roadmap
           </h2>
           <p className="mt-0.5 text-[13.5px] text-text-secondary">
-            Every version of {offeringName} that has shipped, what changed in
-            each, and what is coming next.
+            Past and current customer versions of {offeringName}
+            {canSeeNext ? ", plus the approved next customer version." : "."}
           </p>
         </div>
         {canEdit && (
@@ -187,10 +183,14 @@ export function OfferingReleasesTab({
 
       {/* WHAT IS LIVE AND WHAT IS NEXT, side by side — the two facts Suren
           named first, before any history. */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div
+        className={`grid grid-cols-1 gap-4 ${canSeeNext ? "md:grid-cols-2" : ""}`}
+      >
         {[
           { label: "Current customer version", rel: current, empty: "No version recorded yet." },
-          { label: "Next customer version", rel: next, empty: "Nothing recorded as coming next." },
+          ...(canSeeNext
+            ? [{ label: "Next customer version", rel: next, empty: "Nothing recorded as coming next." }]
+            : []),
         ].map((slot) => (
           <div
             key={slot.label}
@@ -224,7 +224,7 @@ export function OfferingReleasesTab({
           "what are the version comparison features between this version of the
           offering and next version." Two columns, same shape, so the difference
           is the thing you read. */}
-      {current && next && (
+      {canSeeNext && current && next && (
         <SectionCard title="What changes in the next version" icon={GitCompareArrows}>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {[current, next].map((rel) => (
@@ -255,18 +255,18 @@ export function OfferingReleasesTab({
         </SectionCard>
       )}
 
-      {/* THE HISTORY ITSELF */}
-      <SectionCard title="Version history" icon={Rocket}>
-        {sorted.length === 0 ? (
+      {/* Shipped versions before the current customer release. */}
+      <SectionCard title="Past customer versions" icon={Rocket}>
+        {past.length === 0 ? (
           <p className="text-[13px] text-text-secondary">
-            No versions recorded yet.{" "}
+            No earlier customer versions recorded yet.{" "}
             {canEdit
-              ? "Add the current version and what shipped in it — sales reps read this to answer “what’s in it today?”."
-              : "An owner of this offering adds these."}
+              ? "Add a released version when there is history to document."
+              : "An Offering Owner adds these."}
           </p>
         ) : (
           <div className="space-y-2.5">
-            {sorted.map((rel) => (
+            {past.map((rel) => (
               <div
                 key={rel.id}
                 className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
@@ -316,40 +316,8 @@ export function OfferingReleasesTab({
         )}
       </SectionCard>
 
-      {/* WHO TO REACH OUT TO — the other half of what he asked this tab to
-          carry: "who are the people that they can reach out". Same records as
-          the Overview rail, surfaced where the technical questions get asked. */}
-      <SectionCard title="Who to ask about this offering" icon={Headset}>
-        {contacts.length === 0 ? (
-          <p className="text-[13px] text-text-secondary">
-            Nobody is listed yet. An owner adds contacts on the Overview tab.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            {contacts.map((c) => (
-              <div
-                key={c.name}
-                className="flex items-center gap-3 rounded-2xl border border-border-light bg-white p-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
-              >
-                <Avatar name={c.name} className="h-9 w-9 shrink-0 text-[11px]" />
-                <span className="min-w-0">
-                  <span className="block text-[13.5px] font-semibold text-text-primary">
-                    {c.name}
-                  </span>
-                  {c.role && (
-                    <span className="block text-[12px] text-text-secondary">
-                      {c.role}
-                    </span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
-
       {/* Adding is a popup — his standing rule. */}
-      <Modal open={adding} onClose={closeAddModal} title="Add a version" size="wide">
+      <Modal open={adding} onClose={closeAddModal} title="Add a roadmap version" size="wide">
         <form
           className="space-y-6"
           onSubmit={(event) => {
@@ -363,11 +331,11 @@ export function OfferingReleasesTab({
             </span>
             <div>
               <p className="text-[14px] font-semibold text-text-primary">
-                Document a customer-facing release
+                Document a customer-facing version
               </p>
               <p className="mt-0.5 text-[12.5px] leading-relaxed text-text-secondary">
-                This will appear in the offering&apos;s version history for
-                everyone who can view it.
+                Released versions are visible to everyone. A planned next
+                version stays restricted to approved viewers.
               </p>
             </div>
           </div>
@@ -434,7 +402,10 @@ export function OfferingReleasesTab({
           <fieldset>
             <legend className={LABEL}>Release status</legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {(["released", "next"] as const).map((releaseStatus) => {
+              {(canSeeNext
+                ? (["released", "next"] as const)
+                : (["released"] as const)
+              ).map((releaseStatus) => {
                 const selected = status === releaseStatus;
                 const released = releaseStatus === "released";
                 const Icon = released ? CircleCheck : Clock;

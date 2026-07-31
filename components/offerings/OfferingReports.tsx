@@ -29,6 +29,7 @@ import {
   VIZ_SERIES,
   type TipItem,
 } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
@@ -370,13 +371,30 @@ export function OfferingReports({
         {/* LEFT — the split as a picture: donut with its legend BESIDE it
             (Suren: labels to the right of the pie). */}
         <div className="flex h-full flex-col border-b xl:border-b-0 xl:border-r border-border-light px-5 py-4">
-          <div className="mb-3 flex items-baseline justify-between gap-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               Revenue split
             </p>
-            <p className="text-[11px] text-text-tertiary tnum">
-              {formatMoney(report.totalRevenue)} booked
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] text-text-tertiary tnum">
+                {formatMoney(report.totalRevenue)} booked
+              </p>
+              <ExpandedChartModal
+                title="Revenue by customer"
+                subtitle={`${offeringName} revenue split across customer accounts.`}
+                chart={{
+                  kind: "donut",
+                  segments:
+                    revenueSegments.length > 0
+                      ? revenueSegments
+                      : [{ label: "No revenue yet", value: 1, color: "#D2D2D7" }],
+                  centerLabel: formatMoney(report.totalRevenue),
+                  centerSub: "booked",
+                  format: "money",
+                }}
+                className="h-8 px-2.5 text-[11px]"
+              />
+            </div>
           </div>
           {/* `flex-1` + centred: the donut centres in whatever height the panel
               beside it sets, instead of sitting at the top with a dead band
@@ -426,13 +444,28 @@ export function OfferingReports({
             are actually on it per account, i.e. where the room to grow is.
             Every number comes from the license lines' own `num_licenses`. */}
         <div className="flex h-full flex-col px-5 py-4">
-          <div className="mb-3 flex items-baseline justify-between gap-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               Seats by account
             </p>
-            <p className="text-[11px] text-text-tertiary tnum">
-              {report.totalLicenses} seats in total
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] text-text-tertiary tnum">
+                {report.totalLicenses} seats in total
+              </p>
+              {report.totalLicenses > 0 && (
+                <ExpandedChartModal
+                  title="Seats by account"
+                  subtitle={`${offeringName} licensed seats across customer accounts.`}
+                  chart={{
+                    kind: "donut",
+                    segments: seatSegments,
+                    centerLabel: String(report.totalLicenses),
+                    centerSub: "seats",
+                  }}
+                  className="h-8 px-2.5 text-[11px]"
+                />
+              )}
+            </div>
           </div>
           {/* A donut, mirroring the revenue split on the left: the share IS
               the picture, so "65% of all seats" can never sit beside a
@@ -494,11 +527,24 @@ export function OfferingReports({
               bar for the contracts behind it.
             </p>
           </div>
-          <p className="shrink-0 text-[12px] text-text-tertiary tnum">
-            {renewalTotal > 0
-              ? `${formatMoney(renewalTotal)} comes up for renewal in this window`
-              : "No contracts end in this window yet"}
-          </p>
+          <div className="flex shrink-0 items-center gap-3">
+            <p className="text-[12px] text-text-tertiary tnum">
+              {renewalTotal > 0
+                ? `${formatMoney(renewalTotal)} comes up for renewal in this window`
+                : "No contracts end in this window yet"}
+            </p>
+            <ExpandedChartModal
+              title="Renewal exposure, month by month"
+              subtitle="Contracted value reaching its end date over the next 12 months."
+              chart={{
+                kind: "bar",
+                data: renewalMonths,
+                format: "money",
+                tipRecordsLabel: "Contracts ending this month",
+              }}
+              className="h-8 px-2.5 text-[11px]"
+            />
+          </div>
         </div>
         <BarChart
           data={renewalMonths}
@@ -722,7 +768,24 @@ export function OfferingReports({
               <h2 className="text-[15px] font-semibold text-text-primary">Contracted revenue outlook</h2>
               <p className="mt-0.5 text-[12px] text-text-tertiary">Value still under contract over the next six months.</p>
             </div>
-            <CalendarRange size={17} strokeWidth={1.8} className="shrink-0 text-blue-primary" />
+            <div className="flex shrink-0 items-center gap-2">
+              <ExpandedChartModal
+                title="Contracted revenue outlook"
+                subtitle={`${offeringName} value still under contract over the next six months.`}
+                chart={{
+                  kind: "area",
+                  label: "Contracted revenue",
+                  color: VIZ.teal,
+                  data: coverage,
+                  format: "money",
+                  unit: "USD",
+                  xLabels: monthLabels,
+                  pointTips: coverageTips,
+                }}
+                className="h-8 px-2.5 text-[11px]"
+              />
+              <CalendarRange size={17} strokeWidth={1.8} className="text-blue-primary" />
+            </div>
           </div>
           {/* No `pb-5` reserve any more — the padding under the plot was dead
               space the card could not use, and the chart now runs taller so it

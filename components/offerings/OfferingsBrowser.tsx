@@ -34,6 +34,7 @@ import {
   DonutLegend,
   Sparkline,
 } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
@@ -814,9 +815,27 @@ export function OfferingsBrowser({
                 com.trend &&
                 com.trend.points.length >= 2 && (
                   <div className="mt-2.5">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                      Revenue{com.trend.hint ? ` · ${com.trend.hint}` : ""}
-                    </p>
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                        Revenue{com.trend.hint ? ` · ${com.trend.hint}` : ""}
+                      </p>
+                      <ExpandedChartModal
+                        title={`${o.offering_name} revenue`}
+                        subtitle="Cumulative annual revenue from the offering’s recorded customer contracts."
+                        chart={{
+                          kind: "area",
+                          label: "Revenue",
+                          color: "#16A34A",
+                          data: com.trend.points,
+                          format: "money",
+                          unit: "USD",
+                          yMax: Math.max(...com.trend.points),
+                          xLabels: com.trend.labels,
+                          pointTips: com.trend.tips,
+                        }}
+                        className="h-8 px-2.5 text-[11px]"
+                      />
+                    </div>
                     {/* AreaChart hangs its x-axis labels just below its own box,
                         so the wrapper reserves that strip.
 
@@ -856,20 +875,35 @@ export function OfferingsBrowser({
                     </p>
                     {/* Every company wears its own mark (standing rule: a
                         company on screen always brings its logo). */}
-                    <span className="flex shrink-0 items-center -space-x-1.5">
-                      {payingCustomers.map((c) => (
-                        <CompanyLogo
-                          key={c.id}
-                          name={c.name}
-                          className="w-5 h-5 text-[7px] ring-2 ring-[color:var(--white)]"
-                        />
-                      ))}
-                      {tailAccounts > 0 && (
-                        <span className="flex h-5 w-5 items-center justify-center rounded-xl bg-blue-light text-[8px] font-semibold text-blue-primary ring-2 ring-[color:var(--white)] tnum">
-                          +{tailAccounts}
-                        </span>
-                      )}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="flex items-center -space-x-1.5">
+                        {payingCustomers.map((c) => (
+                          <CompanyLogo
+                            key={c.id}
+                            name={c.name}
+                            className="w-5 h-5 text-[7px] ring-2 ring-[color:var(--white)]"
+                          />
+                        ))}
+                        {tailAccounts > 0 && (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-xl bg-blue-light text-[8px] font-semibold text-blue-primary ring-2 ring-[color:var(--white)] tnum">
+                            +{tailAccounts}
+                          </span>
+                        )}
+                      </span>
+                      <ExpandedChartModal
+                        title={`${o.offering_name} customers`}
+                        subtitle="Revenue split across the customer accounts currently paying for this offering."
+                        chart={{
+                          kind: "donut",
+                          segments: revenueSegments,
+                          centerLabel: String(com.customerCount),
+                          centerSub:
+                            com.customerCount === 1 ? "customer" : "customers",
+                          format: "money",
+                        }}
+                        className="h-8 px-2.5 text-[11px]"
+                      />
+                    </div>
                   </div>
                   {/* ONE row: the ring, and its key beside it. The licensed-seats
                       bar chart that used to sit here is gone, it charted two

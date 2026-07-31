@@ -9,6 +9,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { ExpandedChartControl } from "@/components/charts/ExpandedChartModal";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { formatMoney } from "@/lib/pipeline";
 import { VIZ, VIZ_SERIES } from "@/components/charts/Charts";
@@ -79,6 +80,21 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
   const yourRank = you
     ? byWeighted.filter((r) => r.weighted > you.weighted).length + 1
     : 0;
+  const colorByRep = new Map(
+    reps.map((r, i) => [
+      r.identityKey,
+      !!r.memberId &&
+      !!currentUser.memberId &&
+      r.memberId === currentUser.memberId
+        ? VIZ.blue
+        : VIZ_SERIES[i % VIZ_SERIES.length],
+    ])
+  );
+  const expansionItems = sorted.map((r) => ({
+    key: r.identityKey,
+    label: r.name,
+    color: colorByRep.get(r.identityKey) ?? VIZ.blue,
+  }));
 
   return (
     <Card>
@@ -96,13 +112,92 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
             </span>
           )}
         </div>
-        <ColorSelect
-          value={sort}
-          onChange={setSort}
-          minWidth={238}
-          options={SORTS}
-          ariaLabel="Sort reps by"
-        />
+        <div className="flex items-start gap-2">
+          {reps.length > 0 && (
+            <ExpandedChartControl
+              title="Weighted forecast by rep"
+              subtitle="Compare each teammate's probability-adjusted quarter forecast, open pipeline, and share of the team quota."
+              items={expansionItems}
+              itemNoun="series"
+              renderExpanded={(visibleKeys) => {
+                const visible = new Set(visibleKeys);
+                const visibleReps = sorted.filter((r) =>
+                  visible.has(r.identityKey)
+                );
+                const expandedMax = Math.max(
+                  ...visibleReps.map((r) => r.weighted),
+                  1
+                );
+
+                return (
+                  <div className="space-y-3 py-2">
+                    {visibleReps.map((r) => {
+                      const isYou =
+                        !!r.memberId &&
+                        !!currentUser.memberId &&
+                        r.memberId === currentUser.memberId;
+                      const color = colorByRep.get(r.identityKey) ?? VIZ.blue;
+                      return (
+                        <Link
+                          key={r.identityKey}
+                          href={`/analytics/reps/${r.slug}`}
+                          className="group grid grid-cols-[minmax(130px,210px)_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-transparent px-3 py-2.5 transition-colors hover:border-border-light hover:bg-surface"
+                        >
+                          <span className="flex min-w-0 items-center gap-2.5">
+                            <Avatar
+                              name={r.name}
+                              className={`h-8 w-8 shrink-0 text-[10px] ${
+                                isYou ? "ring-2 ring-blue-primary" : ""
+                              }`}
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                                {r.name}
+                                {isYou && (
+                                  <span className="text-blue-primary"> · you</span>
+                                )}
+                              </span>
+                              <span className="block text-[10.5px] text-text-tertiary">
+                                {r.pct}% of team quota
+                              </span>
+                            </span>
+                          </span>
+                          <span className="relative h-8 overflow-hidden rounded-lg bg-surface">
+                            <span
+                              className="chart-grow-x absolute inset-y-0 left-0 rounded-lg"
+                              style={{
+                                width: `${Math.max(
+                                  (r.weighted / expandedMax) * 100,
+                                  1
+                                )}%`,
+                                background: color,
+                              }}
+                            />
+                          </span>
+                          <span className="min-w-[116px] text-right">
+                            <span className="block text-[13px] font-bold text-text-primary tnum">
+                              {formatMoney(r.weighted)}
+                            </span>
+                            <span className="block text-[10.5px] text-text-tertiary tnum">
+                              {formatMoney(r.open)} open
+                            </span>
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              }}
+            />
+          )}
+          <ColorSelect
+            value={sort}
+            onChange={setSort}
+            minWidth={238}
+            options={SORTS}
+            ariaLabel="Sort reps by"
+          />
+        </div>
       </div>
 
       <div className="flex items-stretch justify-between gap-1.5 h-[240px]">
@@ -112,7 +207,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
             !!currentUser.memberId &&
             r.memberId === currentUser.memberId;
           const first = r.name.split(" ")[0];
-          const color = you ? VIZ.blue : VIZ_SERIES[i % VIZ_SERIES.length];
+          const color = colorByRep.get(r.identityKey) ?? VIZ.blue;
           // Fill the track. At 140 of a 240px plot the tallest rep only reached
           // 58% of the height, leaving a band of dead space under the heading
           // (Anir, Jul 27: "so much empty space above… it looks funky"). 178

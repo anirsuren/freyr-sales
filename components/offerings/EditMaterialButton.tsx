@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Folder, FolderOpen } from "lucide-react";
+import { Pencil, Folder } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
-import { allFolders } from "@/lib/offeringMaterials";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
+  FIXED_MATERIAL_FOLDERS,
+  isFixedMaterialFolder,
+  materialFolderLabel,
   type AccessLevel,
   type JourneyStage,
   isReadByAgent,
@@ -113,6 +115,7 @@ export function EditMaterialButton({
               journeyStage,
               accessLevel,
               readByAgent,
+              documentType: m.documentType,
             }
           : {
               id: m.id,
@@ -125,6 +128,7 @@ export function EditMaterialButton({
               journeyStage: m.journeyStage,
               accessLevel: m.accessLevel,
               readByAgent: m.readByAgent,
+              documentType: m.documentType,
             }
       );
       const res = await fetch(`/api/offerings/${offeringId}`, {
@@ -184,9 +188,8 @@ export function EditMaterialButton({
           <p className="text-[12.5px] leading-relaxed text-text-secondary">
             Rename it, describe it, move it, or change who may see it.
           </p>
-          {/* MOVE IT. Every folder on the offering, plus the top level. A plain
-              select rather than drag-and-drop: sixty files get filed fastest
-              from the row you are already looking at. */}
+          {/* MOVE IT. The workspace owns this taxonomy; editors pick a fixed
+              destination and cannot create a one-off folder here. */}
           <div>
             <label
               htmlFor={`folder-${material.id}`}
@@ -203,10 +206,17 @@ export function EditMaterialButton({
               className="w-full"
               collapsible={false}
               options={[
-                { value: "", label: "All materials (top level)", icon: FolderOpen },
-                ...allFolders(materials, [material.folder || ""]).map((f) => ({
+                ...(!isFixedMaterialFolder(material.folder || "") && material.folder
+                  ? [{
+                      value: material.folder,
+                      label: `${material.folder} (existing folder)`,
+                      icon: Folder,
+                      color: "#64748B",
+                    }]
+                  : []),
+                ...FIXED_MATERIAL_FOLDERS.map((f) => ({
                   value: f,
-                  label: f,
+                  label: materialFolderLabel(f),
                   icon: Folder,
                   color: "#0071E3",
                 })),

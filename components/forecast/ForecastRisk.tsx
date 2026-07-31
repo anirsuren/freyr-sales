@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { CircleCheck, Clock3, ShieldAlert } from "lucide-react";
+import { ExpandedChartControl } from "@/components/charts/ExpandedChartModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
@@ -374,6 +377,147 @@ export function ForecastRisk({
     );
   };
 
+  const quietPlotItems = marks.map(({ deal, past, disambiguator }) => ({
+    key: deal.sessionId,
+    label: `${deal.company}${disambiguator ? ` · ${disambiguator}` : ""}`,
+    color: past ? RISK : MEASURE,
+  }));
+
+  const renderExpandedQuietPlot = (visibleKeys: readonly string[]) => {
+    const visible = new Set(visibleKeys);
+    const visibleMarks = marks.filter(({ deal }) => visible.has(deal.sessionId));
+    if (visibleMarks.length === 0) {
+      return (
+        <div className="flex min-h-[320px] items-center justify-center text-[13px] text-text-secondary">
+          Select at least one deal to show its inactivity.
+        </div>
+      );
+    }
+
+    const expandedMaxIdle = visibleMarks.reduce(
+      (n, { deal }) => Math.max(n, deal.staleDays),
+      0
+    );
+    const expandedStep = tickStep(
+      Math.max(expandedMaxIdle, rottingDays + 2)
+    );
+    const expandedAxisMax = Math.max(
+      expandedStep,
+      Math.ceil(
+        Math.max(expandedMaxIdle, rottingDays + 2) / expandedStep
+      ) * expandedStep
+    );
+    const expandedTicks = Array.from(
+      { length: Math.floor(expandedAxisMax / expandedStep) + 1 },
+      (_, i) => Math.min(i * expandedStep, expandedAxisMax)
+    );
+    const thresholdPct = (rottingDays / expandedAxisMax) * 100;
+
+    return (
+      <div className="py-3">
+        <div className="mb-3 grid grid-cols-[minmax(160px,230px)_minmax(0,1fr)_76px] items-end gap-4">
+          <span />
+          <span className="relative h-6">
+            <span
+              className="absolute top-0 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-semibold leading-none tnum"
+              style={{
+                left: `${thresholdPct}%`,
+                color: RISK,
+                background: `${RISK}14`,
+              }}
+            >
+              {rottingDays}-day threshold
+            </span>
+          </span>
+          <span />
+        </div>
+
+        <div className="space-y-1">
+          {visibleMarks.map(({ deal, past, disambiguator }) => {
+            const tone = past ? RISK : MEASURE;
+            const pct = (deal.staleDays / expandedAxisMax) * 100;
+            return (
+              <Link
+                key={deal.sessionId}
+                href={`/deals/${deal.sessionId}`}
+                className="group grid grid-cols-[minmax(160px,230px)_minmax(0,1fr)_76px] items-center gap-4 rounded-xl border border-transparent px-3 py-2.5 transition-colors hover:border-border-light hover:bg-surface"
+              >
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <CompanyLogo
+                    name={deal.company}
+                    className="h-8 w-8 shrink-0 text-[8px]"
+                  />
+                  <span className="min-w-0 leading-tight">
+                    <span className="block text-[12.5px] font-semibold text-text-primary">
+                      {deal.company}
+                    </span>
+                    <span className="mt-0.5 block text-[10.5px] text-text-tertiary">
+                      {disambiguator || deal.service}
+                    </span>
+                  </span>
+                </span>
+                <span className="relative block h-9">
+                  <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-surface" />
+                  <span
+                    className="chart-grow-x absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full"
+                    style={{ width: `${pct}%`, background: tone }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 z-[1] w-px"
+                    style={{
+                      left: `${thresholdPct}%`,
+                      backgroundImage: `repeating-linear-gradient(to bottom, ${RISK} 0 4px, transparent 4px 8px)`,
+                    }}
+                  />
+                  <span
+                    className="absolute top-1/2 z-[2] h-3.5 w-3.5 -translate-y-1/2 rounded-full"
+                    style={{
+                      left: `${pct}%`,
+                      marginLeft: -7,
+                      background: tone,
+                      boxShadow: `0 0 0 4px ${tone}26`,
+                    }}
+                  />
+                </span>
+                <span
+                  className="text-right text-[12px] font-bold tnum"
+                  style={{ color: tone }}
+                >
+                  {idleLabel(deal.staleDays)}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="mt-2 grid grid-cols-[minmax(160px,230px)_minmax(0,1fr)_76px] gap-4 px-3">
+          <span />
+          <span className="relative h-5 border-t border-border-light">
+            {expandedTicks.map((t, i) => (
+              <span
+                key={t}
+                className="absolute top-1 text-[10px] leading-none text-text-tertiary tnum"
+                style={{
+                  left: `${(t / expandedAxisMax) * 100}%`,
+                  transform:
+                    i === 0
+                      ? "translateX(0)"
+                      : i === expandedTicks.length - 1
+                      ? "translateX(-100%)"
+                      : "translateX(-50%)",
+                }}
+              >
+                {i === expandedTicks.length - 1 ? `${t} days` : t}
+              </span>
+            ))}
+          </span>
+          <span />
+        </div>
+      </div>
+    );
+  };
+
   /** A legend line for one half of the split: dot, glyph, label, then its own
    *  number immediately after it. */
   const SplitRead = ({
@@ -641,13 +785,25 @@ export function ForecastRisk({
                 could only be read deal-against-deal; here the eye lands on the
                 line first and every dot to its right is, visibly, exposed. */}
             <div className="mt-3 flex flex-1 flex-col justify-end border-t border-border-light pt-3">
-              <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <p className={EYEBROW}>Days since the last touch</p>
-                <p className="text-[10.5px] text-text-secondary tnum">
-                  {open.length > QUIET_ROWS
-                    ? `the ${shown.length} longest-inactive of ${open.length} open deals`
-                    : `all ${open.length} open ${open.length === 1 ? "deal" : "deals"}`}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10.5px] text-text-secondary tnum">
+                    {open.length > QUIET_ROWS
+                      ? `the ${shown.length} longest-inactive of ${open.length} open deals`
+                      : `all ${open.length} open ${open.length === 1 ? "deal" : "deals"}`}
+                  </p>
+                  {marks.length > 0 && (
+                    <ExpandedChartControl
+                      title="Days since the last touch"
+                      subtitle={`Every visible open deal shares one day axis. The ${rottingDays}-day line separates actively worked deals from exposed deals.`}
+                      items={quietPlotItems}
+                      itemNoun="series"
+                      renderExpanded={renderExpandedQuietPlot}
+                      className="h-8 px-2.5 text-[11.5px]"
+                    />
+                  )}
+                </div>
               </div>
               {marks.length > 0 ? (
                 <div

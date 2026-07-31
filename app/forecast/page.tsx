@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ServiceTag, offeringMark } from "@/components/ui/OfferingIcon";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { DonutChart, DonutLegend } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { ForecastExport } from "@/components/forecast/ForecastExport";
 import { ByRepChart } from "@/components/forecast/ByRepChart";
 import { ForecastRisk } from "@/components/forecast/ForecastRisk";
@@ -582,9 +583,24 @@ export default async function ForecastPage() {
               return (
                 <div className="flex-1 flex flex-col justify-evenly gap-4">
                   <div>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                      Sliced by stage
-                    </p>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                        Sliced by stage
+                      </p>
+                      <ExpandedChartModal
+                        title="Forecast commit by stage"
+                        subtitle="Committed forecast value grouped by the current pipeline stage."
+                        triggerLabel="Open"
+                        className="h-7 px-2 text-[11px]"
+                        chart={{
+                          kind: "donut",
+                          segments: segs,
+                          centerLabel: formatMoney(commit),
+                          centerSub: "commit",
+                          format: "money",
+                        }}
+                      />
+                    </div>
                     <div className="flex items-center gap-3">
                       <DonutChart
                         syncId="forecast-commit"
@@ -601,9 +617,25 @@ export default async function ForecastPage() {
                     </div>
                   </div>
                   <div>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                      Sliced by offering
-                    </p>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                        Sliced by offering
+                      </p>
+                      <ExpandedChartModal
+                        title="Forecast commit by offering"
+                        subtitle="Committed forecast value grouped by the offering behind each deal."
+                        triggerLabel="Open"
+                        className="h-7 px-2 text-[11px]"
+                        chart={{
+                          kind: "donut",
+                          segments: svcSegs,
+                          centerLabel: String(svcSegs.length),
+                          centerSub:
+                            svcSegs.length === 1 ? "offering" : "offerings",
+                          format: "money",
+                        }}
+                      />
+                    </div>
                     <div className="flex items-center gap-3">
                       <DonutChart
                         syncId="forecast-commit-svc"

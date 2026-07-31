@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { AreaChart, BarChart, VIZ, type TipItem } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import {
   OPEN_STAGES,
   STAGE_COLOR,
@@ -181,9 +182,26 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
       <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr]">
         {/* LEFT — the wide left-to-right curve: how the open book was built. */}
         <div className="flex flex-col xl:pr-5">
-          <Eyebrow hint="Every point is the total value of the deals you have open today that already existed on that date. A flat stretch means no new pipeline came in that week. Deals that were already lost are left out at every point, because they are not part of what you are working now.">
-            Open pipeline, day by day
-          </Eyebrow>
+          <div className="flex items-center justify-between gap-3">
+            <Eyebrow hint="Every point is the total value of the deals you have open today that already existed on that date. A flat stretch means no new pipeline came in that week. Deals that were already lost are left out at every point, because they are not part of what you are working now.">
+              Open pipeline, day by day
+            </Eyebrow>
+            <ExpandedChartModal
+              title="Open pipeline, day by day"
+              subtitle="How the pipeline you are working today accumulated over time."
+              chart={{
+                kind: "area",
+                label: "Open pipeline",
+                color: VIZ.blue,
+                data: series,
+                xLabels,
+                pointTips,
+                format: "money",
+                unit: "USD",
+              }}
+              className="h-8 px-2.5 text-[11px]"
+            />
+          </div>
           <p className="mt-1.5 text-[25px] font-bold leading-none text-text-primary tnum">
             {formatMoney(openValue)}
           </p>
@@ -212,9 +230,22 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
             border-t while the panels stack, a border-l once they sit side by
             side, so the wide layout never leaves a dead band under the bars. */}
         <div className="mt-5 flex flex-col border-t border-border-light pt-5 xl:mt-0 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
-          <Eyebrow hint="The same open money, split by the step each deal is sitting on right now. Bar height is the full value of the deals in that step; the line under it is how many deals make it up. Lost deals are excluded: they are not pipeline any more.">
-            Where that money sits
-          </Eyebrow>
+          <div className="flex items-center justify-between gap-3">
+            <Eyebrow hint="The same open money, split by the step each deal is sitting on right now. Bar height is the full value of the deals in that step; the line under it is how many deals make it up. Lost deals are excluded: they are not pipeline any more.">
+              Where that money sits
+            </Eyebrow>
+            <ExpandedChartModal
+              title="Where that money sits"
+              subtitle="Current open pipeline split by selling stage."
+              chart={{
+                kind: "bar",
+                data: stageBars,
+                format: "money",
+                tipRecordsLabel: "Deals in this step",
+              }}
+              className="h-8 px-2.5 text-[11px]"
+            />
+          </div>
           <p className="mt-1.5 text-[25px] font-bold leading-none text-text-primary tnum">
             {formatMoney(lateValue)}
           </p>

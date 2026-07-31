@@ -9,6 +9,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { ChartExpansionSuppressionProvider } from "@/components/charts/ExpandedChartModal";
 import { cn, OUTCOME_META } from "@/lib/utils";
 
 export type ChartRecord = {
@@ -121,9 +122,10 @@ export function ChartInspector({
                 type="button"
                 onClick={() => setOpen(true)}
                 aria-label={`Enlarge ${title}`}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-text-tertiary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-2.5 text-[11.5px] font-semibold text-text-secondary shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
               >
                 <Maximize2 size={14} strokeWidth={1.9} />
+                Open chart
               </button>
             </Tooltip>
           </div>
@@ -154,7 +156,11 @@ export function ChartInspector({
             )}
           </div>
         )}
-        <div className={cn("min-h-0 flex-1", bodyClassName)}>{children}</div>
+        <div className={cn("min-h-0 flex-1", bodyClassName)}>
+          <ChartExpansionSuppressionProvider>
+            {children}
+          </ChartExpansionSuppressionProvider>
+        </div>
       </Card>
 
       <Modal open={open} onClose={() => setOpen(false)} title={title} size="chart">
@@ -174,7 +180,9 @@ export function ChartInspector({
           </div>
         )}
         <div className="rounded-lg border border-border-light bg-surface/30 p-5">
-          {expandedChildren || children}
+          <ChartExpansionSuppressionProvider>
+            {expandedChildren || children}
+          </ChartExpansionSuppressionProvider>
         </div>
         {records.length > 0 && (
           <div className="mt-4 overflow-hidden rounded-lg border border-border-light">

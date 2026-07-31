@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Info, Plus, FileQuestion, FileText } from "lucide-react";
+import { Folder, Info, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
-import { DOCUMENT_TYPES, DOCUMENT_TYPE_META, type DocumentType } from "@/lib/offeringMaterials";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -16,6 +15,9 @@ import {
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
   MATERIAL_META,
+  FIXED_MATERIAL_FOLDERS,
+  isFixedMaterialFolder,
+  materialFolderLabel,
   type AccessLevel,
   type JourneyStage,
   type MaterialFormat,
@@ -46,18 +48,12 @@ const FORMATS = MATERIAL_FORMATS;
 // Add a sales material to an offering from a POP-UP, right on the offering page
 // (Suren: "this should be a pop-up, not take me to some weird edit page"). Saves
 // via the offering PATCH and refreshes so it shows immediately.
-/** The system-defined document types, as a colour-coded picker. "Not set" is
- *  first so an owner who has not chosen yet is visibly un-chosen rather than
- *  silently filed as a proposal. */
-const DOC_TYPE_OPTIONS: ColorOption[] = [
-  { value: "", label: "Not set", color: "#8A8A8E", icon: FileQuestion },
-  ...DOCUMENT_TYPES.map((t) => ({
-    value: t,
-    label: DOCUMENT_TYPE_META[t].label,
-    color: DOCUMENT_TYPE_META[t].color,
-    icon: FileText,
-  })),
-];
+const FOLDER_OPTIONS: ColorOption[] = FIXED_MATERIAL_FOLDERS.map((folder) => ({
+  value: folder,
+  label: materialFolderLabel(folder),
+  color: "#0071E3",
+  icon: Folder,
+}));
 
 export function AddMaterialButton({
   offeringId,
@@ -75,7 +71,7 @@ export function AddMaterialButton({
   // Which folder the list is standing in, read from the URL the list writes.
   // The page is a server component and cannot hand this component a callback,
   // so the URL is the channel between the two.
-  const uploadFolder = (useSearchParams().get("mf") || "").trim();
+  const openFolder = (useSearchParams().get("mf") || "").trim();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   /**
@@ -90,14 +86,9 @@ export function AddMaterialButton({
    * and the form will not submit without it.
    */
   const [kind, setKind] = useState<MaterialFormat | "">("");
-  /**
-   * WHAT IT IS, chosen from the system list — never typed. Suren, Jul 30:
-   * "the document type has to be system defined… only other category in the
-   * document type, in that they want to put any miscellaneous stuff."
-   * Defaults to nothing so the uploader makes a real choice rather than
-   * accepting whatever sat at the top of the list.
-   */
-  const [documentType, setDocumentType] = useState<DocumentType | "">("");
+  const [folder, setFolder] = useState(
+    isFixedMaterialFolder(openFolder) ? openFolder : ""
+  );
   const [journeyStage, setJourneyStage] = useState<JourneyStage>("awareness");
   const [accessLevel, setAccessLevel] = useState<AccessLevel>("client_facing");
   const [label, setLabel] = useState("");
@@ -118,7 +109,7 @@ export function AddMaterialButton({
   function reset() {
     setKind("");
     setJourneyStage("awareness");
-    setDocumentType("");
+    setFolder(isFixedMaterialFolder(openFolder) ? openFolder : "");
     setAccessLevel("client_facing");
     setLabel("");
     setDescription("");
@@ -254,6 +245,10 @@ export function AddMaterialButton({
       toast("Pick the file format first — video, presentation, document or other", "error");
       return;
     }
+    if (!folder) {
+      toast("Choose the folder this material belongs in", "error");
+      return;
+    }
     const chosenKind: MaterialFormat = kind;
     setBusy(true);
     try {
@@ -299,6 +294,7 @@ export function AddMaterialButton({
           journeyStage: m.journeyStage,
           accessLevel: m.accessLevel,
           readByAgent: m.readByAgent,
+          documentType: m.documentType,
           // Without this the siblings come back folderless and one upload
           // would flatten everything Eswar had filed.
           folder: m.folder,
@@ -312,13 +308,9 @@ export function AddMaterialButton({
           // Optional, and left off entirely when it's blank — an empty note is
           // no note, not an empty line under the title.
           ...(description.trim() ? { description: description.trim() } : {}),
-          // STRAIGHT INTO THE OPEN FOLDER. The list keeps the current folder in
-          // the URL, so uploading from inside "Proposals" files it there with
-          // nothing extra to pick — which is what sixty uploads in a row needs.
-          ...(uploadFolder ? { folder: uploadFolder } : {}),
+          folder,
           journeyStage,
           accessLevel,
-          ...(documentType ? { documentType } : {}),
           readByAgent,
         },
       ];
@@ -439,20 +431,22 @@ export function AddMaterialButton({
             </div>
           </div>
 
-          {/* WHAT THIS DOCUMENT IS — the system-defined list, so twenty owners
-              cannot invent twenty words for "proposal". Separate from the file
-              FORMAT above: format is how it opens, this is what it is. */}
+          {/* The approved folder taxonomy now carries what the file is. The
+              updated change log explicitly defers a second document-type list. */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-              Document type
+              Folder <span className="text-error">*</span>
             </label>
             <ColorSelect
-              value={documentType}
-              options={DOC_TYPE_OPTIONS}
-              onChange={(v) => setDocumentType(v as DocumentType)}
-              ariaLabel="Document type"
+              value={folder}
+              options={FOLDER_OPTIONS}
+              onChange={setFolder}
+              ariaLabel="Folder"
               minWidth={0}
             />
+            <p className="mt-1.5 text-[11.5px] text-text-tertiary">
+              Fixed by the workspace so every offering uses the same structure.
+            </p>
           </div>
 
           {/* CR-3: every material carries its buyer's-journey stage + who may

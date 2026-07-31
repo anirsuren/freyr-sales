@@ -9,7 +9,12 @@ import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { GENERIC_USER_IDENTITY } from "@/lib/userIdentity";
 import {
+  canViewNextCustomerVersion,
+  hideNextCustomerVersions,
+} from "@/lib/roadmapAccess";
+import {
   stampMaterialAttribution,
+  isFixedMaterialFolder,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 
@@ -21,7 +26,15 @@ const FORBIDDEN = NextResponse.json(
 );
 
 export async function GET() {
-  return NextResponse.json({ offerings: listOfferings().map(hydrateOffering) });
+  const offerings = await Promise.all(
+    listOfferings().map(async (offering) => {
+      const hydrated = hydrateOffering(offering);
+      return (await canViewNextCustomerVersion(offering))
+        ? hydrated
+        : hideNextCustomerVersions(hydrated);
+    })
+  );
+  return NextResponse.json({ offerings });
 }
 
 export async function POST(req: Request) {
@@ -33,6 +46,16 @@ export async function POST(req: Request) {
   // Materials shipped with a brand-new offering are real uploads too, so they
   // get the same server-side attribution stamp (never a client-supplied name).
   if (Array.isArray(body.materials)) {
+    if (
+      (body.materials as OfferingMaterial[]).some(
+        (material) => !isFixedMaterialFolder(material.folder)
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Choose a folder from the workspace's fixed list." },
+        { status: 400 }
+      );
+    }
     const user = await getCurrentUser();
     body.materials = stampMaterialAttribution(
       body.materials as OfferingMaterial[],

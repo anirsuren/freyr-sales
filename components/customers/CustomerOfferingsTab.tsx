@@ -14,6 +14,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 import { DonutChart, type TipItem } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { VIZ } from "@/components/charts/palette";
 import { formatMoney } from "@/lib/pipeline";
 import { formatDate } from "@/lib/utils";
@@ -231,15 +232,36 @@ function RevenueSection({
           <DollarSign size={13} strokeWidth={2} className="text-success" />
           Revenue on this offering
         </p>
-        {!adding && (
-          <button
-            onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-          >
-            <Plus size={13} strokeWidth={2.2} />
-            Add revenue
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {total > 0 && (
+            <ExpandedChartModal
+              title="Revenue on this offering"
+              subtitle="Revenue split by commercial model."
+              chart={{
+                kind: "donut",
+                segments: byType.map((b) => ({
+                  label: b.label,
+                  value: b.value,
+                  color: b.color,
+                  tip: b.tip,
+                })),
+                centerLabel: compactMoney(total),
+                centerSub: "on file",
+                format: "money",
+              }}
+              className="h-8 px-2.5 text-[11px]"
+            />
+          )}
+          {!adding && (
+            <button
+              onClick={() => setAdding(true)}
+              className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+            >
+              <Plus size={13} strokeWidth={2.2} />
+              Add revenue
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Chart, not a bare list (Suren: "expecting some sort of chart… a better

@@ -8,7 +8,6 @@ import {
   Clock3,
   Timer,
   ThumbsUp,
-  ThumbsDown,
   CalendarClock,
   Phone,
   PhoneIncoming,
@@ -32,6 +31,7 @@ import { syncConversations } from "@/lib/voiceSync";
 import { listOfferings } from "@/lib/offerings";
 import { VOICE_PERSONAS, personaFor } from "@/lib/voicePersonas";
 import { LineChart, BarChart, DonutChart, DonutLegend, Sparkline, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { StatTile } from "@/components/ui/StatTile";
 import { Avatar } from "@/components/ui/Avatar";
@@ -173,6 +173,36 @@ export default async function VoicePage() {
   )
     .map(([category, n]) => ({ category, n }))
     .sort((a, b) => b.n - a.n);
+  const outcomeChartSegments = outcomeCounts.map((outcome) => ({
+    id: outcome.outcome,
+    label: OUTCOME_META[outcome.outcome].label,
+    value: outcome.n,
+    color: OUTCOME_META[outcome.outcome].color,
+    tip: finished
+      .filter((call) => call.outcome === outcome.outcome)
+      .map((call) => ({
+        avatar: callerName(call),
+        name: callerName(call),
+        sub: call.company,
+        value: OUTCOME_META[outcome.outcome].label,
+      })),
+  }));
+  const categoryChartSegments = catCounts.map((category, index) => ({
+    id: category.category,
+    label: category.category,
+    value: category.n,
+    color: VIZ_SERIES[index % VIZ_SERIES.length],
+    tip: finished
+      .filter((call) => call.category === category.category)
+      .map((call) => ({
+        avatar: callerName(call),
+        name: callerName(call),
+        sub: call.company,
+        value: call.outcome
+          ? OUTCOME_META[call.outcome].label
+          : undefined,
+      })),
+  }));
   // Who asked for a callback — the analytics card that's also a to-do list.
   const callbacks = finished.filter((q) => q.outcome === "follow_up");
   // Calling activity, day by day (queue + live calls over the last 14 days).
@@ -224,6 +254,24 @@ export default async function VoicePage() {
       });
     return [...qTips, ...rTips];
   });
+  const teamMemberBars = VOICE_PERSONAS.map((persona) => ({
+    id: persona.slug,
+    label: persona.name,
+    value: analyticsBase.filter(
+      (call) => call.category === persona.category
+    ).length,
+    color: persona.color,
+    tip: analyticsBase
+      .filter((call) => call.category === persona.category)
+      .map((call) => ({
+        avatar: call.contact_name,
+        name: call.contact_name,
+        sub: call.company,
+        value: call.outcome
+          ? OUTCOME_META[call.outcome].label
+          : undefined,
+      })),
+  }));
 
   const lineCount = Object.keys(status.numbers).length;
   // Same pill on every persona card — a live line and a line still waiting for
@@ -840,28 +888,44 @@ export default async function VoicePage() {
             {/* One even row — three cards, same height (Anir: symmetry). */}
             <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_.9fr_.95fr] gap-4">
               <Card className="flex flex-col transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
-                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                  Call breakdown
-                </h3>
+                <div className="mb-1 flex flex-wrap items-start justify-between gap-2">
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    Call breakdown
+                  </h3>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <ExpandedChartModal
+                      title="Calls by outcome"
+                      subtitle="How finished calls ended."
+                      triggerLabel="Outcomes"
+                      chart={{
+                        kind: "donut",
+                        segments: outcomeChartSegments,
+                        centerLabel: String(finished.length),
+                        centerSub: "calls",
+                        format: "number",
+                      }}
+                    />
+                    <ExpandedChartModal
+                      title="Calls by category"
+                      subtitle="What the finished calls were about."
+                      triggerLabel="Categories"
+                      chart={{
+                        kind: "donut",
+                        segments: categoryChartSegments,
+                        centerLabel: String(catCounts.length),
+                        centerSub: "topics",
+                        format: "number",
+                      }}
+                    />
+                  </div>
+                </div>
                 <p className="text-[12px] text-text-tertiary mb-3">
                   How calls ended, and what they were about. Hover for details.
                 </p>
                 <div className="flex-1 grid grid-cols-2 items-start gap-4 content-start">
                   <div className="flex flex-col items-center">
                     <DonutChart
-                      segments={outcomeCounts.map((o) => ({
-                        label: OUTCOME_META[o.outcome].label,
-                        value: o.n,
-                        color: OUTCOME_META[o.outcome].color,
-                        tip: finished
-                          .filter((q) => q.outcome === o.outcome)
-                          .map((q) => ({
-                            avatar: callerName(q),
-                            name: callerName(q),
-                            sub: q.company,
-                            value: OUTCOME_META[o.outcome].label,
-                          })),
-                      }))}
+                      segments={outcomeChartSegments}
                       size={124}
                       thickness={14}
                       centerLabel={String(finished.length)}
@@ -894,19 +958,7 @@ export default async function VoicePage() {
                   </div>
                   <div className="flex flex-col items-center">
                     <DonutChart
-                      segments={catCounts.map((c, i) => ({
-                        label: c.category,
-                        value: c.n,
-                        color: VIZ_SERIES[i % VIZ_SERIES.length],
-                        tip: finished
-                          .filter((q) => q.category === c.category)
-                          .map((q) => ({
-                            avatar: callerName(q),
-                            name: callerName(q),
-                            sub: q.company,
-                            value: q.outcome ? OUTCOME_META[q.outcome].label : undefined,
-                          })),
-                      }))}
+                      segments={categoryChartSegments}
                       size={124}
                       thickness={14}
                       centerLabel={String(catCounts.length)}
@@ -1042,34 +1094,56 @@ export default async function VoicePage() {
             {/* Row 2 — two even halves (Anir: side by side, symmetrical) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card className="transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
-                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                  Calls by team member
-                </h3>
+                <div className="mb-1 flex items-start justify-between gap-3">
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    Calls by team member
+                  </h3>
+                  <ExpandedChartModal
+                    title="Calls by team member"
+                    subtitle="Finished and queued calling activity by voice agent."
+                    chart={{
+                      kind: "bar",
+                      data: teamMemberBars,
+                      unit: "calls",
+                      format: "number",
+                    }}
+                  />
+                </div>
                 <p className="text-[12px] text-text-tertiary mb-4">
                   Each agent in their color.
                 </p>
                 <BarChart
-                  data={VOICE_PERSONAS.map((p) => ({
-                    label: p.name,
-                    value: analyticsBase.filter((q) => q.category === p.category).length,
-                    color: p.color,
-                    tip: analyticsBase
-                      .filter((q) => q.category === p.category)
-                      .map((q) => ({
-                        avatar: q.contact_name,
-                        name: q.contact_name,
-                        sub: q.company,
-                        value: q.outcome ? OUTCOME_META[q.outcome].label : undefined,
-                      })),
-                  }))}
+                  data={teamMemberBars}
                   height={168}
                   unit="calls"
                 />
               </Card>
               <Card className="transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_14px_34px_rgba(10,115,232,0.11)]">
-                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                  Calls per day
-                </h3>
+                <div className="mb-1 flex items-start justify-between gap-3">
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    Calls per day
+                  </h3>
+                  <ExpandedChartModal
+                    title="Calls per day"
+                    subtitle="Calling activity over the last two weeks."
+                    chart={{
+                      kind: "line",
+                      series: [
+                        {
+                          id: "calls",
+                          label: "Calls",
+                          color: VIZ.blue,
+                          points: callsPerDay,
+                        },
+                      ],
+                      xLabels: dayLabels,
+                      pointLabels: dayPointLabels,
+                      pointTips: callsPerDayTips,
+                      unit: "calls",
+                      format: "number",
+                    }}
+                  />
+                </div>
                 <p className="text-[12px] text-text-tertiary mb-4">
                   Calling activity over the last two weeks.
                 </p>

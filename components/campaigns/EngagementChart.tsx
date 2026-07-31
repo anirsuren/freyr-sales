@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LineChart, VIZ, type TipItem } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { cn } from "@/lib/utils";
 
 // Engagement over time with metric toggles (Anir, Jul 4: "line graphs…
@@ -35,30 +36,57 @@ export function EngagementChart({
   });
   const data: Record<string, number[]> = { sent, opened, replied };
   const active = SERIES_META.filter((s) => on[s.key]);
+  const expandedSeries = SERIES_META.map((series) => ({
+    id: series.key,
+    label: series.label,
+    color: series.color,
+    points: data[series.key],
+  }));
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1.5 mb-3">
-        {SERIES_META.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setOn((prev) => ({ ...prev, [s.key]: !prev[s.key] }))}
-            aria-pressed={on[s.key]}
-            className={cn(
-              "inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1 border transition-colors",
-              on[s.key]
-                ? "border-transparent text-white"
-                : "border-border-light text-text-tertiary bg-white hover:text-text-secondary"
-            )}
-            style={on[s.key] ? { background: s.color } : undefined}
-          >
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ background: on[s.key] ? "rgba(255,255,255,0.85)" : s.color }}
-            />
-            {s.label}
-          </button>
-        ))}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {SERIES_META.map((s) => (
+            <button
+              key={s.key}
+              onClick={() =>
+                setOn((prev) => ({ ...prev, [s.key]: !prev[s.key] }))
+              }
+              aria-pressed={on[s.key]}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors",
+                on[s.key]
+                  ? "border-transparent text-white"
+                  : "border-border-light bg-white text-text-tertiary hover:text-text-secondary"
+              )}
+              style={on[s.key] ? { background: s.color } : undefined}
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{
+                  background: on[s.key]
+                    ? "rgba(255,255,255,0.85)"
+                    : s.color,
+                }}
+              />
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <ExpandedChartModal
+          title="Engagement over time"
+          subtitle="Cumulative sends, opens, and replies after the campaign went out."
+          triggerLabel="Open chart"
+          chart={{
+            kind: "line",
+            series: expandedSeries,
+            xLabels: days,
+            pointTips,
+            unit: "emails",
+            format: "number",
+          }}
+        />
       </div>
       {active.length === 0 ? (
         <p className="text-[13px] text-text-tertiary py-10 text-center">

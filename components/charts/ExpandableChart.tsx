@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Maximize2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { ChartExpansionSuppressionProvider } from "@/components/charts/ExpandedChartModal";
 import { cn } from "@/lib/utils";
 
 export type ChartDetailRow = {
@@ -54,26 +55,31 @@ export function ExpandableChart({
   return (
     <>
       <div className={cn("group relative", className)}>
-        {/* Sits over the card's own header row. Visible on hover and on
-            keyboard focus, a control that only appears on hover is invisible
-            to anyone tabbing through. */}
+        {/* Sits over the card's own header row and stays visible. Chart
+            expansion is a primary reading control, not a hover easter egg. */}
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label={`Open ${title} full size`}
           title="Open full size"
-          className="absolute -top-1 right-0 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light bg-[var(--white)] text-text-tertiary opacity-0 transition-all hover:border-blue-subtle hover:text-blue-primary focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute -top-1 right-0 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light bg-[var(--white)] text-text-secondary shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition-all hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
         >
           <Maximize2 size={13} strokeWidth={2} />
         </button>
-        {children(false)}
+        <ChartExpansionSuppressionProvider>
+          {children(false)}
+        </ChartExpansionSuppressionProvider>
       </div>
 
       <Modal open={open} onClose={() => setOpen(false)} title={title} size="chart">
         {subtitle && (
           <p className="mb-4 text-[13px] text-text-secondary">{subtitle}</p>
         )}
-        <div className="mb-5 flex justify-center">{children(true)}</div>
+        <div className="mb-5 flex justify-center">
+          <ChartExpansionSuppressionProvider>
+            {children(true)}
+          </ChartExpansionSuppressionProvider>
+        </div>
 
         {rows && rows.length > 0 && (
           <div className="border-t border-border-light pt-4">

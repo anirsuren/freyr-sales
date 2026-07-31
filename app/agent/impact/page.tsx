@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { BarChart } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import {
   buildAgentImpact,
   buildRunSeries,
@@ -162,10 +163,24 @@ export default async function AgentImpactPage({
 
       {/* Agent runs over time (#59) */}
       <div>
-        <h2 className="text-[15px] font-semibold text-text-primary mb-3 flex items-center gap-2">
-          <BarChart3 size={16} strokeWidth={1.8} className="text-blue-primary" />
-          Agent runs over time
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+            <BarChart3 size={16} strokeWidth={1.8} className="text-blue-primary" />
+            Agent runs over time
+          </h2>
+          {impact.totalRuns > 0 && (
+            <ExpandedChartModal
+              title="Agent runs over time"
+              subtitle={`Agent activity during ${WINDOWS.find((item) => item.key === win)?.label.toLowerCase() || "the selected period"}.`}
+              triggerLabel="Open chart"
+              chart={{
+                kind: "bar",
+                data: seriesData,
+                unit: "runs",
+              }}
+            />
+          )}
+        </div>
         <Card>
           {impact.totalRuns === 0 ? (
             <p className="text-[13px] text-text-secondary">

@@ -7,6 +7,10 @@ import {
   buildKnowledgeBaseAsync,
 } from "@/lib/knowledgeBase";
 import { getDataMode } from "@/lib/dataMode";
+import {
+  canViewNextCustomerVersion,
+  hideNextCustomerVersions,
+} from "@/lib/roadmapAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +69,10 @@ export async function POST(req: Request) {
       await initializeLiveOfferings();
       const raw = getOffering(onOffering);
       if (raw) {
-        const o = hydrateOffering(raw);
+        const hydrated = hydrateOffering(raw);
+        const o = (await canViewNextCustomerVersion(raw))
+          ? hydrated
+          : hideNextCustomerVersions(hydrated);
         const mats = o.materials || [];
         focus = [
           `THE OFFERING ON SCREEN — complete record, treat as authoritative:`,

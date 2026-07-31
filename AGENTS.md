@@ -177,7 +177,14 @@ what was written back, `deleted-test-customers.json`).
   tab with sales-safe gating, (3) customer × offering heat map over ~100
   named accounts imported from KonnectCo without disrupting it.
 
-## 9. Current state — Jul 30, 2026, end of day
+## 9. Current state — Jul 31, 2026
+
+- **Folder and roadmap requirements are now resolved from Change Request Log
+  item 20:** Sales Materials uses 12 fixed top-level folders plus the approved
+  Product Demos and Sales Decks subfolders. Owners choose from the fixed list;
+  arbitrary folder creation is gone. The offering Roadmap separates current,
+  past, and next customer versions, removes key contacts, and hides unreleased
+  versions from ordinary sales reps at both the page and API boundaries.
 
 - **This release adds the Customer Offering Heat Map:** a Reports entry, the
   full customer × offering matrix, display/filter controls, and a versioned
@@ -224,10 +231,11 @@ sweep (zero native selects; ColorSelect/PeopleSelect everywhere — commits
 rightward-growing search + Add customer / Import CSV doors through
 /api/import/crm (642ea20).
 
-### Blocked on Freyr (asked Jul 30, awaiting answers)
-- The 14 standard folder names; the document-type list; whether folder names
-  are a locked pick list; roadmap-tab fields; roadmap visibility rule
-  (sales must not see beyond current release); Suren's GSK roadmap format.
+### Blocked on Freyr
+- The exact verified account emails/ids for any roadmap exceptions who remain
+  on the sales role. Admins, managers and Offering Owners are already covered;
+  deployment may add explicit verified emails through
+  `ROADMAP_NEXT_VIEWER_EMAILS` without relying on mutable display names.
 - Later: ~100-account list, KonnectCo export, offering taxonomy bucketing.
 
 ## 10. Meeting knowledge (Jul 30 stakeholder meeting, fully transcribed)

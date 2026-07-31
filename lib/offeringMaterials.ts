@@ -250,6 +250,8 @@ export function stampMaterialAttribution(
     const folder =
       typeof material.folder === "string" ? material.folder : prior?.folder;
     if (folder) next.folder = folder;
+    const documentType = material.documentType ?? prior?.documentType;
+    if (documentType) next.documentType = documentType;
     // A payload that CARRIES the switch wins (that is how the dialog turns it
     // off); one that omits it inherits what is on file, so saving a sibling
     // row can never quietly re-teach the assistant a file somebody excluded.
@@ -445,34 +447,64 @@ export function asAccessLevel(v: unknown): AccessLevel | null {
 // ---------------------------------------------------------------------------
 
 /**
- * The three folders every offering starts with (Saras, Jul 30: "3 folders are
- * required for now since Eswar has multiple files within these"). They are
- * DEFAULTS, not fixtures: they always appear so an owner never faces an empty
- * tree, and owners add their own alongside — including sub-folders, which are
- * just deeper paths.
- */
-/**
- * Suren, Jul 30 (0:51): "I have one more category called customer demos, and
- * you can have internal demos and customer demos as another category."
+ * THE APPROVED, FIXED SALES-MATERIAL FOLDER TREE.
  *
- * Demos split in two because who may watch them differs: an internal demo is
- * for a rep learning the product, a customer demo is one you can put in front
- * of an account. They stand alongside the generic "Product Demos" folder that
- * already holds Eswar's files rather than replacing it, so nothing he has
- * already filed moves.
- *
- * NOT the system-defined folder list Suren asked for ("the system defined
- * folder types… only these are the folders you can add"). That needs the 14
- * folder names Wajeed handed the business owners, and inventing Freyr's
- * taxonomy here would be worse than waiting for it.
+ * Source: Freyr Change Request Log, item 20 (Jul 31). The sheet calls these
+ * "12 folders" and nests five more choices under Product Demos and Sales
+ * Decks. They are system-owned: an Offering Owner chooses from this list when
+ * uploading, but cannot invent another folder name.
  */
-export const DEFAULT_MATERIAL_FOLDERS = [
-  "Proposals",
-  "Product Demos",
-  "Internal Demos",
-  "Customer Demos",
-  "Thought Leadership",
+export const MATERIAL_FOLDER_TREE = [
+  { name: "Product Sheet" },
+  { name: "Product Brief" },
+  {
+    name: "Product Demos",
+    children: ["Marketing Demos", "Internal Demos", "Recorded Client Demos"],
+  },
+  {
+    name: "Sales Decks",
+    children: ["Short Sales Deck", "Long Sales Deck"],
+  },
+  { name: "Battle Cards" },
+  // The stored path cannot contain "/" because slash separates nested folders.
+  // The picker/card label below still shows Freyr's exact approved wording.
+  { name: "Success Stories and Case Studies" },
+  { name: "Thought Leadership" },
+  { name: "Proposals" },
+  { name: "Sales Qualifying Questions" },
+  { name: "Introductory Emails" },
+  { name: "Client Testimonials" },
+  { name: "Others" },
 ] as const;
+
+/** Every selectable path, including the two parent folders that have children. */
+export const FIXED_MATERIAL_FOLDERS: string[] = MATERIAL_FOLDER_TREE.flatMap(
+  (folder) => [
+    folder.name,
+    ...("children" in folder
+      ? folder.children.map((child) => `${folder.name}/${child}`)
+      : []),
+  ]
+);
+
+const FIXED_MATERIAL_FOLDER_SET = new Set(FIXED_MATERIAL_FOLDERS);
+
+export function isFixedMaterialFolder(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    FIXED_MATERIAL_FOLDER_SET.has(normalizeFolderPath(value))
+  );
+}
+
+/** Labels in pickers keep the hierarchy visible without relying on indentation. */
+export function materialFolderLabel(path: string): string {
+  const [parent, child] = path.split("/");
+  const display = (name: string) =>
+    name === "Success Stories and Case Studies"
+      ? "Success Stories / Case Studies"
+      : name;
+  return child ? `${display(parent)} · ${display(child)}` : display(parent);
+}
 
 /** Trim, drop empty segments, cap depth. "  a / /b  " -> "a/b". */
 export function normalizeFolderPath(raw: string, maxDepth = 5): string {
@@ -500,7 +532,7 @@ export function allFolders(
   materials: { folder?: string }[],
   stored: string[] = []
 ): string[] {
-  const found = new Set<string>(DEFAULT_MATERIAL_FOLDERS);
+  const found = new Set<string>();
   const add = (path: string) => {
     const clean = normalizeFolderPath(path);
     if (!clean) return;
@@ -509,7 +541,10 @@ export function allFolders(
   };
   for (const f of stored) add(f);
   for (const m of materials) if (m.folder) add(m.folder);
-  return Array.from(found).sort((a, b) => a.localeCompare(b));
+  const legacy = Array.from(found)
+    .filter((folder) => !FIXED_MATERIAL_FOLDER_SET.has(folder))
+    .sort((a, b) => a.localeCompare(b));
+  return [...FIXED_MATERIAL_FOLDERS, ...legacy];
 }
 
 /** The immediate children of `parent` ("" = top level). */

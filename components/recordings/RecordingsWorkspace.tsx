@@ -10,6 +10,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { DonutChart } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { userScopedStorageKey } from "@/lib/userIdentity";
@@ -793,32 +794,83 @@ export function RecordingsWorkspace() {
           )}
 
           {tab === "quality" && (
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-8 items-center max-w-3xl">
-              <div className="space-y-4">
-                {rec.quality.map((q2) => (
-                  <div key={q2.label}>
-                    <div className="flex justify-between text-[13px] mb-1">
-                      <span className="text-text-secondary">{q2.label}</span>
-                      <span className="font-semibold tnum" style={{ color: scoreColor(q2.score) }}>
-                        {q2.score}
-                      </span>
-                    </div>
-                    <div className="h-2.5 rounded-full bg-surface overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${q2.score}%`, background: scoreColor(q2.score) }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col items-center">
-                <DonutChart
-                  segments={[
-                    { label: "Score", value: rec.score, color: "#0071E3" },
-                    { label: "Gap", value: 100 - rec.score, color: "#EEF0F3" },
-                  ]}
-                  centerLabel={`${rec.score}`}
-                  centerSub="overall"
+            <div className="max-w-3xl">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    Call quality score
+                  </h3>
+                  <p className="mt-0.5 text-[12px] text-text-tertiary">
+                    Overall coaching score and the remaining gap.
+                  </p>
+                </div>
+                <ExpandedChartModal
+                  title="Call quality score"
+                  subtitle={`Overall coaching score for ${rec.title}.`}
+                  chart={{
+                    kind: "donut",
+                    segments: [
+                      {
+                        id: "score",
+                        label: "Score",
+                        value: rec.score,
+                        color: "#0071E3",
+                      },
+                      {
+                        id: "gap",
+                        label: "Gap",
+                        value: 100 - rec.score,
+                        color: "#8E8E93",
+                      },
+                    ],
+                    centerLabel: String(rec.score),
+                    centerSub: "overall",
+                    format: "number",
+                  }}
                 />
-                <p className="text-[12px] text-text-tertiary mt-2">Call quality</p>
+              </div>
+              <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-[1fr_180px]">
+                <div className="space-y-4">
+                  {rec.quality.map((q2) => (
+                    <div key={q2.label}>
+                      <div className="mb-1 flex justify-between text-[13px]">
+                        <span className="text-text-secondary">{q2.label}</span>
+                        <span
+                          className="font-semibold tnum"
+                          style={{ color: scoreColor(q2.score) }}
+                        >
+                          {q2.score}
+                        </span>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-surface">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${q2.score}%`,
+                            background: scoreColor(q2.score),
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-col items-center">
+                  <DonutChart
+                    segments={[
+                      { label: "Score", value: rec.score, color: "#0071E3" },
+                      {
+                        label: "Gap",
+                        value: 100 - rec.score,
+                        color: "#EEF0F3",
+                      },
+                    ]}
+                    centerLabel={`${rec.score}`}
+                    centerSub="overall"
+                  />
+                  <p className="mt-2 text-[12px] text-text-tertiary">
+                    Call quality
+                  </p>
+                </div>
               </div>
             </div>
           )}

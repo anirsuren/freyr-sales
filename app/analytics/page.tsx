@@ -5,6 +5,7 @@ import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import { RepAnalytics, type RepStat } from "@/components/analytics/RepAnalytics";
 import { AnalyticsRangeControl } from "@/components/analytics/AnalyticsRangeControl";
 import { AreaChart, VIZ } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
 import {
@@ -197,8 +198,8 @@ export default async function AnalyticsPage({
 
       {/* Hero trend */}
       <Card className="p-0 pb-5" data-tour="analytics-pipeline-growth">
-        <div className="p-5 flex items-end justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-4 p-5">
+          <div className="min-w-0">
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
               Pipeline growth
               <InfoHint text="The big number is your open pipeline right now. The line shows how that pipeline built up over the period you've been tracking: each point adds in the deals created by then." />
@@ -207,6 +208,23 @@ export default async function AnalyticsPage({
               <CountUp value={openValue} unit="money" />
             </p>
           </div>
+          <ExpandedChartModal
+            title="Pipeline growth"
+            subtitle="How the open pipeline accumulated over the selected period."
+            chart={{
+              kind: "area",
+              id: "analytics-pipeline-growth",
+              label: "Open pipeline",
+              color: VIZ.blue,
+              data: trendSeries,
+              goal: 3,
+              goalLabel: "Quota $3.0M",
+              format: "millions",
+              unit: "USD",
+              xLabels: trendLabels,
+              pointTips: trendPointTips,
+            }}
+          />
         </div>
         <AreaChart
           data={trendSeries}

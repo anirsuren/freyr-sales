@@ -20,6 +20,7 @@ import {
   Legend,
   VIZ,
 } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import {
   buildDeals,
@@ -545,12 +546,32 @@ export default async function DashboardPage({
                 <p className="text-[16px] font-semibold text-text-primary">Quarter forecast</p>
                 <p className="mt-1 text-[11.5px] text-text-tertiary">How the open book accumulated, what is likely to close, and the remaining quota gap.</p>
               </div>
-              <Legend
-                items={[
-                  { label: "Open pipeline", color: VIZ.blue },
-                  { label: "Quarter quota", color: VIZ.amber },
-                ]}
-              />
+              <div className="flex shrink-0 items-center gap-3">
+                <Legend
+                  items={[
+                    { label: "Open pipeline", color: VIZ.blue },
+                    { label: "Quarter quota", color: VIZ.amber },
+                  ]}
+                />
+                <ExpandedChartModal
+                  title="Quarter forecast"
+                  subtitle="How the open book accumulated against the quarter quota."
+                  chart={{
+                    kind: "area",
+                    id: "dashboard-quarter-forecast",
+                    label: "Open pipeline",
+                    color: VIZ.blue,
+                    data: trendSeries,
+                    goal: 3,
+                    goalLabel: "Quarter quota · $3.0M",
+                    format: "millions",
+                    unit: "open pipeline",
+                    xLabels: trendLabels,
+                    pointTips: trendPointTips,
+                  }}
+                  className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+                />
+              </div>
             </div>
             <div className="mt-4 grid grid-cols-4 divide-x divide-border-light rounded-md border border-border-light bg-surface/45">
               {[
@@ -589,7 +610,21 @@ export default async function DashboardPage({
                 <h2 className="text-[15px] font-semibold text-text-primary">Expected revenue by stage</h2>
                 <p className="mt-0.5 text-[11px] text-text-tertiary">Probability-adjusted revenue expected from each pipeline stage.</p>
               </div>
-              <Link href="/forecast" className="shrink-0 text-[11px] font-semibold text-blue-primary hover:underline">Full forecast</Link>
+              <div className="flex shrink-0 items-center gap-3">
+                <Link href="/forecast" className="text-[11px] font-semibold text-blue-primary hover:underline">Full forecast</Link>
+                <ExpandedChartModal
+                  title="Expected revenue by stage"
+                  subtitle="Probability-adjusted revenue expected from each pipeline stage."
+                  chart={{
+                    kind: "donut",
+                    segments: forecastSegments,
+                    centerLabel: formatMoney(quarterCommit),
+                    centerSub: "expected revenue",
+                    format: "money",
+                  }}
+                  className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+                />
+              </div>
             </div>
             <div className="mt-4 grid grid-cols-[180px_minmax(0,1fr)] items-center gap-5">
               <div className="flex justify-center">

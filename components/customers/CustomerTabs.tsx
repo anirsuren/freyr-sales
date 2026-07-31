@@ -46,6 +46,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import { AreaChart, DonutChart, DonutLegend, LineChart, Sparkline, type TipItem } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import {
   buildDeals,
   formatMoney,
@@ -669,6 +670,26 @@ export function CustomerTabs({
                   <h3 className="text-[15px] font-semibold text-text-primary">
                     Relationship health
                   </h3>
+                  <ExpandedChartModal
+                    title="Relationship health"
+                    subtitle={`${customer.company_name} health over the last five weeks.`}
+                    chart={{
+                      kind: "area",
+                      label: "Health score",
+                      color: HEALTH_COLOR[health.band].color,
+                      data: healthSeries.points,
+                      format: "number",
+                      unit: "pts",
+                      yMax: 100,
+                      xLabels: healthSeries.points.map((_, index) =>
+                        index === healthSeries.points.length - 1
+                          ? "this week"
+                          : `${healthSeries.points.length - 1 - index}w ago`
+                      ),
+                      pointTips: healthPointTips,
+                    }}
+                    className="h-8 px-2.5 text-[11px]"
+                  />
                 </div>
                 <p className="text-[12px] text-text-tertiary mb-3">
                   How this account&apos;s health has moved over the last 5 weeks.
@@ -695,9 +716,24 @@ export function CustomerTabs({
                 </div>
               </Card>
               <Card className="flex flex-col">
-                <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                  How touches have landed
-                </h3>
+                <div className="mb-1 flex items-center justify-between gap-3">
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    How touches have landed
+                  </h3>
+                  {outcomeMix.length > 0 && (
+                    <ExpandedChartModal
+                      title="How touches have landed"
+                      subtitle={`Every logged touch with ${customer.company_name}, by outcome.`}
+                      chart={{
+                        kind: "donut",
+                        segments: outcomeMix,
+                        centerLabel: String(interactions.length),
+                        centerSub: "touches",
+                      }}
+                      className="h-8 px-2.5 text-[11px]"
+                    />
+                  )}
+                </div>
                 <p className="text-[12px] text-text-tertiary mb-4">
                   Every logged touch with {customer.company_name}, by outcome.
                 </p>
@@ -972,8 +1008,17 @@ export function CustomerTabs({
                 { label: "Health", value: `${health.score}/100`, sub: health.band.replace("_", " "), color: HEALTH_COLOR[health.band].color },
                 { label: "Touches", value: String(interactions.length), sub: "logged interactions" },
               ];
-              const H3 = ({ children }: { children: React.ReactNode }) => (
-                <h3 className="text-[15px] font-semibold text-text-primary mb-4">{children}</h3>
+              const H3 = ({
+                children,
+                action,
+              }: {
+                children: React.ReactNode;
+                action?: React.ReactNode;
+              }) => (
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-[15px] font-semibold text-text-primary">{children}</h3>
+                  {action}
+                </div>
               );
               return (
                 <>
@@ -1004,9 +1049,24 @@ export function CustomerTabs({
                           Open value accumulated over the last 12 weeks. Hover any week for the deals, contacts, and stage behind it.
                         </p>
                       </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Current</p>
-                        <p className="text-[19px] font-bold text-text-primary tnum">{formatMoney(totalOpen)}</p>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Current</p>
+                          <p className="text-[19px] font-bold text-text-primary tnum">{formatMoney(totalOpen)}</p>
+                        </div>
+                        <ExpandedChartModal
+                          title="Account pipeline momentum"
+                          subtitle={`${customer.company_name} open value accumulated over the last 12 weeks.`}
+                          chart={{
+                            kind: "line",
+                            series: [{ label: "Open pipeline", color: "#0071E3", points: pipelineTrend }],
+                            format: "money",
+                            pointLabels: pipelinePointLabels,
+                            xLabels: [pipelinePointLabels[0], pipelinePointLabels[5], pipelinePointLabels[11]],
+                            pointTips: pipelineTrendTips,
+                          }}
+                          className="h-8 px-2.5 text-[11px]"
+                        />
                       </div>
                     </div>
                     <LineChart
@@ -1022,7 +1082,29 @@ export function CustomerTabs({
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                     <Card className="flex flex-col p-5">
                       <div>
-                        <H3>Pipeline composition</H3>
+                        <H3
+                          action={dealsByStage.length > 0 ? (
+                            <ExpandedChartModal
+                              title="Pipeline composition"
+                              subtitle={`${customer.company_name} current open value by selling stage.`}
+                              chart={{
+                                kind: "donut",
+                                segments: dealsByStage.map((s) => ({
+                                  label: s.label,
+                                  value: s.value,
+                                  color: s.color,
+                                  tip: s.tip,
+                                })),
+                                centerLabel: formatMoney(totalOpen),
+                                centerSub: "open",
+                                format: "money",
+                              }}
+                              className="h-8 px-2.5 text-[11px]"
+                            />
+                          ) : undefined}
+                        >
+                          Pipeline composition
+                        </H3>
                         <p className="-mt-3 mb-3 text-[11.5px] text-text-tertiary">Current open value by selling stage.</p>
                       </div>
                       {dealsByStage.length > 0 ? (
@@ -1050,7 +1132,23 @@ export function CustomerTabs({
                     </Card>
                     <Card className="flex flex-col p-5">
                       <div>
-                        <H3>Touch outcome mix</H3>
+                        <H3
+                          action={outcomeMix.length > 0 ? (
+                            <ExpandedChartModal
+                              title="Touch outcome mix"
+                              subtitle={`${customer.company_name} outcomes across every logged interaction.`}
+                              chart={{
+                                kind: "donut",
+                                segments: outcomeMix,
+                                centerLabel: String(interactions.length),
+                                centerSub: "touches",
+                              }}
+                              className="h-8 px-2.5 text-[11px]"
+                            />
+                          ) : undefined}
+                        >
+                          Touch outcome mix
+                        </H3>
                         <p className="-mt-3 mb-3 text-[11.5px] text-text-tertiary">What happened across every logged interaction.</p>
                       </div>
                       {outcomeMix.length > 0 ? (
@@ -1075,7 +1173,32 @@ export function CustomerTabs({
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                     <Card className="flex flex-col">
-                      <H3>Relationship health · last 5 weeks</H3>
+                      <H3
+                        action={
+                          <ExpandedChartModal
+                            title="Relationship health"
+                            subtitle={`${customer.company_name} health over the last five weeks.`}
+                            chart={{
+                              kind: "area",
+                              label: "Health score",
+                              color: HEALTH_COLOR[health.band].color,
+                              data: healthSeries.points,
+                              format: "number",
+                              unit: "pts",
+                              yMax: 100,
+                              xLabels: healthSeries.points.map((_, index) =>
+                                index === healthSeries.points.length - 1
+                                  ? "this week"
+                                  : `${healthSeries.points.length - 1 - index}w ago`
+                              ),
+                              pointTips: healthPointTips,
+                            }}
+                            className="h-8 px-2.5 text-[11px]"
+                          />
+                        }
+                      >
+                        Relationship health · last 5 weeks
+                      </H3>
                       <div className="flex-1 flex items-end min-h-[160px]">
                         <AreaChart
                           data={healthSeries.points}
@@ -1095,7 +1218,29 @@ export function CustomerTabs({
                       </div>
                     </Card>
                     <Card className="flex flex-col">
-                      <H3>Activity · last 12 weeks</H3>
+                      <H3
+                        action={
+                          <ExpandedChartModal
+                            title="Activity"
+                            subtitle={`${customer.company_name} logged touches over the last 12 weeks.`}
+                            chart={{
+                              kind: "area",
+                              label: "Touches",
+                              color: "#0071E3",
+                              data: activity,
+                              format: "number",
+                              unit: "touches",
+                              pointTips: activityTips,
+                              xLabels: activity.map((_, i) =>
+                                i === activity.length - 1 ? "now" : `${activity.length - 1 - i}w`
+                              ),
+                            }}
+                            className="h-8 px-2.5 text-[11px]"
+                          />
+                        }
+                      >
+                        Activity · last 12 weeks
+                      </H3>
                       <div className="flex-1 flex items-end min-h-[160px]">
                         <AreaChart
                           data={activity}
@@ -1247,9 +1392,24 @@ export function CustomerTabs({
                         Cumulative open value as opportunities entered this account.
                       </p>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-[10px] uppercase tracking-[0.05em] text-text-tertiary">Weighted</p>
-                      <p className="text-[17px] font-bold text-text-primary tnum">{formatMoney(weightedTotal)}</p>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-[10px] uppercase tracking-[0.05em] text-text-tertiary">Weighted</p>
+                        <p className="text-[17px] font-bold text-text-primary tnum">{formatMoney(weightedTotal)}</p>
+                      </div>
+                      <ExpandedChartModal
+                        title="Pipeline value over time"
+                        subtitle={`${customer.company_name} cumulative open value as opportunities entered the account.`}
+                        chart={{
+                          kind: "line",
+                          series: [{ label: "Open pipeline", color: "#0071E3", points: valueTimeline }],
+                          format: "money",
+                          pointLabels: dealPointLabels,
+                          xLabels: [dealPointLabels[0], dealPointLabels[dealPointLabels.length - 1]],
+                          pointTips: dealPointTips,
+                        }}
+                        className="h-8 px-2.5 text-[11px]"
+                      />
                     </div>
                   </div>
                   <LineChart
@@ -1262,7 +1422,20 @@ export function CustomerTabs({
                   />
                 </Card>
                 <Card className="p-4">
-                  <h3 className="text-[15px] font-semibold text-text-primary">Stage mix</h3>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-[15px] font-semibold text-text-primary">Stage mix</h3>
+                    <ExpandedChartModal
+                      title="Stage mix"
+                      subtitle={`${customer.company_name} active opportunities by current stage.`}
+                      chart={{
+                        kind: "donut",
+                        segments: stageMix,
+                        centerLabel: String(dealCount),
+                        centerSub: dealCount === 1 ? "deal" : "deals",
+                      }}
+                      className="h-8 px-2.5 text-[11px]"
+                    />
+                  </div>
                   <p className="mt-0.5 text-[11.5px] text-text-tertiary">Where every active opportunity sits now.</p>
                   <div className="mt-3 grid grid-cols-[124px_minmax(0,1fr)] items-center gap-5">
                     <DonutChart

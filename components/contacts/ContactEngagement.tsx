@@ -11,6 +11,7 @@ import {
   Sparkline,
   type TipItem,
 } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import {
   OUTCOME_META,
   OUTCOME_CHART_COLOR,
@@ -151,9 +152,22 @@ export function ContactEngagement({
         <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 items-stretch">
           {/* LEFT — outcome mix: donut + one-column legend, hover-linked */}
           <div className="flex flex-col lg:pr-6">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              How touches landed
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                How touches landed
+              </p>
+              <ExpandedChartModal
+                title="How touches landed"
+                subtitle={`Every logged touch with ${firstName}, grouped by outcome.`}
+                chart={{
+                  kind: "donut",
+                  segments: outcomeMix,
+                  centerLabel: String(total),
+                  centerSub: total === 1 ? "touch" : "touches",
+                }}
+                className="h-8 px-2.5 text-[11px]"
+              />
+            </div>
             <div className="flex-1 flex items-center gap-5 mt-3">
               <DonutChart
                 segments={outcomeMix}

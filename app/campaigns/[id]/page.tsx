@@ -23,6 +23,7 @@ import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EngagementChart } from "@/components/campaigns/EngagementChart";
 import { ChartInspector } from "@/components/charts/ChartInspector";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { DonutChart, BarChart, VIZ, VIZ_SERIES, type TipItem } from "@/components/charts/Charts";
 import { getCampaign } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
@@ -178,6 +179,59 @@ export default async function CampaignDetailPage({
     name: p.name,
     sub: p.title || p.company,
   }));
+  const deliverySegments = [
+    {
+      label: "Sent",
+      value: sent,
+      color: VIZ.green,
+      tip: recipientTip,
+    },
+    {
+      label: "Queued",
+      value: queued,
+      color: VIZ.amber,
+      tip: recipientTip,
+    },
+    {
+      label: "Not queued",
+      value: Math.max(0, total - sent - queued),
+      color: "#E5E5EA",
+      tip: recipientTip,
+    },
+  ];
+  const companySegments = companyBars.map(([company, n], index) => ({
+    id: company,
+    label: company,
+    value: n,
+    color: VIZ_SERIES[index % VIZ_SERIES.length],
+    tip: recipients
+      .filter((person) => person.company === company)
+      .map((person) => ({
+        avatar: person.name,
+        name: person.name,
+        sub: person.title,
+      })),
+  }));
+  const engagementFunnelBars = [
+    {
+      label: "Sent",
+      value: sent,
+      color: VIZ.blue,
+      tip: recipientTip,
+    },
+    {
+      label: "Opened",
+      value: campaign.opens,
+      color: VIZ.green,
+      tip: recipientTip,
+    },
+    {
+      label: "Replied",
+      value: campaign.replies,
+      color: VIZ.indigo,
+      tip: recipientTip,
+    },
+  ];
 
   const checks = [
     { label: "Subject", ok: !!campaign.subject.trim() },
@@ -301,10 +355,23 @@ export default async function CampaignDetailPage({
       {/* Visual row: delivery + engagement snapshot + recipients by company */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
         <Card className="flex flex-col">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
-            <Send size={16} strokeWidth={1.9} className="text-blue-primary" />
-            Delivery
-          </h2>
+          <div className="mb-1 flex items-start justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+              <Send size={16} strokeWidth={1.9} className="text-blue-primary" />
+              Delivery
+            </h2>
+            <ExpandedChartModal
+              title="Campaign delivery"
+              subtitle="Sent, queued, and not-yet-queued recipients."
+              chart={{
+                kind: "donut",
+                segments: deliverySegments,
+                centerLabel: `${total ? Math.round(sentFrac * 100) : 0}%`,
+                centerSub: "sent",
+                format: "number",
+              }}
+            />
+          </div>
           <p className="text-[12px] text-text-tertiary mb-3">
             {campaign.status === "sent"
               ? "Delivered: every recipient got the blast."
@@ -314,11 +381,7 @@ export default async function CampaignDetailPage({
           </p>
           <div className="flex-1 flex items-center gap-5">
             <DonutChart
-              segments={[
-                { label: "Sent", value: sent, color: VIZ.green, tip: recipientTip },
-                { label: "Queued", value: queued, color: VIZ.amber, tip: recipientTip },
-                { label: "Not queued", value: Math.max(0, total - sent - queued), color: "#E5E5EA", tip: recipientTip },
-              ]}
+              segments={deliverySegments}
               size={128}
               thickness={14}
               centerLabel={`${total ? Math.round(sentFrac * 100) : 0}%`}
@@ -365,10 +428,25 @@ export default async function CampaignDetailPage({
         </ChartInspector>
 
         <Card className="flex flex-col">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
-            <Building2 size={16} strokeWidth={1.9} className="text-blue-primary" />
-            Recipients by company
-          </h2>
+          <div className="mb-1 flex items-start justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+              <Building2 size={16} strokeWidth={1.9} className="text-blue-primary" />
+              Recipients by company
+            </h2>
+            {companySegments.length > 0 && (
+              <ExpandedChartModal
+                title="Recipients by company"
+                subtitle="Where this campaign lands across customer accounts."
+                chart={{
+                  kind: "donut",
+                  segments: companySegments,
+                  centerLabel: String(total),
+                  centerSub: "people",
+                  format: "number",
+                }}
+              />
+            )}
+          </div>
           <p className="text-[12px] text-text-tertiary mb-3">
             Where this blast lands.
           </p>
@@ -377,16 +455,7 @@ export default async function CampaignDetailPage({
           ) : (
             <div className="flex-1 flex items-center gap-5">
               <DonutChart
-                segments={companyBars.map(([company, n], i) => ({
-                  label: company,
-                  value: n,
-                  color: VIZ_SERIES[i % VIZ_SERIES.length],
-                  // This slice IS a company — the tip names its people (headshot
-                  // + role) so hovering shows exactly who at that company got it.
-                  tip: recipients
-                    .filter((p) => p.company === company)
-                    .map((p) => ({ avatar: p.name, name: p.name, sub: p.title })),
-                }))}
+                segments={companySegments}
                 size={128}
                 thickness={14}
                 centerLabel={String(total)}
@@ -596,10 +665,24 @@ export default async function CampaignDetailPage({
 
       {/* Engagement funnel — sent → opened → replied, with rates */}
       <Card>
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary mb-1">
-          <BarChart3 size={16} strokeWidth={1.8} className="text-blue-primary" />
-          Engagement
-        </h2>
+        <div className="mb-1 flex items-start justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+            <BarChart3 size={16} strokeWidth={1.8} className="text-blue-primary" />
+            Engagement
+          </h2>
+          {sent > 0 || campaign.opens > 0 ? (
+            <ExpandedChartModal
+              title="Campaign engagement funnel"
+              subtitle="How recipients move from sent to opened to replied."
+              chart={{
+                kind: "bar",
+                data: engagementFunnelBars,
+                unit: "emails",
+                format: "number",
+              }}
+            />
+          ) : null}
+        </div>
         {sent === 0 && campaign.opens === 0 ? (
           <p className="text-[13px] text-text-secondary leading-relaxed">
             Opens, replies and click-throughs chart here automatically once the
@@ -618,11 +701,7 @@ export default async function CampaignDetailPage({
               </p>
               <div className="max-w-[440px]">
                 <BarChart
-                  data={[
-                    { label: "Sent", value: sent, color: VIZ.blue, tip: recipientTip },
-                    { label: "Opened", value: campaign.opens, color: VIZ.green, tip: recipientTip },
-                    { label: "Replied", value: campaign.replies, color: VIZ.indigo, tip: recipientTip },
-                  ]}
+                  data={engagementFunnelBars}
                   height={180}
                   unit="emails"
                 />

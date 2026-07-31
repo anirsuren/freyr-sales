@@ -27,6 +27,7 @@ import {
   VIZ,
   VIZ_SERIES,
 } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { listOfferings } from "@/lib/offerings";
 import { portfolioReport, REVENUE_TYPE_META } from "@/lib/revenue";
 import { buildDeals, formatMoney, STAGE_PROBABILITY } from "@/lib/pipeline";
@@ -285,96 +286,156 @@ export default async function ReportsPage() {
               confusing left-to-right tag cloud. */}
           <section
             data-tour="reports-revenue"
-            className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3"
+            className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3"
           >
-            <Card className="self-start p-4">
-              <h2 className="text-[15px] font-semibold text-text-primary mb-1">
-                Revenue by category
-              </h2>
-              <p className="mb-3 text-[12px] text-text-tertiary">
-                Revenue across offering categories.
-              </p>
-              <div className="grid grid-cols-[112px_minmax(0,1fr)] items-center gap-3">
-                <div className="h-[112px] w-[112px] shrink-0">
-                  <DonutChart
-                    segments={categorySegments}
-                    size={112}
-                    thickness={13}
-                    centerLabel={formatMoney(report.totalRevenue)}
-                    centerSub="total"
-                    format="money"
-                    syncId="reports-category"
-                  />
+            <Card className="flex h-full min-h-[236px] flex-col p-4">
+              <div className="flex min-h-[56px] items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="mb-1 text-[15px] font-semibold text-text-primary">
+                    Revenue by category
+                  </h2>
+                  <p className="text-[12px] leading-[1.35] text-text-tertiary">
+                    Revenue across offering categories.
+                  </p>
                 </div>
-                <DonutLegend
-                  items={categoryLegend}
-                  total={report.totalRevenue}
-                  format="money"
-                  bars={false}
-                  showValues={false}
-                  syncId="reports-category"
-                  className="text-[10.5px]"
+                <ExpandedChartModal
+                  title="Revenue by category"
+                  subtitle="Revenue across offering categories."
+                  chart={{
+                    kind: "donut",
+                    segments: categoryLegend,
+                    centerLabel: formatMoney(report.totalRevenue),
+                    centerSub: "total",
+                    format: "money",
+                    legendBars: false,
+                    legendValues: false,
+                  }}
+                  className="h-8 whitespace-nowrap px-2.5 text-[11px]"
                 />
               </div>
-            </Card>
-            <Card className="self-start p-4">
-              <h2 className="text-[15px] font-semibold text-text-primary mb-1">
-                Revenue by type
-              </h2>
-              <p className="mb-3 text-[12px] text-text-tertiary">
-                Revenue by contract structure.
-              </p>
-              <div className="grid grid-cols-[112px_minmax(0,1fr)] items-center gap-3">
-                <div className="h-[112px] w-[112px] shrink-0">
-                  <DonutChart
-                    segments={typeSegments}
-                    size={112}
-                    thickness={13}
-                    centerLabel={formatMoney(report.totalRevenue)}
-                    centerSub="total"
-                    format="money"
-                    syncId="reports-type"
-                  />
-                </div>
-                <DonutLegend
-                  items={typeSegments}
-                  total={report.totalRevenue}
-                  format="money"
-                  bars={false}
-                  syncId="reports-type"
-                  className="text-[10.5px]"
-                />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <h2 className="mb-1 text-[15px] font-semibold text-text-primary">
-                Top offerings
-              </h2>
-              <p className="mb-3 text-[12px] text-text-tertiary">
-                Contracted revenue remaining through upcoming renewals.
-              </p>
-              <div className="mb-2 grid min-w-0 grid-cols-2 gap-x-3 gap-y-1.5">
-                {topOfferings.map((offering, index) => (
-                  <span
-                    key={offering.offering_id}
-                    className="inline-flex min-w-0 items-start gap-1.5 text-[9.5px] leading-[1.2] text-text-secondary"
-                  >
-                    <span
-                      className="mt-0.5 h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: VIZ_SERIES[index % VIZ_SERIES.length] }}
+              <div className="mt-3 flex min-h-[136px] flex-1 items-center">
+                <div className="grid w-full grid-cols-[112px_minmax(0,1fr)] items-center gap-3">
+                  <div className="h-[112px] w-[112px] shrink-0">
+                    <DonutChart
+                      segments={categorySegments}
+                      size={112}
+                      thickness={13}
+                      centerLabel={formatMoney(report.totalRevenue)}
+                      centerSub="total"
+                      format="money"
+                      syncId="reports-category"
                     />
-                    <span className="break-words">{offering.name}</span>
-                  </span>
-                ))}
+                  </div>
+                  <DonutLegend
+                    items={categoryLegend}
+                    total={report.totalRevenue}
+                    format="money"
+                    bars={false}
+                    showValues={false}
+                    syncId="reports-category"
+                    className="text-[10.5px]"
+                  />
+                </div>
               </div>
-              <LineChart
-                series={offeringTrendSeries}
-                xLabels={renewalHorizonLabels}
-                pointLabels={renewalHorizonLabels}
-                pointTips={offeringTrendTips}
-                height={106}
-                format="money"
-              />
+            </Card>
+            <Card className="flex h-full min-h-[236px] flex-col p-4">
+              <div className="flex min-h-[56px] items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="mb-1 text-[15px] font-semibold text-text-primary">
+                    Revenue by type
+                  </h2>
+                  <p className="text-[12px] leading-[1.35] text-text-tertiary">
+                    Revenue by contract structure.
+                  </p>
+                </div>
+                <ExpandedChartModal
+                  title="Revenue by type"
+                  subtitle="Revenue by contract structure."
+                  chart={{
+                    kind: "donut",
+                    segments: typeSegments,
+                    centerLabel: formatMoney(report.totalRevenue),
+                    centerSub: "total",
+                    format: "money",
+                    legendBars: false,
+                  }}
+                  className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+                />
+              </div>
+              <div className="mt-3 flex min-h-[136px] flex-1 items-center">
+                <div className="grid w-full grid-cols-[112px_minmax(0,1fr)] items-center gap-3">
+                  <div className="h-[112px] w-[112px] shrink-0">
+                    <DonutChart
+                      segments={typeSegments}
+                      size={112}
+                      thickness={13}
+                      centerLabel={formatMoney(report.totalRevenue)}
+                      centerSub="total"
+                      format="money"
+                      syncId="reports-type"
+                    />
+                  </div>
+                  <DonutLegend
+                    items={typeSegments}
+                    total={report.totalRevenue}
+                    format="money"
+                    bars={false}
+                    syncId="reports-type"
+                    className="text-[10.5px]"
+                  />
+                </div>
+              </div>
+            </Card>
+            <Card className="flex h-full min-h-[236px] flex-col p-4">
+              <div className="flex min-h-[56px] items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="mb-1 text-[15px] font-semibold text-text-primary">
+                    Top offerings
+                  </h2>
+                  <p className="text-[12px] leading-[1.35] text-text-tertiary">
+                    Contracted revenue remaining through upcoming renewals.
+                  </p>
+                </div>
+                <ExpandedChartModal
+                  title="Top offerings"
+                  subtitle="Contracted revenue remaining through upcoming renewals."
+                  chart={{
+                    kind: "line",
+                    series: offeringTrendSeries,
+                    xLabels: renewalHorizonLabels,
+                    pointLabels: renewalHorizonLabels,
+                    pointTips: offeringTrendTips,
+                    format: "money",
+                  }}
+                  className="h-8 whitespace-nowrap px-2.5 text-[11px]"
+                />
+              </div>
+              <div className="mt-3 flex min-h-[136px] flex-1 flex-col">
+                <div className="mb-2 grid min-w-0 grid-cols-2 gap-x-3 gap-y-1.5">
+                  {topOfferings.map((offering, index) => (
+                    <span
+                      key={offering.offering_id}
+                      className="inline-flex min-w-0 items-start gap-1.5 text-[9.5px] leading-[1.2] text-text-secondary"
+                    >
+                      <span
+                        className="mt-0.5 h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: VIZ_SERIES[index % VIZ_SERIES.length] }}
+                      />
+                      <span className="break-words">{offering.name}</span>
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-auto">
+                  <LineChart
+                    series={offeringTrendSeries}
+                    xLabels={renewalHorizonLabels}
+                    pointLabels={renewalHorizonLabels}
+                    pointTips={offeringTrendTips}
+                    height={106}
+                    format="money"
+                  />
+                </div>
+              </div>
             </Card>
           </section>
 

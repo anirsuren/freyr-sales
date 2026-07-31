@@ -9,6 +9,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { DonutChart, BarChart } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { cn } from "@/lib/utils";
 import {
   formatMoney,
@@ -292,6 +293,30 @@ export function RepAnalytics({
               // fills included, so a KPI bar never reads mustard (Anir, Jul 27).
               { label: "Meetings", value: String(rep.meetings), pct: Math.round((rep.meetings / teamMax.meetings) * 100), color: "#C2410C" },
             ];
+            const repPipelineChartData = rep.stageValues.map((s) => ({
+              label: s.stage.replace("Meeting Booked", "Meeting"),
+              value: s.value,
+              color: s.color,
+              tip: (repStageDeals?.[rep.key]?.[s.stage] ?? []).map((d) => ({
+                logo: d.company,
+                name: d.company,
+                avatar: d.contact,
+                value: formatMoney(d.value),
+              })),
+            }));
+            const repStageSegments = rep.stageValues
+              .filter((s) => s.count > 0)
+              .map((s) => ({
+                label: s.stage,
+                value: s.count,
+                color: s.color,
+                tip: (repStageDeals?.[rep.key]?.[s.stage] ?? []).map((d) => ({
+                  logo: d.company,
+                  name: d.company,
+                  avatar: d.contact,
+                  value: formatMoney(d.value),
+                })),
+              }));
             return (
               <div key={rep.key}>
                 {/* Collapsed row — click to expand */}
@@ -397,60 +422,48 @@ export function RepAnalytics({
                       {/* Two charts, half width each, filling the row */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="rounded-xl bg-white border border-border-light p-4">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-                            Pipeline value by stage
-                          </p>
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                              Pipeline value by stage
+                            </p>
+                            <ExpandedChartModal
+                              title={`${rep.name} · Pipeline value by stage`}
+                              subtitle={`Open pipeline value by stage for ${rep.name}.`}
+                              chart={{
+                                kind: "bar",
+                                data: repPipelineChartData,
+                                format: "money",
+                              }}
+                              className="h-8 whitespace-nowrap px-2.5 text-[11px] normal-case tracking-normal"
+                            />
+                          </div>
                           <BarChart
-                            data={rep.stageValues.map((s) => ({
-                              label: s.stage.replace("Meeting Booked", "Meeting"),
-                              value: s.value,
-                              color: s.color,
-                              // WHO's in this stage for this rep — logo + company
-                              // + contact + value (Suren: every graph shows who).
-                              tip: (repStageDeals?.[rep.key]?.[s.stage] ?? []).map((d) => ({
-                                logo: d.company,
-                                name: d.company,
-                                // The contact is a PERSON — they belong in
-                                // `avatar`, the field that draws the headshot
-                                // and gives the name its own unbreakable line.
-                                // Buried in `sub` they rendered as flat text
-                                // with no face (TipItem's own contract).
-                                avatar: d.contact,
-                                value: formatMoney(d.value),
-                              })),
-                            }))}
+                            data={repPipelineChartData}
                             height={180}
                             format="money"
                           />
                         </div>
                         <div className="rounded-xl bg-white border border-border-light p-4">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-                            Deals by stage
-                          </p>
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                              Deals by stage
+                            </p>
+                            <ExpandedChartModal
+                              title={`${rep.name} · Deals by stage`}
+                              subtitle={`Deal count by pipeline stage for ${rep.name}.`}
+                              chart={{
+                                kind: "donut",
+                                segments: repStageSegments,
+                                centerLabel: String(rep.deals),
+                                centerSub: "deals",
+                                format: "number",
+                              }}
+                              className="h-8 whitespace-nowrap px-2.5 text-[11px] normal-case tracking-normal"
+                            />
+                          </div>
                           <div className="flex items-center gap-5 h-[180px]">
                             <DonutChart
-                              segments={rep.stageValues
-                                .filter((s) => s.count > 0)
-                                .map((s) => ({
-                                  label: s.stage,
-                                  value: s.count,
-                                  color: s.color,
-                                  // WHO's in this stage for this rep. Keyed by
-                                  // rep.key, NOT rep.name: app/analytics/page.tsx
-                                  // builds repStageDeals under
-                                  // repIdentityForDeal(d).key ("member:…",
-                                  // "current:…", "legacy:…"), which a display
-                                  // name can never match — so this donut's
-                                  // breakdown was always empty.
-                                  tip: (repStageDeals?.[rep.key]?.[s.stage] ?? []).map((d) => ({
-                                    logo: d.company,
-                                    name: d.company,
-                                    // Person → `avatar`, so the contact gets a
-                                    // headshot and an unbreakable name line.
-                                    avatar: d.contact,
-                                    value: formatMoney(d.value),
-                                  })),
-                                }))}
+                              segments={repStageSegments}
                               size={130}
                               thickness={15}
                               centerLabel={String(rep.openCount)}
