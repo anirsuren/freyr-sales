@@ -121,7 +121,19 @@ export type CustomerOfferingCurrency =
   | "CHF"
   | "CAD"
   | "AUD"
-  | "JPY";
+  | "JPY"
+  | "CNY"
+  | "INR"
+  | "SGD"
+  | "AED"
+  | "SAR"
+  | "SEK"
+  | "NOK"
+  | "DKK"
+  | "NZD"
+  | "ZAR"
+  | "BRL"
+  | "MXN";
 
 export interface CustomerOfferingEngagementVersion {
   id: string;

@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
   CircleDot,
   Clock3,
   Coins,
@@ -150,6 +151,18 @@ const CURRENCY_OPTIONS: ColorOption[] = [
   { value: "CAD", label: "C$ CAD", color: "#DC4C4C", icon: Coins },
   { value: "AUD", label: "A$ AUD", color: "#059669", icon: Coins },
   { value: "JPY", label: "¥ JPY", color: "#B45309", icon: Coins },
+  { value: "CNY", label: "¥ CNY", color: "#B91C1C", icon: Coins },
+  { value: "INR", label: "₹ INR", color: "#EA580C", icon: Coins },
+  { value: "SGD", label: "S$ SGD", color: "#0369A1", icon: Coins },
+  { value: "AED", label: "د.إ AED", color: "#047857", icon: Coins },
+  { value: "SAR", label: "﷼ SAR", color: "#15803D", icon: Coins },
+  { value: "SEK", label: "kr SEK", color: "#1D4ED8", icon: Coins },
+  { value: "NOK", label: "kr NOK", color: "#BE123C", icon: Coins },
+  { value: "DKK", label: "kr DKK", color: "#DC2626", icon: Coins },
+  { value: "NZD", label: "NZ$ NZD", color: "#0F766E", icon: Coins },
+  { value: "ZAR", label: "R ZAR", color: "#CA8A04", icon: Coins },
+  { value: "BRL", label: "R$ BRL", color: "#16A34A", icon: Coins },
+  { value: "MXN", label: "MX$ MXN", color: "#4D7C0F", icon: Coins },
 ];
 
 function formatCurrency(
@@ -244,6 +257,9 @@ export function CustomerOfferingHeatMap({
     useState<CustomerOfferingEngagementVersion | null>(null);
   const [pendingVersionBase, setPendingVersionBase] =
     useState<CustomerOfferingEngagementVersion | null>(null);
+  const [expandedVersionId, setExpandedVersionId] = useState<string | null>(
+    null
+  );
   const [editingExisting, setEditingExisting] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -267,7 +283,7 @@ export function CustomerOfferingHeatMap({
       JSON.stringify(draft) !== JSON.stringify(initialDraft),
     [draft, initialDraft]
   );
-  const versionOptions = useMemo(() => {
+  const versionRows = useMemo(() => {
     const versions = [...selectedHistory];
     if (
       pendingVersionDraft &&
@@ -275,20 +291,7 @@ export function CustomerOfferingHeatMap({
     ) {
       versions.push(pendingVersionDraft);
     }
-    return versions
-      .sort((a, b) => b.version - a.version)
-      .map((version) => ({
-        value: version.id,
-        label: `Version ${version.version}`,
-        color: CUSTOMER_OFFERING_ACTIVITIES[version.activity].color,
-        icon: History,
-        badge:
-          version.id === pendingVersionDraft?.id
-            ? "Draft"
-            : version.linked
-              ? "Linked"
-              : "History",
-      }));
+    return versions.sort((a, b) => b.version - a.version);
   }, [pendingVersionDraft, selectedHistory]);
 
   useEffect(() => {
@@ -425,6 +428,7 @@ export function CustomerOfferingHeatMap({
     setInitialDraft({ ...nextDraft });
     setPendingVersionDraft(explicit ? null : { ...nextDraft });
     setPendingVersionBase(explicit ? null : { ...nextDraft });
+    setExpandedVersionId(nextDraft.id);
   }
 
   function closeModal() {
@@ -434,6 +438,7 @@ export function CustomerOfferingHeatMap({
     setInitialDraft(null);
     setPendingVersionDraft(null);
     setPendingVersionBase(null);
+    setExpandedVersionId(null);
     setEditingExisting(false);
   }
 
@@ -445,6 +450,7 @@ export function CustomerOfferingHeatMap({
         ...(pendingVersionBase || pendingVersionDraft),
       });
       setEditingExisting(false);
+      setExpandedVersionId(pendingVersionDraft.id);
       return;
     }
     const now = new Date().toISOString();
@@ -464,10 +470,12 @@ export function CustomerOfferingHeatMap({
     setInitialDraft({ ...nextDraft });
     setPendingVersionDraft({ ...nextDraft });
     setPendingVersionBase({ ...nextDraft });
+    setExpandedVersionId(nextDraft.id);
     setEditingExisting(false);
   }
 
   function selectVersion(versionId: string) {
+    setExpandedVersionId(versionId);
     if (pendingVersionDraft?.id === versionId) {
       setDraft({ ...pendingVersionDraft });
       setInitialDraft({
@@ -481,6 +489,35 @@ export function CustomerOfferingHeatMap({
     setDraft({ ...saved });
     setInitialDraft({ ...saved });
     setEditingExisting(true);
+  }
+
+  function toggleVersion(versionId: string) {
+    if (expandedVersionId === versionId) {
+      setExpandedVersionId(null);
+      return;
+    }
+    selectVersion(versionId);
+  }
+
+  function cancelExpandedVersion() {
+    if (!draft) return;
+    if (!editingExisting) {
+      const linked =
+        selectedHistory.find((version) => version.linked) ||
+        selectedHistory[0] ||
+        null;
+      setPendingVersionDraft(null);
+      setPendingVersionBase(null);
+      if (linked) {
+        setDraft({ ...linked });
+        setInitialDraft({ ...linked });
+        setEditingExisting(true);
+      }
+      setExpandedVersionId(null);
+      return;
+    }
+    if (initialDraft) setDraft({ ...initialDraft });
+    setExpandedVersionId(null);
   }
 
   async function persistVersions(
@@ -515,6 +552,7 @@ export function CustomerOfferingHeatMap({
       setInitialDraft(null);
       setPendingVersionDraft(null);
       setPendingVersionBase(null);
+      setExpandedVersionId(null);
       setEditingExisting(false);
     } catch (error) {
       toast(
@@ -915,32 +953,94 @@ export function CustomerOfferingHeatMap({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <ColorSelect
-                  value={draft.id}
-                  options={versionOptions}
-                  onChange={selectVersion}
-                  ariaLabel="Version"
-                  minWidth={138}
-                  collapsible={false}
-                />
-                {selectedHistory.length > 0 &&
-                  (editingExisting || !pendingVersionDraft) && (
-                  <Button
-                    variant="secondary"
-                    onClick={createNewVersion}
-                    className="px-3 py-1.5 text-[12px]"
-                  >
-                    <Plus size={13} strokeWidth={2.2} />
-                    {pendingVersionDraft
-                      ? `Continue version ${pendingVersionDraft.version}`
-                      : "New version"}
-                  </Button>
-                )}
-              </div>
+              {selectedHistory.length > 0 &&
+                (editingExisting || !pendingVersionDraft) && (
+                <Button
+                  variant="secondary"
+                  onClick={createNewVersion}
+                  className="px-3 py-1.5 text-[12px]"
+                >
+                  <Plus size={13} strokeWidth={2.2} />
+                  {pendingVersionDraft
+                    ? `Continue version ${pendingVersionDraft.version}`
+                    : "New version"}
+                </Button>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-3">
+              {versionRows.map((version) => {
+                const versionMeta =
+                  CUSTOMER_OFFERING_ACTIVITIES[version.activity];
+                const expanded =
+                  expandedVersionId === version.id && draft.id === version.id;
+                const versionState =
+                  version.id === pendingVersionDraft?.id
+                    ? "Draft"
+                    : version.linked
+                      ? "Linked"
+                      : "History";
+                return (
+                  <section
+                    key={version.id}
+                    className={cn(
+                      "relative rounded-xl border bg-white transition-colors",
+                      expanded
+                        ? "z-20 overflow-visible border-blue-subtle"
+                        : "overflow-hidden border-border-light"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      onClick={() => toggleVersion(version.id)}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface"
+                    >
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                        style={{
+                          background: versionMeta.color,
+                          color: versionMeta.text,
+                        }}
+                      >
+                        <History size={15} strokeWidth={2.2} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14px] font-semibold text-text-primary">
+                          Version {version.version}
+                        </span>
+                        {!expanded && (
+                          <span className="block truncate text-[10.5px] text-text-tertiary">
+                            {versionMeta.label} ·{" "}
+                            {
+                              CUSTOMER_OFFERING_STATUSES[version.status]
+                                .label
+                            }
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[10.5px] font-bold text-[#171717]">
+                        {versionState === "Draft" ? "Unsaved" : versionState}
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        strokeWidth={2.1}
+                        className={cn(
+                          "shrink-0 text-text-primary transition-transform",
+                          expanded && "rotate-180"
+                        )}
+                      />
+                    </button>
+                    {expanded && (
+                      <div className="space-y-5 border-t border-border-light p-4">
+            {!editingExisting && (
+              <p className="rounded-lg border border-blue-subtle bg-blue-light/55 px-3 py-2 text-[11.5px] leading-relaxed text-text-primary">
+                This version is not saved yet. Make a change to enable{" "}
+                <span className="font-semibold">Link version</span>. Discarding
+                it or closing this dialog removes the draft.
+              </p>
+            )}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Activity" required>
                 <ColorSelect
                   value={draft.activity}
@@ -1003,9 +1103,9 @@ export function CustomerOfferingHeatMap({
               />
             </Field>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Field label="Value">
-                <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-2">
+                <div className="grid min-w-0 grid-cols-[136px_minmax(0,1fr)] gap-2">
                   <ColorSelect
                     value={draft.currency || "USD"}
                     options={CURRENCY_OPTIONS}
@@ -1020,7 +1120,8 @@ export function CustomerOfferingHeatMap({
                       )
                     }
                     ariaLabel="Currency"
-                    minWidth={112}
+                    minWidth={136}
+                    className="min-w-0"
                     collapsible={false}
                   />
                   <Input
@@ -1080,7 +1181,7 @@ export function CustomerOfferingHeatMap({
               </Field>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[
                 {
                   label: "Opportunity IDs",
@@ -1115,76 +1216,6 @@ export function CustomerOfferingHeatMap({
               ))}
             </div>
 
-            {selectedHistory.length > 0 && (
-              <section className="border-t border-border-light pt-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <History
-                    size={15}
-                    strokeWidth={2}
-                    className="text-blue-primary"
-                  />
-                  <h3 className="text-[13px] font-semibold text-text-primary">
-                    Version history
-                  </h3>
-                  <span className="text-[11px] text-text-tertiary">
-                    {selectedHistory.length} saved
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {selectedHistory.map((version) => {
-                    const meta =
-                      CUSTOMER_OFFERING_ACTIVITIES[version.activity];
-                    return (
-                      <button
-                        key={version.id}
-                        type="button"
-                        onClick={() => selectVersion(version.id)}
-                        className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border-light bg-white px-3 py-2.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/20"
-                      >
-                        <span
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-[11px] font-bold"
-                          style={{
-                            color: meta.text,
-                            background: meta.color,
-                          }}
-                        >
-                          v{version.version}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-[12px] font-semibold text-text-primary">
-                            {meta.label} ·{" "}
-                            {
-                              CUSTOMER_OFFERING_STATUSES[version.status]
-                                .label
-                            }
-                          </p>
-                          <p className="truncate text-[10.5px] text-text-tertiary">
-                            {version.activity_description ||
-                              "No description recorded"}
-                          </p>
-                        </div>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold",
-                            version.linked
-                              ? "bg-success/10 text-success"
-                              : "bg-violet-50 text-violet-700"
-                          )}
-                        >
-                          {version.linked ? (
-                            <Link2 size={10} strokeWidth={2.2} />
-                          ) : (
-                            <Link2Off size={10} strokeWidth={2.2} />
-                          )}
-                          {version.linked ? "Linked" : "History"}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
             <div className="flex flex-col-reverse gap-2 border-t border-border-light pt-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 {editingExisting && (
@@ -1200,8 +1231,12 @@ export function CustomerOfferingHeatMap({
                 )}
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={closeModal}>
-                  {hasDraftChanges ? "Cancel" : "Close"}
+                <Button variant="secondary" onClick={cancelExpandedVersion}>
+                  {editingExisting
+                    ? hasDraftChanges
+                      ? "Cancel changes"
+                      : "Collapse"
+                    : "Discard draft"}
                 </Button>
                 {hasDraftChanges && (
                   <Button onClick={saveDraft} loading={saving} className="page-in">
@@ -1210,6 +1245,12 @@ export function CustomerOfferingHeatMap({
                   </Button>
                 )}
               </div>
+            </div>
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
             </div>
           </div>
         )}

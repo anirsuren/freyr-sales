@@ -7,9 +7,10 @@ import { repIdentityBlock } from "@/lib/repIdentity";
 
 export const dynamic = "force-dynamic";
 
-// Per-account agent chat (V9 #45). GET returns the persisted thread; POST answers
-// the question (Claude when keyed, deterministic otherwise) AND persists both the
-// rep's message and the agent's reply, so the conversation survives navigation.
+// Per-account agent chat (V9 #45). GET returns the persisted thread; POST uses
+// Claude in both live and sample-data workspaces and persists the conversation.
+// The deterministic responder is reserved for the explicitly forced test mode;
+// a real provider failure is surfaced as a failure, never as a fake AI answer.
 export async function GET(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
@@ -122,7 +123,15 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
       .join("\n\n")
   );
-  const answer = llm || grounded;
+  const testFallback =
+    process.env.AGENT_FORCE_MOCK === "1" ? grounded : null;
+  const answer = llm || testFallback;
+  if (!answer) {
+    return NextResponse.json(
+      { error: "The assistant is unreachable right now." },
+      { status: 503 }
+    );
+  }
   const source: "claude" | "mock" = llm ? "claude" : "mock";
 
   await db.agentChats.create(scope, {

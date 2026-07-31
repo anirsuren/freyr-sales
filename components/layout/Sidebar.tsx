@@ -179,7 +179,7 @@ export function Sidebar({
         "fixed inset-y-0 left-0 z-[60] w-[260px]",
         mobileOpen ? "translate-x-0" : "-translate-x-full",
         // desktop: in-flow, sticky, collapsible
-        "lg:sticky lg:top-0 lg:self-start lg:z-50 lg:translate-x-0 lg:shrink-0 lg:min-h-screen lg:transition-[width]",
+        "lg:sticky lg:top-0 lg:z-50 lg:h-full lg:min-h-0 lg:translate-x-0 lg:shrink-0 lg:transition-[width]",
         collapsed ? "lg:w-[72px]" : "lg:w-[240px]"
       )}
     >

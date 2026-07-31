@@ -8,7 +8,7 @@ export const Input = forwardRef<
   <input
     ref={ref}
     className={cn(
-      "w-full bg-surface border border-border rounded-md px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus",
+      "min-w-0 w-full bg-surface border border-border rounded-md px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus",
       className
     )}
     {...rest}
@@ -28,7 +28,7 @@ export function Field({
   hint?: string;
 }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="block text-[13px] font-medium text-text-primary mb-1.5">
         {label}
         {required && <span className="text-error"> *</span>}

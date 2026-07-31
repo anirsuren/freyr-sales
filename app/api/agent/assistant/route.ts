@@ -6,6 +6,7 @@ import {
   knowledgeBlock,
   buildKnowledgeBaseAsync,
 } from "@/lib/knowledgeBase";
+import { getDataMode } from "@/lib/dataMode";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,9 @@ export const dynamic = "force-dynamic";
 // bottom right… it'll know what page I'm on, what I'm looking at, and answer
 // questions on the side"). Page-agnostic and stateless — the client sends the
 // page it's on plus whatever the rep is looking at, and we answer grounded in
-// that. Claude when a key is set; a genuinely useful deterministic reply
-// otherwise (never a dead "I can't answer that").
+// that. Fake mode changes the records, never the brain: this route always uses
+// Claude and reports a provider outage honestly instead of impersonating the
+// model with a canned response.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const question = String(body.question || "").trim();
@@ -108,6 +110,7 @@ export async function POST(req: Request) {
   const where = subject
     ? `${pageLabel}: specifically ${subject}`
     : pageLabel;
+  const dataMode = getDataMode();
 
   const system =
     "You are Freyr's always-on sales assistant, embedded in the app. You are given " +
@@ -136,6 +139,9 @@ export async function POST(req: Request) {
     "Only chart numbers that are genuinely present; never fabricate data for a chart.";
   const user =
     `The rep is on: ${where} (route ${path}).\n\n` +
+    (dataMode === "mock"
+      ? "WORKSPACE MODE: The active records are sample data. Treat them as the current workspace and reason over them normally; do not switch to a canned or hypothetical answer. Only mention that they are sample data if the rep asks.\n\n"
+      : "WORKSPACE MODE: The active records are the live workspace.\n\n") +
     (pageContext
       ? `PAGE CONTENT (exactly what is on their screen right now):\n"""\n${pageContext}\n"""\n\n`
       : "") +
@@ -146,22 +152,16 @@ export async function POST(req: Request) {
     `Their question: ${question}`;
 
   const llm = await agentAnswer(system, user);
-
-  // Deterministic fallback that still uses the page content, so a keyless run
-  // never produces a dead "I can't access that."
-  const ctxLead = pageContext
-    ? pageContext.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 6).join(" · ")
-    : "";
-  const topMatch = passages[0];
-  const fallback = topMatch
-    ? `Closest match in the catalogue: **${topMatch.title}**. ${topMatch.text.slice(0, 260)}${topMatch.text.length > 260 ? "…" : ""} Open ${topMatch.href} for the full record.`
-    : subject
-      ? `Here's what's on screen for ${subject}${ctxLead ? `: ${ctxLead}` : ""}. Ask me to pull its health, draft an intro or follow-up, or line up outreach and I'll get it ready to review.`
-      : `You're on ${pageLabel}${ctxLead ? `: ${ctxLead}` : ""}. Point me at any account, contact, or deal and I'll dig in, prioritize, or draft outreach.`;
+  if (!llm) {
+    return NextResponse.json(
+      { error: "The assistant is unreachable right now." },
+      { status: 503 }
+    );
+  }
 
   return NextResponse.json({
-    answer: llm || fallback,
-    source: llm ? "claude" : "mock",
+    answer: llm,
+    source: "claude",
     // What it read, so a person can open the record and check the answer.
     sources: passages.map((p, i) => ({
       n: i + 1,

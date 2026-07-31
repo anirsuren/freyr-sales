@@ -4,9 +4,9 @@ import { agentAnswer } from "@/lib/claude";
 
 export const dynamic = "force-dynamic";
 
-// Per-account "Ask the agent" (V9). Mock-first: with ANTHROPIC_API_KEY the agent
-// answers via Claude, grounded in the account context; without a key (or on any
-// error) it falls back to the deterministic answer so the chat never goes dark.
+// Per-account "Ask the agent" (V9). The workspace data can be live or sample,
+// but the answer always comes from Claude. Only the explicitly forced test mode
+// uses the deterministic responder.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const question = String(body.question || "").trim();
@@ -39,9 +39,17 @@ export async function POST(req: Request) {
     system,
     `Account facts:\n${facts}\n\nRep's question: ${question}`
   );
+  const answer =
+    llm || (process.env.AGENT_FORCE_MOCK === "1" ? grounded : null);
+  if (!answer) {
+    return NextResponse.json(
+      { error: "The assistant is unreachable right now." },
+      { status: 503 }
+    );
+  }
 
   return NextResponse.json({
-    answer: llm || grounded,
+    answer,
     source: llm ? "claude" : "mock",
   });
 }

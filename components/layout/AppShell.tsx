@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { FlaskConical } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -201,7 +202,28 @@ export function AppShell({
         >
           Skip to content
         </a>
-        <div className="flex min-h-screen bg-white">
+        <div className="flex h-screen flex-col bg-white">
+          {dataMode === "mock" && (
+            <div
+              role="status"
+              aria-label="In progress mode uses fake sample data"
+              className="flex min-h-[46px] shrink-0 items-center justify-center gap-2.5 bg-blue-primary px-4 py-2 text-center text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.14)]"
+            >
+              <FlaskConical
+                size={18}
+                strokeWidth={2.3}
+                className="shrink-0"
+              />
+              <p className="text-[13px] leading-snug">
+                <span className="font-bold">In progress mode:</span>{" "}
+                <span className="font-semibold">
+                  all data shown is fake sample data and does not reflect the
+                  real workspace.
+                </span>
+              </p>
+            </div>
+          )}
+          <div className="flex min-h-0 flex-1">
           {/* mobile drawer backdrop */}
           {mobileNavOpen && (
             <div
@@ -214,7 +236,7 @@ export function AppShell({
             mobileOpen={mobileNavOpen}
             onMobileClose={() => setMobileNavOpen(false)}
           />
-          <div className="flex-1 min-w-0 flex flex-col h-screen">
+          <div className="flex h-full min-w-0 flex-1 flex-col">
             <TopBar
               offeringsOnly={offeringsOnly}
               onMenuClick={() => setMobileNavOpen(true)}
@@ -247,6 +269,7 @@ export function AppShell({
                 <div key={pathname} className="p-8 page-in">{children}</div>
               </main>
             )}
+          </div>
           </div>
         </div>
         {/* THE ASSISTANT BUBBLE IS ON IN REAL MODE TOO (Anir, Jul 29: "I want

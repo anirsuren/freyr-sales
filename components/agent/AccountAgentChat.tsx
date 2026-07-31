@@ -81,6 +81,7 @@ export function AccountAgentChat({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customerId, question: text, context }),
       });
+      if (!res.ok) throw new Error("assistant unreachable");
       const data = await res.json();
       setMsgs((m) => {
         const next = [...m];

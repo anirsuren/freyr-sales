@@ -26,7 +26,7 @@ export default async function CustomerOfferingHeatMapPage() {
   ).sort((a, b) => a.company_name.localeCompare(b.company_name));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-24">
       <div>
         <div className="mb-3">
           <Link

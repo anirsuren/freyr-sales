@@ -370,6 +370,7 @@ export function AgentDock({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text, pageLabel: label, subject, path: pathname, pageContext }),
       });
+      if (!res.ok) throw new Error("assistant unreachable");
       const data = await res.json();
       if (activeUserIdRef.current !== requestUserId) return;
       setMsgs((m) => {

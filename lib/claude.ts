@@ -458,28 +458,53 @@ function textFrom(response: Anthropic.Message): string {
     .trim();
 }
 
-// Generic short-form agent completion (V9). Used by agent surfaces (e.g. the
-// per-account "Ask the agent" chat) to get a real Claude answer when a key is
-// set. Returns null when there's no key OR on any error, so callers fall back to
-// the deterministic mock answer — the agent never goes dark.
+// Generic short-form agent completion (V9). Used by the always-on assistant and
+// the smaller agent surfaces. A temporary provider failure must not quietly
+// turn into a canned answer, so this uses the same retry/key-recovery policy as
+// the full tool-using agent and reports failure honestly to its caller.
 export async function agentAnswer(
   system: string,
   user: string
 ): Promise<string | null> {
-  await hydrateAnthropicKey();
-  if (!client) return null;
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 400,
-      system,
-      messages: [{ role: "user", content: user }],
-    });
-    const text = textFrom(response).trim();
-    return text || null;
-  } catch {
-    return null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await hydrateAnthropicKey();
+    if (!client) return null;
+    try {
+      const response = await client.messages.create({
+        model: MODEL,
+        max_tokens: 400,
+        system,
+        messages: [{ role: "user", content: user }],
+      });
+      const text = textFrom(response).trim();
+      if (text) {
+        noteClaudeCall(true);
+        return text;
+      }
+      noteClaudeCall(
+        false,
+        new Error(
+          `no answer (stop=${response.stop_reason} blocks=${response.content
+            .map((b) => b.type)
+            .join(",") || "none"})`
+        )
+      );
+    } catch (error) {
+      noteClaudeCall(false, error);
+    }
+
+    const failure = lastFailure;
+    if (!failure) return null;
+    if (isAuthFailure(failure)) {
+      if (!(await adoptDatabaseKey())) return null;
+      continue;
+    }
+    if (!isTransientFailure(failure)) return null;
+    await new Promise((resolve) =>
+      setTimeout(resolve, [1500, 4000, 8000][attempt] ?? 1500)
+    );
   }
+  return null;
 }
 
 // Real multi-turn agent conversation (V11). The chat route uses this as the
