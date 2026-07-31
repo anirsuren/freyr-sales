@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   Activity,
   BadgeDollarSign,
@@ -598,7 +598,7 @@ export function CustomerOfferingHeatMap({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="customer-offering-heat-map space-y-4">
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[
           {
@@ -714,19 +714,24 @@ export function CustomerOfferingHeatMap({
                     )
                   }
                   className={cn(
-                    "inline-flex min-w-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[10.5px] font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,box-shadow] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary",
+                    "heat-map-stage-filter inline-flex min-w-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[10.5px] font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,box-shadow] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary",
                     selectedActivity &&
                       "ring-2 ring-blue-primary/70 ring-offset-1"
                   )}
-                  style={{
-                    borderColor: selectedActivity
-                      ? meta.color
-                      : `${meta.color}55`,
-                    background: selectedActivity
-                      ? `${meta.color}1F`
-                      : `${meta.color}0D`,
-                    color: "#171717",
-                  }}
+                  style={
+                    {
+                      "--stage-color": meta.color,
+                      "--stage-border": selectedActivity
+                        ? meta.color
+                        : `${meta.color}55`,
+                      "--stage-background": selectedActivity
+                        ? `${meta.color}1F`
+                        : `${meta.color}0D`,
+                      "--stage-background-dark": selectedActivity
+                        ? `color-mix(in srgb, ${meta.color} 32%, #1c1c1e)`
+                        : `color-mix(in srgb, ${meta.color} 18%, #1c1c1e)`,
+                    } as CSSProperties
+                  }
                 >
                   <span
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
@@ -739,8 +744,7 @@ export function CustomerOfferingHeatMap({
                   </span>
                   <span>{meta.short}</span>
                   <span
-                    className="rounded-full bg-white/70 px-1.5 py-0.5 text-[9.5px] font-bold leading-none tnum"
-                    style={{ color: "#171717" }}
+                    className="heat-map-stage-count rounded-full px-1.5 py-0.5 text-[9.5px] font-bold leading-none tnum"
                   >
                     {summary.counts[activity]}
                   </span>
@@ -788,7 +792,7 @@ export function CustomerOfferingHeatMap({
                       <Link
                         href={`/offerings/${offering.id}`}
                         aria-label={`Open ${offering.name} offering`}
-                        className="group flex h-full flex-col items-center justify-center gap-1.5 rounded-lg text-center transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        className="heat-map-offering-link group flex h-full flex-col items-center justify-center gap-1.5 rounded-lg text-center transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       >
                         <OfferingIcon
                           name={offering.name}
@@ -1019,7 +1023,7 @@ export function CustomerOfferingHeatMap({
                           </span>
                         )}
                       </span>
-                      <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[10.5px] font-bold text-[#171717]">
+                      <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[10.5px] font-bold text-text-primary">
                         {versionState === "Draft" ? "Unsaved" : versionState}
                       </span>
                       <ChevronDown
@@ -1034,7 +1038,7 @@ export function CustomerOfferingHeatMap({
                     {expanded && (
                       <div className="space-y-5 border-t border-border-light p-4">
             {!editingExisting && (
-              <p className="rounded-lg border border-blue-subtle bg-blue-light/55 px-3 py-2 text-[11.5px] leading-relaxed text-text-primary">
+              <p className="rounded-lg border border-blue-subtle bg-blue-light px-3 py-2 text-[11.5px] leading-relaxed text-text-primary">
                 This version is not saved yet. Make a change to enable{" "}
                 <span className="font-semibold">Link version</span>. Discarding
                 it or closing this dialog removes the draft.
@@ -1088,16 +1092,17 @@ export function CustomerOfferingHeatMap({
             <Field label="Activity description">
               <Textarea
                 value={draft.activity_description || ""}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const activityDescription = event.currentTarget.value;
                   setDraft((current) =>
                     current
                       ? {
                           ...current,
-                          activity_description: event.target.value,
+                          activity_description: activityDescription,
                         }
                       : current
-                  )
-                }
+                  );
+                }}
                 rows={3}
                 placeholder="What is happening, who owns the next step, and what needs to move?"
               />
@@ -1129,16 +1134,18 @@ export function CustomerOfferingHeatMap({
                     min={0}
                     inputMode="numeric"
                     value={draft.dollar_value || ""}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const dollarValue =
+                        Number(event.currentTarget.value) || 0;
                       setDraft((current) =>
                         current
                           ? {
                               ...current,
-                              dollar_value: Number(event.target.value) || 0,
+                              dollar_value: dollarValue,
                             }
                           : current
-                      )
-                    }
+                      );
+                    }}
                     placeholder="0"
                     aria-label={`Value in ${draft.currency || "USD"}`}
                     className="h-10 bg-white text-[13px] tnum"
@@ -1149,16 +1156,17 @@ export function CustomerOfferingHeatMap({
                 <Input
                   type="date"
                   value={dateValue(draft.start_date)}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const startDate = event.currentTarget.value || null;
                     setDraft((current) =>
                       current
                         ? {
                             ...current,
-                            start_date: event.target.value || null,
+                            start_date: startDate,
                           }
                         : current
-                    )
-                  }
+                    );
+                  }}
                   className="h-10 bg-white text-[13px]"
                 />
               </Field>
@@ -1166,16 +1174,17 @@ export function CustomerOfferingHeatMap({
                 <Input
                   type="date"
                   value={dateValue(draft.end_date)}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const endDate = event.currentTarget.value || null;
                     setDraft((current) =>
                       current
                         ? {
                             ...current,
-                            end_date: event.target.value || null,
+                            end_date: endDate,
                           }
                         : current
-                    )
-                  }
+                    );
+                  }}
                   className="h-10 bg-white text-[13px]"
                 />
               </Field>
@@ -1202,13 +1211,14 @@ export function CustomerOfferingHeatMap({
                 <Field key={field.key} label={field.label}>
                   <Input
                     value={draft[field.key].join(", ")}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const linkedIds = ids(event.currentTarget.value);
                       setDraft((current) =>
                         current
-                          ? { ...current, [field.key]: ids(event.target.value) }
+                          ? { ...current, [field.key]: linkedIds }
                           : current
-                      )
-                    }
+                      );
+                    }}
                     placeholder={field.placeholder}
                     className="h-10 bg-white text-[13px]"
                   />

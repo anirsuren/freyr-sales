@@ -203,6 +203,38 @@ html.dark body {
   box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.24);
 }
 
+/* The heat-map legend deliberately uses black labels on pale stage tints in
+   light mode. Carrying that exact foreground into dark mode made every stage
+   name nearly disappear. Keep the semantic hue, but rebuild the surface and
+   foreground for the charcoal workspace. */
+.heat-map-stage-filter {
+  color: #171717;
+  border-color: var(--stage-border);
+  background: var(--stage-background);
+}
+.heat-map-stage-count {
+  color: #171717;
+  background: rgba(255, 255, 255, 0.72);
+}
+.dark .heat-map-stage-filter {
+  color: #f5f5f7 !important;
+  border-color: color-mix(
+    in srgb,
+    var(--stage-color) 62%,
+    transparent
+  ) !important;
+  background: var(--stage-background-dark) !important;
+  --tw-ring-offset-color: #1c1c1e;
+}
+.dark .heat-map-stage-count {
+  color: #f5f5f7 !important;
+  background: rgba(255, 255, 255, 0.13) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.dark .heat-map-offering-link:hover {
+  background: rgba(10, 132, 255, 0.12) !important;
+}
+
 * {
   box-sizing: border-box;
 }
