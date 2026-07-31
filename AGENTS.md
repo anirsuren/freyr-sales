@@ -179,25 +179,44 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 30, 2026, end of day
 
-- **Prod is at `71418e2` (deployed Jul 30, evening) and local matches** —
-  the full day shipped: offering tabs + materials/viewer, custom video
+- **This release adds the Customer Offering Heat Map:** a Reports entry, the
+  full customer × offering matrix, display/filter controls, and a versioned
+  activity detail editor. It stores engagement history inside the
+  existing customer `offering_usage` JSONB, so the AWS release needs no schema
+  migration. Typecheck, focused lint, production build, and a read-only browser
+  pass are clean. The visual follow-up
+  replaced the alert-like Reports entry with a normal report card, fitted donut
+  centre labels through the shared chart API, fixed type/category legend
+  wrapping and hover wiring, aligned the five heat-map stats, kept every
+  activity legend item on one line, adopted the shared animated search-priority
+  toolbar, made offering headers navigable, collapses irrelevant rows and
+  columns when filtering, and leaves unrecorded pairings neutral instead of
+  inventing “To pitch” activity.
+- **Live data observed read-only on Jul 30:** 29 offerings, 0 customers, and
+  therefore 0 offering revenue. The real Reports page and heat map correctly
+  render their honest empty states; populated screenshots can only come from
+  the locked mock workspace until Freyr imports its customer list.
+- The full day already shipped before that local work: offering tabs +
+  materials/viewer, custom video
   player with Range seeking, bare-bones Reports, Customers module released
   with Add customer / Import CSV and the pinned rightward-growing search,
   Analyze card removed, complete dropdown sweep (zero native selects),
   voice Declined→No answer, restored catalogue data, this handbook.
-- **No unpushed stack.** If `git log origin/main..HEAD` shows commits,
-  someone worked after this line was written — trust git over this file.
 - Freya.Register's 21 restored materials: 8 files are **unfiled** (only
   unambiguous folder placements were made); ~4 of the original 25 were
   link-only materials whose names are unrecoverable — Eeswar re-adds them.
 
 ### Open queue
-1. Main agent page (`/api/agent/converse`) doesn't receive offering context —
+1. Customer Offering Heat Map: Freyr still owes the final standard activity
+   list. The current centralized list mirrors the supplied Excel reference:
+   To pitch, Opportunity, Proposal, Under contract, Contract signed, Need to
+   deliver, Implementation, Implemented, On hold.
+2. Main agent page (`/api/agent/converse`) doesn't receive offering context —
    Suren's fallback option ("if you go there from an offering it should
    already understand the context"). The dock (`/api/agent/assistant`) does.
-2. Older queue: voice outcomes Declined→No answer; sessions-table company
+3. Older queue: voice outcomes Declined→No answer; sessions-table company
    name wrapping; app-wide icon/logo audit.
-3. **Test-suite DB guard** (§1) — proposed to Anir, not yet approved/built.
+4. **Test-suite DB guard** (§1) — proposed to Anir, not yet approved/built.
 
 DONE since first drafted (all in the unpushed stack): the full dropdown
 sweep (zero native selects; ColorSelect/PeopleSelect everywhere — commits

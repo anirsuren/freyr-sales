@@ -214,9 +214,11 @@ export function OfferingTypesManager({
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button onClick={() => saveEdit(t.id)} loading={busy}>
-                      Save
-                    </Button>
+                    {(editName !== t.name || editDesc !== t.description) && (
+                      <Button onClick={() => saveEdit(t.id)} loading={busy}>
+                        Save
+                      </Button>
+                    )}
                     <button
                       onClick={() => setEditingId(null)}
                       className="text-[13px] font-semibold text-text-secondary hover:text-text-primary px-3 py-2"

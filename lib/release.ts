@@ -41,7 +41,15 @@ export function isReleased(href: string, dataMode: DataMode): boolean {
 // empty module — no demo companies — which is the point: Freyr sees the real
 // thing it is about to fill, not a mock (same "bare bones" rule as the
 // offering Reports tab). Suren's customer-offering heat map lands here.
-const RELEASED_MODULE_PREFIXES = ["/offerings", "/agent", "/customers"] as const;
+// REPORTS SHIPS WITH THE CUSTOMER × OFFERING HEAT MAP. It reads the same live
+// customer and offering records as those released modules and keeps a full
+// version trail inside each customer's existing offering_usage document.
+const RELEASED_MODULE_PREFIXES = [
+  "/offerings",
+  "/agent",
+  "/customers",
+  "/reports",
+] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,
 // waiting for approval, your own workspace settings, and the product tour.

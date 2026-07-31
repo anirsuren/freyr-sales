@@ -515,7 +515,14 @@ export function CustomerOfferingsTab({
   // Replace the revenue lines for one offering, persist the whole map.
   async function saveLines(offeringId: string, lines: OfferingRevenueLine[]) {
     const next = usageState.filter((u) => u.offering_id !== offeringId);
-    if (lines.length) next.push({ offering_id: offeringId, revenue_lines: lines });
+    const existing = usageState.find((u) => u.offering_id === offeringId);
+    if (lines.length || existing?.engagement_versions?.length) {
+      next.push({
+        offering_id: offeringId,
+        revenue_lines: lines,
+        engagement_versions: existing?.engagement_versions || [],
+      });
+    }
     setUsageState(next);
     try {
       const res = await fetch(`/api/customers/${customerId}`, {

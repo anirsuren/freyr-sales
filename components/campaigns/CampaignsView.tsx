@@ -180,12 +180,12 @@ function Gauge({
   return (
     <div className="flex min-w-[80px] flex-col items-center gap-1.5">
       <div className="relative" style={{ width: 76, height: 76 }}>
-        <DonutChart segments={finalSegs} size={76} thickness={9} />
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="text-[15px] font-bold tnum text-text-primary leading-none">
-            {pct}%
-          </span>
-        </div>
+        <DonutChart
+          segments={finalSegs}
+          size={76}
+          thickness={9}
+          centerLabel={`${pct}%`}
+        />
       </div>
       <span className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary leading-none">
         {label}

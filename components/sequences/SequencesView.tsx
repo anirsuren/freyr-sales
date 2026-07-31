@@ -191,6 +191,21 @@ export function SequencesView({
   const [pickedAccounts, setPickedAccounts] = useState<Set<string>>(new Set());
 
   const active = sequences.find((sequence) => sequence.id === activeId) || sequences[0] || null;
+  const editingSequence = editingId
+    ? sequences.find((sequence) => sequence.id === editingId)
+    : null;
+  const hasSequenceChanges =
+    !editingSequence ||
+    JSON.stringify({
+      name: draftName,
+      description: draftDescription,
+      steps: draftSteps,
+    }) !==
+      JSON.stringify({
+        name: editingSequence.name,
+        description: editingSequence.description,
+        steps: editingSequence.steps,
+      });
 
   useEffect(() => {
     if (sequences.length && !sequences.some((sequence) => sequence.id === activeId)) {
@@ -970,7 +985,9 @@ export function SequencesView({
               {editorStage < 4 ? (
                 <Button onClick={continueEditor} disabled={editorStage === 1 && !templateChoice}>Continue <ChevronRight size={14} /></Button>
               ) : (
-                <Button onClick={saveSequence} loading={busy === "save-sequence"}><Check size={14} /> {editingId ? "Save sequence" : "Create sequence"}</Button>
+                hasSequenceChanges ? (
+                  <Button onClick={saveSequence} loading={busy === "save-sequence"}><Check size={14} /> {editingId ? "Save sequence" : "Create sequence"}</Button>
+                ) : null
               )}
             </div>
           </div>

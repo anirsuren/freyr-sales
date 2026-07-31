@@ -253,9 +253,11 @@ function EditForm({
       <Input value={name} onChange={(e) => setName(e.target.value)} />
       <Textarea className="min-h-[80px]" value={desc} onChange={(e) => setDesc(e.target.value)} />
       <div className="flex gap-2">
-        <Button onClick={() => onSave(name, desc)} loading={busy} className="gap-1.5">
-          <Check size={16} strokeWidth={2} /> Save
-        </Button>
+        {(name !== initialName || desc !== initialDesc) && (
+          <Button onClick={() => onSave(name, desc)} loading={busy} className="gap-1.5">
+            <Check size={16} strokeWidth={2} /> Save
+          </Button>
+        )}
         <Button variant="secondary" onClick={onCancel} className="gap-1.5">
           <X size={16} strokeWidth={2} /> Cancel
         </Button>

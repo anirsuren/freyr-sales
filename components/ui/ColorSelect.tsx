@@ -28,6 +28,24 @@ export type ColorOption = {
 const SP_MOTION =
   "duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
 
+function iconForeground(color?: string): string {
+  if (!color) return "#FFFFFF";
+  const hex = color.replace("#", "");
+  if (!/^[0-9a-f]{3}([0-9a-f]{3})?$/i.test(hex)) return "#FFFFFF";
+  const full =
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((character) => character + character)
+          .join("")
+      : hex;
+  const red = Number.parseInt(full.slice(0, 2), 16);
+  const green = Number.parseInt(full.slice(2, 4), 16);
+  const blue = Number.parseInt(full.slice(4, 6), 16);
+  const luminance = (red * 299 + green * 587 + blue * 114) / 1000;
+  return luminance > 164 ? "#243142" : "#FFFFFF";
+}
+
 // A custom, color-coded dropdown to replace cheap gray <select>s (Suren: "color
 // code all the dropdowns"). Each option carries a colour dot (and optional icon);
 // the trigger mirrors the selected one. Click-away + Escape close it.
@@ -92,8 +110,8 @@ export function ColorSelect({
         <span
           className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold tnum"
           style={{
-            background: `${o.color || "#0071E3"}1F`,
-            color: o.color || "#0071E3",
+            background: o.color || "#0071E3",
+            color: iconForeground(o.color || "#0071E3"),
           }}
         >
           {o.short}
@@ -106,7 +124,10 @@ export function ColorSelect({
             "rounded-md flex items-center justify-center shrink-0",
             prominent ? "w-8 h-8" : "w-5 h-5"
           )}
-          style={{ background: o.color ? `${o.color}1F` : "transparent", color: o.color || "#8E98A8" }}
+          style={{
+            background: o.color || "#8E98A8",
+            color: iconForeground(o.color || "#8E98A8"),
+          }}
         >
           <Icon size={prominent ? 16 : 12} strokeWidth={2.1} />
         </span>
@@ -353,7 +374,10 @@ export function MultiColorSelect({
             // colour + icon, so collapsed it still says what it filters.
             <span
               className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-              style={{ background: `${allColor}1F`, color: allColor }}
+              style={{
+                background: allColor,
+                color: iconForeground(allColor),
+              }}
             >
               <AllIcon size={12} strokeWidth={2.1} />
             </span>
@@ -409,7 +433,10 @@ export function MultiColorSelect({
             {AllIcon ? (
               <span
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                style={{ background: `${allColor}1F`, color: allColor }}
+                style={{
+                  background: allColor,
+                  color: iconForeground(allColor),
+                }}
               >
                 <AllIcon size={12} strokeWidth={2.1} />
               </span>
@@ -448,7 +475,10 @@ export function MultiColorSelect({
                 {Icon ? (
                   <span
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                    style={{ background: `${accent}1F`, color: accent }}
+                    style={{
+                      background: accent,
+                      color: iconForeground(accent),
+                    }}
                   >
                     <Icon size={12} strokeWidth={2.1} />
                   </span>

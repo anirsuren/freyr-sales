@@ -7,6 +7,8 @@ import {
   ReceiptText,
   CircleDot,
   CalendarClock,
+  Grid3X3,
+  ArrowRight,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -15,10 +17,13 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatTile } from "@/components/ui/StatTile";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { ReportsExport } from "@/components/reports/ReportsExport";
 import {
   DonutChart,
+  DonutLegend,
   LineChart,
+  Sparkline,
   VIZ,
   VIZ_SERIES,
 } from "@/components/charts/Charts";
@@ -79,6 +84,17 @@ export default async function ReportsPage() {
       .filter((o) => o.category === c.label && o.revenue > 0)
       .map((o) => ({ name: o.name, value: formatMoney(o.revenue) })),
   }));
+  const CATEGORY_SHORT: Record<string, string> = {
+    "Global Regulatory Intelligence": "Global intelligence",
+    "Regulatory Information Management": "RIM",
+    "Submissions and Document Operations": "Submissions",
+    "Labeling and Artwork": "Labeling & artwork",
+    "Freya Fusion Platform and Agents": "Freya Fusion",
+  };
+  const categoryLegend = categorySegments.map((segment) => ({
+    ...segment,
+    label: CATEGORY_SHORT[segment.label] || segment.label,
+  }));
   // Four contract types, four clearly different hues. blue/indigo were near
   // twins and teal/green were the pair Anir called out as "so similar"; these
   // sit a quarter-turn apart on the wheel so a glance at the Type column is
@@ -90,7 +106,7 @@ export default async function ReportsPage() {
     license: "#059669", // emerald
   };
   const typeSegments = report.byType.map((t) => ({
-    label: t.label,
+    label: REVENUE_TYPE_META[t.type].short,
     value: t.revenue,
     color: TYPE_COLOR[t.type] || VIZ.slate,
     // Which contracts make up this revenue type — branded with the customer's
@@ -132,14 +148,116 @@ export default async function ReportsPage() {
         value: formatMoney(renewal.amount),
       }))
   );
+  const offeringInsights = new Map(
+    report.byOffering.map((offering) => {
+      const renewals = report.renewals.filter(
+        (renewal) => renewal.offering_id === offering.offering_id
+      );
+      const customerRevenue = new Map<string, number>();
+      for (const renewal of renewals) {
+        customerRevenue.set(
+          renewal.customer,
+          (customerRevenue.get(renewal.customer) || 0) + renewal.amount
+        );
+      }
+      const rankedCustomers = Array.from(customerRevenue.entries()).sort(
+        (a, b) => b[1] - a[1]
+      );
+      const visibleCustomers = rankedCustomers.slice(0, 4);
+      const otherRevenue = rankedCustomers
+        .slice(4)
+        .reduce((sum, [, value]) => sum + value, 0);
+      const customerSegments = [
+        ...visibleCustomers.map(([customer, value], index) => ({
+          label: customer,
+          value,
+          color: VIZ_SERIES[index % VIZ_SERIES.length],
+          tip: [
+            {
+              logo: customer,
+              name: customer,
+              value: formatMoney(value),
+            },
+          ],
+        })),
+        ...(otherRevenue > 0
+          ? [
+              {
+                label: "Other customers",
+                value: otherRevenue,
+                color: VIZ.slate,
+                tip: rankedCustomers.slice(4).map(([customer, value]) => ({
+                  logo: customer,
+                  name: customer,
+                  value: formatMoney(value),
+                })),
+              },
+            ]
+          : []),
+      ];
+      const renewalCurve = renewalHorizons.map((horizon) =>
+        renewals
+          .filter((renewal) => renewal.daysLeft >= horizon)
+          .reduce((sum, renewal) => sum + renewal.amount, 0)
+      );
+      return [
+        offering.offering_id,
+        { customerSegments, renewalCurve, renewals },
+      ] as const;
+    })
+  );
 
   return (
     <div className="space-y-6 stagger">
       <PageHeader
         title="Reports"
-        subtitle="Revenue across every offering: how much we make, how many licenses and customers, and what's in flight. All from the revenue logged on each account."
+        subtitle="Portfolio reporting across customers, offerings, revenue, contracts, and active sales motions."
         action={<ReportsExport report={report} />}
       />
+
+      <Card className="p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+            <Grid3X3 size={19} strokeWidth={1.8} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-semibold text-text-primary">
+              Customer Offering Heat Map
+            </h2>
+            <p className="mt-1 max-w-[720px] text-[12px] leading-relaxed text-text-secondary">
+              See the current motion for every customer and offering, then
+              open a pairing for value, dates, linked records and history.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-5">
+            <div className="hidden items-center gap-5 sm:flex">
+              <p className="whitespace-nowrap text-[11px] text-text-tertiary">
+                <span className="mr-1 font-bold text-text-primary tnum">
+                  {customers.length}
+                </span>
+                customers
+              </p>
+              <p className="whitespace-nowrap text-[11px] text-text-tertiary">
+                <span className="mr-1 font-bold text-text-primary tnum">
+                  {offerings.length}
+                </span>
+                offerings
+              </p>
+            </div>
+            <Link
+              href="/reports/customer-offering-heat-map"
+              className="group inline-flex h-9 items-center gap-2 rounded-md border border-border bg-white px-3.5 text-[12px] font-semibold text-text-primary transition-[transform,background-color,border-color] hover:border-blue-subtle hover:bg-blue-light active:scale-[0.97]"
+            >
+              Open report
+              <ArrowRight
+                size={14}
+                strokeWidth={2}
+                className="text-blue-primary transition-transform group-hover:translate-x-0.5"
+              />
+            </Link>
+          </div>
+        </div>
+      </Card>
 
       {!hasRevenue ? (
         <EmptyState
@@ -176,52 +294,27 @@ export default async function ReportsPage() {
               <p className="mb-3 text-[12px] text-text-tertiary">
                 Revenue across offering categories.
               </p>
-              <div className="grid grid-cols-[124px_minmax(0,1fr)] items-center gap-3">
-                <div className="relative h-[124px] w-[124px] shrink-0">
+              <div className="grid grid-cols-[112px_minmax(0,1fr)] items-center gap-3">
+                <div className="h-[112px] w-[112px] shrink-0">
                   <DonutChart
                     segments={categorySegments}
-                    size={124}
-                    thickness={14}
+                    size={112}
+                    thickness={13}
+                    centerLabel={formatMoney(report.totalRevenue)}
+                    centerSub="total"
                     format="money"
+                    syncId="reports-category"
                   />
-                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center leading-none">
-                    <span className="text-[24px] font-bold text-text-primary tnum">
-                      {formatMoney(report.totalRevenue)}
-                    </span>
-                    <span className="mt-1.5 text-[10px] font-medium text-text-tertiary">
-                      total
-                    </span>
-                  </div>
                 </div>
-                <div className="min-w-0 space-y-2">
-                  {categorySegments.map((segment) => {
-                    const share = report.totalRevenue
-                      ? Math.round((segment.value / report.totalRevenue) * 100)
-                      : 0;
-                    return (
-                      <div key={segment.label} className="min-w-0">
-                        <div className="grid grid-cols-[8px_minmax(0,1fr)_auto] items-start gap-2 text-[10.5px] leading-[1.25]">
-                          <span
-                            className="mt-0.5 h-2 w-2 rounded-full"
-                            style={{ backgroundColor: segment.color }}
-                          />
-                          <span className="min-w-0 break-words text-text-secondary">
-                            {segment.label}
-                          </span>
-                          <span className="pl-1 font-semibold tabular-nums text-text-primary">
-                            {formatMoney(segment.value)}
-                          </span>
-                        </div>
-                        <div className="ml-4 mt-1 h-1 overflow-hidden rounded-full bg-surface">
-                          <div
-                            className="h-full rounded-full"
-                            style={{ width: `${share}%`, backgroundColor: segment.color }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <DonutLegend
+                  items={categoryLegend}
+                  total={report.totalRevenue}
+                  format="money"
+                  bars={false}
+                  showValues={false}
+                  syncId="reports-category"
+                  className="text-[10.5px]"
+                />
               </div>
             </Card>
             <Card className="self-start p-4">
@@ -231,53 +324,26 @@ export default async function ReportsPage() {
               <p className="mb-3 text-[12px] text-text-tertiary">
                 Revenue by contract structure.
               </p>
-              <div className="grid grid-cols-[124px_minmax(0,1fr)] items-center gap-3">
-                <div className="relative h-[124px] w-[124px] shrink-0">
+              <div className="grid grid-cols-[112px_minmax(0,1fr)] items-center gap-3">
+                <div className="h-[112px] w-[112px] shrink-0">
                   <DonutChart
                     segments={typeSegments}
-                    size={124}
-                    thickness={14}
+                    size={112}
+                    thickness={13}
+                    centerLabel={formatMoney(report.totalRevenue)}
+                    centerSub="total"
                     format="money"
+                    syncId="reports-type"
                   />
-                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center leading-none">
-                    <span className="text-[24px] font-bold text-text-primary tnum">
-                      {formatMoney(report.totalRevenue)}
-                    </span>
-                    <span className="mt-1.5 text-[10px] font-medium text-text-tertiary">
-                      total
-                    </span>
-                  </div>
                 </div>
-                <div className="min-w-0 space-y-2">
-                  {report.byType.map((type) => {
-                    const color = TYPE_COLOR[type.type] || VIZ.slate;
-                    const share = report.totalRevenue
-                      ? Math.round((type.revenue / report.totalRevenue) * 100)
-                      : 0;
-                    return (
-                      <div key={type.type} className="min-w-0">
-                        <div className="grid grid-cols-[8px_minmax(0,1fr)_auto] items-start gap-2 text-[10.5px] leading-[1.25]">
-                          <span
-                            className="mt-0.5 h-2 w-2 rounded-full"
-                            style={{ backgroundColor: color }}
-                          />
-                          <span className="min-w-0 break-words text-text-secondary">
-                            {type.label} <span className="text-text-tertiary">({type.count})</span>
-                          </span>
-                          <span className="pl-1 font-semibold tabular-nums text-text-primary">
-                            {formatMoney(type.revenue)}
-                          </span>
-                        </div>
-                        <div className="ml-4 mt-1 h-1 overflow-hidden rounded-full bg-surface">
-                          <div
-                            className="h-full rounded-full"
-                            style={{ width: `${share}%`, backgroundColor: color }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <DonutLegend
+                  items={typeSegments}
+                  total={report.totalRevenue}
+                  format="money"
+                  bars={false}
+                  syncId="reports-type"
+                  className="text-[10.5px]"
+                />
               </div>
             </Card>
             <Card className="p-4">
@@ -287,17 +353,17 @@ export default async function ReportsPage() {
               <p className="mb-3 text-[12px] text-text-tertiary">
                 Contracted revenue remaining through upcoming renewals.
               </p>
-              <div className="mb-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1">
+              <div className="mb-2 grid min-w-0 grid-cols-2 gap-x-3 gap-y-1.5">
                 {topOfferings.map((offering, index) => (
                   <span
                     key={offering.offering_id}
-                    className="inline-flex min-w-0 items-center gap-1.5 text-[10px] text-text-secondary"
+                    className="inline-flex min-w-0 items-start gap-1.5 text-[9.5px] leading-[1.2] text-text-secondary"
                   >
                     <span
-                      className="h-2 w-2 shrink-0 rounded-full"
+                      className="mt-0.5 h-2 w-2 shrink-0 rounded-full"
                       style={{ backgroundColor: VIZ_SERIES[index % VIZ_SERIES.length] }}
                     />
-                    <span className="max-w-[150px] truncate">{offering.name}</span>
+                    <span className="break-words">{offering.name}</span>
                   </span>
                 ))}
               </div>
@@ -332,6 +398,7 @@ export default async function ReportsPage() {
                       { h: "Customers", num: true },
                       { h: "Revenue", num: true },
                       { h: "Licenses", num: true },
+                      { h: "Revenue runway" },
                       { h: "Contracts", num: true },
                     ].map(({ h, num }) => (
                       <th
@@ -347,16 +414,114 @@ export default async function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light">
-                  {report.byOffering.map((o) => (
+                  {report.byOffering.map((o) => {
+                    const insight = offeringInsights.get(o.offering_id);
+                    return (
                     <tr key={o.offering_id}>
                       <td className="px-5 py-3 text-[13px] font-semibold whitespace-nowrap">
-                        <Link
-                          href={`/offerings/${o.offering_id}?tab=reports`}
-                          className="inline-flex items-center gap-2.5 text-text-primary hover:text-blue-primary"
+                        <HoverCard
+                          side="right"
+                          width={430}
+                          delayMs={0}
+                          content={
+                            <div>
+                              <div className="flex items-center gap-2.5 border-b border-border-light pb-2.5">
+                                <OfferingIcon
+                                  name={o.name}
+                                  className="h-9 w-9 shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <p className="truncate text-[13.5px] font-semibold text-text-primary">
+                                    {o.name}
+                                  </p>
+                                  <p className="truncate text-[10.5px] text-text-tertiary">
+                                    {o.category}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_120px] gap-4">
+                                <div>
+                                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                                    Revenue by customer
+                                  </p>
+                                  {insight?.customerSegments.length ? (
+                                    <div className="flex items-center gap-2.5">
+                                      <DonutChart
+                                        segments={insight.customerSegments}
+                                        size={82}
+                                        thickness={10}
+                                        centerLabel={formatMoney(o.revenue)}
+                                        centerSub="booked"
+                                        format="money"
+                                        syncId={`report-offering-${o.offering_id}`}
+                                      />
+                                      <DonutLegend
+                                        items={insight.customerSegments}
+                                        total={o.revenue}
+                                        format="money"
+                                        showValues={false}
+                                        syncId={`report-offering-${o.offering_id}`}
+                                        className="min-w-0 text-[9.5px]"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <p className="rounded-lg bg-surface px-3 py-4 text-[11px] text-text-tertiary">
+                                      No booked revenue yet.
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                  {[
+                                    ["Customers", String(o.customers)],
+                                    ["Licenses", String(o.licenses || 0)],
+                                    ["Contracts", String(o.lines)],
+                                  ].map(([label, value]) => (
+                                    <div
+                                      key={label}
+                                      className="rounded-lg bg-surface px-2.5 py-2"
+                                    >
+                                      <p className="text-[8.5px] font-semibold uppercase tracking-[0.03em] text-text-tertiary">
+                                        {label}
+                                      </p>
+                                      <p className="mt-0.5 text-[13px] font-bold leading-none text-text-primary tnum">
+                                        {value}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="mt-3 border-t border-border-light pt-2.5">
+                                <div className="mb-1 flex items-center justify-between gap-3">
+                                  <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                                    Contracted revenue remaining
+                                  </p>
+                                  <span className="text-[10px] text-text-tertiary tnum">
+                                    {insight?.renewals.length || 0} renewals
+                                  </span>
+                                </div>
+                                <Sparkline
+                                  points={insight?.renewalCurve || [0, 0, 0, 0]}
+                                  color={VIZ.blue}
+                                  height={48}
+                                  format="money"
+                                  xLabels={renewalHorizonLabels}
+                                  label={`${o.name} remaining revenue`}
+                                />
+                              </div>
+                              <p className="mt-2.5 border-t border-border-light pt-2.5 text-[11.5px] font-medium text-blue-primary">
+                                View full offering report →
+                              </p>
+                            </div>
+                          }
                         >
-                          <OfferingIcon name={o.name} className="w-7 h-7" />
-                          {o.name}
-                        </Link>
+                          <Link
+                            href={`/offerings/${o.offering_id}?tab=reports`}
+                            className="inline-flex items-center gap-2.5 text-text-primary hover:text-blue-primary"
+                          >
+                            <OfferingIcon name={o.name} className="w-7 h-7" />
+                            {o.name}
+                          </Link>
+                        </HoverCard>
                       </td>
                       <td className="px-5 py-3 text-[12.5px] text-text-secondary whitespace-nowrap">
                         {o.category}
@@ -368,9 +533,30 @@ export default async function ReportsPage() {
                       <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">
                         {o.licenses || "-"}
                       </td>
+                      <td className="w-[150px] px-5 py-3">
+                        <Sparkline
+                          points={insight?.renewalCurve || [0, 0, 0, 0]}
+                          color={o.revenue > 0 ? VIZ.blue : VIZ.slate}
+                          height={30}
+                          format="money"
+                          xLabels={renewalHorizonLabels}
+                          label={`${o.name} revenue runway`}
+                          pointTips={renewalHorizons.map((horizon) =>
+                            (insight?.renewals || [])
+                              .filter(
+                                (renewal) => renewal.daysLeft >= horizon
+                              )
+                              .map((renewal) => ({
+                                logo: renewal.customer,
+                                name: renewal.customer,
+                                value: formatMoney(renewal.amount),
+                              }))
+                          )}
+                        />
+                      </td>
                       <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">{o.lines}</td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

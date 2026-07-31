@@ -72,6 +72,13 @@ export function EditMaterialButton({
   const [readByAgent, setReadByAgent] = useState(isReadByAgent(material));
   /** MOVE A FILE. The folder is a plain path, so moving is a re-save. */
   const [folder, setFolder] = useState(material.folder || "");
+  const hasChanges =
+    label !== material.label ||
+    description !== (material.description || "") ||
+    folder !== (material.folder || "") ||
+    journeyStage !== (material.journeyStage || "awareness") ||
+    accessLevel !== (material.accessLevel || "client_facing") ||
+    readByAgent !== isReadByAgent(material);
 
   function reset() {
     setLabel(material.label);
@@ -290,9 +297,11 @@ export function EditMaterialButton({
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={save} disabled={busy}>
-              {busy ? "Saving…" : "Save changes"}
-            </Button>
+            {hasChanges && (
+              <Button onClick={save} disabled={busy}>
+                {busy ? "Saving…" : "Save changes"}
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

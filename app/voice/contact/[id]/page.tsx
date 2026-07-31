@@ -313,13 +313,13 @@ export default async function VoiceContactPage({
           >
             <div className="grid grid-cols-[108px_1fr] items-center gap-4">
               <div className="relative shrink-0" style={{ width: 108, height: 108 }}>
-                <DonutChart segments={outcomeSegments} size={108} thickness={11} />
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-[24px] font-bold leading-none tnum text-text-primary">
-                    {finished.length}
-                  </span>
-                  <span className="text-[10px] text-text-tertiary mt-0.5">calls</span>
-                </div>
+                <DonutChart
+                  segments={outcomeSegments}
+                  size={108}
+                  thickness={11}
+                  centerLabel={String(finished.length)}
+                  centerSub="calls"
+                />
               </div>
               <div className="space-y-2 text-[12.5px]">
                 {outcomeSegments.map((s) => (

@@ -16,6 +16,11 @@ import type {
   AccountDeal,
   Customer,
 } from "@/lib/types";
+import {
+  CUSTOMER_OFFERING_ACTIVITY_ORDER,
+  CUSTOMER_OFFERING_STATUS_ORDER,
+  defaultStatusForActivity,
+} from "@/lib/customerOfferingHeatMap";
 
 export const dynamic = "force-dynamic";
 
@@ -132,10 +137,75 @@ export async function PATCH(
   // lines keyed by offering. Sanitized so bad input can't corrupt the store.
   if (Array.isArray(body.offering_usage)) {
     const RT = ["annual", "project", "annual_service", "license"];
+    const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD", "AUD", "JPY"];
     patch.offering_usage = body.offering_usage
-      .map((u: any) => ({
-        offering_id: String(u?.offering_id || ""),
-        revenue_lines: Array.isArray(u?.revenue_lines)
+      .map((u: any) => {
+        let linkedVersionSeen = false;
+        const engagementVersions = Array.isArray(u?.engagement_versions)
+          ? u.engagement_versions
+              .map((version: any) => {
+                const activity = CUSTOMER_OFFERING_ACTIVITY_ORDER.includes(
+                  version?.activity
+                )
+                  ? version.activity
+                  : "to_pitch";
+                const requestedLinked = version?.linked === true;
+                const linked = requestedLinked && !linkedVersionSeen;
+                if (linked) linkedVersionSeen = true;
+                const status = CUSTOMER_OFFERING_STATUS_ORDER.includes(
+                  version?.status
+                )
+                  ? version.status
+                  : defaultStatusForActivity(activity);
+                const list = (value: unknown) =>
+                  Array.isArray(value)
+                    ? value
+                        .filter(
+                          (item: unknown): item is string =>
+                            typeof item === "string" && !!item.trim()
+                        )
+                        .map((item: string) => item.trim().slice(0, 120))
+                        .slice(0, 50)
+                    : [];
+                const createdAt = version?.created_at
+                  ? String(version.created_at)
+                  : new Date().toISOString();
+                return {
+                  id: String(version?.id || uid("eng")).slice(0, 120),
+                  version: Math.max(
+                    1,
+                    Math.round(Number(version?.version) || 1)
+                  ),
+                  linked,
+                  activity,
+                  activity_description: version?.activity_description
+                    ? String(version.activity_description).trim().slice(0, 2000) ||
+                      null
+                    : null,
+                  status,
+                  dollar_value: Math.max(
+                    0,
+                    Math.round(Number(version?.dollar_value) || 0)
+                  ),
+                  currency: CURRENCIES.includes(version?.currency)
+                    ? version.currency
+                    : "USD",
+                  start_date: version?.start_date
+                    ? String(version.start_date).slice(0, 40)
+                    : null,
+                  end_date: version?.end_date
+                    ? String(version.end_date).slice(0, 40)
+                    : null,
+                  opportunity_ids: list(version?.opportunity_ids),
+                  proposal_ids: list(version?.proposal_ids),
+                  contract_ids: list(version?.contract_ids),
+                  created_at: createdAt,
+                  updated_at: new Date().toISOString(),
+                };
+              })
+              .sort((a: any, b: any) => b.version - a.version)
+          : [];
+        const revenueLines = Array.isArray(u?.revenue_lines)
           ? u.revenue_lines
               .map((l: any) => ({
                 id: String(l?.id || uid("rev")),
@@ -154,9 +224,18 @@ export async function PATCH(
                   : null,
               }))
               .filter((l: any) => l.amount > 0 || l.num_licenses)
-          : [],
-      }))
-      .filter((u: any) => u.offering_id && u.revenue_lines.length > 0);
+          : [];
+        return {
+          offering_id: String(u?.offering_id || ""),
+          revenue_lines: revenueLines,
+          engagement_versions: engagementVersions,
+        };
+      })
+      .filter(
+        (u: any) =>
+          u.offering_id &&
+          (u.revenue_lines.length > 0 || u.engagement_versions.length > 0)
+      );
   }
 
   if (body.addNote && String(body.addNote.body || "").trim()) {

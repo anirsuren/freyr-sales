@@ -153,6 +153,20 @@ export function portfolioReport(
 ): PortfolioReport {
   const offById = new Map(offerings.map((o) => [o.id, o]));
   const byOffering = new Map<string, OfferingRevenueRow>();
+  // The report is a catalogue report, not merely a list of rows that already
+  // have customer usage. Seed every offering so the "Every offering" table
+  // actually contains the full catalogue (including honest zeroes).
+  for (const offering of offerings) {
+    byOffering.set(offering.id, {
+      offering_id: offering.id,
+      name: offering.offering_name,
+      category: offering.offering_category || "Uncategorized",
+      customers: 0,
+      revenue: 0,
+      licenses: 0,
+      lines: 0,
+    });
+  }
   const byCategory = new Map<string, number>();
   const byType = new Map<RevenueType, { revenue: number; count: number }>();
   const renewals: RenewalRow[] = [];
@@ -228,7 +242,9 @@ export function portfolioReport(
     totalRevenue,
     totalLicenses,
     customerCount: usingCustomers.size,
-    offeringCount: byOffering.size,
+    offeringCount: Array.from(byOffering.values()).filter(
+      (offering) => offering.revenue > 0
+    ).length,
     lineCount,
     activeCount,
     byOffering: Array.from(byOffering.values()).sort(

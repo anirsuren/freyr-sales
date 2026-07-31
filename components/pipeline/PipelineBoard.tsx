@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Flame,
   Plus,
-  Check,
   CheckSquare,
   Square,
   X,
@@ -1021,17 +1020,6 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                           onBlur={() => commitValue(d.sessionId)}
                           className="w-[88px] bg-white border border-blue-primary rounded-md px-2 py-0.5 text-[13px] font-semibold text-right outline-none tnum shadow-focus"
                         />
-                        <button
-                          aria-label="Save value"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            commitValue(d.sessionId);
-                          }}
-                          className="text-blue-primary hover:text-blue-hover"
-                        >
-                          <Check size={15} strokeWidth={2} />
-                        </button>
                       </span>
                     ) : (
                       <button

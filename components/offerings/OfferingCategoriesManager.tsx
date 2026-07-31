@@ -253,9 +253,13 @@ export function OfferingCategoriesManager({
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button onClick={() => saveEdit(c.id)} loading={busy}>
-                      Save
-                    </Button>
+                    {(editName !== c.name ||
+                      editDesc !== c.description ||
+                      editOwner !== c.owner) && (
+                      <Button onClick={() => saveEdit(c.id)} loading={busy}>
+                        Save
+                      </Button>
+                    )}
                     <button
                       onClick={() => setEditingId(null)}
                       className="text-[13px] font-semibold text-text-secondary hover:text-text-primary px-3 py-2"

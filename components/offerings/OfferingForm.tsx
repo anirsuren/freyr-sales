@@ -551,6 +551,40 @@ export function OfferingForm({
       accessLevel: m.accessLevel ?? "client_facing",
     }))
   );
+  const hasOfferingChanges =
+    !isEdit ||
+    JSON.stringify({
+      offeringType,
+      offeringCategory,
+      offeringName,
+      description,
+      current,
+      future,
+      poc,
+      ctIds,
+      mktIds,
+      materials,
+    }) !==
+      JSON.stringify({
+        offeringType: initial?.offering_type ?? "",
+        offeringCategory: initial?.offering_category ?? "",
+        offeringName: initial?.offering_name ?? "",
+        description: composeDescription(seeded.intro, seeded.rows),
+        current: buildAvailability(
+          initAvail.mode,
+          initAvail.month,
+          initAvail.year
+        ),
+        future: initial?.future_availability ?? "",
+        poc: initial?.poc ?? "",
+        ctIds: initial?.customer_type_ids ?? [],
+        mktIds: initial?.market_ids ?? [],
+        materials: (initial?.materials ?? []).map((material) => ({
+          ...material,
+          journeyStage: material.journeyStage ?? "awareness",
+          accessLevel: material.accessLevel ?? "client_facing",
+        })),
+      });
 
   function toggle(list: string[], id: string) {
     return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -1374,9 +1408,11 @@ export function OfferingForm({
         >
           Cancel
         </button>
-        <Button onClick={submit} loading={saving}>
-          {isEdit ? "Save changes" : "Save offering"}
-        </Button>
+        {hasOfferingChanges && (
+          <Button onClick={submit} loading={saving}>
+            {isEdit ? "Save changes" : "Save offering"}
+          </Button>
+        )}
       </div>
 
       {isEdit && (

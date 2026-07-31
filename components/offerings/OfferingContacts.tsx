@@ -171,6 +171,11 @@ export function OfferingContacts({
   // The contact whose role is being edited, in its own dialog.
   const [editing, setEditing] = useState<OfferingContact | null>(null);
   const [editRole, setEditRole] = useState(ROLE_OPTIONS[0].value);
+  const editedRoleValue =
+    editRole === CUSTOM_ROLE ? editCustomRole.trim() : editRole;
+  const hasEditedRole = Boolean(
+    editing && editedRoleValue && editedRoleValue !== editing.role
+  );
 
   /** Granted owners of THIS offering, by name. Pending requests are not owners. */
   const ownerNames = useMemo(
@@ -806,21 +811,17 @@ export function OfferingContacts({
               >
                 Cancel
               </button>
-              <Button
-                loading={busy === editing.id}
-                onClick={async () => {
-                  const next =
-                    editRole === CUSTOM_ROLE ? editCustomRole.trim() : editRole;
-                  if (!next) {
-                    setError("Type what they do here.");
-                    return;
-                  }
-                  const ok = await setRoleFor(editing, next);
-                  if (ok) setEditing(null);
-                }}
-              >
-                Save
-              </Button>
+              {hasEditedRole && (
+                <Button
+                  loading={busy === editing.id}
+                  onClick={async () => {
+                    const ok = await setRoleFor(editing, editedRoleValue);
+                    if (ok) setEditing(null);
+                  }}
+                >
+                  Save
+                </Button>
+              )}
             </div>
           </div>
         )}

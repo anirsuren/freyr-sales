@@ -382,6 +382,7 @@ export function SettingsTabs({
     // pull a real headshot instead of initials.
     linkedin: "",
   });
+  const [savedProfile, setSavedProfile] = useState(profile);
   const [linkedinStatus, setLinkedinStatus] = useState<{
     ok: boolean;
     message: string;
@@ -448,13 +449,13 @@ export function SettingsTabs({
   // hydrate from localStorage
   useEffect(() => {
     setHydratedUserId(null);
-    setProfile({
+    let nextProfile = {
       name: currentUser.name,
       title: currentUser.title,
       email: currentUser.email || "",
       signature: `${currentUser.name}\nFreyr Solutions`,
       linkedin: "",
-    });
+    };
     setInvite({ name: "", email: "", role: "Rep" });
     setNotifs({ ...DEFAULT_NOTIFICATIONS });
     setRole(authenticatedRoleLabel);
@@ -477,21 +478,22 @@ export function SettingsTabs({
           signature?: unknown;
           linkedin?: unknown;
         };
-        setProfile((existing) => ({
-          ...existing,
-          title: typeof saved.title === "string" ? saved.title : existing.title,
+        nextProfile = {
+          ...nextProfile,
+          title:
+            typeof saved.title === "string" ? saved.title : nextProfile.title,
           signature:
             typeof saved.signature === "string"
               ? saved.signature
-              : existing.signature,
+              : nextProfile.signature,
           linkedin:
             typeof saved.linkedin === "string"
               ? saved.linkedin
-              : existing.linkedin,
+              : nextProfile.linkedin,
           // Identity always comes from the verified server session.
           name: currentUser.name,
           email: currentUser.email || "",
-        }));
+        };
       }
       const n = localStorage.getItem(notifStorageKey);
       if (n) setNotifs((s) => ({ ...s, ...JSON.parse(n) }));
@@ -511,6 +513,8 @@ export function SettingsTabs({
       // Invalid data in one account's browser storage must not preserve values
       // from the previously signed-in account.
     } finally {
+      setProfile(nextProfile);
+      setSavedProfile(nextProfile);
       setHydratedUserId(currentUser.id);
     }
   }, [
@@ -530,6 +534,10 @@ export function SettingsTabs({
     ssoStorageKey,
     connectorStorageKey,
   ]);
+
+  const profileDirty =
+    hydratedUserId === currentUser.id &&
+    JSON.stringify(profile) !== JSON.stringify(savedProfile);
 
   useEffect(() => {
     if (!authConfig.approvalEnabled) return;
@@ -723,6 +731,7 @@ export function SettingsTabs({
     void syncLinkedIn();
     const nextName = profile.name.trim();
     if (!nextName || nextName === currentUser.name) {
+      setSavedProfile(profile);
       toast("Profile saved");
       return;
     }
@@ -735,10 +744,12 @@ export function SettingsTabs({
         body: JSON.stringify({ name: nextName }),
       });
       if (res.ok) {
+        setSavedProfile({ ...profile, name: nextName });
         toast("Profile saved: your name is updated everywhere");
         router.refresh();
       } else if (res.status === 404) {
         // Local/demo workspace without sign-in — nothing server-side to update.
+        setSavedProfile({ ...profile, name: nextName });
         toast("Profile saved");
       } else {
         const data = await res.json().catch(() => null);
@@ -1268,7 +1279,11 @@ export function SettingsTabs({
                 </span>
               )}
             </label>
-            <Button onClick={saveProfile}>Save profile</Button>
+            {profileDirty && (
+              <div className="page-in">
+                <Button onClick={saveProfile}>Save profile</Button>
+              </div>
+            )}
             <div className="pt-4 mt-1 border-t border-border-light">
               <ThemeSetting />
             </div>

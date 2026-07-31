@@ -108,9 +108,10 @@ export function TopBar({
         body: JSON.stringify({ mode }),
       });
       if (r.ok) {
-        // Full reload onto the new mode's home so every page re-renders
-        // with the right visibility (live = released only, mock = everything).
-        window.location.assign(mode === "live" ? "/offerings" : "/dashboard");
+        // Re-render the same screen in the selected mode. Released pages such
+        // as Reports should not throw the user back to a mode-specific home
+        // while they are comparing real and sample data.
+        window.location.reload();
         return;
       }
     } catch {}

@@ -88,6 +88,61 @@ export interface Customer {
   offering_usage?: OfferingUsage[] | null;
 }
 
+// The customer × offering heat map keeps the commercial journey separate from
+// revenue lines. A customer can have several historical versions for the same
+// offering, but only the version with `linked: true` is shown in the matrix.
+// Old versions stay in the record when they are unlinked so the report never
+// loses the activity trail.
+export type CustomerOfferingActivity =
+  | "to_pitch"
+  | "opportunity"
+  | "proposal"
+  | "under_contract"
+  | "contract_signed"
+  | "need_to_deliver"
+  | "implementation"
+  | "implemented"
+  | "on_hold";
+
+export type CustomerOfferingStatus =
+  | "not_started"
+  | "in_progress"
+  | "submitted"
+  | "in_review"
+  | "approved"
+  | "completed"
+  | "blocked"
+  | "lost";
+
+export type CustomerOfferingCurrency =
+  | "USD"
+  | "EUR"
+  | "GBP"
+  | "CHF"
+  | "CAD"
+  | "AUD"
+  | "JPY";
+
+export interface CustomerOfferingEngagementVersion {
+  id: string;
+  version: number;
+  linked: boolean;
+  activity: CustomerOfferingActivity;
+  activity_description: string | null;
+  status: CustomerOfferingStatus;
+  dollar_value: number;
+  /** Optional for backward compatibility; records created before currency
+   * selection existed are USD. */
+  currency?: CustomerOfferingCurrency;
+  start_date: string | null;
+  end_date: string | null;
+  opportunity_ids: string[];
+  proposal_ids: string[];
+  contract_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 // How Freyr earns on an in-use offering (Suren: "revenue type — annual,
 // project, annual service, or annual license revenue").
 export type RevenueType = "annual" | "project" | "annual_service" | "license";
@@ -105,6 +160,7 @@ export interface OfferingRevenueLine {
 export interface OfferingUsage {
   offering_id: string;
   revenue_lines: OfferingRevenueLine[];
+  engagement_versions?: CustomerOfferingEngagementVersion[];
 }
 
 export interface Contact {

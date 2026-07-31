@@ -913,27 +913,15 @@ export function PitchWorkspace({
               </span>
               {/* Save belongs at the bottom-right of the editor, not up in the
                   toolbar (Suren). Shows dirty vs. saved so it's obvious. */}
-              <button
-                onClick={save}
-                disabled={saving || !dirty}
-                className={cn(
-                  "inline-flex items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-lg transition-colors active:scale-[0.97] disabled:cursor-default",
-                  dirty
-                    ? "bg-blue-primary text-white hover:bg-blue-hover"
-                    : "bg-surface text-text-tertiary"
-                )}
-              >
-                {saving ? (
-                  "Saving…"
-                ) : dirty ? (
-                  "Save changes"
-                ) : (
-                  <>
-                    <Check size={15} strokeWidth={2} />
-                    Saved
-                  </>
-                )}
-              </button>
+              {(dirty || saving) && (
+                <button
+                  onClick={save}
+                  disabled={saving}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover active:scale-[0.97] disabled:cursor-default"
+                >
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              )}
             </div>
           )}
         </div>
