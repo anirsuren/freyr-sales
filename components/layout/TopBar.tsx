@@ -1,10 +1,10 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, Plus, Sparkles, Building2, UserPlus, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, Upload, LogOut, CheckCircle2, Hammer } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, Sparkles, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, LogOut, CheckCircle2, Hammer, Sun, Moon } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { RoleTag } from "@/components/ui/RoleTag";
 import {
@@ -40,17 +40,6 @@ const SHORTCUTS = [
   { keys: ["Tab"], label: "Reveal the “Skip to content” link, then move through controls" },
 ];
 
-const NEW_ITEMS = [
-  { icon: Sparkles, label: "Sales session", sub: "Research + generate a pitch", href: "/intake" },
-  { icon: Building2, label: "Customer account", sub: "Add a company to track", href: "/intake" },
-  { icon: UserPlus, label: "Contact", sub: "Add a buying-committee member", href: "/intake" },
-  // No "Offering" here: the offerings page carries its own New offering button,
-  // and two identical entry points read as two different features (Anir,
-  // Jul 25: "there are two ways to press to go to new offering… just leave it
-  // to one"). — kept as the page-level CTA.
-  { icon: Upload, label: "Import data", sub: "Load accounts, contacts, and offerings", href: "/import" },
-];
-
 export function TopBar({
   onMenuClick,
   onAgentToggle,
@@ -64,7 +53,6 @@ export function TopBar({
 } = {}) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [newOpen, setNewOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -82,6 +70,19 @@ export function TopBar({
   const [dataMode, setDataModeState] = useState<"mock" | "live" | null>(null);
   const [modeLocked, setModeLocked] = useState(false);
   const [modeBusy, setModeBusy] = useState(false);
+  const [darkTheme, setDarkTheme] = useState(false);
+
+  useEffect(() => {
+    setDarkTheme(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  function switchTheme(dark: boolean) {
+    setDarkTheme(dark);
+    document.documentElement.classList.toggle("dark", dark);
+    try {
+      localStorage.setItem("freyr.theme", dark ? "dark" : "light");
+    } catch {}
+  }
 
   useEffect(() => {
     let on = true;
@@ -184,16 +185,6 @@ export function TopBar({
       router.prefetch("/notifications");
     } catch {}
   }, [notifOpen, panelItems, router]);
-  // offerings-only release: every remaining entry duplicates a control the
-  // offerings page already shows (Import), so the button is pure noise there
-  // (Anir, Jul 25: "this button is completely useless") — render nothing.
-  const pathname = usePathname();
-  // The offerings surface carries its own create/import controls — the global
-  // button there is a duplicate at best and a confusing second door at worst
-  // (Anir, twice today: "remove this new button").
-  const newItems =
-    offeringsOnly || pathname?.startsWith("/offerings") ? [] : NEW_ITEMS;
-
   const markRead = useCallback(
     (id: string) => {
       if (!notificationStateReady) return;
@@ -517,6 +508,43 @@ export function TopBar({
                     </p>
                   </div>
                 )}
+                <div className="border-b border-border-light px-3 py-2.5">
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    Appearance
+                  </p>
+                  <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface p-1">
+                    {(
+                      [
+                        { dark: false, icon: Sun, label: "Light" },
+                        { dark: true, icon: Moon, label: "Dark" },
+                      ] as const
+                    ).map((option) => {
+                      const Icon = option.icon;
+                      const active = darkTheme === option.dark;
+                      return (
+                        <button
+                          key={option.label}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={active}
+                          onClick={() => switchTheme(option.dark)}
+                          className={cn(
+                            "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[12.5px] font-semibold transition-all",
+                            active
+                              ? "bg-blue-light text-blue-primary shadow-sm"
+                              : "text-text-secondary hover:text-text-primary"
+                          )}
+                        >
+                          <Icon size={14} strokeWidth={2} />
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-text-secondary">
+                    Saved on this device
+                  </p>
+                </div>
                 <div className="p-1.5">
                   {/* Settings is ALWAYS here, in every mode. It was inside the
                       !offeringsOnly gate, so in real mode the only door was the

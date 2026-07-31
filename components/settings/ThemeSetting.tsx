@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Appearance control — lives in Settings (not on every screen's top bar).
-// Writes the same `freyr.theme` key the no-flash head script reads on load.
+// Full appearance control in Settings. The account menu carries a compact
+// duplicate for quick access; both write the same key the no-flash head script
+// reads on load.
 export function ThemeSetting() {
   const [dark, setDark] = useState(false);
 
