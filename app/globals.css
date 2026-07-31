@@ -109,6 +109,55 @@ html.dark body {
   color: #6fb6ff !important;
 }
 
+/* Dynamic catalogue colours are chosen by admins, so a light-mode accent can
+   be too dark when reused verbatim on a charcoal surface (violet was the most
+   obvious example). Keep the selected hue, but lift the foreground and give
+   the wash a real edge in dark mode. `color-mix` means this works for every
+   current and future category/type colour instead of maintaining a brittle
+   list of one-off overrides. */
+.semantic-color-pill {
+  color: var(--semantic-color);
+  background-color: var(--semantic-bg);
+  border: 1px solid transparent;
+}
+.semantic-color-dot {
+  background-color: var(--semantic-color);
+}
+.dark .semantic-color-pill {
+  color: color-mix(in srgb, var(--semantic-color) 55%, white) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--semantic-color) 22%,
+    #1c1c1e
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--semantic-color) 58%,
+    transparent
+  ) !important;
+}
+.dark .semantic-color-dot {
+  background-color: color-mix(
+    in srgb,
+    var(--semantic-color) 58%,
+    white
+  ) !important;
+}
+
+/* Availability is semantic rather than admin-selected, so it has deliberate
+   AA-friendly pairs for each theme. Inline values alone made green/orange/
+   indigo labels muddy on the dark page. */
+.availability-pill {
+  color: var(--availability-color);
+  background-color: var(--availability-bg);
+  border: 1px solid transparent;
+}
+.dark .availability-pill {
+  color: var(--availability-color-dark) !important;
+  background-color: var(--availability-bg-dark) !important;
+  border-color: var(--availability-border-dark) !important;
+}
+
 * {
   box-sizing: border-box;
 }

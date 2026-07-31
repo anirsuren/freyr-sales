@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -100,8 +100,13 @@ function MetaChip({
 }) {
   return (
     <span
-      className="inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight"
-      style={{ background: `${color}14`, color }}
+      className="semantic-color-pill inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight"
+      style={
+        {
+          "--semantic-color": color,
+          "--semantic-bg": `${color}14`,
+        } as CSSProperties
+      }
     >
       <Icon size={10} strokeWidth={2.2} className="shrink-0" />
       {label}
@@ -954,8 +959,13 @@ export function OfferingsBrowser({
                         return (
                           <span
                             key={m.id}
-                            className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight"
-                            style={{ background: `${accent}14`, color: accent }}
+                            className="semantic-color-pill inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-tight"
+                            style={
+                              {
+                                "--semantic-color": accent,
+                                "--semantic-bg": `${accent}14`,
+                              } as CSSProperties
+                            }
                           >
                             {flag && <span aria-hidden="true">{flag}</span>}
                             {m.name}
@@ -1112,8 +1122,13 @@ export function OfferingsBrowser({
               onClick={() => setMktId(mktIds.filter((x) => x !== id).join(","))}
               aria-label={`Clear market filter: ${m.name}`}
               title={`Clear market filter: ${m.name}`}
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold transition-opacity hover:opacity-75"
-              style={{ color, background: `${color}1A` }}
+              className="semantic-color-pill inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold transition-opacity hover:opacity-75"
+              style={
+                {
+                  "--semantic-color": color,
+                  "--semantic-bg": `${color}1A`,
+                } as CSSProperties
+              }
             >
               <Globe size={13} strokeWidth={2.1} className="shrink-0" />
               {m.name}
@@ -1134,8 +1149,13 @@ export function OfferingsBrowser({
               onClick={() => setStatus(statuses.filter((x) => x !== s).join(","))}
               aria-label={`Clear completeness filter: ${meta.label}`}
               title={`Clear completeness filter: ${meta.label}`}
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold transition-opacity hover:opacity-75"
-              style={{ color: meta.color, background: `${meta.color}1A` }}
+              className="semantic-color-pill inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold transition-opacity hover:opacity-75"
+              style={
+                {
+                  "--semantic-color": meta.color,
+                  "--semantic-bg": `${meta.color}1A`,
+                } as CSSProperties
+              }
             >
               <StatusIcon size={13} strokeWidth={2.1} className="shrink-0" />
               {meta.label}
@@ -1374,12 +1394,17 @@ export function OfferingsBrowser({
                       <td className="px-4 py-3">
                         {o.offering_category && catColor ? (
                           <span
-                            className="inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1 text-[11.5px] font-semibold leading-tight"
-                            style={{ color: catColor, background: `${catColor}14` }}
+                            className="semantic-color-pill inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1 text-[11.5px] font-semibold leading-tight"
+                            style={
+                              {
+                                "--semantic-color": catColor,
+                                "--semantic-bg": `${catColor}14`,
+                              } as CSSProperties
+                            }
                           >
                             <span
-                              className="h-1.5 w-1.5 shrink-0 rounded-full"
-                              style={{ background: catColor }}
+                              className="semantic-color-dot h-1.5 w-1.5 shrink-0 rounded-full"
+                              style={{ "--semantic-color": catColor } as CSSProperties}
                             />
                             <span className="min-w-0">{o.offering_category}</span>
                           </span>
@@ -1390,12 +1415,17 @@ export function OfferingsBrowser({
                       <td className="px-4 py-3">
                         {o.offering_type && typeColor ? (
                           <span
-                            className="inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-0.5 text-[11.5px] font-semibold leading-snug"
-                            style={{ color: typeColor, background: `${typeColor}14` }}
+                            className="semantic-color-pill inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-0.5 text-[11.5px] font-semibold leading-snug"
+                            style={
+                              {
+                                "--semantic-color": typeColor,
+                                "--semantic-bg": `${typeColor}14`,
+                              } as CSSProperties
+                            }
                           >
                             <span
-                              className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
-                              style={{ background: typeColor }}
+                              className="semantic-color-dot mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
+                              style={{ "--semantic-color": typeColor } as CSSProperties}
                             />
                             <span className="min-w-0">{o.offering_type}</span>
                           </span>

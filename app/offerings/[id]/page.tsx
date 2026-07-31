@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -259,12 +260,17 @@ export default async function OfferingDetailPage({
                   : "#0071E3";
               return (
                 <span
-                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1"
-                  style={{ color: typeColor, background: `${typeColor}14` }}
+                  className="semantic-color-pill inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1"
+                  style={
+                    {
+                      "--semantic-color": typeColor,
+                      "--semantic-bg": `${typeColor}14`,
+                    } as CSSProperties
+                  }
                 >
                   <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: typeColor }}
+                    className="semantic-color-dot h-1.5 w-1.5 rounded-full"
+                    style={{ "--semantic-color": typeColor } as CSSProperties}
                   />
                   {o.offering_type}
                 </span>

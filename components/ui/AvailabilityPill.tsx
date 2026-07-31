@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { CircleCheck, Clock, CircleHelp, type LucideIcon } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -7,13 +8,44 @@ import { Tooltip } from "@/components/ui/Tooltip";
 
 type Kind = "available" | "upcoming" | "tbd";
 
-const STYLE: Record<Kind, { bg: string; color: string; icon: LucideIcon }> = {
+const STYLE: Record<
+  Kind,
+  {
+    bg: string;
+    color: string;
+    darkBg: string;
+    darkColor: string;
+    darkBorder: string;
+    icon: LucideIcon;
+  }
+> = {
   // Same pair as the HEALTHY badge — Suren, Jul 28: "that green is very
   // unpleasant, hard to see. What you have in healthy is good, put that for
   // currently available and in use."
-  available: { bg: "rgba(34,197,94,0.14)", color: "#16A34A", icon: CircleCheck },
-  upcoming: { bg: "rgba(255,159,10,0.16)", color: "#7A4A00", icon: Clock },
-  tbd: { bg: "rgba(79,70,229,0.12)", color: "#4338CA", icon: CircleHelp },
+  available: {
+    bg: "rgba(34,197,94,0.14)",
+    color: "#16A34A",
+    darkBg: "rgba(34,197,94,0.18)",
+    darkColor: "#4ADE80",
+    darkBorder: "rgba(74,222,128,0.42)",
+    icon: CircleCheck,
+  },
+  upcoming: {
+    bg: "rgba(255,159,10,0.16)",
+    color: "#7A4A00",
+    darkBg: "rgba(249,115,22,0.18)",
+    darkColor: "#FDBA74",
+    darkBorder: "rgba(253,186,116,0.42)",
+    icon: Clock,
+  },
+  tbd: {
+    bg: "rgba(79,70,229,0.12)",
+    color: "#4338CA",
+    darkBg: "rgba(99,102,241,0.2)",
+    darkColor: "#A5B4FC",
+    darkBorder: "rgba(165,180,252,0.42)",
+    icon: CircleHelp,
+  },
 };
 
 function classify(value: string): { kind: Kind; label: string; tip: string } {
@@ -53,8 +85,16 @@ export function AvailabilityPill({
   return (
     <Tooltip label={tip}>
       <span
-        className={`inline-flex items-center gap-1 font-semibold rounded-full cursor-pointer whitespace-nowrap ${pad}`}
-        style={{ background: s.bg, color: s.color }}
+        className={`availability-pill inline-flex items-center gap-1 font-semibold rounded-full cursor-pointer whitespace-nowrap ${pad}`}
+        style={
+          {
+            "--availability-bg": s.bg,
+            "--availability-color": s.color,
+            "--availability-bg-dark": s.darkBg,
+            "--availability-color-dark": s.darkColor,
+            "--availability-border-dark": s.darkBorder,
+          } as CSSProperties
+        }
       >
         <Icon size={size === "sm" ? 10 : 12} strokeWidth={2.3} />
         {label}
