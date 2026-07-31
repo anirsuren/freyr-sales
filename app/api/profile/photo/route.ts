@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
+import { DEFAULT_LOCAL_USER_IDENTITY } from "@/lib/userIdentity";
 
 /**
  * YOUR OWN PROFILE PICTURE, UPLOADED.
@@ -36,6 +37,13 @@ function rowId(userId: string) {
   return `profile-photo:${userId}`;
 }
 
+/**
+ * Mock mode keeps its demo records under `local-anir-suren`, but a profile
+ * picture is an account preference, not demo data. The durable upload already
+ * lives under the real app_users id, so resolving that id here keeps the same
+ * picture visible when a local reviewer switches between Real and In progress
+ * modes. Production scopes are already account-backed and pass through.
+ */
 async function serviceClient() {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -49,14 +57,31 @@ async function serviceClient() {
   );
 }
 
+async function durableProfileUserId(
+  userId: string,
+  db: NonNullable<Awaited<ReturnType<typeof serviceClient>>>
+): Promise<string> {
+  if (userId !== DEFAULT_LOCAL_USER_IDENTITY.id) return userId;
+  const localEmail = DEFAULT_LOCAL_USER_IDENTITY.email;
+  if (!localEmail) return userId;
+  const { data } = await db
+    .from("app_users")
+    .select("id")
+    .eq("email", localEmail.toLowerCase())
+    .eq("active", true)
+    .maybeSingle();
+  return (data?.id as string | undefined) ?? userId;
+}
+
 export async function GET(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
   const db = await serviceClient();
   if (!scope || !db) return NextResponse.json({ ok: true, photo: null });
+  const userId = await durableProfileUserId(scope.userId, db);
   const { data } = await db
     .from("offering_catalog_state")
     .select("catalog")
-    .eq("id", rowId(scope.userId))
+    .eq("id", rowId(userId))
     .maybeSingle();
   const photo = (data?.catalog as { photo?: string } | null)?.photo ?? null;
   return NextResponse.json({ ok: true, photo });
@@ -84,10 +109,11 @@ export async function POST(req: NextRequest) {
       { status: 503 }
     );
   }
+  const userId = await durableProfileUserId(scope.userId, db);
   const { error } = await db
     .from("offering_catalog_state")
     .upsert(
-      { id: rowId(scope.userId), catalog: { photo: body.photo } },
+      { id: rowId(userId), catalog: { photo: body.photo } },
       { onConflict: "id" }
     );
   if (error) {
@@ -107,9 +133,10 @@ export async function DELETE(req: NextRequest) {
   }
   const db = await serviceClient();
   if (db) {
+    const userId = await durableProfileUserId(scope.userId, db);
     await db
       .from("offering_catalog_state")
-      .upsert({ id: rowId(scope.userId), catalog: {} }, { onConflict: "id" });
+      .upsert({ id: rowId(userId), catalog: {} }, { onConflict: "id" });
   }
   return NextResponse.json({ ok: true, photo: null });
 }
