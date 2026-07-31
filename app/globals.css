@@ -109,6 +109,33 @@ html.dark body {
   color: #6fb6ff !important;
 }
 
+/* Status utilities are used by compact chips across Voice, Campaigns,
+   Sequences, Settings, Sessions, and Reports. Their light-mode foregrounds
+   were technically colored but visually sank into charcoal, especially the
+   tiny green LIVE labels. Lift the semantic foreground and strengthen the
+   tint once here so every status remains a status in dark mode. */
+.dark .text-success {
+  color: #73e68f !important;
+}
+.dark .text-warning {
+  color: #ff9f64 !important;
+}
+.dark .text-error {
+  color: #ff7b74 !important;
+}
+.dark .bg-success\/10 {
+  background-color: rgba(52, 199, 89, 0.18) !important;
+}
+.dark .bg-warning\/10 {
+  background-color: rgba(194, 65, 12, 0.2) !important;
+}
+.dark .bg-warning\/15 {
+  background-color: rgba(194, 65, 12, 0.24) !important;
+}
+.dark .bg-error\/10 {
+  background-color: rgba(255, 59, 48, 0.18) !important;
+}
+
 /* Dynamic catalogue colours are chosen by admins, so a light-mode accent can
    be too dark when reused verbatim on a charcoal surface (violet was the most
    obvious example). Keep the selected hue, but lift the foreground and give
@@ -118,30 +145,87 @@ html.dark body {
 .semantic-color-pill {
   color: var(--semantic-color);
   background-color: var(--semantic-bg);
-  border: 1px solid transparent;
+  border: 1px solid color-mix(
+    in srgb,
+    var(--semantic-color) 18%,
+    transparent
+  );
 }
 .semantic-color-dot {
   background-color: var(--semantic-color);
 }
 .dark .semantic-color-pill {
-  color: color-mix(in srgb, var(--semantic-color) 55%, white) !important;
+  color: color-mix(in srgb, var(--semantic-color) 46%, white) !important;
   background-color: color-mix(
     in srgb,
-    var(--semantic-color) 22%,
+    var(--semantic-color) 27%,
     #1c1c1e
   ) !important;
   border-color: color-mix(
     in srgb,
-    var(--semantic-color) 58%,
+    var(--semantic-color) 68%,
     transparent
   ) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
 }
 .dark .semantic-color-dot {
   background-color: color-mix(
     in srgb,
-    var(--semantic-color) 58%,
+    var(--semantic-color) 50%,
     white
   ) !important;
+}
+
+/* In-progress is intentionally black type on a yellow wash in light mode.
+   Feeding that near-black foreground through the generic hue mixer produced a
+   gray-on-charcoal chip in dark mode—the exact opposite of a status callout.
+   Keep its status yellow and rebuild the pair explicitly for dark surfaces. */
+.dark .outcome-in-progress-pill {
+  color: #fff2a8 !important;
+  background: rgba(255, 204, 0, 0.2) !important;
+  border-color: rgba(255, 214, 51, 0.78) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 0 0 1px rgba(255, 204, 0, 0.05);
+}
+.dark .outcome-in-progress-pill[aria-pressed="true"] {
+  color: #1d1d1f !important;
+  background: #ffcc00 !important;
+  border-color: #ffdc5e !important;
+}
+
+/* The profile menu's workspace-mode switch is a semantic status control, not
+   ordinary selected chrome. Its light-mode green/violet foregrounds were
+   being painted directly onto the dark card, so the most important state in
+   the menu was one of the faintest things on screen. */
+.workspace-mode-active {
+  color: var(--workspace-mode-color);
+  background: #ffffff;
+  border: 1px solid color-mix(
+    in srgb,
+    var(--workspace-mode-color) 18%,
+    transparent
+  );
+}
+.dark .workspace-mode-active {
+  color: color-mix(
+    in srgb,
+    var(--workspace-mode-color) 42%,
+    white
+  ) !important;
+  background: color-mix(
+    in srgb,
+    var(--workspace-mode-color) 29%,
+    #1c1c1e
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--workspace-mode-color) 72%,
+    transparent
+  ) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
 /* Availability is semantic rather than admin-selected, so it has deliberate

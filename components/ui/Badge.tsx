@@ -1,4 +1,5 @@
 import { Home, Building, Building2, type LucideIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { OUTCOME_META, SIZE_TIER_LABEL } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -13,13 +14,20 @@ interface BadgeProps {
 }
 
 export function Badge({ label, bg, color, className, icon: Icon }: BadgeProps) {
+  const accent = color || "#59616E";
+  const wash = bg || "rgba(89,97,110,0.12)";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-semibold uppercase rounded-full px-2.5 py-0.5 tracking-[0.03em]",
+        "semantic-color-pill inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-semibold uppercase rounded-full px-2.5 py-0.5 tracking-[0.03em]",
         className
       )}
-      style={{ backgroundColor: bg, color }}
+      style={
+        {
+          "--semantic-color": accent,
+          "--semantic-bg": wash,
+        } as CSSProperties
+      }
     >
       {Icon && <Icon size={11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />}
       {label}
@@ -34,7 +42,15 @@ export function OutcomeBadge({ outcome }: { outcome: string }) {
     color: "#4A4A4A",
     icon: undefined,
   };
-  return <Badge label={m.label} bg={m.bg} color={m.color} icon={m.icon} />;
+  return (
+    <Badge
+      label={m.label}
+      bg={m.bg}
+      color={m.color}
+      icon={m.icon}
+      className={outcome === "in_progress" ? "outcome-in-progress-pill" : undefined}
+    />
+  );
 }
 
 // Company-size tiers are a category chip, so each gets a distinct colour + an

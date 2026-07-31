@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { ChevronDown, Check, type LucideIcon } from "lucide-react";
 import {
   PriorityLabel,
@@ -190,11 +190,15 @@ export function ColorSelect({
           {selected?.badge && (
             <PriorityLabel collapsed={compact} gap={detailed ? false : "ml-2"} className="shrink-0">
               <span
-                className="block rounded-md px-2 py-0.5 text-[10px] font-semibold"
-                style={{
-                  color: selected.badgeColor || selected.color || "#59616E",
-                  background: `${selected.badgeColor || selected.color || "#8E98A8"}14`,
-                }}
+                className="semantic-color-pill block rounded-md px-2 py-0.5 text-[10px] font-semibold"
+                style={
+                  {
+                    "--semantic-color":
+                      selected.badgeColor || selected.color || "#59616E",
+                    "--semantic-bg":
+                      `${selected.badgeColor || selected.color || "#8E98A8"}14`,
+                  } as CSSProperties
+                }
               >
                 {selected.badge}
               </span>
@@ -257,11 +261,15 @@ export function ColorSelect({
                 </span>
                 {o.badge && (
                   <span
-                    className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold"
-                    style={{
-                      color: o.badgeColor || o.color || "#59616E",
-                      background: `${o.badgeColor || o.color || "#8E98A8"}14`,
-                    }}
+                    className="semantic-color-pill shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold"
+                    style={
+                      {
+                        "--semantic-color":
+                          o.badgeColor || o.color || "#59616E",
+                        "--semantic-bg":
+                          `${o.badgeColor || o.color || "#8E98A8"}14`,
+                      } as CSSProperties
+                    }
                   >
                     {o.badge}
                   </span>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import {
   Activity,
   MessageSquareText,
@@ -184,10 +185,15 @@ export function CallAnalytics({
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <h2 className="text-[17px] font-semibold text-text-primary">Call analysis</h2>
-        <span
-          className="inline-flex items-center gap-1 text-[12px] font-semibold px-2 py-0.5 rounded-full"
-          style={{ color: overallColor, background: `${overallColor}18` }}
-        >
+      <span
+        className="semantic-color-pill inline-flex items-center gap-1 text-[12px] font-semibold px-2 py-0.5 rounded-full"
+        style={
+          {
+            "--semantic-color": overallColor,
+            "--semantic-bg": `${overallColor}18`,
+          } as CSSProperties
+        }
+      >
           <TrendIcon size={13} strokeWidth={2.2} />
           {overallBand}
         </span>

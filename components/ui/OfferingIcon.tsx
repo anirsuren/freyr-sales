@@ -31,6 +31,7 @@ import {
   Workflow,
   type LucideIcon,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { OFFERING_CATALOGUE_ORDER } from "@/lib/offeringCatalogue";
 
@@ -115,10 +116,15 @@ export function ServiceTag({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-2.5 text-[12.5px] font-semibold leading-tight",
+        "semantic-color-pill inline-flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-2.5 text-[12.5px] font-semibold leading-tight",
         className
       )}
-      style={{ backgroundColor: `${color}14`, color }}
+      style={
+        {
+          "--semantic-color": color,
+          "--semantic-bg": `${color}14`,
+        } as CSSProperties
+      }
     >
       {/* The glyph bubble scales with the chip: callers that shrink the text
           (the pipeline cards, to keep long offering names on one line) would

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -463,7 +463,10 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                   type="button"
                   onClick={() => setOutcome(key)}
                   aria-pressed={selected}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-semibold transition-[transform,box-shadow] hover:-translate-y-px"
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-semibold transition-[transform,box-shadow] hover:-translate-y-px",
+                    key === "in_progress" && "outcome-in-progress-pill"
+                  )}
                   style={{
                     // in_progress used to need its own dark-olive pair here
                     // (#3E3300 / #765B00) because its accent was mustard and
@@ -497,8 +500,13 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                 ].map(([label, value, color, bg]) => (
                   <span
                     key={String(label)}
-                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold"
-                    style={{ color: String(color), background: String(bg) }}
+                    className="semantic-color-pill inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold"
+                    style={
+                      {
+                        "--semantic-color": String(color),
+                        "--semantic-bg": String(bg),
+                      } as CSSProperties
+                    }
                   >
                     {label} <span className="tnum">{value}</span>
                   </span>
@@ -563,7 +571,6 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                     const meta = OUTCOME_META[item.outcome];
                     const accent = outcomeAccent(item.outcome);
                     const due = item.followUpDate ? dueStatus(item.followUpDate) : null;
-                    const inProgress = item.outcome === "in_progress";
                     const note = item.notes
                       ? cleanNote(item.notes)
                       : "No note logged for this interaction.";
@@ -606,13 +613,17 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
 
                         <div>
                           <span
-                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.04em]"
-                            // No special-case for in_progress any more: it used
-                            // to be hand-painted #705600 brown on #FFF0A8
-                            // yellow here, overriding the shared map. That map
-                            // now carries the caution token, so the chip just
-                            // reads it like every other outcome does.
-                            style={{ color: meta?.color, background: meta?.bg }}
+                            className={cn(
+                              "semantic-color-pill inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.04em]",
+                              item.outcome === "in_progress" &&
+                                "outcome-in-progress-pill"
+                            )}
+                            style={
+                              {
+                                "--semantic-color": meta?.color || accent,
+                                "--semantic-bg": meta?.bg || `${accent}1A`,
+                              } as CSSProperties
+                            }
                           >
                             <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
                             {meta?.label || item.outcome}

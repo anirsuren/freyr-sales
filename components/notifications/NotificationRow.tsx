@@ -6,6 +6,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 import { NotificationMark } from "@/components/notifications/NotificationMark";
 import { cn } from "@/lib/utils";
 import type {
@@ -149,10 +150,13 @@ export function NotificationRow({
 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
           <span
-            className="inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold whitespace-nowrap"
-            // Inline because the palette is a runtime value, not a Tailwind
-            // class. 1A ≈ 10% alpha — a tint that holds up in both themes.
-            style={{ color, background: `${color}1A` }}
+            className="semantic-color-pill inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold whitespace-nowrap"
+            style={
+              {
+                "--semantic-color": color,
+                "--semantic-bg": `${color}1A`,
+              } as CSSProperties
+            }
           >
             <Icon size={11} strokeWidth={2.4} aria-hidden="true" />
             {label}

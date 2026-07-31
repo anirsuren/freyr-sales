@@ -1,4 +1,5 @@
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { GLOSSARY } from "@/lib/glossary";
@@ -34,12 +35,20 @@ export function HealthBadge({
     <Tooltip label={label}>
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.04em] px-2 py-0.5 rounded-full tnum cursor-pointer",
+          "semantic-color-pill inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.04em] px-2 py-0.5 rounded-full tnum cursor-pointer",
           className
         )}
-        style={{ background: c.bg, color: c.color }}
+        style={
+          {
+            "--semantic-color": c.color,
+            "--semantic-bg": c.bg,
+          } as CSSProperties
+        }
       >
-        <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
+        <span
+          className="semantic-color-dot w-1.5 h-1.5 rounded-full"
+          style={{ "--semantic-color": c.color } as CSSProperties}
+        />
         {health.label}
         {showScore && <span className="opacity-70">{health.score}/100</span>}
       </span>

@@ -1,4 +1,5 @@
 import { Pill, Dna, Stethoscope, Leaf, FlaskConical, type LucideIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 // Industry is a category chip, so it carries a colour AND an icon everywhere it
@@ -28,10 +29,15 @@ export function IndustryTag({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.03em]",
+        "semantic-color-pill inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.03em]",
         className
       )}
-      style={{ backgroundColor: `${color}1F`, color }}
+      style={
+        {
+          "--semantic-color": color,
+          "--semantic-bg": `${color}1F`,
+        } as CSSProperties
+      }
     >
       <Icon size={11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
       {industry}

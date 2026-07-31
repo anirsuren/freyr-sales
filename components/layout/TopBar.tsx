@@ -489,11 +489,15 @@ export function TopBar({
                             className={cn(
                               "flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1.5 text-[12.5px] font-semibold transition-all",
                               active
-                                ? "bg-white shadow-sm"
+                                ? "workspace-mode-active shadow-sm"
                                 : "text-text-secondary hover:text-text-primary",
                               modeBusy && "opacity-60"
                             )}
-                            style={active ? { color: m.color } : undefined}
+                            style={
+                              active
+                                ? ({ "--workspace-mode-color": m.color } as React.CSSProperties)
+                                : undefined
+                            }
                           >
                             <MIcon size={13} strokeWidth={2.1} />
                             {m.label}

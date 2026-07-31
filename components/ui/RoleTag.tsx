@@ -1,4 +1,5 @@
 import { ShieldCheck, UserRound, UsersRound, type LucideIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -77,10 +78,14 @@ export function RoleTag({
   const Icon = meta.icon;
   return (
     <span
-      // 1A ≈ 10% alpha: readable in both themes without a second class set.
-      style={{ color: meta.color, background: `${meta.color}1A` }}
+      style={
+        {
+          "--semantic-color": meta.color,
+          "--semantic-bg": `${meta.color}1A`,
+        } as CSSProperties
+      }
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-semibold whitespace-nowrap",
+        "semantic-color-pill inline-flex items-center gap-1.5 rounded-full font-semibold whitespace-nowrap",
         size === "sm" ? "px-2 py-[3px] text-[11px]" : "px-2.5 py-1 text-[12px]",
         className
       )}

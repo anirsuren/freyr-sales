@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import {
   Copy, Check, Download, History, Send, Files, ChevronDown, MoreHorizontal, RotateCcw, Mail, CalendarClock, Lock, MessageSquare, CornerDownRight, Pencil, Clock, Phone, FileText, Timer, PenLine } from "lucide-react";
@@ -524,8 +524,13 @@ export function PitchWorkspace({
               const RIcon = rm.icon;
               return (
                 <span
-                  className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.04em] px-2.5 py-1 rounded"
-                  style={{ background: rm.bg, color: rm.color }}
+                  className="semantic-color-pill inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.04em] px-2.5 py-1 rounded"
+                  style={
+                    {
+                      "--semantic-color": rm.color,
+                      "--semantic-bg": rm.bg,
+                    } as CSSProperties
+                  }
                 >
                   <RIcon size={12} strokeWidth={2.4} />
                   {rm.label}

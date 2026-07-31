@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   Globe,
@@ -1367,8 +1367,13 @@ export function CustomerTabs({
                             <OutcomeBadge outcome={outcome} />
                           ) : review ? (
                             <span
-                              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.04em] px-2 py-0.5 rounded-full"
-                              style={{ background: review.bg, color: review.color }}
+                              className="semantic-color-pill inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.04em] px-2 py-0.5 rounded-full"
+                              style={
+                                {
+                                  "--semantic-color": review.color,
+                                  "--semantic-bg": review.bg,
+                                } as CSSProperties
+                              }
                             >
                               <review.icon size={10} strokeWidth={2.4} />
                               {review.label}
@@ -1402,12 +1407,13 @@ export function CustomerTabs({
                             {svc.slice(0, 3).map((sv, i) => (
                               <span
                                 key={i}
-                                className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11.5px] font-medium"
+                                className="semantic-color-pill inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-medium"
                                 style={{
-                                  color: SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length],
-                                  background: `${SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length]}0F`,
-                                  borderColor: `${SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length]}26`,
-                                }}
+                                  "--semantic-color":
+                                    SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length],
+                                  "--semantic-bg":
+                                    `${SERVICE_TAG_COLORS[i % SERVICE_TAG_COLORS.length]}0F`,
+                                } as CSSProperties}
                               >
                                 <OfferingIcon name={sv.service_name} className="h-4 w-4 rounded text-[6px]" />
                                 {sv.service_name}

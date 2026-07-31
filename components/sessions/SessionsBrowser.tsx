@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Download, ArrowRight } from "lucide-react";
@@ -414,8 +414,13 @@ export function SessionsBrowser({
                         const RIcon = rm.icon;
                         return (
                           <span
-                            className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
-                            style={{ background: rm.bg, color: rm.color }}
+                            className="semantic-color-pill inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.04em] px-2 py-1 rounded"
+                            style={
+                              {
+                                "--semantic-color": rm.color,
+                                "--semantic-bg": rm.bg,
+                              } as CSSProperties
+                            }
                           >
                             <RIcon size={11} strokeWidth={2.4} />
                             {rm.label}
