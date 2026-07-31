@@ -25,9 +25,12 @@ const SUGGESTIONS = [
   "Offerings for pharmaceutical large",
 ];
 
-export function offeringsAnswer(message: string): OfferingsAnswer | null {
+export function offeringsAnswer(
+  message: string,
+  visibleOfferings = listOfferings()
+): OfferingsAnswer | null {
   const m = message.toLowerCase().trim();
-  const offs = listOfferings();
+  const offs = visibleOfferings;
   if (offs.length === 0) return null;
 
   // Normalize dots/spaces so a rep who types "Freya Register" still matches the

@@ -7,7 +7,6 @@ import {
   Check,
   Crown,
   GraduationCap,
-  Headset,
   LifeBuoy,
   Loader2,
   Package,
@@ -38,7 +37,6 @@ import type { OfferingContact } from "@/lib/offerings";
 const CUSTOM_ROLE = "__custom__";
 
 const ROLE_OPTIONS: ColorOption[] = [
-  { value: "Service delivery POC", label: "Service delivery POC", color: "#0071E3", icon: Headset },
   { value: "Subject matter expert", label: "Subject matter expert", color: "#7C3AED", icon: GraduationCap },
   { value: "Commercial lead", label: "Commercial lead", color: "#0F766E", icon: Briefcase },
   { value: "Product owner", label: "Product owner", color: "#C2410C", icon: Package },
@@ -173,8 +171,11 @@ export function OfferingContacts({
   const [editRole, setEditRole] = useState(ROLE_OPTIONS[0].value);
   const editedRoleValue =
     editRole === CUSTOM_ROLE ? editCustomRole.trim() : editRole;
+  const editingRoleValue = editing
+    ? generalRole(editing.role) ?? ROLE_OPTIONS[0].value
+    : "";
   const hasEditedRole = Boolean(
-    editing && editedRoleValue && editedRoleValue !== editing.role
+    editing && editedRoleValue && editedRoleValue !== editingRoleValue
   );
 
   /** Granted owners of THIS offering, by name. Pending requests are not owners. */
@@ -193,8 +194,13 @@ export function OfferingContacts({
    * roster is discarded outright: on this page it is either true (and the crown
    * says so) or it belongs to a different offering, which makes it a lie.
    */
-  const generalRole = (role?: string) =>
-    role && role.trim().toLowerCase() !== "offering owner" ? role : undefined;
+  function generalRole(role?: string) {
+    const value = (role || "").trim();
+    const normalized = value.toLowerCase();
+    if (!value || normalized === "offering owner" || normalized === "service delivery poc")
+      return undefined;
+    return value;
+  }
 
   // Nobody who is already a contact should show up as addable.
   const roster = useMemo(() => {
@@ -276,11 +282,6 @@ export function OfferingContacts({
       setBusy(null);
     }
   }
-
-  // A stored role that predates the picker (or came off the sheet) still has to
-  // select something, so anything unrecognised shows as the default.
-  const roleValue = (r: string) =>
-    ROLE_OPTIONS.some((o) => o.value === r) ? r : ROLE_OPTIONS[0].value;
 
   const setRoleFor = (c: OfferingContact, next: string) =>
     send(c.id, () =>
@@ -368,7 +369,7 @@ export function OfferingContacts({
             {/* Hover a face for who they are and every way to reach them. */}
             <PersonHoverCard
               name={c.name}
-              role={c.role}
+              role={generalRole(c.role) || ""}
               context={offeringName}
               email={c.email}
               phone={c.phone}
@@ -384,7 +385,7 @@ export function OfferingContacts({
                   coloured tag and the channels are chips, because "Commercial
                   lead · someone@freyrsolutions.com" in one gray line is the
                   thing Anir keeps calling not clearly defined. */}
-              {(ownsThis(c.name) || c.role) && (
+              {(ownsThis(c.name) || generalRole(c.role)) && (
                 <span className="mt-1 flex flex-wrap gap-1.5">
                   {ownsThis(c.name) && (
                     <AttributeTag
@@ -395,9 +396,9 @@ export function OfferingContacts({
                       className="!px-2 !py-[3px] !text-[11px]"
                     />
                   )}
-                  {c.role && (
+                  {generalRole(c.role) && (
                     <AttributeTag
-                      value={c.role}
+                      value={generalRole(c.role) as string}
                       icon={Briefcase}
                       label="Role"
                       className="!px-2 !py-[3px] !text-[11px]"
@@ -415,9 +416,16 @@ export function OfferingContacts({
             {canEdit && (
               <button
                 onClick={() => {
-                  const known = ROLE_OPTIONS.some((o) => o.value === c.role);
-                  setEditRole(known ? c.role : CUSTOM_ROLE);
-                  setEditCustomRole(known ? "" : c.role || "");
+                  const visibleRole = generalRole(c.role);
+                  const known = ROLE_OPTIONS.some((o) => o.value === visibleRole);
+                  setEditRole(
+                    !visibleRole
+                      ? ROLE_OPTIONS[0].value
+                      : known
+                        ? visibleRole
+                        : CUSTOM_ROLE
+                  );
+                  setEditCustomRole(visibleRole && !known ? visibleRole : "");
                   setEditing(c);
                 }}
                 aria-label={`Edit ${c.name}`}

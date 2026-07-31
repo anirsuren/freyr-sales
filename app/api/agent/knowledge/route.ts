@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { buildKnowledgeBaseAsync } from "@/lib/knowledgeBase";
-import { listOfferings } from "@/lib/offerings";
+import { isOfferingOwner, listOfferings } from "@/lib/offerings";
 import { loadMaterialText } from "@/lib/materialText";
-import { isReadByAgent } from "@/lib/offeringMaterials";
+import { isSalesVisible } from "@/lib/offeringMaterials";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,29 @@ export const dynamic = "force-dynamic";
  * list what exists.
  */
 export async function GET() {
-  const [corpus, textIndex] = await Promise.all([
+  const [fullCorpus, textIndex, user] = await Promise.all([
     buildKnowledgeBaseAsync(),
     loadMaterialText().catch(() => ({})),
+    getCurrentUser(),
   ]);
+  const offerings = listOfferings();
+  const hiddenMaterialIds = new Set(
+    offerings.flatMap((offering) =>
+      isOfferingOwner(offering, user.memberId)
+        ? []
+        : offering.materials
+            .filter((material) => !isSalesVisible(material))
+            .map((material) => material.id)
+    )
+  );
+  // File chunks are keyed `${materialId}#n`. Remove both the material index
+  // row and every extracted chunk before forming this response.
+  const corpus = fullCorpus.filter(
+    (passage) =>
+      ![...hiddenMaterialIds].some(
+        (id) => passage.id === id || passage.id.startsWith(`${id}#`)
+      )
+  );
 
   // Files first: they are the part a person uploaded by hand and the part they
   // most want to confirm landed.
@@ -36,12 +56,12 @@ export async function GET() {
     offering: string;
     href: string;
     words: number;
-    readByAgent: boolean;
     uploadedAt: string | null;
   }[] = [];
-  for (const offering of listOfferings()) {
+  for (const offering of offerings) {
     for (const material of offering.materials || []) {
       if (!material.docsPath) continue;
+      if (hiddenMaterialIds.has(material.id)) continue;
       const entry = (textIndex as Record<string, { text?: string; extractedAt?: string }>)[
         material.docsPath
       ];
@@ -56,7 +76,6 @@ export async function GET() {
         offering: offering.offering_name,
         href: `/offerings/${offering.id}`,
         words: entry?.text?.match(/\S+/g)?.length ?? 0,
-        readByAgent: isReadByAgent(material),
         uploadedAt: entry?.extractedAt ?? null,
       });
     }
@@ -84,7 +103,7 @@ export async function GET() {
         (n, p) => n + (p.text.match(/\S+/g)?.length ?? 0),
         0
       ),
-      filesRead: files.filter((f) => f.words > 0 && f.readByAgent).length,
+      filesRead: files.filter((f) => f.words > 0).length,
     },
   });
 }

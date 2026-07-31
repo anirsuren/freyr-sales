@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  *
  * Adding and removing a contact changes the offering's content, so it is gated
  * on the same rule the Edit button is: you must OWN this offering. An admin who
- * has not taken ownership is refused here exactly as they are refused in the
+ * has not been assigned ownership is refused here exactly as they are in the
  * form, so the page and the API can never disagree about who may change what.
  */
 
@@ -27,7 +27,7 @@ async function guard(id: string) {
   if (!(await canEditOffering(offering)))
     return {
       error: NextResponse.json(
-        { error: "Take ownership of this offering to change its contacts" },
+        { error: "Ask a workspace admin to assign you as an owner before changing contacts" },
         { status: 403 }
       ),
     };

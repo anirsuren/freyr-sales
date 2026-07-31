@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   ShieldCheck,
   Clock3,
-  UserPlus,
   X,
   Check,
   Search,
@@ -42,11 +41,8 @@ export type OwnerRow = {
 /**
  * WHO CAN EDIT THIS OFFERING, and how someone joins that list.
  *
- * Owners are shown as real people. A member who is not an owner can ASK for it;
- * the ask is recorded and grants nothing until an admin approves it, because
- * self-service ownership would let anyone give themselves write access (Anir,
- * Jul 28: "only a select amount of people should be able to edit the offering").
- * Admins see pending requests inline with approve / decline.
+ * Owners are shown as real people. Only a workspace admin can assign someone
+ * to this list; there is no member-facing request or self-claim path.
  */
 
 /** The app's standard "add" affordance: a SOLID blue button with a white plus
@@ -188,7 +184,6 @@ export function OfferingOwners({
   isAdmin,
   myMemberId,
   people = [],
-  canEdit,
 }: {
   offeringId: string;
   /** Named in the confirmation, so it is obvious what access is being lost. */
@@ -199,8 +194,6 @@ export function OfferingOwners({
   myMemberId: string | null;
   /** Everyone with a real account, so an admin can hand ownership to them. */
   people?: { name: string; email?: string; memberId?: string; role?: string }[];
-  /** Does the signed-in account own this offering? Only owners grant ownership. */
-  canEdit: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -300,15 +293,6 @@ export function OfferingOwners({
     }
   }
 
-  const request = () =>
-    send("self", () =>
-      fetch(`/api/offerings/${offeringId}/owners`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      })
-    );
-
   const release = (memberId: string) =>
     send(memberId, () =>
       fetch(
@@ -351,13 +335,9 @@ export function OfferingOwners({
         // while the card is shut — you should only be able to add to a list you
         // can see.
         <span className="flex items-center gap-1.5">
-          {/* ONLY AN OWNER HANDS OUT OWNERSHIP. Being a workspace admin is not
-              enough: an admin who has not taken this offering cannot quietly
-              grant it to somebody either (Anir, Jul 28: "make sure I can only
-              actually add a contact or even an owner if I am an owner").
-              Bootstrapping an unowned offering still runs through the admin's
-              own claim below. */}
-          {railOpen && canEdit && (
+          {/* Ownership is an admin-issued permission, never a self-service
+              action by the person viewing the offering. */}
+          {railOpen && isAdmin && (
             <AddButton
               label="Add an owner"
               onClick={() => {
@@ -457,11 +437,9 @@ export function OfferingOwners({
         </ul>
       )}
 
-      {/* Pending asks. Only an admin can act on them, so only an admin sees the
-          controls; a requester still sees their own row so they know it landed. */}
-      {pending
-        .filter((o) => isAdmin || o.memberId === myMemberId)
-        .map((o) => (
+      {/* Legacy pending rows can still be resolved by an admin, but they are
+          not exposed as a member-facing ownership-request workflow. */}
+      {isAdmin && pending.map((o) => (
           <div
             key={o.memberId}
             className="flex items-center gap-2.5 rounded-lg border border-border-light bg-[var(--surface)] px-2.5 py-2"
@@ -476,43 +454,26 @@ export function OfferingOwners({
                 Asked {formatDate(o.claimed_at)}, waiting on an admin
               </span>
             </span>
-            {isAdmin && (
-              <span className="ml-auto flex shrink-0 items-center gap-1">
-                <button
-                  onClick={() => approve(o)}
-                  disabled={busy === o.memberId}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:opacity-50"
-                >
-                  <Check size={12} strokeWidth={2.4} />
-                  Approve
-                </button>
-                <button
-                  onClick={() => setConfirmOwner(o)}
-                  disabled={busy === o.memberId}
-                  className="rounded-md p-1 text-text-tertiary transition-colors hover:text-[color:#B02020] disabled:opacity-50"
-                  aria-label={`Decline ${o.name}`}
-                >
-                  <X size={14} strokeWidth={2} />
-                </button>
-              </span>
-            )}
+            <span className="ml-auto flex shrink-0 items-center gap-1">
+              <button
+                onClick={() => approve(o)}
+                disabled={busy === o.memberId}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:opacity-50"
+              >
+                <Check size={12} strokeWidth={2.4} />
+                Approve
+              </button>
+              <button
+                onClick={() => setConfirmOwner(o)}
+                disabled={busy === o.memberId}
+                className="rounded-md p-1 text-text-tertiary transition-colors hover:text-[color:#B02020] disabled:opacity-50"
+                aria-label={`Decline ${o.name}`}
+              >
+                <X size={14} strokeWidth={2} />
+              </button>
+            </span>
           </div>
         ))}
-
-      {/* Taking it is the primary action on this card, so it looks like one:
-          a real blue button, not a text link (Anir, Jul 28: "the Take
-          Ownership button should be better looking, probably like a blue
-          button"). */}
-      {myMemberId && !mine && (
-        <button
-          onClick={request}
-          disabled={busy === "self"}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white shadow-card transition-colors hover:bg-blue-hover disabled:opacity-50"
-        >
-          <UserPlus size={14} strokeWidth={2.1} />
-          {isAdmin ? "Take ownership" : "Ask to own this"}
-        </button>
-      )}
 
       {/* When it IS yours, say so plainly before offering the way out, and make
           giving it up read as the destructive action it is: red. */}
@@ -573,7 +534,7 @@ export function OfferingOwners({
         }
       />
 
-      {/* AN OFFERING CAN HAVE SEVERAL OWNERS, and an admin hands them out.
+      {/* AN OFFERING CAN HAVE SEVERAL OWNERS, and an admin assigns them.
           Only people with a real account are offered, because ownership is
           what grants edit rights and permissions cannot key off a name from a
           spreadsheet. Anyone already on the list is filtered out, which is

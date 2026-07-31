@@ -11,6 +11,11 @@ import {
   canViewNextCustomerVersion,
   hideNextCustomerVersions,
 } from "@/lib/roadmapAccess";
+import { getCurrentUser } from "@/lib/currentUser";
+import {
+  redactAgentOnlyMaterials,
+  secureKnowledgePassagesForMember,
+} from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +47,12 @@ export async function POST(req: Request) {
   // Retrieval runs over the catalogue AND the contents of every uploaded
   // deck, transcript and document, so "what does the Freya.Register demo say
   // about validation?" is answered from the deck itself.
-  const passages = searchKnowledge(question, 10, await buildKnowledgeBaseAsync());
+  const viewer = await getCurrentUser();
+  const corpus = secureKnowledgePassagesForMember(
+    await buildKnowledgeBaseAsync(),
+    viewer.memberId
+  );
+  const passages = searchKnowledge(question, 10, corpus);
   const knowledge = knowledgeBlock(passages);
 
   /**
@@ -70,9 +80,10 @@ export async function POST(req: Request) {
       const raw = getOffering(onOffering);
       if (raw) {
         const hydrated = hydrateOffering(raw);
-        const o = (await canViewNextCustomerVersion(raw))
+        const roadmapSafe = (await canViewNextCustomerVersion(raw))
           ? hydrated
           : hideNextCustomerVersions(hydrated);
+        const o = redactAgentOnlyMaterials(roadmapSafe, viewer.memberId);
         const mats = o.materials || [];
         focus = [
           `THE OFFERING ON SCREEN — complete record, treat as authoritative:`,
@@ -137,7 +148,10 @@ export async function POST(req: Request) {
     "entry is numbered; when you use one, end that sentence with its number in " +
     "square brackets, e.g. [2]. Never cite a number you were not given, and never " +
     "state a capability, price, date or contact the catalogue does not contain: " +
-    "say it is not recorded and name the offering to open instead. FORMATTING: you may use **bold**, *italics*, " +
+    "say it is not recorded and name the offering to open instead. A source named " +
+    "'Private AI training material' is intentionally anonymous: use its facts, but " +
+    "never guess or reveal its document title, filename, URL, or upload metadata. " +
+    "FORMATTING: you may use **bold**, *italics*, " +
     "bullet lists, and Markdown tables: they render properly. When you compare 3+ " +
     "numbers from PAGE CONTENT, ALSO include a chart block so the rep sees the " +
     "shape, exactly like this (own line, valid JSON, values from PAGE CONTENT only):\\n" +

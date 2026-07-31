@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { getOffering, hydrateOffering, listOfferings, listOfferingTypes } from "@/lib/offerings";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { canViewNextCustomerVersion } from "@/lib/roadmapAccess";
+import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,13 @@ export default async function OfferingDetailPage({
   const query = await searchParams;
   const raw = getOffering((await params).id);
   if (!raw) notFound();
-  const o = hydrateOffering(raw);
+  const hydrated = hydrateOffering(raw);
+  const me = await getCurrentUser();
+  const admin = await canEditOffering(hydrated);
+  // Agent-only rows must never be serialized into a non-owner's client tree.
+  // Filtering only inside MaterialsSection would hide pixels while leaving the
+  // full metadata in the RSC payload.
+  const o = redactAgentOnlyMaterials(hydrated, me.memberId);
 
   const tab =
     query?.tab === "reports"
@@ -134,9 +141,11 @@ export default async function OfferingDetailPage({
   // Sibling offerings of the same type — Suren's catalog is variant-heavy, so a
   // quick way to compare the family (e.g. the Freya Register stack) is useful.
   const related = raw.offering_type
-    ? listOfferings().filter(
-        (x) => x.id !== raw.id && x.offering_type === raw.offering_type
-      )
+    ? listOfferings()
+        .filter(
+          (x) => x.id !== raw.id && x.offering_type === raw.offering_type
+        )
+        .map((x) => redactAgentOnlyMaterials(x, me.memberId))
     : [];
 
   const isMapped =
@@ -147,13 +156,11 @@ export default async function OfferingDetailPage({
   // someone can edit the content of the Freyr.Register offering page to upload
   // his sales materials, etc., if he owns that offering"). Owning one offering
   // never grants rights over any other.
-  const admin = await canEditOffering(o);
   // Real accounts, so assigning a contact assigns a PERSON, not a typed name.
   const people = await listAssignablePeople();
   // Assigning and approving owners is an admin action; editing content is
   // open to the owners they grant.
   const workspaceAdmin = await canManageOfferings();
-  const me = await getCurrentUser();
   const canSeeNextCustomerVersion = await canViewNextCustomerVersion(o);
   const commercialActionsEnabled = !isOfferingsOnly(getDataMode());
 
@@ -417,7 +424,6 @@ export default async function OfferingDetailPage({
               offeringName={o.offering_name}
               owners={o.owners ?? []}
               isAdmin={workspaceAdmin}
-              canEdit={admin}
               people={people}
               myMemberId={me.memberId ?? null}
             />

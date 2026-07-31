@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { renderBriefInline } from "@/components/offerings/BriefText";
 
 // Long MPR descriptions (bulleted service scopes) can run very tall — collapse
 // them behind a "Show more" so the overview stays compact, but leave short
@@ -17,11 +18,17 @@ export function CollapsibleDescription({
 }) {
   const [open, setOpen] = useState(false);
   const long = text.length > threshold;
+  const formatted = text.split("\n").map((line, index) => (
+    <span key={`${index}-${line.slice(0, 16)}`}>
+      {renderBriefInline(line, `line-${index}`)}
+      {index < text.split("\n").length - 1 && <br />}
+    </span>
+  ));
 
   if (!long) {
     return (
       <p className={`text-[14px] text-text-secondary leading-relaxed whitespace-pre-line ${className}`}>
-        {text}
+        {formatted}
       </p>
     );
   }
@@ -38,7 +45,7 @@ export function CollapsibleDescription({
               : "max-h-[9rem] overflow-hidden [mask-image:linear-gradient(to_bottom,black_72%,transparent_100%)]"
           } ${className}`}
         >
-          {text}
+          {formatted}
         </p>
       </div>
       <button

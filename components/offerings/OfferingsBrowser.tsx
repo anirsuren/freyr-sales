@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/SearchPriority";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { stripBriefFormatting } from "@/components/offerings/BriefText";
 
 // Distinct palette so each category / type gets its own colour dot in the
 // dropdowns (Suren: "color code all the dropdowns"). Shared with the
@@ -85,7 +86,11 @@ function cardSummary(description: string): string {
     .split(/\r?\n/)
     .map((l) => l.replace(/^\s*[•\-*]\s*/, "").trim())
     .filter(Boolean);
-  return lines.length > 1 ? lines.join(" · ") : description.replace(/^\s*[•\-*]\s*/, "").trim();
+  const summary =
+    lines.length > 1
+      ? lines.join(" · ")
+      : description.replace(/^\s*[•\-*]\s*/, "").trim();
+  return stripBriefFormatting(summary);
 }
 
 // One metadata chip on an offering card: colour-tinted background, matching

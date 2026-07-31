@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  claimOffering,
+  assignOfferingOwner,
   releaseOffering,
   getOffering,
   hydrateOffering,
@@ -11,6 +11,7 @@ import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDataMode } from "@/lib/dataMode";
+import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -21,22 +22,12 @@ function isRealAccountId(id: string): boolean {
   );
 }
 
-/**
- * CLAIMING AN OFFERING.
- *
- * A verified workspace account claims an offering for ITSELF, which is what
- * lets an owner start uploading their own sales materials without waiting on an
- * admin grant. An admin may additionally assign or revoke on someone else's
- * behalf by passing `memberId`.
- *
- * The claim is written against `memberId`, the stable account id, and it is
- * always taken from the SESSION for a self-claim. A caller can never claim on
- * behalf of another account unless they are an admin, and the body can never
- * name the claimer for a self-claim.
- */
+/** Ownership is assigned here by a workspace admin. There is deliberately no
+ * self-claim or request path: ordinary members cannot turn this endpoint into
+ * edit access for themselves, even when they omit `memberId` or send their own. */
 
 const UNIDENTIFIED = NextResponse.json(
-  { error: "Sign in to claim an offering" },
+  { error: "Sign in to manage offering ownership" },
   { status: 401 }
 );
 
@@ -50,76 +41,65 @@ export async function POST(
 
   const user = await getCurrentUser();
   if (!user.memberId) return UNIDENTIFIED;
+  const admin = await canManageOfferings();
+  if (!admin) {
+    return NextResponse.json(
+      { error: "Only a workspace admin can assign offering owners" },
+      { status: 403 }
+    );
+  }
   /**
    * A GRANT MUST NAME A REAL ACCOUNT.
    *
    * `local-anir-suren` is the placeholder identity used before a session is
    * bound to an app_users row. One of those got written as an owner, so the
    * offering listed "Anir Suren" as owner while the permission check compared
-   * that placeholder against the real account id, failed, and offered "Take
-   * ownership" to the person already holding it (Anir, Jul 29: "why is it
-   * asking me to take ownership? I am the owner"). A row keyed to a string
+   * that placeholder against the real account id and failed. A row keyed to a string
    * that is not an account can never grant anything, so refuse to write one.
    */
   // Only where real accounts exist. In mock mode the local identity IS the
   // account, so demanding a UUID there breaks ownership entirely (it did:
   // twelve verification tests went red because the test session carries the
   // local id). Live mode is the one that must never store a placeholder.
-  if (isOfferingsOnly(getDataMode()) && !isRealAccountId(user.memberId)) {
-    return UNIDENTIFIED;
-  }
-
   const body = (await req.json().catch(() => ({}))) as {
     memberId?: string;
     name?: string;
     email?: string | null;
   };
 
-  // WHO ENDS UP AN OWNER, and who merely asks.
-  //
-  // A signed-in member may REQUEST any offering. That records the ask and
-  // grants nothing: self-service ownership would let anyone in the workspace
-  // give themselves write access to any offering (Anir, Jul 28: "only a select
-  // amount of people should be able to edit the offering... everyone shouldn't
-  // be able to do that if they claim it first").
-  //
-  // Only an ADMIN turns a request into ownership, or assigns someone directly.
-  // A self-request ignores the body entirely, so nobody can write a row under
-  // another account's id.
-  const admin = await canManageOfferings();
-  const targetsSomeoneElse = !!body.memberId && body.memberId !== user.memberId;
-  if (targetsSomeoneElse && !admin) {
+  const targetMemberId = (body.memberId || user.memberId).trim();
+  if (isOfferingsOnly(getDataMode()) && !isRealAccountId(targetMemberId)) {
     return NextResponse.json(
-      { error: "Only an admin can assign an offering to someone else" },
-      { status: 403 }
+      { error: "Choose a workspace member with a verified account" },
+      { status: 400 }
     );
   }
 
-  const owner = targetsSomeoneElse
-    ? {
-        memberId: body.memberId!,
-        name: (body.name || "").trim() || "Workspace member",
-        email: body.email ?? null,
-        status: "owner" as const,
-        granted_by: user.memberId,
-      }
-    : {
-        memberId: user.memberId,
-        name: user.name,
-        email: user.email,
-        // An admin claiming for themselves is already authorised to edit, so
-        // there is nothing to approve. Everyone else files a request.
-        status: (admin ? "owner" : "requested") as "requested" | "owner",
-        granted_by: user.memberId,
-      };
+  const assigningSelf = targetMemberId === user.memberId;
+  const owner = {
+    memberId: targetMemberId,
+    name: assigningSelf
+      ? user.name
+      : (body.name || "").trim() || "Workspace member",
+    email: assigningSelf ? user.email : body.email ?? null,
+    status: "owner" as const,
+    granted_by: user.memberId,
+  };
 
   try {
-    const saved = await commitOfferingsChange(() => claimOffering(id, owner));
+    const saved = await commitOfferingsChange(() =>
+      assignOfferingOwner(id, owner)
+    );
     if (!saved) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ offering: hydrateOffering(saved) });
+    return NextResponse.json({
+      offering: redactAgentOnlyMaterials(
+        hydrateOffering(saved),
+        user.memberId
+      ),
+    });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Could not claim this offering" },
+      { error: e instanceof Error ? e.message : "Could not assign this offering" },
       { status: 500 }
     );
   }
@@ -161,13 +141,23 @@ export async function DELETE(
     );
   }
   if (!isOfferingOwner(offering, target)) {
-    return NextResponse.json({ offering: hydrateOffering(offering) });
+    return NextResponse.json({
+      offering: redactAgentOnlyMaterials(
+        hydrateOffering(offering),
+        user.memberId
+      ),
+    });
   }
 
   try {
     const saved = await commitOfferingsChange(() => releaseOffering(id, target));
     if (!saved) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ offering: hydrateOffering(saved) });
+    return NextResponse.json({
+      offering: redactAgentOnlyMaterials(
+        hydrateOffering(saved),
+        user.memberId
+      ),
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Could not release this offering" },

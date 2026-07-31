@@ -179,6 +179,18 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Change Request Log follow-up items 1–7 are implemented:** offering
+  ownership is admin-assigned (the member self-claim/request path is gone),
+  Supabase users can request and complete a password reset from Settings, both
+  Medical Writing offerings are filed under Submissions and Document
+  Operations, Offering Brief supports safe rich-text/list formatting, contact
+  rows no longer show the Service Delivery POC tag, Agent Training Only
+  materials are owner-only at page/API/download/archive boundaries and expose
+  no filename/title metadata through AI citations, and every uploaded offering
+  file now contributes to assistant knowledge without a per-file opt-out.
+  Typecheck, focused lint, and the production build pass. The remaining AI
+  placement question is deliberately not part of this release.
+
 - **Folder and roadmap requirements are now resolved from Change Request Log
   item 20:** Sales Materials uses 12 fixed top-level folders plus the approved
   Product Demos and Sales Decks subfolders. Owners choose from the fixed list;

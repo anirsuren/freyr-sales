@@ -145,9 +145,10 @@ export function buildKnowledgeBase(
       // THE FILE ITSELF. Each chunk is its own passage and carries the deck
       // name and the offering, so a retrieved paragraph can always be cited
       // as "page 4 of the Freya.Register demo deck" rather than floating free.
-      // An owner can keep a file out of the assistant's head entirely while
-      // still handing it to sales (isReadByAgent). The text stays on file so
-      // the switch is instant and reversible; it simply is not retrievable.
+      // Every uploaded offering file is retrievable by the assistant. The
+      // legacy isReadByAgent helper deliberately returns true even for old
+      // rows persisted with `false`, so the policy changes immediately without
+      // waiting for every stored offering to be rewritten.
       const doc = m.docsPath && isReadByAgent(m) ? fileText[m.docsPath] : undefined;
       if (doc?.text) {
         const chunks = chunkText(doc.text);

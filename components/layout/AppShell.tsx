@@ -119,6 +119,7 @@ export function AppShell({
       // the browser to /login mid-exchange, stranding a freshly confirmed
       // user at the sign-in form (exactly the loop Anir hit on Jul 27).
       pathname === "/auth/confirm" ||
+      pathname === "/auth/reset-password" ||
       pathname === "/access-pending"
     ) {
       return;
@@ -173,6 +174,7 @@ export function AppShell({
   if (
     pathname === "/login" ||
     pathname === "/auth/confirm" ||
+    pathname === "/auth/reset-password" ||
     pathname === "/access-pending" ||
     /^\/customers\/[^/]+\/report$/.test(pathname)
   ) {

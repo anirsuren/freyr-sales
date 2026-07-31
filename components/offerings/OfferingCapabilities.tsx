@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, ListChecks } from "lucide-react";
 import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
+import { renderBriefInline } from "@/components/offerings/BriefText";
 import { offeringMark } from "@/components/ui/OfferingIcon";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,10 @@ export type Capability = {
    * commas would corrupt a part that contains one of its own.
    */
   raw: string;
+  /** List semantics retained for safe Markdown round-tripping/display. */
+  listStyle?: "bullet" | "number";
+  depth?: number;
+  ordinal?: number;
 };
 
 export type CapabilityGroup = {
@@ -70,6 +75,20 @@ function isListLine(line: string) {
 
 function stripMarker(line: string) {
   return line.replace(BULLET_RE, "").replace(NUMBER_RE, "").trim();
+}
+
+function listMetadata(line: string): Pick<
+  Capability,
+  "listStyle" | "depth" | "ordinal"
+> {
+  const leading = line.match(/^[\t ]*/)?.[0] ?? "";
+  const spaces = leading.replace(/\t/g, "  ").length;
+  const numbered = line.trimStart().match(/^(\d+)[.)]\s+/);
+  return {
+    listStyle: numbered ? "number" : "bullet",
+    depth: Math.floor(spaces / 2),
+    ordinal: numbered ? Number(numbered[1]) : undefined,
+  };
 }
 
 // Find the parenthetical that opens at `from`, honouring nesting — the
@@ -167,7 +186,7 @@ export function parseCapabilities(text: string): ParsedBrief {
     if (isListLine(line)) {
       seenList = true;
       const body = stripMarker(line);
-      if (body) push(splitCapability(body));
+      if (body) push({ ...splitCapability(body), ...listMetadata(line) });
       continue;
     }
 
@@ -219,6 +238,14 @@ function CapabilityCard({ item }: { item: Capability }) {
         hasSubs ? "items-start" : "items-center",
         many && "md:col-span-2"
       )}
+      style={
+        item.depth
+          ? {
+              marginLeft: `${Math.min(item.depth, 4) * 16}px`,
+              width: `calc(100% - ${Math.min(item.depth, 4) * 16}px)`,
+            }
+          : undefined
+      }
     >
       <span
         className={cn(
@@ -233,7 +260,12 @@ function CapabilityCard({ item }: { item: Capability }) {
       <span className="min-w-0 flex-1">
         {/* Wraps, never truncates — these are full service names. */}
         <span className="block break-words text-[13.5px] font-semibold leading-snug text-text-primary">
-          {item.title}
+          {item.listStyle === "number" && (
+            <span className="mr-1.5 text-blue-primary tnum">
+              {item.ordinal ?? 1}.
+            </span>
+          )}
+          {renderBriefInline(item.title, "capability-title")}
         </span>
         {item.subItems.length > 0 &&
           (many ? (
@@ -245,7 +277,7 @@ function CapabilityCard({ item }: { item: Capability }) {
                     style={{ background: color }}
                   />
                   <span className="break-words text-[11.5px] leading-snug text-text-secondary">
-                    {sub}
+                    {renderBriefInline(sub, `capability-sub-${si}`)}
                   </span>
                 </span>
               ))}
@@ -258,7 +290,7 @@ function CapabilityCard({ item }: { item: Capability }) {
                   className="inline-block break-words rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold leading-snug"
                   style={{ background: `${color}14`, color }}
                 >
-                  {sub}
+                  {renderBriefInline(sub, `capability-pill-${si}`)}
                 </span>
               ))}
             </span>
@@ -300,7 +332,7 @@ export function OfferingCapabilities({
     <div className={className}>
       {parsed.intro && (
         <p className="whitespace-pre-line text-[14px] leading-relaxed text-text-secondary">
-          {parsed.intro}
+          {renderBriefInline(parsed.intro, "brief-intro")}
         </p>
       )}
 
@@ -336,7 +368,7 @@ export function OfferingCapabilities({
                     style={{ background: accent }}
                     aria-hidden="true"
                   />
-                  {group.title}
+                  {renderBriefInline(group.title, `group-${gi}`)}
                 </p>
               )}
               {/* `items-stretch` is the grid default, but it is the thing that

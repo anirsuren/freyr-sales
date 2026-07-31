@@ -35,9 +35,8 @@ export default async function EditOfferingPage({
   const o = getOffering((await params).id);
   if (!o) notFound();
   // Direct navigation is gated exactly like the button that leads here: you
-  // must own this offering. Hiding the button alone would leave the URL open
-  // (Anir, Jul 28: "the edit offering button shouldn't even open up until I
-  // take ownership").
+  // must be an admin-assigned owner. Hiding the button alone would leave the
+  // URL open, so the same rule is enforced on direct navigation.
   if (!(await canEditOffering(o)))
     return <ViewOnlyNotice backHref={`/offerings/${o.id}`} />;
   const people = await listAssignablePeople();

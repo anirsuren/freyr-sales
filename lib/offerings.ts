@@ -293,13 +293,10 @@ function seedOfferingTypes(): OfferingType[] {
 const CAT_RIM = "Regulatory Information Management";
 const CAT_SUBMISSIONS = "Submissions and Document Operations";
 const CAT_GRI = "Global Regulatory Intelligence";
-// FIVE OFFERINGS CARRY NO CATEGORY IN SUREN'S SHEET — pharmacovigilance,
-// both medical-writing lines, compliance/audit and medical communication
-// (Wajeed, Jul 29: "in Suren's excel these weren't tagged to any offering
-// category... you can just tag this to Others and leave it that way"). They had
-// been filed under Submissions or Regulatory Affairs on nobody's authority,
-// which quietly put words in the sheet's mouth. "Others" says the true thing:
-// Freyr sells it, and it does not sit under one of the six.
+// Specialist offerings that do not fit one of the six domain categories use
+// Others. The two medical-writing lines are deliberate exceptions: their
+// authored clinical/non-clinical documents feed regulatory submissions, so
+// they live under Submissions and Document Operations.
 const CAT_OTHERS = "Others";
 const CAT_LABELING = "Labeling and Artwork";
 const CAT_PLATFORM = "Freya Fusion Platform and Agents";
@@ -670,7 +667,7 @@ function seedOfferings(): Offering[] {
       // Clinical summaries, CSRs, protocols and briefing packages are the
       // authored documents a dossier is built from — same family as Publishing
       // and Submissions Planning & Management.
-      offering_category: CAT_OTHERS,
+      offering_category: CAT_SUBMISSIONS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both",
       poc: "Seema Gurbani",
@@ -680,7 +677,7 @@ function seedOfferings(): Offering[] {
     off("of-026", SERVICE, "Medical Writing - Non Clinical & Toxicology", "• Regulatory Toxicology (1. ADE/PDE/Determination/ Report Services 2. F-Value Reports for Child Resistant Packaging (CRP) 3. Toxicological Risk Assessment (TRA) of impurities, Extractables & Leachables 4. Environmental Risk Assessment (ERA) of medicinal products)\n• Scientific and Regulatory Review of Non-clinical Documents\n• Development and Review of Study Plans/Protocols for Non-clinical Studies\n• Non-clinical Development Strategy for Regulatory Submissions\n• Consultation on Non-clinical Issues in the Submissions\n• Consultation and Responses to Regulatory Queries\n• GLP Audits of Test Facilities\n• CRO Identification and Qualification for Non-clinical Regulatory Studies", {
       // Non-clinical study plans, tox reports and query responses are written
       // for the submission dossier — same family as its clinical counterpart.
-      offering_category: CAT_OTHERS,
+      offering_category: CAT_SUBMISSIONS,
       current_availability: "Currently available",
       future_availability: "Available in various markets via in-house delivery team / FreyrX / both · SEND compilation & submission: No in-house capability currently",
       poc: "Jaiprakash Bhelonde",
@@ -829,14 +826,15 @@ if (!store.offeringCategories)
 // white-screen on Freya.Register happened because the Supabase catalog restore
 // (initializeLiveOfferings → replaceStore) bypassed the init-time loop, so live
 // records arrived without `contacts` while seeded ones had it.
-function healOfferings(s: OfferingsStore): void {
+function healOfferings(s: OfferingsStore): boolean {
+  let catalogChanged = false;
   // A catalogue persisted before "Global" existed has no such market, so an
   // owner opening the picker today would not find it (change request 11). Add
   // it back rather than reseeding — every other market and every edit stays.
   if (!s.markets.some((m) => m.id === "mkt-global")) {
     s.markets.unshift({ id: "mkt-global", name: "Global" });
   }
-  // "Others" and its five offerings landed after the first live catalogue was
+  // "Others" and its specialist offerings landed after the first live catalogue was
   // persisted, so heal both — but only where the row still carries the tag we
   // put there ourselves. An owner who has since chosen a category keeps it.
   if (!s.offeringCategories.some((c) => c.id === "oc-others")) {
@@ -844,19 +842,39 @@ function healOfferings(s: OfferingsStore): void {
       id: "oc-others",
       name: CAT_OTHERS,
       description:
-        "Specialist services that stand on their own rather than under one of the six categories — pharmacovigilance, medical writing, compliance and audit, and medical communication.",
+        "Specialist services that stand on their own rather than under one of the six categories — pharmacovigilance, compliance and audit, and medical communication.",
       owner: "",
     });
   }
   for (const [id, wrong] of [
     ["of-024", CAT_RA],
-    ["of-025", CAT_SUBMISSIONS],
-    ["of-026", CAT_SUBMISSIONS],
     ["of-027", CAT_RA],
     ["of-028", CAT_SUBMISSIONS],
   ] as const) {
     const row = s.offerings.find((o) => o.id === id);
     if (row && row.offering_category === wrong) row.offering_category = CAT_OTHERS;
+  }
+  // Change-log migration: the two medical-writing services are submission
+  // document operations, not catch-all "Others" rows. Match both stable ids
+  // and exact names so a catalogue imported before the ids were standardised
+  // is repaired too. Only the legacy Others/blank assignment is changed; a
+  // later explicit owner choice is respected.
+  const medicalWritingNames = new Set([
+    "Medical Writing - Clinical",
+    "Medical Writing - Non Clinical & Toxicology",
+  ]);
+  for (const offering of s.offerings) {
+    const isMedicalWriting =
+      offering.id === "of-025" ||
+      offering.id === "of-026" ||
+      medicalWritingNames.has(offering.offering_name.trim());
+    if (
+      isMedicalWriting &&
+      (!offering.offering_category || offering.offering_category === CAT_OTHERS)
+    ) {
+      offering.offering_category = CAT_SUBMISSIONS;
+      catalogChanged = true;
+    }
   }
   // Freya.Register is sold worldwide; the five regional chips were read as a
   // restriction (Wajeed + Eeswar). Collapse them ONCE, and only when the row
@@ -875,8 +893,10 @@ function healOfferings(s: OfferingsStore): void {
     // `poc` cell → real contact rows, so the sheet's people are kept.
     if (!o.contacts) o.contacts = contactsFromPoc(o);
   }
+  return catalogChanged;
 }
 healOfferings(store);
+healOfferings(liveStore);
 
 // ONE offerings catalog, always — the mode switch is about which MODULES are
 // finished, not about which data is real (Anir, Jul 27: "if I add or delete a
@@ -977,13 +997,13 @@ export async function initializeLiveOfferings(): Promise<void> {
         replaceStore(liveStore, data.catalog);
         // The persisted catalog can predate newer offering fields: heal it
         // BEFORE anything renders from it.
-        healOfferings(liveStore);
+        const migratedCategories = healOfferings(liveStore);
         // Heal a catalog persisted while the samples were being deleted: put
         // them back and write the repaired catalog once.
         const before = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
         restoreDemoMaterials(liveStore);
         const after = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
-        if (after !== before) await persistLiveOfferings();
+        if (after !== before || migratedCategories) await persistLiveOfferings();
         return;
       }
       await persistLiveOfferings();
@@ -1041,8 +1061,9 @@ async function refreshStaleCatalog(): Promise<void> {
     if (globalThis.__FREYR_OFFERINGS_WRITING__) return;
     if (isOfferingsStore(fresh.data?.catalog)) {
       replaceStore(liveStore, fresh.data.catalog);
-      healOfferings(liveStore);
+      const migratedCategories = healOfferings(liveStore);
       globalThis.__FREYR_OFFERINGS_REV__ = fresh.data.updated_at ?? rev;
+      if (migratedCategories) await persistLiveOfferings();
     }
   } catch {
     // A blip in the freshness check must never take a page down: the cached
@@ -1401,7 +1422,8 @@ export function listOfferingPeople(): {
   return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function claimOffering(
+/** Add or upgrade an admin-issued owner assignment. */
+export function assignOfferingOwner(
   id: string,
   owner: {
     memberId: string;
@@ -1439,7 +1461,7 @@ export function claimOffering(
   return found;
 }
 
-/** Drop a claim. Idempotent: releasing a claim that is not there is a no-op. */
+/** Drop an owner assignment. Idempotent when the assignment is absent. */
 export function releaseOffering(id: string, memberId: string): Offering | null {
   const found = activeStore().offerings.find((o) => o.id === id);
   if (!found) return null;
@@ -1459,6 +1481,19 @@ export function isOfferingOwner(
   );
 }
 
+/**
+ * Offering briefs persist as a small, safe Markdown subset rather than HTML.
+ * Normalising line endings keeps list edits stable across browsers; stripping
+ * non-printing control characters prevents invisible payloads without touching
+ * legacy prose, Unicode bullets, indentation, or Markdown formatting.
+ */
+export function normalizeOfferingDescription(value: unknown): string {
+  return String(value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .slice(0, 100_000);
+}
+
 export function createOffering(data: Partial<Offering>): Offering {
   const record: Offering = {
     // An explicit id is honored so a seeded offering can be restored under its
@@ -1469,7 +1504,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     offering_category: data.offering_category || "",
     offering_name: data.offering_name || "Untitled offering",
     contacts: data.contacts ?? [],
-    offering_description: data.offering_description || "",
+    offering_description: normalizeOfferingDescription(data.offering_description),
     current_availability: data.current_availability || "",
     future_availability: data.future_availability || "",
     poc: data.poc || "",
@@ -1493,7 +1528,21 @@ export function updateOffering(
   const materials = data.materials
     ? data.materials.map((m) => ({ ...m, id: m.id || rid("m") }))
     : activeStore().offerings[i].materials;
-  activeStore().offerings[i] = { ...activeStore().offerings[i], ...data, materials, id };
+  const normalizedData =
+    data.offering_description === undefined
+      ? data
+      : {
+          ...data,
+          offering_description: normalizeOfferingDescription(
+            data.offering_description
+          ),
+        };
+  activeStore().offerings[i] = {
+    ...activeStore().offerings[i],
+    ...normalizedData,
+    materials,
+    id,
+  };
   if (data.offering_type) ensureOfferingType(activeStore().offerings[i].offering_type);
   if (data.offering_category)
     ensureOfferingCategory(activeStore().offerings[i].offering_category);

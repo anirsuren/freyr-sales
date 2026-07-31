@@ -14,6 +14,10 @@ import {
 import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
 import { offeringsAnswer } from "@/lib/offeringsAgent";
 import { listOfferings } from "@/lib/offerings";
+import {
+  redactAgentOnlyMaterials,
+  secureKnowledgePassagesForMember,
+} from "@/lib/materialAccess";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDataMode } from "@/lib/dataMode";
 import {
@@ -68,11 +72,24 @@ export async function POST(req: NextRequest) {
   // Sources THIS chat has switched off in the Knowledge base panel. Sent as
   // exclusions so the default — nothing sent — means the assistant uses
   // everything, and one narrowed conversation never narrows another.
-  const excludedSourceIds: string[] = Array.isArray(body.excludeSources)
+  const requestedExclusions: string[] = Array.isArray(body.excludeSources)
     ? body.excludeSources
         .filter((v: unknown) => typeof v === "string")
         .slice(0, 500)
     : [];
+  // Uploaded offering files are always readable. Ignore legacy chat state that
+  // excluded one of their material ids; catalogue-only sources may still be
+  // scoped for a conversation.
+  const uploadedMaterialIds = new Set(
+    listOfferings().flatMap((offering) =>
+      offering.materials
+        .filter((material) => !!material.docsPath)
+        .map((material) => material.id)
+    )
+  );
+  const excludedSourceIds = requestedExclusions.filter(
+    (id) => !uploadedMaterialIds.has(id)
+  );
   const isAllowed = (p: { id: string; href: string }) =>
     !excludedSourceIds.some(
       (id) => p.id === id || p.id.startsWith(`${id}#`) || p.href.endsWith(id)
@@ -166,7 +183,12 @@ export async function POST(req: NextRequest) {
     // grounded and keyless. This used to run BEFORE Claude, so a rigid
     // template answered even when the real model was available. Now the model
     // owns the conversation and this is purely the offline net.
-    const off = offeringsAnswer(message);
+    const off = offeringsAnswer(
+      message,
+      listOfferings().map((offering) =>
+        redactAgentOnlyMaterials(offering, actor.userId)
+      )
+    );
     if (off) {
       return NextResponse.json({
         ok: true,
@@ -301,14 +323,18 @@ export async function POST(req: NextRequest) {
 
   const knowledgeGrounding = await (async () => {
     try {
-      const corpus = await buildKnowledgeBaseAsync();
+      const corpus = secureKnowledgePassagesForMember(
+        await buildKnowledgeBaseAsync(),
+        actor.userId
+      );
       const scoped = excludedSourceIds.length ? corpus.filter(isAllowed) : corpus;
       const hits = searchKnowledge(message, 5, scoped);
       if (!hits.length) return "";
       return (
         "\n\nFREYR'S OWN KNOWLEDGE (offerings catalogue and the contents of " +
-        "uploaded sales material — quote it when it answers the question, and " +
-        "say which document it came from):\n" +
+        "uploaded sales material — quote it when it answers the question. Name " +
+        "normal documents, but keep sources labelled 'Private AI training material' " +
+        "anonymous):\n" +
         knowledgeBlock(hits)
       );
     } catch {
@@ -354,10 +380,10 @@ export async function POST(req: NextRequest) {
     (offeringsOnly
       ? "SCOPE. This workspace contains Freyr's offerings catalogue and uploaded sales materials, nothing else: " +
         "no customers, deals, pipeline or to-do exist here, so never bring them up or quote zeros for them. " +
-        "Use search_offerings before answering anything about offerings, materials, markets or customer types, and name the document when you quote one.\n\n"
+        "Use search_offerings before answering anything about offerings, materials, markets or customer types, and name the document when you quote one unless it is labelled 'Private AI training material'. Never guess or reveal an anonymous source's title, filename, URL or upload metadata.\n\n"
       : "SCOPE. You have the user's full book (below) plus tools to read it: get_account_detail (depth on one account), " +
         "list_accounts (filter the book), search_offerings (anything about offerings, materials, markets, customer types - " +
-        "search before answering those, and name the document when you quote one).\n\n") +
+        "search before answering those, and name the document when you quote one unless it is labelled 'Private AI training material'; never guess or reveal an anonymous source's title, filename, URL or upload metadata).\n\n") +
 
     // A CHATBOT, NOT AN OPERATOR (Anir, Jul 29: "just have it like a normal
     // chatbot for now. I don't know what kind of features they wanted to do and
@@ -580,7 +606,10 @@ export async function POST(req: NextRequest) {
       // panel. Passages carry the id of the record they came from; a file's
       // chunks carry the material id, so matching on the prefix keeps every
       // chunk of a chosen document.
-      const corpus = await buildKnowledgeBaseAsync();
+      const corpus = secureKnowledgePassagesForMember(
+        await buildKnowledgeBaseAsync(),
+        actor.userId
+      );
       const scoped = excludedSourceIds.length ? corpus.filter(isAllowed) : corpus;
       const hits = searchKnowledge(q, 6, scoped);
       if (!hits.length)

@@ -10,6 +10,11 @@ import {
   ListChecks,
   List,
   AlignLeft,
+  Bold,
+  Italic,
+  ListOrdered,
+  IndentIncrease,
+  IndentDecrease,
   Building2,
   FolderOpen,
   CalendarClock,
@@ -223,7 +228,13 @@ function buildAvailability(mode: AvailMode, month: string, year: string) {
 // serialises straight back to the same "• one per line" shape the catalog
 // already holds. A paste box stays one click away for bulk entry from a sheet.
 
-type CapRow = { kind: "item" | "section"; text: string };
+type CapRow = {
+  kind: "item" | "section";
+  text: string;
+  listStyle?: "bullet" | "number";
+  depth?: number;
+  ordinal?: number;
+};
 
 function toRows(text: string): { intro: string; rows: CapRow[] } {
   const parsed = parseCapabilities(text);
@@ -233,7 +244,14 @@ function toRows(text: string): { intro: string; rows: CapRow[] } {
   const rows: CapRow[] = [];
   for (const group of parsed.groups) {
     if (group.title) rows.push({ kind: "section", text: group.title });
-    for (const item of group.items) rows.push({ kind: "item", text: item.raw });
+    for (const item of group.items)
+      rows.push({
+        kind: "item",
+        text: item.raw,
+        listStyle: item.listStyle,
+        depth: item.depth,
+        ordinal: item.ordinal,
+      });
   }
   return { intro: parsed.intro, rows };
 }
@@ -253,11 +271,126 @@ function composeDescription(intro: string, rows: CapRow[]): string {
       flush();
       block.push(text);
     } else {
-      block.push(`• ${text}`);
+      const indent = "  ".repeat(Math.max(0, row.depth ?? 0));
+      const marker =
+        row.listStyle === "number" ? `${row.ordinal ?? 1}.` : "•";
+      block.push(`${indent}${marker} ${text}`);
     }
   }
   flush();
   return blocks.join("\n\n");
+}
+
+type BriefFormat = "bold" | "italic" | "bullets" | "numbers" | "indent" | "outdent";
+
+/**
+ * A deliberately small rich-text editor. It persists Markdown/list markers,
+ * never HTML, so formatting cannot introduce executable markup and every
+ * legacy plain-text description remains valid input.
+ */
+function RichBriefEditor({
+  value,
+  onChange,
+  ariaLabel,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+  placeholder: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  function restoreSelection(start: number, end: number) {
+    requestAnimationFrame(() => {
+      ref.current?.focus();
+      ref.current?.setSelectionRange(start, end);
+    });
+  }
+
+  function format(kind: BriefFormat) {
+    const field = ref.current;
+    if (!field) return;
+    const start = field.selectionStart;
+    const end = field.selectionEnd;
+
+    if (kind === "bold" || kind === "italic") {
+      const marker = kind === "bold" ? "**" : "*";
+      const selected = value.slice(start, end);
+      const next = `${value.slice(0, start)}${marker}${selected}${marker}${value.slice(end)}`;
+      onChange(next);
+      if (selected) restoreSelection(start + marker.length, end + marker.length);
+      else restoreSelection(start + marker.length, start + marker.length);
+      return;
+    }
+
+    const lineStart = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+    const nextBreak = value.indexOf("\n", end);
+    const lineEnd = nextBreak === -1 ? value.length : nextBreak;
+    const block = value.slice(lineStart, lineEnd);
+    let number = 1;
+    const transformed = block
+      .split("\n")
+      .map((line) => {
+        if (!line.trim()) return line;
+        if (kind === "indent") return `  ${line}`;
+        if (kind === "outdent") return line.replace(/^(?:\t| {1,2})/, "");
+        const match = line.match(/^(\s*)(?:(?:[\u2022▪◦‣*–—-]|\d+[.)])\s+)?(.*)$/);
+        const indent = match?.[1] ?? "";
+        const body = match?.[2] ?? line.trimStart();
+        if (kind === "bullets") return `${indent}• ${body}`;
+        return `${indent}${number++}. ${body}`;
+      })
+      .join("\n");
+    const next = `${value.slice(0, lineStart)}${transformed}${value.slice(lineEnd)}`;
+    onChange(next);
+    restoreSelection(lineStart, lineStart + transformed.length);
+  }
+
+  const tools: Array<{
+    kind: BriefFormat;
+    label: string;
+    icon: LucideIcon;
+  }> = [
+    { kind: "bold", label: "Bold", icon: Bold },
+    { kind: "italic", label: "Italic", icon: Italic },
+    { kind: "bullets", label: "Bulleted list", icon: List },
+    { kind: "numbers", label: "Numbered list", icon: ListOrdered },
+    { kind: "outdent", label: "Outdent", icon: IndentDecrease },
+    { kind: "indent", label: "Indent", icon: IndentIncrease },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border-light bg-white transition-[border-color] focus-within:border-blue-primary">
+      <div
+        className="flex flex-wrap items-center gap-1 border-b border-border-light bg-surface/60 px-2 py-1.5"
+        role="toolbar"
+        aria-label="Offering brief formatting"
+      >
+        {tools.map(({ kind, label, icon: Icon }) => (
+          <button
+            key={kind}
+            type="button"
+            title={label}
+            aria-label={label}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => format(kind)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
+          >
+            <Icon size={15} strokeWidth={2} />
+          </button>
+        ))}
+      </div>
+      <textarea
+        ref={ref}
+        className="min-h-[220px] w-full resize-y bg-white px-3 py-2.5 font-mono text-[12.5px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+      />
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -775,7 +908,7 @@ export function OfferingForm({
               onClick={openPaste}
               className={modeButton(pasteMode)}
             >
-              <AlignLeft size={12} strokeWidth={2.2} /> Paste a list
+              <AlignLeft size={12} strokeWidth={2.2} /> Write / paste
             </button>
           </div>
         }
@@ -795,17 +928,17 @@ export function OfferingForm({
 
         {pasteMode ? (
           <div>
-            <label className={LABEL}>Paste the list</label>
-            <textarea
-              className={`${FIELD} h-auto min-h-[220px] resize-y py-2 font-mono text-[12.5px] leading-relaxed`}
+            <label className={LABEL}>Offering brief</label>
+            <RichBriefEditor
               value={pasted}
-              onChange={(e) => setPasted(e.target.value)}
+              onChange={setPasted}
               placeholder={"• GLP Audits of Test Facilities\n• Regulatory Toxicology (1. ADE/PDE Report Services 2. F-Value Reports)"}
-              aria-label="Paste the list"
+              ariaLabel="Offering brief"
             />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              One service per line, paste straight from a spreadsheet. Switch back
-              to <span className="font-medium">One by one</span> to tidy it up row by row.
+              Format safely with bold, italic, lists and indentation. The brief is
+              stored as plain Markdown, not executable HTML. Switch back to{" "}
+              <span className="font-medium">One by one</span> to tidy services row by row.
             </p>
           </div>
         ) : (

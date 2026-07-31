@@ -6,6 +6,7 @@ import {
   readMaterialArchiveMember,
 } from "@/lib/materialArchive";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { canViewOfferingMaterial } from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +83,11 @@ export async function GET(
     );
 
   const material = offering.materials.find((item) => item.docsPath === path);
-  if (!material || extensionOf(path) !== "zip")
+  if (
+    !material ||
+    !canViewOfferingMaterial(offering, material, actor.userId) ||
+    extensionOf(path) !== "zip"
+  )
     return NextResponse.json(
       { error: "That ZIP is not on this offering" },
       { status: 404 }

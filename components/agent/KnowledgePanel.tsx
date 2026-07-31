@@ -8,7 +8,6 @@ import {
   Package,
   Users,
   Globe,
-  BotOff,
   CheckCheck,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
@@ -37,7 +36,6 @@ export type KnowledgeSource = {
   href: string;
   words: number;
   offering?: string;
-  readByAgent?: boolean;
 };
 
 type Knowledge = {
@@ -85,6 +83,13 @@ export function KnowledgePanel({
       .catch(() => undefined)
       .finally(() => setLoading(false));
   }, [open, data]);
+
+  useEffect(() => {
+    if (!data?.files.length) return;
+    const mandatory = new Set(data.files.map((file) => file.id));
+    const next = excluded.filter((id) => !mandatory.has(id));
+    if (next.length !== excluded.length) onExcludedChange(next);
+  }, [data, excluded, onExcludedChange]);
 
   const isOn = (id: string) => !excluded.includes(id);
   const toggle = (id: string) =>
@@ -196,8 +201,12 @@ export function KnowledgePanel({
                   </header>
                   <ul className="divide-y divide-border-light rounded-lg border border-border-light">
                     {rows.map((row) => {
-                      const picked = isOn(row.id);
-                      const blind = row.readByAgent === false;
+                      // Uploaded files are always available to the assistant.
+                      // The per-chat knowledge picker may still scope catalogue
+                      // records, but it cannot recreate the retired file-level
+                      // ingestion opt-out.
+                      const alwaysRead = key === "files";
+                      const picked = alwaysRead || isOn(row.id);
                       return (
                         <li
                           key={row.id}
@@ -207,7 +216,7 @@ export function KnowledgePanel({
                             type="checkbox"
                             checked={picked}
                             onChange={() => toggle(row.id)}
-                            disabled={disabled}
+                            disabled={disabled || alwaysRead}
                             aria-label={`Use ${row.title} in this chat`}
                             className="h-4 w-4 shrink-0 cursor-pointer accent-[color:#0071E3] disabled:cursor-not-allowed disabled:opacity-40"
                           />
@@ -221,18 +230,6 @@ export function KnowledgePanel({
                               </span>
                             )}
                           </span>
-                          {blind && (
-                            <span
-                              title="The assistant never reads this file"
-                              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
-                              style={{
-                                color: "#475569",
-                                background: "rgba(71,85,105,0.10)",
-                              }}
-                            >
-                              <BotOff size={11} strokeWidth={2} /> Not used
-                            </span>
-                          )}
                           {/* The number that answers "did my upload work?" */}
                           <span
                             className={`tnum shrink-0 text-[11.5px] ${

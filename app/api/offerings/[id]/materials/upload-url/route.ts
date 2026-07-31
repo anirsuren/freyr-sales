@@ -29,7 +29,7 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!(await canEditOffering(offering)))
     return NextResponse.json(
-      { error: "Take ownership of this offering to upload its materials" },
+      { error: "Ask a workspace admin to assign you as an owner before uploading materials" },
       { status: 403 }
     );
   if (!(await hasDocsStorage()))

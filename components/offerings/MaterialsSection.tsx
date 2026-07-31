@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
-  BotOff,
   ChevronRight,
   Download,
   Folder,
@@ -35,7 +34,6 @@ import {
   allFolders,
   childFolders,
   countUnder,
-  isReadByAgent,
   isSalesVisible,
   materialsInFolder,
   materialFolderLabel,
@@ -111,9 +109,8 @@ export function MaterialsSection({
   action?: React.ReactNode;
   /** Needed to delete a row through the offering PATCH. */
   offeringId?: string;
-  /** Owners add and remove. EVERYONE downloads: sales materials exist to be
-   *  handed to customers (Anir, Jul 29: "people who are not the owner, just
-   *  normal sales, they can download all this stuff"). */
+  /** Owners add and remove. Seller-visible files are downloadable by the
+   *  workspace; agent-only files reach this component only for an owner. */
   canEdit?: boolean;
 }) {
   const [formats, setFormats] = useState<string[]>([]);
@@ -147,7 +144,6 @@ export function MaterialsSection({
           journeyStage: m.journeyStage,
           accessLevel: m.accessLevel,
           documentType: m.documentType,
-          readByAgent: m.readByAgent,
         }));
       const res = await fetch(`/api/offerings/${offeringId}`, {
         method: "PATCH",
@@ -611,21 +607,6 @@ export function MaterialsSection({
                             ? "Internal only: never send this file to a client"
                             : undefined
                         }
-                      />
-                    )}
-                    {/* An owner must be able to SEE which files the assistant
-                        is blind to, or the switch is a setting nobody can
-                        audit. It sits with the other chips because that is
-                        what it is — a fact about the file, not a control. It
-                        used to sit in the button cluster on the right, where a
-                        chip among four icon buttons read as a broken button. */}
-                    {canEdit && !isReadByAgent(material) && (
-                      <TagPill
-                        label="Not used by AI"
-                        color="#475569"
-                        icon={BotOff}
-                        variant="outline"
-                        title="The assistant never reads this file"
                       />
                     )}
                   </span>

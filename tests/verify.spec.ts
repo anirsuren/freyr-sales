@@ -6295,13 +6295,13 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   });
 
 
-  test("358 — an owner decides whether a file teaches the assistant, separately from who sees it (V52)", async ({
+  test("358 — every uploaded offering file teaches the assistant (change log 16)", async ({
     request,
   }) => {
-    // Two independent switches, not one list (Anir, Jul 29: "he can choose if
-    // the documents impact the AI or not... he doesn't want the AI to know
-    // that"). This is the mirror of test 355: there, hidden from sales but
-    // read by the agent. Here, visible to sales and invisible to the agent.
+    // The change log superseded the old opt-out: visibility remains a separate
+    // access-level decision, but every uploaded file is part of the agent's
+    // knowledge. A persisted legacy `readByAgent:false` is ignored and removed
+    // on the next save rather than quietly blinding the assistant.
     const id = "of-019";
     await own(request, id);
 
@@ -6352,19 +6352,13 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       };
     };
 
-    await attach(true);
-    const on = await ask();
-    expect(on.citedAFile).toBe(true);
-    expect(on.answer).toMatch(/eleven|11/i);
-
-    // Same file, still listed for the team, now invisible to the assistant.
-    const off = await attach(false);
-    const saved = await off.json();
-    expect(saved.offering.materials[0].readByAgent).toBe(false);
+    const attached = await attach(false);
+    const saved = await attached.json();
+    expect(saved.offering.materials[0].readByAgent).toBeUndefined();
     expect(saved.offering.materials[0].label).toBe("Marrowgate wording");
-    const blind = await ask();
-    expect(blind.citedAFile).toBe(false);
-    expect(blind.answer).not.toMatch(/eleven percent|11%/i);
+    const answer = await ask();
+    expect(answer.citedAFile).toBe(true);
+    expect(answer.answer).toMatch(/eleven|11/i);
 
     await request.patch(`${BASE}/api/offerings/${id}`, { data: { materials: [] } });
     await disown(request, id);

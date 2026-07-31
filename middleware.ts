@@ -24,6 +24,9 @@ const PUBLIC_PATHS = new Set([
   // in the URL fragment and exchanges it for the app cookie — by definition
   // the visitor is not signed in yet.
   "/auth/confirm",
+  // Recovery links also arrive before there is an app session and carry a
+  // short-lived Supabase recovery session in the URL.
+  "/auth/reset-password",
   "/access-pending",
 ]);
 const PUBLIC_WEBHOOK_PATHS = new Set([

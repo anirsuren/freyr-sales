@@ -59,6 +59,8 @@ const NON_MODULE_PATHS: ReadonlySet<string> = new Set([
   "/login",
   // The confirmation landing carries the sign-in tokens in its URL.
   "/auth/confirm",
+  // The password-recovery email lands here before the app session exists.
+  "/auth/reset-password",
   "/access-pending",
   "/settings",
   "/onboarding",

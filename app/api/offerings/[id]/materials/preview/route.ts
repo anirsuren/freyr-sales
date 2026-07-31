@@ -7,6 +7,7 @@ import {
   readMaterialArchiveMember,
 } from "@/lib/materialArchive";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { canViewOfferingMaterial } from "@/lib/materialAccess";
 
 /**
  * READ A SALES MATERIAL WITHOUT DOWNLOADING IT.
@@ -106,7 +107,7 @@ export async function GET(
       { status: 403 }
     );
   const material = offering.materials.find((m) => m.docsPath === path);
-  if (!material)
+  if (!material || !canViewOfferingMaterial(offering, material, actor.userId))
     return NextResponse.json(
       { error: "That file is not on this offering" },
       { status: 404 }

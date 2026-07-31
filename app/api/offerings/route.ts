@@ -17,6 +17,7 @@ import {
   isFixedMaterialFolder,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
+import { redactOfferingsForCurrentUser } from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -26,13 +27,16 @@ const FORBIDDEN = NextResponse.json(
 );
 
 export async function GET() {
-  const offerings = await Promise.all(
+  const offeringsWithRoadmapAccess = await Promise.all(
     listOfferings().map(async (offering) => {
       const hydrated = hydrateOffering(offering);
       return (await canViewNextCustomerVersion(offering))
         ? hydrated
         : hideNextCustomerVersions(hydrated);
     })
+  );
+  const offerings = await redactOfferingsForCurrentUser(
+    offeringsWithRoadmapAccess
   );
   return NextResponse.json({ offerings });
 }
@@ -65,7 +69,8 @@ export async function POST(req: Request) {
   }
   try {
     const offering = await commitOfferingsChange(() => createOffering(body));
-    return NextResponse.json({ ok: true, offering });
+    const [visible] = await redactOfferingsForCurrentUser([offering]);
+    return NextResponse.json({ ok: true, offering: visible });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Offering save failed" },

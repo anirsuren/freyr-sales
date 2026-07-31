@@ -38,6 +38,7 @@ import { formatMoney } from "@/lib/pipeline";
 import { ImportExcel } from "@/components/offerings/ImportExcel";
 import { OfferingsManageMenu } from "@/components/offerings/OfferingsManageMenu";
 import { NewOfferingButton } from "@/components/offerings/NewOfferingButton";
+import { redactOfferingsForCurrentUser } from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Offerings" };
@@ -227,7 +228,11 @@ function Stat({
 }
 
 export default async function OfferingsPage() {
-  const offerings = listOfferings().map(hydrateOffering) as HydratedOffering[];
+  // The browser receives these records as props, so server-side redaction is
+  // required even though the visible card only shows material counts.
+  const offerings = (await redactOfferingsForCurrentUser(
+    listOfferings().map(hydrateOffering)
+  )) as unknown as HydratedOffering[];
   const customerTypes = listCustomerTypes();
   const markets = listMarkets();
   const offeringTypes = listOfferingTypes();

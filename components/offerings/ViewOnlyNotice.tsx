@@ -4,9 +4,8 @@ import { Card } from "@/components/ui/Card";
 
 // Shown when someone reaches an editing screen for an offering they do not own.
 // Editing is gated on OWNERSHIP now, not on holding the admin role, so the copy
-// says what actually unblocks them: take ownership, or ask the person who has
-// it. The old text told a "Sales user" to switch to Admin, which is no longer
-// how any of this works.
+// says what actually unblocks them: an admin assignment. The old text told a
+// "Sales user" to switch roles or self-claim, neither of which grants access.
 export function ViewOnlyNotice({
   backHref = "/offerings",
   reason = "ownership",
@@ -15,7 +14,7 @@ export function ViewOnlyNotice({
   /** WHY you are being turned away. Two different rules gate this module and
    *  they need two different sentences: creating an offering is a ROLE right,
    *  changing an existing one is an OWNERSHIP right. Telling a sales user to
-   *  "take ownership" of an offering that does not exist yet is nonsense. */
+   *  request assignment to an offering that does not exist yet. */
   reason?: "ownership" | "role";
 }) {
   if (reason === "role") {
@@ -47,9 +46,8 @@ export function ViewOnlyNotice({
         You don&apos;t own this offering
       </h2>
       <p className="mt-1.5 text-[13.5px] leading-relaxed text-text-secondary">
-        Only its owner can change an offering&apos;s content or its sales
-        materials. Open the offering and use &ldquo;Ask to own this&rdquo;, and
-        an admin can hand it over.
+        Only an assigned owner can change an offering&apos;s content or its sales
+        materials. Ask a workspace admin to assign you if you need edit access.
       </p>
       <Link
         href={backHref}

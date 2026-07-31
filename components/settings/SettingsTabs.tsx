@@ -11,7 +11,7 @@ import {
   detectTimeZone,
   formatAbsolute,
 } from "@/lib/timeZone";
-import { UserPlus, Check, ShieldCheck, Lock, Mail, CalendarDays, MessageSquare, Building2, Link2, MousePointer2, Settings2, UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
+import { UserPlus, Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, MousePointer2, Settings2, UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -91,8 +91,8 @@ const SSO_PROVIDERS = ["Okta", "Google Workspace", "Azure AD", "SAML 2.0"];
  * Admin ✓ Manager ✓ Rep ✗, and the truth is neither. Editing is gated on
  * OWNERSHIP, for everyone — "a workspace admin does not get to edit an offering
  * merely by being an admin". A Rep who owns one can edit it; an Admin who does
- * not own it cannot. What admin buys is the right to TAKE ownership, granted on
- * the spot, and to hand it to someone else. A permissions table that contradicts
+ * not own it cannot. What admin buys is the right to assign ownership to a
+ * workspace member. A permissions table that contradicts
  * the server is worse than no table: it is the page people check before they
  * trust the product with their access model.
  */
@@ -107,11 +107,11 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
     note: "Whoever owns that offering, any role",
   },
   {
-    cap: "Take ownership of an offering",
+    cap: "Assign offering owners",
     admin: true,
     manager: false,
     rep: false,
-    note: "Others request it; an admin grants it",
+    note: "Only an admin can grant edit access",
   },
   { cap: "Invite, approve or suspend teammates", admin: true, manager: false, rep: false },
   { cap: "Switch the workspace between Real and Mock", admin: true, manager: false, rep: false },
@@ -383,6 +383,7 @@ export function SettingsTabs({
     linkedin: "",
   });
   const [savedProfile, setSavedProfile] = useState(profile);
+  const [passwordResetBusy, setPasswordResetBusy] = useState(false);
   const [linkedinStatus, setLinkedinStatus] = useState<{
     ok: boolean;
     message: string;
@@ -757,6 +758,33 @@ export function SettingsTabs({
       }
     } catch {
       toast("Couldn't update your name. Try again.", "error");
+    }
+  }
+
+  async function sendPasswordReset() {
+    if (passwordResetBusy) return;
+    setPasswordResetBusy(true);
+    try {
+      const response = await fetch("/api/auth/password-reset", {
+        method: "POST",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        email?: string;
+      };
+      if (!response.ok) {
+        throw new Error(body.error || "Could not send the reset email.");
+      }
+      toast(`Password reset link sent to ${body.email || profile.email}`);
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : "Could not send the reset email.",
+        "error"
+      );
+    } finally {
+      setPasswordResetBusy(false);
     }
   }
   async function addMember() {
@@ -1286,6 +1314,29 @@ export function SettingsTabs({
             )}
             <div className="pt-4 mt-1 border-t border-border-light">
               <ThemeSetting />
+            </div>
+            <div className="flex items-center justify-between gap-5 border-t border-border-light pt-4">
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-text-primary">
+                  Account password
+                </p>
+                <p className="mt-0.5 text-[12px] leading-relaxed text-text-secondary">
+                  {authConfig.authMode === "supabase"
+                    ? `Send a secure reset link to ${profile.email}.`
+                    : "Your password is managed by your company identity provider."}
+                </p>
+              </div>
+              {authConfig.authMode === "supabase" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={passwordResetBusy}
+                  onClick={() => void sendPasswordReset()}
+                  className="shrink-0"
+                >
+                  <LockKeyhole size={15} /> Reset password
+                </Button>
+              )}
             </div>
           </div>
         </Card>

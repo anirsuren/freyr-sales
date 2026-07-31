@@ -20,6 +20,7 @@ import {
   isFixedMaterialFolder,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
+import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ async function uploaderName(): Promise<string | null> {
 }
 
 const FORBIDDEN = NextResponse.json(
-  { error: "Take ownership of this offering to edit it, or ask an admin" },
+  { error: "Ask a workspace admin to assign you as an owner before editing" },
   { status: 403 }
 );
 
@@ -46,10 +47,12 @@ export async function GET(
   const offering = getOffering((await params).id);
   if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const hydrated = hydrateOffering(offering);
+  const user = await getCurrentUser();
+  const visible = redactAgentOnlyMaterials(hydrated, user.memberId);
   return NextResponse.json({
     offering: (await canViewNextCustomerVersion(offering))
-      ? hydrated
-      : hideNextCustomerVersions(hydrated),
+      ? visible
+      : hideNextCustomerVersions(visible),
   });
 }
 
@@ -63,7 +66,7 @@ export async function PATCH(
   // material is editing the offering's content, so it goes through the same
   // gate rather than the old "any signed-in member may attach materials"
   // shortcut, which let anyone in the workspace change any offering's assets.
-  // An owner is granted by an admin; an admin claims instantly for themselves.
+  // An owner is assigned by an admin; there is no self-claim path.
   // Resolved from the STORED offering, never the request body, so a caller
   // cannot hand themselves ownership by posting a new POC.
   const existing = getOffering(id);
@@ -132,7 +135,11 @@ export async function PATCH(
     if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (droppedPaths.length)
       await forgetMaterialText(droppedPaths).catch(() => undefined);
-    return NextResponse.json({ ok: true, offering });
+    const user = await getCurrentUser();
+    return NextResponse.json({
+      ok: true,
+      offering: redactAgentOnlyMaterials(offering, user.memberId),
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Offering save failed" },

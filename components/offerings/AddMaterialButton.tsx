@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Folder, Info, Plus } from "lucide-react";
+import { Folder, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
@@ -103,8 +102,6 @@ export function AddMaterialButton({
   const [busy, setBusy] = useState(false);
   /** 0-100 while bytes are moving, null when nothing is uploading. */
   const [progress, setProgress] = useState<number | null>(null);
-  /** New uploads teach the assistant unless the owner says otherwise. */
-  const [readByAgent, setReadByAgent] = useState(true);
 
   function reset() {
     setKind("");
@@ -293,7 +290,6 @@ export function AddMaterialButton({
           description: m.description,
           journeyStage: m.journeyStage,
           accessLevel: m.accessLevel,
-          readByAgent: m.readByAgent,
           documentType: m.documentType,
           // Without this the siblings come back folderless and one upload
           // would flatten everything Eswar had filed.
@@ -311,7 +307,6 @@ export function AddMaterialButton({
           folder,
           journeyStage,
           accessLevel,
-          readByAgent,
         },
       ];
       const res = await fetch(`/api/offerings/${offeringId}`, {
@@ -618,39 +613,6 @@ export function AddMaterialButton({
               </div>
             )}
           </div>
-
-          {/* WHETHER THE ASSISTANT LEARNS FROM IT: a different question from
-              who may see it, so it keeps its own control rather than becoming
-              another value in the access list.
-
-              ONE LINE, NOT A PARAGRAPH. Three lines of explanation sat at the
-              bottom of an already tall dialog and pushed the buttons off screen
-              (Anir, Jul 29: "the entire thing is too vertical... just a simple
-              checkbox, if they want more information they can click the i").
-              The detail moved into the icon, where it costs no height. */}
-          <label className="flex cursor-pointer items-center gap-2.5">
-            <input
-              type="checkbox"
-              checked={readByAgent}
-              onChange={(e) => setReadByAgent(e.target.checked)}
-              className="h-4 w-4 shrink-0 cursor-pointer accent-[color:#0071E3]"
-            />
-            <span className="text-[13px] font-medium text-text-primary">
-              Let the Freyr assistant read this file
-            </span>
-            <Tooltip
-              side="top"
-              label="On: the assistant can answer questions from what is inside this file, and say which file it came from. Off: the file stays here for the team to open, and the assistant never reads it."
-            >
-              <span
-                tabIndex={0}
-                aria-label="What this means"
-                className="inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full text-text-tertiary transition-colors hover:text-blue-primary"
-              >
-                <Info size={14} strokeWidth={2} />
-              </span>
-            </Tooltip>
-          </label>
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <button

@@ -2,17 +2,17 @@ import { NextResponse } from "next/server";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { canViewOfferingMaterial } from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 
 /**
  * DOWNLOAD A SALES MATERIAL.
  *
- * Reading is NOT an owner right. Sales materials exist so reps can hand them
- * to customers, so any signed-in workspace member may download any material
- * (Anir, Jul 29: "people who are not the owner, just normal sales... they can
- * download all this stuff. Sales can then use it"). Only ADDING and DELETING
- * are gated on ownership.
+ * Seller-visible materials remain available to every verified workspace
+ * member. Agent-only materials are different: only a recorded owner of this
+ * offering may obtain their bytes, even when another member knows the object
+ * path. The same rule is enforced by preview and archive-member endpoints.
  *
  * The presigned URL is minted per click and redirected to. Storing a presign
  * on the material row would rot: they expire, and a rep would click a dead
@@ -23,7 +23,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  // Signed in, and part of this workspace. Nothing narrower.
+  // First prove workspace membership; material-level authorization follows
+  // after the stored row is resolved.
   const actor = await verifiedWorkflowActor(req as never);
   if (!actor)
     return NextResponse.json(
@@ -59,7 +60,8 @@ export async function GET(
       { error: "That file does not belong to this offering" },
       { status: 403 }
     );
-  if (!offering.materials.some((m) => m.docsPath === path))
+  const material = offering.materials.find((m) => m.docsPath === path);
+  if (!material || !canViewOfferingMaterial(offering, material, actor.userId))
     return NextResponse.json(
       { error: "That file is not on this offering" },
       { status: 404 }
