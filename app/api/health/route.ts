@@ -75,7 +75,10 @@ export async function GET() {
   try {
     if (approvalRequired) await verifyAccessControlStorage();
     await getDb().freyrKb.get();
-    if (dataMode === "live") await initializeLiveOfferings();
+    // Ownership and sales materials are the shared real offerings catalogue in
+    // BOTH data modes. Mock mode changes CRM/customer data, not Eswar's
+    // Freya.Register record or the files attached to it.
+    await initializeLiveOfferings();
     return NextResponse.json(
       {
         status: "healthy",

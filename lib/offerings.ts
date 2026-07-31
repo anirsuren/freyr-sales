@@ -4,7 +4,6 @@
 // Holds Freyr's offerings, the customer-type definitions, and the markets, plus
 // the sales-material artifacts attached to each offering.
 import { getDataMode } from "./dataMode";
-import { hasSupabase } from "./env";
 import { createClient } from "@supabase/supabase-js";
 import type { OfferingMaterial } from "./offeringMaterials";
 export {
@@ -917,13 +916,36 @@ function catalogClient() {
   );
 }
 
+/**
+ * THE OFFERINGS CATALOGUE IS REAL IN BOTH WORKSPACE MODES.
+ *
+ * `hasSupabase()` intentionally returns false in mock mode because CRM records
+ * must stay fake there. Reusing it here made a newly deployed mock-mode server
+ * skip the persisted offerings catalogue too, so Freya.Register fell back to
+ * its empty seed: Eswar appeared not to own it and all 21 uploaded materials
+ * appeared deleted even though both were still intact in Supabase.
+ *
+ * Offerings, ownership and uploaded collateral are approved shared master
+ * data. They use the configured catalogue database regardless of whether the
+ * surrounding CRM workspace is live or sample data.
+ */
+function hasCatalogueDatabase(): boolean {
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
+
 // `offering_catalog_state` is deliberately a single deployment-wide document
 // (migration 003 has no workspace_id). This Freyr deployment is hard-bound to
 // one FREYR_WORKSPACE_ID; converting the app to multi-workspace hosting must
 // first add a workspace column/key rather than reusing this singleton adapter.
 export async function persistLiveOfferings(): Promise<void> {
-  if (getDataMode() !== "live") return;
-  if (!hasSupabase()) {
+  // A local mock server may READ the shared catalogue for faithful review, but
+  // it must never write into production. Deployed mock mode is the actual
+  // in-progress workspace and therefore persists owner/material changes.
+  if (getDataMode() !== "live" && process.env.NODE_ENV !== "production") return;
+  if (!hasCatalogueDatabase()) {
     throw new Error("Live offering changes require the configured Supabase database.");
   }
   const stamp = new Date().toISOString();
@@ -940,7 +962,7 @@ export async function persistLiveOfferings(): Promise<void> {
 }
 
 export async function initializeLiveOfferings(): Promise<void> {
-  if (getDataMode() !== "live" || !hasSupabase()) return;
+  if (!hasCatalogueDatabase()) return;
   if (!globalThis.__FREYR_OFFERINGS_INIT__) {
     globalThis.__FREYR_OFFERINGS_INIT__ = (async () => {
       const { data, error } = await catalogClient()
