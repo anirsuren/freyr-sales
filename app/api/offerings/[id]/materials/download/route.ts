@@ -6,6 +6,23 @@ import { canViewOfferingMaterial } from "@/lib/materialAccess";
 
 export const dynamic = "force-dynamic";
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function shortcutFilename(label: string): string {
+  return (
+    label
+      .trim()
+      .replace(/[^a-z0-9._-]+/gi, "-")
+      .replace(/^-+|-+$/g, "") || "sales-material"
+  );
+}
+
 /**
  * DOWNLOAD A SALES MATERIAL.
  *
@@ -49,7 +66,54 @@ export async function GET(
   if (!offering)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const path = new URL(req.url).searchParams.get("path");
+  const search = new URL(req.url).searchParams;
+  const path = search.get("path");
+  const materialId = search.get("material");
+
+  /**
+   * LINK-ONLY MATERIALS STILL DOWNLOAD.
+   *
+   * Older catalogue assets point at an external source instead of an object
+   * in Freya.Docs. Browsers ignore the `download` attribute for cross-origin
+   * URLs, which made those rows the only ones without a working save action.
+   * Return a small HTML shortcut as a real attachment: it is portable, keeps
+   * the authoritative source URL, and does not pretend the landing page is an
+   * original PDF/deck we do not possess.
+   */
+  if (!path && materialId) {
+    const material = offering.materials.find((m) => m.id === materialId);
+    if (
+      !material ||
+      material.docsPath ||
+      !canViewOfferingMaterial(offering, material, actor.userId)
+    )
+      return NextResponse.json(
+        { error: "That asset is not on this offering" },
+        { status: 404 }
+      );
+    let source: URL;
+    try {
+      source = new URL(material.url);
+      if (!['http:', 'https:'].includes(source.protocol)) throw new Error();
+    } catch {
+      return NextResponse.json(
+        { error: "That asset does not have a valid source URL" },
+        { status: 400 }
+      );
+    }
+    const label = escapeHtml(material.label);
+    const href = escapeHtml(source.toString());
+    const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=${href}"><title>${label}</title><p><a href="${href}">Open ${label}</a></p>`;
+    return new NextResponse(html, {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${shortcutFilename(material.label)}.html"`,
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  }
+
   if (!path)
     return NextResponse.json({ error: "Which file?" }, { status: 400 });
 
@@ -92,7 +156,7 @@ export async function GET(
      * tab. Without it the redirect stands and the file downloads as before.
      * Proxying also keeps the presigned URL off the client.
      */
-    if (new URL(req.url).searchParams.get("view") === "1") {
+    if (search.get("view") === "1") {
       /**
        * RANGE PASSES THROUGH, so video can SEEK.
        *

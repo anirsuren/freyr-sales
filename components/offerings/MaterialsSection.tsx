@@ -73,6 +73,41 @@ function uploadedAt(material: OfferingMaterial): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+/**
+ * A pasted web asset has no file bytes in Freya.Docs, but it is still a saved
+ * sales material and must have a working download control. Save a tiny,
+ * portable HTML shortcut that opens the source URL. This is more useful than
+ * relying on `<a download>` (which browsers ignore for cross-origin URLs) and
+ * avoids pretending a generic web page is the original deck or document.
+ */
+function downloadLinkedMaterial(material: OfferingMaterial) {
+  const safeName =
+    material.label
+      .trim()
+      .replace(/[^a-z0-9._-]+/gi, "-")
+      .replace(/^-+|-+$/g, "") || "sales-material";
+  const escapedUrl = material.url
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const escapedLabel = material.label
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=${escapedUrl}"><title>${escapedLabel}</title><p><a href="${escapedUrl}">Open ${escapedLabel}</a></p>`;
+  const blobUrl = URL.createObjectURL(
+    new Blob([html], { type: "text/html;charset=utf-8" })
+  );
+  const anchor = document.createElement("a");
+  anchor.href = blobUrl;
+  anchor.download = `${safeName}.html`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+}
+
 // A colour + icon tag pill (standing rule: never flat gray, never bare text).
 // `solid` is reserved for the one tag a seller must never misread.
 function TagPill({
@@ -510,6 +545,10 @@ export function MaterialsSection({
             // mints a fresh signed URL per click; a pasted link is just a link.
             const uploaded = Boolean(material.docsPath);
             const uploadDate = uploadedAt(material);
+            const linkedDownloadUrl =
+              !uploaded && offeringId
+                ? `/api/offerings/${offeringId}/materials/download?material=${encodeURIComponent(material.id)}`
+                : null;
             // CLICKING A FILE OPENS IT; SAVING IT IS A SEPARATE BUTTON.
             // An uploaded row used to carry `download`, so a rep who wanted to
             // glance at a deck got a file in their Downloads folder instead
@@ -682,32 +721,40 @@ export function MaterialsSection({
                     className="mr-0.5 text-text-tertiary group-hover:text-blue-primary lg:hidden"
                   />
                   {/* Save a copy. A nested <a> is invalid inside the row link,
-                      so this navigates imperatively — the response is an
-                      attachment, so the browser downloads it without leaving
-                      the page. Open to EVERYONE, not just owners: handing files
-                      to customers is the whole point of this list. */}
-                  {uploaded && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Download ${material.label}`}
-                      title="Download a copy"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.location.href = material.url;
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter" && e.key !== " ") return;
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.location.href = material.url;
-                      }}
-                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                    >
-                      <Download size={14} strokeWidth={1.8} />
-                    </span>
-                  )}
+                      so this runs the download imperatively. Uploaded files
+                      receive their original bytes; pasted web assets receive
+                      a portable HTML shortcut to their source. The control is
+                      present on EVERY row and available to every seller. */}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Download ${material.label}`}
+                    title={
+                      uploaded
+                        ? "Download a copy"
+                        : "Download a shortcut to this asset"
+                    }
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (uploaded) window.location.href = material.url;
+                      else if (linkedDownloadUrl)
+                        window.location.href = linkedDownloadUrl;
+                      else downloadLinkedMaterial(material);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (uploaded) window.location.href = material.url;
+                      else if (linkedDownloadUrl)
+                        window.location.href = linkedDownloadUrl;
+                      else downloadLinkedMaterial(material);
+                    }}
+                    className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                  >
+                    <Download size={14} strokeWidth={1.8} />
+                  </span>
                   {canEdit && offeringId && (
                     <EditMaterialButton
                       offeringId={offeringId}
