@@ -449,6 +449,12 @@ const MODULE_AGENT_ADDON = "Freya Fusion (Module + Module Agent/s + Add on Agent
 const PLATFORM_TYPE = "Freya Fusion (Platform)";
 const AI_NATIVE = "Freyr AI Native Service";
 const SERVICE = "Freyr Service";
+// The catalogue links below entered the in-progress sample workspace in the
+// Jul 30 materials import. They predate server-side upload attribution, so keep
+// that known import date on the records themselves. This makes every sample
+// material row show a date while live materials continue to use their own
+// persisted `addedAt` value (or the timestamp embedded in their Docs path).
+const DEMO_MATERIAL_ADDED_AT = "2026-07-30T12:00:00.000Z";
 
 function seedOfferings(): Offering[] {
   // Seeded VERBATIM from Freyr's "Digital Sales and Marketing (Offerings)" master
@@ -470,9 +476,9 @@ function seedOfferings(): Offering[] {
       // (CR-3): overviews open the conversation (awareness), references and
       // case studies prove it (evaluation) — all safe to share with a client.
       materials: [
-        { id: "m-001", kind: "video", label: "Freya.Register overview", url: FREYR_URL.resources, journeyStage: "awareness", accessLevel: "client_facing" },
-        { id: "m-002", kind: "reference", label: "Customer reference call", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "client_facing" },
-        { id: "m-003", kind: "case_study", label: "Cutting registration cycle time", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "client_facing" },
+        { id: "m-001", kind: "video", label: "Freya.Register overview", url: FREYR_URL.resources, journeyStage: "awareness", accessLevel: "client_facing", addedAt: DEMO_MATERIAL_ADDED_AT },
+        { id: "m-002", kind: "reference", label: "Customer reference call", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "client_facing", addedAt: DEMO_MATERIAL_ADDED_AT },
+        { id: "m-003", kind: "case_study", label: "Cutting registration cycle time", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "client_facing", addedAt: DEMO_MATERIAL_ADDED_AT },
       ],
     }),
     off("of-002", MODULE, "Freya.Intelligence", "", {
@@ -554,10 +560,10 @@ function seedOfferings(): Offering[] {
       // pricing closes it (decision), and the competitive battle card is
       // evaluation ammunition for reps only (internal only).
       materials: [
-        { id: "m-012a", kind: "video", label: "Via Agents demo", url: FREYR_URL.resources, journeyStage: "awareness", accessLevel: "client_facing" },
-        { id: "m-012b", kind: "whitepaper", label: "Post-approval change automation", url: FREYR_URL.insights, journeyStage: "awareness", accessLevel: "client_facing" },
-        { id: "m-012c", kind: "pricing", label: "Register stack pricing", url: FREYR_URL.contact, journeyStage: "decision", accessLevel: "client_facing" },
-        { id: "m-012d", kind: "competition", label: "Freya vs. legacy RIM vendors", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "internal_only" },
+        { id: "m-012a", kind: "video", label: "Via Agents demo", url: FREYR_URL.resources, journeyStage: "awareness", accessLevel: "client_facing", addedAt: DEMO_MATERIAL_ADDED_AT },
+        { id: "m-012b", kind: "whitepaper", label: "Post-approval change automation", url: FREYR_URL.insights, journeyStage: "awareness", accessLevel: "client_facing", addedAt: DEMO_MATERIAL_ADDED_AT },
+        { id: "m-012c", kind: "pricing", label: "Register stack pricing", url: FREYR_URL.contact, journeyStage: "decision", accessLevel: "client_facing", addedAt: DEMO_MATERIAL_ADDED_AT },
+        { id: "m-012d", kind: "competition", label: "Freya vs. legacy RIM vendors", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "internal_only", addedAt: DEMO_MATERIAL_ADDED_AT },
       ],
     }),
     off("of-013", PLATFORM_TYPE, "Freya.Agents", "", {
@@ -1000,7 +1006,20 @@ function restoreDemoMaterials(s: OfferingsStore): OfferingsStore {
     if (!demo) continue;
     off.materials = off.materials || [];
     for (const m of demo) {
-      if (!off.materials.some((x) => x.id === m.id)) off.materials.push({ ...m });
+      const index = off.materials.findIndex((x) => x.id === m.id);
+      if (index === -1) {
+        off.materials.push({ ...m });
+        continue;
+      }
+      // Dev HMR and persisted mock catalogues can hold the older version of a
+      // sample row. Merge seed metadata forward so the newly recorded import
+      // date appears immediately without replacing any user-edited fields.
+      const existing = off.materials[index];
+      off.materials[index] = {
+        ...m,
+        ...existing,
+        addedAt: existing.addedAt || m.addedAt,
+      };
     }
   }
   return s;
@@ -1206,9 +1225,32 @@ export async function initializeLiveOfferings(): Promise<void> {
         // Heal a catalog persisted while the samples were being deleted: put
         // them back and write the repaired catalog once.
         const before = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
+        const datedDemoBefore = liveStore.offerings.reduce(
+          (count, offering) =>
+            count +
+            offering.materials.filter(
+              (material) =>
+                DEMO_MATERIAL_IDS.has(material.id) && !!material.addedAt
+            ).length,
+          0
+        );
         restoreDemoMaterials(liveStore);
         const after = liveStore.offerings.reduce((n, o) => n + o.materials.length, 0);
-        if (after !== before || migratedCategories) await persistLiveOfferings();
+        const datedDemoAfter = liveStore.offerings.reduce(
+          (count, offering) =>
+            count +
+            offering.materials.filter(
+              (material) =>
+                DEMO_MATERIAL_IDS.has(material.id) && !!material.addedAt
+            ).length,
+          0
+        );
+        if (
+          after !== before ||
+          datedDemoAfter !== datedDemoBefore ||
+          migratedCategories
+        )
+          await persistLiveOfferings();
         return;
       }
       await persistLiveOfferings();
