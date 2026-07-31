@@ -192,7 +192,9 @@ export function MaterialsSection({
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
-  const [columns, setColumns] = useState<MaterialColumns>(1);
+  // Folder navigation is always a compact four-up grid; files default to the
+  // roomier two-up view and can still be switched to one or four columns.
+  const [columns, setColumns] = useState<MaterialColumns>(2);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -495,7 +497,7 @@ export function MaterialsSection({
           files are under it INCLUDING its sub-folders, so a folder whose
           contents are all one level down never reads as empty. */}
       {subFolders.length > 0 && (
-        <div className={`mt-3 ${materialGridClass(columns)}`}>
+        <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           {subFolders.map((path) => {
             const name = materialFolderLabel(path).split(" · ").pop() as string;
             const count = countUnder(mine, path);
