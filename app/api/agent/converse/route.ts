@@ -13,13 +13,23 @@ import {
 } from "@/lib/agentChat";
 import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
 import { offeringsAnswer } from "@/lib/offeringsAgent";
-import { listOfferings } from "@/lib/offerings";
+import {
+  getOffering,
+  hydrateOffering,
+  initializeLiveOfferings,
+  listOfferings,
+} from "@/lib/offerings";
 import {
   redactAgentOnlyMaterials,
   secureKnowledgePassagesForMember,
 } from "@/lib/materialAccess";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDataMode } from "@/lib/dataMode";
+import { listAssignablePeople } from "@/lib/assignablePeople";
+import {
+  canViewNextCustomerVersion,
+  hideNextCustomerVersions,
+} from "@/lib/roadmapAccess";
 import {
   searchKnowledge,
   knowledgeBlock,
@@ -68,6 +78,89 @@ export async function POST(req: NextRequest) {
   const message = String(body.message || "").trim();
   if (!message) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
+  }
+  const requestedOfferingId = String(body.offeringId || "").trim().slice(0, 120);
+  let focusedOfferingName = "";
+  let offeringFocus = "";
+  if (requestedOfferingId) {
+    try {
+      await initializeLiveOfferings();
+      const raw = getOffering(requestedOfferingId);
+      if (raw) {
+        const liveAccounts =
+          getDataMode() === "live" ? await listAssignablePeople() : [];
+        const roadmapSafe = (await canViewNextCustomerVersion(raw))
+          ? hydrateOffering(raw)
+          : hideNextCustomerVersions(hydrateOffering(raw));
+        const offering = redactAgentOnlyMaterials(roadmapSafe, actor.userId);
+        const verifiedContacts =
+          getDataMode() === "live"
+            ? offering.contacts.filter((contact) => {
+                const name = contact.name.trim().toLowerCase();
+                const email = (contact.email || "").trim().toLowerCase();
+                return liveAccounts.some(
+                  (person) =>
+                    Boolean(person.memberId) &&
+                    (person.name.trim().toLowerCase() === name ||
+                      Boolean(
+                        email &&
+                          (person.email || "").trim().toLowerCase() === email
+                      ))
+                );
+              })
+            : offering.contacts;
+        focusedOfferingName = offering.offering_name;
+        const materials = offering.materials || [];
+        offeringFocus =
+          "\n\nOFFERING SELECTED BY THE USER (explicit context from the Ask Freyr AI button):\n" +
+          [
+            `Name: ${offering.offering_name}`,
+            offering.offering_type && `Offering type: ${offering.offering_type}`,
+            offering.offering_category && `Category: ${offering.offering_category}`,
+            offering.current_availability &&
+              `Current availability: ${offering.current_availability}`,
+            offering.offering_description &&
+              `Offering brief: ${offering.offering_description}`,
+            offering.customerTypes?.length &&
+              `Customer fit: ${offering.customerTypes.map((type) => type.name).join(", ")}`,
+            offering.markets?.length &&
+              `Markets: ${offering.markets.map((market) => market.name).join(", ")}`,
+            verifiedContacts.length &&
+              `Contacts: ${verifiedContacts
+                .map((contact) =>
+                  `${contact.name}${contact.role ? ` (${contact.role})` : ""}`
+                )
+                .join(", ")}`,
+            offering.releases?.length &&
+              `Versions: ${offering.releases
+                .map(
+                  (release) =>
+                    `${release.version} (${release.status}${
+                      release.date ? `, ${release.date}` : ""
+                    })`
+                )
+                .join("; ")}`,
+            `Visible sales materials (${materials.length}): ${
+              materials.length
+                ? materials
+                    .map(
+                      (material) =>
+                        `${material.label} [${material.kind}]${
+                          material.folder ? ` in ${material.folder}` : ""
+                        }`
+                    )
+                    .join("; ")
+                : "None recorded"
+            }`,
+            "Resolve phrases such as 'this offering', 'it', and 'its materials' to this offering unless the user explicitly changes the subject.",
+          ]
+            .filter(Boolean)
+            .join("\n");
+      }
+    } catch {
+      // Invalid/stale context must not take the whole assistant down. The chat
+      // remains generic rather than pretending an offering was loaded.
+    }
   }
   // Sources THIS chat has switched off in the Knowledge base panel. Sent as
   // exclusions so the default — nothing sent — means the assistant uses
@@ -405,6 +498,7 @@ export async function POST(req: NextRequest) {
     'Types: "bar" (comparisons), "donut" (share of a whole), "area" (trend). Real values only.\n\n' +
 
     (offeringsOnly ? "" : "THE BOOK (live data):\n" + facts) +
+    offeringFocus +
     catalogueGrounding +
     knowledgeGrounding;
 
@@ -653,7 +747,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       reply: linkifyAccounts(agentResult.text, customers),
-      suggestions: base.suggestions,
+      suggestions: focusedOfferingName
+        ? [
+            `Who is ${focusedOfferingName} best suited for?`,
+            `What sales materials do we have for ${focusedOfferingName}?`,
+            `Write a short pitch for ${focusedOfferingName}`,
+          ]
+        : base.suggestions,
       source: "claude-agent",
       did: agentResult.dids[0],
     });

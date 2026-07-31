@@ -368,6 +368,9 @@ export interface AgentPrefs {
   linkedin_about: string | null; // background paragraph, trimmed
   linkedin_photo: string | null; // replaces the initials circle
   linkedin_synced_at: string | null;
+  /** Account-backed history for the main Agent workspace. Kept with the rep's
+   * private preferences because both are scoped to one verified member. */
+  conversation_state?: unknown[];
   updated_at: string;
 }
 

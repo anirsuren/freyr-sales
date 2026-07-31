@@ -5,6 +5,7 @@ import { getCurrentUser } from "./currentUser";
 import { cookies } from "next/headers";
 import { listWorkspaceAccess } from "./accessStore";
 import { ACCESS_COOKIE, verifyAccessGrant } from "./accessControl";
+import { getDataMode } from "./dataMode";
 
 export type AssignablePerson = {
   name: string;
@@ -83,9 +84,18 @@ export async function listAssignablePeople(): Promise<AssignablePerson[]> {
       memberId: me.memberId || undefined,
     });
 
-  for (const p of listOfferingPeople()) put(p);
+  // Catalogue POC names populate the demonstration, but a name in a sheet is
+  // not a workspace identity. Live pickers must contain account-backed people
+  // only; otherwise assigning "Inayat" would create a person-shaped record
+  // with no account behind it. In-progress mode keeps the catalogue roster so
+  // every interaction remains visible with sample data.
+  if (getDataMode() === "mock") {
+    for (const p of listOfferingPeople()) put(p);
+  }
 
-  return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name));
+  return Array.from(byKey.values())
+    .filter((person) => getDataMode() === "mock" || Boolean(person.memberId))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

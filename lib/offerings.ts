@@ -790,6 +790,208 @@ const DEMO_MATERIALS_BY_OFFERING: Record<string, OfferingMaterial[]> = (() => {
   return map;
 })();
 
+/**
+ * A COMPLETE SAMPLE ROADMAP FOR IN-PROGRESS MODE.
+ *
+ * The offering catalogue itself is shared between modes, so demo roadmap
+ * rows must never be written into that catalogue: doing so would make fake
+ * versions appear in Ready now. Instead, mock mode overlays a deterministic
+ * past/current/next story at read time. Every offering therefore demonstrates
+ * the finished roadmap UI while live mode continues to expose only versions
+ * an Offering Owner actually recorded.
+ */
+type DemoRoadmapTheme = {
+  past: [string, string];
+  current: [string, string, string];
+  next: [string, string, string];
+};
+
+const DEMO_ROADMAP_THEMES: Record<string, DemoRoadmapTheme> = {
+  [CAT_RIM]: {
+    past: [
+      "Centralized product, application, and registration records",
+      "Introduced governed lifecycle-change tracking",
+    ],
+    current: [
+      "Unified product and registration workspace with role-based workflows",
+      "Market-level status, dependency, and renewal visibility",
+      "Audit-ready history for every customer record change",
+    ],
+    next: [
+      "Guided impact assessment for lifecycle changes",
+      "Configurable portfolio alerts and exception dashboards",
+      "Expanded data-quality checks before regulatory handoffs",
+    ],
+  },
+  [CAT_SUBMISSIONS]: {
+    past: [
+      "Standardized submission planning and document handoffs",
+      "Added reusable publishing and quality-control checklists",
+    ],
+    current: [
+      "End-to-end submission planning, authoring, review, and delivery tracking",
+      "Reusable content packages with clear owner and due-date visibility",
+      "Operational dashboards for readiness, validation, and agency follow-up",
+    ],
+    next: [
+      "AI-assisted content readiness and dossier completeness checks",
+      "Earlier risk alerts for delayed components and approvals",
+      "Broader eCTD 4.0 and multi-market publishing automation",
+    ],
+  },
+  [CAT_GRI]: {
+    past: [
+      "Consolidated regulatory intelligence sources by market",
+      "Added structured review and impact-assessment workflows",
+    ],
+    current: [
+      "Global regulatory monitoring with traceable source and market context",
+      "Prioritized impact assessments for products and active registrations",
+      "Shareable intelligence briefings and follow-up ownership",
+    ],
+    next: [
+      "Personalized alerts based on portfolio and market exposure",
+      "AI-generated summaries with source-level citations",
+      "Cross-market trend views for earlier regulatory planning",
+    ],
+  },
+  [CAT_LABELING]: {
+    past: [
+      "Standardized label and artwork request intake",
+      "Added review checkpoints and controlled file handoffs",
+    ],
+    current: [
+      "End-to-end label and artwork lifecycle coordination",
+      "Market, language, and component-level approval visibility",
+      "Controlled comparison, proofreading, and audit history",
+    ],
+    next: [
+      "Automated content and artwork consistency checks",
+      "Expanded ePI workflows and regional variation support",
+      "Predictive alerts for approval and production bottlenecks",
+    ],
+  },
+  [CAT_PLATFORM]: {
+    past: [
+      "Connected core Freya modules through a shared workspace",
+      "Introduced reusable regulatory objects and permissions",
+    ],
+    current: [
+      "Unified navigation, identity, and data across Freya Fusion modules",
+      "Cross-module agents grounded in governed regulatory information",
+      "Portfolio dashboards with traceable actions and approvals",
+    ],
+    next: [
+      "More configurable agents for multi-step regulatory work",
+      "Shared context across modules, markets, and customer teams",
+      "Expanded admin controls, observability, and workflow analytics",
+    ],
+  },
+  [CAT_RA]: {
+    past: [
+      "Standardized regulatory planning and delivery playbooks",
+      "Added market-level ownership and milestone tracking",
+    ],
+    current: [
+      "Structured regulatory strategy, execution, and health-authority tracking",
+      "Clear market, submission, commitment, and renewal visibility",
+      "Reusable delivery plans with accountable owners and due dates",
+    ],
+    next: [
+      "AI-assisted pathway, gap, and market-priority recommendations",
+      "Earlier risk signals across submissions and commitments",
+      "Expanded portfolio reporting for global and affiliate teams",
+    ],
+  },
+  [CAT_OTHERS]: {
+    past: [
+      "Standardized specialist-service intake and delivery tracking",
+      "Added controlled templates, reviews, and evidence capture",
+    ],
+    current: [
+      "Role-based workflows for specialist regulatory delivery",
+      "Customer, deliverable, milestone, and quality visibility",
+      "Traceable approvals and reusable delivery templates",
+    ],
+    next: [
+      "AI-assisted quality checks and delivery recommendations",
+      "Expanded analytics for capacity, risk, and turnaround time",
+      "More configurable workflows for regional delivery models",
+    ],
+  },
+};
+
+const DEFAULT_DEMO_ROADMAP_THEME: DemoRoadmapTheme = {
+  past: [
+    "Established the first standardized customer delivery workflow",
+    "Added shared records, ownership, and milestone tracking",
+  ],
+  current: [
+    "Unified workspace with role-based workflows and approvals",
+    "Customer, market, milestone, and deliverable visibility",
+    "Reusable reporting with a complete audit history",
+  ],
+  next: [
+    "AI-assisted recommendations for common workflows",
+    "Earlier risk alerts and more configurable dashboards",
+    "Expanded integrations and cross-team handoffs",
+  ],
+};
+
+function demoRoadmapForOffering(offering: Offering): OfferingRelease[] {
+  const number = Number(offering.id.match(/\d+/)?.[0] || 1);
+  const theme =
+    DEMO_ROADMAP_THEMES[offering.offering_category] ||
+    DEFAULT_DEMO_ROADMAP_THEME;
+  const product = offering.offering_type.startsWith("Freya Fusion");
+  const currentMinor = 2 + (number % 4);
+  const serviceMinor = 1 + (number % 2);
+  const versions = product
+    ? {
+        past: `v1.${currentMinor - 1}`,
+        current: `v1.${currentMinor}`,
+        next: `v1.${currentMinor + 1}`,
+      }
+    : {
+        past: `2025.${serviceMinor}`,
+        current: `2026.${serviceMinor}`,
+        next: `2026.${serviceMinor + 1}`,
+      };
+  const pastMonth = String(3 + (number % 7)).padStart(2, "0");
+  const currentMonth = String(1 + (number % 5)).padStart(2, "0");
+  const nextMonth = String(9 + (number % 4)).padStart(2, "0");
+
+  return [
+    {
+      id: `demo-roadmap-${offering.id}-past`,
+      version: versions.past,
+      date: `2025-${pastMonth}-15`,
+      status: "released",
+      features: [...theme.past],
+      note: "Sample roadmap data for in-progress mode.",
+    },
+    {
+      id: `demo-roadmap-${offering.id}-current`,
+      version: versions.current,
+      date: `2026-${currentMonth}-12`,
+      status: "released",
+      features: [
+        `${offering.offering_name} customer experience refreshed for faster day-to-day use`,
+        ...theme.current,
+      ],
+      note: "Sample roadmap data for in-progress mode.",
+    },
+    {
+      id: `demo-roadmap-${offering.id}-next`,
+      version: versions.next,
+      date: `2026-${nextMonth}-20`,
+      status: "next",
+      features: [...theme.next],
+      note: "Sample roadmap data for in-progress mode.",
+    },
+  ];
+}
+
 // A catalog persisted BEFORE this fix had the samples deleted out of it, so put
 // them back on load rather than leaving prod permanently empty.
 function restoreDemoMaterials(s: OfferingsStore): OfferingsStore {
@@ -806,7 +1008,10 @@ function restoreDemoMaterials(s: OfferingsStore): OfferingsStore {
 
 /** What a READER may see. Real mode gets only genuinely uploaded assets. */
 function withVisibleMaterials(off: Offering): Offering {
-  if (getDataMode() !== "live" || !off.materials?.length) return off;
+  if (getDataMode() !== "live") {
+    return { ...off, releases: demoRoadmapForOffering(off) };
+  }
+  if (!off.materials?.length) return off;
   const real = off.materials.filter((m) => !DEMO_MATERIAL_IDS.has(m.id));
   return real.length === off.materials.length ? off : { ...off, materials: real };
 }

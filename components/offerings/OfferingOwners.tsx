@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ShieldCheck,
+  Crown,
   Clock3,
   X,
   Check,
@@ -407,12 +407,12 @@ export function OfferingOwners({
                   </span>
                 </span>
               </OwnerHoverCard>
-              <Tooltip label="Can edit this offering" side="top">
+              <Tooltip label="Offering Owner — can edit this offering" side="top">
                 <span
-                  className="owner-permission-pill ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+                  className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-[rgba(0,113,227,0.22)] bg-blue-light px-2 py-0.5 text-[10.5px] font-semibold text-blue-primary"
                 >
-                  <ShieldCheck size={11} strokeWidth={2.2} />
-                  Can edit
+                  <Crown size={11.5} strokeWidth={2.2} fill="currentColor" />
+                  Owner
                 </span>
               </Tooltip>
               {/* YOU CAN ONLY TAKE AWAY YOUR OWN ACCESS.

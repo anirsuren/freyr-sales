@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
+  CalendarDays,
   ChevronRight,
   Download,
   Folder,
@@ -21,7 +22,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
-import { TimeAgo } from "@/components/ui/TimeAgo";
+import { formatDate } from "@/lib/utils";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -54,6 +55,23 @@ const FORMAT_RANK: Record<MaterialFormat, number> = {
   document: 2,
   other: 3,
 };
+
+/**
+ * The app has two generations of uploaded materials. Current rows carry an
+ * explicit `addedAt`; older Freya.Docs rows predate that field, but their
+ * object path begins with the millisecond upload timestamp. Recovering that
+ * timestamp lets the UI show the real upload date without inventing one or
+ * mutating the stored record. Link-only catalogue assets correctly return
+ * null because they were never uploaded through this app.
+ */
+function uploadedAt(material: OfferingMaterial): string | null {
+  if (material.addedAt && !Number.isNaN(Date.parse(material.addedAt)))
+    return material.addedAt;
+  const match = material.docsPath?.match(/(?:^|\/)(\d{13})-/);
+  if (!match) return null;
+  const date = new Date(Number(match[1]));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
 
 // A colour + icon tag pill (standing rule: never flat gray, never bare text).
 // `solid` is reserved for the one tag a seller must never misread.
@@ -491,6 +509,7 @@ export function MaterialsSection({
             // An UPLOADED file is fetched through our download route, which
             // mints a fresh signed URL per click; a pasted link is just a link.
             const uploaded = Boolean(material.docsPath);
+            const uploadDate = uploadedAt(material);
             // CLICKING A FILE OPENS IT; SAVING IT IS A SEPARATE BUTTON.
             // An uploaded row used to carry `download`, so a rep who wanted to
             // glance at a deck got a file in their Downloads folder instead
@@ -615,21 +634,30 @@ export function MaterialsSection({
                       uploaded through the app, the seeded catalog assets
                       carry no uploader and must not be credited to anyone,
                       so their rows simply have no attribution line. */}
-                  {material.addedBy && (
+                  {(material.addedBy || uploadDate) && (
                     <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-text-tertiary">
-                      <Avatar
-                        name={material.addedBy}
-                        className="h-5 w-5 text-[8px]"
-                      />
-                      <span className="truncate">
-                        Added by {material.addedBy}
-                      </span>
-                      {material.addedAt && (
-                        <TimeAgo
-                          value={material.addedAt}
-                          prefix="· "
+                      {material.addedBy ? (
+                        <>
+                          <Avatar
+                            name={material.addedBy}
+                            className="h-5 w-5 text-[8px]"
+                          />
+                          <span className="truncate">
+                            Added by {material.addedBy}
+                          </span>
+                        </>
+                      ) : (
+                        <CalendarDays size={12} strokeWidth={1.9} />
+                      )}
+                      {uploadDate && (
+                        <time
+                          dateTime={uploadDate}
+                          title={new Date(uploadDate).toLocaleString()}
                           className="shrink-0 tnum"
-                        />
+                        >
+                          {material.addedBy ? "· Uploaded " : "Uploaded "}
+                          {formatDate(uploadDate)}
+                        </time>
                       )}
                     </span>
                   )}

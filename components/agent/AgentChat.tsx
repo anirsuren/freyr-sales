@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useCallback, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import {
   KnowledgePanel,
@@ -10,11 +10,10 @@ import {
   Plus,
   ArrowUp,
   Sparkles,
-  Inbox,
   SlidersHorizontal,
   Trash2,
   MessageSquareText,
-  Target,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -29,6 +28,7 @@ import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number };
+type OfferingContext = { id: string; name: string };
 type Convo = {
   id: string;
   title: string;
@@ -42,6 +42,8 @@ type Convo = {
    * to it, and must not narrow the thread beside it (Anir, Jul 29).
    */
   excludedSources?: string[];
+  /** Explicitly selected by clicking Ask Freyr AI on an offering page. */
+  offeringContext?: OfferingContext;
 };
 
 const KEY = "freyr.agent.conversations";
@@ -69,17 +71,41 @@ const STARTERS = [
   "Draft a re-engagement for a cooling account",
 ];
 
+function offeringStarters(name: string): string[] {
+  return [
+    `Explain ${name} in plain English`,
+    `Who is ${name} best suited for?`,
+    `What sales materials do we have for ${name}?`,
+    `Write a short pitch for ${name}`,
+  ];
+}
+
 function load(storageKey: string): Convo[] {
   try {
-    return JSON.parse(localStorage.getItem(storageKey) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 function save(storageKey: string, c: Convo[]) {
   try {
-    localStorage.setItem(storageKey, JSON.stringify(c.slice(0, 50)));
+    // This used to silently discard everything after chat 50. Keep the full
+    // local cache; the account-backed copy below is the durable source.
+    localStorage.setItem(storageKey, JSON.stringify(c));
   } catch {}
+}
+
+function mergeConversations(...groups: Convo[][]): Convo[] {
+  const byId = new Map<string, Convo>();
+  for (const conversation of groups.flat()) {
+    if (!conversation?.id || !Array.isArray(conversation.messages)) continue;
+    const existing = byId.get(conversation.id);
+    if (!existing || (conversation.updated || 0) >= (existing.updated || 0)) {
+      byId.set(conversation.id, conversation);
+    }
+  }
+  return [...byId.values()].sort((a, b) => (b.updated || 0) - (a.updated || 0));
 }
 function uid() {
   return `c-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -451,8 +477,13 @@ function ThinkingDots() {
 
 export function AgentChat({
   initialAsk,
+  initialOffering,
   offeringsOnly = false,
-}: { initialAsk?: string; offeringsOnly?: boolean } = {}) {
+}: {
+  initialAsk?: string;
+  initialOffering?: OfferingContext;
+  offeringsOnly?: boolean;
+} = {}) {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
   const storageKey = userScopedStorageKey(KEY, currentUser.id);
@@ -474,9 +505,16 @@ export function AgentChat({
   // whether anything is in flight.
   const sending = sendingId !== null;
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [pendingOffering, setPendingOffering] = useState<OfferingContext | null>(
+    initialOffering ?? null
+  );
 
   const [suggestions, setSuggestions] = useState<string[]>(
-    offeringsOnly ? OFFERINGS_STARTERS : STARTERS
+    initialOffering
+      ? offeringStarters(initialOffering.name)
+      : offeringsOnly
+        ? OFFERINGS_STARTERS
+        : STARTERS
   );
   const [typingTs, setTypingTs] = useState<number | null>(null);
   const [summary, setSummary] = useState<{
@@ -487,25 +525,106 @@ export function AgentChat({
   const scrollRef = useRef<HTMLDivElement>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
   const activeUserIdRef = useRef(currentUser.id);
+  const historySaveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const [historyReadyForSync, setHistoryReadyForSync] = useState(false);
+  // Keep the mount-time hand-off stable when we remove its query parameters
+  // from the URL. Next can refresh the page props after replaceState; that
+  // must not wipe the conversation we just created.
+  const initialOfferingRef = useRef(initialOffering);
 
   useEffect(() => {
+    let cancelled = false;
     activeUserIdRef.current = currentUser.id;
     requestControllerRef.current?.abort();
     requestControllerRef.current = null;
+    setHistoryReadyForSync(false);
     setLoadedStorageKey(null);
-    setConvos(load(storageKey));
+    // Recover the original unscoped key and any earlier stable member-id key.
+    // Identity hardening introduced the current key without migrating KEY,
+    // which is why established users suddenly saw only their newest chats.
+    const legacyKeys = [
+      KEY,
+      currentUser.memberId
+        ? userScopedStorageKey(KEY, currentUser.memberId)
+        : null,
+    ].filter((key): key is string => Boolean(key && key !== storageKey));
+    const browserHistory = mergeConversations(
+      load(storageKey),
+      ...legacyKeys.map(load)
+    );
+    setConvos(browserHistory);
     setLoadedStorageKey(storageKey);
     setActiveId(null);
     setInput("");
     setSendingId(null);
-    setSuggestions(offeringsOnly ? OFFERINGS_STARTERS : STARTERS);
+    setPendingOffering(initialOfferingRef.current ?? null);
+    setSuggestions(
+      initialOfferingRef.current
+        ? offeringStarters(initialOfferingRef.current.name)
+        : offeringsOnly
+          ? OFFERINGS_STARTERS
+          : STARTERS
+    );
     setTypingTs(null);
     setSummary(null);
+
+    fetch("/api/agent/conversations", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("history unavailable");
+        return response.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const accountHistory = Array.isArray(data?.conversations)
+          ? (data.conversations as Convo[])
+          : [];
+        // A contextual hand-off can submit while this GET is in flight. Merge
+        // with the CURRENT list, not only the startup snapshot, or the GET can
+        // erase the brand-new message a split second after it appears.
+        setConvos((current) => {
+          const merged = mergeConversations(
+            accountHistory,
+            browserHistory,
+            current
+          );
+          save(storageKey, merged);
+          return merged;
+        });
+        // The data has been copied into the user-scoped cache and will now be
+        // uploaded to the account. Removing the bare key prevents it from
+        // resurrecting a chat the user later deletes.
+        for (const key of legacyKeys) localStorage.removeItem(key);
+        setHistoryReadyForSync(true);
+      })
+      .catch(() => {
+        // Offline/local fallback still keeps the recovered browser history.
+        if (!cancelled) setHistoryReadyForSync(true);
+      });
     return () => {
+      cancelled = true;
       activeUserIdRef.current = "";
       requestControllerRef.current?.abort();
     };
-  }, [currentUser.id, storageKey]);
+  }, [currentUser.id, currentUser.memberId, storageKey, offeringsOnly]);
+
+  // Mirror every main-Agent history change to the verified member's account.
+  // localStorage remains an instant/offline cache, never the only copy.
+  useEffect(() => {
+    if (!historyReadyForSync || loadedStorageKey !== storageKey) return;
+    const snapshot = convos;
+    // Serialize writes so a slower older request can never finish after a
+    // newer one and resurrect a deleted chat or drop the latest reply.
+    historySaveChainRef.current = historySaveChainRef.current
+      .catch(() => {})
+      .then(async () => {
+        await fetch("/api/agent/conversations", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversations: snapshot }),
+          keepalive: true,
+        });
+      });
+  }, [convos, historyReadyForSync, loadedStorageKey, storageKey]);
 
   // Proactive greeting: what's on the rep's plate (deterministic, no LLM call).
   // Not fetched at all in real mode: nothing would be rendered from it, and a
@@ -523,11 +642,13 @@ export function AgentChat({
     return () => {
       cancelled = true;
     };
-  }, [currentUser.id]);
+  }, [currentUser.id, offeringsOnly]);
 
   const visibleConvos =
     loadedStorageKey === storageKey ? convos : EMPTY_CONVOS;
   const active = visibleConvos.find((c) => c.id === activeId) || null;
+  const offeringContext = active?.offeringContext ?? pendingOffering;
+  const offeringContextId = offeringContext?.id;
   /**
    * What THIS chat has switched off. Empty = the whole knowledge base.
    *
@@ -539,9 +660,10 @@ export function AgentChat({
    * the choice is held here and travels into the chat when it starts.
    */
   const [pendingExcluded, setPendingExcluded] = useState<string[]>([]);
-  const excludedSources = active
-    ? active.excludedSources ?? []
-    : pendingExcluded;
+  const excludedSources = useMemo(
+    () => (active ? active.excludedSources ?? [] : pendingExcluded),
+    [active, pendingExcluded]
+  );
   const setExcludedSources = (ids: string[]) => {
     if (!activeId) {
       setPendingExcluded(ids);
@@ -566,7 +688,13 @@ export function AgentChat({
   }, [active?.messages.length, sending, scrollToBottom]);
 
   const send = useCallback(
-    async (raw: string) => {
+    async (
+      raw: string,
+      options?: {
+        newConversation?: boolean;
+        offering?: OfferingContext | null;
+      }
+    ) => {
       const text = raw.trim();
       if (!text || sending || loadedStorageKey !== storageKey) return;
       const requestUserId = currentUser.id;
@@ -574,8 +702,14 @@ export function AgentChat({
 
       // start or continue a conversation — decide the id synchronously so the
       // very next message continues the same thread (don't mutate inside the updater).
-      const isNew = !activeId;
-      const id = activeId || uid();
+      const isNew = Boolean(options?.newConversation) || !activeId;
+      const id = isNew ? uid() : activeId!;
+      const nextOffering =
+        options && "offering" in options ? options.offering : pendingOffering;
+      const requestOfferingId =
+        options && "offering" in options
+          ? options.offering?.id
+          : offeringContextId;
       const derivedTitle = smartTitle(text);
       setActiveId(id);
       setConvos((prev) => {
@@ -589,6 +723,9 @@ export function AgentChat({
                 // Whatever was unticked before the first message still applies.
                 ...(pendingExcluded.length
                   ? { excludedSources: pendingExcluded }
+                  : {}),
+                ...(nextOffering
+                  ? { offeringContext: nextOffering }
                   : {}),
               },
               ...prev,
@@ -617,9 +754,11 @@ export function AgentChat({
       const timer = setTimeout(() => controller.abort(), 45000);
       try {
         // Send the conversation so far so follow-ups ("make it shorter") have context.
-        const prior =
-          visibleConvos.find((c) => c.id === id)?.messages.map((mm) => ({ role: mm.role, text: mm.text })) ||
-          [];
+        const prior = isNew
+          ? []
+          : visibleConvos
+              .find((c) => c.id === id)
+              ?.messages.map((mm) => ({ role: mm.role, text: mm.text })) || [];
         const res = await fetch("/api/agent/converse", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -629,6 +768,9 @@ export function AgentChat({
             // Empty means the whole knowledge base; a selection scopes THIS
             // chat to it without hiding anything from any other chat.
             excludeSources: excludedSources,
+            // Context is explicit: it exists only when this conversation was
+            // opened from an offering's Ask Freyr AI button.
+            offeringId: requestOfferingId,
           }),
           signal: controller.signal,
         });
@@ -687,30 +829,74 @@ export function AgentChat({
       currentUser.id,
       loadedStorageKey,
       storageKey,
+      pendingExcluded,
+      excludedSources,
+      offeringContextId,
+      pendingOffering,
     ]
   );
 
-  function newChat() {
+  function newChat(nextOffering: OfferingContext | null = null) {
     setActiveId(null);
     setPendingExcluded([]);
-    setSuggestions(offeringsOnly ? OFFERINGS_STARTERS : STARTERS);
+    setPendingOffering(nextOffering);
+    setSuggestions(
+      nextOffering
+        ? offeringStarters(nextOffering.name)
+        : offeringsOnly
+          ? OFFERINGS_STARTERS
+          : STARTERS
+    );
     setInput("");
   }
 
-  // Global-search Enter lands here with ?ask= — start a FRESH conversation
-  // and submit the question (Anir: "like Gemini... obviously create a new
-  // chat"). Consume once; newChat() commits before send() reads activeId.
-  const askConsumed = useRef(false);
+  function clearOfferingContext() {
+    if (!activeId) {
+      setPendingOffering(null);
+    } else {
+      setConvos((prev) => {
+        const next = prev.map((c) =>
+          c.id === activeId ? { ...c, offeringContext: undefined } : c
+        );
+        save(storageKey, next);
+        return next;
+      });
+    }
+    setSuggestions(offeringsOnly ? OFFERINGS_STARTERS : STARTERS);
+  }
+
+  // The query parameter is only a hand-off envelope. Once the Agent page has
+  // visibly adopted it, remove it so refreshing later cannot silently restore
+  // context that the person deliberately cleared.
+  const offeringRouteConsumed = useRef("");
   useEffect(() => {
-    if (!initialAsk || askConsumed.current) return;
-    if (loadedStorageKey !== storageKey) return;
-    askConsumed.current = true;
-    newChat();
-    const t = setTimeout(() => send(initialAsk), 50);
+    if (!initialOffering || loadedStorageKey !== storageKey) return;
+    const key = `${currentUser.id}:${initialOffering.id}`;
+    if (offeringRouteConsumed.current === key) return;
+    offeringRouteConsumed.current = key;
+    setActiveId(null);
+    setPendingOffering(initialOffering);
+    setSuggestions(offeringStarters(initialOffering.name));
     window.history.replaceState(null, "", "/agent");
-    return () => clearTimeout(t);
+  }, [currentUser.id, initialOffering, loadedStorageKey, storageKey]);
+
+  // Global-search Enter and the offering-page AI hand-off land here with
+  // ?ask= — start a FRESH conversation and submit the visible question.
+  // Consume once; newChat() commits before send() reads activeId.
+  const askConsumed = useRef("");
+  useEffect(() => {
+    if (!initialAsk) return;
+    if (loadedStorageKey !== storageKey) return;
+    const key = `${currentUser.id}:${initialOffering?.id ?? ""}:${initialAsk}`;
+    if (askConsumed.current === key) return;
+    askConsumed.current = key;
+    void send(initialAsk, {
+      newConversation: true,
+      offering: initialOffering ?? null,
+    });
+    window.history.replaceState(null, "", "/agent");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialAsk, loadedStorageKey, storageKey]);
+  }, [currentUser.id, initialAsk, initialOffering, loadedStorageKey, storageKey]);
 
   function remove(id: string) {
     setConvos((prev) => {
@@ -727,7 +913,7 @@ export function AgentChat({
       <aside className="w-[260px] shrink-0 border-r border-border-light flex flex-col bg-surface/40">
         <div className="p-3">
           <button
-            onClick={newChat}
+            onClick={() => newChat()}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-blue-primary text-white text-[14px] font-semibold hover:bg-blue-hover transition-colors"
           >
             <Plus size={17} strokeWidth={2.2} />
@@ -783,6 +969,35 @@ export function AgentChat({
 
       {/* Thread + composer */}
       <div className="flex-1 min-w-0 flex flex-col">
+        {offeringContext && (
+          <div className="border-b border-border-light bg-blue-light px-4 py-2.5">
+            <div className="relative mx-auto flex h-7 max-w-[760px] items-center justify-center">
+              <div className="flex min-w-0 items-center justify-center gap-2.5 px-10 text-center">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-primary text-white">
+                  <Sparkles size={14} strokeWidth={2} />
+                </span>
+                <div className="min-w-0 truncate text-[13px] font-medium text-text-primary">
+                <span>Freyr AI is focused on </span>
+                <Link
+                  href={`/offerings/${offeringContext.id}`}
+                  className="font-semibold text-blue-primary hover:underline"
+                >
+                  {offeringContext.name}
+                </Link>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={clearOfferingContext}
+                aria-label={`Remove ${offeringContext.name} context`}
+                title="Remove offering context"
+                className="absolute right-0 top-0 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-white hover:text-text-primary"
+              >
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+        )}
         {!active || active.messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center px-6">
             <span
@@ -795,13 +1010,17 @@ export function AgentChat({
               className="text-[26px] font-semibold text-text-primary tracking-[-0.01em] rise-in"
               style={{ animationDelay: "60ms" }}
             >
-              Hey {firstName}, what do you want to work on?
+              {offeringContext
+                ? `What do you want to know about ${offeringContext.name}?`
+                : `Hey ${firstName}, what do you want to work on?`}
             </h1>
             <p
               className="text-[14px] text-text-secondary mt-2 text-center max-w-[520px] rise-in"
               style={{ animationDelay: "120ms" }}
             >
-              {offeringsOnly
+              {offeringContext
+                ? `This new chat is grounded in ${offeringContext.name}. Ask about its capabilities, fit, roadmap, or sales materials.`
+                : offeringsOnly
                 ? "Ask about an offering, who it suits, or what an uploaded document says. I'll do the work and leave everything for you to review."
                 : "Ask about your pipeline, an account, or have me draft outreach. I'll do the work and leave everything for you to review."}
             </p>
@@ -854,7 +1073,12 @@ export function AgentChat({
               className="flex flex-wrap justify-center gap-2 mt-3 max-w-[640px] rise-in"
               style={{ animationDelay: "240ms" }}
             >
-              {STARTERS.map((s) => (
+              {(offeringContext
+                ? offeringStarters(offeringContext.name)
+                : offeringsOnly
+                  ? OFFERINGS_STARTERS
+                  : STARTERS
+              ).map((s) => (
                 <button
                   key={s}
                   onClick={() => send(s)}
@@ -937,7 +1161,9 @@ export function AgentChat({
                 rows={1}
                 aria-label="Message the agent"
                 placeholder={
-                  offeringsOnly
+                  offeringContext
+                    ? `Ask about ${offeringContext.name}…`
+                    : offeringsOnly
                     ? "Ask about an offering, a market, or an uploaded document…"
                     : "Ask the agent anything about your pipeline…"
                 }

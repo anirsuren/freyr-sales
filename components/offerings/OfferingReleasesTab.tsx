@@ -8,6 +8,7 @@ import {
   Clock,
   GitCompareArrows,
   ListChecks,
+  MapPin,
   Plus,
   Rocket,
   Trash2,
@@ -19,6 +20,12 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
 import type { OfferingRelease } from "@/lib/offerings";
+
+type TimelineItem = {
+  id: string;
+  kind: "past" | "current" | "next";
+  release: OfferingRelease | null;
+};
 
 /**
  * PRODUCT ROADMAP — shipped history for everyone, future for approved people.
@@ -102,6 +109,29 @@ export function OfferingReleasesTab({
     (release) =>
       release.status === "released" && release.id !== current?.id
   );
+  const timelineItems: TimelineItem[] = [
+    ...[...past]
+      .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+      .map((release) => ({
+        id: release.id,
+        kind: "past" as const,
+        release,
+      })),
+    {
+      id: current?.id || "current-empty",
+      kind: "current",
+      release: current,
+    },
+    ...(canSeeNext
+      ? [
+          {
+            id: next?.id || "next-empty",
+            kind: "next" as const,
+            release: next,
+          },
+        ]
+      : []),
+  ];
 
   function resetAddForm() {
     setVersion("");
@@ -181,43 +211,113 @@ export function OfferingReleasesTab({
         )}
       </div>
 
-      {/* WHAT IS LIVE AND WHAT IS NEXT, side by side — the two facts Suren
-          named first, before any history. */}
-      <div
-        className={`grid grid-cols-1 gap-4 ${canSeeNext ? "md:grid-cols-2" : ""}`}
-      >
-        {[
-          { label: "Current customer version", rel: current, empty: "No version recorded yet." },
-          ...(canSeeNext
-            ? [{ label: "Next customer version", rel: next, empty: "Nothing recorded as coming next." }]
-            : []),
-        ].map((slot) => (
-          <div
-            key={slot.label}
-            className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              {slot.label}
+      {/* One chronological rail answers the three questions at a glance:
+          what shipped, where the customer is now, and what comes next. It uses
+          the same solid-past / beacon-now / dashed-future language as the
+          contact timeline elsewhere in the app. */}
+      <div className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-light px-5 py-3.5">
+          <div>
+            <h3 className="text-[13px] font-semibold text-text-primary">
+              Customer version timeline
+            </h3>
+            <p className="mt-0.5 text-[11.5px] text-text-tertiary">
+              Released versions lead to today&apos;s customer version and the approved next release.
             </p>
-            {slot.rel ? (
-              <>
-                <p className="mt-1.5 flex items-center gap-2.5">
-                  <span className="text-[22px] font-semibold tracking-[-0.01em] text-text-primary">
-                    {slot.rel.version}
-                  </span>
-                  <StatusPill status={slot.rel.status} />
-                </p>
-                {slot.rel.date && (
-                  <p className="mt-1 text-[12.5px] text-text-secondary">
-                    {formatDate(slot.rel.date)}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="mt-2 text-[13px] text-text-tertiary">{slot.empty}</p>
-            )}
           </div>
-        ))}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
+            <MapPin size={12} strokeWidth={2.2} /> Current position
+          </span>
+        </div>
+
+        <div
+          role="list"
+          aria-label={`${offeringName} customer version timeline`}
+          className="overflow-x-auto px-5 py-5"
+        >
+          <div className="mx-auto flex min-w-[680px] max-w-[1100px] items-start">
+            {timelineItems.map((item, index) => {
+              const isCurrent = item.kind === "current";
+              const isNext = item.kind === "next";
+              const Icon = isCurrent ? MapPin : isNext ? Clock : CircleCheck;
+              const label = isCurrent
+                ? "You are here"
+                : isNext
+                  ? "Coming next"
+                  : "Released";
+              const empty = isCurrent
+                ? "No current version"
+                : "Next version not scheduled";
+              const nextItem = timelineItems[index + 1];
+              const futureConnector = nextItem?.kind === "next";
+
+              return (
+                <div key={item.id} className="contents">
+                  <div
+                    role="listitem"
+                    aria-current={isCurrent ? "step" : undefined}
+                    className="flex min-w-[170px] flex-1 flex-col items-center px-2 text-center"
+                  >
+                    <span
+                      className={`relative flex h-11 w-11 items-center justify-center rounded-full ${
+                        isCurrent
+                          ? "bg-blue-primary text-white shadow-[0_4px_14px_rgba(0,113,227,0.38)]"
+                          : isNext
+                            ? "border-2 border-dashed border-[color:#C2410C]/55 bg-[color:#C2410C]/10 text-[color:#C2410C]"
+                            : "border border-[color:#1A7A35]/35 bg-[color:#1A7A35]/10 text-[color:#1A7A35]"
+                      }`}
+                    >
+                      {isCurrent && (
+                        <span className="absolute inset-0 rounded-full bg-blue-primary/35 motion-safe:animate-ping" />
+                      )}
+                      <Icon className="relative" size={18} strokeWidth={2.1} />
+                    </span>
+                    <p
+                      className={`mt-2.5 text-[10px] font-bold uppercase tracking-[0.055em] ${
+                        isCurrent
+                          ? "text-blue-primary"
+                          : isNext
+                            ? "text-[color:#C2410C]"
+                            : "text-[color:#1A7A35]"
+                      }`}
+                    >
+                      {label}
+                    </p>
+                    <p className="mt-1 text-[17px] font-semibold tracking-[-0.01em] text-text-primary">
+                      {item.release?.version || empty}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] text-text-secondary tnum">
+                      {item.release?.date
+                        ? formatDate(item.release.date)
+                        : isNext
+                          ? "Date to be confirmed"
+                          : "No release date recorded"}
+                    </p>
+                  </div>
+
+                  {nextItem && (
+                    <div
+                      aria-hidden="true"
+                      className={`mt-[21px] min-w-[46px] flex-1 ${
+                        futureConnector
+                          ? "h-0 border-t-2 border-dashed border-blue-subtle"
+                          : "h-[3px] rounded-full"
+                      }`}
+                      style={
+                        futureConnector
+                          ? undefined
+                          : {
+                              background:
+                                "linear-gradient(90deg, rgba(26,122,53,0.78), #0071E3)",
+                            }
+                      }
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* WHAT CHANGED BETWEEN THEM. Suren asked for the comparison explicitly:

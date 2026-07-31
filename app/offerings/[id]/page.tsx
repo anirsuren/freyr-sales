@@ -12,6 +12,7 @@ import {
   Globe,
   type LucideIcon,
   CalendarClock,
+  Sparkles,
 } from "lucide-react";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
@@ -162,7 +163,29 @@ export default async function OfferingDetailPage({
   // open to the owners they grant.
   const workspaceAdmin = await canManageOfferings();
   const canSeeNextCustomerVersion = await canViewNextCustomerVersion(o);
-  const commercialActionsEnabled = !isOfferingsOnly(getDataMode());
+  const dataMode = getDataMode();
+  const commercialActionsEnabled = !isOfferingsOnly(dataMode);
+
+  // A POC name copied from the catalogue is useful sample/catalogue context,
+  // but it is not proof that the person has a workspace account. In live mode
+  // this card must show accounts, not plausible-looking names. Keep a contact
+  // only when the live directory supplied a stable member id for that person.
+  // In-progress mode intentionally keeps the full sample roster so the page is
+  // populated and demonstrates the finished experience.
+  const offeringContacts =
+    dataMode === "live"
+      ? (o.contacts ?? []).filter((contact) => {
+          const contactEmail = (contact.email || "").trim().toLowerCase();
+          const contactName = contact.name.trim().toLowerCase();
+          return people.some(
+            (person) =>
+              Boolean(person.memberId) &&
+              ((contactEmail &&
+                (person.email || "").trim().toLowerCase() === contactEmail) ||
+                person.name.trim().toLowerCase() === contactName)
+          );
+        })
+      : o.contacts ?? [];
 
   // Each market + size band reads as its own color so they scan at a glance
   // (Anir: "USA, Europe, Japan, China, Korea each a different color; same for
@@ -300,16 +323,29 @@ export default async function OfferingDetailPage({
             customers={customerPickList}
             commercialActionsEnabled={commercialActionsEnabled}
             extra={
-              /* Duplicate is gone (Suren, Jul 27: "the duplicate button is
-                 useless"). Editing is the only admin action left up here. */
-              admin ? (
+              <>
+                {/* This is an explicit hand-off, not invisible ambient memory:
+                    only this button opens a new Agent chat focused on the
+                    offering the person chose. */}
                 <Link
-                  href={`/offerings/${o.id}/edit`}
-                  className="inline-flex items-center gap-1.5 text-[13px] font-medium rounded-md px-3 py-2 bg-white border border-border-light text-text-primary hover:bg-surface hover:border-blue-subtle transition-colors"
+                  href={`/agent?offering=${encodeURIComponent(o.id)}&ask=${encodeURIComponent(
+                    `Give me an overview of ${o.offering_name}.`
+                  )}`}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_1px_2px_rgba(0,113,227,0.20)] transition-all hover:bg-blue-hover hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
                 >
-                  <Pencil size={14} strokeWidth={1.8} /> Edit offering
+                  <Sparkles size={14} strokeWidth={2} /> Ask Freyr AI
                 </Link>
-              ) : null
+                {/* Duplicate is gone (Suren, Jul 27: "the duplicate button is
+                    useless"). Editing is the only admin action left up here. */}
+                {admin ? (
+                  <Link
+                    href={`/offerings/${o.id}/edit`}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-medium rounded-md px-3 py-2 bg-white border border-border-light text-text-primary hover:bg-surface hover:border-blue-subtle transition-colors"
+                  >
+                    <Pencil size={14} strokeWidth={1.8} /> Edit offering
+                  </Link>
+                ) : null}
+              </>
             }
           />
         </div>
@@ -381,7 +417,10 @@ export default async function OfferingDetailPage({
             offeringId={o.id}
             offeringName={o.offering_name}
             releases={o.releases ?? []}
-            canEdit={admin}
+            // Mock roadmaps are an intentionally read-only overlay. Keeping
+            // the editor out of in-progress mode guarantees fake versions can
+            // never be saved into the shared live catalogue.
+            canEdit={admin && getDataMode() === "live"}
             canSeeNext={canSeeNextCustomerVersion}
           />
         ) : tab === "reports" ? (
@@ -439,7 +478,7 @@ export default async function OfferingDetailPage({
             <OfferingContacts
               offeringId={o.id}
               offeringName={o.offering_name}
-              contacts={o.contacts ?? []}
+              contacts={offeringContacts}
               canEdit={admin}
               people={people}
               // Ownership is per offering, so the crown is decided by THIS

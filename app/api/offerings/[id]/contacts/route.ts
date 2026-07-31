@@ -8,6 +8,8 @@ import {
   commitOfferingsChange,
 } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
+import { listAssignablePeople } from "@/lib/assignablePeople";
+import { getDataMode } from "@/lib/dataMode";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +52,27 @@ export async function POST(
   };
   if (!(body.name || "").trim())
     return NextResponse.json({ error: "A contact needs a name" }, { status: 400 });
+
+  // A live contact is an account assignment, not free text. Re-check on the
+  // server so a hand-written request cannot bypass the account-only picker.
+  if (getDataMode() === "live") {
+    const name = body.name!.trim().toLowerCase();
+    const email = (body.email || "").trim().toLowerCase();
+    const account = (await listAssignablePeople()).find(
+      (person) =>
+        Boolean(person.memberId) &&
+        (person.name.trim().toLowerCase() === name ||
+          Boolean(email && (person.email || "").trim().toLowerCase() === email))
+    );
+    if (!account) {
+      return NextResponse.json(
+        { error: "Choose a person with a real workspace account." },
+        { status: 400 }
+      );
+    }
+    body.name = account.name;
+    body.email = account.email || "";
+  }
 
   try {
     const saved = await commitOfferingsChange(() =>

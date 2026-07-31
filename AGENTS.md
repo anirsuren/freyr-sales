@@ -224,18 +224,30 @@ what was written back, `deleted-test-customers.json`).
 - Freya.Register's 21 restored materials: 8 files are **unfiled** (only
   unambiguous folder placements were made); ~4 of the original 25 were
   link-only materials whose names are unrecoverable — Eeswar re-adds them.
+- In-progress mode now overlays a complete, read-only sample roadmap on all 29
+  offerings: past, current, next, and category-specific comparison features.
+  Ready-now mode still shows only roadmap versions an owner actually saved.
 
 ### Open queue
 1. Customer Offering Heat Map: Freyr still owes the final standard activity
    list. The current centralized list mirrors the supplied Excel reference:
    To pitch, Opportunity, Proposal, Under contract, Contract signed, Need to
    deliver, Implementation, Implemented, On hold.
-2. Main agent page (`/api/agent/converse`) doesn't receive offering context —
-   Suren's fallback option ("if you go there from an offering it should
-   already understand the context"). The dock (`/api/agent/assistant`) does.
-3. Older queue: voice outcomes Declined→No answer; sessions-table company
+2. Older queue: voice outcomes Declined→No answer; sessions-table company
    name wrapping; app-wide icon/logo audit.
-4. **Test-suite DB guard** (§1) — proposed to Anir, not yet approved/built.
+3. **Test-suite DB guard** (§1) — proposed to Anir, not yet approved/built.
+
+Completed: offering pages now have an explicit **Ask Freyr AI** handoff. It
+starts a visibly offering-scoped conversation on `/agent`, automatically
+sends an offering-specific overview question, and grounds the response in
+that offering; ordinary Agent navigation remains generic, and **New chat**
+clears that context.
+
+Completed: main-Agent conversations now recover the original unscoped browser
+history, no longer truncate after 50 chats, and mirror the full ordered list to
+the verified member's private `agent_prefs.conversation_state`. The browser is
+an offline cache; it is no longer the only copy. Migration 017 adds the JSONB
+column in Supabase.
 
 DONE since first drafted (all in the unpushed stack): the full dropdown
 sweep (zero native selects; ColorSelect/PeopleSelect everywhere — commits
