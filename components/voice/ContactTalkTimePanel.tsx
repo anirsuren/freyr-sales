@@ -162,7 +162,7 @@ export function ContactTalkTimePanel({ calls, color }: { calls: TalkTimeCall[]; 
           </div>
           <div className="flex items-center gap-2">
             <Tooltip label="Enlarge talk time chart">
-              <button onClick={() => setOpen(true)} aria-label="Enlarge talk time chart" className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
+              <button type="button" onClick={() => setOpen(true)} aria-label="Enlarge talk time chart" title="Enlarge talk time chart" className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
                 <Maximize2 size={14} strokeWidth={1.9} />
               </button>
             </Tooltip>

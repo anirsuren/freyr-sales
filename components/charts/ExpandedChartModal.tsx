@@ -69,7 +69,7 @@ export type ExpandedChartControlProps = {
    * once with the whole visible set.
    */
   renderExpanded: (visibleKeys: readonly string[]) => ReactNode;
-  /** Visible copy is intentional: expanding must not be hover-only. */
+  /** Optional context added to the icon button's accessible name and title. */
   triggerLabel?: string;
   itemNoun?: "series" | "slices";
   className?: string;
@@ -110,6 +110,10 @@ export function ExpandedChartControl({
 
   const shownKeys = keys.filter((key) => visibleKeys.has(key));
   const allShown = shownKeys.length === keys.length;
+  const openLabel =
+    triggerLabel === "Open chart"
+      ? `Open ${title} chart`
+      : `${triggerLabel} — open ${title} chart`;
 
   function toggle(key: string) {
     setVisibleKeys((current) => {
@@ -134,14 +138,15 @@ export function ExpandedChartControl({
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={openLabel}
+        title={openLabel}
         onClick={() => setOpen(true)}
         className={cn(
-          "inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-border bg-white px-3 text-[12.5px] font-semibold text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,color,box-shadow,transform] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary hover:shadow-[0_4px_12px_rgba(0,113,227,0.10)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30",
+          "inline-flex h-8 !w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-white !p-0 text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,color,box-shadow,transform] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary hover:shadow-[0_4px_12px_rgba(0,113,227,0.10)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30",
           className
         )}
       >
         <Maximize2 size={14} strokeWidth={2} />
-        {triggerLabel}
       </button>
 
       <Modal

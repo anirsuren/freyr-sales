@@ -14,6 +14,9 @@ import {
   FilterX,
   Route,
   ShieldCheck,
+  Rows3,
+  Columns2,
+  Grid2X2,
   type LucideIcon,
 } from "lucide-react";
 import { MultiColorSelect } from "@/components/ui/ColorSelect";
@@ -22,6 +25,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
 import {
   ACCESS_LEVELS,
@@ -132,15 +136,34 @@ function TagPill({
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-none ${
+      className={`inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-none ${
         variant === "outline" ? "border bg-transparent" : ""
       } ${variant === "solid" ? "tracking-[0.04em] uppercase" : ""}`}
       style={style}
     >
       <Icon size={10} strokeWidth={variant === "solid" ? 2.6 : 2.2} />
-      {label}
+      <span className="truncate">{label}</span>
     </span>
   );
+}
+
+type MaterialColumns = 1 | 2 | 4;
+
+const MATERIAL_LAYOUTS: Array<{
+  columns: MaterialColumns;
+  label: string;
+  icon: LucideIcon;
+}> = [
+  { columns: 1, label: "One column", icon: Rows3 },
+  { columns: 2, label: "Two columns", icon: Columns2 },
+  { columns: 4, label: "Four columns", icon: Grid2X2 },
+];
+
+function materialGridClass(columns: MaterialColumns) {
+  if (columns === 2) return "grid grid-cols-1 gap-2.5 md:grid-cols-2";
+  if (columns === 4)
+    return "grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4";
+  return "grid grid-cols-1 gap-2.5";
 }
 
 // The Sales materials list: every file's format, buyer's-journey stage and
@@ -169,6 +192,7 @@ export function MaterialsSection({
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
+  const [columns, setColumns] = useState<MaterialColumns>(1);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -350,6 +374,33 @@ export function MaterialsSection({
         {/* Add lives on the same row as the filters (Anir: "put this filter
             inline with the add button"). */}
         <div className="ml-auto flex items-center gap-2">
+          <div
+            role="group"
+            aria-label="Sales materials layout"
+            className="inline-flex items-center rounded-lg border border-border-light bg-surface p-1"
+          >
+            {MATERIAL_LAYOUTS.map(({ columns: option, label, icon: Icon }) => {
+              const selected = columns === option;
+              return (
+                <Tooltip key={option} label={label} side="bottom">
+                  <button
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={selected}
+                    title={label}
+                    onClick={() => setColumns(option)}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                      selected
+                        ? "bg-white text-blue-primary shadow-card"
+                        : "text-text-tertiary hover:bg-white/70 hover:text-text-primary"
+                    }`}
+                  >
+                    <Icon size={15} strokeWidth={2} aria-hidden="true" />
+                  </button>
+                </Tooltip>
+              );
+            })}
+          </div>
           {action}
         </div>
       </div>
@@ -444,7 +495,7 @@ export function MaterialsSection({
           files are under it INCLUDING its sub-folders, so a folder whose
           contents are all one level down never reads as empty. */}
       {subFolders.length > 0 && (
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={`mt-3 ${materialGridClass(columns)}`}>
           {subFolders.map((path) => {
             const name = materialFolderLabel(path).split(" · ").pop() as string;
             const count = countUnder(mine, path);
@@ -526,7 +577,7 @@ export function MaterialsSection({
            aesthetic and separated properly, like floating"). Same radius,
            shadow and hover lift as the related-offering pills below, one per
            row so the long file names still get the full width. */
-        <div className="mt-3 flex flex-col gap-2.5">
+        <div className={`mt-3 ${materialGridClass(columns)}`}>
           {visible.map((material) => {
             const format = materialFormat(material.kind);
             const formatMeta = MATERIAL_FORMAT_META[format];
@@ -575,7 +626,11 @@ export function MaterialsSection({
                   e.preventDefault();
                   setViewing(material);
                 }}
-                className="group flex min-h-[72px] cursor-pointer items-center gap-3 rounded-2xl border border-border-light bg-white py-3 pr-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
+                className={`group flex cursor-pointer gap-3 rounded-2xl border border-border-light bg-white py-3 pr-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)] ${
+                  columns === 4
+                    ? "min-h-[210px] flex-col items-stretch"
+                    : "min-h-[72px] items-center"
+                }`}
                 // An internal-only file keeps its rail down the left edge, so a
                 // file that must never be forwarded is obvious before you read
                 // a word — now as a thicker left border on the card itself.
@@ -615,7 +670,11 @@ export function MaterialsSection({
                   {/* The owner's one-line note (item 10). Rendered only when
                       there is one, no placeholder, no empty line. */}
                   {material.description && (
-                    <span className="mt-0.5 block break-words text-[12px] leading-snug text-text-secondary">
+                    <span
+                      className={`mt-0.5 block break-words text-[12px] leading-snug text-text-secondary ${
+                        columns === 4 ? "line-clamp-3" : ""
+                      }`}
+                    >
                       {material.description}
                     </span>
                   )}
@@ -674,7 +733,11 @@ export function MaterialsSection({
                       carry no uploader and must not be credited to anyone,
                       so their rows simply have no attribution line. */}
                   {(material.addedBy || uploadDate) && (
-                    <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                    <span
+                      className={`mt-1.5 flex items-center gap-1.5 text-[11px] text-text-tertiary ${
+                        columns === 4 ? "flex-wrap" : ""
+                      }`}
+                    >
                       {material.addedBy ? (
                         <>
                           <Avatar
@@ -708,8 +771,18 @@ export function MaterialsSection({
                     at the end of the card: the thing you actually came to do
                     wears a button, the rest are quiet square icon buttons that
                     only colour on hover. */}
-                <span className="flex shrink-0 items-center gap-1">
-                  <span className="hidden items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors group-hover:border-blue-subtle group-hover:bg-blue-light group-hover:text-blue-primary lg:inline-flex">
+                <span
+                  className={`flex shrink-0 items-center gap-1 ${
+                    columns === 4
+                      ? "mt-auto w-full justify-end border-t border-border-light pt-2"
+                      : ""
+                  }`}
+                >
+                  <span
+                    className={`items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors group-hover:border-blue-subtle group-hover:bg-blue-light group-hover:text-blue-primary ${
+                      columns === 1 ? "hidden lg:inline-flex" : "hidden"
+                    }`}
+                  >
                     {uploaded ? "Open" : "Open asset"}
                     <ExternalLink size={12} strokeWidth={1.9} />
                   </span>
@@ -718,7 +791,9 @@ export function MaterialsSection({
                   <ExternalLink
                     size={14}
                     strokeWidth={1.7}
-                    className="mr-0.5 text-text-tertiary group-hover:text-blue-primary lg:hidden"
+                    className={`mr-0.5 text-text-tertiary group-hover:text-blue-primary ${
+                      columns === 1 ? "lg:hidden" : ""
+                    }`}
                   />
                   {/* Save a copy. A nested <a> is invalid inside the row link,
                       so this runs the download imperatively. Uploaded files

@@ -122,10 +122,10 @@ export function ChartInspector({
                 type="button"
                 onClick={() => setOpen(true)}
                 aria-label={`Enlarge ${title}`}
-                className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-2.5 text-[11.5px] font-semibold text-text-secondary shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                title={`Enlarge ${title}`}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white p-0 text-text-secondary shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
               >
                 <Maximize2 size={14} strokeWidth={1.9} />
-                Open chart
               </button>
             </Tooltip>
           </div>
