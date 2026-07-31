@@ -132,12 +132,18 @@ export function Avatar({
     <img
       src={photo}
       alt={name}
-      className={cn("object-cover rounded-full shrink-0", className)}
+      className={cn(
+        // Some uploaded/generated portraits contain transparent pixels around
+        // the subject. Give the image its own opaque surface so a neighbouring
+        // face in an overlapping fan can never show through the portrait.
+        "block object-cover rounded-full shrink-0 bg-[var(--surface)]",
+        className
+      )}
     />
   ) : (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full bg-blue-light text-blue-primary font-semibold shrink-0",
+        "inline-flex items-center justify-center rounded-full bg-blue-light text-blue-primary font-semibold shrink-0 isolate",
         className
       )}
     >

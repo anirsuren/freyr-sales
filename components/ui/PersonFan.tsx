@@ -31,7 +31,7 @@ export type FanPerson = {
 export function PersonFan({
   people,
   avatarClassName = "h-6 w-6 text-[8px]",
-  overlap = -8,
+  overlap = -5,
   max = 8,
 }: {
   people: FanPerson[];
@@ -72,10 +72,12 @@ export function PersonFan({
             email={p.email}
             phone={p.phone}
           >
-            <span className="inline-flex rounded-full outline-none transition-[transform,filter] duration-150 hover:z-20 hover:-translate-y-0.5 hover:scale-110 hover:drop-shadow-md">
+            <span
+              className="relative isolate inline-flex overflow-hidden rounded-full bg-[var(--surface)] outline-none ring-2 ring-[color:var(--white)] transition-[transform,filter] duration-150 hover:z-20 hover:-translate-y-0.5 hover:scale-110 hover:drop-shadow-md"
+            >
               <Avatar
                 name={p.name}
-                className={`ring-2 ring-[color:var(--white)] ${avatarClassName}`}
+                className={avatarClassName}
               />
             </span>
           </PersonHoverCard>

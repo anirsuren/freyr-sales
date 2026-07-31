@@ -233,7 +233,7 @@ function PocStrip({
       aria-label={`POC: ${poc}`}
       className="relative z-10 flex items-center gap-2 min-w-0"
     >
-      <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary shrink-0">
+      <span className="person-row-label person-row-label--poc shrink-0">
         POC
       </span>
       <PersonFan
@@ -274,7 +274,7 @@ function OwnerStrip({
       aria-label={`Owner: ${granted.map((o) => o.name).join(", ")}`}
       className="relative z-10 flex min-w-0 items-center gap-2"
     >
-      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+      <span className="person-row-label person-row-label--owner shrink-0">
         Owner
       </span>
       <PersonFan
@@ -1163,18 +1163,27 @@ export function OfferingsBrowser({
             </button>
           );
         })}
-        {activeFilters && !chipFiltersOnly && (
-          <PriorityTooltip label="Clear filters">
-            <button
-              onClick={clearAll}
-              aria-label="Clear filters"
-              className="h-10 px-3 rounded-lg text-[13px] font-semibold text-text-secondary hover:text-blue-primary hover:bg-blue-light transition-colors inline-flex items-center"
-            >
-              <X size={14} strokeWidth={2} />
-              <PriorityLabel gap="ml-1">Clear</PriorityLabel>
-            </button>
-          </PriorityTooltip>
-        )}
+        {/* Keep this control in the flex calculation even before a filter is
+            active. Mounting it only after the first selection shifted every
+            dropdown (and its open menu) sideways. Invisible means no visual
+            clutter; disabled + aria-hidden means it is not interactive. */}
+        <PriorityTooltip label="Clear filters">
+          <button
+            onClick={clearAll}
+            aria-label="Clear filters"
+            aria-hidden={!(activeFilters && !chipFiltersOnly)}
+            disabled={!(activeFilters && !chipFiltersOnly)}
+            tabIndex={activeFilters && !chipFiltersOnly ? 0 : -1}
+            className={`h-10 px-3 rounded-lg text-[13px] font-semibold text-text-secondary hover:text-blue-primary hover:bg-blue-light transition-colors inline-flex items-center ${
+              activeFilters && !chipFiltersOnly
+                ? ""
+                : "invisible pointer-events-none"
+            }`}
+          >
+            <X size={14} strokeWidth={2} />
+            <PriorityLabel gap="ml-1">Clear</PriorityLabel>
+          </button>
+        </PriorityTooltip>
         {/* Sort, view and export live IN the filter bar, two stacked control
             rows read as clutter (Anir, Jul 25: "everything should be on one
             row, and it should look beautiful"). ml-auto keeps this display

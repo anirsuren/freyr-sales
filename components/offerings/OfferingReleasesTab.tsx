@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CalendarDays,
   CircleCheck,
   Clock,
   GitCompareArrows,
   Headset,
+  ListChecks,
   Plus,
   Rocket,
   Trash2,
@@ -40,9 +42,9 @@ import type { OfferingContact, OfferingRelease } from "@/lib/offerings";
  */
 
 const FIELD =
-  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none";
+  "h-12 w-full rounded-xl border border-border-light bg-white px-3.5 text-[14px] text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.03)] placeholder:text-text-tertiary transition-[border-color,box-shadow] focus:border-blue-primary focus:outline-none focus:ring-4 focus:ring-blue-primary/10";
 const LABEL =
-  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary";
+  "mb-2 block text-[13px] font-semibold text-text-primary";
 
 function StatusPill({ status }: { status: OfferingRelease["status"] }) {
   const shipped = status === "released";
@@ -80,6 +82,21 @@ export function OfferingReleasesTab({
   const [date, setDate] = useState("");
   const [status, setStatus] = useState<OfferingRelease["status"]>("released");
   const [features, setFeatures] = useState("");
+  const featureLines = features
+    .split("\n")
+    .map((feature) => feature.trim())
+    .filter(Boolean);
+  const normalizedVersion = version.trim();
+  const duplicateVersion = releases.some(
+    (release) =>
+      release.version.trim().toLocaleLowerCase() ===
+      normalizedVersion.toLocaleLowerCase()
+  );
+  const canAdd =
+    normalizedVersion.length > 0 &&
+    featureLines.length > 0 &&
+    (status === "next" || Boolean(date)) &&
+    !duplicateVersion;
 
   // Newest first, and a version with no date sorts after ones that have one —
   // an undated row is usually the next release, not the oldest.
@@ -89,6 +106,19 @@ export function OfferingReleasesTab({
   });
   const current = sorted.find((r) => r.status === "released") || null;
   const next = sorted.find((r) => r.status === "next") || null;
+
+  function resetAddForm() {
+    setVersion("");
+    setDate("");
+    setStatus("released");
+    setFeatures("");
+  }
+
+  function closeAddModal() {
+    if (busy) return;
+    resetAddForm();
+    setAdding(false);
+  }
 
   async function save(list: OfferingRelease[], done: string) {
     setBusy(true);
@@ -102,35 +132,31 @@ export function OfferingReleasesTab({
       toast(done, "success");
       setAdding(false);
       router.refresh();
+      return true;
     } catch (e) {
       toast(e instanceof Error ? e.message : "Save failed", "error");
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  function add() {
-    const v = version.trim();
-    if (!v) return;
-    void save(
+  async function add() {
+    if (!canAdd) return;
+    const saved = await save(
       [
         ...releases,
         {
           id: `rel-${Date.now()}`,
-          version: v,
+          version: normalizedVersion,
           date: date || undefined,
           status,
-          features: features
-            .split("\n")
-            .map((f) => f.trim())
-            .filter(Boolean),
+          features: featureLines,
         },
       ],
-      `${v} added to the version history`
+      `${normalizedVersion} added to the version history`
     );
-    setVersion("");
-    setDate("");
-    setFeatures("");
+    if (saved) resetAddForm();
   }
 
   return (
@@ -323,70 +349,214 @@ export function OfferingReleasesTab({
       </SectionCard>
 
       {/* Adding is a popup — his standing rule. */}
-      <Modal open={adding} onClose={() => setAdding(false)} title="Add a version" size="wide">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+      <Modal open={adding} onClose={closeAddModal} title="Add a version" size="wide">
+        <form
+          className="space-y-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void add();
+          }}
+        >
+          <div className="flex items-start gap-3 rounded-2xl border border-blue-primary/15 bg-blue-light p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-primary text-white shadow-[0_4px_12px_rgba(0,113,227,0.22)]">
+              <Rocket size={18} strokeWidth={2} />
+            </span>
             <div>
-              <label className={LABEL}>Version</label>
-              <input
-                autoFocus
-                className={FIELD}
-                value={version}
-                onChange={(e) => setVersion(e.target.value)}
-                placeholder="e.g. V2"
-                aria-label="Version"
-              />
-            </div>
-            <div>
-              <label className={LABEL}>Date</label>
-              <input
-                type="date"
-                className={FIELD}
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                aria-label="Release date"
-              />
+              <p className="text-[14px] font-semibold text-text-primary">
+                Document a customer-facing release
+              </p>
+              <p className="mt-0.5 text-[12.5px] leading-relaxed text-text-secondary">
+                This will appear in the offering&apos;s version history for
+                everyone who can view it.
+              </p>
             </div>
           </div>
-          <div>
-            <label className={LABEL}>Status</label>
-            <div className="flex gap-2">
-              {(["released", "next"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStatus(s)}
-                  className={`cursor-pointer rounded-lg border px-3 py-2 text-[12.5px] font-semibold transition-colors ${
-                    status === s
-                      ? "border-blue-primary bg-blue-light text-blue-primary"
-                      : "border-border-light text-text-secondary hover:border-blue-subtle"
-                  }`}
+
+          <section aria-labelledby="release-details-heading">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                <CalendarDays size={14} strokeWidth={2} />
+              </span>
+              <h3
+                id="release-details-heading"
+                className="text-[13.5px] font-semibold text-text-primary"
+              >
+                Release details
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="release-version" className={LABEL}>
+                  Version <span className="text-error">*</span>
+                </label>
+                <input
+                  id="release-version"
+                  autoFocus
+                  className={FIELD}
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value)}
+                  placeholder="For example, v2.4"
+                  aria-describedby={
+                    duplicateVersion ? "release-version-error" : undefined
+                  }
+                />
+                {duplicateVersion && (
+                  <p
+                    id="release-version-error"
+                    className="mt-1.5 text-[11.5px] font-medium text-error"
+                  >
+                    This version already exists.
+                  </p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="release-date" className={LABEL}>
+                  {status === "released" ? "Release date" : "Target date"}{" "}
+                  {status === "released" ? (
+                    <span className="text-error">*</span>
+                  ) : (
+                    <span className="font-normal text-text-tertiary">
+                      (optional)
+                    </span>
+                  )}
+                </label>
+                <input
+                  id="release-date"
+                  type="date"
+                  className={FIELD}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+            </div>
+          </section>
+
+          <fieldset>
+            <legend className={LABEL}>Release status</legend>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {(["released", "next"] as const).map((releaseStatus) => {
+                const selected = status === releaseStatus;
+                const released = releaseStatus === "released";
+                const Icon = released ? CircleCheck : Clock;
+                return (
+                  <button
+                    key={releaseStatus}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setStatus(releaseStatus)}
+                    className={`group flex min-h-[76px] cursor-pointer items-center gap-3 rounded-2xl border p-3 text-left transition-[border-color,background-color,box-shadow,transform] active:scale-[0.99] ${
+                      selected
+                        ? released
+                          ? "border-[color:rgba(34,197,94,0.55)] bg-[color:rgba(34,197,94,0.10)] shadow-[0_0_0_3px_rgba(34,197,94,0.08)]"
+                          : "border-[color:rgba(249,115,22,0.55)] bg-[color:rgba(249,115,22,0.10)] shadow-[0_0_0_3px_rgba(249,115,22,0.08)]"
+                        : "border-border-light bg-white hover:border-border hover:bg-surface"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        released
+                          ? "bg-[color:rgba(34,197,94,0.15)] text-[color:#159947]"
+                          : "bg-[color:rgba(249,115,22,0.14)] text-[color:#C45312]"
+                      }`}
+                    >
+                      <Icon size={18} strokeWidth={2.2} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13.5px] font-semibold text-text-primary">
+                        {released ? "Already released" : "Coming next"}
+                      </span>
+                      <span className="mt-0.5 block text-[11.5px] leading-snug text-text-secondary">
+                        {released
+                          ? "Available to customers now"
+                          : "Planned customer release"}
+                      </span>
+                    </span>
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                        selected
+                          ? released
+                            ? "border-[color:#159947] bg-[color:#159947] text-white"
+                            : "border-[color:#C45312] bg-[color:#C45312] text-white"
+                          : "border-border"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {selected && <CircleCheck size={13} strokeWidth={2.5} />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <section aria-labelledby="release-changes-heading">
+            <div className="mb-2 flex items-end justify-between gap-3">
+              <div>
+                <h3
+                  id="release-changes-heading"
+                  className="text-[13px] font-semibold text-text-primary"
                 >
-                  {s === "released" ? "Already released" : "Coming next"}
-                </button>
-              ))}
+                  What changed <span className="text-error">*</span>
+                </h3>
+                <p className="mt-0.5 text-[11.5px] text-text-secondary">
+                  Add one clear, customer-friendly change per line.
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-secondary">
+                {featureLines.length}{" "}
+                {featureLines.length === 1 ? "change" : "changes"}
+              </span>
             </div>
-          </div>
-          <div>
-            <label className={LABEL}>What changed — one per line</label>
             <textarea
-              rows={5}
-              className={`${FIELD} h-auto resize-y py-2 leading-relaxed`}
+              rows={4}
+              className={`${FIELD} min-h-[132px] h-auto resize-y py-3 leading-relaxed`}
               value={features}
               onChange={(e) => setFeatures(e.target.value)}
-              placeholder={"Bulk registration import\nAudit trail on every field change"}
-              aria-label="Features"
+              placeholder={
+                "Bulk registration import\nAudit trail for every field change"
+              }
+              aria-label="Changes in this version"
             />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setAdding(false)}>
+            <div className="mt-2 flex items-start gap-2 text-[11.5px] leading-relaxed text-text-tertiary">
+              <ListChecks
+                size={14}
+                strokeWidth={1.9}
+                className="mt-0.5 shrink-0 text-blue-primary"
+              />
+              <span>
+                Each line becomes a separate item in the release notes.
+              </span>
+            </div>
+          </section>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-border-light pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[11.5px] text-text-tertiary">
+              {!normalizedVersion
+                ? "Enter a version to continue."
+                : duplicateVersion
+                  ? "Use a version name that is not already in the history."
+                  : status === "released" && !date
+                    ? "Choose the date this version was released."
+                    : featureLines.length === 0
+                      ? "Add at least one change to continue."
+                      : "Ready to add to the version history."}
+            </p>
+            <div className="flex shrink-0 justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeAddModal}
+                disabled={busy}
+              >
               <X size={14} strokeWidth={2} /> Cancel
-            </Button>
-            <Button onClick={add} disabled={!version.trim()} loading={busy}>
-              Add version
-            </Button>
+              </Button>
+              <Button type="submit" disabled={!canAdd} loading={busy}>
+                <Plus size={14} strokeWidth={2.2} />
+                Add version
+              </Button>
+            </div>
           </div>
-        </div>
+        </form>
       </Modal>
     </section>
   );

@@ -310,6 +310,9 @@ export function MultiColorSelect({
   collapsible?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuAlign, setMenuAlign] = useState<"left" | "right">("left");
+  const [menuVertical, setMenuVertical] = useState<"up" | "down">("down");
+  const [menuMaxHeight, setMenuMaxHeight] = useState(300);
   const ref = useRef<HTMLDivElement>(null);
   const searchHasPriority = useSearchPriority();
   const compact = collapsible && searchHasPriority;
@@ -332,58 +335,123 @@ export function MultiColorSelect({
   const summary =
     picked.length === 0
       ? allLabel
-      : picked.length <= 2
-        ? picked.map((o) => o.label).join(", ")
+      : picked.length === 1
+        ? picked[0].label
         : `${picked.length} selected`;
+  const selectionLabel =
+    picked.length === 0
+      ? allLabel
+      : `${allLabel}: ${picked.map((option) => option.label).join(", ")}`;
+  // `minWidth` is the caller's floor, not permission to ellipsize the normal
+  // unrestricted label. Keep the track stable through every selection state,
+  // but make it wide enough for "All customer types" / "All categories" at
+  // rest. Multi-selection summaries stay deliberately short instead of
+  // growing this track.
+  const triggerWidth = Math.max(
+    minWidth,
+    Math.ceil(allLabel.length * 7.2 + 70)
+  );
+  // Reserve the menu's final width before it opens. A selected row becomes
+  // semibold; when `w-max` measured that live content, selecting the longest
+  // label widened the menu by a few pixels and shifted every checkbox left.
+  // This estimate includes checkbox + icon + gaps + row padding and is capped
+  // for narrow screens. The option labels already truncate gracefully.
+  const longestMenuLabel = Math.max(
+    allLabel.length,
+    ...options.map((option) => option.label.length)
+  );
+  const menuWidth = Math.min(
+    360,
+    Math.max(triggerWidth, Math.ceil(longestMenuLabel * 7.5 + 76))
+  );
 
   const toggle = (v: string) =>
     onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
 
+  const toggleMenu = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const trigger = ref.current?.getBoundingClientRect();
+    if (trigger) {
+      const viewportWidth = window.innerWidth;
+      const renderedMenuWidth = Math.min(menuWidth, viewportWidth - 24);
+      // Prefer matching the menu's left edge to the trigger. Near the right
+      // viewport edge, pin its right edge instead so the entire list remains
+      // visible. The alignment is chosen before mount, so it never jumps.
+      setMenuAlign(
+        trigger.left + renderedMenuWidth <= viewportWidth - 12
+          ? "left"
+          : "right"
+      );
+      const roomBelow = window.innerHeight - trigger.bottom - 12;
+      const roomAbove = trigger.top - 12;
+      const openUp = roomBelow < 180 && roomAbove > roomBelow;
+      setMenuVertical(openUp ? "up" : "down");
+      setMenuMaxHeight(
+        Math.max(48, Math.min(300, (openUp ? roomAbove : roomBelow) - 6))
+      );
+    }
+    setOpen(true);
+  };
+
   return (
     <div
       ref={ref}
-      className={cn("relative transition-[min-width]", SP_MOTION, className)}
-      style={{ minWidth: compact ? SP_COMPACT_SIZE : minWidth }}
+      className={cn("relative transition-[width,min-width]", SP_MOTION, className)}
+      // This must be a fixed track, not only a minimum. With `min-width`, a
+      // two-item summary made the flex child grow, and the right-anchored menu
+      // (including every checkbox) jumped sideways after the second click.
+      // The summary already truncates and carries a count, so growing the
+      // control adds no information and only moves the interaction targets.
+      style={{
+        width: compact ? SP_COMPACT_SIZE : triggerWidth,
+        minWidth: compact ? SP_COMPACT_SIZE : triggerWidth,
+      }}
     >
-      <PriorityTooltip label={ariaLabel || allLabel} className="w-full">
+      <PriorityTooltip label={selectionLabel} className="w-full">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggleMenu}
           aria-haspopup="listbox"
           aria-expanded={open}
-          aria-label={ariaLabel || allLabel}
+          aria-label={ariaLabel ? `${ariaLabel}. ${selectionLabel}` : selectionLabel}
           className={cn(
             "w-full h-10 flex items-center justify-center overflow-hidden text-[13px] bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow,padding]",
             SP_MOTION,
             compact ? "px-0" : "px-3"
           )}
         >
-          {/* Stacked colour dots preview which families are active. */}
-          {picked.length > 0 ? (
-            <span className="flex shrink-0 items-center">
-              {picked.slice(0, 3).map((o, i) => (
-                <span
-                  key={o.value}
-                  className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-[color:var(--white)]", i > 0 && "-ml-1")}
-                  style={{ background: o.color || "#C7CDD6" }}
-                />
-              ))}
-            </span>
-          ) : AllIcon ? (
-            // Unrestricted, but never a gray blank: the filter keeps its own
-            // colour + icon, so collapsed it still says what it filters.
-            <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-              style={{
-                background: allColor,
-                color: iconForeground(allColor),
-              }}
-            >
-              <AllIcon size={12} strokeWidth={2.1} />
-            </span>
-          ) : (
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-border" />
-          )}
+          {/* This leading slot is always 20px wide. Swapping an unrestricted
+              icon for one/two/three selection dots cannot move the label. */}
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+            {picked.length > 0 ? (
+              <span className="flex items-center justify-center">
+                {picked.slice(0, 3).map((o, i) => (
+                  <span
+                    key={o.value}
+                    className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-[color:var(--white)]", i > 0 && "-ml-1")}
+                    style={{ background: o.color || "#C7CDD6" }}
+                  />
+                ))}
+              </span>
+            ) : AllIcon ? (
+              // Unrestricted, but never a gray blank: the filter keeps its own
+              // colour + icon, so collapsed it still says what it filters.
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-md"
+                style={{
+                  background: allColor,
+                  color: iconForeground(allColor),
+                }}
+              >
+                <AllIcon size={12} strokeWidth={2.1} />
+              </span>
+            ) : (
+              <span className="h-2.5 w-2.5 rounded-full bg-border" />
+            )}
+          </span>
           <PriorityLabel
             collapsed={compact}
             className="min-w-0 text-left"
@@ -391,13 +459,6 @@ export function MultiColorSelect({
           >
             <span className="block truncate">{summary}</span>
           </PriorityLabel>
-          {picked.length > 0 && (
-            <PriorityLabel collapsed={compact} className="shrink-0">
-              <span className="block rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-bold text-blue-primary tnum">
-                {picked.length}
-              </span>
-            </PriorityLabel>
-          )}
           <PriorityLabel collapsed={compact} className="shrink-0">
             <ChevronDown
               size={15}
@@ -413,8 +474,18 @@ export function MultiColorSelect({
           role="listbox"
           aria-multiselectable="true"
           aria-label={ariaLabel}
-          className="absolute right-0 z-40 mt-1.5 min-w-full w-max max-h-[300px] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in"
-          style={{ maxWidth: "min(360px, calc(100vw - 24px))" }}
+          className={cn(
+            "absolute z-40 overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in",
+            menuVertical === "down" && "mt-1.5"
+          )}
+          style={{
+            width: `min(${menuWidth}px, calc(100vw - 24px))`,
+            maxWidth: "calc(100vw - 24px)",
+            maxHeight: menuMaxHeight,
+            left: menuAlign === "left" ? 0 : "auto",
+            right: menuAlign === "right" ? 0 : "auto",
+            bottom: menuVertical === "up" ? "calc(100% + 6px)" : "auto",
+          }}
         >
           {/* "All" clears every pick — reads as the unrestricted state. */}
           <button

@@ -429,8 +429,7 @@ export function OfferingOwners({
               </OwnerHoverCard>
               <Tooltip label="Can edit this offering" side="top">
                 <span
-                  className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
-                  style={{ color: "#0F766E", background: "rgba(15,118,110,0.12)" }}
+                  className="owner-permission-pill ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
                 >
                   <ShieldCheck size={11} strokeWidth={2.2} />
                   Can edit
