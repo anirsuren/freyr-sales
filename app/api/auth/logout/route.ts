@@ -5,6 +5,7 @@ import {
   requestUsesHttps,
 } from "@/lib/appSession";
 import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
+import { DATA_MODE_COOKIE } from "@/lib/dataMode";
 
 const AUTH_COOKIES = [
   ACCESS_COOKIE,
@@ -15,6 +16,8 @@ const AUTH_COOKIES = [
   "AWSELBAuthSessionCookie-1",
   "AWSELBAuthSessionCookie-2",
   "AWSELBAuthSessionCookie-3",
+  "freyr_data_mode",
+  DATA_MODE_COOKIE,
 ];
 
 function safeLogoutUrl(): URL {

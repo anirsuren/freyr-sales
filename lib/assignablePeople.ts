@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { listWorkspaceAccess } from "./accessStore";
 import { ACCESS_COOKIE, verifyAccessGrant } from "./accessControl";
 import { getDataMode } from "./dataMode";
+import { isSampleAccountEmail } from "./sampleAccounts";
 
 export type AssignablePerson = {
   name: string;
@@ -56,7 +57,10 @@ export async function listAssignablePeople(): Promise<AssignablePerson[]> {
       // Settings › Profile, so it is read here in one query for the workspace
       // rather than a lookup per card.
       const profiles = await linkedInByMember(grant.workspaceId);
-      for (const m of dir.members || [])
+      for (const m of dir.members || []) {
+        // QA/demo identities remain available to the seeded Mock workspace,
+        // but Real mode must never present them as real colleagues.
+        if (getDataMode() === "live" && isSampleAccountEmail(m.email)) continue;
         put({
           name: m.name || m.email || "",
           role: roleLabel(m.role),
@@ -64,13 +68,17 @@ export async function listAssignablePeople(): Promise<AssignablePerson[]> {
           memberId: m.id,
           linkedin: profiles.get(m.id) || null,
         });
+      }
     }
   } catch {
     // No directory available in this mode. The catalogue below still applies.
   }
 
   const me = await getCurrentUser().catch(() => null);
-  if (me?.name)
+  if (
+    me?.name &&
+    (getDataMode() === "mock" || !isSampleAccountEmail(me.email))
+  )
     put({
       name: me.name,
       // WITHOUT A ROLE HERE, YOU ARE THE BLANK ROW. Every colleague arrived

@@ -59,6 +59,7 @@ AGENT-VISION.md
 SUREN-VIDEO-REVIEW.md
 references/
 scripts/
+/.local-backups/
 
 # isolated build cache for the Playwright suite
 /.next-test/

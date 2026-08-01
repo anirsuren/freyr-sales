@@ -5,7 +5,10 @@
 // the sales-material artifacts attached to each offering.
 import { getDataMode } from "./dataMode";
 import { createClient } from "@supabase/supabase-js";
-import type { OfferingMaterial } from "./offeringMaterials";
+import {
+  canonicalMaterialFolder,
+  type OfferingMaterial,
+} from "./offeringMaterials";
 export {
   MATERIAL_META,
   JOURNEY_STAGES,
@@ -1027,12 +1030,30 @@ function restoreDemoMaterials(s: OfferingsStore): OfferingsStore {
 
 /** What a READER may see. Real mode gets only genuinely uploaded assets. */
 function withVisibleMaterials(off: Offering): Offering {
+  const normalizeMaterials = (materials: OfferingMaterial[]) =>
+    materials.map((material) => ({
+      ...material,
+      folder: canonicalMaterialFolder(material),
+    }));
+  const canonicalFolders = (off.materialFolders || []).map((folder) =>
+    canonicalMaterialFolder({ folder, label: "", kind: "other" })
+  );
   if (getDataMode() !== "live") {
-    return { ...off, releases: demoRoadmapForOffering(off) };
+    return {
+      ...off,
+      materials: normalizeMaterials(off.materials || []),
+      materialFolders: Array.from(new Set(canonicalFolders)),
+      releases: demoRoadmapForOffering(off),
+    };
   }
-  if (!off.materials?.length) return off;
+  if (!off.materials?.length)
+    return { ...off, materialFolders: Array.from(new Set(canonicalFolders)) };
   const real = off.materials.filter((m) => !DEMO_MATERIAL_IDS.has(m.id));
-  return real.length === off.materials.length ? off : { ...off, materials: real };
+  return {
+    ...off,
+    materials: normalizeMaterials(real),
+    materialFolders: Array.from(new Set(canonicalFolders)),
+  };
 }
 
 const liveStore: OfferingsStore =

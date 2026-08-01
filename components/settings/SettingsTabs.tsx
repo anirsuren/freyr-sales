@@ -37,6 +37,7 @@ import {
   type UserIdentity,
 } from "@/lib/userIdentity";
 import { canSwitchWorkspaceMode } from "@/lib/release";
+import { isSampleAccountEmail } from "@/lib/sampleAccounts";
 
 /**
  * WHAT AN INVITED PERSON MAY DO, as a colour + icon each.
@@ -114,7 +115,7 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
     note: "Only an admin can grant edit access",
   },
   { cap: "Invite, approve or suspend teammates", admin: true, manager: false, rep: false },
-  { cap: "Switch the workspace between Real and Mock", admin: true, manager: false, rep: false },
+  { cap: "Temporarily view the sample workspace", admin: true, manager: true, rep: true },
 ];
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -338,9 +339,8 @@ export function SettingsTabs({
   const [dataMode, setDataMode] = useState<"mock" | "live">(initialDataMode);
   const [modeBusy, setModeBusy] = useState(false);
   const hoverPreference = useHoverPreference();
-  // The mode switch reveals the modules that aren't launched yet, so it is an
-  // admin control (Suren, Jul 28). Reps still SEE which mode the workspace is
-  // in — the card just tells them who changes it, instead of vanishing.
+  // Mock mode is a temporary viewer choice for this signed-in session. Every
+  // workspace role may preview it without changing anybody else's view.
   const canChangeDataMode = canSwitchWorkspaceMode(currentUser.role);
 
   async function changeDataMode(mode: "mock" | "live") {
@@ -349,7 +349,7 @@ export function SettingsTabs({
       return;
     }
     if (!canChangeDataMode) {
-      toast("Only a workspace admin can change what the workspace shows");
+      toast("Your account cannot change data views");
       return;
     }
     if (mode === dataMode || modeBusy) return;
@@ -362,10 +362,10 @@ export function SettingsTabs({
       });
       if (!response.ok) throw new Error("Mode update failed");
       setDataMode(mode);
-      toast(mode === "mock" ? "Mock mode enabled" : "Clean workspace enabled");
-      router.refresh();
+      toast(mode === "mock" ? "Mock view enabled for this session" : "Real mode restored");
+      window.location.reload();
     } catch {
-      toast("Couldn't change workspace mode", "error");
+      toast("Couldn't change your data view", "error");
     } finally {
       setModeBusy(false);
     }
@@ -551,8 +551,19 @@ export function SettingsTabs({
     fetch("/api/settings/access", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Access directory unavailable");
-        const directory = await response.json();
-        if (active) setAccessDirectory(directory);
+        const directory = (await response.json()) as AccessDirectory;
+        if (active) {
+          setAccessDirectory(
+            initialDataMode === "live"
+              ? {
+                  ...directory,
+                  members: directory.members.filter(
+                    (member) => !isSampleAccountEmail(member.email)
+                  ),
+                }
+              : directory
+          );
+        }
       })
       .catch(() => {
         if (active) toast("Couldn't load workspace access", "error");
@@ -560,7 +571,7 @@ export function SettingsTabs({
     return () => {
       active = false;
     };
-  }, [authConfig.approvalEnabled, currentUser.id, toast]);
+  }, [authConfig.approvalEnabled, currentUser.id, initialDataMode, toast]);
 
   const canInvite = authConfig.approvalEnabled
     ? currentUser.role === "admin"
@@ -950,7 +961,7 @@ export function SettingsTabs({
           <div className="grid grid-cols-3 gap-3">
             {[
               {
-                label: "Workspace data",
+                label: "Current data view",
                 value: dataMode === "mock" ? "Mock dataset" : "Real workspace",
                 detail: dataMode === "mock" ? "Safe sample records" : "Connected business records",
                 icon: Database,
@@ -990,7 +1001,7 @@ export function SettingsTabs({
             <div className="flex items-center justify-between gap-6">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-[15px] font-semibold text-text-primary">Workspace data</h2>
+                  <h2 className="text-[15px] font-semibold text-text-primary">Data view</h2>
                   {initialDataModeLocked && (
                     <span className="rounded-md bg-blue-light px-2 py-1 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-blue-primary">
                       Deployment controlled
@@ -1005,7 +1016,7 @@ export function SettingsTabs({
                       : "A workspace admin decides whether the team sees the released app or the modules still being built."}
                 </p>
               </div>
-              <div className="flex items-center gap-3" aria-label="Workspace data mode">
+              <div className="flex items-center gap-3" aria-label="Personal data view">
                 <span
                   className={cn(
                     "text-[13px]",

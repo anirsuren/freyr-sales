@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Folder, Plus } from "lucide-react";
+import { Folder, FolderOpen, FolderPlus, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -15,8 +15,9 @@ import {
   MATERIAL_FORMAT_META,
   MATERIAL_META,
   FIXED_MATERIAL_FOLDERS,
-  isFixedMaterialFolder,
+  cleanFolderName,
   materialFolderLabel,
+  normalizeFolderPath,
   type AccessLevel,
   type JourneyStage,
   type MaterialFormat,
@@ -47,13 +48,6 @@ const FORMATS = MATERIAL_FORMATS;
 // Add a sales material to an offering from a POP-UP, right on the offering page
 // (Suren: "this should be a pop-up, not take me to some weird edit page"). Saves
 // via the offering PATCH and refreshes so it shows immediately.
-const FOLDER_OPTIONS: ColorOption[] = FIXED_MATERIAL_FOLDERS.map((folder) => ({
-  value: folder,
-  label: materialFolderLabel(folder),
-  color: "#0071E3",
-  icon: Folder,
-}));
-
 export function AddMaterialButton({
   offeringId,
   materials,
@@ -85,9 +79,8 @@ export function AddMaterialButton({
    * and the form will not submit without it.
    */
   const [kind, setKind] = useState<MaterialFormat | "">("");
-  const [folder, setFolder] = useState(
-    isFixedMaterialFolder(openFolder) ? openFolder : ""
-  );
+  const [folder, setFolder] = useState(normalizeFolderPath(openFolder));
+  const [newFolder, setNewFolder] = useState("");
   const [journeyStage, setJourneyStage] = useState<JourneyStage>("awareness");
   const [accessLevel, setAccessLevel] = useState<AccessLevel>("client_facing");
   const [label, setLabel] = useState("");
@@ -106,7 +99,8 @@ export function AddMaterialButton({
   function reset() {
     setKind("");
     setJourneyStage("awareness");
-    setFolder(isFixedMaterialFolder(openFolder) ? openFolder : "");
+    setFolder(normalizeFolderPath(openFolder));
+    setNewFolder("");
     setAccessLevel("client_facing");
     setLabel("");
     setDescription("");
@@ -240,10 +234,6 @@ export function AddMaterialButton({
     // a default sitting one click away from being wrong.
     if (!kind) {
       toast("Pick the file format first — video, presentation, document or other", "error");
-      return;
-    }
-    if (!folder) {
-      toast("Choose the folder this material belongs in", "error");
       return;
     }
     const chosenKind: MaterialFormat = kind;
@@ -426,21 +416,87 @@ export function AddMaterialButton({
             </div>
           </div>
 
-          {/* The approved folder taxonomy now carries what the file is. The
-              updated change log explicitly defers a second document-type list. */}
+          {/* Filing is optional. The standard tree keeps the common structure,
+              but an owner can create a useful offering-specific folder here. */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-              Folder <span className="text-error">*</span>
+              Folder <span className="font-medium normal-case tracking-normal">Optional</span>
             </label>
             <ColorSelect
               value={folder}
-              options={FOLDER_OPTIONS}
+              options={[
+                {
+                  value: "",
+                  label: "No folder",
+                  color: "#0071E3",
+                  icon: FolderOpen,
+                },
+                ...Array.from(
+                  new Set(
+                    [
+                      ...materials.map((material) => material.folder || ""),
+                      folder,
+                    ]
+                      .map((name) => normalizeFolderPath(name))
+                      .filter(Boolean)
+                  )
+                )
+                  .filter((name) => !FIXED_MATERIAL_FOLDERS.includes(name))
+                  .map((name) => ({
+                    value: name,
+                    label: `${name} (custom)`,
+                    color: "#7C3AED",
+                    icon: Folder,
+                  })),
+                ...FIXED_MATERIAL_FOLDERS.map((name) => ({
+                  value: name,
+                  label: materialFolderLabel(name),
+                  color: "#0071E3",
+                  icon: Folder,
+                })),
+              ]}
               onChange={setFolder}
               ariaLabel="Folder"
               minWidth={0}
             />
+            <div className="mt-2 flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <FolderPlus
+                  size={14}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-blue-primary"
+                />
+                <input
+                  value={newFolder}
+                  onChange={(event) => setNewFolder(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    const name = cleanFolderName(newFolder);
+                    if (!name) return;
+                    setFolder(name);
+                    setNewFolder("");
+                  }}
+                  placeholder="Create a new folder"
+                  aria-label="New folder name"
+                  className="h-10 w-full rounded-lg border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary focus:shadow-input-focus"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={!cleanFolderName(newFolder)}
+                onClick={() => {
+                  const name = cleanFolderName(newFolder);
+                  if (!name) return;
+                  setFolder(name);
+                  setNewFolder("");
+                }}
+                className="h-10 shrink-0 rounded-lg border border-blue-subtle px-3 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Create & select
+              </button>
+            </div>
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Fixed by the workspace so every offering uses the same structure.
+              Leave it unfiled, choose an existing folder, or create one now.
             </p>
           </div>
 

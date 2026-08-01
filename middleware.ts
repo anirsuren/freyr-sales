@@ -82,8 +82,13 @@ function loginUrl(request: NextRequest, authMode: string | undefined): URL {
 
 function offeringsOnly(request: NextRequest) {
   const locked = process.env.DATA_MODE_LOCKED === "1";
-  const cookieMode = locked ? undefined : request.cookies.get("freyr_data_mode")?.value;
-  const dataMode = cookieMode || process.env.DEFAULT_DATA_MODE || "mock";
+  const dataMode = locked
+    ? process.env.DEFAULT_DATA_MODE === "mock"
+      ? "mock"
+      : "live"
+    : request.cookies.get("freyr_data_view_session")?.value === "mock"
+      ? "mock"
+      : "live";
   return dataMode === "live" || process.env.NEXT_PUBLIC_RELEASE_MODE === "offerings";
 }
 

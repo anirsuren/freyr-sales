@@ -17,7 +17,7 @@ import {
 } from "@/lib/roadmapAccess";
 import {
   stampMaterialAttribution,
-  isFixedMaterialFolder,
+  sanitizeMaterialFolderPath,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
@@ -73,37 +73,18 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!(await canEditOffering(existing))) return FORBIDDEN;
   if (Array.isArray(body.materialFolders)) {
-    const invalid = body.materialFolders.find(
-      (folder) => !isFixedMaterialFolder(folder)
+    body.materialFolders = Array.from(
+      new Set(
+        body.materialFolders
+          .map(sanitizeMaterialFolderPath)
+          .filter(Boolean)
+      )
     );
-    if (invalid) {
-      return NextResponse.json(
-        { error: "Choose a folder from the workspace's fixed list." },
-        { status: 400 }
-      );
-    }
   }
   if (Array.isArray(body.materials)) {
     const incoming = body.materials as OfferingMaterial[];
-    const invalidFolder = incoming.find((material) => {
-      if (isFixedMaterialFolder(material.folder)) return false;
-      const prior = existing.materials.find(
-        (saved) =>
-          (material.id && saved.id === material.id) ||
-          (!material.id &&
-            saved.kind === material.kind &&
-            saved.label === material.label &&
-            saved.url === material.url)
-      );
-      // Grandfather existing unfiled/custom-folder rows until an owner moves
-      // them. New uploads must always use the approved fixed taxonomy.
-      return !prior || (material.folder || "") !== (prior.folder || "");
-    });
-    if (invalidFolder) {
-      return NextResponse.json(
-        { error: "Choose a folder from the workspace's fixed list." },
-        { status: 400 }
-      );
+    for (const material of incoming) {
+      material.folder = sanitizeMaterialFolderPath(material.folder);
     }
   }
   // "Who added this" is stamped here, from the session — never from the body.

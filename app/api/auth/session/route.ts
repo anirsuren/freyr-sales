@@ -14,6 +14,7 @@ import {
   signAccessGrant,
 } from "@/lib/accessControl";
 import { resolveWorkspaceAccess } from "@/lib/accessStore";
+import { DATA_MODE_COOKIE } from "@/lib/dataMode";
 
 export async function POST(request: NextRequest) {
   if (process.env.AUTH_MODE !== "supabase") {
@@ -146,6 +147,16 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true, approved });
+  // A newly authenticated session always begins in Real mode. Mock can be
+  // selected afterward, but it never carries from a previous signed-in user.
+  response.cookies.set(DATA_MODE_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: requestUsesHttps(request),
+    path: "/",
+    expires: new Date(0),
+    maxAge: 0,
+  });
   response.cookies.set(APP_SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",

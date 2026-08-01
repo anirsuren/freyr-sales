@@ -1,8 +1,20 @@
-export type DataMode = "mock" | "live";
-export const DATA_MODE_COOKIE = "freyr_data_mode";
+import { workUnitAsyncStorage } from "next/dist/server/app-render/work-unit-async-storage.external";
 
+export type DataMode = "mock" | "live";
+// New name intentionally ignores the old year-long workspace-mode cookie, so
+// everyone starts in Real mode when this correction ships.
+export const DATA_MODE_COOKIE = "freyr_data_view_session";
+
+/**
+ * A deployment may deliberately lock the experience, but an unlocked app
+ * always starts in Real mode. Mock mode is a temporary viewer choice carried
+ * by this browser session; it is never workspace state.
+ */
 export function configuredDataMode(): DataMode {
-  return process.env.DEFAULT_DATA_MODE === "live" ? "live" : "mock";
+  return process.env.DATA_MODE_LOCKED === "1" &&
+    process.env.DEFAULT_DATA_MODE === "mock"
+    ? "mock"
+    : "live";
 }
 
 export function isDataModeLocked(): boolean {
@@ -10,100 +22,44 @@ export function isDataModeLocked(): boolean {
 }
 
 declare global {
+  // Unit tests exercise the data adapters outside a Next request. This
+  // non-production-only override gives those isolated tests an explicit mode
+  // without reintroducing mutable mode state into the deployed application.
   // eslint-disable-next-line no-var
-  var __FREYR_DATA_MODE__: DataMode | undefined;
-}
-
-export function getDataMode(): DataMode {
-  if (isDataModeLocked()) return configuredDataMode();
-  if (!globalThis.__FREYR_DATA_MODE__) {
-    globalThis.__FREYR_DATA_MODE__ = configuredDataMode();
-  }
-  return globalThis.__FREYR_DATA_MODE__;
+  var __FREYR_TEST_DATA_MODE__: DataMode | undefined;
 }
 
 export function setDataMode(mode: DataMode): DataMode {
-  if (isDataModeLocked()) return configuredDataMode();
-  globalThis.__FREYR_DATA_MODE__ = mode;
+  if (process.env.NODE_ENV !== "production") {
+    globalThis.__FREYR_TEST_DATA_MODE__ = mode;
+  }
   return mode;
 }
 
 /**
- * REMEMBER AN ADMIN'S CHOICE ACROSS RESTARTS.
- *
- * DEFAULT_DATA_MODE is a deployment default, not a decision. The deploy
- * pipeline writes "mock" onto every task definition, so each release quietly
- * put production back into the demo catalogue and somebody had to notice and
- * flip it again — which is exactly what happened after the Jul 29 deploy, with
- * real Freyr people about to look at it.
- *
- * An explicit choice made in the app therefore outlives the process. The env
- * default applies only until somebody chooses; DATA_MODE_LOCKED still wins
- * absolutely, because that is a deliberate lock rather than a default.
+ * Resolve mode from Next's request-local cookie store. The app's data adapters
+ * are synchronous selectors used deep inside server operations, so they read
+ * the same AsyncLocalStorage-backed request store Next uses for cookies rather
+ * than keeping any process-global mode. Outside a request (boot, scripts,
+ * instrumentation), Real mode is the safe default.
  */
-const MODE_ROW = "workspace-data-mode";
-
-function modeClient() {
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-    return null;
-  // Imported lazily: this module is pulled into client bundles for its types.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { createClient } = require("@supabase/supabase-js");
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-}
-
-/** Write the choice down. Failure is not fatal: the process still honours it. */
-export async function persistDataMode(mode: DataMode): Promise<void> {
-  if (isDataModeLocked()) return;
-  // Same boundary as hydrate: a local toggle is local.
-  if (process.env.NODE_ENV !== "production") return;
-  const client = modeClient();
-  if (!client) return;
-  await client
-    .from("offering_catalog_state")
-    .upsert({
-      id: MODE_ROW,
-      catalog: { mode },
-      updated_at: new Date().toISOString(),
-    })
-    .then(() => undefined, () => undefined);
-}
-
-/** Restore the remembered choice at boot, before anything renders. */
-export async function hydrateDataMode(): Promise<DataMode> {
+export function getDataMode(): DataMode {
   if (isDataModeLocked()) return configuredDataMode();
-  // ONLY A DEPLOYED SERVER REMEMBERS.
-  //
-  // The row lives in the workspace database, which a laptop and the test
-  // runner also point at — so the first version of this handed production's
-  // choice to every environment that shared the database. The verify suite
-  // booted into live mode and a dozen mock-data tests failed, which is a
-  // polite version of what it would have done to a developer mid-debug.
-  //
-  // A running deployment remembers what its operator chose; anywhere else,
-  // DEFAULT_DATA_MODE is the whole answer, as it always was.
-  if (process.env.NODE_ENV !== "production") return getDataMode();
-  const client = modeClient();
-  if (!client) return getDataMode();
+  if (
+    process.env.NODE_ENV !== "production" &&
+    globalThis.__FREYR_TEST_DATA_MODE__
+  ) {
+    return globalThis.__FREYR_TEST_DATA_MODE__;
+  }
   try {
-    const { data } = await client
-      .from("offering_catalog_state")
-      .select("catalog")
-      .eq("id", MODE_ROW)
-      .maybeSingle();
-    const stored = (data?.catalog as { mode?: string } | null)?.mode;
-    if (stored === "live" || stored === "mock") {
-      globalThis.__FREYR_DATA_MODE__ = stored;
-      return stored;
+    const store = workUnitAsyncStorage.getStore();
+    if (store && "cookies" in store) {
+      return store.cookies.get(DATA_MODE_COOKIE)?.value === "mock"
+        ? "mock"
+        : "live";
     }
   } catch {
-    // Unreachable database: the env default stands, which is the old behaviour.
+    // Boot code and standalone scripts do not have a request store.
   }
-  return getDataMode();
+  return "live";
 }

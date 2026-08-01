@@ -49,6 +49,10 @@ opposite — "every person needs a mock mode and real mode" — and said it agai
 "they can flip it into mock mode if they want." I removed a tool from the people
 it exists for, and I did it on my own authority, in production.
 
+Current rule: every role may temporarily switch its own browser session to
+Mock. Real is always the default; this is never a persisted workspace-wide
+preference and never changes another person's view.
+
 ## 3. A push to `main` is a deployment, and needs a yes for that specific push
 
 `.github/workflows/deploy.yml` fires on every push to `main` and rolls ECS.

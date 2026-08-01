@@ -86,15 +86,9 @@ export function isOfferingsReleasePath(pathname: string): boolean {
   );
 }
 
-/**
- * Who may flip the workspace out of the released view and into the
- * still-being-built modules. Suren, Jul 28: extra modules "should be hidden,
- * especially for the end users (sales members)" — so the switch that reveals
- * them is an admin control, not a menu item every rep can press. Sales and
- * editor accounts stay inside the released app.
- */
+/** Every signed-in workspace role may temporarily preview Mock mode. */
 export function canSwitchWorkspaceMode(role: string | null | undefined): boolean {
-  return role === "admin";
+  return role === "admin" || role === "editor" || role === "sales";
 }
 
 // Where the logo / default redirects should land per mode.

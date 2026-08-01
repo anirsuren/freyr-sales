@@ -22,9 +22,8 @@ work; you build.
 `.env.local` contains the **real production Supabase URL + service-role key**
 and the real Freya.Docs credentials. There is no staging database.
 
-- Any local server that comes up in **live mode** reads AND WRITES the
-  production database. The persisted `workspace-data-mode` row says `live`,
-  so servers can adopt live mode on boot.
+- Any local server in **live mode** reads AND WRITES the production database.
+  Real is the default; Mock is an explicit, per-browser session view.
 - `PORT=3007` / `NEXT_DIST_DIR=.next-test` isolate the **build cache only** —
   NOT the database.
 - On Jul 30 the Playwright suite, run the "safe" way, **overwrote the
@@ -65,8 +64,9 @@ what was written back, `deleted-test-customers.json`).
 - **Anir's dev server**: `PORT=3001 npm run dev` (defaults to 3000 without
   PORT). This is his live view — treat it as shared. It usually runs in live
   mode, i.e. **writes real data**.
-- Mode is **server-wide, per-process**: flipping it flips it for everyone on
-  that server. Fresh local boots default to **mock**. Flip:
+- Mode is **per browser session**: Real is always the default, and choosing
+  Mock follows that browser through navigation/reload without changing the
+  workspace or anybody else's view. Flip the current session:
   `curl -X POST localhost:3001/api/settings/data-mode -H 'Content-Type: application/json' -d '{"mode":"live"}'`
 - Mock mode = seeded demo world (Helix Biologics etc.), safe sandbox.
   Live mode = the real catalogue from Supabase.
@@ -89,7 +89,8 @@ what was written back, `deleted-test-customers.json`).
   - `material-text` — extracted text of every uploaded file, keyed by
     `docsPath` (`of-001/<epoch>-<filename>`). **This is the only index of
     what's in file storage.**
-  - `docs-storage-config`, `workspace-data-mode`, `anthropic-config`,
+  - `docs-storage-config`, legacy `workspace-data-mode` (ignored by current
+    mode selection), `anthropic-config`,
     per-user rows (`profile-photo:*`, `user-timezone:*`).
 - **Freya.Docs** (api.freyafusion.com/docs-storage, bucket/module
   `freyrsales`): upload via token → presign → PUT → complete; download via
@@ -192,9 +193,10 @@ what was written back, `deleted-test-customers.json`).
   placement question is deliberately not part of this release.
 
 - **Folder and roadmap requirements are now resolved from Change Request Log
-  item 20:** Sales Materials uses 12 fixed top-level folders plus the approved
-  Product Demos and Sales Decks subfolders. Owners choose from the fixed list;
-  arbitrary folder creation is gone. The offering Roadmap separates current,
+  item 20 plus Anir's Jul 31 override:** Sales Materials suggests 12 standard
+  top-level folders plus the Product Demos and Sales Decks subfolders. Filing
+  is optional, and an owner may create an offering-specific folder directly
+  while assigning a material. The offering Roadmap separates current,
   past, and next customer versions, removes key contacts, and hides unreleased
   versions from ordinary sales reps at both the page and API boundaries.
 
@@ -243,11 +245,21 @@ sends an offering-specific overview question, and grounds the response in
 that offering; ordinary Agent navigation remains generic, and **New chat**
 clears that context.
 
-Completed: main-Agent conversations now recover the original unscoped browser
-history, no longer truncate after 50 chats, and mirror the full ordered list to
-the verified member's private `agent_prefs.conversation_state`. The browser is
-an offline cache; it is no longer the only copy. Migration 017 adds the JSONB
-column in Supabase.
+Completed locally, not deployed: main-Agent conversations recover all legacy
+browser keys, no longer truncate after 50 chats, and mirror the full ordered
+list to a private per-member `offering_catalog_state` row. This uses the table
+already present in production, so it does not depend on migration 017 having
+been applied. The browser remains an offline cache and a visible warning says
+when account sync fails.
+
+Completed locally, not deployed: Real is the universal default and Mock is a
+temporary per-browser session view; test/sample identities are hidden from
+Real people pickers/directories but remain available in Mock. Legacy duplicate
+folder names are normalized for display, while genuinely unfiled materials
+stay unfiled until an owner chooses or creates a folder. ZIP uploads now index readable files inside the archive
+and at least index member names for non-transcribable contents. System status
+reports whether Supabase is configured independently of the selected data
+view, eliminating the prior "database reachable / Supabase missing" conflict.
 
 DONE since first drafted (all in the unpushed stack): the full dropdown
 sweep (zero native selects; ColorSelect/PeopleSelect everywhere — commits
@@ -265,9 +277,11 @@ rightward-growing search + Add customer / Import CSV doors through
 ## 10. Meeting knowledge (Jul 30 stakeholder meeting, fully transcribed)
 
 Frames + transcript were analyzed second-by-second in a prior session.
-Durable takeaways: folder types AND document types must be system-defined
-pick lists with one "Other" each (Suren: "system should restrict; process
-can fail"); file formats inside folders stay unrestricted; roadmap tab =
+Durable takeaways: the meeting originally asked for system-defined folder and
+document-type pick lists with one "Other" each. Anir's later Jul 31 product
+decision overrides the folder restriction: the standard folder list remains,
+but folder assignment is optional and owners can create a custom folder while
+assigning a material. File formats inside folders stay unrestricted; roadmap tab =
 current version, next version, feature comparison, contacts — with anything
 beyond current release hidden from sales; the offering page's AI entry is
 the bottom-right dock (Anir's call: keep the dock, no extra Ask button);

@@ -65,8 +65,8 @@ export function TopBar({
   // The signed-in user's uploaded picture, shared by every avatar of them.
   const { photo: myPhoto } = useMyPhoto();
   const router = useRouter();
-  // Quick mock/real switch lives here so nobody has to dig into Settings
-  // (Suren). Mode drives what the whole app shows — see lib/release.ts.
+  // Quick per-session mock/real switch lives here so nobody has to dig into
+  // Settings. Real is always the default; Mock affects only this viewer.
   const [dataMode, setDataModeState] = useState<"mock" | "live" | null>(null);
   const [modeLocked, setModeLocked] = useState(false);
   const [modeBusy, setModeBusy] = useState(false);
@@ -451,15 +451,8 @@ export function TopBar({
                     )}
                   </div>
                 </div>
-                {/* Quick mock/real switch (Suren: "instead of going to settings
-                    every time", and it "has to be a toggle"). One segmented
-                    toggle, active half lit in its color, caption explains the
-                    current mode. Hidden when the deployment locks it, and now
-                    also for anyone below admin: this control is the door out of
-                    the released app into the half-built modules, and prod ships
-                    unlocked, so every rep could open that door for the whole
-                    workspace (Suren, Jul 28: hide the unlaunched modules
-                    "especially for the end users (sales members)"). */}
+                {/* Quick per-session mock/real switch. It is hidden only when
+                    deployment configuration deliberately locks the experience. */}
                 {dataMode && !modeLocked && canSwitchWorkspaceMode(currentUser.role) && (
                   <div className="px-3 py-2.5 border-b border-border-light">
                     {/* Named for what it actually controls: which MODULES are

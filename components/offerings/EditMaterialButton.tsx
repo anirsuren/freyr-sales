@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Folder } from "lucide-react";
+import { Pencil, Folder, FolderOpen, FolderPlus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -13,8 +13,9 @@ import {
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
   FIXED_MATERIAL_FOLDERS,
-  isFixedMaterialFolder,
+  cleanFolderName,
   materialFolderLabel,
+  normalizeFolderPath,
   type AccessLevel,
   type JourneyStage,
   type OfferingMaterial,
@@ -72,6 +73,7 @@ export function EditMaterialButton({
   );
   /** MOVE A FILE. The folder is a plain path, so moving is a re-save. */
   const [folder, setFolder] = useState(material.folder || "");
+  const [newFolder, setNewFolder] = useState("");
   const hasChanges =
     label !== material.label ||
     description !== (material.description || "") ||
@@ -83,6 +85,7 @@ export function EditMaterialButton({
     setLabel(material.label);
     setDescription(material.description || "");
     setFolder(material.folder || "");
+    setNewFolder("");
     setJourneyStage(material.journeyStage || "awareness");
     setAccessLevel(material.accessLevel || "client_facing");
   }
@@ -182,8 +185,8 @@ export function EditMaterialButton({
           <p className="text-[12.5px] leading-relaxed text-text-secondary">
             Rename it, describe it, move it, or change who may see it.
           </p>
-          {/* MOVE IT. The workspace owns this taxonomy; editors pick a fixed
-              destination and cannot create a one-off folder here. */}
+          {/* Filing is optional, and a useful offering-specific folder can be
+              created without leaving the material being edited. */}
           <div>
             <label
               htmlFor={`folder-${material.id}`}
@@ -200,14 +203,26 @@ export function EditMaterialButton({
               className="w-full"
               collapsible={false}
               options={[
-                ...(!isFixedMaterialFolder(material.folder || "") && material.folder
-                  ? [{
-                      value: material.folder,
-                      label: `${material.folder} (existing folder)`,
-                      icon: Folder,
-                      color: "#64748B",
-                    }]
-                  : []),
+                {
+                  value: "",
+                  label: "No folder",
+                  icon: FolderOpen,
+                  color: "#0071E3",
+                },
+                ...Array.from(
+                  new Set(
+                    [...materials.map((item) => item.folder || ""), folder]
+                      .map((name) => normalizeFolderPath(name))
+                      .filter(Boolean)
+                  )
+                )
+                  .filter((name) => !FIXED_MATERIAL_FOLDERS.includes(name))
+                  .map((name) => ({
+                    value: name,
+                    label: `${name} (custom)`,
+                    icon: Folder,
+                    color: "#7C3AED",
+                  })),
                 ...FIXED_MATERIAL_FOLDERS.map((f) => ({
                   value: f,
                   label: materialFolderLabel(f),
@@ -216,6 +231,45 @@ export function EditMaterialButton({
                 })),
               ]}
             />
+            <div className="mt-2 flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <FolderPlus
+                  size={14}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-blue-primary"
+                />
+                <input
+                  value={newFolder}
+                  onChange={(event) => setNewFolder(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    const name = cleanFolderName(newFolder);
+                    if (!name) return;
+                    setFolder(name);
+                    setNewFolder("");
+                  }}
+                  placeholder="Create a new folder"
+                  aria-label="New folder name"
+                  className="h-10 w-full rounded-lg border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary focus:shadow-input-focus"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={!cleanFolderName(newFolder)}
+                onClick={() => {
+                  const name = cleanFolderName(newFolder);
+                  if (!name) return;
+                  setFolder(name);
+                  setNewFolder("");
+                }}
+                className="h-10 shrink-0 rounded-lg border border-blue-subtle px-3 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Create & select
+              </button>
+            </div>
+            <p className="mt-1.5 text-[11.5px] text-text-tertiary">
+              Leave it unfiled, choose an existing folder, or create one now.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

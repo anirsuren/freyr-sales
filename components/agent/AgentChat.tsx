@@ -527,6 +527,7 @@ export function AgentChat({
   const activeUserIdRef = useRef(currentUser.id);
   const historySaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const [historyReadyForSync, setHistoryReadyForSync] = useState(false);
+  const [historySyncFailed, setHistorySyncFailed] = useState(false);
   // Keep the mount-time hand-off stable when we remove its query parameters
   // from the URL. Next can refresh the page props after replaceState; that
   // must not wipe the conversation we just created.
@@ -538,6 +539,7 @@ export function AgentChat({
     requestControllerRef.current?.abort();
     requestControllerRef.current = null;
     setHistoryReadyForSync(false);
+    setHistorySyncFailed(false);
     setLoadedStorageKey(null);
     // Recover the original unscoped key and any earlier stable member-id key.
     // Identity hardening introduced the current key without migrating KEY,
@@ -598,7 +600,10 @@ export function AgentChat({
       })
       .catch(() => {
         // Offline/local fallback still keeps the recovered browser history.
-        if (!cancelled) setHistoryReadyForSync(true);
+        if (!cancelled) {
+          setHistorySyncFailed(true);
+          setHistoryReadyForSync(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -617,13 +622,18 @@ export function AgentChat({
     historySaveChainRef.current = historySaveChainRef.current
       .catch(() => {})
       .then(async () => {
-        await fetch("/api/agent/conversations", {
+        const response = await fetch("/api/agent/conversations", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ conversations: snapshot }),
           keepalive: true,
         });
-      });
+        if (!response.ok) {
+          throw new Error("Conversation history was not saved to your account.");
+        }
+      })
+      .then(() => setHistorySyncFailed(false))
+      .catch(() => setHistorySyncFailed(true));
   }, [convos, historyReadyForSync, loadedStorageKey, storageKey]);
 
   // Proactive greeting: what's on the rep's plate (deterministic, no LLM call).
@@ -959,6 +969,11 @@ export function AgentChat({
           )}
         </div>
         <div className="p-2 border-t border-border-light flex flex-col gap-0.5">
+          {historySyncFailed && (
+            <p className="mb-1 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-2 text-[11px] leading-snug text-text-primary">
+              Saved on this device. Account sync will retry with your next change.
+            </p>
+          )}
           {/* What the assistant knows, and what THIS chat is allowed to use. */}
           <KnowledgeRailButton onClick={() => setKnowledgeOpen(true)} />
           <Link href="/agent/settings" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-text-secondary hover:bg-surface transition-colors">

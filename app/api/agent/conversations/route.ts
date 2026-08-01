@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
+import { DEFAULT_LOCAL_USER_IDENTITY } from "@/lib/userIdentity";
+import type { WorkspaceMemberScope } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +86,87 @@ function sanitizeConversations(value: unknown): StoredConversation[] | null {
   return clean;
 }
 
+async function serviceClient() {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    return null;
+  }
+  const { createClient } = await import("@supabase/supabase-js");
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
+
+async function durableScope(
+  scope: WorkspaceMemberScope,
+  db: NonNullable<Awaited<ReturnType<typeof serviceClient>>>
+): Promise<WorkspaceMemberScope> {
+  if (scope.userId !== DEFAULT_LOCAL_USER_IDENTITY.id) return scope;
+  const email = DEFAULT_LOCAL_USER_IDENTITY.email?.trim().toLowerCase();
+  if (!email) return scope;
+  const { data } = await db
+    .from("app_users")
+    .select("id, workspace_id")
+    .eq("email", email)
+    .eq("active", true)
+    .maybeSingle();
+  return data?.id && data?.workspace_id
+    ? { userId: data.id as string, workspaceId: data.workspace_id as string }
+    : scope;
+}
+
+function rowId(scope: WorkspaceMemberScope): string {
+  return `agent-conversations:${scope.workspaceId}:${scope.userId}`;
+}
+
+async function readDurableConversations(
+  scope: WorkspaceMemberScope
+): Promise<StoredConversation[] | null> {
+  const db = await serviceClient();
+  if (!db) return null;
+  const durable = await durableScope(scope, db);
+  const { data, error } = await db
+    .from("offering_catalog_state")
+    .select("catalog")
+    .eq("id", rowId(durable))
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.catalog) return null;
+  const stored = (data?.catalog as { conversations?: unknown } | null)
+    ?.conversations;
+  if (stored === undefined) return null;
+  const conversations = sanitizeConversations(stored);
+  if (!conversations)
+    throw new Error("Stored conversation history is invalid.");
+  return conversations;
+}
+
+async function writeDurableConversations(
+  scope: WorkspaceMemberScope,
+  conversations: StoredConversation[]
+): Promise<boolean> {
+  const db = await serviceClient();
+  if (!db) return false;
+  const durable = await durableScope(scope, db);
+  const { error } = await db.from("offering_catalog_state").upsert(
+    {
+      id: rowId(durable),
+      catalog: {
+        workspaceId: durable.workspaceId,
+        userId: durable.userId,
+        conversations,
+        updatedAt: new Date().toISOString(),
+      },
+    },
+    { onConflict: "id" }
+  );
+  if (error) throw new Error(error.message);
+  return true;
+}
+
 export async function GET(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
@@ -92,9 +175,23 @@ export async function GET(req: NextRequest) {
       { status: 403 }
     );
   }
-  const prefs = await getDb().agentPrefs.get(scope);
-  const conversations = sanitizeConversations(prefs?.conversation_state) || [];
-  return NextResponse.json({ conversations });
+  try {
+    const durable = await readDurableConversations(scope);
+    if (durable) return NextResponse.json({ conversations: durable });
+    const prefs = await getDb().agentPrefs.get(scope);
+    return NextResponse.json({
+      conversations: sanitizeConversations(prefs?.conversation_state) || [],
+    });
+  } catch (error) {
+    console.error(
+      "[agent/conversations] read failed:",
+      error instanceof Error ? error.message : error
+    );
+    return NextResponse.json(
+      { error: "Conversation history is temporarily unavailable." },
+      { status: 503 }
+    );
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -123,6 +220,22 @@ export async function PUT(req: NextRequest) {
   if (!conversations) {
     return NextResponse.json({ error: "Invalid conversation history." }, { status: 400 });
   }
-  await getDb().agentPrefs.update(scope, { conversation_state: conversations });
-  return NextResponse.json({ ok: true, count: conversations.length });
+  try {
+    const durable = await writeDurableConversations(scope, conversations);
+    if (!durable) {
+      await getDb().agentPrefs.update(scope, {
+        conversation_state: conversations,
+      });
+    }
+    return NextResponse.json({ ok: true, count: conversations.length });
+  } catch (error) {
+    console.error(
+      "[agent/conversations] save failed:",
+      error instanceof Error ? error.message : error
+    );
+    return NextResponse.json(
+      { error: "Conversation history could not be saved." },
+      { status: 503 }
+    );
+  }
 }

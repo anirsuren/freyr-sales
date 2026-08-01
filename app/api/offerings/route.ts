@@ -14,7 +14,7 @@ import {
 } from "@/lib/roadmapAccess";
 import {
   stampMaterialAttribution,
-  isFixedMaterialFolder,
+  sanitizeMaterialFolderPath,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { redactOfferingsForCurrentUser } from "@/lib/materialAccess";
@@ -47,18 +47,20 @@ export async function POST(req: Request) {
   if (!body.offering_name || !String(body.offering_name).trim()) {
     return NextResponse.json({ error: "Offering name is required" }, { status: 400 });
   }
+  if (Array.isArray(body.materialFolders)) {
+    body.materialFolders = Array.from(
+      new Set(
+        body.materialFolders
+          .map(sanitizeMaterialFolderPath)
+          .filter(Boolean)
+      )
+    );
+  }
   // Materials shipped with a brand-new offering are real uploads too, so they
   // get the same server-side attribution stamp (never a client-supplied name).
   if (Array.isArray(body.materials)) {
-    if (
-      (body.materials as OfferingMaterial[]).some(
-        (material) => !isFixedMaterialFolder(material.folder)
-      )
-    ) {
-      return NextResponse.json(
-        { error: "Choose a folder from the workspace's fixed list." },
-        { status: 400 }
-      );
+    for (const material of body.materials as OfferingMaterial[]) {
+      material.folder = sanitizeMaterialFolderPath(material.folder);
     }
     const user = await getCurrentUser();
     body.materials = stampMaterialAttribution(
