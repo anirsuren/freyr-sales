@@ -7,6 +7,7 @@ import {
   BadgeDollarSign,
   Building2,
   CalendarClock,
+  Check,
   CheckCircle2,
   ChevronDown,
   CircleDot,
@@ -17,7 +18,6 @@ import {
   History,
   Link2,
   Link2Off,
-  ListFilter,
   PauseCircle,
   Package,
   Plus,
@@ -65,11 +65,8 @@ import { cn, formatDate } from "@/lib/utils";
 
 type DisplayMode =
   | "activity"
-  | "status"
-  | "start_date"
-  | "end_date"
   | "dollar_value"
-  | "version";
+  | "potential_close_date";
 
 type SelectedCell = {
   customerId: string;
@@ -78,9 +75,14 @@ type SelectedCell = {
 
 const ACTIVITY_ICONS: Record<CustomerOfferingActivity, LucideIcon> = {
   to_pitch: Send,
+  initial_discussions: Activity,
+  product_demonstration: Sparkles,
+  pilot: Target,
+  trial: CircleDot,
   opportunity: Target,
   proposal: FileCheck2,
   under_contract: Clock3,
+  contract_signature: FileCheck2,
   contract_signed: CheckCircle2,
   need_to_deliver: CircleDot,
   implementation: Sparkles,
@@ -101,26 +103,18 @@ const STATUS_ICONS: Record<CustomerOfferingStatus, LucideIcon> = {
 
 const DISPLAY_OPTIONS: ColorOption[] = [
   { value: "activity", label: "Activity", color: "#0071E3", icon: Activity },
-  { value: "status", label: "Status", color: "#F47A45", icon: ListFilter },
-  {
-    value: "start_date",
-    label: "Start date",
-    color: "#0F9E8E",
-    icon: CalendarClock,
-  },
-  {
-    value: "end_date",
-    label: "End date",
-    color: "#7C3AED",
-    icon: CalendarClock,
-  },
   {
     value: "dollar_value",
     label: "Dollar value",
     color: "#C2410C",
     icon: BadgeDollarSign,
   },
-  { value: "version", label: "Version", color: "#2563EB", icon: History },
+  {
+    value: "potential_close_date",
+    label: "Potential closure",
+    color: "#7C3AED",
+    icon: CalendarClock,
+  },
 ];
 
 const ACTIVITY_OPTIONS: ColorOption[] = [
@@ -188,6 +182,28 @@ function dateValue(value: string | null | undefined): string {
   return value ? value.slice(0, 10) : "";
 }
 
+function FormSectionHeading({
+  title,
+  hint,
+}: {
+  title: string;
+  hint?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+        {title}
+      </p>
+      {hint && (
+        <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[9.5px] font-semibold text-text-tertiary">
+          {hint}
+        </span>
+      )}
+      <span className="h-px min-w-4 flex-1 bg-border-light" />
+    </div>
+  );
+}
+
 function uid(): string {
   return `eng-${Date.now().toString(36)}${Math.floor(
     Math.random() * 1e5
@@ -201,15 +217,7 @@ function cellLabel(
   const engagement = resolved.engagement;
   if (!resolved.activity) return "—";
   if (mode === "activity")
-    return CUSTOMER_OFFERING_ACTIVITIES[resolved.activity].label;
-  if (mode === "status")
-    return resolved.status
-      ? CUSTOMER_OFFERING_STATUSES[resolved.status].label
-      : "—";
-  if (mode === "start_date")
-    return engagement?.start_date ? formatDate(engagement.start_date) : "—";
-  if (mode === "end_date")
-    return engagement?.end_date ? formatDate(engagement.end_date) : "—";
+    return CUSTOMER_OFFERING_ACTIVITIES[resolved.activity].short;
   if (mode === "dollar_value")
     return engagement?.dollar_value
       ? formatCurrency(
@@ -217,7 +225,9 @@ function cellLabel(
           engagement.currency || "USD"
         )
       : "—";
-  return engagement ? `v${engagement.version}` : "—";
+  return engagement?.potential_close_date
+    ? formatDate(engagement.potential_close_date)
+    : "—";
 }
 
 function replaceEngagementVersions(
@@ -261,6 +271,7 @@ export function CustomerOfferingHeatMap({
     null
   );
   const [editingExisting, setEditingExisting] = useState(false);
+  const [draftIsNew, setDraftIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const selectedCustomer = selected
@@ -396,9 +407,9 @@ export function CustomerOfferingHeatMap({
 
   function openCell(customer: Customer, offering: HeatMapOffering) {
     const resolved = resolveHeatMapCell(customer, offering);
-    const explicit = engagementHistory(customer, offering.id).find(
-      (version) => version.linked
-    );
+    const history = engagementHistory(customer, offering.id);
+    const explicit =
+      history.find((version) => version.linked) || history[0] || null;
     const now = new Date().toISOString();
     const nextDraft: CustomerOfferingEngagementVersion = explicit
       ? { ...explicit }
@@ -416,6 +427,8 @@ export function CustomerOfferingHeatMap({
           currency: resolved.engagement?.currency || "USD",
           start_date: resolved.engagement?.start_date || null,
           end_date: resolved.engagement?.end_date || null,
+          potential_close_date:
+            resolved.engagement?.potential_close_date || null,
           opportunity_ids: resolved.engagement?.opportunity_ids || [],
           proposal_ids: resolved.engagement?.proposal_ids || [],
           contract_ids: resolved.engagement?.contract_ids || [],
@@ -424,11 +437,14 @@ export function CustomerOfferingHeatMap({
         };
     setSelected({ customerId: customer.id, offeringId: offering.id });
     setEditingExisting(!!explicit);
+    setDraftIsNew(!explicit && !resolved.engagement);
     setDraft(nextDraft);
     setInitialDraft({ ...nextDraft });
     setPendingVersionDraft(explicit ? null : { ...nextDraft });
     setPendingVersionBase(explicit ? null : { ...nextDraft });
-    setExpandedVersionId(nextDraft.id);
+    setExpandedVersionId(
+      !explicit && !resolved.engagement ? nextDraft.id : null
+    );
   }
 
   function closeModal() {
@@ -440,6 +456,7 @@ export function CustomerOfferingHeatMap({
     setPendingVersionBase(null);
     setExpandedVersionId(null);
     setEditingExisting(false);
+    setDraftIsNew(false);
   }
 
   function createNewVersion() {
@@ -455,14 +472,23 @@ export function CustomerOfferingHeatMap({
     }
     const now = new Date().toISOString();
     const nextDraft: CustomerOfferingEngagementVersion = {
-      ...draft,
       id: uid(),
       version: nextEngagementVersion(
         selectedCustomer,
         selectedOffering.id
       ),
-      linked: true,
+      linked: !selectedHistory.some((version) => version.linked),
+      activity: "initial_discussions",
+      activity_description: null,
+      status: defaultStatusForActivity("initial_discussions"),
+      dollar_value: 0,
       currency: draft.currency || "USD",
+      start_date: null,
+      end_date: null,
+      potential_close_date: null,
+      opportunity_ids: [],
+      proposal_ids: [],
+      contract_ids: [],
       created_at: now,
       updated_at: now,
     };
@@ -472,6 +498,7 @@ export function CustomerOfferingHeatMap({
     setPendingVersionBase({ ...nextDraft });
     setExpandedVersionId(nextDraft.id);
     setEditingExisting(false);
+    setDraftIsNew(true);
   }
 
   function selectVersion(versionId: string) {
@@ -489,6 +516,7 @@ export function CustomerOfferingHeatMap({
     setDraft({ ...saved });
     setInitialDraft({ ...saved });
     setEditingExisting(true);
+    setDraftIsNew(false);
   }
 
   function toggleVersion(versionId: string) {
@@ -497,6 +525,36 @@ export function CustomerOfferingHeatMap({
       return;
     }
     selectVersion(versionId);
+  }
+
+  async function chooseHeatMapActivity(versionId: string) {
+    const source =
+      pendingVersionDraft?.id === versionId
+        ? pendingVersionDraft
+        : selectedHistory.find((version) => version.id === versionId);
+    if (!source) return;
+    if (source.linked) return;
+    if (pendingVersionDraft?.id === versionId) {
+      setDraft({ ...source, linked: true });
+      setInitialDraft({ ...source });
+      setExpandedVersionId(versionId);
+      setEditingExisting(false);
+      return;
+    }
+    const nextSource = { ...source, linked: true };
+    setDraft(nextSource);
+    setInitialDraft(nextSource);
+    setExpandedVersionId(versionId);
+    setEditingExisting(true);
+    setDraftIsNew(false);
+    const versions = selectedHistory.map((version) => ({
+      ...version,
+      linked: version.id === versionId,
+    }));
+    await persistVersions(versions, "Heat map activity updated.", {
+      closeAfterSave: false,
+      activeVersionId: versionId,
+    });
   }
 
   function cancelExpandedVersion() {
@@ -512,6 +570,7 @@ export function CustomerOfferingHeatMap({
         setDraft({ ...linked });
         setInitialDraft({ ...linked });
         setEditingExisting(true);
+        setDraftIsNew(false);
       }
       setExpandedVersionId(null);
       return;
@@ -522,7 +581,8 @@ export function CustomerOfferingHeatMap({
 
   async function persistVersions(
     versions: CustomerOfferingEngagementVersion[],
-    successMessage: string
+    successMessage: string,
+    options: { closeAfterSave?: boolean; activeVersionId?: string } = {}
   ) {
     if (!selectedCustomer || !selectedOffering) return;
     const nextUsage = replaceEngagementVersions(
@@ -547,6 +607,26 @@ export function CustomerOfferingHeatMap({
         )
       );
       toast(successMessage);
+      if (options.closeAfterSave === false) {
+        const refreshedHistory = engagementHistory(
+          data.customer,
+          selectedOffering.id
+        );
+        const activeVersion =
+          refreshedHistory.find(
+            (version) => version.id === options.activeVersionId
+          ) || refreshedHistory[0];
+        if (activeVersion) {
+          setDraft({ ...activeVersion });
+          setInitialDraft({ ...activeVersion });
+          setEditingExisting(true);
+          setExpandedVersionId(activeVersion.id);
+        }
+        setPendingVersionDraft(null);
+        setPendingVersionBase(null);
+        setDraftIsNew(false);
+        return;
+      }
       setSelected(null);
       setDraft(null);
       setInitialDraft(null);
@@ -554,6 +634,7 @@ export function CustomerOfferingHeatMap({
       setPendingVersionBase(null);
       setExpandedVersionId(null);
       setEditingExisting(false);
+      setDraftIsNew(false);
     } catch (error) {
       toast(
         error instanceof Error
@@ -572,7 +653,6 @@ export function CustomerOfferingHeatMap({
     const current = engagementHistory(selectedCustomer, selectedOffering.id);
     const normalizedDraft = {
       ...draft,
-      linked: true,
       activity_description: draft.activity_description?.trim() || null,
       dollar_value: Math.max(0, Math.round(draft.dollar_value || 0)),
       updated_at: now,
@@ -581,20 +661,26 @@ export function CustomerOfferingHeatMap({
       normalizedDraft,
       ...current
         .filter((version) => version.id !== normalizedDraft.id)
-        .map((version) => ({ ...version, linked: false })),
+        .map((version) =>
+          normalizedDraft.linked ? { ...version, linked: false } : version
+        ),
     ].sort((a, b) => b.version - a.version);
     await persistVersions(
       versions,
-      editingExisting ? "Activity updated." : `Version ${draft.version} linked.`
+      editingExisting ? "Activity updated." : "Activity added."
     );
   }
 
-  async function unlinkCurrent() {
+  async function unlinkCurrent(versionId = draft?.id) {
     if (!selectedCustomer || !selectedOffering || !editingExisting) return;
     const versions = engagementHistory(selectedCustomer, selectedOffering.id).map(
       (version) => ({ ...version, linked: false })
     );
-    await persistVersions(versions, "Version unlinked. History was preserved.");
+    await persistVersions(
+      versions,
+      "Activity removed from the heat map. Its history was preserved.",
+      { closeAfterSave: false, activeVersionId: versionId }
+    );
   }
 
   return (
@@ -622,7 +708,7 @@ export function CustomerOfferingHeatMap({
           {
             label: "Recorded value",
             value: formatMoney(summary.value),
-            sub: "across linked versions",
+            sub: "across reported activities",
             icon: BadgeDollarSign,
           },
           {
@@ -697,7 +783,7 @@ export function CustomerOfferingHeatMap({
           />
         </SearchPriority>
         <div className="mt-2 border-t border-border-light pt-2">
-          <div className="flex w-full flex-wrap items-center gap-2">
+          <div className="heat-map-stage-scroll flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-2">
             {CUSTOMER_OFFERING_ACTIVITY_ORDER.map((activity) => {
               const meta = CUSTOMER_OFFERING_ACTIVITIES[activity];
               const LegendIcon = ACTIVITY_ICONS[activity];
@@ -714,7 +800,7 @@ export function CustomerOfferingHeatMap({
                     )
                   }
                   className={cn(
-                    "heat-map-stage-filter inline-flex min-w-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[10.5px] font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,box-shadow] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary",
+                    "heat-map-stage-filter inline-flex min-w-0 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[10.5px] font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,box-shadow] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary",
                     selectedActivity &&
                       "ring-2 ring-blue-primary/70 ring-offset-1"
                   )}
@@ -770,7 +856,7 @@ export function CustomerOfferingHeatMap({
             </p>
           </div>
         ) : (
-          <div className="min-h-[420px] overflow-x-auto">
+          <div className="heat-map-scroll min-h-[420px] overflow-x-auto pb-1.5">
             <table
               className="table-fixed border-separate border-spacing-0 text-left"
               style={{
@@ -845,8 +931,7 @@ export function CustomerOfferingHeatMap({
                         : "—";
                       const isBaseline =
                         activity === "to_pitch" && !resolved.hasHistory;
-                      const categorical =
-                        displayMode === "activity" || displayMode === "status";
+                      const categorical = displayMode === "activity";
                       const showLabel =
                         passes && (!categorical || !isBaseline);
                       const cellText =
@@ -894,7 +979,12 @@ export function CustomerOfferingHeatMap({
                                 </span>
                               )
                             ) : showLabel ? (
-                              <span className="flex min-w-0 items-center justify-center gap-1.5">
+                              <span
+                                className={cn(
+                                  "flex min-w-0 max-w-full items-center justify-center gap-1.5",
+                                  resolved.hasHistory && "px-3"
+                                )}
+                              >
                                 {CellIcon && (
                                   <CellIcon
                                     size={12}
@@ -939,10 +1029,11 @@ export function CustomerOfferingHeatMap({
             : "Customer offering activity"
         }
         size="workflow"
+        dialogClassName="h-[min(760px,calc(100vh-2rem))]"
       >
         {draft && selectedCustomer && selectedOffering && (
-          <div className="space-y-5">
-            <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-surface/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-surface/70 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <CompanyLogo
                   name={selectedCustomer.company_name}
@@ -957,93 +1048,217 @@ export function CustomerOfferingHeatMap({
                   </p>
                 </div>
               </div>
-              {selectedHistory.length > 0 &&
-                (editingExisting || !pendingVersionDraft) && (
+              {selectedHistory.length > 0 && !draftIsNew && (
                 <Button
-                  variant="secondary"
                   onClick={createNewVersion}
+                  disabled={editingExisting && hasDraftChanges}
+                  title={
+                    editingExisting && hasDraftChanges
+                      ? "Save or cancel the current changes before adding another activity"
+                      : undefined
+                  }
                   className="px-3 py-1.5 text-[12px]"
                 >
                   <Plus size={13} strokeWidth={2.2} />
-                  {pendingVersionDraft
-                    ? `Continue version ${pendingVersionDraft.version}`
-                    : "New version"}
+                  {pendingVersionDraft ? "Continue activity" : "Add activity"}
                 </Button>
               )}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="text-[14px] font-semibold text-text-primary">
+                    Activity log
+                  </h3>
+                  <p className="text-[10.5px] text-text-tertiary">
+                    Open a row to edit it. Mark one activity as the report row
+                    used in the heat map.
+                  </p>
+                </div>
+                <p className="text-[10px] font-medium text-text-tertiary">
+                  {versionRows.length} {versionRows.length === 1 ? "attempt" : "attempts"}
+                </p>
+              </div>
+              <div className="overflow-visible rounded-xl border border-border-light bg-white">
+                <div className="hidden grid-cols-[116px_minmax(0,1.4fr)_120px_90px_140px_24px_72px] items-center gap-3 rounded-t-xl bg-surface px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary lg:grid">
+                  <span>Report row</span>
+                  <span>Activity</span>
+                  <span>Status</span>
+                  <span>Value</span>
+                  <span>Dates</span>
+                  <span className="sr-only">Open</span>
+                  <span className="sr-only">Actions</span>
+                </div>
               {versionRows.map((version) => {
                 const versionMeta =
                   CUSTOMER_OFFERING_ACTIVITIES[version.activity];
+                const versionStatus =
+                  CUSTOMER_OFFERING_STATUSES[version.status];
+                const VersionIcon = ACTIVITY_ICONS[version.activity];
+                const VersionStatusIcon = STATUS_ICONS[version.status];
                 const expanded =
                   expandedVersionId === version.id && draft.id === version.id;
-                const versionState =
-                  version.id === pendingVersionDraft?.id
-                    ? "Draft"
-                    : version.linked
-                      ? "Linked"
-                      : "History";
+                const unsaved = version.id === pendingVersionDraft?.id;
+                const isNewRow = unsaved && draftIsNew;
+                const reported = draft.linked
+                  ? draft.id === version.id
+                  : version.linked;
+                const valueSummary = version.dollar_value
+                  ? formatCurrency(
+                      version.dollar_value,
+                      version.currency || "USD"
+                    )
+                  : "—";
+                const dateSummary = version.potential_close_date
+                  ? `Close ${formatDate(version.potential_close_date)}`
+                  : version.start_date && version.end_date
+                    ? `${formatDate(version.start_date)} – ${formatDate(version.end_date)}`
+                    : version.start_date
+                      ? `From ${formatDate(version.start_date)}`
+                      : "—";
                 return (
                   <section
                     key={version.id}
                     className={cn(
-                      "relative rounded-xl border bg-white transition-colors",
+                      "relative border-t border-border-light bg-white transition-colors first:border-t-0",
                       expanded
-                        ? "z-20 overflow-visible border-blue-subtle"
-                        : "overflow-hidden border-border-light"
+                        ? "z-20 overflow-visible bg-blue-light/10"
+                        : "overflow-hidden"
                     )}
                   >
-                    <button
-                      type="button"
-                      aria-expanded={expanded}
-                      onClick={() => toggleVersion(version.id)}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface"
-                    >
-                      <span
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                        style={{
-                          background: versionMeta.color,
-                          color: versionMeta.text,
-                        }}
-                      >
-                        <History size={15} strokeWidth={2.2} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[14px] font-semibold text-text-primary">
-                          Version {version.version}
-                        </span>
-                        {!expanded && (
-                          <span className="block truncate text-[10.5px] text-text-tertiary">
-                            {versionMeta.label} ·{" "}
-                            {
-                              CUSTOMER_OFFERING_STATUSES[version.status]
-                                .label
-                            }
-                          </span>
-                        )}
-                      </span>
-                      <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[10.5px] font-bold text-text-primary">
-                        {versionState === "Draft" ? "Unsaved" : versionState}
-                      </span>
-                      <ChevronDown
-                        size={16}
-                        strokeWidth={2.1}
+                    <div className="flex items-stretch gap-2 px-3 py-2.5">
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={reported}
+                        disabled={saving || reported}
+                        aria-label={`${reported ? "Reported" : "Report"} in the heat map: ${versionMeta.label}`}
+                        title={
+                          reported
+                            ? "This is the activity reported in the heat map"
+                            : "Report this activity in the heat map"
+                        }
+                        onClick={() => chooseHeatMapActivity(version.id)}
                         className={cn(
-                          "shrink-0 text-text-primary transition-transform",
-                          expanded && "rotate-180"
+                          "inline-flex w-[104px] shrink-0 items-center justify-center gap-2 rounded-lg px-2 text-[10.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary disabled:cursor-default lg:w-[116px]",
+                          reported
+                            ? "bg-blue-light text-blue-primary"
+                            : "text-text-secondary hover:bg-blue-light/40 hover:text-blue-primary"
                         )}
-                      />
-                    </button>
+                      >
+                        <span
+                          className={cn(
+                            "flex h-[17px] w-[17px] items-center justify-center rounded-[5px] border-2",
+                            reported
+                              ? "border-blue-primary bg-blue-primary text-white"
+                              : "border-[#8E8E93] bg-white"
+                          )}
+                        >
+                          {reported && (
+                            <Check size={11} strokeWidth={3} />
+                          )}
+                        </span>
+                        <span>Report</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        onClick={() => toggleVersion(version.id)}
+                        className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_24px] items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary lg:grid-cols-[minmax(0,1.4fr)_120px_90px_140px_24px]"
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                            style={{
+                              background: versionMeta.color,
+                              color: versionMeta.text,
+                            }}
+                          >
+                            <VersionIcon size={15} strokeWidth={2.2} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span className="truncate text-[12.5px] font-semibold text-text-primary">
+                                {versionMeta.label}
+                              </span>
+                              {isNewRow && (
+                                <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-0.5 text-[9px] font-bold text-blue-primary">
+                                  New
+                                </span>
+                              )}
+                            </span>
+                            <span className="block truncate text-[10px] text-text-tertiary lg:hidden">
+                              Attempt {version.version} · {versionStatus.label} · {valueSummary}
+                            </span>
+                            <span className="hidden text-[10px] text-text-tertiary lg:block">
+                              Attempt {version.version}
+                            </span>
+                          </span>
+                        </span>
+                        <span
+                          className="hidden w-fit max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold text-text-primary lg:inline-flex"
+                          style={{
+                            background: `${versionStatus.color}1F`,
+                          }}
+                        >
+                          <VersionStatusIcon
+                            size={11}
+                            strokeWidth={2.2}
+                            style={{ color: versionStatus.color }}
+                          />
+                          {versionStatus.label}
+                        </span>
+                        <span className="hidden truncate text-[11px] font-semibold text-text-primary lg:block">
+                          {valueSummary}
+                        </span>
+                        <span
+                          className="hidden truncate text-[10px] text-text-secondary lg:block"
+                          title={dateSummary}
+                        >
+                          {dateSummary}
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          strokeWidth={2.1}
+                          className={cn(
+                            "shrink-0 text-text-primary transition-transform",
+                            expanded && "rotate-180"
+                          )}
+                        />
+                      </button>
+                      {reported && !unsaved && editingExisting ? (
+                        <Button
+                          variant="destructive"
+                          onClick={() => unlinkCurrent(version.id)}
+                          loading={saving}
+                          title={`Remove ${versionMeta.label} from the heat map`}
+                          className="h-8 w-9 self-center rounded-lg px-0 text-[10px] lg:w-[72px] lg:px-2"
+                          aria-label={`Remove ${versionMeta.label} from the heat map`}
+                        >
+                          <Link2Off size={13} strokeWidth={2.2} />
+                          <span className="hidden lg:inline">Remove</span>
+                        </Button>
+                      ) : (
+                        <span className="w-9 shrink-0 lg:w-[72px]" />
+                      )}
+                    </div>
                     {expanded && (
-                      <div className="space-y-5 border-t border-border-light p-4">
-            {!editingExisting && (
-              <p className="rounded-lg border border-blue-subtle bg-blue-light px-3 py-2 text-[11.5px] leading-relaxed text-text-primary">
-                This version is not saved yet. Make a change to enable{" "}
-                <span className="font-semibold">Link version</span>. Discarding
-                it or closing this dialog removes the draft.
-              </p>
+                      <div className="space-y-4 border-t border-blue-subtle bg-white p-4">
+            {draftIsNew && (
+              <div className="rounded-lg border border-blue-subtle bg-blue-light px-3 py-2.5">
+                <p className="text-[11.5px] font-semibold text-text-primary">
+                  Creating Activity {draft.version}
+                </p>
+                <p className="mt-0.5 text-[10.5px] leading-relaxed text-text-secondary">
+                  This is a separate attempt. Nothing is added to the activity
+                  log until you enter details and save it.
+                </p>
+              </div>
             )}
+            <FormSectionHeading
+              title={draftIsNew ? "New activity details" : "Activity details"}
+            />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Activity" required>
                 <ColorSelect
@@ -1108,8 +1323,9 @@ export function CustomerOfferingHeatMap({
               />
             </Field>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Field label="Value">
+            <FormSectionHeading title="Timing and value" />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field label="Potential value">
                 <div className="grid min-w-0 grid-cols-[136px_minmax(0,1fr)] gap-2">
                   <ColorSelect
                     value={draft.currency || "USD"}
@@ -1130,13 +1346,18 @@ export function CustomerOfferingHeatMap({
                     collapsible={false}
                   />
                   <Input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={draft.dollar_value || ""}
+                    type="text"
+                    inputMode="decimal"
+                    value={
+                      draft.dollar_value
+                        ? draft.dollar_value.toLocaleString("en-US")
+                        : ""
+                    }
                     onChange={(event) => {
-                      const dollarValue =
-                        Number(event.currentTarget.value) || 0;
+                      const normalized = event.currentTarget.value
+                        .replace(/,/g, "")
+                        .replace(/[^\d.]/g, "");
+                      const dollarValue = Number(normalized) || 0;
                       setDraft((current) =>
                         current
                           ? {
@@ -1147,10 +1368,29 @@ export function CustomerOfferingHeatMap({
                       );
                     }}
                     placeholder="0"
-                    aria-label={`Value in ${draft.currency || "USD"}`}
+                    aria-label={`Potential value in ${draft.currency || "USD"}`}
                     className="h-10 bg-white text-[13px] tnum"
                   />
                 </div>
+              </Field>
+              <Field label="Potential closure date">
+                <Input
+                  type="date"
+                  value={dateValue(draft.potential_close_date)}
+                  onChange={(event) => {
+                    const potentialCloseDate =
+                      event.currentTarget.value || null;
+                    setDraft((current) =>
+                      current
+                        ? {
+                            ...current,
+                            potential_close_date: potentialCloseDate,
+                          }
+                        : current
+                    );
+                  }}
+                  className="h-10 bg-white text-[13px]"
+                />
               </Field>
               <Field label="Start date">
                 <Input
@@ -1190,6 +1430,7 @@ export function CustomerOfferingHeatMap({
               </Field>
             </div>
 
+            <FormSectionHeading title="Linked CRM records" hint="Optional" />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[
                 {
@@ -1226,35 +1467,27 @@ export function CustomerOfferingHeatMap({
               ))}
             </div>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-border-light pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                {editingExisting && (
-                  <Button
-                    variant="secondary"
-                    onClick={unlinkCurrent}
-                    loading={saving}
-                    className="border-violet-200 px-3 text-violet-700 hover:bg-violet-50"
-                  >
-                    <Link2Off size={14} strokeWidth={2} />
-                    Unlink current
+            <div className="flex justify-end gap-2 border-t border-border-light pt-4">
+                {editingExisting && hasDraftChanges && (
+                  <Button variant="secondary" onClick={cancelExpandedVersion}>
+                    Cancel changes
                   </Button>
                 )}
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={cancelExpandedVersion}>
-                  {editingExisting
-                    ? hasDraftChanges
-                      ? "Cancel changes"
-                      : "Collapse"
-                    : "Discard draft"}
-                </Button>
-                {hasDraftChanges && (
+                {!editingExisting && (
+                  <Button variant="secondary" onClick={cancelExpandedVersion}>
+                    {draftIsNew ? "Discard activity" : "Close details"}
+                  </Button>
+                )}
+                {(hasDraftChanges || draftIsNew) && (
                   <Button onClick={saveDraft} loading={saving} className="page-in">
                     <Link2 size={14} strokeWidth={2.2} />
-                    {editingExisting ? "Save changes" : "Link version"}
+                    {editingExisting
+                      ? "Save changes"
+                      : draftIsNew
+                        ? "Save activity"
+                        : "Save details"}
                   </Button>
                 )}
-              </div>
             </div>
                       </div>
                     )}
@@ -1262,6 +1495,7 @@ export function CustomerOfferingHeatMap({
                 );
               })}
             </div>
+          </div>
           </div>
         )}
       </Modal>

@@ -137,7 +137,11 @@ export async function PATCH(
   // lines keyed by offering. Sanitized so bad input can't corrupt the store.
   if (Array.isArray(body.offering_usage)) {
     const RT = ["annual", "project", "annual_service", "license"];
-    const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD", "AUD", "JPY"];
+    const CURRENCIES = [
+      "USD", "EUR", "GBP", "CHF", "CAD", "AUD", "JPY", "CNY", "INR",
+      "SGD", "AED", "SAR", "SEK", "NOK", "DKK", "NZD", "ZAR", "BRL",
+      "MXN",
+    ];
     patch.offering_usage = body.offering_usage
       .map((u: any) => {
         let linkedVersionSeen = false;
@@ -195,6 +199,9 @@ export async function PATCH(
                     : null,
                   end_date: version?.end_date
                     ? String(version.end_date).slice(0, 40)
+                    : null,
+                  potential_close_date: version?.potential_close_date
+                    ? String(version.potential_close_date).slice(0, 40)
                     : null,
                   opportunity_ids: list(version?.opportunity_ids),
                   proposal_ids: list(version?.proposal_ids),

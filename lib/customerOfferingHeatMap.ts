@@ -17,6 +17,30 @@ export const CUSTOMER_OFFERING_ACTIVITIES: Record<
     color: "#DC4C4C",
     text: "#FFFFFF",
   },
+  initial_discussions: {
+    label: "Initial discussions",
+    short: "Initial talks",
+    color: "#EF6C57",
+    text: "#FFFFFF",
+  },
+  product_demonstration: {
+    label: "Product demonstration",
+    short: "Demo",
+    color: "#F28E3B",
+    text: "#2F1A00",
+  },
+  pilot: {
+    label: "Pilot",
+    short: "Pilot",
+    color: "#E9A52F",
+    text: "#2F2100",
+  },
+  trial: {
+    label: "Trial",
+    short: "Trial",
+    color: "#D9B92F",
+    text: "#292300",
+  },
   opportunity: {
     label: "Opportunity",
     short: "Opportunity",
@@ -34,6 +58,12 @@ export const CUSTOMER_OFFERING_ACTIVITIES: Record<
     short: "Contracting",
     color: "#F2C14E",
     text: "#332600",
+  },
+  contract_signature: {
+    label: "Contract signature",
+    short: "Signature",
+    color: "#B9D85E",
+    text: "#1E2A00",
   },
   contract_signed: {
     label: "Contract signed",
@@ -121,7 +151,16 @@ function dealMatchesOffering(deal: AccountDeal, offering: HeatMapOffering) {
 
 function dealActivity(stage: string): CustomerOfferingActivity {
   const normalizedStage = normalized(stage);
+  if (normalizedStage.includes("demo")) return "product_demonstration";
+  if (normalizedStage.includes("pilot")) return "pilot";
+  if (normalizedStage.includes("trial")) return "trial";
   if (normalizedStage.includes("proposal")) return "proposal";
+  if (
+    normalizedStage.includes("signature") ||
+    normalizedStage.includes("signing")
+  ) {
+    return "contract_signature";
+  }
   if (
     normalizedStage.includes("contract") ||
     normalizedStage.includes("negotiat")
@@ -214,6 +253,7 @@ function derivedFromDeal(
     currency: "USD",
     start_date: deal.created_at?.slice(0, 10) || null,
     end_date: deal.close_date || null,
+    potential_close_date: deal.close_date || null,
     opportunity_ids: [deal.id],
     proposal_ids: [],
     contract_ids: [],
@@ -255,6 +295,7 @@ function derivedFromUsage(
     currency: "USD",
     start_date: starts[0] || null,
     end_date: ends.at(-1) || null,
+    potential_close_date: null,
     opportunity_ids: [],
     proposal_ids: [],
     contract_ids: lines.map((line) => line.id),
@@ -383,12 +424,14 @@ export function withDemoHeatMapActivity(
         currency: "USD",
         start_date: start.toISOString().slice(0, 10),
         end_date: end.toISOString().slice(0, 10),
+        potential_close_date: end.toISOString().slice(0, 10),
         opportunity_ids:
           activity === "opportunity" ? [`opp-${id}`] : [],
         proposal_ids:
           activity === "proposal" ? [`proposal-${id}`] : [],
         contract_ids:
           activity === "under_contract" ||
+          activity === "contract_signature" ||
           activity === "contract_signed" ||
           activity === "implementation" ||
           activity === "implemented"

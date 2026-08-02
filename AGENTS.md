@@ -217,6 +217,14 @@ what was written back, `deleted-test-customers.json`).
   therefore 0 offering revenue. The real Reports page and heat map correctly
   render their honest empty states; populated screenshots can only come from
   the locked mock workspace until Freyr imports its customer list.
+- **Heat-map activity workflow now matches Suren's Aug 1 notes:** each
+  customer/offering pairing keeps multiple numbered activity attempts, but
+  exactly one saved attempt can be the report row shown in the matrix. Opening
+  an attempt only edits it; the separate Report control persists the matrix
+  choice and cannot accidentally toggle itself off. The reported attempt has
+  its red Remove action on the same row, new attempts use a clear Save activity
+  flow, and the matrix can display activity, potential value, or potential
+  closure date. The production build and focused type/lint checks pass.
 - The full day already shipped before that local work: offering tabs +
   materials/viewer, custom video
   player with Range seeking, bare-bones Reports, Customers module released

@@ -95,9 +95,14 @@ export interface Customer {
 // loses the activity trail.
 export type CustomerOfferingActivity =
   | "to_pitch"
+  | "initial_discussions"
+  | "product_demonstration"
+  | "pilot"
+  | "trial"
   | "opportunity"
   | "proposal"
   | "under_contract"
+  | "contract_signature"
   | "contract_signed"
   | "need_to_deliver"
   | "implementation"
@@ -148,6 +153,8 @@ export interface CustomerOfferingEngagementVersion {
   currency?: CustomerOfferingCurrency;
   start_date: string | null;
   end_date: string | null;
+  /** The expected commercial close, which is separate from the activity end. */
+  potential_close_date?: string | null;
   opportunity_ids: string[];
   proposal_ids: string[];
   contract_ids: string[];

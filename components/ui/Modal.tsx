@@ -15,6 +15,7 @@ export function Modal({
   children,
   size = "default",
   actions,
+  dialogClassName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -26,6 +27,9 @@ export function Modal({
    *  the close button. Document controls (download, open elsewhere) live here
    *  rather than floating above the content they act on. */
   actions?: React.ReactNode;
+  /** Optional sizing for a specific workflow that should not resize as its
+   *  internal panels open and close. */
+  dialogClassName?: string;
 }) {
   // Portal to <body> so the fixed overlay always covers the whole viewport —
   // if a parent has a CSS transform (e.g. a tab animation), a non-portaled
@@ -121,7 +125,7 @@ export function Modal({
             : size === "wide"
             ? "max-w-[640px]"
             : "max-w-[440px]"
-        } max-h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl border border-border-light shadow-[0_24px_64px_-16px_rgba(0,0,0,0.30)] modal-in`}
+        } max-h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl border border-border-light shadow-[0_24px_64px_-16px_rgba(0,0,0,0.30)] modal-in ${dialogClassName || ""}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border-light shrink-0">
@@ -137,7 +141,7 @@ export function Modal({
           </button>
           </div>
         </div>
-        <div className={`overflow-y-auto ${size === "chart" || size === "viewer" ? "p-3" : "p-5"}`}>
+        <div className={`min-h-0 flex-1 overflow-y-auto ${size === "chart" || size === "viewer" ? "p-3" : "p-5"}`}>
           {children}
         </div>
       </div>
