@@ -8,7 +8,7 @@ import { TopBar } from "./TopBar";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AgentDock } from "@/components/agent/AgentDock";
 import type { DataMode } from "@/lib/dataMode";
-import { isOfferingsOnly, isReleasedPath } from "@/lib/release";
+import { isOfferingsOnly, isReleased, isReleasedPath } from "@/lib/release";
 import { useHoverPreference } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
@@ -44,6 +44,7 @@ export function AppShell({
     pathname.endsWith("/edit") || pathname.endsWith("/new");
   const router = useRouter();
   const offeringsOnly = isOfferingsOnly(dataMode);
+  const customersReleased = isReleased("/customers", dataMode);
   // Same allow-list the middleware redirect uses (lib/release.ts). Keeping one
   // copy is what stops a page from rendering its chrome for a frame before the
   // server bounce lands — and it restores /access-pending, which this list used
@@ -241,6 +242,7 @@ export function AppShell({
           <div className="flex h-full min-w-0 flex-1 flex-col">
             <TopBar
               offeringsOnly={offeringsOnly}
+              customersReleased={customersReleased}
               onMenuClick={() => setMobileNavOpen(true)}
               onAgentToggle={toggleAgent}
               agentActive={visibleAgentOpen && !visibleAgentHidden}

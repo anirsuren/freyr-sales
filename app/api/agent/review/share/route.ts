@@ -6,6 +6,7 @@ import { narrateReview } from "@/lib/claude";
 import { buildDeals, formatMoney } from "@/lib/pipeline";
 import { accountHealth } from "@/lib/health";
 import { canManageReviewQueue } from "@/lib/role";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,8 @@ export async function POST() {
       { status: 403 }
     );
   }
+  const denied = rejectRealModeAgentMutation();
+  if (denied) return denied;
   const db = getDb();
   const [sessions, customers, contacts, interactions, runs] = await Promise.all([
     db.pitchSessions.list(),

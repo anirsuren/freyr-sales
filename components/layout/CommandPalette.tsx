@@ -17,7 +17,6 @@ import {
   User,
   Sparkles,
   Bot,
-  Inbox,
   Rocket,
   Zap,
   LucideIcon,
@@ -93,12 +92,14 @@ export function CommandPalette({
   onClose,
   anchored = false,
   offeringsOnly = false,
+  customersReleased = false,
 }: {
   open: boolean;
   onClose: () => void;
   // anchored = render as a dropdown under the top-bar search (no dark modal)
   anchored?: boolean;
   offeringsOnly?: boolean;
+  customersReleased?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -133,7 +134,15 @@ export function CommandPalette({
         const data = await r.json();
         if (!cancelled) {
           const next = data.results || [];
-          setResults(offeringsOnly ? next.filter((result: Result) => result.type === "Offering") : next);
+          setResults(
+            offeringsOnly
+              ? next.filter(
+                  (result: Result) =>
+                    result.type === "Offering" ||
+                    (customersReleased && result.type === "Customer")
+                )
+              : next
+          );
         }
       } catch {
         if (!cancelled) setResults([]);
@@ -143,7 +152,7 @@ export function CommandPalette({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [offeringsOnly, q]);
+  }, [customersReleased, offeringsOnly, q]);
 
   const go = useCallback(
     (href: string) => {
@@ -202,8 +211,13 @@ export function CommandPalette({
       (q.trim()
         ? NAV.filter((n) => n.label.toLowerCase().includes(q.toLowerCase()))
         : NAV
-      ).filter((n) => !offeringsOnly || n.href.startsWith("/offerings")),
-    [offeringsOnly, q]
+      ).filter(
+        (n) =>
+          !offeringsOnly ||
+          n.href.startsWith("/offerings") ||
+          (customersReleased && n.href.startsWith("/customers"))
+      ),
+    [customersReleased, offeringsOnly, q]
   );
 
   const agentMatches = useMemo(
@@ -275,7 +289,7 @@ export function CommandPalette({
       });
     }
     return list;
-  }, [q, offeringsOnly, agentMatches, navMatches, results, go, setGoal, runCmd]);
+  }, [q, agentMatches, navMatches, results, go, setGoal, runCmd]);
 
   // keep selection in range whenever the list changes
   useEffect(() => {

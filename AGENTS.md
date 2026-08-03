@@ -180,6 +180,22 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Aug 3 production-hardening batch is ready to ship:** live Agent calls are
+  now read-only with respect to customers, sequences, pipeline, and other
+  shared workflow records (Mock keeps its interactive demos); offering-owner
+  changes are admin-only and every target is verified as an active member of
+  the same workspace. Real search includes released Customers, customer
+  Add/Import controls match API permissions, bulk actions/export share one
+  visible selection scope, CSV exports neutralize spreadsheet formulas,
+  Contacts can be added after customer creation, and profile title/signature
+  are stored per member and used by the Agent. The heat map uses exact
+  customer/offering matches, so similarly named offerings cannot duplicate a
+  deal, and empty/derived cells open an editable shared draft. Offering
+  knowledge now safely expands ZIP members with member-level citations,
+  continues output that hits the generation limit, and applies explicit
+  recency windows using published/content dates before upload dates. The live
+  deployment default is Real; Mock remains an explicit per-browser choice.
+
 - **Change Request Log follow-up items 1–7 are implemented:** offering
   ownership is admin-assigned (the member self-claim/request path is gone),
   Supabase users can request and complete a password reset from Settings, both

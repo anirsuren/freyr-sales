@@ -153,6 +153,7 @@ export function CustomersBrowser({
   const { toast } = useToast();
   const router = useRouter();
   const currentUser = useCurrentUser();
+  const canAddCustomers = currentUser.role === "admin";
   const ownerOptions = repOptionsFor(currentUser.name, includeDemoTeam);
   const perPageStorageKey = userScopedStorageKey(
     "freyr.customers.perPage",
@@ -163,6 +164,7 @@ export function CustomersBrowser({
   const [sort, setSort] = useState("recent");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [page, setPage] = useState(1);
+  const [loadedListUserId, setLoadedListUserId] = useState<string | null>(null);
   // How many rows per page — user's choice, remembered (Suren: "let me decide how
   // many to show per page, on every page"). Defaults to 12 (6 rows in the 2-col
   // grid) instead of a cramped 8.
@@ -170,7 +172,11 @@ export function CustomersBrowser({
   useEffect(() => {
     setPerPage(12);
     setPage(1);
-    const v = Number(localStorage.getItem(perPageStorageKey));
+    const urlValue = Number(
+      new URLSearchParams(window.location.search).get("per_page")
+    );
+    const storedValue = Number(localStorage.getItem(perPageStorageKey));
+    const v = [8, 12, 24, 48].includes(urlValue) ? urlValue : storedValue;
     if (v && [8, 12, 24, 48].includes(v)) setPerPage(v);
   }, [perPageStorageKey]);
   function changePerPage(v: string) {
@@ -253,17 +259,55 @@ export function CustomersBrowser({
   const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
-    setQuery("");
-    setHealthFilter("all");
-    setSort("recent");
-    setView("grid");
+    setLoadedListUserId(null);
+    const params = new URLSearchParams(window.location.search);
+    const nextHealth = params.get("health") || "all";
+    const nextSort = params.get("sort") || "recent";
+    const nextView = params.get("view") || "grid";
+    setQuery(params.get("q") || "");
+    setHealthFilter(
+      ["all", "healthy", "watch", "at_risk"].includes(nextHealth)
+        ? nextHealth
+        : "all"
+    );
+    setSort(
+      ["recent", "company", "size", "health"].includes(nextSort)
+        ? nextSort
+        : "recent"
+    );
+    setView(nextView === "table" ? "table" : "grid");
     setPage(1);
     setSelectMode(false);
     setSelected(new Set());
     setBulkOwner(currentUser.name);
     setAssigning(false);
     setAnalyzing(false);
+    setLoadedListUserId(currentUser.id);
   }, [currentUser.id, currentUser.name]);
+
+  useEffect(() => {
+    if (loadedListUserId !== currentUser.id) return;
+    const url = new URL(window.location.href);
+    const setOrDelete = (key: string, value: string, defaultValue: string) => {
+      if (value === defaultValue) url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
+    };
+    setOrDelete("q", query, "");
+    setOrDelete("health", healthFilter, "all");
+    setOrDelete("sort", sort, "recent");
+    setOrDelete("view", view, "grid");
+    url.searchParams.delete("page");
+    setOrDelete("per_page", String(perPage), "12");
+    window.history.replaceState(null, "", url.toString());
+  }, [
+    currentUser.id,
+    healthFilter,
+    loadedListUserId,
+    perPage,
+    query,
+    sort,
+    view,
+  ]);
 
   function toggleSel(id: string) {
     setSelected((s) => {
@@ -312,6 +356,22 @@ export function CustomersBrowser({
   const current = Math.min(page, pageCount);
   const start = (current - 1) * PER_PAGE;
   const paged = filtered.slice(start, start + PER_PAGE);
+  const selectedInScope = useMemo(
+    () => paged.filter((customer) => selected.has(customer.id)),
+    [paged, selected]
+  );
+  const visibleIdsKey = paged.map((customer) => customer.id).join("\u0000");
+  useEffect(() => {
+    const visibleIds = new Set(
+      visibleIdsKey ? visibleIdsKey.split("\u0000") : []
+    );
+    setSelected((previous) => {
+      const next = new Set(
+        Array.from(previous).filter((id) => visibleIds.has(id))
+      );
+      return next.size === previous.size ? previous : next;
+    });
+  }, [visibleIdsKey]);
   const rangeStart = filtered.length === 0 ? 0 : start + 1;
   const rangeEnd = Math.min(start + PER_PAGE, filtered.length);
 
@@ -345,13 +405,13 @@ export function CustomersBrowser({
     downloadCSV("freyr-customers.csv", rowsToCsv(filtered));
   }
   function exportSelected() {
-    const list = filtered.filter((c) => selected.has(c.id));
+    const list = selectedInScope;
     if (!list.length) return;
     downloadCSV("freyr-customers-selected.csv", rowsToCsv(list));
     toast(`Exported ${list.length} account${list.length === 1 ? "" : "s"}`);
   }
   async function assignOwner() {
-    const ids = Array.from(selected);
+    const ids = selectedInScope.map((customer) => customer.id);
     if (!ids.length) return;
     setAssigning(true);
     try {
@@ -394,7 +454,7 @@ export function CustomersBrowser({
   // can't run each one, so select-all → analyze → auto-saves the qualified type,
   // ownership, and revenue for every selected account.
   async function runAnalysis() {
-    const ids = Array.from(selected);
+    const ids = selectedInScope.map((customer) => customer.id);
     if (!ids.length) return;
     setAnalyzing(true);
     let done = 0;
@@ -444,7 +504,7 @@ export function CustomersBrowser({
             Every company in your pipeline.
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        {canAddCustomers && <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => fileRef.current?.click()}
             disabled={importing}
@@ -473,7 +533,7 @@ export function CustomersBrowser({
               e.target.value = "";
             }}
           />
-        </div>
+        </div>}
       </div>
 
       {/* The toolbar is its own FULL-WIDTH bar, the same shape the offerings
@@ -588,10 +648,10 @@ export function CustomersBrowser({
           </PriorityTooltip>
       </SearchPriority>
       {/* Bulk action bar */}
-      {selectMode && selected.size > 0 && (
+      {selectMode && selectedInScope.length > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light flex-wrap">
           <span className="text-[13px] font-semibold text-blue-primary tnum">
-            {selected.size} selected
+            {selectedInScope.length} selected
           </span>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <button
@@ -657,8 +717,12 @@ export function CustomersBrowser({
           <EmptyState
             icon={Plus}
             title="No customers yet"
-            description="Add your first account, or import your whole list from a CSV — columns: company_name, website_url, contact_name, contact_email."
-            action={
+            description={
+              canAddCustomers
+                ? "Add your first account, or import your whole list from a CSV — columns: company_name, website_url, contact_name, contact_email."
+                : "There are no accounts in this workspace yet. Ask a workspace admin to add or import the first accounts."
+            }
+            action={canAddCustomers ? (
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => fileRef.current?.click()}
@@ -676,7 +740,7 @@ export function CustomersBrowser({
                   Add customer
                 </button>
               </div>
-            }
+            ) : undefined}
           />
         ) : (
         <EmptyState
@@ -897,7 +961,7 @@ export function CustomersBrowser({
 
       {/* Add ONE account by hand — a one-row CSV through the same importer
           the file picker uses, so both doors share dedupe and validation. */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add a customer">
+      <Modal open={canAddCustomers && addOpen} onClose={() => setAddOpen(false)} title="Add a customer">
         <div className="space-y-3.5">
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">

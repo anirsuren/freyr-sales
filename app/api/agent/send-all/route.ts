@@ -13,6 +13,7 @@ import {
   isWorkflowManager,
   verifiedWorkflowActor,
 } from "@/lib/workflowAuthorization";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,8 @@ export async function POST(request: NextRequest) {
       { status: 403 }
     );
   }
+  const denied = rejectRealModeAgentMutation();
+  if (denied) return denied;
   const db = getDb();
   const [sessions, customers, contacts, interactions] = await Promise.all([
     db.pitchSessions.list(),

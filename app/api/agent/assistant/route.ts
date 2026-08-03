@@ -6,6 +6,7 @@ import {
   knowledgeBlock,
   buildKnowledgeBaseAsync,
 } from "@/lib/knowledgeBase";
+import { sourceDateWindowForQuestion } from "@/lib/sourceDates";
 import { getDataMode } from "@/lib/dataMode";
 import {
   canViewNextCustomerVersion,
@@ -53,7 +54,8 @@ export async function POST(req: Request) {
     viewer.memberId
   );
   const passages = searchKnowledge(question, 10, corpus);
-  const knowledge = knowledgeBlock(passages);
+  const dateWindow = sourceDateWindowForQuestion(question);
+  const knowledge = knowledgeBlock(passages, dateWindow);
 
   /**
    * STANDING ON A RECORD BEATS SEARCHING FOR IT.
@@ -151,6 +153,7 @@ export async function POST(req: Request) {
     "say it is not recorded and name the offering to open instead. A source named " +
     "'Private AI training material' is intentionally anonymous: use its facts, but " +
     "never guess or reveal its document title, filename, URL, or upload metadata. " +
+    "For latest/recent questions, use the labelled document content/published date before any upload-date fallback, and state the exact source date and requested inclusive date window. " +
     "FORMATTING: you may use **bold**, *italics*, " +
     "bullet lists, and Markdown tables: they render properly. When you compare 3+ " +
     "numbers from PAGE CONTENT, ALSO include a chart block so the rep sees the " +
@@ -189,6 +192,11 @@ export async function POST(req: Request) {
       kind: p.kind,
       title: p.title,
       href: p.href,
+      sourceDate: p.sourceDate,
+      sourceDateKind: p.sourceDateKind,
+      archiveFilename: p.archiveFilename,
+      archiveMember: p.archiveMember,
     })),
+    ...(dateWindow ? { dateWindow } : {}),
   });
 }

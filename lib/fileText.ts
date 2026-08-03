@@ -1,6 +1,18 @@
 import "server-only";
 
 import { inflateRawSync, inflateSync } from "node:zlib";
+import {
+  MAX_ARCHIVE_DEPTH,
+  MAX_ARCHIVE_ENTRIES,
+  MAX_ARCHIVE_TEXT_BYTES,
+  safeArchiveMemberPath,
+} from "./archiveSafety";
+export {
+  MAX_ARCHIVE_DEPTH,
+  MAX_ARCHIVE_ENTRIES,
+  MAX_ARCHIVE_TEXT_BYTES,
+  safeArchiveMemberPath,
+} from "./archiveSafety";
 
 /**
  * READ WHAT IS INSIDE AN UPLOADED FILE.
@@ -28,12 +40,31 @@ import { inflateRawSync, inflateSync } from "node:zlib";
  *  every other source out of the model's context for no gain in answer
  *  quality — the retriever only ever quotes a few passages anyway. */
 const MAX_CHARS = 60_000;
-const MAX_ARCHIVE_ENTRIES = 200;
-const MAX_ARCHIVE_TEXT_BYTES = 50 * 1024 * 1024;
 
 // ---------------------------------------------------------------- zip reader
 
 type ZipEntry = { name: string; data: Buffer };
+type ArchiveBudget = {
+  entries: number;
+  expandedBytes: number;
+  /** Bounds what is persisted/indexed independently of compressed size. */
+  textChars: number;
+};
+
+export type ExtractedArchiveMember = {
+  /** Safe, relative member path, including nested archive names. */
+  path: string;
+  text: string;
+  /** Date declared by the member document itself, never the upload date. */
+  contentDate?: string;
+};
+
+export type ExtractedFileContent = {
+  text: string;
+  /** Date declared by the document itself, if its format carries one. */
+  contentDate?: string;
+  archiveMembers?: ExtractedArchiveMember[];
+};
 
 /** Every file inside a ZIP, decompressed. Handles the two methods Office and
  *  every other real-world writer actually emit: stored (0) and deflate (8). */
@@ -43,6 +74,7 @@ function readZip(
     include?: (name: string) => boolean;
     maxEntries?: number;
     maxBytes?: number;
+    budget?: ArchiveBudget;
   } = {}
 ): ZipEntry[] {
   // The end-of-central-directory record is last, but a trailing comment can
@@ -60,12 +92,17 @@ function readZip(
   const count = buf.readUInt16LE(eocd + 10);
   let p = buf.readUInt32LE(eocd + 16); // start of the central directory
   const out: ZipEntry[] = [];
-  let expandedBytes = 0;
   const maxEntries = options.maxEntries ?? MAX_ARCHIVE_ENTRIES;
   const maxBytes = options.maxBytes ?? MAX_ARCHIVE_TEXT_BYTES;
+  const budget = options.budget ?? {
+    entries: 0,
+    expandedBytes: 0,
+    textChars: 0,
+  };
 
   for (let i = 0; i < count && p + 46 <= buf.length; i++) {
     if (buf.readUInt32LE(p) !== 0x02014b50) break;
+    const flags = buf.readUInt16LE(p + 8);
     const method = buf.readUInt16LE(p + 10);
     const compressedSize = buf.readUInt32LE(p + 20);
     const uncompressedSize = buf.readUInt32LE(p + 24);
@@ -73,13 +110,19 @@ function readZip(
     const extraLen = buf.readUInt16LE(p + 30);
     const commentLen = buf.readUInt16LE(p + 32);
     const localOffset = buf.readUInt32LE(p + 42);
-    const name = buf.subarray(p + 46, p + 46 + nameLen).toString("utf8");
+    if (p + 46 + nameLen + extraLen + commentLen > buf.length) break;
+    const unsafeName = buf.subarray(p + 46, p + 46 + nameLen).toString("utf8");
     p += 46 + nameLen + extraLen + commentLen;
 
-    if (name.endsWith("/") || (options.include && !options.include(name)))
-      continue;
-    if (out.length >= maxEntries || expandedBytes + uncompressedSize > maxBytes)
-      continue;
+    if (unsafeName.endsWith("/")) continue;
+    if (budget.entries >= maxEntries) break;
+    budget.entries += 1;
+    const name = safeArchiveMemberPath(unsafeName);
+    if (!name || (options.include && !options.include(name))) continue;
+    // Encrypted entries, unknown compression methods and declared bombs are
+    // skipped without attempting an allocation.
+    if ((flags & 0x1) !== 0 || (method !== 0 && method !== 8)) continue;
+    if (uncompressedSize > maxBytes - budget.expandedBytes) continue;
 
     // The local header repeats the name and carries its OWN extra-field
     // length, which frequently differs from the central one — reading the
@@ -89,48 +132,25 @@ function readZip(
     const lNameLen = buf.readUInt16LE(localOffset + 26);
     const lExtraLen = buf.readUInt16LE(localOffset + 28);
     const start = localOffset + 30 + lNameLen + lExtraLen;
+    if (start < 0 || start + compressedSize > buf.length) continue;
     const raw = buf.subarray(start, start + compressedSize);
 
     try {
-      out.push({
-        name,
-        data: method === 0 ? Buffer.from(raw) : inflateRawSync(raw),
-      });
-      expandedBytes += uncompressedSize;
+      const remaining = maxBytes - budget.expandedBytes;
+      const data =
+        method === 0
+          ? Buffer.from(raw)
+          : inflateRawSync(raw, { maxOutputLength: remaining });
+      // Do not trust the central-directory size; charge the bytes actually
+      // produced and reject a stored entry whose declaration lied.
+      if (data.length > remaining) continue;
+      budget.expandedBytes += data.length;
+      out.push({ name, data });
     } catch {
       // One unreadable entry must not lose the other 200.
     }
   }
   return out;
-}
-
-/** Names are useful knowledge too: a testimonial archive full of recordings
- * cannot be transcribed locally, but the assistant should still know which
- * customer/session files the archive contains instead of treating it as an
- * opaque, empty blob. This reads only the ZIP directory and inflates nothing. */
-function zipEntryNames(buf: Buffer): string[] {
-  let eocd = -1;
-  const from = Math.max(0, buf.length - 66_000);
-  for (let i = buf.length - 22; i >= from; i--) {
-    if (buf.readUInt32LE(i) === 0x06054b50) {
-      eocd = i;
-      break;
-    }
-  }
-  if (eocd < 0) return [];
-  const count = Math.min(buf.readUInt16LE(eocd + 10), MAX_ARCHIVE_ENTRIES);
-  let p = buf.readUInt32LE(eocd + 16);
-  const names: string[] = [];
-  for (let i = 0; i < count && p + 46 <= buf.length; i++) {
-    if (buf.readUInt32LE(p) !== 0x02014b50) break;
-    const nameLen = buf.readUInt16LE(p + 28);
-    const extraLen = buf.readUInt16LE(p + 30);
-    const commentLen = buf.readUInt16LE(p + 32);
-    const name = buf.subarray(p + 46, p + 46 + nameLen).toString("utf8");
-    p += 46 + nameLen + extraLen + commentLen;
-    if (!name.endsWith("/")) names.push(name);
-  }
-  return names;
 }
 
 // ------------------------------------------------------------ xml → sentences
@@ -165,6 +185,29 @@ function decodeEntities(s: string): string {
 function byNumber(a: string, b: string): number {
   const n = (s: string) => Number(s.match(/(\d+)\D*$/)?.[1] ?? 0);
   return n(a) - n(b) || a.localeCompare(b);
+}
+
+function normalizedDocumentDate(value?: string): string | undefined {
+  if (!value) return undefined;
+  const cleaned = decodeEntities(value.replace(/<[^>]+>/g, "")).trim();
+  const parsed = new Date(cleaned);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
+}
+
+/** Prefer published/issued, then authored/created, then modified metadata. */
+function officeContentDate(zip: ZipEntry[]): string | undefined {
+  const core = zip.find((entry) => entry.name === "docProps/core.xml");
+  if (!core) return undefined;
+  const xml = core.data.toString("utf8");
+  for (const tag of ["dcterms:issued", "dc:date", "dcterms:created", "dcterms:modified"]) {
+    const escaped = tag.replace(":", "\\:");
+    const value = xml.match(
+      new RegExp(`<${escaped}\\b[^>]*>([\\s\\S]*?)<\\/${escaped}>`, "i")
+    )?.[1];
+    const normalized = normalizedDocumentDate(value);
+    if (normalized) return normalized;
+  }
+  return undefined;
 }
 
 // -------------------------------------------------------------- the formats
@@ -241,18 +284,38 @@ function fromXlsx(zip: ZipEntry[]): string {
   return parts.join("\n\n");
 }
 
-function fromArchive(buf: Buffer): string {
-  const names = zipEntryNames(buf);
+function archiveMembers(
+  buf: Buffer,
+  depth: number,
+  budget: ArchiveBudget,
+  prefix = ""
+): ExtractedArchiveMember[] {
+  if (depth > MAX_ARCHIVE_DEPTH) return [];
   const readable = readZip(buf, {
-    include: (name) => isReadableFile(name) && !/\.zip$/i.test(name),
+    include: (name) => isReadableFile(name),
+    budget,
   });
-  const parts: string[] = [];
-  if (names.length) parts.push(`Archive contains:\n${names.join("\n")}`);
+  const members: ExtractedArchiveMember[] = [];
   for (const entry of readable) {
-    const text = extractFileText(entry.data, entry.name);
-    if (text) parts.push(`File: ${entry.name}\n${text}`);
+    const path = prefix ? `${prefix}!/${entry.name}` : entry.name;
+    if (/\.zip$/i.test(entry.name)) {
+      if (depth < MAX_ARCHIVE_DEPTH)
+        members.push(...archiveMembers(entry.data, depth + 1, budget, path));
+      continue;
+    }
+    const extracted = extractFileContentInternal(entry.data, entry.name, budget);
+    if (!extracted.text) continue;
+    const remainingText = MAX_CHARS - budget.textChars;
+    if (remainingText <= 0) break;
+    const memberText = extracted.text.slice(0, remainingText);
+    budget.textChars += memberText.length;
+    members.push({
+      path,
+      text: memberText,
+      ...(extracted.contentDate ? { contentDate: extracted.contentDate } : {}),
+    });
   }
-  return parts.join("\n\n");
+  return members;
 }
 
 function fromPdf(buf: Buffer): string {
@@ -289,6 +352,13 @@ function fromPdf(buf: Buffer): string {
     if (text && /(Tj|TJ)\b/.test(text)) parts.push(pdfOperators(text));
   }
   return parts.filter(Boolean).join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+function pdfContentDate(buf: Buffer): string | undefined {
+  const head = buf.subarray(0, Math.min(buf.length, 2 * 1024 * 1024)).toString("latin1");
+  const raw = head.match(/\/(?:CreationDate|ModDate)\s*\((?:D:)?(\d{4})(\d{2})(\d{2})/);
+  if (!raw) return undefined;
+  return normalizedDocumentDate(`${raw[1]}-${raw[2]}-${raw[3]}T00:00:00Z`);
 }
 
 /** Pull the literal strings out of a PDF content stream: `(hello) Tj` and
@@ -329,17 +399,34 @@ const PLAIN = /\.(txt|md|markdown|csv|tsv|json|xml|html?|rtf|log|yml|yaml)$/i;
 
 /** The readable words inside a file, or "" when the format carries none we can
  *  trust. Never throws: a file that cannot be read must still upload. */
-export function extractFileText(buffer: Buffer, filename: string): string {
+function extractFileContentInternal(
+  buffer: Buffer,
+  filename: string,
+  archiveBudget?: ArchiveBudget
+): ExtractedFileContent {
   const ext = (filename.split(".").pop() || "").toLowerCase();
   try {
     let text = "";
+    let contentDate: string | undefined;
+    let members: ExtractedArchiveMember[] | undefined;
     // Only a PDF can yield glyph soup: Office formats and plain text are read
     // exactly, so a two-word spreadsheet is short, not broken.
     let needsLanguageCheck = false;
     if (ext === "zip") {
-      text = fromArchive(buffer);
+      const budget = archiveBudget ?? {
+        entries: 0,
+        expandedBytes: 0,
+        textChars: 0,
+      };
+      members = archiveMembers(buffer, 0, budget);
+      text = members
+        .map((member) => `Archive member: ${member.path}\n${member.text}`)
+        .join("\n\n");
     } else if (ext === "docx" || ext === "pptx" || ext === "xlsx" || ext === "xlsm") {
-      const zip = readZip(buffer);
+      const zip = readZip(buffer, {
+        ...(archiveBudget ? { budget: archiveBudget } : {}),
+      });
+      contentDate = officeContentDate(zip);
       text =
         ext === "docx"
           ? fromDocx(zip)
@@ -348,6 +435,7 @@ export function extractFileText(buffer: Buffer, filename: string): string {
             : fromXlsx(zip);
     } else if (ext === "pdf") {
       text = fromPdf(buffer);
+      contentDate = pdfContentDate(buffer);
       needsLanguageCheck = true;
     } else if (PLAIN.test(filename)) {
       text = buffer.toString("utf8");
@@ -357,22 +445,37 @@ export function extractFileText(buffer: Buffer, filename: string): string {
         text = xmlText(text, /<\/(p|div|li|tr|h[1-6])>|<br\b[^>]*\/?>/gi);
     }
 
-    text = text.replace(/ /g, "").replace(/[ \t]+\n/g, "\n").trim();
+    text = text.replace(/\0/g, "").replace(/[ \t]+\n/g, "\n").trim();
     // A PDF of nothing but glyph soup (a scan, or CID fonts we cannot map)
     // still matches on stray letters and would poison an answer. Require that
     // it looks like language before we let the assistant quote it.
     if (needsLanguageCheck && (text.match(/[A-Za-z]{3,}/g)?.length ?? 0) < 12)
-      return "";
-    if (!text.trim()) return "";
-    return text.length > MAX_CHARS ? `${text.slice(0, MAX_CHARS)}\n…` : text;
+      return { text: "" };
+    if (!text.trim()) return { text: "" };
+    const limited = text.length > MAX_CHARS ? `${text.slice(0, MAX_CHARS)}\n…` : text;
+    return {
+      text: limited,
+      ...(contentDate ? { contentDate } : {}),
+      ...(members?.length ? { archiveMembers: members } : {}),
+    };
   } catch {
-    return "";
+    return { text: "" };
   }
 }
 
-/** Whether we can read this kind of file at all. ZIPs contribute their member
- *  names and any embedded readable documents; audio/video remains stored but
- *  is deliberately not transcribed. */
+export function extractFileContent(
+  buffer: Buffer,
+  filename: string
+): ExtractedFileContent {
+  return extractFileContentInternal(buffer, filename);
+}
+
+export function extractFileText(buffer: Buffer, filename: string): string {
+  return extractFileContent(buffer, filename).text;
+}
+
+/** Whether we can read this kind of file at all. ZIPs contribute text only from
+ *  supported embedded documents; binaries and unsupported members are skipped. */
 export function isReadableFile(filename: string): boolean {
   return (
     /\.(docx|pptx|xlsx|xlsm|pdf|zip)$/i.test(filename) || PLAIN.test(filename)

@@ -4,6 +4,7 @@ import { notifyTelegram } from "@/lib/telegram";
 import { getSequence, CHANNEL_LABEL } from "@/lib/sequences";
 import type { AgentRunStep, SequenceEnrollment } from "@/lib/types";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
+  const denied = rejectRealModeAgentMutation();
+  if (denied) return denied;
   const body = await req.json().catch(() => ({}));
   const db = getDb();
   const [enrollments, customers, contacts] = await Promise.all([

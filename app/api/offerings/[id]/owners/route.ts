@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   assignOfferingOwner,
   releaseOffering,
@@ -7,20 +7,16 @@ import {
   isOfferingOwner,
   commitOfferingsChange,
 } from "@/lib/offerings";
-import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
-import { isOfferingsOnly } from "@/lib/release";
 import { getDataMode } from "@/lib/dataMode";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
+import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import {
+  activeWorkspaceMember,
+  memberAssignmentResponse,
+} from "@/lib/memberAssignments";
 
 export const dynamic = "force-dynamic";
-
-/** app_users ids are UUIDs. Anything else is a local placeholder identity. */
-function isRealAccountId(id: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-    id
-  );
-}
 
 /** Ownership is assigned here by a workspace admin. There is deliberately no
  * self-claim or request path: ordinary members cannot turn this endpoint into
@@ -32,17 +28,16 @@ const UNIDENTIFIED = NextResponse.json(
 );
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   const offering = getOffering(id);
   if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const user = await getCurrentUser();
-  if (!user.memberId) return UNIDENTIFIED;
-  const admin = await canManageOfferings();
-  if (!admin) {
+  const actor = await verifiedWorkflowActor(req);
+  if (!actor) return UNIDENTIFIED;
+  if (actor.role !== "admin") {
     return NextResponse.json(
       { error: "Only a workspace admin can assign offering owners" },
       { status: 403 }
@@ -67,26 +62,23 @@ export async function POST(
     email?: string | null;
   };
 
-  const targetMemberId = (body.memberId || user.memberId).trim();
-  if (isOfferingsOnly(getDataMode()) && !isRealAccountId(targetMemberId)) {
-    return NextResponse.json(
-      { error: "Choose a workspace member with a verified account" },
-      { status: 400 }
-    );
-  }
-
-  const assigningSelf = targetMemberId === user.memberId;
-  const owner = {
-    memberId: targetMemberId,
-    name: assigningSelf
-      ? user.name
-      : (body.name || "").trim() || "Workspace member",
-    email: assigningSelf ? user.email : body.email ?? null,
-    status: "owner" as const,
-    granted_by: user.memberId,
-  };
-
   try {
+    const targetReference = (body.memberId || actor.userId).trim();
+    const directoryTarget =
+      getDataMode() === "live"
+        ? await activeWorkspaceMember(actor.workspaceId, targetReference)
+        : null;
+    const assigningSelf = targetReference === actor.userId;
+    const owner = {
+      memberId: directoryTarget?.id || targetReference,
+      name:
+        directoryTarget?.display_name.trim() ||
+        (assigningSelf ? actor.name : (body.name || "").trim()) ||
+        "Workspace member",
+      email: directoryTarget?.email || body.email || null,
+      status: "owner" as const,
+      granted_by: actor.userId,
+    };
     const saved = await commitOfferingsChange(() =>
       assignOfferingOwner(id, owner)
     );
@@ -94,10 +86,12 @@ export async function POST(
     return NextResponse.json({
       offering: redactAgentOnlyMaterials(
         hydrateOffering(saved),
-        user.memberId
+        actor.userId
       ),
     });
   } catch (e) {
+    const assignmentError = memberAssignmentResponse(e);
+    if (assignmentError) return assignmentError;
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Could not assign this offering" },
       { status: 500 }

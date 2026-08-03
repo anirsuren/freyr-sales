@@ -35,11 +35,14 @@ import {
   knowledgeBlock,
   buildKnowledgeBaseAsync,
 } from "@/lib/knowledgeBase";
+import { sourceDateWindowForQuestion } from "@/lib/sourceDates";
 import {
   verifiedWorkflowActor,
   type VerifiedWorkflowActor,
 } from "@/lib/workflowAuthorization";
 import type { Contact, PitchSession } from "@/lib/types";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
+import { readMemberProfile } from "@/lib/memberProfile";
 
 export const dynamic = "force-dynamic";
 
@@ -224,7 +227,7 @@ export async function POST(req: NextRequest) {
   const history: ChatTurn[] = kept;
 
   const db = getDb();
-  const [sessions, customers, contacts, interactions, runs, prefs] =
+  const [sessions, customers, contacts, interactions, runs, prefs, memberProfile] =
     await Promise.all([
       db.pitchSessions.list(),
       db.customers.list(),
@@ -232,6 +235,7 @@ export async function POST(req: NextRequest) {
       db.interactions.list(),
       db.agentRuns.list(),
       db.agentPrefs.get(scope),
+      readMemberProfile(scope).catch(() => ({ title: "", signature: "" })),
     ]);
   const deals = buildDeals(sessions, customers, contacts, interactions);
   const { actions } = focusActions(
@@ -302,6 +306,8 @@ export async function POST(req: NextRequest) {
       });
     }
     if (action) {
+      const denied = rejectRealModeAgentMutation();
+      if (denied) return denied;
       const result = await executeAction(
         db,
         action,
@@ -428,7 +434,7 @@ export async function POST(req: NextRequest) {
         "uploaded sales material — quote it when it answers the question. Name " +
         "normal documents, but keep sources labelled 'Private AI training material' " +
         "anonymous):\n" +
-        knowledgeBlock(hits)
+        knowledgeBlock(hits, sourceDateWindowForQuestion(message))
       );
     } catch {
       return "";
@@ -452,12 +458,17 @@ export async function POST(req: NextRequest) {
   const offeringsOnly = isOfferingsOnly(getDataMode());
 
   const facts = offeringsOnly ? "" : buildFacts(ctx, deals, needsApproval, runs);
+  const savedSignature =
+    memberProfile.signature.trim() || `${actorName}\nFreyr Solutions`;
+  const memberIdentity = memberProfile.title
+    ? `${firstName}, whose role is ${memberProfile.title}`
+    : firstName;
   // One prompt, six short sections. Every reactive "NEVER do X" patch that
   // accumulated here has been folded into plain statements of how to behave —
   // a stack of prohibitions reads like a form and produces a bot that sounds
   // like one (Anir, Jul 29: "stop confusing with all of these different rules").
   const agentSystem =
-    `You are Freyr's AI sales assistant, working for ${firstName} in regulatory life-sciences.\n\n` +
+    `You are Freyr's AI sales assistant, working for ${memberIdentity} in regulatory life-sciences.\n\n` +
 
     "VOICE. Talk like a friend who works here: warm, direct, plain English, no jargon, no filler. " +
     "Answer the question in your first sentence. A greeting gets a short, friendly greeting back, nothing more. " +
@@ -467,6 +478,7 @@ export async function POST(req: NextRequest) {
     "Use a period, comma or colon where an em dash would go. Keep answers to 2-5 sentences unless the user asks for depth or a draft.\n\n" +
 
     "HONESTY. Every number, name and figure comes from your grounding or a tool result; if you don't have it, say so. " +
+    "For latest/recent questions, rank by the labelled document content/published date before an upload-date fallback, and state the exact source date and inclusive date window. " +
     "You answer questions and write things; you do not save, send, file, schedule or change anything, " +
     "and you never claim to have contacted anyone.\n\n" +
 
@@ -488,7 +500,7 @@ export async function POST(req: NextRequest) {
     // Until Suren says which actions he actually wants, it writes and hands
     // over; the person puts it wherever it belongs.
     "DRAFTS. When asked to write outreach, write the whole thing: a Subject line plus 3-5 short sentences, " +
-    `signed '${actorName} \u00b7 Freyr', with no placeholders. ` +
+    `with no placeholders and signed using exactly these saved lines:\n${savedSignature}\n` +
     "Show it and stop there: you have no way to save, send or file it, so never offer to. " +
     "The person copies it wherever they need it.\n\n" +
 
@@ -632,6 +644,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (name === "save_draft") {
+      if (rejectRealModeAgentMutation()) {
+        return { content: "Agent actions are disabled in Real mode. Nothing was changed." };
+      }
       const c = resolveAccount(input?.account);
       if (!c) return notFound(input?.account);
       const result = await executeAction(
@@ -650,6 +665,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (name === "set_followup") {
+      if (rejectRealModeAgentMutation()) {
+        return { content: "Agent actions are disabled in Real mode. Nothing was changed." };
+      }
       const c = resolveAccount(input?.account);
       if (!c) return notFound(input?.account);
       const when = parseWhen(String(input?.when || "next week"));
@@ -670,6 +688,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (name === "log_touch") {
+      if (rejectRealModeAgentMutation()) {
+        return { content: "Agent actions are disabled in Real mode. Nothing was changed." };
+      }
       const c = resolveAccount(input?.account);
       if (!c) return notFound(input?.account);
       const outcome = ["interested", "meeting_booked", "in_progress"].includes(
@@ -709,9 +730,7 @@ export async function POST(req: NextRequest) {
       if (!hits.length)
         return { content: `Nothing in the offerings catalogue matches "${q}".` };
       return {
-        content: hits
-          .map((h) => `[${h.kind}] ${h.title} (${h.href}): ${h.text}`)
-          .join("\n\n"),
+        content: knowledgeBlock(hits, sourceDateWindowForQuestion(q)),
       };
     }
 
@@ -727,9 +746,10 @@ export async function POST(req: NextRequest) {
   // like a normal chatbot for now"), and an assistant that quietly files things
   // against live records is the wrong default to ship while that is open.
   //
-  // The handlers below stay: the deterministic brain still drives those actions
-  // from explicit UI buttons, where a person clicked the thing on purpose.
-  // Turning the agent back into an operator is one line here plus the prompt.
+  // The handlers below stay for the in-progress demo, where explicit UI actions
+  // are useful. The server-level Real-mode guard still refuses them even if a
+  // caller bypasses this tool list. Turning the live agent into an operator
+  // therefore requires an explicit capability decision in both places.
   const readOnlyTools = AGENT_TOOLS.filter((t) =>
     offeringsOnly
       ? t.name === "search_offerings"
@@ -756,6 +776,7 @@ export async function POST(req: NextRequest) {
         : base.suggestions,
       source: "claude-agent",
       did: agentResult.dids[0],
+      continuationAvailable: agentResult.truncated,
     });
   }
 

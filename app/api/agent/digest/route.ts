@@ -4,6 +4,7 @@ import { notifyTelegram } from "@/lib/telegram";
 import { nextBestActions, buildDigest } from "@/lib/agent";
 import { narrateDigest } from "@/lib/claude";
 import { canManageReviewQueue } from "@/lib/role";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,8 @@ export async function POST() {
       { status: 403 }
     );
   }
+  const denied = rejectRealModeAgentMutation();
+  if (denied) return denied;
   const d = await compute();
   const line = (await narrateDigest(d)) || d.didSummary;
   notifyTelegram(

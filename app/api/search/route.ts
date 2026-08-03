@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { listOfferings, hydrateOffering } from "@/lib/offerings";
 import { getDataMode } from "@/lib/dataMode";
-import { isOfferingsOnly } from "@/lib/release";
+import { isReleased } from "@/lib/release";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +17,13 @@ export async function GET(req: Request) {
   // the response client-side, which meant every customer and contact matching
   // the query still travelled to the browser — hidden in the UI, present in the
   // payload. Never build the rows in the first place.
-  const offeringsOnly = isOfferingsOnly(getDataMode());
+  const dataMode = getDataMode();
+  const customersReleased = isReleased("/customers", dataMode);
+  const contactsReleased = isReleased("/contacts", dataMode);
 
   const db = getDb();
-  const customers = offeringsOnly ? [] : await db.customers.list();
-  const contacts = offeringsOnly ? [] : await db.contacts.list();
+  const customers = customersReleased ? await db.customers.list() : [];
+  const contacts = contactsReleased ? await db.contacts.list() : [];
 
   const results: {
     type: string;

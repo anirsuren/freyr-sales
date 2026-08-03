@@ -4,6 +4,7 @@ import { answerAccountQuestion, type AccountContext } from "@/lib/agent";
 import { agentAnswer } from "@/lib/claude";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { repIdentityBlock } from "@/lib/repIdentity";
+import { readMemberProfile } from "@/lib/memberProfile";
 
 export const dynamic = "force-dynamic";
 
@@ -86,9 +87,15 @@ export async function POST(req: NextRequest) {
     .map((turn) => `${turn.role === "me" ? "Rep" : "Agent"}: ${turn.text}`)
     .join("\n");
 
-  const prefs = await db.agentPrefs.get(scope);
+  const [prefs, memberProfile] = await Promise.all([
+    db.agentPrefs.get(scope),
+    readMemberProfile(scope).catch(() => ({ title: "", signature: "" })),
+  ]);
   const identity = repIdentityBlock(
-    { name: context.owner || null, title: prefs?.linkedin_headline || null },
+    {
+      name: context.owner || null,
+      title: memberProfile.title || prefs?.linkedin_headline || null,
+    },
     prefs
   );
 

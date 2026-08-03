@@ -4,6 +4,7 @@ import { agentAnswer } from "@/lib/claude";
 import { repIdentityBlock } from "@/lib/repIdentity";
 import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
+import { readMemberProfile } from "@/lib/memberProfile";
 import type { RecommendedService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
   // Tone: explicit request wins; otherwise fall back to the rep's pinned default.
-  const prefs = await db.agentPrefs.get(scope);
+  const [prefs, memberProfile] = await Promise.all([
+    db.agentPrefs.get(scope),
+    readMemberProfile(scope).catch(() => ({ title: "", signature: "" })),
+  ]);
   const tone = ["formal", "warm", "brief"].includes(String(body.tone))
     ? String(body.tone)
     : prefs?.draft_tone || "warm";
@@ -62,6 +66,8 @@ export async function POST(req: NextRequest) {
     },
   ];
   // … and the tone sets the greeting, CTA, and sign-off.
+  const savedSignature =
+    memberProfile.signature.trim() || `${senderName}\nFreyr Solutions`;
   const TONES: Record<
     string,
     { greet: string; cta: string; signoff: string }
@@ -69,17 +75,17 @@ export async function POST(req: NextRequest) {
     warm: {
       greet: `Hi ${firstName},`,
       cta: `Worth a 20-minute call to see if it fits your near-term milestones?`,
-      signoff: `Best,\n${senderName} · Freyr`,
+      signoff: savedSignature,
     },
     formal: {
       greet: `Dear ${firstName},`,
       cta: `Would you be open to a 20-minute call to assess fit against ${co}'s upcoming milestones?`,
-      signoff: `Kind regards,\n${senderName}\nFreyr`,
+      signoff: savedSignature,
     },
     brief: {
       greet: `Hi ${firstName},`,
       cta: `Worth 20 minutes this week?`,
-      signoff: `- ${senderName}, Freyr`,
+      signoff: savedSignature,
     },
   };
   const angle = ANGLES[variant % ANGLES.length];
@@ -102,6 +108,7 @@ export async function POST(req: NextRequest) {
     customer.competitor ? `Incumbent/competitor: ${customer.competitor}` : null,
     toneHint,
     variant > 0 ? `This is rewrite #${variant}: take a clearly different angle.` : null,
+    `Use this exact saved signature at the end:\n${savedSignature}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -109,7 +116,10 @@ export async function POST(req: NextRequest) {
   // are. Without it a 20-year regulatory VP and a new SDR got word-for-word
   // identical drafts.
   const identity = repIdentityBlock(
-    { name: senderName, title: prefs?.linkedin_headline || null },
+    {
+      name: senderName,
+      title: memberProfile.title || prefs?.linkedin_headline || null,
+    },
     prefs
   );
   const llm = await agentAnswer(

@@ -31,6 +31,14 @@ export type MaterialTextEntry = {
   /** Extracted, plain text. Empty means "we could not read this format". */
   text: string;
   extractedAt: string;
+  /** Published/authored date declared inside the document, when available. */
+  contentDate?: string;
+  /** Searchable files extracted from a ZIP, with safe member paths. */
+  archiveMembers?: Array<{
+    path: string;
+    text: string;
+    contentDate?: string;
+  }>;
 };
 
 type TextIndex = Record<string, MaterialTextEntry>;

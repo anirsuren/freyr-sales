@@ -2,7 +2,16 @@ import "server-only";
 
 import { listOfferings, listCustomerTypes, listMarkets } from "./offerings";
 import { loadMaterialText } from "./materialText";
+import type { MaterialTextEntry } from "./materialText";
 import { isReadByAgent } from "./offeringMaterials";
+import {
+  effectiveSourceDate,
+  isRecencyQuestion,
+  sourceDateInWindow,
+  sourceDateWindowForQuestion,
+  type SourceDateKind,
+  type SourceDateWindow,
+} from "./sourceDates";
 
 /**
  * WHAT THE ASSISTANT KNOWS, beyond what is on screen.
@@ -36,6 +45,14 @@ export type KnowledgePassage = {
   href: string;
   /** The searchable body. */
   text: string;
+  /** Date used for recency, chosen from content metadata before upload time. */
+  sourceDate?: string;
+  sourceDateKind?: SourceDateKind;
+  /** Kept separately so provenance never loses the actual upload timestamp. */
+  uploadedAt?: string;
+  /** ZIP provenance; both names are shown in citations when governance allows. */
+  archiveFilename?: string;
+  archiveMember?: string;
 };
 
 /** How much of an uploaded file goes into one passage. Small enough that a
@@ -76,7 +93,7 @@ function chunkText(text: string): string[] {
  *  uploading them; omit it and it answers from the catalogue alone, exactly as
  *  it did before. */
 export function buildKnowledgeBase(
-  fileText: Record<string, { text: string; filename: string }> = {}
+  fileText: Record<string, MaterialTextEntry> = {}
 ): KnowledgePassage[] {
   const out: KnowledgePassage[] = [];
 
@@ -126,6 +143,13 @@ export function buildKnowledgeBase(
     // Each material is its own passage: "is there a demo video for X?" should
     // hit the material, not the whole offering blurb.
     for (const m of o.materials || []) {
+      // Uploaded documents get their recency from the file/member passage below.
+      // Giving the container its upload date as well would make an old document
+      // look recent merely because somebody uploaded it today.
+      const doc = m.docsPath && isReadByAgent(m) ? fileText[m.docsPath] : undefined;
+      const materialDate = m.docsPath
+        ? undefined
+        : effectiveSourceDate(undefined, m.addedAt);
       out.push({
         id: m.id,
         kind: "material",
@@ -140,6 +164,13 @@ export function buildKnowledgeBase(
         ]
           .filter(Boolean)
           .join(". "),
+        ...(materialDate
+          ? {
+              sourceDate: materialDate.iso,
+              sourceDateKind: materialDate.kind,
+              uploadedAt: materialDate.iso,
+            }
+          : {}),
       });
 
       // THE FILE ITSELF. Each chunk is its own passage and carries the deck
@@ -149,18 +180,49 @@ export function buildKnowledgeBase(
       // legacy isReadByAgent helper deliberately returns true even for old
       // rows persisted with `false`, so the policy changes immediately without
       // waiting for every stored offering to be rewritten.
-      const doc = m.docsPath && isReadByAgent(m) ? fileText[m.docsPath] : undefined;
       if (doc?.text) {
-        const chunks = chunkText(doc.text);
-        chunks.forEach((chunk, i) => {
-          out.push({
-            id: `${m.id}#${i}`,
-            kind: "file",
-            title: `${m.label}${chunks.length > 1 ? ` (part ${i + 1} of ${chunks.length})` : ""}`,
-            href: `/offerings/${o.id}`,
-            text: `From "${doc.filename}", a ${m.kind} uploaded to ${o.offering_name}:\n${chunk}`,
+        const uploadedAt = m.addedAt || doc.extractedAt;
+        const addChunks = (
+          text: string,
+          contentDate?: string,
+          member?: string
+        ) => {
+          const chunks = chunkText(text);
+          const date = effectiveSourceDate(contentDate, uploadedAt);
+          chunks.forEach((chunk, i) => {
+            const part = chunks.length > 1
+              ? ` (part ${i + 1} of ${chunks.length})`
+              : "";
+            out.push({
+              id: `${m.id}#${member ? `archive:${member}:` : ""}${i}`,
+              kind: "file",
+              title: `${m.label}${member ? ` › ${member}` : ""}${part}`,
+              href: `/offerings/${o.id}`,
+              text: member
+                ? `From archive "${doc.filename}", member "${member}", uploaded to ${o.offering_name}:\n${chunk}`
+                : `From "${doc.filename}", a ${m.kind} uploaded to ${o.offering_name}:\n${chunk}`,
+              ...(date
+                ? { sourceDate: date.iso, sourceDateKind: date.kind }
+                : {}),
+              ...(uploadedAt ? { uploadedAt } : {}),
+              ...(member
+                ? {
+                    archiveFilename: doc.filename,
+                    archiveMember: member,
+                  }
+                : {}),
+            });
           });
-        });
+        };
+
+        // Structured ZIP members are separate passages, so retrieval and the
+        // citation name the exact archived document rather than the container.
+        if (doc.archiveMembers?.length) {
+          for (const member of doc.archiveMembers)
+            addChunks(member.text, member.contentDate, member.path);
+        } else {
+          addChunks(doc.text, doc.contentDate);
+        }
       }
     }
   }
@@ -211,6 +273,7 @@ const STOP = new Set([
   "its", "this", "that", "with", "what", "which", "who", "whom", "how", "can",
   "any", "all", "have", "has", "had", "be", "been", "there", "their", "about",
   "me", "my", "i", "at", "as", "by", "from", "if", "so", "not", "no", "yes",
+  "latest", "newest", "recent", "recently", "last", "past", "since",
 ]);
 
 function terms(s: string): string[] {
@@ -236,12 +299,28 @@ export function searchKnowledge(
   limit = 6,
   corpus = buildKnowledgeBase()
 ): KnowledgePassage[] {
-  const q = terms(question);
-  if (q.length === 0) return [];
+  const recency = isRecencyQuestion(question);
+  const window = sourceDateWindowForQuestion(question);
+  const searchableQuestion = recency
+    ? question
+        .replace(/\b(?:last|past)\s+\d{1,4}\s+(?:day|week|month|year)s?\b/gi, " ")
+        .replace(/\bsince\s+\d{4}-\d{2}-\d{2}\b/gi, " ")
+        .replace(
+          /\b(?:latest|newest|most recent|recently|recent|published|dated|show|items?|documents?|materials?)\b/gi,
+          " "
+        )
+    : question;
+  const q = terms(searchableQuestion);
+  if (q.length === 0 && !recency) return [];
+
+  const datedCorpus = window
+    ? corpus.filter((passage) => sourceDateInWindow(passage.sourceDate, window))
+    : corpus;
+  const searchableCorpus = datedCorpus.length || window ? datedCorpus : corpus;
 
   // How many passages mention each term, for the rarity weight.
   const docCount = new Map<string, number>();
-  const prepared = corpus.map((p) => {
+  const prepared = searchableCorpus.map((p) => {
     const body = terms(p.text);
     const title = terms(p.title);
     const seen = new Set([...body, ...title]);
@@ -253,7 +332,7 @@ export function searchKnowledge(
     let score = 0;
     let matched = 0;
     for (const t of q) {
-      const rarity = Math.log(corpus.length / ((docCount.get(t) || 0) + 1) + 1);
+      const rarity = Math.log(searchableCorpus.length / ((docCount.get(t) || 0) + 1) + 1);
       const inTitle = title.some((w) => w === t || w.startsWith(t));
       const hits = body.filter((w) => w === t || w.startsWith(t)).length;
       if (inTitle) score += 6 * rarity;
@@ -268,19 +347,48 @@ export function searchKnowledge(
   });
 
   return scored
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .filter((s) => s.score > 0 || (recency && q.length === 0 && !!s.p.sourceDate))
+    .sort((a, b) => {
+      if (recency) {
+        const aDate = a.p.sourceDate ? Date.parse(a.p.sourceDate) : Number.NaN;
+        const bDate = b.p.sourceDate ? Date.parse(b.p.sourceDate) : Number.NaN;
+        if (Number.isFinite(aDate) && !Number.isFinite(bDate)) return -1;
+        if (!Number.isFinite(aDate) && Number.isFinite(bDate)) return 1;
+        if (Number.isFinite(aDate) && Number.isFinite(bDate) && aDate !== bDate)
+          return bDate - aDate;
+      }
+      return b.score - a.score;
+    })
     .slice(0, limit)
     .map((s) => s.p);
 }
 
 /** The retrieved passages, formatted for the model with their sources. */
-export function knowledgeBlock(passages: KnowledgePassage[]): string {
+export function knowledgeBlock(
+  passages: KnowledgePassage[],
+  window?: SourceDateWindow
+): string {
   if (passages.length === 0) return "";
-  return passages
+  const body = passages
     .map(
-      (p, i) =>
-        `[${i + 1}] ${p.kind.toUpperCase()} · ${p.title} (${p.href})\n${p.text}`
+      (p, i) => {
+        const provenance = [
+          p.archiveFilename && p.archiveMember
+            ? `Archive: ${p.archiveFilename}; member: ${p.archiveMember}`
+            : "",
+          p.sourceDate &&
+            `Source date (${p.sourceDateKind === "content" ? "document content/published date" : "upload date fallback"}): ${p.sourceDate}`,
+          p.uploadedAt && `Uploaded/extracted: ${p.uploadedAt}`,
+        ]
+          .filter(Boolean)
+          .join("\n");
+        return (
+          `[${i + 1}] ${p.kind.toUpperCase()} · ${p.title} (${p.href})` +
+          (provenance ? `\n${provenance}` : "") +
+          `\n${p.text}`
+        );
+      }
     )
     .join("\n\n");
+  return window ? `DATE WINDOW: ${window.label}\n\n${body}` : body;
 }

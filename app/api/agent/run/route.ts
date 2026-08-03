@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { notifyTelegram } from "@/lib/telegram";
 import { playRunSteps } from "@/lib/agent";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
+  const denied = rejectRealModeAgentMutation();
+  if (denied) return denied;
   const body = await req.json().catch(() => ({}));
   const customerId = String(body.customerId || "");
   const subject = body.subject ? String(body.subject).slice(0, 200) : "";

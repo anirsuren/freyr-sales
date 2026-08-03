@@ -142,11 +142,12 @@ function dealMatchesOffering(deal: AccountDeal, offering: HeatMapOffering) {
   const dealOffering = normalized(deal.offering);
   if (!dealOffering) return false;
   const offeringName = normalized(offering.name);
-  return (
-    dealOffering === offeringName ||
-    dealOffering.includes(offeringName) ||
-    offeringName.includes(dealOffering)
-  );
+  // A deal belongs to one catalogue offering, not every offering whose name
+  // happens to contain the same words. The previous substring fallback made a
+  // Freya.Register deal appear in Freya.Register + Pia + Mia and + Via too.
+  // Until deals carry a stable offering id, exact canonical-name equality is
+  // the only safe identity match.
+  return dealOffering === offeringName;
 }
 
 function dealActivity(stage: string): CustomerOfferingActivity {

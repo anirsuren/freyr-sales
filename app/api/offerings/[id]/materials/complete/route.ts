@@ -3,7 +3,11 @@ import { getOffering } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { formatFromFilename } from "@/lib/materialStorage";
-import { extractFileText, isReadableFile } from "@/lib/fileText";
+import {
+  extractFileContent,
+  isReadableFile,
+  type ExtractedFileContent,
+} from "@/lib/fileText";
 import { saveMaterialText } from "@/lib/materialText";
 
 export const dynamic = "force-dynamic";
@@ -79,6 +83,7 @@ export async function POST(
   let readable = false;
   let words = 0;
   let text = "";
+  let extracted: ExtractedFileContent = { text: "" };
   // `failed` means we could not READ it this time — a different thing from a
   // format that has no text in it, and the two must never be reported as the
   // same thing (see the response below).
@@ -108,7 +113,11 @@ export async function POST(
           failed = false;
           break;
         }
-        text = extractFileText(Buffer.from(await res.arrayBuffer()), filename);
+        extracted = extractFileContent(
+          Buffer.from(await res.arrayBuffer()),
+          filename
+        );
+        text = extracted.text;
         readable = text.length > 0;
         words = text.match(/\S+/g)?.length ?? 0;
         failed = false;
@@ -128,6 +137,10 @@ export async function POST(
       filename,
       text,
       extractedAt: new Date().toISOString(),
+      ...(extracted.contentDate ? { contentDate: extracted.contentDate } : {}),
+      ...(extracted.archiveMembers
+        ? { archiveMembers: extracted.archiveMembers }
+        : {}),
     }).catch(() => undefined);
   }
 

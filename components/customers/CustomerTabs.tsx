@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Globe,
   MapPin,
@@ -34,6 +35,7 @@ import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { Field, Input } from "@/components/ui/Input";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -172,6 +174,7 @@ export function CustomerTabs({
   };
 }) {
   const { toast } = useToast();
+  const router = useRouter();
   const currentUser = useCurrentUser();
   const ownerOptions = repOptionsFor(currentUser.name, includeDemoTeam);
   const defaultDealOwner = includeDemoTeam
@@ -220,6 +223,16 @@ export function CustomerTabs({
   const [attModalOpen, setAttModalOpen] = useState(false);
   const [attUrl, setAttUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    fullName: "",
+    jobTitle: "",
+    role: "",
+    email: "",
+    phone: "",
+    linkedinUrl: "",
+  });
 
   // multiple deals per account (#58)
   const [accountDeals, setAccountDeals] = useState<AccountDeal[]>(
@@ -261,6 +274,16 @@ export function CustomerTabs({
     setAttName("");
     setAttUrl("");
     setBusy(false);
+    setContactModalOpen(false);
+    setContactBusy(false);
+    setContactForm({
+      fullName: "",
+      jobTitle: "",
+      role: "",
+      email: "",
+      phone: "",
+      linkedinUrl: "",
+    });
     setShowDeal(false);
     setDealForm({
       name: "",
@@ -418,6 +441,59 @@ export function CustomerTabs({
     } catch {
       toast("Could not save: try again");
       return null;
+    }
+  }
+
+  function closeContactModal() {
+    if (contactBusy) return;
+    setContactModalOpen(false);
+    setContactForm({
+      fullName: "",
+      jobTitle: "",
+      role: "",
+      email: "",
+      phone: "",
+      linkedinUrl: "",
+    });
+  }
+
+  async function addContact() {
+    const fullName = contactForm.fullName.trim();
+    if (!fullName || contactBusy) return;
+    setContactBusy(true);
+    try {
+      const response = await fetch(`/api/customers/${customer.id}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          job_title: contactForm.jobTitle,
+          role_bucket: contactForm.role,
+          email: contactForm.email,
+          phone: contactForm.phone,
+          linkedin_url: contactForm.linkedinUrl,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast(data.error || "Could not add the contact.", "error");
+        return;
+      }
+      toast(`${fullName} added`);
+      setContactModalOpen(false);
+      setContactForm({
+        fullName: "",
+        jobTitle: "",
+        role: "",
+        email: "",
+        phone: "",
+        linkedinUrl: "",
+      });
+      router.refresh();
+    } catch {
+      toast("Could not add the contact.", "error");
+    } finally {
+      setContactBusy(false);
     }
   }
 
@@ -1274,7 +1350,23 @@ export function CustomerTabs({
         )}
 
         {tab === "contacts" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[13px] text-text-secondary">
+                <span className="font-semibold text-text-primary tnum">
+                  {contacts.length}
+                </span>{" "}
+                {contacts.length === 1 ? "contact" : "contacts"} at this account
+              </p>
+              <Button
+                onClick={() => setContactModalOpen(true)}
+                className="px-3 py-2 text-[13px]"
+              >
+                <Plus size={15} strokeWidth={2.2} />
+                Add contact
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {contacts.map((c) => (
               // Stretched-link card: the name link's ::after covers the whole
               // card (whole-card click → contact), while the LinkedIn icon stays
@@ -1321,6 +1413,7 @@ export function CustomerTabs({
                 className="md:col-span-2"
               />
             )}
+            </div>
           </div>
         )}
 
@@ -2300,6 +2393,116 @@ export function CustomerTabs({
             </div>
           );
         })()}
+      </Modal>
+
+      <Modal
+        open={contactModalOpen}
+        onClose={closeContactModal}
+        title={`Add a contact at ${customer.company_name}`}
+        size="wide"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Full name" required>
+              <Input
+                autoFocus
+                value={contactForm.fullName}
+                onChange={(event) =>
+                  setContactForm((form) => ({
+                    ...form,
+                    fullName: event.target.value,
+                  }))
+                }
+                placeholder="e.g. Priya Shah"
+                maxLength={120}
+              />
+            </Field>
+            <Field label="Job title">
+              <Input
+                value={contactForm.jobTitle}
+                onChange={(event) =>
+                  setContactForm((form) => ({
+                    ...form,
+                    jobTitle: event.target.value,
+                  }))
+                }
+                placeholder="e.g. VP, Regulatory Affairs"
+                maxLength={160}
+              />
+            </Field>
+            <Field label="Role">
+              <Input
+                value={contactForm.role}
+                onChange={(event) =>
+                  setContactForm((form) => ({
+                    ...form,
+                    role: event.target.value,
+                  }))
+                }
+                placeholder="e.g. Decision maker"
+                maxLength={120}
+              />
+            </Field>
+            <Field label="Email">
+              <Input
+                type="email"
+                value={contactForm.email}
+                onChange={(event) =>
+                  setContactForm((form) => ({
+                    ...form,
+                    email: event.target.value,
+                  }))
+                }
+                placeholder="name@company.com"
+                maxLength={254}
+              />
+            </Field>
+            <Field label="Phone">
+              <Input
+                type="tel"
+                value={contactForm.phone}
+                onChange={(event) =>
+                  setContactForm((form) => ({
+                    ...form,
+                    phone: event.target.value,
+                  }))
+                }
+                placeholder="+44 20 0000 0000"
+                maxLength={60}
+              />
+            </Field>
+            <Field label="LinkedIn URL">
+              <Input
+                type="url"
+                value={contactForm.linkedinUrl}
+                onChange={(event) =>
+                  setContactForm((form) => ({
+                    ...form,
+                    linkedinUrl: event.target.value,
+                  }))
+                }
+                placeholder="https://www.linkedin.com/in/…"
+                maxLength={500}
+              />
+            </Field>
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
+            <Button
+              variant="secondary"
+              onClick={closeContactModal}
+              disabled={contactBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={addContact}
+              loading={contactBusy}
+              disabled={!contactForm.fullName.trim()}
+            >
+              Add contact
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* The account-scoped agent drawer is gone with its launcher — the

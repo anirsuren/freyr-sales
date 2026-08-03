@@ -19,6 +19,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
+import { downloadCSV, toCSV } from "@/lib/csv";
 import {
   cn,
   formatDate,
@@ -290,9 +291,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
   ];
 
   function exportCsv() {
-    const quote = (value: string | null | undefined) =>
-      `"${String(value || "").replace(/"/g, '""')}"`;
-    const rows = [
+    const csv = toCSV(
       [
         "Date",
         "Account",
@@ -303,7 +302,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
         "Source",
         "Note",
       ],
-      ...visibleItems.map((item) => [
+      visibleItems.map((item) => [
         formatDateTime(item.created_at),
         item.company,
         item.contactName,
@@ -312,18 +311,9 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
         item.owner,
         item.source,
         cleanNote(item.notes || ""),
-      ]),
-    ];
-    const blob = new Blob(
-      [rows.map((row) => row.map(quote).join(",")).join("\n")],
-      { type: "text/csv;charset=utf-8" }
+      ])
     );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "freyr-activity.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCSV("freyr-activity.csv", csv);
   }
 
   return (

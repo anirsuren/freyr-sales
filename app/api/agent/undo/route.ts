@@ -6,6 +6,7 @@ import {
   isWorkflowOwner,
   verifiedWorkflowActor,
 } from "@/lib/workflowAuthorization";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
+  const denied = rejectRealModeAgentMutation();
+  if (denied) return denied;
   if (
     !isWorkflowManager(actor) &&
     !isWorkflowOwner(actor, run.created_by_user_id, run.created_by)

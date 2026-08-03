@@ -45,11 +45,13 @@ export function TopBar({
   onAgentToggle,
   agentActive,
   offeringsOnly = false,
+  customersReleased = false,
 }: {
   onMenuClick?: () => void;
   onAgentToggle?: () => void;
   agentActive?: boolean;
   offeringsOnly?: boolean;
+  customersReleased?: boolean;
 } = {}) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -285,7 +287,11 @@ export function TopBar({
             className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0 transition-all duration-200 group-hover:text-blue-primary group-hover:scale-110 group-focus-visible:text-blue-primary"
           />
           <span className="truncate">
-            {offeringsOnly ? "Search offerings…" : "Search offerings, companies, contacts, or jump to a page…"}
+            {offeringsOnly
+              ? customersReleased
+                ? "Search offerings, companies, or jump to a page…"
+                : "Search offerings…"
+              : "Search offerings, companies, contacts, or jump to a page…"}
           </span>
           <kbd className="ml-auto shrink-0 inline-flex items-center text-[11px] font-medium text-text-secondary bg-white border border-border-light rounded-md px-1.5 py-0.5 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
             Enter
@@ -297,6 +303,7 @@ export function TopBar({
             onClose={() => setPaletteOpen(false)}
             anchored
             offeringsOnly={offeringsOnly}
+            customersReleased={customersReleased}
         />
       </div>
 

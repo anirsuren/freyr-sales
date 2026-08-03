@@ -61,6 +61,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  // Ownership is immutable through the generic editor. The dedicated admin
+  // endpoint verifies the target against the active workspace directory; a
+  // broad object spread here must never bypass that gate. Record identity and
+  // creation metadata are likewise server-owned.
+  delete body.owners;
+  delete body.id;
+  delete body.created_at;
   const { id } = await params;
   // ONE rule for every write: you must own this offering. Uploading a sales
   // material is editing the offering's content, so it goes through the same

@@ -9,6 +9,7 @@ import {
 } from "@/lib/agent";
 import { buildDeals } from "@/lib/pipeline";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ export async function POST(request: NextRequest) {
       { status: 403 }
     );
   }
+  const denied = rejectRealModeAgentMutation();
+  if (denied) return denied;
   const scope = {
     workspaceId: actor.workspaceId,
     userId: actor.userId,

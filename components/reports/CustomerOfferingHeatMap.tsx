@@ -470,7 +470,11 @@ export function CustomerOfferingHeatMap({
           updated_at: now,
         };
     const activeDraft = storedDraft || nextDraft;
-    const isPendingDraft = Boolean(storedDraft) || (!explicit && !resolved.engagement);
+    // Cells backed only by an older deal/usage record still need an editable
+    // first activity. Treat that derived bridge (and a genuinely empty cell)
+    // as a shared draft until the rep explicitly saves it into the activity
+    // log. This also makes every empty matrix cell open consistently.
+    const isPendingDraft = Boolean(storedDraft) || !explicit;
     const savedReportId = history.find((version) => version.linked)?.id || null;
     setSelected({ customerId: customer.id, offeringId: offering.id });
     setEditingExisting(!isPendingDraft && !!explicit);
@@ -1415,22 +1419,21 @@ export function CustomerOfferingHeatMap({
                         />
                       </button>
                       {reported && !unsaved ? (
-                        <Button
-                          variant="destructive"
+                        <button
+                          type="button"
                           onClick={() => unlinkCurrent(version.id)}
                           disabled={saving}
                           title={`Remove ${versionMeta.label} from the heat map`}
-                          className="h-8 w-8 shrink-0 self-center rounded-lg p-0 !text-white [&>svg]:!stroke-white"
-                          style={{ color: "#FFFFFF", padding: 0 }}
+                          className="inline-flex h-8 w-8 shrink-0 self-center items-center justify-center rounded-lg bg-error text-white shadow-sm transition-[transform,background-color,opacity] hover:bg-[#D92D20] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                           aria-label={`Remove ${versionMeta.label} from the heat map`}
                         >
                           <Trash2
                             size={14}
-                            strokeWidth={2.2}
-                            color="#FFFFFF"
-                            style={{ color: "#FFFFFF", stroke: "#FFFFFF" }}
+                            strokeWidth={2.4}
+                            className="text-white"
+                            aria-hidden="true"
                           />
-                        </Button>
+                        </button>
                       ) : (
                         <span className="w-8 shrink-0" />
                       )}

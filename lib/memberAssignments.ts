@@ -32,7 +32,7 @@ export type VerifiedOwnerAssignment = {
   workspace_id?: string;
 };
 
-type DirectoryMember = {
+export type ActiveWorkspaceMember = {
   id: string;
   display_name: string;
   email: string | null;
@@ -50,7 +50,7 @@ function clean(value: unknown): string {
 async function directoryMember(
   workspaceId: string,
   reference: string
-): Promise<DirectoryMember> {
+): Promise<ActiveWorkspaceMember> {
   if (!hasSupabase()) {
     throw new MemberAssignmentError(
       "Workspace member assignment is unavailable until the member directory is configured.",
@@ -77,7 +77,7 @@ async function directoryMember(
   }
 
   const needle = reference.toLocaleLowerCase();
-  const members = (result.data || []) as DirectoryMember[];
+  const members = (result.data || []) as ActiveWorkspaceMember[];
   const exactId = members.find((member) => member.id === reference);
   if (exactId) return exactId;
 
@@ -100,6 +100,14 @@ async function directoryMember(
     "The selected owner is not an active member of this workspace.",
     400
   );
+}
+
+/** Resolve one active member inside the explicitly verified workspace. */
+export async function activeWorkspaceMember(
+  workspaceId: string,
+  reference: string
+): Promise<ActiveWorkspaceMember> {
+  return directoryMember(workspaceId, reference);
 }
 
 /**

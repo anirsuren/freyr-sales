@@ -36,6 +36,7 @@ import {
 } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { formatMoney } from "@/lib/pipeline";
+import { csvCell } from "@/lib/csv";
 import { flagForGeography } from "@/lib/countryFlags";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
@@ -133,11 +134,6 @@ function whoForLabel(
 ): string {
   if (totalCount > 0 && coveredCount === totalCount) return "All customer types";
   return famList.join(" · ");
-}
-
-// CSV-safe a cell (quote if it has commas/quotes/newlines).
-function csv(v: string) {
-  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
 // Sort options: also valid ?sort= deep-link values, kept in sync with the
@@ -558,10 +554,10 @@ export function OfferingsBrowser({
         o.markets.map((m) => m.name).join("; "),
         o.materials.map((m) => `${m.label} (${m.url})`).join(" | "),
       ]
-        .map((x) => csv(String(x || "")))
+        .map((x) => csvCell(String(x || "")))
         .join(",")
     );
-    const blob = new Blob([[header.join(","), ...rows].join("\n")], {
+    const blob = new Blob([[header.map(csvCell).join(","), ...rows].join("\n")], {
       type: "text/csv;charset=utf-8;",
     });
     const url = URL.createObjectURL(blob);

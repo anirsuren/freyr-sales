@@ -3,7 +3,7 @@ import { getOffering } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { uploadMaterialFile, MAX_UPLOAD_BYTES } from "@/lib/materialStorage";
 import { getCurrentUser } from "@/lib/currentUser";
-import { extractFileText, isReadableFile } from "@/lib/fileText";
+import { extractFileContent, isReadableFile } from "@/lib/fileText";
 import { saveMaterialText } from "@/lib/materialText";
 
 export const dynamic = "force-dynamic";
@@ -69,9 +69,10 @@ export async function POST(
     let readable = false;
     let words = 0;
     if (stored.docsPath) {
-      const text = supported
-        ? extractFileText(Buffer.from(await file.arrayBuffer()), file.name)
-        : "";
+      const extracted = supported
+        ? extractFileContent(Buffer.from(await file.arrayBuffer()), file.name)
+        : { text: "" };
+      const text = extracted.text;
       readable = text.length > 0;
       words = text.match(/\S+/g)?.length ?? 0;
       await saveMaterialText(stored.docsPath, {
@@ -79,6 +80,10 @@ export async function POST(
         filename: file.name,
         text,
         extractedAt: new Date().toISOString(),
+        ...(extracted.contentDate ? { contentDate: extracted.contentDate } : {}),
+        ...(extracted.archiveMembers
+          ? { archiveMembers: extracted.archiveMembers }
+          : {}),
       }).catch(() => undefined);
     }
 

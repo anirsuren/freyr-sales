@@ -106,6 +106,15 @@ export function secureKnowledgePassagesForMember(
         ...passage,
         title: "Private AI training material",
         href: privateMaterial.href,
+        // The facts remain usable, but filenames/member paths and upload
+        // timing are discoverable metadata. Remove them before retrieval, not
+        // merely before rendering, so the model can never reconstruct them.
+        archiveFilename: undefined,
+        archiveMember: undefined,
+        uploadedAt: undefined,
+        ...(passage.sourceDateKind === "upload"
+          ? { sourceDate: undefined, sourceDateKind: undefined }
+          : {}),
         text:
           `Private training material for ${privateMaterial.offeringName}:\n` +
           fileContents,

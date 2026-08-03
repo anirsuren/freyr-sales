@@ -1,4 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  continuationDecision,
+  OUTPUT_LIMIT_MARKER,
+} from "./agentContinuation";
 import type { MatchingOutput, PitchOutput } from "./types";
 import type { AgentDigestData, WeeklyReview, AccountBriefing } from "./agent";
 
@@ -450,12 +454,84 @@ function parseJson<T>(text: string): T {
  * Joining every text block also fixes replies split across blocks, which
  * silently lost everything after the first.
  */
-function textFrom(response: Anthropic.Message): string {
+function rawTextFrom(response: Anthropic.Message): string {
   return response.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)
-    .join("\n")
-    .trim();
+    .join("\n");
+}
+
+function textFrom(response: Anthropic.Message): string {
+  return rawTextFrom(response).trim();
+}
+
+type CompletedText = {
+  text: string;
+  /** True only after all automatic continuation attempts also hit the limit. */
+  truncated: boolean;
+  stopReason: Anthropic.Message["stop_reason"];
+};
+
+/**
+ * Anthropic returns useful partial prose with stop_reason=max_tokens. Treating
+ * that as a finished reply silently cut tables and long answers in half. Carry
+ * the exact assistant prefix back into the conversation and ask only for the
+ * missing suffix. Three continuations allow a substantial answer while still
+ * bounding spend; if all three fill up, the visible marker gives the user an
+ * honest continuation path instead of pretending the response finished.
+ */
+async function completeTextResponse(
+  params: Anthropic.MessageCreateParamsNonStreaming,
+  initial?: Anthropic.Message,
+  maxContinuations = 3
+): Promise<CompletedText> {
+  if (!client) return { text: "", truncated: false, stopReason: null };
+  const messages = [...params.messages];
+  let response = initial ?? (await client.messages.create(params));
+  const pieces: string[] = [];
+  let continuations = 0;
+
+  while (true) {
+    const piece = rawTextFrom(response);
+    if (piece) pieces.push(piece);
+    const decision = continuationDecision(
+      response.stop_reason,
+      Boolean(piece),
+      continuations,
+      maxContinuations
+    );
+    if (decision === "complete") {
+      return {
+        text: pieces.join("").trim(),
+        truncated: false,
+        stopReason: response.stop_reason,
+      };
+    }
+    if (decision === "empty" || decision === "limit") {
+      return {
+        text: pieces.length
+          ? pieces.join("").trim() +
+            `\n\n${OUTPUT_LIMIT_MARKER}`
+          : "",
+        truncated: true,
+        stopReason: response.stop_reason,
+      };
+    }
+
+    continuations += 1;
+    messages.push({ role: "assistant", content: piece });
+    messages.push({
+      role: "user",
+      content:
+        "Continue exactly where the previous response stopped. Output only the " +
+        "missing continuation, without repeating the introduction, headings, rows, or facts already written.",
+    });
+    response = await client.messages.create({
+      ...params,
+      messages,
+      ...(params.tools ? { tool_choice: { type: "none" } as const } : {}),
+    });
+  }
 }
 
 // Generic short-form agent completion (V9). Used by the always-on assistant and
@@ -470,13 +546,13 @@ export async function agentAnswer(
     await hydrateAnthropicKey();
     if (!client) return null;
     try {
-      const response = await client.messages.create({
+      const completed = await completeTextResponse({
         model: MODEL,
-        max_tokens: 400,
+        max_tokens: 1200,
         system,
         messages: [{ role: "user", content: user }],
       });
-      const text = textFrom(response).trim();
+      const text = completed.text.trim();
       if (text) {
         noteClaudeCall(true);
         return text;
@@ -484,9 +560,7 @@ export async function agentAnswer(
       noteClaudeCall(
         false,
         new Error(
-          `no answer (stop=${response.stop_reason} blocks=${response.content
-            .map((b) => b.type)
-            .join(",") || "none"})`
+          `no answer (stop=${completed.stopReason})`
         )
       );
     } catch (error) {
@@ -533,13 +607,13 @@ export async function agentConverse(
   }
   if (!clean.length || clean[clean.length - 1].role !== "user") return null;
   try {
-    const response = await client.messages.create({
+    const completed = await completeTextResponse({
       model: MODEL,
-      max_tokens: 700,
+      max_tokens: 1500,
       system,
       messages: clean,
     });
-    const text = textFrom(response).trim();
+    const text = completed.text.trim();
     return text || null;
   } catch {
     return null;
@@ -676,7 +750,7 @@ async function agentConverseOnce(
   tools: AgentToolDef[],
   runTool: (name: string, input: any) => Promise<{ content: string; did?: string }>,
   maxSteps = 6
-): Promise<{ text: string; dids: string[] } | null> {
+): Promise<{ text: string; dids: string[]; truncated: boolean } | null> {
   await hydrateAnthropicKey();
   if (!client) return null;
   // Claude requires the first message from the user with alternating roles —
@@ -697,15 +771,17 @@ async function agentConverseOnce(
   const dids: string[] = [];
   try {
     for (let step = 0; step < maxSteps; step++) {
-      const response = await client.messages.create({
+      const request: Anthropic.MessageCreateParamsNonStreaming = {
         model: MODEL,
         max_tokens: 1500,
         system: cachedSystem(system),
         tools: tools as unknown as Anthropic.Tool[],
         messages,
-      });
+      };
+      const response = await client.messages.create(request);
       if (response.stop_reason !== "tool_use") {
-        const written = textFrom(response).trim();
+        const completed = await completeTextResponse(request, response);
+        const written = completed.text.trim();
         // An empty turn is not an answer. It happens when the model stops
         // without prose — most often truncated part-way through a tool call —
         // and returning "" here handed the question to the canned responder,
@@ -713,7 +789,7 @@ async function agentConverseOnce(
         // through to the no-tools pass below, which has to reply in words.
         if (written) {
           noteClaudeCall(true);
-          return { text: written, dids };
+          return { text: written, dids, truncated: completed.truncated };
         }
         break;
       }
@@ -753,15 +829,17 @@ async function agentConverseOnce(
         "Now write the final answer for the user in plain text, using what you " +
         "have gathered. Do not call any more tools.",
     });
-    const final = await client.messages.create({
+    const finalRequest: Anthropic.MessageCreateParamsNonStreaming = {
       model: MODEL,
       max_tokens: 1500,
       system: cachedSystem(system),
       tools: tools as unknown as Anthropic.Tool[],
       tool_choice: { type: "none" },
       messages,
-    });
-    const text = textFrom(final).trim();
+    };
+    const final = await client.messages.create(finalRequest);
+    const completed = await completeTextResponse(finalRequest, final);
+    const text = completed.text.trim();
     if (!text) {
       // Still nothing written. Report it as a failure so the caller retries
       // rather than handing a silent blank to the canned responder.
@@ -776,7 +854,7 @@ async function agentConverseOnce(
       return null;
     }
     noteClaudeCall(true);
-    return { text, dids };
+    return { text, dids, truncated: completed.truncated };
   } catch (e) {
     noteClaudeCall(false, e);
     // NEVER fail silently. The canned fallback answering in Claude's place is

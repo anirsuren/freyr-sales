@@ -1,10 +1,22 @@
+// Excel and other spreadsheet apps may execute cells beginning with these
+// characters as formulas. Prefixing user-controlled strings with an apostrophe
+// keeps exported CSV data inert while leaving genuine numeric values numeric.
+export function csvCell(value: string | number | null): string {
+  let cell = value == null ? "" : String(value);
+  if (typeof value === "string" && /^[\t\r\n ]*[=+\-@]/.test(cell)) {
+    cell = `'${cell}`;
+  }
+  return /[",\n\r]/.test(cell)
+    ? `"${cell.replace(/"/g, '""')}"`
+    : cell;
+}
+
 // Tiny client-side CSV export helper.
 export function toCSV(headers: string[], rows: (string | number | null)[][]): string {
-  const esc = (v: string | number | null) => {
-    const s = v == null ? "" : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  return [headers.join(","), ...rows.map((r) => r.map(esc).join(","))].join("\n");
+  return [
+    headers.map(csvCell).join(","),
+    ...rows.map((row) => row.map(csvCell).join(",")),
+  ].join("\n");
 }
 
 export function downloadCSV(filename: string, csv: string) {

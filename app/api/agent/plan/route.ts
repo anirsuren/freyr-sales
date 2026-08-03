@@ -11,6 +11,7 @@ import {
 } from "@/lib/agent";
 import { buildDeals } from "@/lib/pipeline";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,9 @@ export async function POST(req: NextRequest) {
       ceiling,
     });
   }
+
+  const denied = rejectRealModeAgentMutation();
+  if (denied) return denied;
 
   // Partial-plan execution (#63): if the rep deselected some draftable actions in
   // the preview, only handle the ones they kept. null = handle them all.

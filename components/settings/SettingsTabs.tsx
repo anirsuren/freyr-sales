@@ -540,6 +540,45 @@ export function SettingsTabs({
     hydratedUserId === currentUser.id &&
     JSON.stringify(profile) !== JSON.stringify(savedProfile);
 
+  // Title and signature are account settings in Real mode, not browser
+  // preferences. Load them after the local identity shell is hydrated so the
+  // same member sees the same writing identity on every device.
+  useEffect(() => {
+    if (initialDataMode !== "live" || hydratedUserId !== currentUser.id) return;
+    let active = true;
+    fetch("/api/profile/preferences", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("profile unavailable");
+        return response.json();
+      })
+      .then((data) => {
+        if (!active || !data?.profile) return;
+        setProfile((current) => {
+          const next = {
+            ...current,
+            title:
+              typeof data.profile.title === "string"
+                ? data.profile.title
+                : current.title,
+            signature:
+              typeof data.profile.signature === "string" &&
+              data.profile.signature
+                ? data.profile.signature
+                : current.signature,
+          };
+          setSavedProfile(next);
+          return next;
+        });
+      })
+      .catch(() => {
+        // Keep the locally cached values visible when the account store is
+        // briefly unavailable; saving will still fail visibly rather than lie.
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentUser.id, hydratedUserId, initialDataMode]);
+
   useEffect(() => {
     if (!authConfig.approvalEnabled) return;
     // ONLY ADMINS MAY READ THE DIRECTORY, so only admins should ask for it.
@@ -740,6 +779,30 @@ export function SettingsTabs({
         })
       );
     } catch {}
+    if (initialDataMode === "live") {
+      try {
+        const response = await fetch("/api/profile/preferences", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: profile.title,
+            signature: profile.signature,
+          }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.error || "Profile settings could not be saved.");
+        }
+      } catch (error) {
+        toast(
+          error instanceof Error
+            ? error.message
+            : "Profile settings could not be saved.",
+          "error"
+        );
+        return;
+      }
+    }
     void syncLinkedIn();
     const nextName = profile.name.trim();
     if (!nextName || nextName === currentUser.name) {
