@@ -189,8 +189,9 @@ what was written back, `deleted-test-customers.json`).
   assignment optional and offer an inline draft-folder control beside the
   folder picker; the draft is auto-selected but is only created when the
   material is saved, so switching back to an existing folder leaves no empty
-  folder behind. Typecheck, focused lint, whitespace checks, the production
-  build, and read-only local browser verification pass.
+  folder behind. Typecheck, focused lint, whitespace checks, a Docker-style
+  clean dependency install, the production build, and read-only local browser
+  verification pass.
 
 - **Aug 3 production-hardening batch is ready to ship:** live Agent calls are
   now read-only with respect to customers, sequences, pipeline, and other
