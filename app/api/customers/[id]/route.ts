@@ -30,6 +30,64 @@ function uid(prefix: string): string {
   ).toString(36)}`;
 }
 
+const CUSTOMER_OFFERING_CURRENCIES = [
+  "USD", "EUR", "GBP", "CHF", "CAD", "AUD", "JPY", "CNY", "INR",
+  "SGD", "AED", "SAR", "SEK", "NOK", "DKK", "NZD", "ZAR", "BRL",
+  "MXN",
+];
+
+function sanitizeEngagementVersion(version: any, linked = false) {
+  const activity = CUSTOMER_OFFERING_ACTIVITY_ORDER.includes(version?.activity)
+    ? version.activity
+    : "to_pitch";
+  const status = CUSTOMER_OFFERING_STATUS_ORDER.includes(version?.status)
+    ? version.status
+    : defaultStatusForActivity(activity);
+  const list = (value: unknown) =>
+    Array.isArray(value)
+      ? value
+          .filter(
+            (item: unknown): item is string =>
+              typeof item === "string" && !!item.trim()
+          )
+          .map((item: string) => item.trim().slice(0, 120))
+          .slice(0, 50)
+      : [];
+  return {
+    id: String(version?.id || uid("eng")).slice(0, 120),
+    version: Math.max(1, Math.round(Number(version?.version) || 1)),
+    linked,
+    activity,
+    activity_description: version?.activity_description
+      ? String(version.activity_description).trim().slice(0, 2000) || null
+      : null,
+    status,
+    dollar_value: Math.max(
+      0,
+      Math.round(Number(version?.dollar_value) || 0)
+    ),
+    currency: CUSTOMER_OFFERING_CURRENCIES.includes(version?.currency)
+      ? version.currency
+      : "USD",
+    start_date: version?.start_date
+      ? String(version.start_date).slice(0, 40)
+      : null,
+    end_date: version?.end_date
+      ? String(version.end_date).slice(0, 40)
+      : null,
+    potential_close_date: version?.potential_close_date
+      ? String(version.potential_close_date).slice(0, 40)
+      : null,
+    opportunity_ids: list(version?.opportunity_ids),
+    proposal_ids: list(version?.proposal_ids),
+    contract_ids: list(version?.contract_ids),
+    created_at: version?.created_at
+      ? String(version.created_at)
+      : new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 // PATCH: assign owner (#55), set competitor (#59), append a note or
 // attachment (#60). All persist via the mock/Supabase customer update.
 export async function PATCH(
@@ -137,81 +195,25 @@ export async function PATCH(
   // lines keyed by offering. Sanitized so bad input can't corrupt the store.
   if (Array.isArray(body.offering_usage)) {
     const RT = ["annual", "project", "annual_service", "license"];
-    const CURRENCIES = [
-      "USD", "EUR", "GBP", "CHF", "CAD", "AUD", "JPY", "CNY", "INR",
-      "SGD", "AED", "SAR", "SEK", "NOK", "DKK", "NZD", "ZAR", "BRL",
-      "MXN",
-    ];
     patch.offering_usage = body.offering_usage
       .map((u: any) => {
         let linkedVersionSeen = false;
         const engagementVersions = Array.isArray(u?.engagement_versions)
           ? u.engagement_versions
               .map((version: any) => {
-                const activity = CUSTOMER_OFFERING_ACTIVITY_ORDER.includes(
-                  version?.activity
-                )
-                  ? version.activity
-                  : "to_pitch";
                 const requestedLinked = version?.linked === true;
                 const linked = requestedLinked && !linkedVersionSeen;
                 if (linked) linkedVersionSeen = true;
-                const status = CUSTOMER_OFFERING_STATUS_ORDER.includes(
-                  version?.status
-                )
-                  ? version.status
-                  : defaultStatusForActivity(activity);
-                const list = (value: unknown) =>
-                  Array.isArray(value)
-                    ? value
-                        .filter(
-                          (item: unknown): item is string =>
-                            typeof item === "string" && !!item.trim()
-                        )
-                        .map((item: string) => item.trim().slice(0, 120))
-                        .slice(0, 50)
-                    : [];
-                const createdAt = version?.created_at
-                  ? String(version.created_at)
-                  : new Date().toISOString();
-                return {
-                  id: String(version?.id || uid("eng")).slice(0, 120),
-                  version: Math.max(
-                    1,
-                    Math.round(Number(version?.version) || 1)
-                  ),
-                  linked,
-                  activity,
-                  activity_description: version?.activity_description
-                    ? String(version.activity_description).trim().slice(0, 2000) ||
-                      null
-                    : null,
-                  status,
-                  dollar_value: Math.max(
-                    0,
-                    Math.round(Number(version?.dollar_value) || 0)
-                  ),
-                  currency: CURRENCIES.includes(version?.currency)
-                    ? version.currency
-                    : "USD",
-                  start_date: version?.start_date
-                    ? String(version.start_date).slice(0, 40)
-                    : null,
-                  end_date: version?.end_date
-                    ? String(version.end_date).slice(0, 40)
-                    : null,
-                  potential_close_date: version?.potential_close_date
-                    ? String(version.potential_close_date).slice(0, 40)
-                    : null,
-                  opportunity_ids: list(version?.opportunity_ids),
-                  proposal_ids: list(version?.proposal_ids),
-                  contract_ids: list(version?.contract_ids),
-                  created_at: createdAt,
-                  updated_at: new Date().toISOString(),
-                };
+                return sanitizeEngagementVersion(version, linked);
               })
               .sort((a: any, b: any) => b.version - a.version)
           : [];
+        const engagementDraft = u?.engagement_draft
+          ? sanitizeEngagementVersion(
+              u.engagement_draft,
+              u.engagement_draft?.linked === true
+            )
+          : null;
         const revenueLines = Array.isArray(u?.revenue_lines)
           ? u.revenue_lines
               .map((l: any) => ({
@@ -236,12 +238,54 @@ export async function PATCH(
           offering_id: String(u?.offering_id || ""),
           revenue_lines: revenueLines,
           engagement_versions: engagementVersions,
+          engagement_draft: engagementDraft,
         };
       })
       .filter(
         (u: any) =>
           u.offering_id &&
-          (u.revenue_lines.length > 0 || u.engagement_versions.length > 0)
+          (u.revenue_lines.length > 0 ||
+            u.engagement_versions.length > 0 ||
+            !!u.engagement_draft)
+      );
+  }
+
+  // Keep unfinished activities in the shared customer record, separate from
+  // the saved history so a draft never feeds the heat map prematurely.
+  if (body.saveEngagementDraft?.offering_id && body.saveEngagementDraft?.draft) {
+    const offeringId = String(body.saveEngagementDraft.offering_id).slice(0, 120);
+    const usage = [...(patch.offering_usage || customer.offering_usage || [])];
+    const index = usage.findIndex((item) => item.offering_id === offeringId);
+    const current = index >= 0
+      ? usage[index]
+      : { offering_id: offeringId, revenue_lines: [], engagement_versions: [] };
+    const next = {
+      ...current,
+      engagement_draft: sanitizeEngagementVersion(
+        body.saveEngagementDraft.draft,
+        body.saveEngagementDraft.draft?.linked === true
+      ),
+    };
+    if (index >= 0) usage[index] = next;
+    else usage.push(next);
+    patch.offering_usage = usage;
+  }
+
+  if (typeof body.clearEngagementDraft === "string") {
+    const offeringId = body.clearEngagementDraft.slice(0, 120);
+    patch.offering_usage = [
+      ...(patch.offering_usage || customer.offering_usage || []),
+    ]
+      .map((item) =>
+        item.offering_id === offeringId
+          ? { ...item, engagement_draft: null }
+          : item
+      )
+      .filter(
+        (item) =>
+          item.revenue_lines.length > 0 ||
+          (item.engagement_versions?.length || 0) > 0 ||
+          !!item.engagement_draft
       );
   }
 

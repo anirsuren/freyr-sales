@@ -34,7 +34,7 @@ const NO_NOTIFS: AppNotification[] = [];
 const NO_READ_IDS: ReadonlySet<string> = new Set<string>();
 
 const SHORTCUTS = [
-  { keys: ["⌘", "K"], label: "Open command palette: search records & jump to any page" },
+  { keys: ["Enter"], label: "Open the top search and jump to any page" },
   { keys: ["?"], label: "Show this keyboard shortcuts help" },
   { keys: ["Esc"], label: "Close any dialog, menu, or palette" },
   { keys: ["Tab"], label: "Reveal the “Skip to content” link, then move through controls" },
@@ -208,12 +208,6 @@ export function TopBar({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPaletteOpen((o) => !o);
-        return;
-      }
-      // "?" opens the shortcuts help — but never while typing in a field
       const el = document.activeElement as HTMLElement | null;
       const typing =
         el &&
@@ -221,6 +215,27 @@ export function TopBar({
           el.tagName === "TEXTAREA" ||
           el.tagName === "SELECT" ||
           el.isContentEditable);
+      const usingControl = Boolean(
+        el?.closest(
+          'button, a, [role="button"], [role="checkbox"], [role="menuitem"]'
+        )
+      );
+      const dialogOpen = Boolean(document.querySelector('[role="dialog"]'));
+      if (
+        e.key === "Enter" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey &&
+        !typing &&
+        !usingControl &&
+        !dialogOpen
+      ) {
+        e.preventDefault();
+        setPaletteOpen(true);
+        return;
+      }
+      // "?" opens the shortcuts help — but never while typing in a field
       if (e.key === "?" && !typing) {
         e.preventDefault();
         setHelpOpen((o) => !o);
@@ -273,7 +288,7 @@ export function TopBar({
             {offeringsOnly ? "Search offerings…" : "Search offerings, companies, contacts, or jump to a page…"}
           </span>
           <kbd className="ml-auto shrink-0 inline-flex items-center text-[11px] font-medium text-text-secondary bg-white border border-border-light rounded-md px-1.5 py-0.5 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-            ⌘K
+            Enter
           </kbd>
         </button>
         {/* Anchored dropdown — opens right under the search bar, no dark modal */}
@@ -291,7 +306,7 @@ export function TopBar({
           the button next to my name doesn't even work, remove that one").
           Each page owns its own create button, where the context is. */}
       <div className="flex items-center gap-1.5">
-        {!offeringsOnly && onAgentToggle && (
+        {onAgentToggle && (
           <button
             data-tour="agent-assistant"
             aria-label="Ask your agent"
@@ -399,14 +414,14 @@ export function TopBar({
             </>
           )}
         </div>}
-        {!offeringsOnly && <button
+        <button
           data-tour="help"
           aria-label="Keyboard shortcuts"
           onClick={() => setHelpOpen(true)}
           className="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
         >
           <CircleHelp size={19} strokeWidth={1.5} />
-        </button>}
+        </button>
         <div className="w-px h-7 bg-border-light mx-2" />
         {/* Account menu shows in BOTH modes — it carries the mock/real switch,
             so real mode must keep it or you could never switch back. */}

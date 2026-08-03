@@ -180,6 +180,8 @@ export interface OfferingUsage {
   offering_id: string;
   revenue_lines: OfferingRevenueLine[];
   engagement_versions?: CustomerOfferingEngagementVersion[];
+  /** Shared, unfinished activity. It is excluded from the heat map until saved. */
+  engagement_draft?: CustomerOfferingEngagementVersion | null;
 }
 
 export interface Contact {

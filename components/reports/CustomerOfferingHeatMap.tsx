@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   Activity,
   BadgeDollarSign,
@@ -25,6 +31,7 @@ import {
   Send,
   Sparkles,
   Target,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -233,7 +240,8 @@ function cellLabel(
 function replaceEngagementVersions(
   usage: OfferingUsage[],
   offeringId: string,
-  versions: CustomerOfferingEngagementVersion[]
+  versions: CustomerOfferingEngagementVersion[],
+  engagementDraft?: CustomerOfferingEngagementVersion | null
 ): OfferingUsage[] {
   const existing = usageForOffering({ offering_usage: usage }, offeringId);
   const next = usage.filter((item) => item.offering_id !== offeringId);
@@ -241,6 +249,10 @@ function replaceEngagementVersions(
     offering_id: offeringId,
     revenue_lines: existing?.revenue_lines || [],
     engagement_versions: versions,
+    engagement_draft:
+      engagementDraft === undefined
+        ? existing?.engagement_draft || null
+        : engagementDraft,
   });
   return next;
 }
@@ -273,6 +285,9 @@ export function CustomerOfferingHeatMap({
   const [editingExisting, setEditingExisting] = useState(false);
   const [draftIsNew, setDraftIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reportVersionId, setReportVersionId] = useState<string | null>(null);
+  const [reportSelectionError, setReportSelectionError] = useState(false);
+  const draftSaveChainRef = useRef<Promise<boolean>>(Promise.resolve(true));
 
   const selectedCustomer = selected
     ? customers.find((customer) => customer.id === selected.customerId) || null
@@ -310,6 +325,23 @@ export function CustomerOfferingHeatMap({
       setPendingVersionDraft({ ...draft });
     }
   }, [draft, editingExisting]);
+
+  useEffect(() => {
+    if (!selected || !pendingVersionDraft || editingExisting || saving) return;
+    const timeout = window.setTimeout(() => {
+      void queueActivityDraftSave(
+        selected.customerId,
+        selected.offeringId,
+        pendingVersionDraft,
+        false
+      );
+    }, 650);
+    return () => window.clearTimeout(timeout);
+    // queueActivityDraftSave is intentionally omitted: including a render-local
+    // function would restart the debounce on every render; the save chain lives
+    // in a stable ref and serializes the writes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingExisting, pendingVersionDraft, saving, selected]);
 
   const searchFiltered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -408,6 +440,8 @@ export function CustomerOfferingHeatMap({
   function openCell(customer: Customer, offering: HeatMapOffering) {
     const resolved = resolveHeatMapCell(customer, offering);
     const history = engagementHistory(customer, offering.id);
+    const storedDraft =
+      usageForOffering(customer, offering.id)?.engagement_draft || null;
     const explicit =
       history.find((version) => version.linked) || history[0] || null;
     const now = new Date().toISOString();
@@ -435,20 +469,39 @@ export function CustomerOfferingHeatMap({
           created_at: now,
           updated_at: now,
         };
+    const activeDraft = storedDraft || nextDraft;
+    const isPendingDraft = Boolean(storedDraft) || (!explicit && !resolved.engagement);
+    const savedReportId = history.find((version) => version.linked)?.id || null;
     setSelected({ customerId: customer.id, offeringId: offering.id });
-    setEditingExisting(!!explicit);
-    setDraftIsNew(!explicit && !resolved.engagement);
-    setDraft(nextDraft);
-    setInitialDraft({ ...nextDraft });
-    setPendingVersionDraft(explicit ? null : { ...nextDraft });
-    setPendingVersionBase(explicit ? null : { ...nextDraft });
-    setExpandedVersionId(
-      !explicit && !resolved.engagement ? nextDraft.id : null
+    setEditingExisting(!isPendingDraft && !!explicit);
+    setDraftIsNew(isPendingDraft);
+    setDraft({ ...activeDraft });
+    setInitialDraft({ ...activeDraft });
+    setPendingVersionDraft(isPendingDraft ? { ...activeDraft } : null);
+    setPendingVersionBase(isPendingDraft ? { ...activeDraft } : null);
+    setExpandedVersionId(isPendingDraft ? activeDraft.id : null);
+    setReportVersionId(
+      activeDraft.linked ? activeDraft.id : savedReportId
     );
+    setReportSelectionError(false);
   }
 
-  function closeModal() {
+  async function closeModal() {
     if (saving) return;
+    if (versionRows.length > 0 && !reportVersionId) {
+      setReportSelectionError(true);
+      toast("Choose one activity as the report row before closing.", "error");
+      return;
+    }
+    if (selected && pendingVersionDraft && !editingExisting) {
+      const saved = await queueActivityDraftSave(
+        selected.customerId,
+        selected.offeringId,
+        pendingVersionDraft,
+        true
+      );
+      if (!saved) return;
+    }
     setSelected(null);
     setDraft(null);
     setInitialDraft(null);
@@ -457,6 +510,94 @@ export function CustomerOfferingHeatMap({
     setExpandedVersionId(null);
     setEditingExisting(false);
     setDraftIsNew(false);
+    setReportVersionId(null);
+    setReportSelectionError(false);
+  }
+
+  function queueActivityDraftSave(
+    customerId: string,
+    offeringId: string,
+    engagementDraft: CustomerOfferingEngagementVersion,
+    showError: boolean
+  ): Promise<boolean> {
+    const nextSave = draftSaveChainRef.current.then(() =>
+      persistActivityDraft(
+        customerId,
+        offeringId,
+        engagementDraft,
+        showError
+      )
+    );
+    draftSaveChainRef.current = nextSave.catch(() => false);
+    return nextSave;
+  }
+
+  async function persistActivityDraft(
+    customerId: string,
+    offeringId: string,
+    engagementDraft: CustomerOfferingEngagementVersion,
+    showError: boolean
+  ): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          saveEngagementDraft: {
+            offering_id: offeringId,
+            draft: engagementDraft,
+          },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok || !data.customer) {
+        throw new Error(data.error || "Could not save this draft.");
+      }
+      setCustomers((current) =>
+        current.map((customer) =>
+          customer.id === data.customer.id ? data.customer : customer
+        )
+      );
+      return true;
+    } catch (error) {
+      if (showError) {
+        toast(
+          error instanceof Error
+            ? error.message
+            : "Could not save this draft.",
+          "error"
+        );
+      }
+      return false;
+    }
+  }
+
+  async function clearActivityDraft(customerId: string, offeringId: string) {
+    try {
+      const response = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clearEngagementDraft: offeringId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok || !data.customer) {
+        throw new Error(data.error || "Could not discard this draft.");
+      }
+      setCustomers((current) =>
+        current.map((customer) =>
+          customer.id === data.customer.id ? data.customer : customer
+        )
+      );
+      return true;
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : "Could not discard this draft.",
+        "error"
+      );
+      return false;
+    }
   }
 
   function createNewVersion() {
@@ -499,6 +640,10 @@ export function CustomerOfferingHeatMap({
     setExpandedVersionId(nextDraft.id);
     setEditingExisting(false);
     setDraftIsNew(true);
+    setReportVersionId((current) =>
+      nextDraft.linked ? nextDraft.id : current
+    );
+    setReportSelectionError(false);
   }
 
   function selectVersion(versionId: string) {
@@ -533,7 +678,18 @@ export function CustomerOfferingHeatMap({
         ? pendingVersionDraft
         : selectedHistory.find((version) => version.id === versionId);
     if (!source) return;
-    if (source.linked) return;
+    if (reportVersionId === versionId) {
+      setReportVersionId(null);
+      setReportSelectionError(false);
+      if (draft?.id === versionId) {
+        setDraft((current) =>
+          current ? { ...current, linked: false } : current
+        );
+      }
+      return;
+    }
+    setReportVersionId(versionId);
+    setReportSelectionError(false);
     if (pendingVersionDraft?.id === versionId) {
       setDraft({ ...source, linked: true });
       setInitialDraft({ ...source });
@@ -557,7 +713,7 @@ export function CustomerOfferingHeatMap({
     });
   }
 
-  function cancelExpandedVersion() {
+  async function cancelExpandedVersion() {
     if (!draft) return;
     if (!editingExisting) {
       const linked =
@@ -566,6 +722,13 @@ export function CustomerOfferingHeatMap({
         null;
       setPendingVersionDraft(null);
       setPendingVersionBase(null);
+      if (selected) {
+        const cleared = await clearActivityDraft(
+          selected.customerId,
+          selected.offeringId
+        );
+        if (!cleared) return;
+      }
       if (linked) {
         setDraft({ ...linked });
         setInitialDraft({ ...linked });
@@ -573,6 +736,8 @@ export function CustomerOfferingHeatMap({
         setDraftIsNew(false);
       }
       setExpandedVersionId(null);
+      setReportVersionId(linked?.id || null);
+      setReportSelectionError(false);
       return;
     }
     if (initialDraft) setDraft({ ...initialDraft });
@@ -582,13 +747,18 @@ export function CustomerOfferingHeatMap({
   async function persistVersions(
     versions: CustomerOfferingEngagementVersion[],
     successMessage: string,
-    options: { closeAfterSave?: boolean; activeVersionId?: string } = {}
+    options: {
+      closeAfterSave?: boolean;
+      activeVersionId?: string;
+      clearDraft?: boolean;
+    } = {}
   ) {
     if (!selectedCustomer || !selectedOffering) return;
     const nextUsage = replaceEngagementVersions(
       selectedCustomer.offering_usage || [],
       selectedOffering.id,
-      versions
+      versions,
+      options.clearDraft ? null : undefined
     );
     setSaving(true);
     try {
@@ -649,10 +819,20 @@ export function CustomerOfferingHeatMap({
 
   async function saveDraft() {
     if (!draft || !selectedCustomer || !selectedOffering) return;
+    if (!reportVersionId) {
+      setReportSelectionError(true);
+      toast("Choose one activity as the report row before saving.", "error");
+      return;
+    }
+    // Finish any queued autosave first so the final activity save always wins
+    // and clears the shared draft deterministically.
+    setSaving(true);
+    await draftSaveChainRef.current;
     const now = new Date().toISOString();
     const current = engagementHistory(selectedCustomer, selectedOffering.id);
     const normalizedDraft = {
       ...draft,
+      linked: draft.id === reportVersionId,
       activity_description: draft.activity_description?.trim() || null,
       dollar_value: Math.max(0, Math.round(draft.dollar_value || 0)),
       updated_at: now,
@@ -661,26 +841,27 @@ export function CustomerOfferingHeatMap({
       normalizedDraft,
       ...current
         .filter((version) => version.id !== normalizedDraft.id)
-        .map((version) =>
-          normalizedDraft.linked ? { ...version, linked: false } : version
-        ),
+        .map((version) => ({
+          ...version,
+          linked: version.id === reportVersionId,
+        })),
     ].sort((a, b) => b.version - a.version);
     await persistVersions(
       versions,
-      editingExisting ? "Activity updated." : "Activity added."
+      editingExisting ? "Activity updated." : "Activity added.",
+      { clearDraft: !editingExisting }
     );
   }
 
-  async function unlinkCurrent(versionId = draft?.id) {
-    if (!selectedCustomer || !selectedOffering || !editingExisting) return;
-    const versions = engagementHistory(selectedCustomer, selectedOffering.id).map(
-      (version) => ({ ...version, linked: false })
-    );
-    await persistVersions(
-      versions,
-      "Activity removed from the heat map. Its history was preserved.",
-      { closeAfterSave: false, activeVersionId: versionId }
-    );
+  function unlinkCurrent(versionId = draft?.id) {
+    if (!versionId || reportVersionId !== versionId) return;
+    setReportVersionId(null);
+    setReportSelectionError(false);
+    if (draft?.id === versionId) {
+      setDraft((current) =>
+        current ? { ...current, linked: false } : current
+      );
+    }
   }
 
   return (
@@ -1080,8 +1261,16 @@ export function CustomerOfferingHeatMap({
                   {versionRows.length} {versionRows.length === 1 ? "attempt" : "attempts"}
                 </p>
               </div>
+              {reportSelectionError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-error"
+                >
+                  Choose one activity as the report row before saving or closing.
+                </div>
+              )}
               <div className="overflow-visible rounded-xl border border-border-light bg-white">
-                <div className="hidden grid-cols-[116px_minmax(0,1.4fr)_120px_90px_140px_24px_72px] items-center gap-3 rounded-t-xl bg-surface px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary lg:grid">
+                <div className="hidden grid-cols-[116px_minmax(0,1.4fr)_120px_90px_140px_24px_36px] items-center gap-3 rounded-t-xl bg-surface px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary lg:grid">
                   <span>Report row</span>
                   <span>Activity</span>
                   <span>Status</span>
@@ -1101,9 +1290,7 @@ export function CustomerOfferingHeatMap({
                   expandedVersionId === version.id && draft.id === version.id;
                 const unsaved = version.id === pendingVersionDraft?.id;
                 const isNewRow = unsaved && draftIsNew;
-                const reported = draft.linked
-                  ? draft.id === version.id
-                  : version.linked;
+                const reported = reportVersionId === version.id;
                 const valueSummary = version.dollar_value
                   ? formatCurrency(
                       version.dollar_value,
@@ -1132,11 +1319,11 @@ export function CustomerOfferingHeatMap({
                         type="button"
                         role="checkbox"
                         aria-checked={reported}
-                        disabled={saving || reported}
+                        disabled={saving}
                         aria-label={`${reported ? "Reported" : "Report"} in the heat map: ${versionMeta.label}`}
                         title={
                           reported
-                            ? "This is the activity reported in the heat map"
+                            ? "Uncheck temporarily while choosing another report row"
                             : "Report this activity in the heat map"
                         }
                         onClick={() => chooseHeatMapActivity(version.id)}
@@ -1184,7 +1371,7 @@ export function CustomerOfferingHeatMap({
                               </span>
                               {isNewRow && (
                                 <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-0.5 text-[9px] font-bold text-blue-primary">
-                                  New
+                                  Draft
                                 </span>
                               )}
                             </span>
@@ -1227,20 +1414,25 @@ export function CustomerOfferingHeatMap({
                           )}
                         />
                       </button>
-                      {reported && !unsaved && editingExisting ? (
+                      {reported && !unsaved ? (
                         <Button
                           variant="destructive"
                           onClick={() => unlinkCurrent(version.id)}
-                          loading={saving}
+                          disabled={saving}
                           title={`Remove ${versionMeta.label} from the heat map`}
-                          className="h-8 w-9 self-center rounded-lg px-0 text-[10px] lg:w-[72px] lg:px-2"
+                          className="h-8 w-8 shrink-0 self-center rounded-lg p-0 !text-white [&>svg]:!stroke-white"
+                          style={{ color: "#FFFFFF", padding: 0 }}
                           aria-label={`Remove ${versionMeta.label} from the heat map`}
                         >
-                          <Link2Off size={13} strokeWidth={2.2} />
-                          <span className="hidden lg:inline">Remove</span>
+                          <Trash2
+                            size={14}
+                            strokeWidth={2.2}
+                            color="#FFFFFF"
+                            style={{ color: "#FFFFFF", stroke: "#FFFFFF" }}
+                          />
                         </Button>
                       ) : (
-                        <span className="w-9 shrink-0 lg:w-[72px]" />
+                        <span className="w-8 shrink-0" />
                       )}
                     </div>
                     {expanded && (
@@ -1248,11 +1440,12 @@ export function CustomerOfferingHeatMap({
             {draftIsNew && (
               <div className="rounded-lg border border-blue-subtle bg-blue-light px-3 py-2.5">
                 <p className="text-[11.5px] font-semibold text-text-primary">
-                  Creating Activity {draft.version}
+                  Draft activity {draft.version}
                 </p>
                 <p className="mt-0.5 text-[10.5px] leading-relaxed text-text-secondary">
-                  This is a separate attempt. Nothing is added to the activity
-                  log until you enter details and save it.
+                  Saved as a shared workspace draft. You can close this window
+                  and continue later; it reaches the activity log only when you
+                  save it.
                 </p>
               </div>
             )}
