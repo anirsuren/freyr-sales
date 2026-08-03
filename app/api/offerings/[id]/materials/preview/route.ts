@@ -44,7 +44,16 @@ const MAX_CONVERT_BYTES = 25 * 1024 * 1024;
 
 type Preview =
   | { kind: "html"; html: string; note?: string }
-  | { kind: "sheets"; sheets: { name: string; html: string }[] }
+  | {
+      kind: "sheets";
+      sheets: {
+        name: string;
+        rows: (string | number | boolean | null)[][];
+        totalRows: number;
+        totalColumns: number;
+        truncated: boolean;
+      }[];
+    }
   | { kind: "slides"; slides: { title: string; lines: string[] }[] }
   | { kind: "listing"; entries: { name: string; size: string }[] }
   | { kind: "native"; url: string; contentType: string }
@@ -214,10 +223,52 @@ export async function GET(
     if (ext === "xlsx" || ext === "xls") {
       const XLSX = await import("xlsx");
       const book = XLSX.read(buffer, { type: "buffer" });
-      const sheets = book.SheetNames.slice(0, 12).map((name) => ({
-        name,
-        html: XLSX.utils.sheet_to_html(book.Sheets[name], { id: `sheet-${name}` }),
-      }));
+      // Send cell values, not SheetJS's unstyled HTML. The client builds a
+      // proper workbook surface with row/column headers, sticky coordinates,
+      // grid lines and two-directional scrolling. The old HTML output was a
+      // loose wall of text that did not look or behave like a spreadsheet.
+      const MAX_ROWS = 500;
+      const MAX_COLUMNS = 80;
+      const sheets = book.SheetNames.slice(0, 12).map((name) => {
+        const worksheet = book.Sheets[name];
+        const decoded = worksheet["!ref"]
+          ? XLSX.utils.decode_range(worksheet["!ref"])
+          : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+        const totalRows = Math.max(1, decoded.e.r - decoded.s.r + 1);
+        const totalColumns = Math.max(1, decoded.e.c - decoded.s.c + 1);
+        const rawRows = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          raw: false,
+          defval: "",
+          blankrows: true,
+          range: {
+            s: decoded.s,
+            e: {
+              r: Math.min(decoded.e.r, decoded.s.r + MAX_ROWS - 1),
+              c: Math.min(decoded.e.c, decoded.s.c + MAX_COLUMNS - 1),
+            },
+          },
+        }) as unknown[][];
+        const rows = rawRows.map((row) =>
+          row.slice(0, MAX_COLUMNS).map((cell) => {
+            if (cell == null) return null;
+            if (
+              typeof cell === "string" ||
+              typeof cell === "number" ||
+              typeof cell === "boolean"
+            )
+              return cell;
+            return String(cell);
+          })
+        );
+        return {
+          name,
+          rows,
+          totalRows,
+          totalColumns,
+          truncated: totalRows > MAX_ROWS || totalColumns > MAX_COLUMNS,
+        };
+      });
       return NextResponse.json({
         preview: { kind: "sheets", sheets } satisfies Preview,
         label: material.label,

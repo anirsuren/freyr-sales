@@ -320,6 +320,8 @@ function archiveMembers(
 
 function fromPdf(buf: Buffer): string {
   const parts: string[] = [];
+  let collected = 0;
+  const MAX_PDF_STREAM_BYTES = 4 * 1024 * 1024;
   // Walk stream/endstream pairs rather than regexing the whole file: PDF
   // bodies are binary and a greedy match across them is both wrong and slow.
   let i = 0;
@@ -331,25 +333,43 @@ function fromPdf(buf: Buffer): string {
     let start = s + 6;
     if (buf[start] === 0x0d) start++;
     if (buf[start] === 0x0a) start++;
-    const header = buf.subarray(Math.max(0, s - 400), s).toString("latin1");
+    const header = buf.subarray(Math.max(0, s - 2_048), s).toString("latin1");
     const body = buf.subarray(start, e);
     i = e + 9;
 
     let text: string | null = null;
+    // Proposal PDFs contain full-resolution photography. Inflating an image
+    // stream that happened to have a long dictionary used to stall archive
+    // indexing even though an image cannot contribute searchable words.
+    if (/\/(DCTDecode|JPXDecode|CCITTFaxDecode)|\/Subtype\s*\/Image/.test(header)) {
+      continue;
+    }
+    if (body.length > MAX_PDF_STREAM_BYTES) continue;
     if (/\/FlateDecode/.test(header)) {
       try {
-        text = inflateSync(body).toString("latin1");
+        text = inflateSync(body, {
+          maxOutputLength: MAX_PDF_STREAM_BYTES,
+        }).toString("latin1");
       } catch {
         try {
-          text = inflateRawSync(body).toString("latin1");
+          text = inflateRawSync(body, {
+            maxOutputLength: MAX_PDF_STREAM_BYTES,
+          }).toString("latin1");
         } catch {
           text = null; // encrypted or a non-text stream — skip it
         }
       }
-    } else if (!/\/(DCTDecode|JPXDecode|CCITTFaxDecode|Image)/.test(header)) {
+    } else {
       text = body.toString("latin1");
     }
-    if (text && /(Tj|TJ)\b/.test(text)) parts.push(pdfOperators(text));
+    if (text && /(Tj|TJ)\b/.test(text)) {
+      const words = pdfOperators(text);
+      if (words) {
+        parts.push(words);
+        collected += words.length;
+        if (collected >= MAX_CHARS) break;
+      }
+    }
   }
   return parts.filter(Boolean).join("\n").replace(/\n{3,}/g, "\n\n");
 }

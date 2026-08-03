@@ -81,6 +81,8 @@ export function AddMaterialButton({
   const [kind, setKind] = useState<MaterialFormat | "">("");
   const [folder, setFolder] = useState(normalizeFolderPath(openFolder));
   const [newFolder, setNewFolder] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [folderBeforeDraft, setFolderBeforeDraft] = useState("");
   const [journeyStage, setJourneyStage] = useState<JourneyStage>("awareness");
   const [accessLevel, setAccessLevel] = useState<AccessLevel>("client_facing");
   const [label, setLabel] = useState("");
@@ -101,6 +103,8 @@ export function AddMaterialButton({
     setJourneyStage("awareness");
     setFolder(normalizeFolderPath(openFolder));
     setNewFolder("");
+    setCreatingFolder(false);
+    setFolderBeforeDraft("");
     setAccessLevel("client_facing");
     setLabel("");
     setDescription("");
@@ -422,9 +426,11 @@ export function AddMaterialButton({
             <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
               Folder <span className="font-medium normal-case tracking-normal">Optional</span>
             </label>
-            <ColorSelect
-              value={folder}
-              options={[
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <ColorSelect
+                  value={folder}
+                  options={[
                 {
                   value: "",
                   label: "No folder",
@@ -454,49 +460,81 @@ export function AddMaterialButton({
                   color: "#0071E3",
                   icon: Folder,
                 })),
-              ]}
-              onChange={setFolder}
-              ariaLabel="Folder"
-              minWidth={0}
-            />
-            <div className="mt-2 flex items-center gap-2">
-              <div className="relative min-w-0 flex-1">
+                  ]}
+                  onChange={(value) => {
+                    setFolder(value);
+                    setNewFolder("");
+                    setCreatingFolder(false);
+                  }}
+                  ariaLabel="Folder"
+                  minWidth={0}
+                />
+              </div>
+              <button
+                type="button"
+                aria-label={creatingFolder ? "Cancel new folder" : "Create a new folder"}
+                title={creatingFolder ? "Cancel new folder" : "Create a new folder"}
+                onClick={() => {
+                  if (creatingFolder) {
+                    setFolder(folderBeforeDraft);
+                    setNewFolder("");
+                    setCreatingFolder(false);
+                    return;
+                  }
+                  setFolderBeforeDraft(folder);
+                  setNewFolder("");
+                  setCreatingFolder(true);
+                }}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all ${
+                  creatingFolder
+                    ? "border-blue-primary bg-blue-primary text-white shadow-button"
+                    : "border-border-light bg-surface text-blue-primary hover:border-blue-subtle hover:bg-blue-light"
+                }`}
+              >
+                <Plus
+                  size={17}
+                  strokeWidth={2.2}
+                  className={`transition-transform duration-200 ${creatingFolder ? "rotate-45" : ""}`}
+                />
+              </button>
+            </div>
+            {creatingFolder && (
+              <div className="materials-folder-draft mt-2">
+                <div className="relative min-w-0">
                 <FolderPlus
                   size={14}
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-blue-primary"
                 />
                 <input
+                  autoFocus
                   value={newFolder}
-                  onChange={(event) => setNewFolder(event.target.value)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setNewFolder(value);
+                    setFolder(cleanFolderName(value) || folderBeforeDraft);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter") return;
                     event.preventDefault();
                     const name = cleanFolderName(newFolder);
                     if (!name) return;
                     setFolder(name);
-                    setNewFolder("");
+                    setCreatingFolder(false);
                   }}
-                  placeholder="Create a new folder"
+                  placeholder="New folder name"
                   aria-label="New folder name"
                   className="h-10 w-full rounded-lg border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary focus:shadow-input-focus"
                 />
               </div>
-              <button
-                type="button"
-                disabled={!cleanFolderName(newFolder)}
-                onClick={() => {
-                  const name = cleanFolderName(newFolder);
-                  if (!name) return;
-                  setFolder(name);
-                  setNewFolder("");
-                }}
-                className="h-10 shrink-0 rounded-lg border border-blue-subtle px-3 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Create & select
-              </button>
-            </div>
+                <p className="mt-1.5 text-[11.5px] text-blue-primary">
+                  {cleanFolderName(newFolder)
+                    ? `“${cleanFolderName(newFolder)}” will be created when you add this material.`
+                    : "Type a name. It will be selected automatically."}
+                </p>
+              </div>
+            )}
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Leave it unfiled, choose an existing folder, or create one now.
+              Optional. New folders are not created until the material is added.
             </p>
           </div>
 

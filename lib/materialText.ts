@@ -98,6 +98,16 @@ export async function saveMaterialText(
   await persist();
 }
 
+/** Read one cached extraction without exposing the full private index to a
+ * client. Re-indexing uses this to avoid downloading and unpacking the same
+ * archive every time an owner opens it. */
+export async function materialTextEntry(
+  path: string
+): Promise<MaterialTextEntry | undefined> {
+  const all = await loadMaterialText();
+  return all[path];
+}
+
 /** Forget a file's text when its material row is deleted, so a removed deck
  *  stops informing answers the moment it leaves the page. */
 export async function forgetMaterialText(paths: string[]): Promise<void> {

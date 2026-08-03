@@ -180,6 +180,18 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Aug 4 sales-material viewer batch is ready to ship:** ZIP materials can be
+  reindexed and browsed member-by-member, and PDF members use Freyr's custom
+  in-app viewer instead of the browser wrapper. Spreadsheet members now render
+  as a true workbook grid with column letters, row numbers, wrapped cells,
+  horizontal one-row sheet tabs, and readable light/dark hover states. Folder
+  and All-files views animate between layouts. Add/Edit Material keep folder
+  assignment optional and offer an inline draft-folder control beside the
+  folder picker; the draft is auto-selected but is only created when the
+  material is saved, so switching back to an existing folder leaves no empty
+  folder behind. Typecheck, focused lint, whitespace checks, the production
+  build, and read-only local browser verification pass.
+
 - **Aug 3 production-hardening batch is ready to ship:** live Agent calls are
   now read-only with respect to customers, sequences, pipeline, and other
   shared workflow records (Mock keeps its interactive demos); offering-owner

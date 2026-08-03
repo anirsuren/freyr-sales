@@ -25,6 +25,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { PdfViewer } from "@/components/offerings/PdfViewer";
 import { VideoPlayer } from "@/components/offerings/VideoPlayer";
 
 /**
@@ -51,8 +52,26 @@ import { VideoPlayer } from "@/components/offerings/VideoPlayer";
  * PDF, video and images are already exact, so they are simply embedded.
  */
 
-type Sheets = { name: string; html: string }[];
+type SheetCell = string | number | boolean | null;
+type Sheets = {
+  name: string;
+  rows: SheetCell[][];
+  totalRows: number;
+  totalColumns: number;
+  truncated: boolean;
+}[];
 type Listing = { name: string; size: string }[];
+
+function spreadsheetColumnLabel(index: number): string {
+  let label = "";
+  let value = index + 1;
+  while (value > 0) {
+    value -= 1;
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26);
+  }
+  return label;
+}
 
 function extensionOf(path: string): string {
   return (path.split(".").pop() || "").toLowerCase();
@@ -79,10 +98,11 @@ export function MaterialViewer({
   const [message, setMessage] = useState<string | null>(null);
   const [sheets, setSheets] = useState<Sheets | null>(null);
   const [listing, setListing] = useState<Listing | null>(null);
+  const [archiveKnowledge, setArchiveKnowledge] = useState<
+    "idle" | "loading" | "ready"
+  >("idle");
+  const [archiveKnowledgeFiles, setArchiveKnowledgeFiles] = useState(0);
   const [sheet, setSheet] = useState(0);
-  /** How many slides a deck turned out to have — said out loud, because a
-   *  second slide below the fold is a second slide nobody knows exists. */
-  const [slideCount, setSlideCount] = useState(0);
   /** The renderer gave up entirely and we are reading the deck instead. */
   const [fellBack, setFellBack] = useState(false);
   /** It drew some slides and then failed; what is on screen is incomplete. */
@@ -164,7 +184,6 @@ export function MaterialViewer({
     setListing(null);
     setSlides(null);
     setSheet(0);
-    setSlideCount(0);
     setFellBack(false);
     setPartial(false);
     setZoom(1);
@@ -175,6 +194,10 @@ export function MaterialViewer({
     if (host.current) host.current.innerHTML = "";
 
     if (isNative) {
+      // The custom PDF viewer owns its loading state. Plain text still uses a
+      // frame, so keep the shared loading state until that frame says it is
+      // ready instead of showing a large, unexplained white rectangle.
+      if (isText) return;
       setStatus("ready");
       return;
     }
@@ -269,7 +292,6 @@ export function MaterialViewer({
               }
               if (live) setPartial(true);
             }
-            if (live) setSlideCount(container.querySelectorAll(".pptx-preview-wrapper > div").length || 0);
           }
           if (live) setStatus("ready");
           return;
@@ -288,11 +310,54 @@ export function MaterialViewer({
     return () => {
       live = false;
     };
-  }, [archiveMember, ext, inlineUrl, isNative, offeringId, path]);
+  }, [archiveMember, ext, inlineUrl, isNative, isText, offeringId, path]);
 
   useEffect(() => {
     setArchiveMember(null);
   }, [path]);
+
+  /**
+   * OLDER ARCHIVES NEED THE SAME AI INDEX AS NEW UPLOADS.
+   *
+   * The original proposal ZIPs pre-date archive extraction. Opening an
+   * archive is the natural, explicit moment for its owner to refresh the
+   * private knowledge index: the original file is untouched, cached archives
+   * return immediately, and non-owners simply keep the normal viewer.
+   */
+  useEffect(() => {
+    if (extensionOf(path) !== "zip" || archiveMember) return;
+    let live = true;
+    setArchiveKnowledge("loading");
+    setArchiveKnowledgeFiles(0);
+
+    fetch(`/api/offerings/${offeringId}/materials/reindex`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!live) return;
+        if (!response.ok) {
+          // Viewing still works for every authorised seller. Only an offering
+          // owner may change the shared AI index, so do not turn a permissions
+          // boundary into a scary viewer error.
+          setArchiveKnowledge("idle");
+          return;
+        }
+        setArchiveKnowledgeFiles(
+          Array.isArray(body.archiveMembers) ? body.archiveMembers.length : 0
+        );
+        setArchiveKnowledge("ready");
+      })
+      .catch(() => {
+        if (live) setArchiveKnowledge("idle");
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [archiveMember, offeringId, path]);
 
   /**
    * A LIBRARY DEFECT MUST NOT LOOK LIKE AN APP CRASH.
@@ -473,6 +538,17 @@ export function MaterialViewer({
       size="viewer"
       actions={
         <>
+          {archiveMember && (
+            <button
+              type="button"
+              onClick={() => setArchiveMember(null)}
+              title="Back to archive"
+              aria-label="Back to archive"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-blue-primary"
+            >
+              <ArrowLeft size={16} strokeWidth={1.9} />
+            </button>
+          )}
           <a
             href={currentDownloadUrl}
             title={`Download ${currentLabel}`}
@@ -495,7 +571,7 @@ export function MaterialViewer({
         </>
       }
     >
-      <div className="flex h-[calc(100vh-8rem)] flex-col">
+      <div className="flex h-[calc(100vh-6.75rem)] flex-col">
         {(fellBack || partial) && (
           <p className="mb-2 shrink-0 rounded-lg bg-[color:#C2410C]/10 px-3 py-2 text-[12px] font-medium text-[color:#C2410C]">
             {fellBack
@@ -503,27 +579,15 @@ export function MaterialViewer({
               : "Part of this deck uses shapes the renderer cannot draw, so it stops early. Download the original for the whole deck."}
           </p>
         )}
-        {archiveMember && (
-          <div className="mb-2 flex min-w-0 shrink-0 items-center gap-2 text-[12px]">
-            <button
-              type="button"
-              onClick={() => setArchiveMember(null)}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 font-semibold text-blue-primary transition-colors hover:bg-blue-light"
-            >
-              <ArrowLeft size={13} strokeWidth={2.2} />
-              Back to archive
-            </button>
-            <span className="text-text-tertiary">/</span>
-            <span className="truncate text-text-secondary" title={archiveMember}>
-              {archiveMember}
-            </span>
-          </div>
-        )}
         <div className="relative min-h-0 flex-1">
         <div
           ref={scroller}
           className={`material-scroll h-full overflow-auto rounded-xl border border-border-light ${
-            isVideo ? "bg-black" : "bg-[var(--surface)]"
+            isVideo
+              ? "bg-black"
+              : ext === "pdf"
+                ? "overflow-hidden bg-[#202124]"
+                : "bg-[var(--surface)]"
           }`}
         >
           {status === "loading" && (
@@ -564,13 +628,27 @@ export function MaterialViewer({
               and its own page counter, and nobody zooms a video. */}
           <div
             style={{ zoom: isNative && ext === "pdf" ? 1 : zoom }}
-            className={isVideo ? "flex h-full items-center justify-center" : listing ? "h-full" : undefined}
+            className={
+              isVideo
+                ? "flex h-full items-center justify-center"
+                : listing || ext === "pdf"
+                  ? "h-full"
+                  : undefined
+            }
           >
 
           {/* Exact by definition: the browser's own PDF, video and image
               rendering of the very bytes that were uploaded. */}
-          {isNative && (ext === "pdf" || isText) && (
-            <iframe src={inlineUrl} title={currentLabel} className="h-[calc(100vh-13rem)] w-full rounded-lg bg-white" />
+          {isNative && ext === "pdf" && (
+            <PdfViewer src={inlineUrl} label={currentLabel} />
+          )}
+          {isText && (
+            <iframe
+              src={inlineUrl}
+              title={currentLabel}
+              onLoad={() => setStatus("ready")}
+              className="h-full min-h-[calc(100vh-8rem)] w-full rounded-lg bg-white"
+            />
           )}
           {isVideo && <VideoPlayer src={inlineUrl} label={currentLabel} />}
           {isNative && ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext) && (
@@ -618,30 +696,77 @@ export function MaterialViewer({
           )}
 
           {sheets && (
-            <>
-              {sheets.length > 1 && (
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                  {sheets.map((s, i) => (
-                    <button
-                      key={s.name}
-                      type="button"
-                      onClick={() => setSheet(i)}
-                      className={`rounded-full px-2.5 py-1 text-[12px] font-semibold transition-colors ${
-                        i === sheet
-                          ? "bg-blue-light text-blue-primary"
-                          : "text-text-secondary hover:bg-white"
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div
-                className="material-sheet overflow-x-auto rounded-lg bg-white p-3 text-[12.5px]"
-                dangerouslySetInnerHTML={{ __html: sheets[sheet]?.html || "" }}
-              />
-            </>
+            <div className="material-workbook flex min-h-full flex-col overflow-hidden rounded-xl border border-border-light">
+              <div className="material-sheet-tabs flex shrink-0 items-end gap-1 overflow-x-auto border-b border-border-light px-2 pt-2">
+                {sheets.map((currentSheet, i) => (
+                  <button
+                    key={currentSheet.name}
+                    type="button"
+                    onClick={() => setSheet(i)}
+                    aria-pressed={i === sheet}
+                    className={`inline-flex h-9 max-w-[240px] shrink-0 items-center gap-2 rounded-t-lg border border-b-0 px-3 text-[12px] font-semibold transition-all ${
+                      i === sheet
+                        ? "border-border-light bg-white text-blue-primary shadow-[0_-1px_2px_rgba(16,24,40,0.04)]"
+                        : "border-transparent text-text-secondary hover:bg-white/70 hover:text-text-primary"
+                    }`}
+                  >
+                    <Table2 size={14} strokeWidth={1.9} aria-hidden="true" />
+                    <span className="truncate">{currentSheet.name}</span>
+                  </button>
+                ))}
+              </div>
+              {(() => {
+                const currentSheet = sheets[sheet];
+                if (!currentSheet) return null;
+                const columnCount = Math.max(
+                  1,
+                  Math.min(
+                    currentSheet.totalColumns,
+                    currentSheet.rows.reduce(
+                      (largest, row) => Math.max(largest, row.length),
+                      0
+                    )
+                  )
+                );
+                return (
+                  <>
+                    <div className="material-sheet-grid material-scroll min-h-0 flex-1 overflow-auto">
+                      <table aria-label={`${currentSheet.name} spreadsheet`}>
+                        <thead>
+                          <tr>
+                            <th className="material-sheet-corner" aria-label="Row numbers" />
+                            {Array.from({ length: columnCount }, (_, column) => (
+                              <th key={column} scope="col">
+                                {spreadsheetColumnLabel(column)}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentSheet.rows.map((row, rowIndex) => (
+                            <tr key={rowIndex}>
+                              <th scope="row">{rowIndex + 1}</th>
+                              {Array.from({ length: columnCount }, (_, column) => (
+                                <td key={column}>{row[column] ?? ""}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="material-sheet-status flex shrink-0 items-center justify-between gap-3 border-t border-border-light px-3 py-2 text-[11px] text-text-tertiary">
+                      <span>
+                        {currentSheet.totalRows.toLocaleString()} rows ·{" "}
+                        {currentSheet.totalColumns.toLocaleString()} columns
+                      </span>
+                      {currentSheet.truncated && (
+                        <span>Preview limited for performance · download for the full workbook</span>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           )}
 
           {/* An archive can't render page-by-page, so the honest view is its
@@ -663,6 +788,17 @@ export function MaterialViewer({
                     <p className="text-[12px] text-text-secondary">
                       Select a file to open it here without downloading or unpacking the archive.
                     </p>
+                    {archiveKnowledge === "loading" && (
+                      <p className="mt-1 text-[12px] font-medium text-blue-primary">
+                        Preparing these files for Freyr AI…
+                      </p>
+                    )}
+                    {archiveKnowledge === "ready" && archiveKnowledgeFiles > 0 && (
+                      <p className="mt-1 text-[12px] font-medium text-green-700">
+                        Freyr AI can search {archiveKnowledgeFiles}{" "}
+                        {archiveKnowledgeFiles === 1 ? "file" : "files"} inside this archive.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <ul className="mt-4 divide-y divide-border-light rounded-lg border border-border-light">

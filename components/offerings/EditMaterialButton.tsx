@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Folder, FolderOpen, FolderPlus } from "lucide-react";
+import { Pencil, Folder, FolderOpen, FolderPlus, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -74,6 +74,8 @@ export function EditMaterialButton({
   /** MOVE A FILE. The folder is a plain path, so moving is a re-save. */
   const [folder, setFolder] = useState(material.folder || "");
   const [newFolder, setNewFolder] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [folderBeforeDraft, setFolderBeforeDraft] = useState("");
   const hasChanges =
     label !== material.label ||
     description !== (material.description || "") ||
@@ -86,6 +88,8 @@ export function EditMaterialButton({
     setDescription(material.description || "");
     setFolder(material.folder || "");
     setNewFolder("");
+    setCreatingFolder(false);
+    setFolderBeforeDraft("");
     setJourneyStage(material.journeyStage || "awareness");
     setAccessLevel(material.accessLevel || "client_facing");
   }
@@ -196,13 +200,19 @@ export function EditMaterialButton({
             </label>
             {/* Folder as the house picker, not a grey <select> — same folder
                 glyph the material cards use (Anir, Jul 30 dropdown sweep). */}
-            <ColorSelect
-              ariaLabel="Folder"
-              value={folder}
-              onChange={setFolder}
-              className="w-full"
-              collapsible={false}
-              options={[
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <ColorSelect
+                  ariaLabel="Folder"
+                  value={folder}
+                  onChange={(value) => {
+                    setFolder(value);
+                    setNewFolder("");
+                    setCreatingFolder(false);
+                  }}
+                  className="w-full"
+                  collapsible={false}
+                  options={[
                 {
                   value: "",
                   label: "No folder",
@@ -229,46 +239,74 @@ export function EditMaterialButton({
                   icon: Folder,
                   color: "#0071E3",
                 })),
-              ]}
-            />
-            <div className="mt-2 flex items-center gap-2">
-              <div className="relative min-w-0 flex-1">
+                  ]}
+                />
+              </div>
+              <button
+                type="button"
+                aria-label={creatingFolder ? "Cancel new folder" : "Create a new folder"}
+                title={creatingFolder ? "Cancel new folder" : "Create a new folder"}
+                onClick={() => {
+                  if (creatingFolder) {
+                    setFolder(folderBeforeDraft);
+                    setNewFolder("");
+                    setCreatingFolder(false);
+                    return;
+                  }
+                  setFolderBeforeDraft(folder);
+                  setNewFolder("");
+                  setCreatingFolder(true);
+                }}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all ${
+                  creatingFolder
+                    ? "border-blue-primary bg-blue-primary text-white shadow-button"
+                    : "border-border-light bg-surface text-blue-primary hover:border-blue-subtle hover:bg-blue-light"
+                }`}
+              >
+                <Plus
+                  size={17}
+                  strokeWidth={2.2}
+                  className={`transition-transform duration-200 ${creatingFolder ? "rotate-45" : ""}`}
+                />
+              </button>
+            </div>
+            {creatingFolder && (
+              <div className="materials-folder-draft mt-2">
+                <div className="relative min-w-0">
                 <FolderPlus
                   size={14}
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-blue-primary"
                 />
                 <input
+                  autoFocus
                   value={newFolder}
-                  onChange={(event) => setNewFolder(event.target.value)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setNewFolder(value);
+                    setFolder(cleanFolderName(value) || folderBeforeDraft);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter") return;
                     event.preventDefault();
                     const name = cleanFolderName(newFolder);
                     if (!name) return;
                     setFolder(name);
-                    setNewFolder("");
+                    setCreatingFolder(false);
                   }}
-                  placeholder="Create a new folder"
+                  placeholder="New folder name"
                   aria-label="New folder name"
                   className="h-10 w-full rounded-lg border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary focus:shadow-input-focus"
                 />
               </div>
-              <button
-                type="button"
-                disabled={!cleanFolderName(newFolder)}
-                onClick={() => {
-                  const name = cleanFolderName(newFolder);
-                  if (!name) return;
-                  setFolder(name);
-                  setNewFolder("");
-                }}
-                className="h-10 shrink-0 rounded-lg border border-blue-subtle px-3 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-blue-light disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Create & select
-              </button>
-            </div>
+                <p className="mt-1.5 text-[11.5px] text-blue-primary">
+                  {cleanFolderName(newFolder)
+                    ? `“${cleanFolderName(newFolder)}” will be created when you save these changes.`
+                    : "Type a name. It will be selected automatically."}
+                </p>
+              </div>
+            )}
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Leave it unfiled, choose an existing folder, or create one now.
+              Optional. A new folder is created only when these changes are saved.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">

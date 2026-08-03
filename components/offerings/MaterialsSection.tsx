@@ -256,10 +256,23 @@ export function MaterialsSection({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const folder = normalizeFolderPath(searchParams.get("mf") || "");
+  const showAllFiles = searchParams.get("mv") === "files";
   const goToFolder = (next: string) => {
     const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.delete("mv");
     if (next) params.set("mf", next);
     else params.delete("mf");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+  const setMaterialsView = (view: "folders" | "files") => {
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    if (view === "files") {
+      params.set("mv", "files");
+      params.delete("mf");
+    } else {
+      params.delete("mv");
+    }
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
@@ -282,14 +295,16 @@ export function MaterialsSection({
     () => allFolders(mine, materialFolders),
     [mine, materialFolders]
   );
-  const subFolders = anyFilter ? [] : childFolders(folders, folder);
+  const subFolders =
+    anyFilter || showAllFiles ? [] : childFolders(folders, folder);
   /**
    * A FILTER SEARCHES THE WHOLE TREE. Narrowing to "Presentation" and being
    * shown only the presentations in the folder you happen to be standing in
    * would hide the very file you are hunting for, so any active filter flattens
    * the view and each row says which folder it came from.
    */
-  const scoped = anyFilter ? mine : materialsInFolder(mine, folder);
+  const scoped =
+    anyFilter || showAllFiles ? mine : materialsInFolder(mine, folder);
   const visible = scoped
     .filter((m) => {
       if (formats.length && !formats.includes(materialFormat(m.kind))) return false;
@@ -378,6 +393,38 @@ export function MaterialsSection({
         <div className="ml-auto flex items-center gap-2">
           <div
             role="group"
+            aria-label="Sales materials view"
+            className="inline-flex items-center rounded-lg border border-border-light bg-surface p-1"
+          >
+            <button
+              type="button"
+              aria-pressed={!showAllFiles}
+              onClick={() => setMaterialsView("folders")}
+              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
+                !showAllFiles
+                  ? "bg-white text-blue-primary shadow-card"
+                  : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
+              }`}
+            >
+              <Folder size={14} strokeWidth={2} aria-hidden="true" />
+              Folders
+            </button>
+            <button
+              type="button"
+              aria-pressed={showAllFiles}
+              onClick={() => setMaterialsView("files")}
+              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
+                showAllFiles
+                  ? "bg-white text-blue-primary shadow-card"
+                  : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
+              }`}
+            >
+              <Files size={14} strokeWidth={2} aria-hidden="true" />
+              All files
+            </button>
+          </div>
+          <div
+            role="group"
             aria-label="Sales materials layout"
             className="inline-flex items-center rounded-lg border border-border-light bg-surface p-1"
           >
@@ -410,7 +457,7 @@ export function MaterialsSection({
       {/* WHERE YOU ARE. Only rendered once you are inside something, so an
           offering with everything at the top level gains no chrome it doesn't
           need. Filtering hides it too: the results span every folder then. */}
-      {folder && !anyFilter && (
+      {folder && !anyFilter && !showAllFiles && (
         <nav
           aria-label="Folder path"
           className="mt-3 flex flex-wrap items-center gap-1 text-[12.5px]"
@@ -452,11 +499,12 @@ export function MaterialsSection({
       {/* Live count + one-click reset */}
       <div className="mt-3 flex items-center justify-between gap-3">
         <p className="text-[12px] text-text-secondary" aria-live="polite">
-          {anyFilter || folder ? (
+          {anyFilter || showAllFiles || folder ? (
             <>
               Showing <span className="tnum font-semibold">{visible.length}</span> of{" "}
               <span className="tnum font-semibold">{mine.length}</span>{" "}
               {mine.length === 1 ? "material" : "materials"}
+              {showAllFiles && !anyFilter && " across all folders"}
             </>
           ) : (
             <>
@@ -497,7 +545,10 @@ export function MaterialsSection({
           files are under it INCLUDING its sub-folders, so a folder whose
           contents are all one level down never reads as empty. */}
       {subFolders.length > 0 && (
-        <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          key={`folders-${folder}-${showAllFiles ? "files" : "tree"}`}
+          className="materials-view-enter mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4"
+        >
           {subFolders.map((path) => {
             const name = materialFolderLabel(path).split(" · ").pop() as string;
             const count = countUnder(mine, path);
@@ -551,7 +602,11 @@ export function MaterialsSection({
           read as one list and the cards looked like ornaments (Anir: "what the
           hell do these folders do? It just shows folders"). Naming the loose
           pile makes the tree obvious without moving anyone's files. */}
-      {!folder && !anyFilter && subFolders.length > 0 && visible.length > 0 && (
+      {!folder &&
+        !anyFilter &&
+        !showAllFiles &&
+        subFolders.length > 0 &&
+        visible.length > 0 && (
         <p className="mt-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
           <FolderOpen size={13} strokeWidth={2} />
           Not in a folder
@@ -562,9 +617,14 @@ export function MaterialsSection({
       )}
 
       {visible.length === 0 ? (
-        <p className="mt-3 rounded-2xl border border-dashed border-border-light bg-[var(--surface)] px-4 py-6 text-center text-[13px] text-text-tertiary">
+        <p
+          key={`empty-${folder}-${showAllFiles ? "files" : "tree"}`}
+          className="materials-view-enter mt-3 rounded-2xl border border-dashed border-border-light bg-[var(--surface)] px-4 py-6 text-center text-[13px] text-text-tertiary"
+        >
           {anyFilter
             ? `None of the ${mine.length} ${mine.length === 1 ? "material" : "materials"} on this offering match all three filters, clear one to see the rest.`
+            : showAllFiles
+              ? "No materials yet."
             : subFolders.length > 0
               ? "Everything here is inside a folder. Open one above."
               : folder
@@ -579,7 +639,10 @@ export function MaterialsSection({
            aesthetic and separated properly, like floating"). Same radius,
            shadow and hover lift as the related-offering pills below, one per
            row so the long file names still get the full width. */
-        <div className={`mt-3 ${materialGridClass(columns)}`}>
+        <div
+          key={`materials-${folder}-${showAllFiles ? "files" : "tree"}`}
+          className={`materials-view-enter mt-3 ${materialGridClass(columns)}`}
+        >
           {visible.map((material) => {
             const format = materialFormat(material.kind);
             const formatMeta = MATERIAL_FORMAT_META[format];
@@ -683,7 +746,7 @@ export function MaterialsSection({
                   <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     {/* Filtering flattens the tree, so the row has to say where
                         the file actually lives or the result is unplaceable. */}
-                    {anyFilter && material.folder && (
+                  {(anyFilter || showAllFiles) && material.folder && (
                       <TagPill
                         label={material.folder}
                         color="#2563EB"
