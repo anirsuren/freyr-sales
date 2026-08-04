@@ -15,6 +15,10 @@ import {
 import {
   stampMaterialAttribution,
   sanitizeMaterialFolderPath,
+  isFixedMaterialFolder,
+  materialJourneyStages,
+  MATERIAL_FORMATS,
+  ACCESS_LEVELS,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { redactOfferingsForCurrentUser } from "@/lib/materialAccess";
@@ -61,6 +65,27 @@ export async function POST(req: Request) {
   if (Array.isArray(body.materials)) {
     for (const material of body.materials as OfferingMaterial[]) {
       material.folder = sanitizeMaterialFolderPath(material.folder);
+      const stages = materialJourneyStages(material);
+      let validUrl = false;
+      try {
+        const parsed = new URL(String(material.url || ""));
+        validUrl = parsed.protocol === "https:" || parsed.protocol === "http:";
+      } catch {}
+      if (
+        !material.label?.trim() ||
+        !validUrl ||
+        !MATERIAL_FORMATS.includes(material.kind as never) ||
+        !isFixedMaterialFolder(material.folder) ||
+        !stages.length ||
+        !ACCESS_LEVELS.includes(material.accessLevel as never)
+      ) {
+        return NextResponse.json(
+          { error: "Every material needs complete required metadata." },
+          { status: 400 }
+        );
+      }
+      material.journeyStages = stages;
+      material.journeyStage = stages[0];
     }
     const user = await getCurrentUser();
     body.materials = stampMaterialAttribution(

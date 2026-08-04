@@ -35,20 +35,14 @@ export function isReleased(href: string, dataMode: DataMode): boolean {
 // and working, it was simply still behind this gate — so releasing it is the
 // feature. It answers grounded in the offerings catalogue itself (see
 // lib/knowledgeBase), which is exactly the content real mode carries.
-// CUSTOMERS SHIPS WITH THE THIRD ROLLOUT (Saras, Jul 30: "The next module to
-// be made will be a 'Customers' module — details on it will come in down the
-// line"; unhidden by Anir the same day). In real mode it renders the honest
-// empty module — no demo companies — which is the point: Freyr sees the real
-// thing it is about to fill, not a mock (same "bare bones" rule as the
-// offering Reports tab). Suren's customer-offering heat map lands here.
-// REPORTS SHIPS WITH THE CUSTOMER × OFFERING HEAT MAP. It reads the same live
-// customer and offering records as those released modules and keeps a full
-// version trail inside each customer's existing offering_usage document.
+// Customers and Reports stay in mock mode while the sales pilot is focused on
+// Offerings. Saras (Aug 4) asked for both modules to be hidden temporarily so
+// pilot users are never sent into unfinished/empty destinations. Removing the
+// prefixes here hides their sidebar items AND blocks direct URLs in live mode;
+// mock mode still exposes the full product for review.
 const RELEASED_MODULE_PREFIXES = [
   "/offerings",
   "/agent",
-  "/customers",
-  "/reports",
 ] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,

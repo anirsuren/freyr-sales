@@ -227,16 +227,7 @@ export function OfferingOverviewMain({
           icon={BarChart3}
           title="Commercial performance"
           description="Account adoption, booked value, and renewal context in one place."
-          action={
-            report.customerCount > 0 ? (
-              <Link
-                href={`/offerings/${o.id}?tab=reports`}
-                className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-              >
-                Open reports <ChevronRight size={13} strokeWidth={2} />
-              </Link>
-            ) : null
-          }
+          action={null}
         />
         {report.customerCount === 0 ? (
           <p className="mt-5 pl-11 text-[13px] text-text-tertiary">

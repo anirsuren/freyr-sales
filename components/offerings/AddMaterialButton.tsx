@@ -4,27 +4,27 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Folder,
-  FolderOpen,
-  FolderPlus,
   Plus,
   Route,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
+  ACCESS_LEVEL_VISIBILITY_COPY,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
   MATERIAL_META,
   FIXED_MATERIAL_FOLDERS,
-  cleanFolderName,
+  isFixedMaterialFolder,
   materialFolderLabel,
-  normalizeFolderPath,
+  materialJourneyStages,
   type AccessLevel,
   type JourneyStage,
   type MaterialFormat,
@@ -49,13 +49,14 @@ const STAGE_OPTIONS: ColorOption[] = [
 const ACCESS_OPTIONS: ColorOption[] = [
   {
     value: "",
-    label: "Pick an access level",
+    label: "Choose who can view it",
     color: "#0071E3",
     icon: ShieldCheck,
   },
   ...ACCESS_LEVELS.map((l) => ({
     value: l,
-    label: ACCESS_LEVEL_META[l].label,
+    label: ACCESS_LEVEL_VISIBILITY_COPY[l].label,
+    description: ACCESS_LEVEL_VISIBILITY_COPY[l].description,
     color: ACCESS_LEVEL_META[l].color,
     icon: ACCESS_LEVEL_META[l].icon,
   })),
@@ -102,11 +103,8 @@ export function AddMaterialButton({
    * and the form will not submit without it.
    */
   const [kind, setKind] = useState<MaterialFormat | "">("");
-  const [folder, setFolder] = useState(normalizeFolderPath(openFolder));
-  const [newFolder, setNewFolder] = useState("");
-  const [creatingFolder, setCreatingFolder] = useState(false);
-  const [folderBeforeDraft, setFolderBeforeDraft] = useState("");
-  const [journeyStage, setJourneyStage] = useState<JourneyStage | "">("");
+  const [folder, setFolder] = useState(isFixedMaterialFolder(openFolder) ? openFolder : "");
+  const [journeyStages, setJourneyStages] = useState<JourneyStage[]>([]);
   const [accessLevel, setAccessLevel] = useState<AccessLevel | "">("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
@@ -115,36 +113,130 @@ export function AddMaterialButton({
   // (Wajeed, Jul 29: "it's going to be actual files": Eeswar's SharePoint decks
   // land here and the file is stored by the workspace, so the link never rots
   // when a SharePoint folder moves). A pasted link still works as before.
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileLabels, setFileLabels] = useState<Record<string, string>>({});
+  const [fileOverrides, setFileOverrides] = useState<
+    Record<
+      string,
+      {
+        kind?: MaterialFormat;
+        folder?: string;
+        journeyStages?: JourneyStage[];
+        accessLevel?: AccessLevel;
+        description?: string;
+      }
+    >
+  >({});
+  const [fileProgress, setFileProgress] = useState<
+    Record<string, { percent: number; status: "waiting" | "uploading" | "done" | "failed" }>
+  >({});
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   /** 0-100 while bytes are moving, null when nothing is uploading. */
   const [progress, setProgress] = useState<number | null>(null);
+  const [uploadIndex, setUploadIndex] = useState(0);
+
+  function fileKey(file: File) {
+    return `${file.name}\u0000${file.size}\u0000${file.lastModified}`;
+  }
 
   function reset() {
     setKind("");
-    setJourneyStage("");
-    setFolder(normalizeFolderPath(openFolder));
-    setNewFolder("");
-    setCreatingFolder(false);
-    setFolderBeforeDraft("");
+    setJourneyStages([]);
+    setFolder(isFixedMaterialFolder(openFolder) ? openFolder : "");
     setAccessLevel("");
     setLabel("");
     setDescription("");
     setUrl("");
-    setFile(null);
+    setFiles([]);
+    setFileLabels({});
+    setFileOverrides({});
+    setFileProgress({});
     setDragOver(false);
+    setUploadIndex(0);
   }
 
   // Picking a file fills in what the file already says: its name and format.
   // Both stay editable.
-  function takeFile(f: File | null) {
-    if (!f) return;
-    setFile(f);
-    // The NAME is prefilled because it is visible and editable in the same
-    // breath. The FORMAT is not: an extension is good evidence, not consent.
-    if (!label.trim()) setLabel(f.name.replace(/\.[^.]+$/, ""));
+  function takeFiles(list: FileList | File[] | null) {
+    const picked = Array.from(list || []);
+    if (!picked.length) return;
+    const unique = new Map<string, File>();
+    for (const existing of files) unique.set(fileKey(existing), existing);
+    for (const next of picked) unique.set(fileKey(next), next);
+    const merged = Array.from(unique.values());
+    setFiles(merged);
+    setFileLabels((current) => {
+      const next = { ...current };
+      for (const file of merged) {
+        const key = fileKey(file);
+        if (!next[key]) next[key] = file.name.replace(/\.[^.]+$/, "");
+      }
+      return next;
+    });
   }
+
+  function removeFile(file: File) {
+    const key = fileKey(file);
+    setFiles((current) => current.filter((item) => fileKey(item) !== key));
+    setFileLabels((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setFileOverrides((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setFileProgress((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function updateFileOverride(
+    file: File,
+    update: Partial<NonNullable<(typeof fileOverrides)[string]>>
+  ) {
+    const key = fileKey(file);
+    setFileOverrides((current) => ({
+      ...current,
+      [key]: { ...current[key], ...update },
+    }));
+  }
+
+  const validLink = (() => {
+    if (!url.trim()) return false;
+    try {
+      const parsed = new URL(url.trim());
+      return parsed.protocol === "https:" || parsed.protocol === "http:";
+    } catch {
+      return false;
+    }
+  })();
+  const fileReady = files.every((file) => {
+    const key = fileKey(file);
+    const override = fileOverrides[key] || {};
+    return Boolean(
+      fileLabels[key]?.trim() &&
+        (override.kind || kind) &&
+        (override.folder || folder) &&
+        (override.journeyStages || journeyStages).length &&
+        (override.accessLevel || accessLevel)
+    );
+  });
+  const linkReady = Boolean(
+    !files.length &&
+      label.trim() &&
+      validLink &&
+      kind &&
+      folder &&
+      journeyStages.length &&
+      accessLevel
+  );
+  const canSave = !busy && (files.length ? fileReady : linkReady);
 
 
   /**
@@ -160,6 +252,11 @@ export function AddMaterialButton({
    * still works and is what a laptop without the Docs credentials uses.
    */
   async function uploadFile(f: File) {
+    const key = fileKey(f);
+    setFileProgress((current) => ({
+      ...current,
+      [key]: { percent: 0, status: "uploading" },
+    }));
     const signed = await fetch(
       `/api/offerings/${offeringId}/materials/upload-url`,
       {
@@ -176,6 +273,10 @@ export function AddMaterialButton({
     if (signed.status === 503) return uploadThroughServer(f);
     if (!signed.ok || !grant.uploadUrl) {
       toast(grant.error || "Couldn't start that upload", "error");
+      setFileProgress((current) => ({
+        ...current,
+        [key]: { percent: current[key]?.percent || 0, status: "failed" },
+      }));
       return null;
     }
 
@@ -190,6 +291,10 @@ export function AddMaterialButton({
       }).catch(() => undefined);
       setProgress(null);
       toast("The upload didn't finish, try again", "error");
+      setFileProgress((current) => ({
+        ...current,
+        [key]: { percent: current[key]?.percent || 0, status: "failed" },
+      }));
       return null;
     }
 
@@ -206,8 +311,16 @@ export function AddMaterialButton({
     setProgress(null);
     if (!done.ok || !stored.url) {
       toast(stored.error || "Couldn't finish that upload", "error");
+      setFileProgress((current) => ({
+        ...current,
+        [key]: { percent: 100, status: "failed" },
+      }));
       return null;
     }
+    setFileProgress((current) => ({
+      ...current,
+      [key]: { percent: 100, status: "done" },
+    }));
     return stored;
   }
 
@@ -224,8 +337,15 @@ export function AddMaterialButton({
       for (const [k, v] of Object.entries(headers || {}))
         xhr.setRequestHeader(k, v);
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable)
-          setProgress(Math.round((e.loaded / e.total) * 100));
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          setProgress(percent);
+          const key = fileKey(f);
+          setFileProgress((current) => ({
+            ...current,
+            [key]: { percent, status: "uploading" },
+          }));
+        }
       };
       xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
       xhr.onerror = () => resolve(false);
@@ -252,33 +372,38 @@ export function AddMaterialButton({
   }
 
   async function save() {
-    if (!file && !url.trim() && !label.trim()) {
-      toast("Drop in a file, or add a link or a name first", "error");
+    if (!files.length && (!label.trim() || !validLink)) {
+      toast("Add a material name and a valid http or https link", "error");
       return;
     }
     // The format is the owner's to state. Nothing infers it, so nothing saves
     // without it — this is the guard that makes "no auto-tag" real rather than
     // a default sitting one click away from being wrong.
-    if (!kind) {
+    if (!files.length && !kind) {
       toast("Pick the file format first — video, presentation, document or other", "error");
       return;
     }
-    if (!journeyStage) {
-      toast("Pick the buyer's journey stage first", "error");
+    if (!files.length && !folder) {
+      toast("Choose a system folder first", "error");
       return;
     }
-    if (!accessLevel) {
+    if (!files.length && !journeyStages.length) {
+      toast("Choose at least one buyer's journey stage", "error");
+      return;
+    }
+    if (!files.length && !accessLevel) {
       toast("Pick who can access this material first", "error");
       return;
     }
-    const chosenKind: MaterialFormat = kind;
-    const chosenJourneyStage: JourneyStage = journeyStage;
-    const chosenAccessLevel: AccessLevel = accessLevel;
+    if (files.length && !fileReady) {
+      toast("Complete the required metadata for every selected file", "error");
+      return;
+    }
     setBusy(true);
     try {
       // The file's bytes go up first; the material row then references where
       // they landed, through the same PATCH as a pasted link.
-      let storedUrl = url.trim();
+      const storedUrl = url.trim();
       let storedPath: string | undefined;
       // Whether the assistant could actually READ the file. Worth saying out
       // loud: an owner uploading a deck so the agent can answer from it needs
@@ -287,18 +412,45 @@ export function AddMaterialButton({
       let readWords = 0;
       let unsupported = false;
       let readFailed = false;
-      if (file) {
-        const stored = await uploadFile(file);
-        if (!stored) {
-          setBusy(false);
-          return;
-        }
-        storedUrl = stored.url;
-        storedPath = stored.docsPath;
-        readWords = typeof stored.words === "number" ? stored.words : 0;
-        wasRead = Boolean(stored.readable);
-        unsupported = stored.supported === false;
-        readFailed = Boolean(stored.failed);
+      const uploaded: Array<{
+        file: File;
+        url: string;
+        docsPath?: string;
+        words: number;
+        readable: boolean;
+        unsupported: boolean;
+        failed: boolean;
+      }> = [];
+      for (let index = 0; index < files.length; index += 1) {
+        const currentFile = files[index];
+        setUploadIndex(index);
+        const stored = await uploadFile(currentFile);
+        if (!stored) continue;
+        uploaded.push({
+          file: currentFile,
+          url: stored.url,
+          docsPath: stored.docsPath,
+          words: typeof stored.words === "number" ? stored.words : 0,
+          readable: Boolean(stored.readable),
+          unsupported: stored.supported === false,
+          failed: Boolean(stored.failed),
+        });
+      }
+      const failedCount = files.length - uploaded.length;
+      if (files.length && uploaded.length === 0) {
+        toast("None of the selected files uploaded. Review the failed rows and retry.", "error");
+        return;
+      }
+      if (!files.length) {
+        wasRead = false;
+        readWords = 0;
+        unsupported = false;
+        readFailed = false;
+      } else {
+        readWords = uploaded.reduce((total, item) => total + item.words, 0);
+        wasRead = uploaded.some((item) => item.readable);
+        unsupported = uploaded.every((item) => item.unsupported);
+        readFailed = uploaded.some((item) => item.failed);
       }
       // Note: "added by" is NOT sent from here. The PATCH route stamps the
       // uploader from the server session and restores every existing row's
@@ -316,25 +468,53 @@ export function AddMaterialButton({
           docsPath: m.docsPath,
           description: m.description,
           journeyStage: m.journeyStage,
+          journeyStages: materialJourneyStages(m),
           accessLevel: m.accessLevel,
           documentType: m.documentType,
           // Without this the siblings come back folderless and one upload
           // would flatten everything Eswar had filed.
           folder: m.folder,
         })),
-        {
-          id: "",
-          kind: chosenKind,
-          label: label.trim() || (file ? file.name : MATERIAL_META[chosenKind].label),
-          url: storedUrl,
-          ...(storedPath ? { docsPath: storedPath } : {}),
-          // Optional, and left off entirely when it's blank — an empty note is
-          // no note, not an empty line under the title.
-          ...(description.trim() ? { description: description.trim() } : {}),
-          folder,
-          journeyStage: chosenJourneyStage,
-          accessLevel: chosenAccessLevel,
-        },
+        ...(uploaded.length
+          ? uploaded.map((item) => {
+              const key = fileKey(item.file);
+              const override = fileOverrides[key] || {};
+              const selectedKind = (override.kind || kind) as MaterialFormat;
+              const selectedStages = override.journeyStages || journeyStages;
+              const selectedAccess = (override.accessLevel || accessLevel) as AccessLevel;
+              return {
+              id: "",
+              kind: selectedKind,
+              label:
+                fileLabels[key]?.trim() ||
+                item.file.name.replace(/\.[^.]+$/, ""),
+              url: item.url,
+              ...(item.docsPath ? { docsPath: item.docsPath } : {}),
+              ...((override.description ?? description).trim()
+                ? { description: (override.description ?? description).trim() }
+                : {}),
+              folder: override.folder || folder,
+              journeyStage: selectedStages[0],
+              journeyStages: selectedStages,
+              accessLevel: selectedAccess,
+            };
+          })
+          : [
+              {
+                id: "",
+                kind: kind as MaterialFormat,
+                label: label.trim(),
+                url: storedUrl,
+                ...(storedPath ? { docsPath: storedPath } : {}),
+                ...(description.trim()
+                  ? { description: description.trim() }
+                  : {}),
+                folder,
+                journeyStage: journeyStages[0],
+                journeyStages,
+                accessLevel: accessLevel as AccessLevel,
+              },
+            ]),
       ];
       const res = await fetch(`/api/offerings/${offeringId}`, {
         method: "PATCH",
@@ -349,19 +529,29 @@ export function AddMaterialButton({
         // (Anir, Jul 29: "it literally just gave me a pop-up that said it
         // can't read this file type... that thing should never say that").
         toast(
-          !file
+          failedCount > 0
+            ? `${uploaded.length} ${uploaded.length === 1 ? "file" : "files"} added; ${failedCount} failed and remain in the review list.`
+            :
+          !files.length
             ? "Material added"
             : wasRead
-              ? `Material added — the assistant read ${readWords.toLocaleString()} words from it`
+              ? `${files.length === 1 ? "Material" : `${files.length} materials`} added — Freyr AI read ${readWords.toLocaleString()} words`
               : unsupported
                 ? "Material added. There is no text in this kind of file, so the assistant answers from its title and tags."
                 : readFailed
                   ? "Material added. The assistant hasn't read it yet — open Edit and save to try again."
                   : "Material added. The assistant found no text inside it.",
-          readFailed ? "error" : undefined
+          failedCount > 0 || readFailed ? "error" : undefined
         );
-        setOpen(false);
-        reset();
+        if (failedCount === 0) {
+          setOpen(false);
+          reset();
+        } else {
+          const uploadedKeys = new Set(uploaded.map((item) => fileKey(item.file)));
+          const failedFiles = files.filter((file) => !uploadedKeys.has(fileKey(file)));
+          setFiles(failedFiles);
+          setBusy(false);
+        }
         router.refresh();
       } else {
         toast(data.error || "Couldn't add that", "error");
@@ -407,17 +597,11 @@ export function AddMaterialButton({
         </button>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Add a sales material">
+      <Modal open={open} onClose={() => setOpen(false)} title="Add sales materials" size="workflow">
         <div className="space-y-4">
           <div>
-            <label className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              File format
-              {/* Say it up front rather than only at the point of refusal. */}
-              {!kind && (
-                <span className="font-semibold normal-case tracking-normal text-[color:#B02020]">
-                  · pick one
-                </span>
-              )}
+              <label className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              File format <span className="font-medium normal-case tracking-normal">Shared default</span>
             </label>
             {/* Four equal, colour-coded tiles on one row (item 9). */}
             <div className="grid grid-cols-4 gap-2">
@@ -453,151 +637,76 @@ export function AddMaterialButton({
             </div>
           </div>
 
-          {/* Filing is optional. The standard tree keeps the common structure,
-              but an owner can create a useful offering-specific folder here. */}
+          {/* Shared defaults are applied to every selected file and remain
+              individually adjustable in the review rows below. */}
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-              Folder <span className="font-medium normal-case tracking-normal">Optional</span>
+            <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              <span>Folder</span>
+              {!folder && (
+                <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                  Required
+                </span>
+              )}
             </label>
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <ColorSelect
-                  value={folder}
-                  options={[
-                {
-                  value: "",
-                  label: "No folder",
-                  color: "#0071E3",
-                  icon: FolderOpen,
-                },
-                ...Array.from(
-                  new Set(
-                    [
-                      ...materials.map((material) => material.folder || ""),
-                      folder,
-                    ]
-                      .map((name) => normalizeFolderPath(name))
-                      .filter(Boolean)
-                  )
-                )
-                  .filter((name) => !FIXED_MATERIAL_FOLDERS.includes(name))
-                  .map((name) => ({
-                    value: name,
-                    label: `${name} (custom)`,
-                    color: "#7C3AED",
-                    icon: Folder,
-                  })),
+            <ColorSelect
+              value={folder}
+              options={[
+                { value: "", label: "Choose a system folder", color: "#0071E3", icon: Folder },
                 ...FIXED_MATERIAL_FOLDERS.map((name) => ({
                   value: name,
                   label: materialFolderLabel(name),
                   color: "#0071E3",
                   icon: Folder,
                 })),
-                  ]}
-                  onChange={(value) => {
-                    setFolder(value);
-                    setNewFolder("");
-                    setCreatingFolder(false);
-                  }}
-                  ariaLabel="Folder"
-                  minWidth={0}
-                />
-              </div>
-              <button
-                type="button"
-                aria-label={creatingFolder ? "Cancel new folder" : "Create a new folder"}
-                title={creatingFolder ? "Cancel new folder" : "Create a new folder"}
-                onClick={() => {
-                  if (creatingFolder) {
-                    setFolder(folderBeforeDraft);
-                    setNewFolder("");
-                    setCreatingFolder(false);
-                    return;
-                  }
-                  setFolderBeforeDraft(folder);
-                  setNewFolder("");
-                  setCreatingFolder(true);
-                }}
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all ${
-                  creatingFolder
-                    ? "border-blue-primary bg-blue-primary text-white shadow-button"
-                    : "border-border-light bg-surface text-blue-primary hover:border-blue-subtle hover:bg-blue-light"
-                }`}
-              >
-                <Plus
-                  size={17}
-                  strokeWidth={2.2}
-                  className={`transition-transform duration-200 ${creatingFolder ? "rotate-45" : ""}`}
-                />
-              </button>
-            </div>
-            {creatingFolder && (
-              <div className="materials-folder-draft mt-2">
-                <div className="relative min-w-0">
-                <FolderPlus
-                  size={14}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-blue-primary"
-                />
-                <input
-                  autoFocus
-                  value={newFolder}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setNewFolder(value);
-                    setFolder(cleanFolderName(value) || folderBeforeDraft);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") return;
-                    event.preventDefault();
-                    const name = cleanFolderName(newFolder);
-                    if (!name) return;
-                    setFolder(name);
-                    setCreatingFolder(false);
-                  }}
-                  placeholder="New folder name"
-                  aria-label="New folder name"
-                  className="h-10 w-full rounded-lg border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary focus:shadow-input-focus"
-                />
-              </div>
-                <p className="mt-1.5 text-[11.5px] text-blue-primary">
-                  {cleanFolderName(newFolder)
-                    ? `“${cleanFolderName(newFolder)}” will be created when you add this material.`
-                    : "Type a name. It will be selected automatically."}
-                </p>
-              </div>
-            )}
+              ]}
+              onChange={setFolder}
+              ariaLabel="Folder"
+              minWidth={0}
+              collapsible={false}
+              className="w-full"
+            />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Optional. New folders are not created until the material is added.
+              Every material belongs to one fixed system folder. “All files” is only a viewing mode.
             </p>
           </div>
 
           {/* CR-3: every material carries its buyer's-journey stage + who may
               see it. Both must be deliberately chosen rather than silently
               inheriting defaults. */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-                Buyer&apos;s journey stage
-                {!journeyStage && (
-                  <span className="font-semibold normal-case tracking-normal text-[color:#B02020]">
-                    · pick one
+          <div className="space-y-3">
+            <p className="rounded-lg border border-blue-subtle bg-blue-light/40 px-3 py-2 text-[11.5px] leading-relaxed text-text-secondary">
+              These shared defaults apply to the batch. Review and adjust each file before uploading.
+            </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+              <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                <span>Buyer&apos;s journey stage</span>
+                {!journeyStages.length && (
+                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                    Required
                   </span>
                 )}
               </label>
-              <ColorSelect
-                value={journeyStage}
-                options={STAGE_OPTIONS}
-                onChange={(v) => setJourneyStage(v as JourneyStage | "")}
+              <MultiColorSelect
+                values={journeyStages}
+                options={STAGE_OPTIONS.filter((option) => option.value)}
+                onChange={(values) => setJourneyStages(values as JourneyStage[])}
+                allLabel="Choose one or more stages"
+                allIcon={Route}
+                allColor="#7C3AED"
                 ariaLabel="Buyer's journey stage"
                 minWidth={0}
+                collapsible={false}
+                className="w-full"
               />
-            </div>
-            <div>
-              <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-                Access level
+              <p className="mt-1.5 text-[11.5px] text-text-tertiary">Select Awareness, Evaluation, Decision, or any combination.</p>
+              </div>
+              <div>
+              <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                <span>Who can view this file?</span>
                 {!accessLevel && (
-                  <span className="font-semibold normal-case tracking-normal text-[color:#B02020]">
-                    · pick one
+                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                    Required
                   </span>
                 )}
               </label>
@@ -605,13 +714,23 @@ export function AddMaterialButton({
                 value={accessLevel}
                 options={ACCESS_OPTIONS}
                 onChange={(v) => setAccessLevel(v as AccessLevel | "")}
-                ariaLabel="Access level"
+                ariaLabel="Who can view this file?"
                 minWidth={0}
+                collapsible={false}
+                compactTrigger
+                className="w-full"
               />
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-text-tertiary">
+                <span className="font-semibold text-text-secondary">
+                  Freyr AI uses every uploaded file.
+                </span>{" "}
+                This choice only controls who can open it.
+              </p>
+              </div>
             </div>
           </div>
 
-          <div>
+          <div className={files.length ? "hidden" : undefined}>
             <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
               Name
             </label>
@@ -652,7 +771,7 @@ export function AddMaterialButton({
             <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
               File
             </label>
-            {/* Drag the actual file in, or click to browse. The workspace
+            {/* Drag the actual files in, or click to browse. The workspace
                 stores it and the material links to the stored copy. */}
             <label
               onDragOver={(e) => {
@@ -663,29 +782,33 @@ export function AddMaterialButton({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOver(false);
-                takeFile(e.dataTransfer.files?.[0] ?? null);
+                takeFiles(e.dataTransfer.files);
               }}
               className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-5 text-center transition-colors ${
                 dragOver
                   ? "border-blue-primary bg-blue-light/50"
-                  : file
+                  : files.length
                     ? "border-blue-subtle bg-blue-light/30"
                     : "border-border-light hover:border-blue-subtle hover:bg-blue-light/20"
               }`}
             >
               <input
                 type="file"
+                multiple
                 className="hidden"
                 accept=".mp4,.mov,.webm,.m4v,.ppt,.pptx,.key,.doc,.docx,.pdf,.txt,.rtf,.xls,.xlsx,.csv,.zip"
-                onChange={(e) => takeFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  takeFiles(e.target.files);
+                  e.currentTarget.value = "";
+                }}
               />
-              {file ? (
+              {files.length ? (
                 <>
-                  <span className="max-w-full break-words text-[13.5px] font-semibold text-text-primary">
-                    {file.name}
+                  <span className="text-[13.5px] font-semibold text-text-primary">
+                    {files.length === 1 ? files[0].name : `${files.length} files selected`}
                   </span>
                   <span className="text-[11.5px] text-text-tertiary">
-                    {(file.size / 1024 / 1024).toFixed(1)}MB · click to swap, or{" "}
+                    {(files.reduce((total, item) => total + item.size, 0) / 1024 / 1024).toFixed(1)}MB total · click to add more, or{" "}
                     <span
                       role="button"
                       tabIndex={0}
@@ -693,13 +816,19 @@ export function AddMaterialButton({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setFile(null);
+                        setFiles([]);
+                        setFileLabels({});
+                        setFileOverrides({});
+                        setFileProgress({});
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           e.stopPropagation();
-                          setFile(null);
+                          setFiles([]);
+                          setFileLabels({});
+                          setFileOverrides({});
+                          setFileProgress({});
                         }
                       }}
                     >
@@ -710,33 +839,138 @@ export function AddMaterialButton({
               ) : (
                 <>
                   <span className="text-[13.5px] font-semibold text-text-primary">
-                    Drop the file here, or click to browse
+                    Drop files here, or click to browse
                   </span>
                   <span className="text-[11.5px] text-text-tertiary">
-                    PPT, Word, Excel, PDF or video · any size
+                    Select one or many files · PPT, Word, Excel, PDF, ZIP or video
                   </span>
                 </>
               )}
             </label>
-            {/* A multi-gigabyte demo takes minutes. Without a bar the app looks
-                frozen and people close the tab mid-upload. */}
-            {progress !== null && (
-              <div className="mt-2" aria-live="polite">
-                <div className="flex items-center justify-between text-[11.5px] font-medium text-text-secondary">
-                  <span>
-                    {progress < 100 ? "Uploading…" : "Reading the file…"}
+            {files.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    Review each file
+                  </p>
+                  <span className="text-[11.5px] text-text-tertiary">
+                    {files.length} selected
                   </span>
-                  <span className="tnum">{progress}%</span>
                 </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface)]">
-                  <div
-                    className="h-full rounded-full bg-blue-primary transition-[width] duration-200"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
+                {files.map((selected, index) => {
+                  const key = fileKey(selected);
+                  return (
+                    <div key={key} className="rounded-xl border border-border-light bg-surface/60 p-3">
+                      <div className="grid grid-cols-[28px_minmax(0,1fr)_32px] items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-light text-[11px] font-semibold text-blue-primary">
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0">
+                        <input
+                          value={fileLabels[key] || ""}
+                          onChange={(event) =>
+                            setFileLabels((current) => ({
+                              ...current,
+                              [key]: event.target.value,
+                            }))
+                          }
+                          aria-label={`Title for ${selected.name}`}
+                          className="h-8 w-full rounded-md border border-border bg-white px-2.5 text-[12.5px] font-medium text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus"
+                        />
+                        <p className="mt-1 truncate text-[10.5px] text-text-tertiary">
+                          {selected.name} · {(selected.size / 1024 / 1024).toFixed(1)}MB
+                        </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(selected)}
+                          aria-label={`Remove ${selected.name}`}
+                          title={`Remove ${selected.name}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-[color:#B02020] text-white hover:opacity-85"
+                        >
+                          <Trash2 size={14} strokeWidth={2.2} />
+                        </button>
+                      </div>
+                      <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
+                        <ColorSelect
+                          value={fileOverrides[key]?.kind || kind}
+                          options={FORMATS.map((format) => ({
+                            value: format,
+                            label: MATERIAL_FORMAT_META[format].label,
+                            color: MATERIAL_FORMAT_META[format].color,
+                            icon: MATERIAL_FORMAT_META[format].icon,
+                          }))}
+                          onChange={(value) => updateFileOverride(selected, { kind: value as MaterialFormat })}
+                          ariaLabel={`File format for ${selected.name}`}
+                          minWidth={0}
+                          collapsible={false}
+                          className="w-full"
+                        />
+                        <ColorSelect
+                          value={fileOverrides[key]?.folder || folder}
+                          options={FIXED_MATERIAL_FOLDERS.map((name) => ({
+                            value: name,
+                            label: materialFolderLabel(name),
+                            color: "#0071E3",
+                            icon: Folder,
+                          }))}
+                          onChange={(value) => updateFileOverride(selected, { folder: value })}
+                          ariaLabel={`Folder for ${selected.name}`}
+                          minWidth={0}
+                          collapsible={false}
+                          className="w-full"
+                        />
+                        <MultiColorSelect
+                          values={fileOverrides[key]?.journeyStages || journeyStages}
+                          options={STAGE_OPTIONS.filter((option) => option.value)}
+                          onChange={(values) => updateFileOverride(selected, { journeyStages: values as JourneyStage[] })}
+                          allLabel="Journey stages"
+                          allIcon={Route}
+                          allColor="#7C3AED"
+                          ariaLabel={`Buyer journey stages for ${selected.name}`}
+                          minWidth={0}
+                          collapsible={false}
+                          className="w-full"
+                        />
+                        <ColorSelect
+                          value={fileOverrides[key]?.accessLevel || accessLevel}
+                          options={ACCESS_OPTIONS.filter((option) => option.value)}
+                          onChange={(value) => updateFileOverride(selected, { accessLevel: value as AccessLevel })}
+                          ariaLabel={`Access level for ${selected.name}`}
+                          minWidth={0}
+                          collapsible={false}
+                          className="w-full"
+                        />
+                      </div>
+                      <input
+                        value={fileOverrides[key]?.description ?? description}
+                        onChange={(event) => updateFileOverride(selected, { description: event.target.value })}
+                        aria-label={`Description for ${selected.name}`}
+                        placeholder="Optional description for this file"
+                        className="mt-2 h-9 w-full rounded-md border border-border bg-white px-2.5 text-[12px] text-text-primary outline-none focus:border-blue-primary"
+                      />
+                      {fileProgress[key] && (
+                        <div className="mt-2" aria-live="polite">
+                          <div className="flex items-center justify-between text-[10.5px] font-semibold text-text-secondary">
+                            <span className={fileProgress[key].status === "failed" ? "text-error" : ""}>
+                              {fileProgress[key].status === "waiting" ? "Waiting" : fileProgress[key].status === "uploading" ? "Uploading" : fileProgress[key].status === "done" ? "Uploaded" : "Upload failed"}
+                            </span>
+                            <span className="tnum">{fileProgress[key].percent}%</span>
+                          </div>
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
+                            <div
+                              className={`h-full rounded-full ${fileProgress[key].status === "failed" ? "bg-error" : "bg-blue-primary"}`}
+                              style={{ width: `${fileProgress[key].percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
-            {!file && (
+            {!files.length && (
               <div className="mt-2">
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
                   Or paste a link
@@ -760,11 +994,17 @@ export function AddMaterialButton({
             </button>
             <button
               onClick={save}
-              disabled={busy}
+              disabled={!canSave}
               className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-60"
             >
               <Plus size={14} strokeWidth={2.2} />
-              {busy ? (file ? "Uploading…" : "Adding…") : "Add material"}
+                  {busy
+                    ? files.length
+                      ? `Uploading ${Math.min(uploadIndex + 1, files.length)} of ${files.length}…`
+                      : "Adding…"
+                    : files.length > 1
+                      ? `Add ${files.length} materials`
+                      : "Add material"}
             </button>
           </div>
         </div>

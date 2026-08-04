@@ -18,12 +18,19 @@ export function CollapsibleDescription({
 }) {
   const [open, setOpen] = useState(false);
   const long = text.length > threshold;
-  const formatted = text.split("\n").map((line, index) => (
-    <span key={`${index}-${line.slice(0, 16)}`}>
-      {renderBriefInline(line, `line-${index}`)}
-      {index < text.split("\n").length - 1 && <br />}
-    </span>
-  ));
+  const lines = text.split("\n");
+  const formatted = lines.map((line, index) => {
+    const heading = line.match(/^\s*(#{2,3})\s+(.+)$/);
+    return (
+      <span
+        key={`${index}-${line.slice(0, 16)}`}
+        className={heading ? "mb-1 mt-3 block font-semibold text-text-primary first:mt-0" : undefined}
+      >
+        {renderBriefInline(heading?.[2] ?? line, `line-${index}`)}
+        {!heading && index < lines.length - 1 && <br />}
+      </span>
+    );
+  });
 
   if (!long) {
     return (

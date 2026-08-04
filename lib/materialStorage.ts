@@ -32,6 +32,32 @@ const BUCKET = "offering-materials";
  */
 export const MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
 
+const MATERIAL_UPLOAD_MIME: Record<string, string[]> = {
+  mp4: ["video/mp4"], mov: ["video/quicktime"], webm: ["video/webm"], m4v: ["video/"],
+  ppt: ["application/vnd.ms-powerpoint", "application/octet-stream"],
+  pptx: ["application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/octet-stream"],
+  key: ["application/", "application/octet-stream"],
+  doc: ["application/msword", "application/octet-stream"],
+  docx: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/octet-stream"],
+  pdf: ["application/pdf"], txt: ["text/plain"], rtf: ["application/rtf", "text/rtf"],
+  xls: ["application/vnd.ms-excel", "application/octet-stream"],
+  xlsx: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream"],
+  csv: ["text/csv", "application/vnd.ms-excel", "text/plain"], zip: ["application/zip", "application/x-zip-compressed", "application/octet-stream"],
+};
+
+/** Validate the filename extension and browser-declared MIME together. */
+export function validateMaterialUpload(filename: string, contentType: string): string | null {
+  const cleanName = filename.trim();
+  if (!cleanName || /[\0\r\n]/.test(cleanName)) return "Choose a valid file name.";
+  const extension = (cleanName.split(".").pop() || "").toLowerCase();
+  const allowed = MATERIAL_UPLOAD_MIME[extension];
+  if (!allowed) return `.${extension || "unknown"} files are not supported.`;
+  const mime = (contentType || "application/octet-stream").toLowerCase().split(";", 1)[0].trim();
+  if (!allowed.some((candidate) => candidate.endsWith("/") ? mime.startsWith(candidate) : mime === candidate))
+    return `The file contents do not match the .${extension} extension.`;
+  return null;
+}
+
 function storageClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -61,16 +87,26 @@ async function ensureBucket(): Promise<void> {
     bucketReady = (async () => {
       const client = storageClient();
       if (!client) return;
-      // Public: materials are sales collateral meant to be opened from the
-      // list; anything genuinely internal is flagged by accessLevel in the
-      // app, not hidden at the CDN. createBucket 409s when it exists — fine.
+      // Private by construction. Application-level access labels must also be
+      // enforced at the object boundary; a copied CDN URL must never bypass
+      // the material authorization route.
       const { error } = await client.storage.createBucket(BUCKET, {
-        public: true,
+        public: false,
         fileSizeLimit: MAX_UPLOAD_BYTES,
       });
       if (error && !/already exists/i.test(error.message)) {
         bucketReady = null;
         throw new Error(`Could not prepare the materials bucket: ${error.message}`);
+      }
+      if (error && /already exists/i.test(error.message)) {
+        const { error: updateError } = await client.storage.updateBucket(BUCKET, {
+          public: false,
+          fileSizeLimit: MAX_UPLOAD_BYTES,
+        });
+        if (updateError) {
+          bucketReady = null;
+          throw new Error(`Could not secure the materials bucket: ${updateError.message}`);
+        }
       }
     })();
   }
@@ -89,6 +125,8 @@ export async function uploadMaterialFile(
   filename: string;
   docsPath?: string;
 }> {
+  const validationError = validateMaterialUpload(file.name, file.type);
+  if (validationError) throw new Error(validationError);
   // FREYA.DOCS FIRST. Sameer's docs-storage API is where Freyr wants sales
   // material to live (call of Jul 29), so when it is configured it wins and
   // the file lands in FreyaFusion's S3 under our own namespace. Everything
@@ -162,10 +200,20 @@ export async function uploadMaterialFile(
     });
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
-  const { data } = client.storage.from(BUCKET).getPublicUrl(path);
   return {
-    url: data.publicUrl,
+    url: `/api/offerings/${offeringId}/materials/download?path=${encodeURIComponent(path)}`,
     kind: formatFromFilename(file.name),
     filename: file.name,
+    docsPath: path,
   };
+}
+
+/** Mint a short-lived URL for a private fallback-storage object. */
+export async function getFallbackMaterialDownloadUrl(path: string): Promise<string> {
+  const client = storageClient();
+  if (!client) throw new Error("Material storage is not configured here");
+  const { data, error } = await client.storage.from(BUCKET).createSignedUrl(path, 60);
+  if (error || !data?.signedUrl)
+    throw new Error(error?.message || "Could not authorize that file");
+  return data.signedUrl;
 }

@@ -17,6 +17,7 @@ import {
   redactAgentOnlyMaterials,
   secureKnowledgePassagesForMember,
 } from "@/lib/materialAccess";
+import { materialJourneyStages } from "@/lib/offeringMaterials";
 
 export const dynamic = "force-dynamic";
 
@@ -110,9 +111,13 @@ export async function POST(req: Request) {
           `ALL ${mats.length} SALES MATERIALS on this offering (this is the complete list — never say you only have some of them):`,
           ...mats.map((m, i) => {
             const bits = [
-              m.folder ? `in folder "${m.folder}"` : "not in a folder",
-              m.journeyStage && `${m.journeyStage} stage`,
-              m.accessLevel === "internal_only" ? "INTERNAL ONLY" : "client-facing",
+              `in folder "${m.folder || "Others"}"`,
+              materialJourneyStages(m).length && `${materialJourneyStages(m).join(", ")} stages`,
+              m.accessLevel === "agent_only"
+                ? "PRIVATE FREYR AI KNOWLEDGE"
+                : m.accessLevel === "internal_only"
+                  ? "INTERNAL ONLY"
+                  : "client-facing",
               m.description || "",
             ].filter(Boolean);
             return `${i + 1}. ${m.label} — ${m.kind}; ${bits.join("; ")}`;

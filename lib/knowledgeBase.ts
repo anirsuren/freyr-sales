@@ -3,7 +3,7 @@ import "server-only";
 import { listOfferings, listCustomerTypes, listMarkets } from "./offerings";
 import { loadMaterialText } from "./materialText";
 import type { MaterialTextEntry } from "./materialText";
-import { isReadByAgent } from "./offeringMaterials";
+import { isReadByAgent, materialJourneyStages } from "./offeringMaterials";
 import {
   effectiveSourceDate,
   isRecencyQuestion,
@@ -157,7 +157,8 @@ export function buildKnowledgeBase(
         href: `/offerings/${o.id}`,
         text: [
           `${m.label} — a ${m.kind} for ${o.offering_name}`,
-          m.journeyStage && `Journey stage: ${m.journeyStage}`,
+          materialJourneyStages(m).length &&
+            `Journey stages: ${materialJourneyStages(m).join(", ")}`,
           m.accessLevel && `Who can see it: ${m.accessLevel}`,
           o.offering_category && `Category: ${o.offering_category}`,
           m.url && `Link: ${m.url}`,

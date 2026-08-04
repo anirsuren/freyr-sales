@@ -7,8 +7,8 @@ import {
   CircleCheck,
   Clock,
   GitCompareArrows,
+  History,
   ListChecks,
-  MapPin,
   Plus,
   Rocket,
   Trash2,
@@ -19,20 +19,18 @@ import { Modal } from "@/components/ui/Modal";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
-import type { OfferingRelease } from "@/lib/offerings";
-
-type TimelineItem = {
-  id: string;
-  kind: "past" | "current" | "next";
-  release: OfferingRelease | null;
-};
+import type { OfferingContact, OfferingRelease } from "@/lib/offerings";
+import type { PickablePerson } from "@/components/ui/PeoplePicker";
+import type { OwnerRow } from "@/components/offerings/OfferingOwners";
+import { OfferingContacts } from "@/components/offerings/OfferingContacts";
 
 /**
  * PRODUCT ROADMAP — shipped history for everyone, future for approved people.
  *
  * The Jul 31 response superseded the earlier draft: past and current versions
  * are open to everyone; "Next Customer Version" is restricted to the approved
- * group and Offering Owners. Key contacts were explicitly removed.
+ * group and Offering Owners. The latest brief restores Key Contacts as the
+ * fifth roadmap section.
  */
 
 const FIELD =
@@ -61,12 +59,18 @@ export function OfferingReleasesTab({
   releases,
   canEdit,
   canSeeNext,
+  contacts,
+  people,
+  owners,
 }: {
   offeringId: string;
   offeringName: string;
   releases: OfferingRelease[];
   canEdit: boolean;
   canSeeNext: boolean;
+  contacts: OfferingContact[];
+  people: PickablePerson[];
+  owners: OwnerRow[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -109,29 +113,7 @@ export function OfferingReleasesTab({
     (release) =>
       release.status === "released" && release.id !== current?.id
   );
-  const timelineItems: TimelineItem[] = [
-    ...[...past]
-      .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-      .map((release) => ({
-        id: release.id,
-        kind: "past" as const,
-        release,
-      })),
-    {
-      id: current?.id || "current-empty",
-      kind: "current",
-      release: current,
-    },
-    ...(canSeeNext
-      ? [
-          {
-            id: next?.id || "next-empty",
-            kind: "next" as const,
-            release: next,
-          },
-        ]
-      : []),
-  ];
+  const previous = past[0] || null;
 
   function resetAddForm() {
     setVersion("");
@@ -211,123 +193,35 @@ export function OfferingReleasesTab({
         )}
       </div>
 
-      {/* One chronological rail answers the three questions at a glance:
-          what shipped, where the customer is now, and what comes next. It uses
-          the same solid-past / beacon-now / dashed-future language as the
-          contact timeline elsewhere in the app. */}
-      <div className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-light px-5 py-3.5">
+      <SectionCard title="Current Customer Version" icon={CircleCheck}>
+        {current ? (
           <div>
-            <h3 className="text-[13px] font-semibold text-text-primary">
-              Customer version timeline
-            </h3>
-            <p className="mt-0.5 text-[11.5px] text-text-tertiary">
-              Released versions lead to today&apos;s customer version and the approved next release.
+            <p className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+              {current.version} <StatusPill status={current.status} />
             </p>
+            <p className="mt-1 text-[12.5px] text-text-secondary">
+              {current.date ? formatDate(current.date) : "No release date recorded"}
+            </p>
+            {current.features.length > 0 && (
+              <ul className="mt-3 space-y-1.5">
+                {current.features.map((feature, index) => (
+                  <li key={index} className="flex gap-2 text-[13px] leading-relaxed text-text-secondary">
+                    <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-blue-primary" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-            <MapPin size={12} strokeWidth={2.2} /> Current position
-          </span>
-        </div>
+        ) : (
+          <p className="text-[13px] text-text-secondary">No current customer version is recorded yet.</p>
+        )}
+      </SectionCard>
 
-        <div
-          role="list"
-          aria-label={`${offeringName} customer version timeline`}
-          className="overflow-x-auto px-5 py-5"
-        >
-          <div className="mx-auto flex min-w-[680px] max-w-[1100px] items-start">
-            {timelineItems.map((item, index) => {
-              const isCurrent = item.kind === "current";
-              const isNext = item.kind === "next";
-              const Icon = isCurrent ? MapPin : isNext ? Clock : CircleCheck;
-              const label = isCurrent
-                ? "You are here"
-                : isNext
-                  ? "Coming next"
-                  : "Released";
-              const empty = isCurrent
-                ? "No current version"
-                : "Next version not scheduled";
-              const nextItem = timelineItems[index + 1];
-              const futureConnector = nextItem?.kind === "next";
-
-              return (
-                <div key={item.id} className="contents">
-                  <div
-                    role="listitem"
-                    aria-current={isCurrent ? "step" : undefined}
-                    className="flex min-w-[170px] flex-1 flex-col items-center px-2 text-center"
-                  >
-                    <span
-                      className={`relative flex h-11 w-11 items-center justify-center rounded-full ${
-                        isCurrent
-                          ? "bg-blue-primary text-white shadow-[0_4px_14px_rgba(0,113,227,0.38)]"
-                          : isNext
-                            ? "border-2 border-dashed border-[color:#C2410C]/55 bg-[color:#C2410C]/10 text-[color:#C2410C]"
-                            : "border border-[color:#1A7A35]/35 bg-[color:#1A7A35]/10 text-[color:#1A7A35]"
-                      }`}
-                    >
-                      {isCurrent && (
-                        <span className="absolute inset-0 rounded-full bg-blue-primary/35 motion-safe:animate-ping" />
-                      )}
-                      <Icon className="relative" size={18} strokeWidth={2.1} />
-                    </span>
-                    <p
-                      className={`mt-2.5 text-[10px] font-bold uppercase tracking-[0.055em] ${
-                        isCurrent
-                          ? "text-blue-primary"
-                          : isNext
-                            ? "text-[color:#C2410C]"
-                            : "text-[color:#1A7A35]"
-                      }`}
-                    >
-                      {label}
-                    </p>
-                    <p className="mt-1 text-[17px] font-semibold tracking-[-0.01em] text-text-primary">
-                      {item.release?.version || empty}
-                    </p>
-                    <p className="mt-0.5 text-[11.5px] text-text-secondary tnum">
-                      {item.release?.date
-                        ? formatDate(item.release.date)
-                        : isNext
-                          ? "Date to be confirmed"
-                          : "No release date recorded"}
-                    </p>
-                  </div>
-
-                  {nextItem && (
-                    <div
-                      aria-hidden="true"
-                      className={`mt-[21px] min-w-[46px] flex-1 ${
-                        futureConnector
-                          ? "h-0 border-t-2 border-dashed border-blue-subtle"
-                          : "h-[3px] rounded-full"
-                      }`}
-                      style={
-                        futureConnector
-                          ? undefined
-                          : {
-                              background:
-                                "linear-gradient(90deg, rgba(26,122,53,0.78), #0071E3)",
-                            }
-                      }
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* WHAT CHANGED BETWEEN THEM. Suren asked for the comparison explicitly:
-          "what are the version comparison features between this version of the
-          offering and next version." Two columns, same shape, so the difference
-          is the thing you read. */}
-      {canSeeNext && current && next && (
-        <SectionCard title="What changes in the next version" icon={GitCompareArrows}>
+      <SectionCard title="Feature Comparison — Current vs Previous Version" icon={GitCompareArrows}>
+        {current && previous ? (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {[current, next].map((rel) => (
+            {[current, previous].map((rel) => (
               <div key={rel.id}>
                 <p className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
                   {rel.version} <StatusPill status={rel.status} />
@@ -352,21 +246,22 @@ export function OfferingReleasesTab({
               </div>
             ))}
           </div>
-        </SectionCard>
-      )}
+        ) : (
+          <p className="text-[13px] text-text-secondary">A current and previous release are both required for comparison.</p>
+        )}
+      </SectionCard>
 
-      {/* Shipped versions before the current customer release. */}
-      <SectionCard title="Past customer versions" icon={Rocket}>
-        {past.length === 0 ? (
+      <SectionCard title="Release History" icon={History}>
+        {sorted.filter((release) => release.status === "released").length === 0 ? (
           <p className="text-[13px] text-text-secondary">
-            No earlier customer versions recorded yet.{" "}
+            No released customer versions recorded yet.{" "}
             {canEdit
               ? "Add a released version when there is history to document."
               : "An Offering Owner adds these."}
           </p>
         ) : (
           <div className="space-y-2.5">
-            {past.map((rel) => (
+            {sorted.filter((release) => release.status === "released").map((rel) => (
               <div
                 key={rel.id}
                 className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
@@ -415,6 +310,44 @@ export function OfferingReleasesTab({
           </div>
         )}
       </SectionCard>
+
+      {canSeeNext && (
+        <SectionCard title="Next Customer Version" icon={Clock}>
+          {next ? (
+            <div>
+              <p className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                {next.version} <StatusPill status={next.status} />
+              </p>
+              <p className="mt-1 text-[12.5px] text-text-secondary">
+                {next.date ? formatDate(next.date) : "Target date to be confirmed"}
+              </p>
+              {next.features.length > 0 && (
+                <ul className="mt-3 space-y-1.5">
+                  {next.features.map((feature, index) => (
+                    <li key={index} className="flex gap-2 text-[13px] leading-relaxed text-text-secondary">
+                      <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-blue-primary" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <p className="text-[13px] text-text-secondary">No next customer version is scheduled.</p>
+          )}
+        </SectionCard>
+      )}
+
+      <OfferingContacts
+        offeringId={offeringId}
+        offeringName={offeringName}
+        contacts={contacts}
+        canEdit={canEdit}
+        people={people}
+        owners={owners}
+        title="Key Contacts"
+        defaultOpen
+      />
 
       {/* Adding is a popup — his standing rule. */}
       <Modal open={adding} onClose={closeAddModal} title="Add a roadmap version" size="wide">

@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, ListChecks } from "lucide-react";
 import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
-import { renderBriefInline } from "@/components/offerings/BriefText";
+import {
+  renderBriefInline,
+  stripBriefFormatting,
+} from "@/components/offerings/BriefText";
 import { offeringMark } from "@/components/ui/OfferingIcon";
 import { cn } from "@/lib/utils";
 
@@ -150,14 +153,50 @@ const HEADING_MAX = 90;
 const GENERIC_LEAD_IN = /^(services|offerings|capabilities|these)?\s*(include|includes|are)$/i;
 
 function asHeading(line: string): string | null {
-  const t = line.trim().replace(/[:：]$/, "").trim();
+  const t = line
+    .trim()
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/[:：]$/, "")
+    .trim();
   if (!t || t.length > HEADING_MAX || /[.!?]$/.test(t)) return null;
   // "Services include:" is a lead-in, not a name worth showing as a label.
   return GENERIC_LEAD_IN.test(t) ? "" : t;
 }
 
+/**
+ * Older briefs were saved as an opening paragraph followed by labelled prose:
+ * "Products: …", "Applications: …", and so on. That is real structure, but
+ * it predates the formatted editor and therefore carries no list markers. Turn
+ * that specific legacy shape into safe Markdown before parsing so it renders
+ * as the same polished service cards the owner now creates in the editor.
+ * Nothing is written back to the database until the owner explicitly saves.
+ */
+function structureLabelledParagraphs(source: string): string {
+  const paragraphs = source
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  if (paragraphs.length < 3) return source;
+
+  const labelled = paragraphs.slice(1).map((paragraph) =>
+    paragraph.match(/^([^:\n]{2,55}:)\s+([\s\S]+)$/)
+  );
+  if (labelled.length < 2 || !labelled.every(Boolean)) return source;
+
+  return [
+    paragraphs[0],
+    ...labelled.map((match) => {
+      const label = match?.[1].trim() ?? "";
+      const body = match?.[2].trim() ?? "";
+      return `• **${label}** ${body}`;
+    }),
+  ].join("\n\n");
+}
+
 export function parseCapabilities(text: string): ParsedBrief {
-  const source = (text || "").replace(/\r\n?/g, "\n");
+  const source = structureLabelledParagraphs(
+    (text || "").replace(/\r\n?/g, "\n")
+  );
   const lines = source.split("\n");
   const hasList = lines.some(isListLine);
   // One prose paragraph, or several — with no list markers anywhere there is
@@ -217,7 +256,8 @@ function CapabilityCard({ item }: { item: Capability }) {
   // Every tile carries a colour AND an icon, never flat gray — offeringMark is
   // the app's stable name→glyph+hue map, the same one the offering cards and
   // ServiceTag use, so a capability reads as the mini-offering it is.
-  const { icon: Icon, color, light } = offeringMark(item.title);
+  const displayTitle = stripBriefFormatting(item.title);
+  const { icon: Icon, color, light } = offeringMark(displayTitle);
   const many = item.subItems.length >= 3;
   // Titles run from three words ("Building QMS") to a full sentence that wraps
   // onto two lines, so a row used to pair a squat card with a tall one and the

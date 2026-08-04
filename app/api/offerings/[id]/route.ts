@@ -18,6 +18,10 @@ import {
 import {
   stampMaterialAttribution,
   sanitizeMaterialFolderPath,
+  isFixedMaterialFolder,
+  materialJourneyStages,
+  MATERIAL_FORMATS,
+  ACCESS_LEVELS,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
@@ -92,6 +96,40 @@ export async function PATCH(
     const incoming = body.materials as OfferingMaterial[];
     for (const material of incoming) {
       material.folder = sanitizeMaterialFolderPath(material.folder);
+      const prior = existing.materials.find(
+        (item) =>
+          (!!material.id && item.id === material.id) ||
+          (!!material.docsPath && item.docsPath === material.docsPath)
+      );
+      // Existing legacy rows remain readable and can be normalized safely on
+      // their next explicit edit. Every new material is complete at the server
+      // boundary even if a caller bypasses the browser form.
+      if (!prior) {
+        const stages = materialJourneyStages(material);
+        let validUrl = false;
+        try {
+          const parsed = new URL(String(material.url || ""));
+          validUrl = parsed.protocol === "https:" || parsed.protocol === "http:";
+        } catch {}
+        if (
+          !material.label?.trim() ||
+          !validUrl ||
+          !MATERIAL_FORMATS.includes(material.kind as never) ||
+          !isFixedMaterialFolder(material.folder) ||
+          stages.length === 0 ||
+          !ACCESS_LEVELS.includes(material.accessLevel as never)
+        ) {
+          return NextResponse.json(
+            {
+              error:
+                "Every new material needs a name, valid file or link, file format, fixed folder, at least one buyer journey stage, and one access level.",
+            },
+            { status: 400 }
+          );
+        }
+        material.journeyStages = stages;
+        material.journeyStage = stages[0];
+      }
     }
   }
   // "Who added this" is stamped here, from the session — never from the body.

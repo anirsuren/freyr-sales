@@ -57,6 +57,7 @@ export function ColorSelect({
   minWidth = 170,
   ariaLabel,
   collapsible = true,
+  compactTrigger = false,
 }: {
   value: string;
   options: ColorOption[];
@@ -66,17 +67,45 @@ export function ColorSelect({
   ariaLabel?: string;
   /** Opt out of the search-priority compression (default: follow the toolbar). */
   collapsible?: boolean;
+  /** Keep detailed descriptions in the menu while using a standard one-line trigger. */
+  compactTrigger?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuAlign, setMenuAlign] = useState<"left" | "right">("left");
+  const [menuVertical, setMenuVertical] = useState<"up" | "down">("down");
+  const [menuMaxHeight, setMenuMaxHeight] = useState(300);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? options[0];
   const detailed = options.some((o) => o.description);
+  const showDetailedTrigger = detailed && !compactTrigger;
   // The two-line "detailed" trigger never compacts — it isn't a toolbar shape.
   const searchHasPriority = useSearchPriority();
-  const compact = collapsible && searchHasPriority && !detailed;
+  const compact = collapsible && searchHasPriority && !showDetailedTrigger;
   // The full label still reaches a screen reader (aria-label) and the mouse
   // (tooltip), so a collapsed control is never a mystery box.
   const fullLabel = ariaLabel || selected?.label || "Filter";
+
+  const toggleMenu = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) {
+      const desiredWidth = detailed ? 304 : Math.max(rect.width, 240);
+      const availableRight = window.innerWidth - rect.left - 12;
+      setMenuAlign(availableRight >= desiredWidth ? "left" : "right");
+
+      const roomBelow = window.innerHeight - rect.bottom - 12;
+      const roomAbove = rect.top - 12;
+      const opensUp = roomBelow < 190 && roomAbove > roomBelow;
+      setMenuVertical(opensUp ? "up" : "down");
+      setMenuMaxHeight(
+        Math.max(150, Math.min(300, Math.floor(opensUp ? roomAbove : roomBelow)))
+      );
+    }
+    setOpen(true);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -153,7 +182,7 @@ export function ColorSelect({
       <PriorityTooltip label={fullLabel} className="w-full">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggleMenu}
           aria-haspopup="listbox"
           aria-expanded={open}
           // Compressed, the words are gone from view but never from the
@@ -162,26 +191,26 @@ export function ColorSelect({
           className={cn(
             "w-full flex items-center justify-center bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow,background-color,padding]",
             SP_MOTION,
-            detailed
+            showDetailedTrigger
               ? "h-12 gap-2.5 px-2.5"
               : cn("h-10 text-[13px] overflow-hidden", compact ? "px-0" : "px-3")
           )}
         >
-          {selected && <Dot o={selected} prominent={detailed} solo={compact} />}
+          {selected && <Dot o={selected} prominent={showDetailedTrigger} solo={compact} />}
           <PriorityLabel
             collapsed={compact}
             // `detailed` keeps the button's own flex gap; the compact shape
             // trades that gap for a collapsing margin so the glyph centres.
-            gap={detailed ? false : "ml-2"}
+            gap={showDetailedTrigger ? false : "ml-2"}
             className="min-w-0 text-left"
             // Same as `flex-1`, with the grow factor animated rather than
             // switched, so the slack drains smoothly instead of vanishing.
             style={{ flexGrow: compact ? 0 : 1, flexShrink: 1, flexBasis: "0%" }}
           >
-            <span className={cn("block truncate", detailed && "text-[12.5px] font-semibold leading-tight")}>
+            <span className={cn("block truncate", showDetailedTrigger && "text-[12.5px] font-semibold leading-tight")}>
               {selected?.label}
             </span>
-            {detailed && selected?.description && (
+            {showDetailedTrigger && selected?.description && (
               <span className="mt-0.5 block truncate text-[9.5px] leading-tight text-text-tertiary">
                 {selected.description}
               </span>
@@ -221,10 +250,15 @@ export function ColorSelect({
           role="listbox"
           aria-label={ariaLabel}
           className={cn(
-            "absolute right-0 z-40 mt-1.5 min-w-full w-max max-h-[300px] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in",
+            "absolute z-40 min-w-full w-max overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in",
+            menuAlign === "left" ? "left-0" : "right-0",
+            menuVertical === "up" ? "bottom-full mb-1.5" : "top-full mt-1.5",
             detailed ? "w-[304px] p-2" : "p-1.5"
           )}
-          style={{ maxWidth: "min(360px, calc(100vw - 24px))" }}
+          style={{
+            maxWidth: "min(360px, calc(100vw - 24px))",
+            maxHeight: menuMaxHeight,
+          }}
         >
           {options.map((o) => {
             const on = o.value === value;
@@ -250,11 +284,18 @@ export function ColorSelect({
               >
                 <Dot o={o} prominent={detailed} />
                 <span className="flex-1 min-w-0">
-                  <span className={cn("block truncate", on && "font-semibold", detailed && "text-[13px] leading-tight")}>
+                  <span
+                    className={cn(
+                      "block",
+                      !detailed && "truncate",
+                      on && "font-semibold",
+                      detailed && "whitespace-normal text-[13px] leading-tight"
+                    )}
+                  >
                     {o.label}
                   </span>
                   {detailed && o.description && (
-                    <span className="mt-1 block truncate text-[10.5px] font-normal leading-tight text-text-tertiary">
+                    <span className="mt-1 block whitespace-normal text-[10.5px] font-normal leading-snug text-text-tertiary">
                       {o.description}
                     </span>
                   )}

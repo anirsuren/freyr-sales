@@ -21,6 +21,8 @@ import {
   userScopedStorageKey,
   type UserIdentity,
 } from "@/lib/userIdentity";
+import { ASK_AGENT_EVENT } from "@/lib/agentEvents";
+import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 
 const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
 
@@ -101,6 +103,21 @@ export function AppShell({
       localStorage.setItem(agentHiddenStorageKey, "1");
     } catch {}
   }
+
+  // An explicit CTA inside the app must always be able to reveal the dock,
+  // even if this user previously dismissed its floating bubble.
+  useEffect(() => {
+    function revealAgent() {
+      if (!agentStateReady) return;
+      setAgentHidden(false);
+      setAgentOpen(true);
+      try {
+        localStorage.removeItem(agentHiddenStorageKey);
+      } catch {}
+    }
+    window.addEventListener(ASK_AGENT_EVENT, revealAgent);
+    return () => window.removeEventListener(ASK_AGENT_EVENT, revealAgent);
+  }, [agentHiddenStorageKey, agentStateReady]);
 
   // close the mobile drawer on route change
   useEffect(() => {
@@ -306,6 +323,7 @@ export function AppShell({
           offeringsOnly={offeringsOnly}
           autoStart={approvalEnabled}
         />
+        <FeedbackButton dataMode={dataMode} />
         <AutoTruncationTooltip />
       </ToastProvider>
       </TimeZoneProvider>

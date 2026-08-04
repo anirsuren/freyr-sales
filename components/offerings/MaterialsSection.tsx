@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   CalendarDays,
@@ -17,6 +17,7 @@ import {
   Rows3,
   Columns2,
   Grid2X2,
+  Table2,
   type LucideIcon,
 } from "lucide-react";
 import { MultiColorSelect } from "@/components/ui/ColorSelect";
@@ -45,6 +46,8 @@ import {
   normalizeFolderPath,
   legacyKindLabel,
   materialFormat,
+  canonicalMaterialFolder,
+  materialJourneyStages,
   type MaterialFormat,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
@@ -75,41 +78,6 @@ function uploadedAt(material: OfferingMaterial): string | null {
   if (!match) return null;
   const date = new Date(Number(match[1]));
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-/**
- * A pasted web asset has no file bytes in Freya.Docs, but it is still a saved
- * sales material and must have a working download control. Save a tiny,
- * portable HTML shortcut that opens the source URL. This is more useful than
- * relying on `<a download>` (which browsers ignore for cross-origin URLs) and
- * avoids pretending a generic web page is the original deck or document.
- */
-function downloadLinkedMaterial(material: OfferingMaterial) {
-  const safeName =
-    material.label
-      .trim()
-      .replace(/[^a-z0-9._-]+/gi, "-")
-      .replace(/^-+|-+$/g, "") || "sales-material";
-  const escapedUrl = material.url
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const escapedLabel = material.label
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=${escapedUrl}"><title>${escapedLabel}</title><p><a href="${escapedUrl}">Open ${escapedLabel}</a></p>`;
-  const blobUrl = URL.createObjectURL(
-    new Blob([html], { type: "text/html;charset=utf-8" })
-  );
-  const anchor = document.createElement("a");
-  anchor.href = blobUrl;
-  anchor.download = `${safeName}.html`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
 }
 
 // A colour + icon tag pill (standing rule: never flat gray, never bare text).
@@ -147,7 +115,7 @@ function TagPill({
   );
 }
 
-type MaterialColumns = 1 | 2 | 4;
+type MaterialColumns = 1 | 2 | 4 | "table";
 
 const MATERIAL_LAYOUTS: Array<{
   columns: MaterialColumns;
@@ -157,6 +125,7 @@ const MATERIAL_LAYOUTS: Array<{
   { columns: 1, label: "One column", icon: Rows3 },
   { columns: 2, label: "Two columns", icon: Columns2 },
   { columns: 4, label: "Four columns", icon: Grid2X2 },
+  { columns: "table", label: "Details table", icon: Table2 },
 ];
 
 function materialGridClass(columns: MaterialColumns) {
@@ -195,6 +164,23 @@ export function MaterialsSection({
   // Folder navigation is always a compact four-up grid; files default to the
   // roomier two-up view and can still be switched to one or four columns.
   const [columns, setColumns] = useState<MaterialColumns>(2);
+  const [layoutPreferenceReady, setLayoutPreferenceReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("freyr.materials.layout.v1");
+      if (saved === "1" || saved === "2" || saved === "4")
+        setColumns(Number(saved) as MaterialColumns);
+      else if (saved === "table") setColumns("table");
+    } catch {}
+    setLayoutPreferenceReady(true);
+  }, []);
+  useEffect(() => {
+    if (!layoutPreferenceReady) return;
+    try {
+      localStorage.setItem("freyr.materials.layout.v1", String(columns));
+    } catch {}
+  }, [columns, layoutPreferenceReady]);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -221,6 +207,7 @@ export function MaterialsSection({
           description: m.description,
           folder: m.folder,
           journeyStage: m.journeyStage,
+          journeyStages: materialJourneyStages(m),
           accessLevel: m.accessLevel,
           documentType: m.documentType,
         }));
@@ -257,6 +244,20 @@ export function MaterialsSection({
   const searchParams = useSearchParams();
   const folder = normalizeFolderPath(searchParams.get("mf") || "");
   const showAllFiles = searchParams.get("mv") === "files";
+
+  // Remember the user's scope as well as their card/table layout. An explicit
+  // folder or `mv` in a shared URL always wins; otherwise restore the last
+  // scope used in this browser.
+  useEffect(() => {
+    if (searchParams.has("mv") || searchParams.has("mf")) return;
+    try {
+      if (localStorage.getItem("freyr.materials.scope.v1") !== "files") return;
+      const params = new URLSearchParams(Array.from(searchParams.entries()));
+      params.set("mv", "files");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    } catch {}
+  }, [pathname, router, searchParams]);
+
   const goToFolder = (next: string) => {
     const params = new URLSearchParams(Array.from(searchParams.entries()));
     params.delete("mv");
@@ -266,6 +267,9 @@ export function MaterialsSection({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
   const setMaterialsView = (view: "folders" | "files") => {
+    try {
+      localStorage.setItem("freyr.materials.scope.v1", view);
+    } catch {}
     const params = new URLSearchParams(Array.from(searchParams.entries()));
     if (view === "files") {
       params.set("mv", "files");
@@ -283,7 +287,11 @@ export function MaterialsSection({
   // Agent-training uploads never reach a rep's list. They are background
   // knowledge for the assistant, not collateral, so only an owner — who has
   // to be able to manage them — sees them here at all.
-  const mine = canEdit ? materials : materials.filter(isSalesVisible);
+  const visibleToMember = canEdit ? materials : materials.filter(isSalesVisible);
+  const mine = visibleToMember.map((material) => ({
+    ...material,
+    folder: canonicalMaterialFolder(material),
+  }));
   // How many of the rows an OWNER is looking at are invisible to everyone
   // else. Counted from the rows themselves, not from what the filter removed:
   // for an owner nothing is removed, which is exactly when this line needs to
@@ -310,7 +318,11 @@ export function MaterialsSection({
       if (formats.length && !formats.includes(materialFormat(m.kind))) return false;
       // An untagged material matches only "no restriction" — it is never
       // counted into a stage or an access level nobody recorded for it.
-      if (stages.length && !stages.includes(m.journeyStage ?? "")) return false;
+      if (
+        stages.length &&
+        !materialJourneyStages(m).some((stage) => stages.includes(stage))
+      )
+        return false;
       if (levels.length && !levels.includes(m.accessLevel ?? "")) return false;
       return true;
     })
@@ -631,6 +643,99 @@ export function MaterialsSection({
                 ? "This folder is empty."
                 : "No materials yet."}
         </p>
+      ) : columns === "table" ? (
+        <div className="materials-view-enter mt-3 overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <table className="w-full min-w-[920px] border-collapse text-left">
+            <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              <tr>
+                <th className="px-4 py-3">File name</th>
+                <th className="px-3 py-3">File format</th>
+                <th className="px-3 py-3">Access level</th>
+                <th className="px-3 py-3">Buyer&apos;s journey stage(s)</th>
+                <th className="px-3 py-3">Upload date</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light">
+              {visible.map((material) => {
+                const format = materialFormat(material.kind);
+                const formatMeta = MATERIAL_FORMAT_META[format];
+                const Icon = MATERIAL_ICON[material.kind] ?? formatMeta.icon;
+                const level = material.accessLevel ? ACCESS_LEVEL_META[material.accessLevel] : null;
+                const stagesForMaterial = materialJourneyStages(material);
+                const uploaded = Boolean(material.docsPath);
+                const uploadDate = uploadedAt(material);
+                return (
+                  <tr key={material.id} className="transition-colors hover:bg-blue-light/20">
+                    <td className="max-w-[320px] px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => uploaded ? setViewing(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
+                        className="flex min-w-0 items-center gap-2.5 text-left"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                          <Icon size={15} strokeWidth={1.9} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-semibold text-text-primary hover:text-blue-primary" title={material.label}>{material.label}</span>
+                          <span className="block truncate text-[10.5px] text-text-tertiary" title={material.folder}>{materialFolderLabel(material.folder || "Others")}</span>
+                        </span>
+                      </button>
+                    </td>
+                    <td className="px-3 py-3"><TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} /></td>
+                    <td className="px-3 py-3">
+                      {level ? <TagPill label={level.label} color={level.color} icon={level.icon} variant={material.accessLevel === "internal_only" ? "solid" : "tint"} /> : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {stagesForMaterial.length ? stagesForMaterial.map((stage) => {
+                          const meta = JOURNEY_STAGE_META[stage];
+                          return <TagPill key={stage} label={meta.short} color={meta.color} icon={meta.icon} />;
+                        }) : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-[12px] text-text-secondary">
+                      {uploadDate ? <time dateTime={uploadDate} title={new Date(uploadDate).toLocaleString()}>{formatDate(uploadDate)}</time> : "Not recorded"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Tooltip label={uploaded ? "Open preview" : "Open link"} side="top">
+                          <button
+                            type="button"
+                            aria-label={`${uploaded ? "Open" : "Open link"} ${material.label}`}
+                            onClick={() => uploaded ? setViewing(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
+                          ><ExternalLink size={14} strokeWidth={1.9} /></button>
+                        </Tooltip>
+                        {uploaded && (
+                          <Tooltip label="Download original" side="top">
+                            <button
+                              type="button"
+                              aria-label={`Download ${material.label}`}
+                              onClick={() => { window.location.href = material.url; }}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
+                            ><Download size={14} strokeWidth={1.9} /></button>
+                          </Tooltip>
+                        )}
+                        {canEdit && offeringId && <EditMaterialButton offeringId={offeringId} material={material} materials={materials} />}
+                        {canEdit && offeringId && (
+                          <Tooltip label="Remove material" side="top">
+                            <button
+                              type="button"
+                              aria-label={`Remove ${material.label}`}
+                              onClick={() => setPendingRemoval(material)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:#B02020] text-white hover:opacity-85"
+                            ><X size={14} strokeWidth={2.2} /></button>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
         /* FLOATING CARDS, NOT A RULED LIST. Hairline separators stacked twenty
            files deep read as a spreadsheet, and every row's five controls sat
@@ -650,9 +755,7 @@ export function MaterialsSection({
             // What this file was uploaded as, back when the picker offered
             // nine types. Shown only when it says more than the format does.
             const originalKind = legacyKindLabel(material.kind);
-            const stage = material.journeyStage
-              ? JOURNEY_STAGE_META[material.journeyStage]
-              : null;
+            const materialStages = materialJourneyStages(material);
             const level = material.accessLevel
               ? ACCESS_LEVEL_META[material.accessLevel]
               : null;
@@ -661,10 +764,6 @@ export function MaterialsSection({
             // mints a fresh signed URL per click; a pasted link is just a link.
             const uploaded = Boolean(material.docsPath);
             const uploadDate = uploadedAt(material);
-            const linkedDownloadUrl =
-              !uploaded && offeringId
-                ? `/api/offerings/${offeringId}/materials/download?material=${encodeURIComponent(material.id)}`
-                : null;
             // CLICKING A FILE OPENS IT; SAVING IT IS A SEPARATE BUTTON.
             // An uploaded row used to carry `download`, so a rep who wanted to
             // glance at a deck got a file in their Downloads folder instead
@@ -767,13 +866,10 @@ export function MaterialsSection({
                         variant="outline"
                       />
                     )}
-                    {stage && (
-                      <TagPill
-                        label={stage.short}
-                        color={stage.color}
-                        icon={stage.icon}
-                      />
-                    )}
+                    {materialStages.map((stageName) => {
+                      const stage = JOURNEY_STAGE_META[stageName];
+                      return <TagPill key={stageName} label={stage.short} color={stage.color} icon={stage.icon} />;
+                    })}
                     {level && (
                       <TagPill
                         label={level.label}
@@ -797,37 +893,37 @@ export function MaterialsSection({
                       uploaded through the app, the seeded catalog assets
                       carry no uploader and must not be credited to anyone,
                       so their rows simply have no attribution line. */}
-                  {(material.addedBy || uploadDate) && (
-                    <span
-                      className={`mt-1.5 flex items-center gap-1.5 text-[11px] text-text-tertiary ${
-                        columns === 4 ? "flex-wrap" : ""
-                      }`}
-                    >
-                      {material.addedBy ? (
-                        <>
-                          <Avatar
-                            name={material.addedBy}
-                            className="h-5 w-5 text-[8px]"
-                          />
-                          <span className="truncate">
-                            Added by {material.addedBy}
-                          </span>
-                        </>
-                      ) : (
-                        <CalendarDays size={12} strokeWidth={1.9} />
-                      )}
-                      {uploadDate && (
-                        <time
-                          dateTime={uploadDate}
-                          title={new Date(uploadDate).toLocaleString()}
-                          className="shrink-0 tnum"
-                        >
-                          {material.addedBy ? "· Uploaded " : "Uploaded "}
-                          {formatDate(uploadDate)}
-                        </time>
-                      )}
-                    </span>
-                  )}
+                  <span
+                    className={`mt-1.5 flex items-center gap-1.5 text-[11px] text-text-tertiary ${
+                      columns === 4 ? "flex-wrap" : ""
+                    }`}
+                  >
+                    {material.addedBy ? (
+                      <>
+                        <Avatar
+                          name={material.addedBy}
+                          className="h-5 w-5 text-[8px]"
+                        />
+                        <span className="truncate">
+                          Added by {material.addedBy}
+                        </span>
+                      </>
+                    ) : (
+                      <CalendarDays size={12} strokeWidth={1.9} />
+                    )}
+                    {uploadDate ? (
+                      <time
+                        dateTime={uploadDate}
+                        title={new Date(uploadDate).toLocaleString()}
+                        className="shrink-0 tnum"
+                      >
+                        {material.addedBy ? "· Uploaded " : "Uploaded "}
+                        {formatDate(uploadDate)}
+                      </time>
+                    ) : (
+                      <span className="shrink-0">Upload date not recorded</span>
+                    )}
+                  </span>
                 </span>
                 {/* ONE CLUSTER, NOT FIVE LOOSE CONTROLS. "Open", its arrow,
                     Download, Edit and Remove used to float across the right
@@ -848,7 +944,7 @@ export function MaterialsSection({
                       columns === 1 ? "hidden lg:inline-flex" : "hidden"
                     }`}
                   >
-                    {uploaded ? "Open" : "Open asset"}
+                    {uploaded ? "Open" : "Open link"}
                     <ExternalLink size={12} strokeWidth={1.9} />
                   </span>
                   {/* Narrow screens have no room for the label, but the row
@@ -865,36 +961,28 @@ export function MaterialsSection({
                       receive their original bytes; pasted web assets receive
                       a portable HTML shortcut to their source. The control is
                       present on EVERY row and available to every seller. */}
-                  <span
+                  {uploaded && <span
                     role="button"
                     tabIndex={0}
                     aria-label={`Download ${material.label}`}
                     title={
-                      uploaded
-                        ? "Download a copy"
-                        : "Download a shortcut to this asset"
+                      "Download a copy"
                     }
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (uploaded) window.location.href = material.url;
-                      else if (linkedDownloadUrl)
-                        window.location.href = linkedDownloadUrl;
-                      else downloadLinkedMaterial(material);
+                      window.location.href = material.url;
                     }}
                     onKeyDown={(e) => {
                       if (e.key !== "Enter" && e.key !== " ") return;
                       e.preventDefault();
                       e.stopPropagation();
-                      if (uploaded) window.location.href = material.url;
-                      else if (linkedDownloadUrl)
-                        window.location.href = linkedDownloadUrl;
-                      else downloadLinkedMaterial(material);
+                      window.location.href = material.url;
                     }}
                     className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                   >
                     <Download size={14} strokeWidth={1.8} />
-                  </span>
+                  </span>}
                   {canEdit && offeringId && (
                     <EditMaterialButton
                       offeringId={offeringId}

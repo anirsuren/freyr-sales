@@ -2,20 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Folder, FolderOpen, FolderPlus, Plus } from "lucide-react";
+import { Pencil, Folder, Route } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
+  ACCESS_LEVEL_VISIBILITY_COPY,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
   FIXED_MATERIAL_FOLDERS,
-  cleanFolderName,
+  canonicalMaterialFolder,
   materialFolderLabel,
-  normalizeFolderPath,
+  materialJourneyStages,
   type AccessLevel,
   type JourneyStage,
   type OfferingMaterial,
@@ -29,7 +30,8 @@ const STAGE_OPTIONS: ColorOption[] = JOURNEY_STAGES.map((s) => ({
 }));
 const ACCESS_OPTIONS: ColorOption[] = ACCESS_LEVELS.map((l) => ({
   value: l,
-  label: ACCESS_LEVEL_META[l].label,
+  label: ACCESS_LEVEL_VISIBILITY_COPY[l].label,
+  description: ACCESS_LEVEL_VISIBILITY_COPY[l].description,
   color: ACCESS_LEVEL_META[l].color,
   icon: ACCESS_LEVEL_META[l].icon,
 }));
@@ -65,38 +67,38 @@ export function EditMaterialButton({
   const [busy, setBusy] = useState(false);
   const [label, setLabel] = useState(material.label);
   const [description, setDescription] = useState(material.description || "");
-  const [journeyStage, setJourneyStage] = useState<JourneyStage>(
-    material.journeyStage || "awareness"
+  const initialStages = materialJourneyStages(material);
+  const [journeyStages, setJourneyStages] = useState<JourneyStage[]>(
+    initialStages.length ? initialStages : ["awareness"]
   );
   const [accessLevel, setAccessLevel] = useState<AccessLevel>(
     material.accessLevel || "client_facing"
   );
   /** MOVE A FILE. The folder is a plain path, so moving is a re-save. */
-  const [folder, setFolder] = useState(material.folder || "");
-  const [newFolder, setNewFolder] = useState("");
-  const [creatingFolder, setCreatingFolder] = useState(false);
-  const [folderBeforeDraft, setFolderBeforeDraft] = useState("");
+  const initialFolder = canonicalMaterialFolder(material);
+  const [folder, setFolder] = useState(initialFolder);
   const hasChanges =
     label !== material.label ||
     description !== (material.description || "") ||
-    folder !== (material.folder || "") ||
-    journeyStage !== (material.journeyStage || "awareness") ||
+    folder !== initialFolder ||
+    JSON.stringify(journeyStages) !== JSON.stringify(initialStages.length ? initialStages : ["awareness"]) ||
     accessLevel !== (material.accessLevel || "client_facing");
 
   function reset() {
     setLabel(material.label);
     setDescription(material.description || "");
-    setFolder(material.folder || "");
-    setNewFolder("");
-    setCreatingFolder(false);
-    setFolderBeforeDraft("");
-    setJourneyStage(material.journeyStage || "awareness");
+    setFolder(initialFolder);
+    setJourneyStages(initialStages.length ? initialStages : ["awareness"]);
     setAccessLevel(material.accessLevel || "client_facing");
   }
 
   async function save() {
     if (!label.trim()) {
       toast("Give it a name", "error");
+      return;
+    }
+    if (!folder || !journeyStages.length) {
+      toast("Choose a folder and at least one buyer journey stage", "error");
       return;
     }
     setBusy(true);
@@ -115,7 +117,8 @@ export function EditMaterialButton({
               // Always sent, empty string included: that is how "move it back
               // to the top level" reaches the server.
               folder,
-              journeyStage,
+              journeyStage: journeyStages[0],
+              journeyStages,
               accessLevel,
               documentType: m.documentType,
             }
@@ -128,6 +131,7 @@ export function EditMaterialButton({
               description: m.description,
               folder: m.folder,
               journeyStage: m.journeyStage,
+              journeyStages: materialJourneyStages(m),
               accessLevel: m.accessLevel,
               documentType: m.documentType,
             }
@@ -189,8 +193,7 @@ export function EditMaterialButton({
           <p className="text-[12.5px] leading-relaxed text-text-secondary">
             Rename it, describe it, move it, or change who may see it.
           </p>
-          {/* Filing is optional, and a useful offering-specific folder can be
-              created without leaving the material being edited. */}
+          {/* Every material must remain in one of the fixed system folders. */}
           <div>
             <label
               htmlFor={`folder-${material.id}`}
@@ -200,137 +203,60 @@ export function EditMaterialButton({
             </label>
             {/* Folder as the house picker, not a grey <select> — same folder
                 glyph the material cards use (Anir, Jul 30 dropdown sweep). */}
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <ColorSelect
+            <ColorSelect
                   ariaLabel="Folder"
                   value={folder}
-                  onChange={(value) => {
-                    setFolder(value);
-                    setNewFolder("");
-                    setCreatingFolder(false);
-                  }}
+                  onChange={setFolder}
                   className="w-full"
                   collapsible={false}
-                  options={[
-                {
-                  value: "",
-                  label: "No folder",
-                  icon: FolderOpen,
-                  color: "#0071E3",
-                },
-                ...Array.from(
-                  new Set(
-                    [...materials.map((item) => item.folder || ""), folder]
-                      .map((name) => normalizeFolderPath(name))
-                      .filter(Boolean)
-                  )
-                )
-                  .filter((name) => !FIXED_MATERIAL_FOLDERS.includes(name))
-                  .map((name) => ({
-                    value: name,
-                    label: `${name} (custom)`,
+                  options={FIXED_MATERIAL_FOLDERS.map((f) => ({
+                    value: f,
+                    label: materialFolderLabel(f),
                     icon: Folder,
-                    color: "#7C3AED",
-                  })),
-                ...FIXED_MATERIAL_FOLDERS.map((f) => ({
-                  value: f,
-                  label: materialFolderLabel(f),
-                  icon: Folder,
-                  color: "#0071E3",
-                })),
-                  ]}
+                    color: "#0071E3",
+                  }))}
                 />
-              </div>
-              <button
-                type="button"
-                aria-label={creatingFolder ? "Cancel new folder" : "Create a new folder"}
-                title={creatingFolder ? "Cancel new folder" : "Create a new folder"}
-                onClick={() => {
-                  if (creatingFolder) {
-                    setFolder(folderBeforeDraft);
-                    setNewFolder("");
-                    setCreatingFolder(false);
-                    return;
-                  }
-                  setFolderBeforeDraft(folder);
-                  setNewFolder("");
-                  setCreatingFolder(true);
-                }}
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all ${
-                  creatingFolder
-                    ? "border-blue-primary bg-blue-primary text-white shadow-button"
-                    : "border-border-light bg-surface text-blue-primary hover:border-blue-subtle hover:bg-blue-light"
-                }`}
-              >
-                <Plus
-                  size={17}
-                  strokeWidth={2.2}
-                  className={`transition-transform duration-200 ${creatingFolder ? "rotate-45" : ""}`}
-                />
-              </button>
-            </div>
-            {creatingFolder && (
-              <div className="materials-folder-draft mt-2">
-                <div className="relative min-w-0">
-                <FolderPlus
-                  size={14}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-blue-primary"
-                />
-                <input
-                  autoFocus
-                  value={newFolder}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setNewFolder(value);
-                    setFolder(cleanFolderName(value) || folderBeforeDraft);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") return;
-                    event.preventDefault();
-                    const name = cleanFolderName(newFolder);
-                    if (!name) return;
-                    setFolder(name);
-                    setCreatingFolder(false);
-                  }}
-                  placeholder="New folder name"
-                  aria-label="New folder name"
-                  className="h-10 w-full rounded-lg border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary focus:shadow-input-focus"
-                />
-              </div>
-                <p className="mt-1.5 text-[11.5px] text-blue-primary">
-                  {cleanFolderName(newFolder)
-                    ? `“${cleanFolderName(newFolder)}” will be created when you save these changes.`
-                    : "Type a name. It will be selected automatically."}
-                </p>
-              </div>
-            )}
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Optional. A new folder is created only when these changes are saved.
+              Choose from the fixed folder structure; loose and custom folders are not created.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 Buyer&apos;s journey stage
               </label>
-              <ColorSelect
-                value={journeyStage}
-                onChange={(v) => setJourneyStage(v as JourneyStage)}
+              <MultiColorSelect
+                values={journeyStages}
+                onChange={(values) => setJourneyStages(values as JourneyStage[])}
                 options={STAGE_OPTIONS}
+                allLabel="Choose one or more stages"
+                allIcon={Route}
+                allColor="#7C3AED"
                 ariaLabel="Buyer's journey stage"
+                minWidth={0}
+                collapsible={false}
+                className="w-full"
               />
             </div>
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                Access level
+                Who can view this file?
               </label>
               <ColorSelect
                 value={accessLevel}
                 onChange={(v) => setAccessLevel(v as AccessLevel)}
                 options={ACCESS_OPTIONS}
-                ariaLabel="Access level"
+                ariaLabel="Who can view this file?"
+                minWidth={0}
+                collapsible={false}
+                className="w-full"
               />
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-text-tertiary">
+                <span className="font-semibold text-text-secondary">
+                  Freyr AI uses every uploaded file.
+                </span>{" "}
+                This choice only controls who can open it.
+              </p>
             </div>
           </div>
 
@@ -372,7 +298,7 @@ export function EditMaterialButton({
               Cancel
             </Button>
             {hasChanges && (
-              <Button onClick={save} disabled={busy}>
+              <Button onClick={save} disabled={busy || !folder || !journeyStages.length}>
                 {busy ? "Saving…" : "Save changes"}
               </Button>
             )}

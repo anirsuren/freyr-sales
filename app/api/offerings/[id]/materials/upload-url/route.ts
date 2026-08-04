@@ -3,6 +3,7 @@ import { getOffering } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { getCurrentUser } from "@/lib/currentUser";
+import { validateMaterialUpload } from "@/lib/materialStorage";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,12 @@ export async function POST(
   const filename = (body.filename || "").trim();
   if (!filename)
     return NextResponse.json({ error: "Name the file" }, { status: 400 });
+  const validationError = validateMaterialUpload(
+    filename,
+    body.contentType || "application/octet-stream"
+  );
+  if (validationError)
+    return NextResponse.json({ error: validationError }, { status: 400 });
 
   // The path is built HERE, never taken from the request: a client that could
   // name its own path could write into another offering's namespace.

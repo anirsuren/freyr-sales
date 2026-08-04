@@ -9,6 +9,11 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
+import {
+  ASK_AGENT_EVENT,
+  type AgentOfferingContext,
+  type AskAgentDetail,
+} from "@/lib/agentEvents";
 
 type Entity = { name: string; id: string; kind: "company" | "contact" };
 
@@ -65,13 +70,54 @@ function injectEntities(
   return out;
 }
 
-// The always-on assistant (Anir, Jul 8). A bubble bottom-right on every page;
-// click to open a chat that knows what page/record you're looking at. Hide it
-// from its header; bring it back from the top bar. The thread is saved to
-// localStorage so it survives navigation and reloads.
-const THREAD_KEY = "freyr.assistant.thread.v2";
+// The dock and the full Agent page deliberately use the SAME account-backed
+// conversation model. A rep can start beside an offering, then continue that
+// thread in /agent without losing the context or the messages.
+const CONVERSATIONS_KEY = "freyr.agent.conversations";
+const LEGACY_THREAD_KEY = "freyr.assistant.thread.v2";
+const ACTIVE_DOCK_KEY = "freyr.agent.dock.active.v1";
 
-type Msg = { role: "agent" | "me"; text: string };
+type Msg = { role: "user" | "agent"; text: string; ts: number };
+type Convo = {
+  id: string;
+  title: string;
+  messages: Msg[];
+  updated: number;
+  excludedSources?: string[];
+  offeringContext?: AgentOfferingContext;
+};
+
+function uid() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function smartTitle(text: string) {
+  const compact = text.replace(/\s+/g, " ").trim();
+  return compact.length > 52 ? `${compact.slice(0, 49)}…` : compact;
+}
+
+function loadConversations(key: string): Convo[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? (parsed as Convo[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeConversations(...lists: Convo[][]): Convo[] {
+  const byId = new Map<string, Convo>();
+  for (const list of lists) {
+    for (const convo of list) {
+      if (!convo?.id || !Array.isArray(convo.messages)) continue;
+      const existing = byId.get(convo.id);
+      if (!existing || (convo.updated || 0) >= (existing.updated || 0)) {
+        byId.set(convo.id, convo);
+      }
+    }
+  }
+  return [...byId.values()].sort((a, b) => (b.updated || 0) - (a.updated || 0));
+}
 
 function pageLabel(path: string): string {
   const p = path.replace(/[?#].*$/, "");
@@ -236,22 +282,37 @@ export function AgentDock({
 }) {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
-  const threadStorageKey = userScopedStorageKey(THREAD_KEY, currentUser.id);
+  const conversationStorageKey = userScopedStorageKey(
+    CONVERSATIONS_KEY,
+    currentUser.id
+  );
+  const legacyThreadStorageKey = userScopedStorageKey(
+    LEGACY_THREAD_KEY,
+    currentUser.id
+  );
+  const activeDockStorageKey = userScopedStorageKey(
+    ACTIVE_DOCK_KEY,
+    currentUser.id
+  );
   const label = pageLabel(pathname);
   const [subject, setSubject] = useState("");
-  /** Index of the reply that should type itself out — set only when a fresh
-   *  answer lands, so reopening the dock or switching threads never replays
-   *  the whole conversation. */
-  const [typingIdx, setTypingIdx] = useState<number | null>(null);
-  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [typingTs, setTypingTs] = useState<number | null>(null);
+  const [convos, setConvos] = useState<Convo[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [pendingOffering, setPendingOffering] =
+    useState<AgentOfferingContext | null>(null);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
+  const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const activeUserIdRef = useRef(currentUser.id);
+  const historySaveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const explicitContextRef = useRef(false);
 
   // Load the name→id index once so the assistant's answers can render company
   // logos and headshots inline (Suren, #92). Longest names first so multi-word
@@ -281,45 +342,207 @@ export function AgentDock({
     };
   }, []);
 
-  // Anything in the app can open THIS chat (instead of a second panel) by firing
-  // `freyr:ask-agent`: optionally with a prompt to send. Deliverables and the
-  // old account "Ask the agent" drawer now route here (Suren: "shouldn't it just
-  // open the chat?"). One chat, one place.
+  // Anything in the app can open THIS chat instead of navigating away. An
+  // offering CTA supplies explicit context but does not auto-send a prompt, so
+  // opening the assistant never spends credits before the rep asks something.
   useEffect(() => {
     function onAsk(e: Event) {
-      const prompt = (e as CustomEvent).detail?.prompt as string | undefined;
+      const detail =
+        (e as CustomEvent<AskAgentDetail>).detail ?? ({} as AskAgentDetail);
       onOpenChange(true);
-      if (prompt && prompt.trim()) setPending(prompt.trim());
+      if (detail.offering) {
+        explicitContextRef.current = true;
+        setPendingOffering(detail.offering);
+        if (detail.newConversation !== false) setActiveId(null);
+        setTypingTs(null);
+      }
+      if (detail.prompt?.trim()) setPending(detail.prompt.trim());
     }
-    window.addEventListener("freyr:ask-agent", onAsk as EventListener);
-    return () => window.removeEventListener("freyr:ask-agent", onAsk as EventListener);
+    window.addEventListener(ASK_AGENT_EVENT, onAsk as EventListener);
+    return () =>
+      window.removeEventListener(ASK_AGENT_EVENT, onAsk as EventListener);
   }, [onOpenChange]);
 
+  // Hydrate the same account-backed conversation list used by /agent. The old
+  // dock-only local thread is migrated once, so previous assistant messages do
+  // not disappear after this upgrade.
   useEffect(() => {
+    let cancelled = false;
     activeUserIdRef.current = currentUser.id;
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    explicitContextRef.current = false;
+    setHistoryReady(false);
     setHydratedStorageKey(null);
-    setMsgs([]);
+    setConvos([]);
+    setActiveId(null);
+    setPendingOffering(null);
     setInput("");
     setBusy(false);
     setPending(null);
+    setTypingTs(null);
+
+    const legacyConversationKeys = [
+      CONVERSATIONS_KEY,
+      currentUser.memberId
+        ? userScopedStorageKey(CONVERSATIONS_KEY, currentUser.memberId)
+        : null,
+    ].filter(
+      (key): key is string => Boolean(key && key !== conversationStorageKey)
+    );
+
+    let migratedDock: Convo[] = [];
     try {
-      const raw = localStorage.getItem(threadStorageKey);
-      setMsgs(raw ? JSON.parse(raw) : []);
+      const legacy = JSON.parse(
+        localStorage.getItem(legacyThreadStorageKey) || "[]"
+      ) as Array<{ role?: string; text?: string }>;
+      const messages: Msg[] = Array.isArray(legacy)
+        ? legacy
+            .filter(
+              (message) =>
+                (message.role === "me" || message.role === "agent") &&
+                typeof message.text === "string" &&
+                message.text.trim()
+            )
+            .map((message, index) => ({
+              role: message.role === "me" ? "user" : "agent",
+              text: message.text!.trim(),
+              ts: Date.now() - legacy.length + index,
+            }))
+        : [];
+      if (messages.length) {
+        migratedDock = [
+          {
+            id: `legacy-dock-${currentUser.id}`,
+            title:
+              smartTitle(
+                messages.find((message) => message.role === "user")?.text || ""
+              ) || "Assistant chat",
+            messages,
+            updated: messages[messages.length - 1].ts,
+          },
+        ];
+      }
     } catch {}
-    setHydratedStorageKey(threadStorageKey);
+
+    const browserHistory = mergeConversations(
+      loadConversations(conversationStorageKey),
+      ...legacyConversationKeys.map(loadConversations),
+      migratedDock
+    );
+    const savedActiveId = localStorage.getItem(activeDockStorageKey);
+    const initialActiveId = browserHistory.some(
+      (conversation) => conversation.id === savedActiveId
+    )
+      ? savedActiveId
+      : browserHistory[0]?.id ?? null;
+    setConvos(browserHistory);
+    setActiveId(initialActiveId);
+    setHydratedStorageKey(conversationStorageKey);
+
+    fetch("/api/agent/conversations", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("history unavailable");
+        return response.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const accountHistory = Array.isArray(data?.conversations)
+          ? (data.conversations as Convo[])
+          : [];
+        setConvos((current) => {
+          const merged = mergeConversations(
+            accountHistory,
+            browserHistory,
+            current
+          );
+          try {
+            localStorage.setItem(
+              conversationStorageKey,
+              JSON.stringify(merged)
+            );
+          } catch {}
+          if (!explicitContextRef.current) {
+            setActiveId((currentId) =>
+              merged.some((conversation) => conversation.id === currentId)
+                ? currentId
+                : merged[0]?.id ?? null
+            );
+          }
+          return merged;
+        });
+        for (const key of legacyConversationKeys) localStorage.removeItem(key);
+        localStorage.removeItem(legacyThreadStorageKey);
+        setHistoryReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setHistoryReady(true);
+      });
+
     return () => {
+      cancelled = true;
       activeUserIdRef.current = "";
+      requestControllerRef.current?.abort();
     };
-  }, [currentUser.id, threadStorageKey]);
+  }, [
+    activeDockStorageKey,
+    conversationStorageKey,
+    currentUser.id,
+    currentUser.memberId,
+    legacyThreadStorageKey,
+  ]);
+
+  // Every dock change is cached immediately and serialized to the verified
+  // account, matching the full Agent page's persistence behavior.
+  useEffect(() => {
+    if (
+      !historyReady ||
+      hydratedStorageKey !== conversationStorageKey
+    )
+      return;
+    const snapshot = convos;
+    try {
+      localStorage.setItem(conversationStorageKey, JSON.stringify(snapshot));
+    } catch {}
+    historySaveChainRef.current = historySaveChainRef.current
+      .catch(() => {})
+      .then(async () => {
+        const response = await fetch("/api/agent/conversations", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversations: snapshot }),
+          keepalive: true,
+        });
+        if (!response.ok) throw new Error("history save failed");
+      })
+      .catch(() => {});
+  }, [
+    conversationStorageKey,
+    convos,
+    historyReady,
+    hydratedStorageKey,
+  ]);
 
   useEffect(() => {
-    if (hydratedStorageKey !== threadStorageKey) return;
+    if (hydratedStorageKey !== conversationStorageKey) return;
     try {
-      localStorage.setItem(threadStorageKey, JSON.stringify(msgs.slice(-40)));
+      if (activeId) localStorage.setItem(activeDockStorageKey, activeId);
+      else localStorage.removeItem(activeDockStorageKey);
     } catch {}
-  }, [hydratedStorageKey, msgs, threadStorageKey]);
+  }, [
+    activeDockStorageKey,
+    activeId,
+    conversationStorageKey,
+    hydratedStorageKey,
+  ]);
 
-  const visibleMsgs = hydratedStorageKey === threadStorageKey ? msgs : [];
+  const visibleConvos =
+    hydratedStorageKey === conversationStorageKey ? convos : [];
+  const active =
+    visibleConvos.find((conversation) => conversation.id === activeId) || null;
+  const offeringContext = active?.offeringContext ?? pendingOffering;
+  const visibleMsgs = active?.messages ?? [];
+  const focusedSubject = offeringContext?.name || subject;
 
   // Read what's on screen (the page's H1) so the assistant knows the record.
   useEffect(() => {
@@ -335,67 +558,153 @@ export function AgentDock({
         inputRef.current?.focus();
       }, 60);
     }
-  }, [open, msgs, busy]);
+  }, [open, visibleMsgs.length, busy]);
 
   // Send a queued prompt once the panel is open and idle.
   useEffect(() => {
-    if (open && pending && !busy) {
+    if (open && pending && !busy && historyReady) {
       const p = pending;
       setPending(null);
       ask(p);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, pending, busy]);
+  }, [open, pending, busy, historyReady]);
 
   async function ask(q?: string) {
     const text = (q ?? input).trim();
-    if (!text || busy || hydratedStorageKey !== threadStorageKey) return;
+    if (
+      !text ||
+      busy ||
+      !historyReady ||
+      hydratedStorageKey !== conversationStorageKey
+    )
+      return;
     const requestUserId = currentUser.id;
+    const isNew = !active;
+    const conversationId = active?.id ?? `c-${uid()}`;
+    const requestOffering = active?.offeringContext ?? pendingOffering;
+    const prior =
+      active?.messages.map((message) => ({
+        role: message.role,
+        text: message.text,
+      })) ?? [];
+    const userTs = Date.now();
     setInput("");
     setBusy(true);
-    setMsgs((m) => [...m, { role: "me", text }]);
-    // Grab what's actually on screen so the assistant answers from the record
-    // the rep is looking at, fixes "I can't access that record" (Anir, Jul 8).
-    let pageContext = "";
+    setActiveId(conversationId);
+    setConvos((previous) => {
+      let next = isNew
+        ? [
+            {
+              id: conversationId,
+              title: smartTitle(text) || "New chat",
+              messages: [],
+              updated: userTs,
+              ...(requestOffering
+                ? { offeringContext: requestOffering }
+                : {}),
+            },
+            ...previous,
+          ]
+        : previous;
+      next = next.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              title: conversation.title || smartTitle(text) || "New chat",
+              messages: [
+                ...conversation.messages,
+                { role: "user" as const, text, ts: userTs },
+              ],
+              updated: userTs,
+            }
+          : conversation
+      );
+      return next;
+    });
+
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    const timer = setTimeout(() => controller.abort(), 45000);
     try {
-      const main = document.getElementById("main-content");
-      pageContext = (main?.innerText || "")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim()
-        .slice(0, 4500);
-    } catch {}
-    try {
-      const res = await fetch("/api/agent/assistant", {
+      const res = await fetch("/api/agent/converse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text, pageLabel: label, subject, path: pathname, pageContext }),
+        body: JSON.stringify({
+          message: text,
+          history: prior,
+          excludeSources: active?.excludedSources ?? [],
+          offeringId: requestOffering?.id,
+        }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error("assistant unreachable");
       const data = await res.json();
       if (activeUserIdRef.current !== requestUserId) return;
-      setMsgs((m) => {
-        setTypingIdx(m.length);
-        return [
-          ...m,
-          { role: "agent", text: data.answer || "I couldn't answer that just now." },
-        ];
-      });
+      const reply =
+        typeof data.reply === "string" && data.reply.trim()
+          ? data.reply
+          : "I couldn't answer that just now.";
+      const replyTs = Date.now();
+      setConvos((previous) =>
+        previous.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                messages: [
+                  ...conversation.messages,
+                  { role: "agent" as const, text: reply, ts: replyTs },
+                ],
+                updated: replyTs,
+              }
+            : conversation
+        )
+      );
+      setTypingTs(replyTs);
     } catch {
       if (activeUserIdRef.current !== requestUserId) return;
-      setMsgs((m) => {
-        setTypingIdx(m.length);
-        return [...m, { role: "agent", text: "I couldn't reach the agent just now." }];
-      });
+      const replyTs = Date.now();
+      setConvos((previous) =>
+        previous.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                messages: [
+                  ...conversation.messages,
+                  {
+                    role: "agent" as const,
+                    text: "I couldn't reach the agent just now.",
+                    ts: replyTs,
+                  },
+                ],
+                updated: replyTs,
+              }
+            : conversation
+        )
+      );
+      setTypingTs(replyTs);
     } finally {
+      clearTimeout(timer);
+      if (requestControllerRef.current === controller) {
+        requestControllerRef.current = null;
+      }
       if (activeUserIdRef.current === requestUserId) setBusy(false);
     }
   }
 
   if (hidden) return null;
 
-  const suggestions = suggestionsFor(label, offeringsOnly);
-  const greeting = subject
-    ? `Hi ${firstName}. I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
+  const suggestions = offeringContext
+    ? [
+        `Explain ${offeringContext.name} in plain English`,
+        `What materials do we have for ${offeringContext.name}?`,
+        `Who is ${offeringContext.name} best suited for?`,
+      ]
+    : suggestionsFor(label, offeringsOnly);
+  const greeting = offeringContext
+    ? `Hi ${firstName}. Freyr AI is focused on **${offeringContext.name}**. Ask me anything about this offering, or pick a starting point below.`
+    : subject
+      ? `Hi ${firstName}. I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
     : `Hi ${firstName}. I'm on **${label}** with you. Ask me anything, or pick a starting point below.`;
 
   return (
@@ -410,7 +719,11 @@ export function AgentDock({
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold text-text-primary leading-tight">Freyr AI</p>
               <p className="text-[11.5px] text-text-tertiary truncate leading-tight">
-                {subject ? `Looking at ${subject}` : `On ${label}`}
+                {offeringContext
+                  ? `Focused on ${offeringContext.name}`
+                  : subject
+                    ? `Looking at ${subject}`
+                    : `On ${label}`}
               </p>
             </div>
             <button
@@ -432,7 +745,7 @@ export function AgentDock({
             </div>
             {visibleMsgs.map((m, i) => (
               <div
-                key={i}
+                key={`${m.ts}-${i}`}
                 className={cn(
                   "w-fit max-w-[85%] px-3.5 py-2 text-[13px] leading-relaxed",
                   m.role === "agent"
@@ -445,7 +758,7 @@ export function AgentDock({
                     text={m.text}
                     // Only the reply that just arrived types out. Restoring a
                     // saved thread must not replay the whole conversation.
-                    active={i === typingIdx}
+                    active={m.ts === typingTs}
                     entities={entities}
                     linksOn={!offeringsOnly}
                   />
@@ -486,7 +799,11 @@ export function AgentDock({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && ask()}
-                placeholder={subject ? `Ask about ${subject}…` : "Ask your agent…"}
+                placeholder={
+                  focusedSubject
+                    ? `Ask about ${focusedSubject}…`
+                    : "Ask your agent…"
+                }
                 className="flex-1 bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none border-none min-w-0"
               />
               <button

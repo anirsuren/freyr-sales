@@ -12,7 +12,6 @@ import {
   Globe,
   type LucideIcon,
   CalendarClock,
-  Sparkles,
 } from "lucide-react";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
@@ -21,7 +20,6 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { RecordView } from "@/components/RecordView";
 import { OfferingOverviewMain } from "@/components/offerings/OfferingOverviewMain";
-import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { OfferingActions } from "@/components/offerings/OfferingActions";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
@@ -32,7 +30,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
 import { OfferingReleasesTab } from "@/components/offerings/OfferingReleasesTab";
-import { OfferingContacts } from "@/components/offerings/OfferingContacts";
+import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
@@ -73,9 +71,7 @@ export default async function OfferingDetailPage({
   const o = redactAgentOnlyMaterials(hydrated, me.memberId);
 
   const tab =
-    query?.tab === "reports"
-      ? "reports"
-      : query?.tab === "materials"
+    query?.tab === "materials"
         ? "materials"
         : query?.tab === "roadmap" || query?.tab === "releases"
           ? "roadmap"
@@ -324,17 +320,13 @@ export default async function OfferingDetailPage({
             commercialActionsEnabled={commercialActionsEnabled}
             extra={
               <>
-                {/* This is an explicit hand-off, not invisible ambient memory:
-                    only this button opens a new Agent chat focused on the
-                    offering the person chose. */}
-                <Link
-                  href={`/agent?offering=${encodeURIComponent(o.id)}&ask=${encodeURIComponent(
-                    `Give me an overview of ${o.offering_name}.`
-                  )}`}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_1px_2px_rgba(0,113,227,0.20)] transition-all hover:bg-blue-hover hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-                >
-                  <Sparkles size={14} strokeWidth={2} /> Ask Freyr AI
-                </Link>
+                {/* Stay on the offering and open the shared assistant with
+                    explicit offering context. No invisible ambient memory and
+                    no automatic LLM call just for opening the panel. */}
+                <OfferingAgentButton
+                  offeringId={o.id}
+                  offeringName={o.offering_name}
+                />
                 {/* Duplicate is gone (Suren, Jul 27: "the duplicate button is
                     useless"). Editing is the only admin action left up here. */}
                 {admin ? (
@@ -351,7 +343,8 @@ export default async function OfferingDetailPage({
         </div>
       </div>
 
-      {/* Overview | Reports (Suren's "I need a reports tab in offering") */}
+      {/* Reports remains implemented but hidden until real customer data makes
+          the tab useful, per change-log item 28. */}
       <div
         role="tablist"
         aria-label="Offering sections"
@@ -376,14 +369,6 @@ export default async function OfferingDetailPage({
             key: "roadmap",
             label: "Roadmap",
             href: `/offerings/${o.id}?tab=roadmap`,
-          },
-          {
-            key: "reports",
-            label:
-              report.customerCount > 0
-                ? `Reports (${report.customerCount})`
-                : "Reports",
-            href: `/offerings/${o.id}?tab=reports`,
           },
         ].map((t) => (
           <Link
@@ -422,13 +407,9 @@ export default async function OfferingDetailPage({
             // never be saved into the shared live catalogue.
             canEdit={admin && getDataMode() === "live"}
             canSeeNext={canSeeNextCustomerVersion}
-          />
-        ) : tab === "reports" ? (
-          <OfferingReports
-            report={report}
-            offeringName={o.offering_name}
-            // In-progress mode shows a labelled sample report when there's no
-            // revenue yet, so people know what the tab will look like.
+            contacts={offeringContacts}
+            people={people}
+            owners={o.owners ?? []}
           />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
@@ -465,25 +446,6 @@ export default async function OfferingDetailPage({
               isAdmin={workspaceAdmin}
               people={people}
               myMemberId={me.memberId ?? null}
-            />
-
-            {/* Who to talk to about this offering. Display only in the
-                permissions sense: being a contact carries no edit rights,
-                which is why it sits apart from the owners list above. */}
-            {/* ONE ROW PER PERSON, and an owner can add or take one off. The
-                sheet packed several contacts into a single cell, which had two
-                problems: rendering that cell as one avatar merged two people
-                into an invented person, and there was no way to change the
-                list at all. */}
-            <OfferingContacts
-              offeringId={o.id}
-              offeringName={o.offering_name}
-              contacts={offeringContacts}
-              canEdit={admin}
-              people={people}
-              // Ownership is per offering, so the crown is decided by THIS
-              // offering's owner list rather than by a workspace-wide label.
-              owners={o.owners ?? []}
             />
 
             {/* Offering Category — its plain-English description + the family

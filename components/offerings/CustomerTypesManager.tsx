@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, ArrowRight, X, Pill, Dna, FlaskConical, Store, Building, Building2, Globe2, type LucideIcon } from "lucide-react";
+import { Plus, ArrowRight, X, Pill, Dna, FlaskConical, Store, Building, Building2, Globe2, Stethoscope, ShoppingBag, type LucideIcon } from "lucide-react";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +26,8 @@ const FAMILIES: CustomerFamily[] = [
   "Pharmaceutical",
   "Biologics",
   "Bio Pharmaceutical",
+  "Medical Devices",
+  "Consumer Products",
 ];
 const SIZES: CustomerSize[] = ["Small", "Mid size", "Large"];
 
@@ -35,6 +37,8 @@ const FAMILY_META: Record<CustomerFamily, { color: string; icon: LucideIcon }> =
   Pharmaceutical: { color: "#0071E3", icon: Pill },
   Biologics: { color: "#DB2777", icon: Dna },
   "Bio Pharmaceutical": { color: "#7C3AED", icon: FlaskConical },
+  "Medical Devices": { color: "#0F766E", icon: Stethoscope },
+  "Consumer Products": { color: "#C2410C", icon: ShoppingBag },
 };
 const SIZE_META: Record<CustomerSize, { color: string; icon: LucideIcon }> = {
   Small: { color: "#0891B2", icon: Store },

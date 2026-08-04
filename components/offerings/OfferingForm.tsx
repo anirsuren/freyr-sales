@@ -9,14 +9,24 @@ import {
   Layers,
   ListChecks,
   List,
-  AlignLeft,
   Bold,
   Italic,
+  Underline,
+  Strikethrough,
+  Heading2,
+  Heading3,
+  Link2,
+  RemoveFormatting,
+  Undo2,
+  Redo2,
+  PencilLine,
   ListOrdered,
   IndentIncrease,
   IndentDecrease,
   Building2,
   FolderOpen,
+  Folder,
+  Route,
   CalendarClock,
   ChevronDown,
   Check,
@@ -29,7 +39,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import type { CustomerType, Market, OfferingCategory } from "@/lib/offerings";
-import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { offeringMark } from "@/components/ui/OfferingIcon";
@@ -41,12 +51,17 @@ import { sectionId } from "@/lib/sectionId";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
+  ACCESS_LEVEL_VISIBILITY_COPY,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
   MATERIAL_COLOR,
   MATERIAL_FORMATS,
   MATERIAL_ICON,
   MATERIAL_META,
+  FIXED_MATERIAL_FOLDERS,
+  materialFolderLabel,
+  canonicalMaterialFolder,
+  materialJourneyStages,
   type AccessLevel,
   type JourneyStage,
   type MaterialKind,
@@ -59,7 +74,9 @@ interface MaterialRow {
   /** The optional one-line note (item 10). "" means the owner cleared it. */
   description?: string;
   journeyStage?: JourneyStage;
+  journeyStages?: JourneyStage[];
   accessLevel?: AccessLevel;
+  folder?: string;
 }
 
 // CR-3 tag dropdowns for each material row — colour-coded, matching the
@@ -72,7 +89,8 @@ const STAGE_OPTIONS: ColorOption[] = JOURNEY_STAGES.map((s) => ({
 }));
 const ACCESS_OPTIONS: ColorOption[] = ACCESS_LEVELS.map((l) => ({
   value: l,
-  label: ACCESS_LEVEL_META[l].label,
+  label: ACCESS_LEVEL_VISIBILITY_COPY[l].label,
+  description: ACCESS_LEVEL_VISIBILITY_COPY[l].description,
   color: ACCESS_LEVEL_META[l].color,
   icon: ACCESS_LEVEL_META[l].icon,
 }));
@@ -169,6 +187,8 @@ const FAMILY_COLOR: Record<string, string> = {
   Pharmaceutical: "#0071E3",
   Biologics: "#DB2777",
   "Bio Pharmaceutical": "#7C3AED",
+  "Medical Devices": "#0F766E",
+  "Consumer Products": "#C2410C",
 };
 
 // Markets carry a flag + their own colour here for the same reason they do on
@@ -281,13 +301,118 @@ function composeDescription(intro: string, rows: CapRow[]): string {
   return blocks.join("\n\n");
 }
 
-type BriefFormat = "bold" | "italic" | "bullets" | "numbers" | "indent" | "outdent";
+type BriefFormat = "bold" | "italic" | "underline" | "strike" | "heading" | "subheading" | "link" | "clear" | "bullets" | "numbers" | "indent" | "outdent";
 
-/**
- * A deliberately small rich-text editor. It persists Markdown/list markers,
- * never HTML, so formatting cannot introduce executable markup and every
- * legacy plain-text description remains valid input.
- */
+function escapeBriefHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function briefInlineHtml(value: string): string {
+  return escapeBriefHtml(value)
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/__([^_\n]+)__/g, "<strong>$1</strong>")
+    .replace(/\+\+([^+\n]+)\+\+/g, "<u>$1</u>")
+    .replace(/~~([^~\n]+)~~/g, "<s>$1</s>")
+    .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
+    .replace(/_([^_\n]+)_/g, "<em>$1</em>");
+}
+
+/** Convert the safe stored Markdown subset into editable document HTML. */
+function briefMarkdownToHtml(value: string): string {
+  const output: string[] = [];
+  let list: "ul" | "ol" | null = null;
+  const closeList = () => {
+    if (list) output.push(`</${list}>`);
+    list = null;
+  };
+  for (const rawLine of value.split("\n")) {
+    const line = rawLine.trimEnd();
+    const bullet = line.match(/^\s*[•▪◦‣*–—-]\s+(.*)$/);
+    const number = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (bullet || number) {
+      const nextList = bullet ? "ul" : "ol";
+      if (list !== nextList) {
+        closeList();
+        list = nextList;
+        output.push(`<${nextList}>`);
+      }
+      output.push(`<li>${briefInlineHtml((bullet || number)?.[1] || "")}</li>`);
+      continue;
+    }
+    closeList();
+    if (!line.trim()) {
+      output.push("<p><br></p>");
+    } else if (/^###\s+/.test(line)) {
+      output.push(`<h3>${briefInlineHtml(line.replace(/^###\s+/, ""))}</h3>`);
+    } else if (/^##\s+/.test(line)) {
+      output.push(`<h2>${briefInlineHtml(line.replace(/^##\s+/, ""))}</h2>`);
+    } else {
+      output.push(`<p>${briefInlineHtml(line)}</p>`);
+    }
+  }
+  closeList();
+  return output.join("");
+}
+
+function briefElementToMarkdown(element: Element, depth = 0): string {
+  const children = () =>
+    Array.from(element.childNodes)
+      .map((node) => briefNodeToMarkdown(node, depth))
+      .join("");
+  const tag = element.tagName.toLowerCase();
+  if (tag === "br") return "\n";
+  if (tag === "strong" || tag === "b") return `**${children()}**`;
+  if (tag === "em" || tag === "i") return `*${children()}*`;
+  if (tag === "u") return `++${children()}++`;
+  if (tag === "s" || tag === "strike" || tag === "del") return `~~${children()}~~`;
+  if (tag === "a") {
+    const href = element.getAttribute("href") || "";
+    return /^https?:\/\//i.test(href) ? `[${children()}](${href})` : children();
+  }
+  if (tag === "h1" || tag === "h2") return `## ${children().trim()}\n\n`;
+  if (tag === "h3") return `### ${children().trim()}\n\n`;
+  if (tag === "ul" || tag === "ol") {
+    const ordered = tag === "ol";
+    return Array.from(element.children)
+      .filter((child) => child.tagName.toLowerCase() === "li")
+      .map((child, index) => {
+        const body = Array.from(child.childNodes)
+          .filter((node) => !(node instanceof Element && ["ul", "ol"].includes(node.tagName.toLowerCase())))
+          .map((node) => briefNodeToMarkdown(node, depth + 1))
+          .join("")
+          .trim();
+        const nested = Array.from(child.children)
+          .filter((nestedChild) => ["ul", "ol"].includes(nestedChild.tagName.toLowerCase()))
+          .map((nestedChild) => briefElementToMarkdown(nestedChild, depth + 1))
+          .join("");
+        return `${"  ".repeat(depth)}${ordered ? `${index + 1}.` : "•"} ${body}\n${nested}`;
+      })
+      .join("");
+  }
+  if (tag === "p" || tag === "div") return `${children().trimEnd()}\n\n`;
+  return children();
+}
+
+function briefNodeToMarkdown(node: Node, depth = 0): string {
+  if (node.nodeType === Node.TEXT_NODE) return (node.textContent || "").replace(/\u00a0/g, " ");
+  return node instanceof Element ? briefElementToMarkdown(node, depth) : "";
+}
+
+function editableBriefToMarkdown(element: HTMLElement): string {
+  return Array.from(element.childNodes)
+    .map((node) => briefNodeToMarkdown(node))
+    .join("")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Google-Docs-style editing while retaining the existing safe storage format. */
 function RichBriefEditor({
   value,
   onChange,
@@ -299,52 +424,44 @@ function RichBriefEditor({
   ariaLabel: string;
   placeholder: string;
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const internalValueRef = useRef(value);
 
-  function restoreSelection(start: number, end: number) {
-    requestAnimationFrame(() => {
-      ref.current?.focus();
-      ref.current?.setSelectionRange(start, end);
-    });
+  useEffect(() => {
+    if (!ref.current || value === internalValueRef.current) return;
+    internalValueRef.current = value;
+    ref.current.innerHTML = briefMarkdownToHtml(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (ref.current && !ref.current.innerHTML)
+      ref.current.innerHTML = briefMarkdownToHtml(value);
+  }, [value]);
+
+  function emitFromEditor() {
+    if (!ref.current) return;
+    const next = editableBriefToMarkdown(ref.current);
+    internalValueRef.current = next;
+    onChange(next);
   }
 
   function format(kind: BriefFormat) {
-    const field = ref.current;
-    if (!field) return;
-    const start = field.selectionStart;
-    const end = field.selectionEnd;
-
-    if (kind === "bold" || kind === "italic") {
-      const marker = kind === "bold" ? "**" : "*";
-      const selected = value.slice(start, end);
-      const next = `${value.slice(0, start)}${marker}${selected}${marker}${value.slice(end)}`;
-      onChange(next);
-      if (selected) restoreSelection(start + marker.length, end + marker.length);
-      else restoreSelection(start + marker.length, start + marker.length);
-      return;
+    ref.current?.focus();
+    const command: Partial<Record<BriefFormat, string>> = {
+      bold: "bold", italic: "italic", underline: "underline", strike: "strikeThrough",
+      bullets: "insertUnorderedList", numbers: "insertOrderedList", indent: "indent",
+      outdent: "outdent", clear: "removeFormat",
+    };
+    if (kind === "link") {
+      const href = window.prompt("Paste a link");
+      if (href && /^https?:\/\//i.test(href)) document.execCommand("createLink", false, href);
+    } else if (kind === "heading" || kind === "subheading") {
+      document.execCommand("formatBlock", false, kind === "heading" ? "h2" : "h3");
+    } else if (command[kind]) {
+      document.execCommand(command[kind] as string, false);
+      if (kind === "clear") document.execCommand("formatBlock", false, "p");
     }
-
-    const lineStart = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
-    const nextBreak = value.indexOf("\n", end);
-    const lineEnd = nextBreak === -1 ? value.length : nextBreak;
-    const block = value.slice(lineStart, lineEnd);
-    let number = 1;
-    const transformed = block
-      .split("\n")
-      .map((line) => {
-        if (!line.trim()) return line;
-        if (kind === "indent") return `  ${line}`;
-        if (kind === "outdent") return line.replace(/^(?:\t| {1,2})/, "");
-        const match = line.match(/^(\s*)(?:(?:[\u2022▪◦‣*–—-]|\d+[.)])\s+)?(.*)$/);
-        const indent = match?.[1] ?? "";
-        const body = match?.[2] ?? line.trimStart();
-        if (kind === "bullets") return `${indent}• ${body}`;
-        return `${indent}${number++}. ${body}`;
-      })
-      .join("\n");
-    const next = `${value.slice(0, lineStart)}${transformed}${value.slice(lineEnd)}`;
-    onChange(next);
-    restoreSelection(lineStart, lineStart + transformed.length);
+    emitFromEditor();
   }
 
   const tools: Array<{
@@ -352,43 +469,81 @@ function RichBriefEditor({
     label: string;
     icon: LucideIcon;
   }> = [
+    { kind: "heading", label: "Heading", icon: Heading2 },
+    { kind: "subheading", label: "Subheading", icon: Heading3 },
     { kind: "bold", label: "Bold", icon: Bold },
     { kind: "italic", label: "Italic", icon: Italic },
+    { kind: "underline", label: "Underline", icon: Underline },
+    { kind: "strike", label: "Strikethrough", icon: Strikethrough },
     { kind: "bullets", label: "Bulleted list", icon: List },
     { kind: "numbers", label: "Numbered list", icon: ListOrdered },
     { kind: "outdent", label: "Outdent", icon: IndentDecrease },
     { kind: "indent", label: "Indent", icon: IndentIncrease },
+    { kind: "link", label: "Add link", icon: Link2 },
+    { kind: "clear", label: "Clear formatting", icon: RemoveFormatting },
   ];
 
   return (
     <div className="overflow-hidden rounded-lg border border-border-light bg-white transition-[border-color] focus-within:border-blue-primary">
-      <div
-        className="flex flex-wrap items-center gap-1 border-b border-border-light bg-surface/60 px-2 py-1.5"
-        role="toolbar"
-        aria-label="Offering brief formatting"
-      >
-        {tools.map(({ kind, label, icon: Icon }) => (
+      <div className="flex flex-wrap items-center gap-1 border-b border-border-light bg-surface/60 px-2 py-1.5">
+        <div
+          className="flex flex-wrap items-center gap-1"
+          role="toolbar"
+          aria-label="Offering brief formatting"
+        >
           <button
-            key={kind}
             type="button"
-            title={label}
-            aria-label={label}
+            title="Undo"
+            aria-label="Undo"
             onMouseDown={(event) => event.preventDefault()}
-            onClick={() => format(kind)}
+            onClick={() => { ref.current?.focus(); document.execCommand("undo"); emitFromEditor(); }}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
           >
-            <Icon size={15} strokeWidth={2} />
+            <Undo2 size={15} strokeWidth={2} />
           </button>
-        ))}
+          <button
+            type="button"
+            title="Redo"
+            aria-label="Redo"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => { ref.current?.focus(); document.execCommand("redo"); emitFromEditor(); }}
+            className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
+          >
+            <Redo2 size={15} strokeWidth={2} />
+          </button>
+          {tools.map(({ kind, label, icon: Icon }, index) => (
+            <button
+              key={kind}
+              type="button"
+              title={label}
+              aria-label={label}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => format(kind)}
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary",
+                (index === 2 || index === 6 || index === 10) && "ml-1"
+              )}
+            >
+              <Icon size={15} strokeWidth={2} />
+            </button>
+          ))}
+        </div>
       </div>
-      <textarea
-        ref={ref}
-        className="min-h-[220px] w-full resize-y bg-white px-3 py-2.5 font-mono text-[12.5px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-      />
+      <div className="relative">
+        {!value.trim() && (
+          <p className="pointer-events-none absolute left-4 top-3 text-[14px] text-text-tertiary">{placeholder}</p>
+        )}
+        <div
+          ref={ref}
+          contentEditable
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline="true"
+          aria-label={ariaLabel}
+          onInput={emitFromEditor}
+          className="min-h-[260px] w-full bg-white px-4 py-3 text-[14px] leading-relaxed text-text-primary outline-none [&_a]:text-blue-primary [&_a]:underline [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6"
+        />
+      </div>
     </div>
   );
 }
@@ -552,7 +707,9 @@ export function OfferingForm({
     label: "",
     url: "",
     journeyStage: "awareness",
+    journeyStages: ["awareness"],
     accessLevel: "client_facing",
+    folder: "Others",
   });
   const [deleting, setDeleting] = useState(false);
 
@@ -612,8 +769,12 @@ export function OfferingForm({
    */
   const [addingCap, setAddingCap] = useState<null | CapRow["kind"]>(null);
   const [capDraft, setCapDraft] = useState("");
-  const [pasteMode, setPasteMode] = useState(false);
-  const [pasted, setPasted] = useState(initial?.offering_description ?? "");
+  // Formatting is the primary authoring experience. The structured service
+  // card editor remains available for owners who prefer one row at a time.
+  const [pasteMode, setPasteMode] = useState(true);
+  const [pasted, setPasted] = useState(
+    composeDescription(seeded.intro, seeded.rows)
+  );
   const description = pasteMode ? pasted : composeDescription(intro, capRows);
   const capCount = capRows.filter((r) => r.kind === "item" && r.text.trim()).length;
 
@@ -680,7 +841,9 @@ export function OfferingForm({
     // what the dropdowns show is exactly what saving will persist.
     (initial?.materials ?? []).map((m) => ({
       ...m,
-      journeyStage: m.journeyStage ?? "awareness",
+      journeyStage: materialJourneyStages(m)[0] ?? "awareness",
+      journeyStages: materialJourneyStages(m).length ? materialJourneyStages(m) : ["awareness"],
+      folder: canonicalMaterialFolder(m as never),
       accessLevel: m.accessLevel ?? "client_facing",
     }))
   );
@@ -714,7 +877,9 @@ export function OfferingForm({
         mktIds: initial?.market_ids ?? [],
         materials: (initial?.materials ?? []).map((material) => ({
           ...material,
-          journeyStage: material.journeyStage ?? "awareness",
+          journeyStage: materialJourneyStages(material).at(0) ?? "awareness",
+          journeyStages: materialJourneyStages(material).length ? materialJourneyStages(material) : ["awareness"],
+          folder: canonicalMaterialFolder(material as never),
           accessLevel: material.accessLevel ?? "client_facing",
         })),
       });
@@ -724,7 +889,7 @@ export function OfferingForm({
   }
 
   // Group the customer-type chips by family for scannable selection.
-  const CT_FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
+  const CT_FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical", "Medical Devices", "Consumer Products"];
   const ctGroups = CT_FAMILY_ORDER.map((fam) => ({
     fam,
     types: customerTypes.filter((c) => c.family === fam),
@@ -892,23 +1057,23 @@ export function OfferingForm({
       {/* ------------------------------------------------- what's included */}
       <FormSection
         icon={ListChecks}
-        title="What's included"
-        hint="The services inside this offering. Each one shows up as its own card on the offering page."
+        title="Offering brief"
+        hint="Write and format the seller-facing overview. Use headings, emphasis, lists, links and indentation just like a document."
         action={
           <div className="flex items-center gap-1 rounded-lg bg-surface p-1">
-            <button
-              type="button"
-              onClick={openList}
-              className={modeButton(!pasteMode)}
-            >
-              <List size={12} strokeWidth={2.2} /> One by one
-            </button>
             <button
               type="button"
               onClick={openPaste}
               className={modeButton(pasteMode)}
             >
-              <AlignLeft size={12} strokeWidth={2.2} /> Write / paste
+              <PencilLine size={12} strokeWidth={2.2} /> Write &amp; format
+            </button>
+            <button
+              type="button"
+              onClick={openList}
+              className={modeButton(!pasteMode)}
+            >
+              <List size={12} strokeWidth={2.2} /> Service cards
             </button>
           </div>
         }
@@ -932,13 +1097,13 @@ export function OfferingForm({
             <RichBriefEditor
               value={pasted}
               onChange={setPasted}
-              placeholder={"• GLP Audits of Test Facilities\n• Regulatory Toxicology (1. ADE/PDE Report Services 2. F-Value Reports)"}
+              placeholder={"Add an overview, then format services with headings, bold labels and lists."}
               ariaLabel="Offering brief"
             />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Format safely with bold, italic, lists and indentation. The brief is
-              stored as plain Markdown, not executable HTML. Switch back to{" "}
-              <span className="font-medium">One by one</span> to tidy services row by row.
+              Formatting is saved safely and shown the same way to every seller.
+              Use <span className="font-medium">Service cards</span> when you want
+              to manage the included services one row at a time.
             </p>
           </div>
         ) : (
@@ -1300,7 +1465,9 @@ export function OfferingForm({
                 label: "",
                 url: "",
                 journeyStage: "awareness",
+                journeyStages: ["awareness"],
                 accessLevel: "client_facing",
+                folder: "Others",
               });
               setAddingMaterial(true);
             }}
@@ -1331,96 +1498,118 @@ export function OfferingForm({
               "material-scroll max-h-[460px] overflow-y-auto rounded-xl border border-border-light bg-white p-2"
           )}
         >
-        {materials.map((m, i) => (
-          <div
-            key={i}
-            className="rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
-          >
-          <div className="flex flex-wrap items-center gap-2">
-            <ColorSelect
-              value={m.kind}
-              options={kindOptionsFor(m.kind)}
-              onChange={(v) =>
-                setMaterials((l) =>
-                  l.map((x, j) => (j === i ? { ...x, kind: v as MaterialKind } : x))
-                )
-              }
-              ariaLabel="File format"
-              minWidth={196}
-            />
-            <input
-              value={m.label}
-              onChange={(e) =>
-                setMaterials((l) =>
-                  l.map((x, j) => (j === i ? { ...x, label: e.target.value } : x))
-                )
-              }
-              placeholder="Label"
-              className={cn(FIELD, "w-auto flex-1 basis-[150px]")}
-            />
-            <input
-              value={m.url}
-              onChange={(e) =>
-                setMaterials((l) =>
-                  l.map((x, j) => (j === i ? { ...x, url: e.target.value } : x))
-                )
-              }
-              placeholder="https://…"
-              className={cn(FIELD, "w-auto flex-1 basis-[190px]")}
-            />
-            <ColorSelect
-              value={m.journeyStage ?? "awareness"}
-              options={STAGE_OPTIONS}
-              onChange={(v) =>
-                setMaterials((l) =>
-                  l.map((x, j) =>
-                    j === i ? { ...x, journeyStage: v as JourneyStage } : x
-                  )
-                )
-              }
-              ariaLabel="Buyer's journey stage"
-              minWidth={168}
-            />
-            <ColorSelect
-              value={m.accessLevel ?? "client_facing"}
-              options={ACCESS_OPTIONS}
-              onChange={(v) =>
-                setMaterials((l) =>
-                  l.map((x, j) =>
-                    j === i ? { ...x, accessLevel: v as AccessLevel } : x
-                  )
-                )
-              }
-              ariaLabel="Access level"
-              minWidth={148}
-            />
-            <button
-              type="button"
-              onClick={() => setMaterials((l) => l.filter((_, j) => j !== i))}
-              aria-label="Remove material"
-              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
+        {materials.map((m, i) => {
+          const MaterialIcon = MATERIAL_ICON[m.kind] || Package;
+          const linkedMaterial = /^https?:\/\//i.test(m.url);
+          return (
+            <div
+              key={i}
+              className="rounded-xl border border-border-light bg-[var(--surface)] p-3.5"
             >
-              <Trash2 size={15} strokeWidth={1.7} />
-            </button>
-          </div>
-          {/* Material Description (item 10) — optional, never validated, and
-              saved as blank when left blank so the offering page shows no note
-              rather than an empty line. */}
-          <input
-            value={m.description ?? ""}
-            onChange={(e) =>
-              setMaterials((l) =>
-                l.map((x, j) =>
-                  j === i ? { ...x, description: e.target.value } : x
-                )
-              )
-            }
-            aria-label="Material description (optional)"
-            placeholder="Optional: one sentence on what this file is for"
-            className={cn(FIELD, "mt-2")}
-          />
-          </div>
-        ))}
+              <div className="mb-3 flex items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                  <MaterialIcon size={16} strokeWidth={1.9} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13.5px] font-semibold text-text-primary">
+                    {m.label || `Material ${i + 1}`}
+                  </p>
+                  <p className="text-[11px] text-text-tertiary">
+                    {linkedMaterial ? "Linked material" : "Uploaded file"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMaterials((l) => l.filter((_, j) => j !== i))}
+                  aria-label={`Remove ${m.label || "material"}`}
+                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:#B02020]"
+                >
+                  <Trash2 size={15} strokeWidth={1.8} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+                <div className="xl:col-span-2">
+                  <label className={LABEL}>Name</label>
+                  <input
+                    value={m.label}
+                    onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                    placeholder="Material name"
+                    className={FIELD}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Format</label>
+                  <ColorSelect
+                    value={m.kind}
+                    options={kindOptionsFor(m.kind)}
+                    onChange={(v) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, kind: v as MaterialKind } : x))}
+                    ariaLabel="File format"
+                    minWidth={0}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Folder</label>
+                  <ColorSelect
+                    value={m.folder || "Others"}
+                    options={FIXED_MATERIAL_FOLDERS.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
+                    onChange={(folder) => setMaterials((list) => list.map((item, index) => index === i ? { ...item, folder } : item))}
+                    ariaLabel="Material folder"
+                    minWidth={0}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Buyer stage</label>
+                  <MultiColorSelect
+                    values={m.journeyStages ?? [m.journeyStage ?? "awareness"]}
+                    options={STAGE_OPTIONS}
+                    onChange={(values) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, journeyStage: values[0] as JourneyStage, journeyStages: values as JourneyStage[] } : x))}
+                    allLabel="Journey stages"
+                    allIcon={Route}
+                    allColor="#7C3AED"
+                    ariaLabel="Buyer's journey stage"
+                    minWidth={0}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Viewing access</label>
+                  <ColorSelect
+                    value={m.accessLevel ?? "client_facing"}
+                    options={ACCESS_OPTIONS}
+                    onChange={(v) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, accessLevel: v as AccessLevel } : x))}
+                    ariaLabel="Who can view this file?"
+                    minWidth={0}
+                    compactTrigger
+                    className="w-full"
+                  />
+                </div>
+                {linkedMaterial && (
+                  <div className="md:col-span-2 xl:col-span-4">
+                    <label className={LABEL}>Source link</label>
+                    <input
+                      value={m.url}
+                      onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, url: e.target.value } : x))}
+                      placeholder="https://…"
+                      className={FIELD}
+                    />
+                  </div>
+                )}
+                <div className={linkedMaterial ? "md:col-span-2 xl:col-span-2" : "md:col-span-2 xl:col-span-6"}>
+                  <label className={LABEL}>Description <span className="font-normal normal-case tracking-normal">(optional)</span></label>
+                  <input
+                    value={m.description ?? ""}
+                    onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
+                    placeholder="What this material is for"
+                    className={FIELD}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
         </div>
         {materials.length > 4 && (
           <p className="text-[11.5px] text-text-tertiary">
@@ -1475,12 +1664,15 @@ export function OfferingForm({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={LABEL}>Where it fits</label>
-              <ColorSelect
-                value={draftMaterial.journeyStage ?? "awareness"}
+              <MultiColorSelect
+                values={draftMaterial.journeyStages ?? [draftMaterial.journeyStage ?? "awareness"]}
                 options={STAGE_OPTIONS}
-                onChange={(v) =>
-                  setDraftMaterial((d) => ({ ...d, journeyStage: v as JourneyStage }))
+                onChange={(values) =>
+                  setDraftMaterial((d) => ({ ...d, journeyStage: values[0] as JourneyStage, journeyStages: values as JourneyStage[] }))
                 }
+                allLabel="Journey stages"
+                allIcon={Route}
+                allColor="#7C3AED"
                 ariaLabel="Buyer's journey stage"
               />
             </div>
@@ -1495,6 +1687,15 @@ export function OfferingForm({
                 ariaLabel="Who can see it"
               />
             </div>
+          </div>
+          <div>
+            <label className={LABEL}>Folder</label>
+            <ColorSelect
+              value={draftMaterial.folder || "Others"}
+              options={FIXED_MATERIAL_FOLDERS.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
+              onChange={(folder) => setDraftMaterial((draft) => ({ ...draft, folder }))}
+              ariaLabel="Material folder"
+            />
           </div>
           <div className="flex items-center gap-3 pt-1">
             <span className="text-[12px] text-text-tertiary">

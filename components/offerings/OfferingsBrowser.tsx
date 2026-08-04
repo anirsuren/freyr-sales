@@ -22,6 +22,9 @@ import {
   LayoutGrid,
   Table2,
   KeyRound,
+  Crown,
+  Rocket,
+  CircleHelp,
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -66,6 +69,8 @@ const familyColor = (fam: string): string => {
   if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED"; // violet
   if (f.includes("biologic")) return "#DB2777"; // pink
   if (f.includes("pharma")) return "#0071E3"; // blue
+  if (f.includes("medical device")) return "#0F766E";
+  if (f.includes("consumer")) return "#C2410C";
   return "#475569"; // slate
 };
 import type {
@@ -121,7 +126,15 @@ function MetaChip({
   );
 }
 
-const FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
+const FAMILY_ORDER = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical", "Medical Devices", "Consumer Products"];
+
+type GoToMarketStatus = "available" | "coming" | "tbd";
+function goToMarketStatus(offering: HydratedOffering): GoToMarketStatus {
+  const value = (offering.current_availability || "").trim().toLowerCase();
+  if (!value || /to be decided|\btbd\b|not set/.test(value)) return "tbd";
+  if (/currently available|available now|\bcurrent\b/.test(value)) return "available";
+  return "coming";
+}
 
 // "Pharmaceutical · Biologics · Bio Pharmaceutical" for an offering that covers
 // every customer type is just noise — when it applies to all of them, say so
@@ -345,6 +358,21 @@ export function OfferingsBrowser({
   const initStatus = keepIds(params.get("status"), (id) =>
     ["mapped", "unmapped"].includes(id)
   );
+  const ownerOptions = Array.from(
+    new Map(
+      offerings.flatMap((offering) =>
+        (offering.owners || [])
+          .filter((owner) => owner.status === "owner")
+          .map((owner) => [owner.memberId, owner] as const)
+      )
+    ).values()
+  ).sort((a, b) => a.name.localeCompare(b.name));
+  const initOwner = keepIds(params.get("owner"), (id) =>
+    id === "unassigned" || ownerOptions.some((owner) => owner.memberId === id)
+  );
+  const initGtm = keepIds(params.get("gtm"), (id) =>
+    ["available", "coming", "tbd"].includes(id)
+  );
   const initSort = SORTS.includes(params.get("sort") || "")
     ? params.get("sort")!
     : "default";
@@ -355,6 +383,8 @@ export function OfferingsBrowser({
   const [otId, setOtId] = useState(initOt);
   const [catId, setCatId] = useState(initCat);
   const [status, setStatus] = useState(initStatus);
+  const [ownerId, setOwnerId] = useState(initOwner);
+  const [gtm, setGtm] = useState(initGtm);
   const [sort, setSort] = useState(initSort);
   // Tile (cards) vs Grid (compact table). Suren's live-meeting ask.
   const [view, setView] = useState<"tile" | "grid">(initView);
@@ -369,6 +399,8 @@ export function OfferingsBrowser({
     const cat = params.get("cat");
     const s = params.get("status") || "";
     const so = params.get("sort") || "";
+    const owner = params.get("owner") || "";
+    const gtmValue = params.get("gtm") || "";
     setQ(params.get("q") ?? "");
     const keep = keepIds;
     setCtId(keep(t, (id) => customerTypes.some((c) => c.id === id)));
@@ -376,6 +408,8 @@ export function OfferingsBrowser({
     setOtId(keep(ot, (id) => offeringTypes.some((tt) => tt.id === id)));
     setCatId(keep(cat, (id) => offeringCategories.some((cc) => cc.id === id)));
     setStatus(keep(s, (id) => ["mapped", "unmapped"].includes(id)));
+    setOwnerId(keep(owner, (id) => id === "unassigned" || ownerOptions.some((item) => item.memberId === id)));
+    setGtm(keep(gtmValue, (id) => ["available", "coming", "tbd"].includes(id)));
     setSort(SORTS.includes(so) ? so : "default");
     setView(params.get("view") === "grid" ? "grid" : "tile");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -406,6 +440,8 @@ export function OfferingsBrowser({
   const ctIds = ctId ? ctId.split(",") : [];
   const mktIds = mktId ? mktId.split(",") : [];
   const statuses = status ? status.split(",") : [];
+  const ownerIds = ownerId ? ownerId.split(",") : [];
+  const gtmStatuses = gtm ? gtm.split(",") : [];
   const otNames = otId
     ? otId.split(",").map((id) => offeringTypes.find((t) => t.id === id)?.name ?? "")
     : [];
@@ -432,6 +468,15 @@ export function OfferingsBrowser({
       if (otNames.length && !otNames.includes(o.offering_type)) return false;
       if (catNames.length && !catNames.includes(o.offering_category)) return false;
       if (
+        ownerIds.length &&
+        !ownerIds.some((id) =>
+          id === "unassigned"
+            ? !(o.owners || []).some((owner) => owner.status === "owner")
+            : (o.owners || []).some((owner) => owner.status === "owner" && owner.memberId === id)
+        )
+      ) return false;
+      if (gtmStatuses.length && !gtmStatuses.includes(goToMarketStatus(o))) return false;
+      if (
         statuses.length &&
         !statuses.includes(isMapped(o) ? "mapped" : "unmapped")
       )
@@ -453,7 +498,7 @@ export function OfferingsBrowser({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerings, q, ctId, mktId, otId, catId, status]);
+  }, [offerings, q, ctId, mktId, otId, catId, status, ownerId, gtm]);
   const sorted = useMemo(() => {
     const arr = [...filtered];
     if (sort === "name")
@@ -485,13 +530,13 @@ export function OfferingsBrowser({
     return arr;
   }, [filtered, sort]);
 
-  const activeFilters = !!(q || ctId || mktId || otId || catId || status);
+  const activeFilters = !!(q || ctId || mktId || otId || catId || status || ownerId || gtm);
   // Market and completeness arrive as self-clearing chips (see the filter bar).
   // When they are the ONLY thing filtering, a separate Clear button is a second
   // control for the same job, and its 85px is what pushed the sort / view /
   // export cluster onto a second line (Anir, Jul 28: "this should just be one
   // row"). Everything else still gets the Clear button.
-  const chipFiltersOnly = !q && !ctId && !otId && !catId && !!(mktId || status);
+  const chipFiltersOnly = !q && !ctId && !otId && !catId && !ownerId && !gtm && !!(mktId || status);
   const clearAll = () => {
     setQ("");
     setCtId("");
@@ -499,6 +544,8 @@ export function OfferingsBrowser({
     setOtId("");
     setCatId("");
     setStatus("");
+    setOwnerId("");
+    setGtm("");
   };
 
   // Name the export by its active filter so repeated exports (Europe, then
@@ -1058,8 +1105,9 @@ export function OfferingsBrowser({
           `flex-1`, so it simply absorbs the width they release. */}
       <SearchPriority
         query={q}
-        className="rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-wrap items-center gap-2.5"
+        className="rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-nowrap items-center gap-2.5 overflow-hidden"
       >
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto">
         <PrioritySearchInput
           grow
           value={q}
@@ -1067,7 +1115,7 @@ export function OfferingsBrowser({
           placeholder="Search offerings…"
           ariaLabel="Search offerings"
           iconSize={16}
-          className="flex-1 min-w-[120px]"
+          className="min-w-[180px] max-w-[260px] flex-1"
           iconClassName="left-3"
           inputClassName={`${inputCls} w-full pl-9 pr-3`}
         />
@@ -1083,6 +1131,7 @@ export function OfferingsBrowser({
           values={ctIds}
           onChange={(next) => setCtId(next.join(","))}
           minWidth={150}
+          className="w-[170px] shrink-0"
           allLabel="All customer types"
           ariaLabel="Filter by customer type"
           allIcon={Users}
@@ -1111,6 +1160,7 @@ export function OfferingsBrowser({
           values={catId ? catId.split(",") : []}
           onChange={(next) => setCatId(next.join(","))}
           minWidth={150}
+          className="w-[160px] shrink-0"
           allLabel="All categories"
           ariaLabel="Filter by offering category"
           allIcon={SortLayers}
@@ -1127,6 +1177,7 @@ export function OfferingsBrowser({
           values={otId ? otId.split(",") : []}
           onChange={(next) => setOtId(next.join(","))}
           minWidth={150}
+          className="w-[140px] shrink-0"
           allLabel="All types"
           ariaLabel="Filter by offering type"
           allIcon={SortPackage}
@@ -1137,6 +1188,40 @@ export function OfferingsBrowser({
               label: t.name,
               color: FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length],
             })),
+          ]}
+        />
+        <MultiColorSelect
+          values={ownerIds}
+          onChange={(next) => setOwnerId(next.join(","))}
+          minWidth={160}
+          className="w-[180px] shrink-0"
+          allLabel="All offering owners"
+          ariaLabel="Filter by offering owner"
+          allIcon={Crown}
+          allColor="#7C3AED"
+          options={[
+            ...ownerOptions.map((owner) => ({
+              value: owner.memberId,
+              label: owner.name,
+              color: "#7C3AED",
+              icon: Crown,
+            })),
+            { value: "unassigned", label: "Not assigned", color: "#64748B", icon: CircleHelp },
+          ]}
+        />
+        <MultiColorSelect
+          values={gtmStatuses}
+          onChange={(next) => setGtm(next.join(","))}
+          minWidth={160}
+          className="w-[165px] shrink-0"
+          allLabel="All GTM statuses"
+          ariaLabel="Filter by go-to-market status"
+          allIcon={Rocket}
+          allColor="#0071E3"
+          options={[
+            { value: "available", label: "Available Now", color: "#059669", icon: SortComplete },
+            { value: "coming", label: "Coming Soon", color: "#C2410C", icon: Clock3 },
+            { value: "tbd", label: "To Be Decided", color: "#4338CA", icon: CircleHelp },
           ]}
         />
         {/* Market and completeness arrive by LINK, not by dropdown: the market
@@ -1219,11 +1304,12 @@ export function OfferingsBrowser({
             <PriorityLabel gap="ml-1">Clear</PriorityLabel>
           </button>
         </PriorityTooltip>
+        </div>
         {/* Sort, view and export live IN the filter bar, two stacked control
             rows read as clutter (Anir, Jul 25: "everything should be on one
             row, and it should look beautiful"). ml-auto keeps this display
             cluster docked right; the bar wraps gracefully when narrow. */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-border-light pl-2.5">
 
           {/* Sort, a display control, so it lives here with view + export rather
               than wrapping onto a lonely second line under the filters. */}
@@ -1232,6 +1318,7 @@ export function OfferingsBrowser({
             onChange={setSort}
             ariaLabel="Sort offerings"
             minWidth={148}
+            className="w-[158px] shrink-0"
             options={[
               { value: "default", label: "Recommended", color: "#0071E3", icon: SortSpark },
               { value: "name", label: "Name (A–Z)", color: "#7C3AED", icon: ArrowDownAZ },
@@ -1244,7 +1331,7 @@ export function OfferingsBrowser({
           <div
             role="group"
             aria-label="View"
-            className="inline-flex items-center rounded-lg border border-border-light bg-[var(--surface)] p-0.5"
+            className="inline-flex items-center rounded-lg border border-border-light bg-white p-0.5"
           >
             <button
               type="button"
@@ -1252,13 +1339,14 @@ export function OfferingsBrowser({
               aria-label="Tile view"
               aria-pressed={view === "tile"}
               title="Tile view"
-              className={`inline-flex h-7 w-8 items-center justify-center rounded-md transition-colors ${
+              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
                 view === "tile"
                   ? "bg-white text-blue-primary shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
               <LayoutGrid size={14} strokeWidth={2} />
+              Cards
             </button>
             <button
               type="button"
@@ -1266,13 +1354,14 @@ export function OfferingsBrowser({
               aria-label="Grid view"
               aria-pressed={view === "grid"}
               title="Grid view"
-              className={`inline-flex h-7 w-8 items-center justify-center rounded-md transition-colors ${
+              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
                 view === "grid"
                   ? "bg-white text-blue-primary shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
               <Table2 size={14} strokeWidth={2} />
+              Table
             </button>
           </div>
           {sorted.length > 0 && (

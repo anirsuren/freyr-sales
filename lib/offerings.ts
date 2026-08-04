@@ -26,7 +26,9 @@ export {
 export type CustomerFamily =
   | "Pharmaceutical"
   | "Biologics"
-  | "Bio Pharmaceutical";
+  | "Bio Pharmaceutical"
+  | "Medical Devices"
+  | "Consumer Products";
 export type CustomerSize = "Small" | "Mid size" | "Large";
 
 // A customer type with its definition (Sheet 2 in the video).
@@ -225,6 +227,12 @@ function seedCustomerTypes(): CustomerType[] {
     ct("ct-biopharma-s", "Bio Pharmaceutical", "Small", PROD_BIOPHARMA, "Under $500M", "< 500", FOCUS_SMALL),
     ct("ct-biopharma-m", "Bio Pharmaceutical", "Mid size", PROD_BIOPHARMA, "$500M – $5B", "500 – 5,000", FOCUS_MID),
     ct("ct-biopharma-l", "Bio Pharmaceutical", "Large", PROD_BIOPHARMA, "$5B+", "5,000+", FOCUS_LARGE),
+    ct("ct-meddev-s", "Medical Devices", "Small", "", "", "", ""),
+    ct("ct-meddev-m", "Medical Devices", "Mid size", "", "", "", ""),
+    ct("ct-meddev-l", "Medical Devices", "Large", "", "", "", ""),
+    ct("ct-consumer-s", "Consumer Products", "Small", "", "", "", ""),
+    ct("ct-consumer-m", "Consumer Products", "Mid size", "", "", "", ""),
+    ct("ct-consumer-l", "Consumer Products", "Large", "", "", "", ""),
   ];
 }
 
@@ -253,35 +261,41 @@ function seedOfferingTypes(): OfferingType[] {
       id: "ot-fusion-module",
       name: "Freya Fusion (Module)",
       description:
-        "Freya Fusion is a platform comprising multiple modules, such as Freya.Register and Freya.Submit. These modules serve as the system of record and external data for Product Registration and Health Authority Submissions, providing the foundational data for each respective module.",
+        "Freya Fusion is an industry-first AI platform exclusively built for regulatory functions. It is the first-of-its-kind platform which has all regulatory workflow applications and external intelligence in a single place.\n\nIt comprises multiple modules, such as Freya.Register, Freya.Submit, Freya. Artwork, Freya.Label, Freya.Doc, Freya.Intelligence, Freya.RTQ, Freya.GRR-PAC etc. These modules serve as the system of record for Product Registration and Health Authority Submissions data, providing the foundational data for each respective module. Freya Fusion modules help all the regulatory functions comprising of Regulatory Affairs, Regulatory Intelligence & Regulatory Strategy to collaboratively work in a single platform.",
     },
     {
       id: "ot-fusion-agent",
       name: "Freya Fusion (Module + Module Agent/s)",
       description:
-        'The Freya Fusion platform includes specialized agents tailored to specific modules or their underlying data. For instance, the "Via" agent operates on the GRR (Post-Approval Changes) module, while the "Pia" and "Mia" agents function within the Freya.Register module.',
+        "The Freya Fusion platform includes a Regulatory Knowledge Manager that collects, verifies, and organizes global regulatory information like laws, guidances, standards, health authority updates into one continuously updated system that users can search or ask questions directly, and also incudes specialized agents tailored to specific modules or their underlying data.\n\nFor instance, the 'Via' agent operates on the GRR (Post-Approval Changes) module. 'Pia' and 'Mia' agents function within the Freya.Register module.\n\nThis combination of our application, data and AI agents enables additional speed and intelligence to regulatory services.",
     },
     {
       id: "ot-fusion-addon",
       name: "Freya Fusion (Module + Module Agent/s + Add on Agent/s)",
       description:
-        'Offerings can be customized to include modules, module-specific agents, and additional agents not natively connected to the primary module. For example, the "Via" agent can be bundled with the Freya.Register module and its corresponding agents, "Pia" and "Mia."',
+        "Offerings can be customized to include modules with module-specific agents and additional agents not natively connected to the primary module. For example, the 'Via' agent can be bundled with the Freya.Register module and its corresponding agents, 'Pia' and 'Mia.'",
     },
     {
       id: "ot-fusion-platform",
+      name: "Freya Fusion (Platform)",
+      // The approved source intentionally leaves this description blank.
+      description: "",
+    },
+    {
+      id: "ot-fusion-agents",
       name: "Freya Fusion (Agents)",
       description:
-        "Freya Fusion Agents are platform-level AI agents and cross-module objects, including Freya.Agents and Freya.OmniObject, that work across the Freya Fusion environment rather than being limited to one module.",
+        "Freyr's AI agents are uniquely positioned to be independently offered to clients for working with external customer-specific applications in the regulatory space that the clients may be using. Freyr's architecture enables customers to leverage agents as a scalable regulatory execution layer. For instance, our agents can be added as another layer on top of a client's Veeva modules etc.",
     },
     {
       id: "ot-freyr-ai-native",
-      name: "Freyr AI Native Service",
+      name: "Freyr AI Native Services",
       description:
-        "Building on years of regulatory experience, Freyr has transitioned into a new era by integrating AI-driven digital capabilities with human expertise to deliver cost and efficiency.",
+        "Building on years of regulatory experience, Freyr has transitioned into a new era by integrating AI capabilities with human expertise to deliver regulatory services with cost optimization and efficiency. An AI Native Service is one where Freyr's proprietary software handles the core, repeatable work with minimal manual effort to execute, while our regulatory experts continue to oversee strategy, planning, judgement and quality.",
     },
     {
       id: "ot-freyr-services",
-      name: "Freyr Service",
+      name: "Freyr Services",
       description:
         "While not all Freyr services have transitioned to an AI-native model yet, the company is actively working toward ensuring that all future service offerings become fully AI-native.",
     },
@@ -450,10 +464,10 @@ const FREYR_URL = {
 const MODULE = "Freya Fusion (Module)";
 const MODULE_AGENT = "Freya Fusion (Module + Module Agent/s)";
 const MODULE_AGENT_ADDON = "Freya Fusion (Module + Module Agent/s + Add on Agent/s)";
-const LEGACY_PLATFORM_TYPE = "Freya Fusion (Platform)";
+const PLATFORM_TYPE = "Freya Fusion (Platform)";
 const AGENTS_TYPE = "Freya Fusion (Agents)";
-const AI_NATIVE = "Freyr AI Native Service";
-const SERVICE = "Freyr Service";
+const AI_NATIVE = "Freyr AI Native Services";
+const SERVICE = "Freyr Services";
 // The catalogue links below entered the in-progress sample workspace in the
 // Jul 30 materials import. They predate server-side upload attribution, so keep
 // that known import date on the records themselves. This makes every sample
@@ -743,6 +757,8 @@ interface OfferingsStore {
   offeringTypes: OfferingType[];
   offeringCategories: OfferingCategory[];
   offerings: Offering[];
+  /** One-time migration marker for the approved offering-type descriptions. */
+  offeringTypeCopyVersion?: number;
 }
 
 declare global {
@@ -772,6 +788,7 @@ function seed(): OfferingsStore {
     offeringTypes: seedOfferingTypes(),
     offeringCategories: seedOfferingCategories(),
     offerings: seedOfferings(),
+    offeringTypeCopyVersion: 1,
   };
 }
 
@@ -1081,32 +1098,74 @@ if (!store.offeringCategories)
 // records arrived without `contacts` while seeded ones had it.
 function healOfferings(s: OfferingsStore): boolean {
   let catalogChanged = false;
+  // Apply the approved type copy once to persisted catalogues created before
+  // it was supplied. The marker lets administrators edit the records later
+  // without every server restart replacing their work.
+  if ((s.offeringTypeCopyVersion ?? 0) < 1) {
+    for (const approved of seedOfferingTypes()) {
+      const existing = s.offeringTypes.find(
+        (type) => type.id === approved.id || type.name === approved.name
+      );
+      if (existing) {
+        existing.name = approved.name;
+        existing.description = approved.description;
+      } else {
+        s.offeringTypes.push(structuredClone(approved));
+      }
+    }
+    s.offeringTypeCopyVersion = 1;
+    catalogChanged = true;
+  }
+  // The editable customer taxonomy gained two approved families. Add only
+  // missing exact ids so an existing definition edited by an administrator is
+  // never overwritten.
+  for (const customerType of seedCustomerTypes()) {
+    if (!s.customerTypes.some((existing) => existing.id === customerType.id)) {
+      s.customerTypes.push(customerType);
+      catalogChanged = true;
+    }
+  }
   // Change request 28 renamed the platform-wide type/category and added two
   // named Agent offerings. Existing workspaces hold the catalogue as one
   // persisted document, so changing the seed alone would never update them.
   // Migrate only the exact legacy names, preserving every owner-entered field.
   const agentsTypeDescription =
     "Freya Fusion Agents are platform-level AI agents and cross-module objects, including Freya.Agents and Freya.OmniObject, that work across the Freya Fusion environment rather than being limited to one module.";
-  const legacyType = s.offeringTypes.find(
-    (type) => type.name === LEGACY_PLATFORM_TYPE
+  const platformType = s.offeringTypes.find(
+    (type) => type.name === PLATFORM_TYPE
   );
   const currentAgentsType = s.offeringTypes.find(
     (type) => type.name === AGENTS_TYPE
   );
-  if (legacyType && !currentAgentsType) {
-    legacyType.name = AGENTS_TYPE;
-    legacyType.description = agentsTypeDescription;
-    catalogChanged = true;
-  } else if (!legacyType && !currentAgentsType) {
+  if (!platformType) {
     s.offeringTypes.push({
-      id: "ot-fusion-platform",
+      id: s.offeringTypes.some((type) => type.id === "ot-fusion-platform")
+        ? "ot-fusion-platform-core"
+        : "ot-fusion-platform",
+      name: PLATFORM_TYPE,
+      description: "",
+    });
+    catalogChanged = true;
+  }
+  if (!currentAgentsType) {
+    s.offeringTypes.push({
+      id: "ot-fusion-agents",
       name: AGENTS_TYPE,
       description: agentsTypeDescription,
     });
     catalogChanged = true;
-  } else if (legacyType && currentAgentsType) {
-    s.offeringTypes = s.offeringTypes.filter((type) => type !== legacyType);
-    catalogChanged = true;
+  }
+
+  const typeRenames: Record<string, string> = {
+    "Freyr AI Native Service": AI_NATIVE,
+    "Freyr Service": SERVICE,
+  };
+  for (const type of s.offeringTypes) {
+    const nextName = typeRenames[type.name];
+    if (nextName) {
+      type.name = nextName;
+      catalogChanged = true;
+    }
   }
 
   const legacyCategory = s.offeringCategories.find(
@@ -1130,8 +1189,8 @@ function healOfferings(s: OfferingsStore): boolean {
   }
 
   for (const offering of s.offerings) {
-    if (offering.offering_type === LEGACY_PLATFORM_TYPE) {
-      offering.offering_type = AGENTS_TYPE;
+    if (typeRenames[offering.offering_type]) {
+      offering.offering_type = typeRenames[offering.offering_type];
       catalogChanged = true;
     }
     if (offering.offering_category === LEGACY_PLATFORM_CATEGORY) {

@@ -88,6 +88,8 @@ export function OfferingContacts({
   canEdit,
   people,
   owners = [],
+  title = "Contacts for this offering",
+  defaultOpen = false,
 }: {
   offeringId: string;
   offeringName: string;
@@ -106,6 +108,8 @@ export function OfferingContacts({
    * Ownership is a fact about one offering, so it is read from that offering.
    */
   owners?: OwnerRow[];
+  title?: string;
+  defaultOpen?: boolean;
 }) {
   const router = useRouter();
   // NEVER trust the array from a persisted record: a catalog stored before
@@ -300,11 +304,11 @@ export function OfferingContacts({
       )
     );
 
-  const [railOpen, setRailOpen] = useState(false);
+  const [railOpen, setRailOpen] = useState(defaultOpen);
 
   return (
     <SectionCard
-      title="Contacts for this offering"
+      title={title}
       icon={UserRound}
       // Collapsed by default alongside the owners card — both make way for the
       // offering chat above them (Suren, Jul 30: "they can be collapsible
