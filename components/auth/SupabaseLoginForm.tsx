@@ -2,7 +2,15 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { ArrowRight, Loader2, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  KeyRound,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
 
 /**
@@ -428,6 +436,36 @@ export function SupabaseLoginForm({
               : "Sign in securely"}
           {!busy && <ArrowRight size={16} />}
         </button>
+      )}
+
+      {step === "email" && (
+        <div className="space-y-2 border-t border-border-light pt-4">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+            More sign-in options
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Microsoft", Icon: Building2 },
+              { label: "Passkey", Icon: KeyRound },
+            ].map(({ label, Icon }) => (
+              <div
+                key={label}
+                aria-disabled="true"
+                className="flex min-h-14 items-center gap-2.5 rounded-md border border-border-light bg-surface px-3 text-left"
+              >
+                <Icon size={16} className="shrink-0 text-text-secondary" />
+                <span className="min-w-0">
+                  <span className="block text-[12px] font-semibold text-text-primary">
+                    {label}
+                  </span>
+                  <span className="block text-[10.5px] font-medium text-text-tertiary">
+                    Coming soon
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Escape hatch: someone who set a password but has not confirmed their

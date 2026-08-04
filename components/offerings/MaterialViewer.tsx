@@ -591,26 +591,47 @@ export function MaterialViewer({
           }`}
         >
           {status === "loading" && (
-            <div className="flex h-full flex-col items-center justify-center gap-4 py-20">
-              {/* A ring that traces itself, over a soft page-shaped pulse. The
-                  spinner used to sit in the top-left corner of an otherwise
-                  empty white box, which reads as a page that failed rather than
-                  one that is working (Anir: "it looks super ugly… in the middle
-                  top, show a nice loading animation"). */}
-              <span className="relative flex h-14 w-14 items-center justify-center">
-                <span className="absolute inset-0 rounded-full bg-blue-primary/10 animate-ping" />
-                <span className="absolute inset-0 rounded-full border-2 border-blue-primary/15" />
-                <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-blue-primary" />
-                <FileText size={20} strokeWidth={1.8} className="text-blue-primary" />
-              </span>
-              <span className="text-center">
-                <span className="block text-[13.5px] font-semibold text-text-primary">
-                  Opening {currentLabel}
+            <div className="flex h-full min-h-[420px] items-center justify-center p-6">
+              {/* Keep archive loading quiet and structural. The old pinging
+                  file-logo looked detached from the viewer and especially odd
+                  for a ZIP, as though the archive itself were the document.
+                  This card previews the manifest layout that is about to
+                  appear and uses a restrained progress line instead. */}
+              <div className="w-full max-w-[430px] rounded-2xl border border-border-light bg-white p-5 shadow-[0_12px_36px_rgba(16,24,40,0.08)] dark:bg-[var(--surface-elevated)]">
+                <div className="flex items-center gap-3.5">
+                  <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+                    {extensionOf(currentPath) === "zip" ? (
+                      <FolderArchive size={20} strokeWidth={1.85} />
+                    ) : (
+                      <FileText size={20} strokeWidth={1.85} />
+                    )}
+                    <span className="absolute -bottom-1 -right-1 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-blue-primary bg-white dark:border-[var(--surface-elevated)] dark:bg-[var(--surface-elevated)]" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                      {extensionOf(currentPath) === "zip" ? "Opening archive" : `Opening ${currentLabel}`}
+                    </span>
+                    <span className="mt-0.5 block text-[12px] text-text-secondary">
+                      {extensionOf(currentPath) === "zip"
+                        ? "Reading the files inside without unpacking them"
+                        : "Preparing the original file preview"}
+                    </span>
+                  </span>
+                </div>
+                <span className="mt-4 block h-1.5 overflow-hidden rounded-full bg-blue-primary/10">
+                  <span className="block h-full w-2/5 animate-[materialsLoading_1.15s_ease-in-out_infinite] rounded-full bg-blue-primary" />
                 </span>
-                <span className="mt-0.5 block text-[12px] text-text-secondary">
-                  Rendering the file exactly as it was uploaded
-                </span>
-              </span>
+                {extensionOf(currentPath) === "zip" && (
+                  <div className="mt-4 space-y-2" aria-hidden="true">
+                    {["72%", "88%", "61%"].map((width) => (
+                      <span key={width} className="flex items-center gap-2.5 rounded-lg border border-border-light px-3 py-2">
+                        <span className="h-6 w-6 shrink-0 rounded-md bg-blue-light" />
+                        <span className="h-2.5 rounded-full bg-[var(--surface)]" style={{ width }} />
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

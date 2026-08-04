@@ -189,9 +189,12 @@ what was written back, `deleted-test-customers.json`).
   assignment optional and offer an inline draft-folder control beside the
   folder picker; the draft is auto-selected but is only created when the
   material is saved, so switching back to an existing folder leaves no empty
-  folder behind. Typecheck, focused lint, whitespace checks, a Docker-style
-  clean dependency install, the production build, and read-only local browser
-  verification pass.
+  folder behind. Archive loading now uses a compact manifest-preview card with
+  a quiet progress line instead of the detached pinging file logo. Typecheck,
+  focused lint, whitespace checks, an exact npm 10.8.2 lockfile validation,
+  the production build, and read-only local browser verification pass. The
+  Supabase login also previews Microsoft and passkey sign-in as disabled
+  “Coming soon” options; neither unfinished authentication path is active.
 
 - **Aug 3 production-hardening batch is ready to ship:** live Agent calls are
   now read-only with respect to customers, sequences, pipeline, and other
