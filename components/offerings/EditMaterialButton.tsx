@@ -13,7 +13,7 @@ import {
   ACCESS_LEVEL_VISIBILITY_COPY,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
-  FIXED_MATERIAL_FOLDERS,
+  allFolders,
   canonicalMaterialFolder,
   materialFolderLabel,
   materialJourneyStages,
@@ -55,11 +55,13 @@ export function EditMaterialButton({
   offeringId,
   material,
   materials,
+  materialFolders = [],
 }: {
   offeringId: string;
   material: OfferingMaterial;
   /** The whole list, because saving one row PATCHes all of them. */
   materials: OfferingMaterial[];
+  materialFolders?: string[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -77,6 +79,7 @@ export function EditMaterialButton({
   /** MOVE A FILE. The folder is a plain path, so moving is a re-save. */
   const initialFolder = canonicalMaterialFolder(material);
   const [folder, setFolder] = useState(initialFolder);
+  const folderOptions = allFolders(materials, materialFolders);
   const hasChanges =
     label !== material.label ||
     description !== (material.description || "") ||
@@ -193,7 +196,7 @@ export function EditMaterialButton({
           <p className="text-[12.5px] leading-relaxed text-text-secondary">
             Rename it, describe it, move it, or change who may see it.
           </p>
-          {/* Every material must remain in one of the fixed system folders. */}
+          {/* Owners can move a material into a system or owner-created folder. */}
           <div>
             <label
               htmlFor={`folder-${material.id}`}
@@ -209,7 +212,7 @@ export function EditMaterialButton({
                   onChange={setFolder}
                   className="w-full"
                   collapsible={false}
-                  options={FIXED_MATERIAL_FOLDERS.map((f) => ({
+                  options={folderOptions.map((f) => ({
                     value: f,
                     label: materialFolderLabel(f),
                     icon: Folder,
@@ -217,7 +220,7 @@ export function EditMaterialButton({
                   }))}
                 />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Choose from the fixed folder structure; loose and custom folders are not created.
+              Choose from the system folders or folders created for this offering.
             </p>
           </div>
           <div className="space-y-3">

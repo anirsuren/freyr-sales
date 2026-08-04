@@ -21,7 +21,8 @@ import {
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
   MATERIAL_META,
-  FIXED_MATERIAL_FOLDERS,
+  allFolders,
+  cleanFolderName,
   isFixedMaterialFolder,
   materialFolderLabel,
   materialJourneyStages,
@@ -75,11 +76,14 @@ const FORMATS = MATERIAL_FORMATS;
 export function AddMaterialButton({
   offeringId,
   materials,
+  materialFolders = [],
   variant = "link",
   compact = false,
 }: {
   offeringId: string;
   materials: OfferingMaterial[];
+  /** Empty owner-created folders that cannot be inferred from a material. */
+  materialFolders?: string[];
   variant?: "link" | "button";
   /** Icon-only "+" trigger for tight toolbars. */
   compact?: boolean;
@@ -91,6 +95,10 @@ export function AddMaterialButton({
   const openFolder = (useSearchParams().get("mf") || "").trim();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [createdFolders, setCreatedFolders] = useState<string[]>([]);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [folderName, setFolderName] = useState("");
+  const [savingFolder, setSavingFolder] = useState(false);
   /**
    * NOTHING TAGS ITSELF (Anir, Jul 30: "you actually have to make the user tag
    * it as a video because it shouldn't auto-tag as anything").
@@ -237,6 +245,50 @@ export function AddMaterialButton({
       accessLevel
   );
   const canSave = !busy && (files.length ? fileReady : linkReady);
+  const folderOptions = allFolders(materials, [
+    ...materialFolders,
+    ...createdFolders,
+  ]);
+
+  async function createFolder() {
+    const name = cleanFolderName(folderName);
+    if (!name) {
+      toast("Give the new folder a name", "error");
+      return;
+    }
+    if (folderOptions.includes(name)) {
+      setFolder(name);
+      setFolderName("");
+      setCreatingFolder(false);
+      return;
+    }
+    setSavingFolder(true);
+    try {
+      const nextFolders = Array.from(
+        new Set([...materialFolders, ...createdFolders, name])
+      );
+      const res = await fetch(`/api/offerings/${offeringId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ materialFolders: nextFolders }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        toast(data.error || "Could not create that folder", "error");
+        return;
+      }
+      setCreatedFolders((current) => [...current, name]);
+      setFolder(name);
+      setFolderName("");
+      setCreatingFolder(false);
+      toast(`Created “${name}”`);
+      router.refresh();
+    } catch {
+      toast("Could not create that folder", "error");
+    } finally {
+      setSavingFolder(false);
+    }
+  }
 
 
   /**
@@ -384,7 +436,7 @@ export function AddMaterialButton({
       return;
     }
     if (!files.length && !folder) {
-      toast("Choose a system folder first", "error");
+      toast("Choose a folder first", "error");
       return;
     }
     if (!files.length && !journeyStages.length) {
@@ -648,25 +700,36 @@ export function AddMaterialButton({
                 </span>
               )}
             </label>
-            <ColorSelect
-              value={folder}
-              options={[
-                { value: "", label: "Choose a system folder", color: "#0071E3", icon: Folder },
-                ...FIXED_MATERIAL_FOLDERS.map((name) => ({
-                  value: name,
-                  label: materialFolderLabel(name),
-                  color: "#0071E3",
-                  icon: Folder,
-                })),
-              ]}
-              onChange={setFolder}
-              ariaLabel="Folder"
-              minWidth={0}
-              collapsible={false}
-              className="w-full"
-            />
+            <div className="flex items-stretch gap-2">
+              <ColorSelect
+                value={folder}
+                options={[
+                  { value: "", label: "Choose a folder", color: "#0071E3", icon: Folder },
+                  ...folderOptions.map((name) => ({
+                    value: name,
+                    label: materialFolderLabel(name),
+                    color: "#0071E3",
+                    icon: Folder,
+                  })),
+                ]}
+                onChange={setFolder}
+                ariaLabel="Folder"
+                minWidth={0}
+                collapsible={false}
+                className="min-w-0 flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => setCreatingFolder(true)}
+                aria-label="Create a new folder"
+                title="Create a new folder"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+              >
+                <Plus size={17} strokeWidth={2.2} />
+              </button>
+            </div>
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Every material belongs to one fixed system folder. “All files” is only a viewing mode.
+              Choose an existing folder or create a new one for this offering. “All files” is only a viewing mode.
             </p>
           </div>
 
@@ -908,7 +971,7 @@ export function AddMaterialButton({
                         />
                         <ColorSelect
                           value={fileOverrides[key]?.folder || folder}
-                          options={FIXED_MATERIAL_FOLDERS.map((name) => ({
+                          options={folderOptions.map((name) => ({
                             value: name,
                             label: materialFolderLabel(name),
                             color: "#0071E3",
@@ -1005,6 +1068,79 @@ export function AddMaterialButton({
                     : files.length > 1
                       ? `Add ${files.length} materials`
                       : "Add material"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={creatingFolder}
+        onClose={() => {
+          if (savingFolder) return;
+          setCreatingFolder(false);
+          setFolderName("");
+        }}
+        title="Create a folder"
+        stacked
+      >
+        <div className="space-y-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+              <Folder size={19} strokeWidth={1.9} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-semibold text-text-primary">
+                Add a folder to this offering
+              </p>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-text-secondary">
+                It will be selected automatically when you create it.
+              </p>
+            </div>
+          </div>
+          <div>
+            <label
+              htmlFor="new-material-folder-name"
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"
+            >
+              Folder name
+            </label>
+            <input
+              id="new-material-folder-name"
+              value={folderName}
+              onChange={(event) => setFolderName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && folderName.trim()) {
+                  event.preventDefault();
+                  void createFolder();
+                }
+              }}
+              autoFocus
+              maxLength={60}
+              placeholder="e.g. Regional sales decks"
+              aria-label="New folder name"
+              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:shadow-input-focus"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setCreatingFolder(false);
+                setFolderName("");
+              }}
+              disabled={savingFolder}
+              className="h-10 rounded-lg border border-border-light px-4 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface hover:text-text-primary disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void createFolder()}
+              disabled={!folderName.trim() || savingFolder}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-blue-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus size={15} strokeWidth={2.2} />
+              {savingFolder ? "Creating…" : "Create folder"}
             </button>
           </div>
         </div>

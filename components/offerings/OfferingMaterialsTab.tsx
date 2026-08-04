@@ -52,6 +52,7 @@ export function OfferingMaterialsTab({
               key="add-material"
               offeringId={o.id}
               materials={o.materials}
+              materialFolders={o.materialFolders ?? []}
               compact
             />
           ) : undefined

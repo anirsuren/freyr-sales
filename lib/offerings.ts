@@ -1944,6 +1944,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     market_ids: data.market_ids || [],
     owners: data.owners ?? [],
     materials: (data.materials || []).map((m) => ({ ...m, id: m.id || rid("m") })),
+    materialFolders: data.materialFolders || [],
     created_at: new Date().toISOString(),
   };
   ensureOfferingType(record.offering_type);

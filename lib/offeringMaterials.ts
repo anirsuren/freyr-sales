@@ -584,6 +584,11 @@ export function canonicalMaterialFolder(
   const normalized = normalizeFolderPath(rawFolder);
   if (FIXED_MATERIAL_FOLDER_SET.has(normalized)) return normalized;
 
+  // Owner-created folders are first-class folders too. Keep their path rather
+  // than collapsing them into "Others"; the API has already cleaned the path
+  // before it reaches the catalogue.
+  if (sanitizeMaterialFolderPath(normalized)) return normalized;
+
   // Legacy catalogues contain blank, custom, and partially broken folder
   // metadata. Normalize those records only for presentation/save-on-next-edit;
   // never run a bulk destructive rewrite against the production singleton.
@@ -623,11 +628,20 @@ export function cleanFolderName(raw: string): string {
   return raw.replace(/[/\\]/g, " ").trim().replace(/\s+/g, " ").slice(0, 60);
 }
 
-/** Accept only one of the fixed system folders at a write boundary. */
+/** Accept a safe folder path at a write boundary. The predefined folders are
+ * always valid; owners may also create paths whose segments are short plain
+ * names. Slash remains the hierarchy separator. */
 export function sanitizeMaterialFolderPath(value: unknown): string {
   if (typeof value !== "string") return "";
   const normalized = LEGACY_FOLDER_NAMES[value.trim()] || normalizeFolderPath(value);
-  return FIXED_MATERIAL_FOLDER_SET.has(normalized) ? normalized : "";
+  if (!normalized) return "";
+  const parts = normalized.split("/");
+  if (
+    parts.length > 5 ||
+    parts.some((part) => !part || cleanFolderName(part) !== part)
+  )
+    return "";
+  return normalized;
 }
 
 /**
@@ -640,9 +654,17 @@ export function allFolders(
   materials: { folder?: string }[],
   stored: string[] = []
 ): string[] {
-  void materials;
-  void stored;
-  return [...FIXED_MATERIAL_FOLDERS];
+  const paths = new Set<string>(FIXED_MATERIAL_FOLDERS);
+  const addWithAncestors = (value: unknown) => {
+    const path = sanitizeMaterialFolderPath(value);
+    if (!path) return;
+    const parts = path.split("/");
+    for (let depth = 1; depth <= parts.length; depth += 1)
+      paths.add(parts.slice(0, depth).join("/"));
+  };
+  stored.forEach(addWithAncestors);
+  materials.forEach((material) => addWithAncestors(material.folder));
+  return Array.from(paths);
 }
 
 /** The immediate children of `parent` ("" = top level). */

@@ -18,7 +18,6 @@ import {
 import {
   stampMaterialAttribution,
   sanitizeMaterialFolderPath,
-  isFixedMaterialFolder,
   materialJourneyStages,
   MATERIAL_FORMATS,
   ACCESS_LEVELS,
@@ -115,14 +114,14 @@ export async function PATCH(
           !material.label?.trim() ||
           !validUrl ||
           !MATERIAL_FORMATS.includes(material.kind as never) ||
-          !isFixedMaterialFolder(material.folder) ||
+          !material.folder ||
           stages.length === 0 ||
           !ACCESS_LEVELS.includes(material.accessLevel as never)
         ) {
           return NextResponse.json(
             {
               error:
-                "Every new material needs a name, valid file or link, file format, fixed folder, at least one buyer journey stage, and one access level.",
+                "Every new material needs a name, valid file or link, file format, folder, at least one buyer journey stage, and one access level.",
             },
             { status: 400 }
           );

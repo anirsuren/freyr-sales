@@ -73,6 +73,17 @@ const familyColor = (fam: string): string => {
   if (f.includes("consumer")) return "#C2410C";
   return "#475569"; // slate
 };
+
+function offeringTypeFilterIcon(name: string): LucideIcon {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("add on")) return Layers;
+  if (normalized.includes("module + module agent")) return Users;
+  if (normalized.includes("(agents)")) return Sparkles;
+  if (normalized.includes("(platform)")) return LayoutGrid;
+  if (normalized.includes("ai native")) return Rocket;
+  if (normalized.includes("freyr services")) return BookOpen;
+  return Package;
+}
 import type {
   CustomerType,
   Market,
@@ -1206,6 +1217,7 @@ export function OfferingsBrowser({
               value: t.id,
               label: t.name,
               color: FILTER_PALETTE[(i + 3) % FILTER_PALETTE.length],
+              icon: offeringTypeFilterIcon(t.name),
             })),
           ]}
         />
@@ -1227,7 +1239,7 @@ export function OfferingsBrowser({
               value: owner.memberId,
               label: owner.name,
               color: "#7C3AED",
-              icon: Crown,
+              avatarName: owner.name,
             })),
             { value: "unassigned", label: "Not assigned", color: "#64748B", icon: CircleHelp },
           ]}

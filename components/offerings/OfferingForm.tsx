@@ -76,7 +76,7 @@ import {
   MATERIAL_FORMATS,
   MATERIAL_ICON,
   MATERIAL_META,
-  FIXED_MATERIAL_FOLDERS,
+  allFolders,
   materialFolderLabel,
   canonicalMaterialFolder,
   materialJourneyStages,
@@ -132,7 +132,7 @@ function normalizeUrl(u: string) {
 
 function readableOfferingSaveError(message: string): string {
   if (/every new material needs/i.test(message))
-    return "One or more sales materials is incomplete. Open Sales materials and add its name, file or link, format, fixed folder, buyer stage, and viewing access.";
+    return "One or more sales materials is incomplete. Open Sales materials and add its name, file or link, format, folder, buyer stage, and viewing access.";
   return message || "The offering could not be saved. Review the highlighted section and try again.";
 }
 
@@ -595,6 +595,7 @@ function FormSection({
   icon: Icon,
   title,
   hint,
+  count,
   action,
   defaultOpen = false,
   children,
@@ -602,6 +603,7 @@ function FormSection({
   icon: LucideIcon;
   title: string;
   hint: string;
+  count?: number;
   action?: React.ReactNode;
   defaultOpen?: boolean;
   children: React.ReactNode;
@@ -635,8 +637,15 @@ function FormSection({
             <Icon size={15} strokeWidth={1.9} />
           </span>
           <span className="min-w-0 flex-1">
-            <span role="heading" aria-level={2} className="block text-[14px] font-semibold text-text-primary">
-              {title}
+            <span className="flex flex-wrap items-center gap-2">
+              <span role="heading" aria-level={2} className="text-[14px] font-semibold text-text-primary">
+                {title}
+              </span>
+              {typeof count === "number" && (
+                <span className="tnum inline-flex min-w-6 items-center justify-center rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-semibold text-blue-primary">
+                  {count}
+                </span>
+              )}
             </span>
             <span className="mt-0.5 block text-[11.5px] leading-snug text-text-tertiary">
               {hint}
@@ -764,6 +773,7 @@ export function OfferingForm({
     customer_type_ids?: string[];
     market_ids?: string[];
     materials?: MaterialRow[];
+    materialFolders?: string[];
   };
 }) {
   const router = useRouter();
@@ -873,13 +883,15 @@ export function OfferingForm({
   const appearanceCard =
     appearanceRow === null ? undefined : capRows[appearanceRow];
   const appearanceFields = serviceCardFields(appearanceCard?.text ?? "");
+  const appearanceStyleKey =
+    stripBriefFormatting(appearanceCard?.text ?? "") || "service";
   const appearanceMark = serviceCardMark(
-    appearanceFields.heading || appearanceFields.description || "service",
+    appearanceStyleKey,
     appearanceCard?.style
   );
   const AppearanceIcon = appearanceMark.icon;
   const appearanceAutomaticMark = offeringMark(
-    appearanceFields.heading || appearanceFields.description || "service"
+    appearanceStyleKey
   );
   const AppearanceAutomaticIcon = appearanceAutomaticMark.icon;
 
@@ -977,6 +989,10 @@ export function OfferingForm({
     [initial?.materials]
   );
   const [materials, setMaterials] = useState<MaterialRow[]>(initialMaterials);
+  const materialFolderOptions = allFolders(
+    materials,
+    initial?.materialFolders ?? []
+  );
   const materialsChanged =
     JSON.stringify(materials) !== JSON.stringify(initialMaterials);
   const hasOfferingChanges =
@@ -1200,6 +1216,7 @@ export function OfferingForm({
         icon={ListChecks}
         title="Offering brief & service cards"
         hint="Edit the opening overview and the same service cards sellers see on the offering page."
+        count={capCount}
         action={
           <div className="flex items-center gap-1 rounded-lg bg-surface p-1">
             <button
@@ -1304,11 +1321,19 @@ export function OfferingForm({
               const isSection = row.kind === "section";
               const fields = serviceCardFields(row.text);
               const mark = serviceCardMark(
-                fields.heading || fields.description || offeringName || "offering",
+                stripBriefFormatting(row.text) || offeringName || "offering",
                 row.style
               );
               const accent = isSection ? "#0071E3" : mark.color;
               const RowIcon = isSection ? Layers : mark.icon;
+              const iconLabel =
+                SERVICE_CARD_ICON_OPTIONS.find(
+                  (option) => option.value === row.style?.icon
+                )?.label ?? "Automatic";
+              const colorLabel =
+                SERVICE_CARD_COLOR_OPTIONS.find(
+                  (option) => option.value === row.style?.color
+                )?.label ?? "Automatic";
               const updateCard = (heading: string, cardDescription: string) =>
                 setCapRows((list) =>
                   list.map((item, index) =>
@@ -1362,29 +1387,46 @@ export function OfferingForm({
                       </button>
                     </div>
                   ) : (
-                    <div>
-                      <div className="flex items-end gap-3">
-                        <Tooltip
-                          label="Change icon and color"
-                          side="bottom"
-                          align="left"
-                        >
-                          <button
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3 rounded-xl border border-border-light bg-surface/55 p-3">
+                        <button
                           type="button"
                           onClick={() => setAppearanceRow(i)}
                           aria-label={`Change ${fields.heading || "service"} card icon and color`}
-                          className="relative mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white outline-none transition-transform hover:scale-[1.04] focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+                          className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-sm outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-blue-primary/30"
                           style={{
                             backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
                           }}
                         >
-                          <RowIcon size={16} strokeWidth={2} />
-                          <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-blue-primary text-white shadow-sm">
-                            <PencilLine size={8} strokeWidth={2.4} />
+                          <RowIcon size={20} strokeWidth={2} />
+                          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-primary text-white shadow-sm">
+                            <PencilLine size={9} strokeWidth={2.4} />
                           </span>
-                          </button>
-                        </Tooltip>
-                        <div className="min-w-0 flex-1">
+                        </button>
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                            Seller view preview
+                          </p>
+                          <p className="mt-1 text-[13.5px] leading-relaxed text-text-primary">
+                            <span className="font-semibold">
+                              {fields.heading || "Untitled service"}
+                              {fields.description ? ": " : ""}
+                            </span>
+                            {fields.description || "Add a description to show what this service includes."}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
+                          aria-label="Remove service"
+                          className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-error"
+                        >
+                          <Trash2 size={15} strokeWidth={1.7} />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
+                        <div className="min-w-0">
                           <label className={LABEL}>Card heading</label>
                           <input
                             className={cn(FIELD, "font-semibold")}
@@ -1396,26 +1438,58 @@ export function OfferingForm({
                             aria-label={`Card ${i + 1} heading`}
                           />
                         </div>
+                        <div className="min-w-0">
+                          <label className={LABEL}>Card description</label>
+                          <textarea
+                            className={`${FIELD} h-auto min-h-[72px] resize-y py-2 leading-relaxed`}
+                            value={fields.description}
+                            onChange={(event) =>
+                              updateCard(fields.heading, event.target.value)
+                            }
+                            placeholder="Explain what this service does for the seller."
+                            aria-label={`Card ${i + 1} description`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-white p-2.5">
+                        <span className="mr-auto text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                          Card appearance
+                        </span>
                         <button
                           type="button"
-                          onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
-                          aria-label="Remove service"
-                          className="mb-1 shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
+                          onClick={() => setAppearanceRow(i)}
+                          className="inline-flex min-w-[142px] items-center gap-2 rounded-lg border border-border-light px-2.5 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
                         >
-                          <Trash2 size={15} strokeWidth={1.7} />
+                          <span
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white"
+                            style={{
+                              backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
+                            }}
+                          >
+                            <RowIcon size={13} strokeWidth={2} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-[10px] uppercase tracking-[0.04em] text-text-tertiary">Icon</span>
+                            <span className="block truncate text-[12.5px] font-semibold text-text-primary">{iconLabel}</span>
+                          </span>
                         </button>
-                      </div>
-                      <div className="ml-[52px] mt-3">
-                        <label className={LABEL}>Card description</label>
-                        <textarea
-                          className={`${FIELD} h-auto min-h-[72px] resize-y py-2 leading-relaxed`}
-                          value={fields.description}
-                          onChange={(event) =>
-                            updateCard(fields.heading, event.target.value)
-                          }
-                          placeholder="Explain what this service does for the seller."
-                          aria-label={`Card ${i + 1} description`}
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setAppearanceRow(i)}
+                          className="inline-flex min-w-[142px] items-center gap-2 rounded-lg border border-border-light px-2.5 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
+                        >
+                          <span
+                            className="h-7 w-7 shrink-0 rounded-full border border-white shadow-sm"
+                            style={{
+                              backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
+                            }}
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-[10px] uppercase tracking-[0.04em] text-text-tertiary">Color</span>
+                            <span className="block truncate text-[12.5px] font-semibold text-text-primary">{colorLabel}</span>
+                          </span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1867,6 +1941,7 @@ export function OfferingForm({
         icon={FolderOpen}
         title="Sales materials"
         hint="Videos, presentations, documents: anything a rep hands a customer."
+        count={materials.length}
         action={
           <button
             type="button"
@@ -1964,7 +2039,7 @@ export function OfferingForm({
                   <label className={LABEL}>Folder</label>
                   <ColorSelect
                     value={m.folder || "Others"}
-                    options={FIXED_MATERIAL_FOLDERS.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
+                    options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
                     onChange={(folder) => setMaterials((list) => list.map((item, index) => index === i ? { ...item, folder } : item))}
                     ariaLabel="Material folder"
                     minWidth={0}
@@ -2111,7 +2186,7 @@ export function OfferingForm({
             <label className={LABEL}>Folder</label>
             <ColorSelect
               value={draftMaterial.folder || "Others"}
-              options={FIXED_MATERIAL_FOLDERS.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
+              options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
               onChange={(folder) => setDraftMaterial((draft) => ({ ...draft, folder }))}
               ariaLabel="Material folder"
               minWidth={0}

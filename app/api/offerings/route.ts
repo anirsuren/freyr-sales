@@ -15,7 +15,6 @@ import {
 import {
   stampMaterialAttribution,
   sanitizeMaterialFolderPath,
-  isFixedMaterialFolder,
   materialJourneyStages,
   MATERIAL_FORMATS,
   ACCESS_LEVELS,
@@ -75,7 +74,7 @@ export async function POST(req: Request) {
         !material.label?.trim() ||
         !validUrl ||
         !MATERIAL_FORMATS.includes(material.kind as never) ||
-        !isFixedMaterialFolder(material.folder) ||
+        !material.folder ||
         !stages.length ||
         !ACCESS_LEVELS.includes(material.accessLevel as never)
       ) {

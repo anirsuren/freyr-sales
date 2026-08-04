@@ -9,6 +9,7 @@ import {
   SP_COMPACT_SIZE,
   useSearchPriority,
 } from "@/components/ui/SearchPriority";
+import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 
 export type ColorOption = {
@@ -16,6 +17,8 @@ export type ColorOption = {
   label: string;
   color?: string; // dot / accent colour; omit for the "all" option
   icon?: LucideIcon;
+  /** Render a real person avatar instead of a generic icon or colour dot. */
+  avatarName?: string;
   description?: string;
   badge?: string;
   badgeColor?: string;
@@ -185,6 +188,16 @@ export function ColorSelect({
     solo?: boolean;
   }) => {
     const Icon = o.icon;
+    if (o.avatarName)
+      return (
+        <Avatar
+          name={o.avatarName}
+          className={cn(
+            "shrink-0",
+            prominent ? "h-8 w-8 text-[10px]" : "h-5 w-5 text-[7px]"
+          )}
+        />
+      );
     // A value that reads better as itself than as a glyph ("12 / page" → "12").
     if (solo && o.short)
       return (
@@ -544,7 +557,12 @@ export function MultiColorSelect({
           {/* This leading slot is always 20px wide. Swapping an unrestricted
               icon for one/two/three selection dots cannot move the label. */}
           <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-            {picked.length === 1 && picked[0].icon ? (
+            {picked.length === 1 && picked[0].avatarName ? (
+              <Avatar
+                name={picked[0].avatarName}
+                className="h-5 w-5 shrink-0 text-[7px]"
+              />
+            ) : picked.length === 1 && picked[0].icon ? (
               <span
                 className="flex h-5 w-5 items-center justify-center rounded-md"
                 style={{
@@ -668,7 +686,12 @@ export function MultiColorSelect({
                 >
                   {on && <Check size={11} strokeWidth={3} />}
                 </span>
-                {Icon ? (
+                {o.avatarName ? (
+                  <Avatar
+                    name={o.avatarName}
+                    className="h-5 w-5 shrink-0 text-[7px]"
+                  />
+                ) : Icon ? (
                   <span
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
                     style={{

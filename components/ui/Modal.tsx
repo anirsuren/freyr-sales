@@ -16,6 +16,7 @@ export function Modal({
   size = "default",
   actions,
   dialogClassName,
+  stacked = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -30,6 +31,9 @@ export function Modal({
   /** Optional sizing for a specific workflow that should not resize as its
    *  internal panels open and close. */
   dialogClassName?: string;
+  /** A focused dialog opened from another dialog. It stays above the parent
+   *  and owns keyboard handling until it closes. */
+  stacked?: boolean;
 }) {
   // Portal to <body> so the fixed overlay always covers the whole viewport —
   // if a parent has a CSS transform (e.g. a tab animation), a non-portaled
@@ -64,6 +68,7 @@ export function Modal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      if (stacked) e.stopImmediatePropagation();
       if (e.key === "Escape") {
         onClose();
         return;
@@ -95,14 +100,14 @@ export function Modal({
         (e.shiftKey ? last : first).focus();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    window.addEventListener("keydown", onKey, stacked);
+    return () => window.removeEventListener("keydown", onKey, stacked);
+  }, [open, onClose, stacked]);
 
   if (!open || !mounted) return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-[95] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 backdrop-in"
+      className={`fixed inset-0 ${stacked ? "z-[105] bg-black/25" : "z-[95] bg-black/40"} flex items-center justify-center backdrop-blur-sm p-4 backdrop-in`}
       onClick={onClose}
     >
       <div

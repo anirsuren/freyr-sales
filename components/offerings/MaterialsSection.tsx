@@ -717,7 +717,7 @@ export function MaterialsSection({
                             ><Download size={14} strokeWidth={1.9} /></button>
                           </Tooltip>
                         )}
-                        {canEdit && offeringId && <EditMaterialButton offeringId={offeringId} material={material} materials={materials} />}
+                        {canEdit && offeringId && <EditMaterialButton offeringId={offeringId} material={material} materials={materials} materialFolders={materialFolders} />}
                         {canEdit && offeringId && (
                           <Tooltip label="Remove material" side="top">
                             <button
@@ -988,6 +988,7 @@ export function MaterialsSection({
                       offeringId={offeringId}
                       material={material}
                       materials={materials}
+                      materialFolders={materialFolders}
                     />
                   )}
                   {canEdit && offeringId && (

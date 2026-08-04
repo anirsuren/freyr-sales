@@ -94,6 +94,7 @@ export default async function EditOfferingPage({
             // Preserve server-owned material identity and every existing tag.
             // Dropping IDs made a brief-only save look like 25 brand-new files.
             materials: o.materials.map((material) => ({ ...material })),
+            materialFolders: o.materialFolders ?? [],
           }}
           customerTypes={listCustomerTypes()}
           markets={listMarkets()}
