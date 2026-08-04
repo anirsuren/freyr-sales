@@ -8,10 +8,17 @@ export interface EmailResult {
   error?: string;
 }
 
+export type EmailAttachment = {
+  filename: string;
+  /** Base64-encoded file contents, without a data-URL prefix. */
+  content: string;
+};
+
 async function sendWithConfiguredProvider(input: {
   to: string;
   subject: string;
   body: string;
+  attachments?: EmailAttachment[];
 }): Promise<EmailResult> {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
@@ -35,6 +42,9 @@ async function sendWithConfiguredProvider(input: {
         to: [input.to],
         subject: input.subject,
         text: input.body,
+        ...(input.attachments?.length
+          ? { attachments: input.attachments }
+          : {}),
       }),
       signal: AbortSignal.timeout(8000),
     });
@@ -78,6 +88,7 @@ export async function sendTransactionalEmail(input: {
   to: string;
   subject: string;
   body: string;
+  attachments?: EmailAttachment[];
 }): Promise<EmailResult> {
   return sendWithConfiguredProvider(input);
 }

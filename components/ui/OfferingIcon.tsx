@@ -34,6 +34,11 @@ import {
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { OFFERING_CATALOGUE_ORDER } from "@/lib/offeringCatalogue";
+import {
+  SERVICE_CARD_COLOR_OPTIONS,
+  type ServiceCardIcon,
+  type ServiceCardStyle,
+} from "@/lib/serviceCardStyle";
 
 // A branded mark for an offering — a curated glyph on a deterministic gradient,
 // so every offering reads as its own product (Anir, Jul 8: "every offering
@@ -68,6 +73,25 @@ const GRADIENTS: [string, string][] = [
   ["#C026D3", "#E879F9"], // fuchsia
 ];
 
+export const SERVICE_CARD_ICON_COMPONENTS: Record<ServiceCardIcon, LucideIcon> = {
+  package: Package,
+  layers: Layers,
+  document: FileText,
+  checklist: ClipboardCheck,
+  workflow: Workflow,
+  database: Database,
+  shield: ShieldCheck,
+  globe: Globe,
+  chart: LineChart,
+  compass: Compass,
+  sparkles: Sparkle,
+  book: BookMarked,
+};
+
+const SERVICE_CARD_COLORS = new Map(
+  SERVICE_CARD_COLOR_OPTIONS.map((option) => [option.value, option] as const)
+);
+
 // Multiplier 71, not 31. Over Freyr's real 29-offering catalogue, 31 collided:
 // two offerings landed on the same icon+hue slot. 71 spreads all 29 across 29
 // distinct slots and uses all ten hues. Verified against the live catalogue, so
@@ -100,6 +124,21 @@ export function offeringMark(name: string): {
     seeded != null ? seeded * 3 : Math.floor(slot / ICONS.length);
   const [a, b] = GRADIENTS[hueIndex % GRADIENTS.length];
   return { icon: ICONS[slot % ICONS.length], color: a, light: b };
+}
+
+/** Resolve a card's saved appearance, falling back to its stable legacy mark. */
+export function serviceCardMark(name: string, style?: ServiceCardStyle): {
+  icon: LucideIcon;
+  color: string;
+  light: string;
+} {
+  const fallback = offeringMark(name);
+  const color = style?.color ? SERVICE_CARD_COLORS.get(style.color) : undefined;
+  return {
+    icon: style?.icon ? SERVICE_CARD_ICON_COMPONENTS[style.icon] : fallback.icon,
+    color: color?.color ?? fallback.color,
+    light: color?.light ?? fallback.light,
+  };
 }
 
 // An inline service/offering chip: glyph + name in the offering's own colour.

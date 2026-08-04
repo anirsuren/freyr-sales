@@ -166,7 +166,12 @@ export interface HydratedOffering {
   markets: Market[];
   materials: { id: string; kind: string; label: string; url: string }[];
   /** Who may edit this offering. Empty until someone is granted it. */
-  owners?: { memberId: string; name: string; status: "requested" | "owner" }[];
+  owners?: {
+    memberId: string;
+    name: string;
+    status: "requested" | "owner";
+    role?: string | null;
+  }[];
 }
 
 const MATERIAL_ICON: Record<string, typeof Video> = {
@@ -1105,9 +1110,9 @@ export function OfferingsBrowser({
           `flex-1`, so it simply absorbs the width they release. */}
       <SearchPriority
         query={q}
-        className="rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-nowrap items-center gap-2.5 overflow-hidden"
+        className="rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-nowrap items-center gap-2.5"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <PrioritySearchInput
           grow
           value={q}
@@ -1115,7 +1120,9 @@ export function OfferingsBrowser({
           placeholder="Search offerings…"
           ariaLabel="Search offerings"
           iconSize={16}
-          className="min-w-[180px] max-w-[260px] flex-1"
+          growMaxWidth={220}
+          growExpandedMaxWidth={400}
+          className="min-w-[140px] flex-1"
           iconClassName="left-3"
           inputClassName={`${inputCls} w-full pl-9 pr-3`}
         />
@@ -1131,7 +1138,11 @@ export function OfferingsBrowser({
           values={ctIds}
           onChange={(next) => setCtId(next.join(","))}
           minWidth={150}
-          className="w-[170px] shrink-0"
+          width={120}
+          maxWidth={160}
+          triggerLabel="Customer"
+          dense
+          className="shrink-0"
           allLabel="All customer types"
           ariaLabel="Filter by customer type"
           allIcon={Users}
@@ -1160,7 +1171,11 @@ export function OfferingsBrowser({
           values={catId ? catId.split(",") : []}
           onChange={(next) => setCatId(next.join(","))}
           minWidth={150}
-          className="w-[160px] shrink-0"
+          width={118}
+          maxWidth={190}
+          triggerLabel="Category"
+          dense
+          className="shrink-0"
           allLabel="All categories"
           ariaLabel="Filter by offering category"
           allIcon={SortLayers}
@@ -1177,7 +1192,11 @@ export function OfferingsBrowser({
           values={otId ? otId.split(",") : []}
           onChange={(next) => setOtId(next.join(","))}
           minWidth={150}
-          className="w-[140px] shrink-0"
+          width={94}
+          maxWidth={180}
+          triggerLabel="Type"
+          dense
+          className="shrink-0"
           allLabel="All types"
           ariaLabel="Filter by offering type"
           allIcon={SortPackage}
@@ -1194,7 +1213,11 @@ export function OfferingsBrowser({
           values={ownerIds}
           onChange={(next) => setOwnerId(next.join(","))}
           minWidth={160}
-          className="w-[180px] shrink-0"
+          width={102}
+          maxWidth={160}
+          triggerLabel="Owner"
+          dense
+          className="shrink-0"
           allLabel="All offering owners"
           ariaLabel="Filter by offering owner"
           allIcon={Crown}
@@ -1213,7 +1236,11 @@ export function OfferingsBrowser({
           values={gtmStatuses}
           onChange={(next) => setGtm(next.join(","))}
           minWidth={160}
-          className="w-[165px] shrink-0"
+          width={90}
+          maxWidth={140}
+          triggerLabel="GTM"
+          dense
+          className="shrink-0"
           allLabel="All GTM statuses"
           ariaLabel="Filter by go-to-market status"
           allIcon={Rocket}
@@ -1283,27 +1310,17 @@ export function OfferingsBrowser({
             </button>
           );
         })}
-        {/* Keep this control in the flex calculation even before a filter is
-            active. Mounting it only after the first selection shifted every
-            dropdown (and its open menu) sideways. Invisible means no visual
-            clutter; disabled + aria-hidden means it is not interactive. */}
-        <PriorityTooltip label="Clear filters">
-          <button
-            onClick={clearAll}
-            aria-label="Clear filters"
-            aria-hidden={!(activeFilters && !chipFiltersOnly)}
-            disabled={!(activeFilters && !chipFiltersOnly)}
-            tabIndex={activeFilters && !chipFiltersOnly ? 0 : -1}
-            className={`h-10 px-3 rounded-lg text-[13px] font-semibold text-text-secondary hover:text-blue-primary hover:bg-blue-light transition-colors inline-flex items-center ${
-              activeFilters && !chipFiltersOnly
-                ? ""
-                : "invisible pointer-events-none"
-            }`}
-          >
-            <X size={14} strokeWidth={2} />
-            <PriorityLabel gap="ml-1">Clear</PriorityLabel>
-          </button>
-        </PriorityTooltip>
+        {activeFilters && !chipFiltersOnly && (
+          <PriorityTooltip label="Clear filters">
+            <button
+              onClick={clearAll}
+              aria-label="Clear filters"
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          </PriorityTooltip>
+        )}
         </div>
         {/* Sort, view and export live IN the filter bar, two stacked control
             rows read as clutter (Anir, Jul 25: "everything should be on one
@@ -1317,14 +1334,16 @@ export function OfferingsBrowser({
             value={sort}
             onChange={setSort}
             ariaLabel="Sort offerings"
-            minWidth={148}
-            className="w-[158px] shrink-0"
+            minWidth={150}
+            dense
+            collapsible={false}
+            className="w-[150px] shrink-0"
             options={[
               { value: "default", label: "Recommended", color: "#0071E3", icon: SortSpark },
               { value: "name", label: "Name (A–Z)", color: "#7C3AED", icon: ArrowDownAZ },
               { value: "category", label: "By category", color: "#0F6E56", icon: SortLayers },
               { value: "type", label: "By type", color: "#F97316", icon: SortPackage },
-              { value: "mapped", label: "Most complete first", color: "#059669", icon: SortComplete },
+              { value: "mapped", label: "Most complete", color: "#059669", icon: SortComplete },
             ]}
           />
           {/* Tile vs Grid view toggle (Suren's live-meeting ask) */}
@@ -1339,14 +1358,13 @@ export function OfferingsBrowser({
               aria-label="Tile view"
               aria-pressed={view === "tile"}
               title="Tile view"
-              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
                 view === "tile"
                   ? "bg-white text-blue-primary shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
               <LayoutGrid size={14} strokeWidth={2} />
-              Cards
             </button>
             <button
               type="button"
@@ -1354,14 +1372,13 @@ export function OfferingsBrowser({
               aria-label="Grid view"
               aria-pressed={view === "grid"}
               title="Grid view"
-              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
                 view === "grid"
                   ? "bg-white text-blue-primary shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
               <Table2 size={14} strokeWidth={2} />
-              Table
             </button>
           </div>
           {sorted.length > 0 && (
@@ -1422,12 +1439,12 @@ export function OfferingsBrowser({
             <table className="w-full min-w-[1040px] table-fixed text-[13px] border-collapse">
               <thead>
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="px-4 py-2.5 w-[19%]">Offering</th>
-                  <th className="px-4 py-2.5 w-[21%]">Category</th>
+                  <th className="px-5 py-2.5 w-[25%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[18%]">Category</th>
                   <th className="px-4 py-2.5 w-[12%]">Type</th>
                   <th className="px-4 py-2.5 w-[11%]">Availability</th>
                   <th className="px-4 py-2.5 w-[14%]">Who it&apos;s for</th>
-                  <th className="px-4 py-2.5 w-[12%]">Revenue</th>
+                  <th className="px-4 py-2.5 w-[9%]">Revenue</th>
                   <th className="px-4 py-2.5 w-[6%]">Trend</th>
                   <th className="px-4 py-2.5 w-[5%] text-right">Materials</th>
                 </tr>
@@ -1478,47 +1495,70 @@ export function OfferingsBrowser({
                     (com?.customerCount ?? 0) - revCustomers.length,
                     0
                   );
+                  const grantedOwners = (o.owners || []).filter(
+                    (owner) => owner.status === "owner"
+                  );
                   return (
                     <tr
                       key={o.id}
                       className="border-b border-border-light last:border-0 align-middle hover:bg-[var(--surface)] transition-colors"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <Link
                           href={`/offerings/${o.id}`}
-                          className="group/name flex items-center gap-2.5"
+                          className="group/name -m-1.5 grid grid-cols-[40px_minmax(0,1fr)] items-start gap-3 rounded-xl p-1.5 transition-colors hover:bg-blue-light/60"
                         >
                           <OfferingIcon
                             name={o.offering_name}
-                            className="h-8 w-8 shrink-0"
+                            className="h-10 w-10 shrink-0 shadow-sm"
                           />
-                          <span className="min-w-0">
-                            <span className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-semibold text-text-primary group-hover/name:text-blue-primary">
-                                {o.offering_name}
-                              </span>
-                              <OwnerStrip
-                                owners={o.owners}
-                                offeringName={o.offering_name}
-                              />
+                          <span className="min-w-0 pt-0.5">
+                            <span className="block text-[13.5px] font-semibold leading-[1.35] text-text-primary transition-colors group-hover/name:text-blue-primary">
+                              {o.offering_name}
                             </span>
-                            {/* Same fan as the tiles: overlapped faces that
-                                slide apart on hover, each one openable. */}
-                            {o.poc && (
+                            {(grantedOwners.length > 0 || o.poc) && (
                               <span
-                                className="mt-1 flex min-w-0 items-center gap-1.5"
-                                aria-label={`POC: ${o.poc}`}
+                                className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <PersonFan
-                                  avatarClassName="h-[18px] w-[18px] text-[7px]"
-                                  overlap={-6}
-                                  people={parsePocs(o.poc).map((n) => ({
-                                    name: n,
-                                    role: "Service delivery POC",
-                                    context: o.offering_name,
-                                  }))}
-                                />
+                                {grantedOwners.length > 0 && (
+                                  <span
+                                    className="inline-flex items-center gap-1.5"
+                                    aria-label={`Owner: ${grantedOwners.map((owner) => owner.name).join(", ")}`}
+                                  >
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.08em] text-blue-primary">
+                                      Owner
+                                    </span>
+                                    <PersonFan
+                                      avatarClassName="h-5 w-5 text-[7px]"
+                                      overlap={-6}
+                                      people={grantedOwners.map((owner) => ({
+                                        name: owner.name,
+                                        role: owner.role || "Owns this offering",
+                                        context: o.offering_name,
+                                      }))}
+                                    />
+                                  </span>
+                                )}
+                                {o.poc && (
+                                  <span
+                                    className="inline-flex items-center gap-1.5"
+                                    aria-label={`POC: ${o.poc}`}
+                                  >
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
+                                      POC
+                                    </span>
+                                    <PersonFan
+                                      avatarClassName="h-5 w-5 text-[7px]"
+                                      overlap={-6}
+                                      people={parsePocs(o.poc).map((name) => ({
+                                        name,
+                                        role: "Service delivery POC",
+                                        context: o.offering_name,
+                                      }))}
+                                    />
+                                  </span>
+                                )}
                               </span>
                             )}
                           </span>
@@ -1527,7 +1567,7 @@ export function OfferingsBrowser({
                       <td className="px-4 py-3">
                         {o.offering_category && catColor ? (
                           <span
-                            className="semantic-color-pill inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1 text-[11.5px] font-semibold leading-tight"
+                            className="semantic-color-pill inline-flex max-w-full items-start gap-1.5 rounded-lg px-2 py-1 text-[11.5px] font-semibold leading-snug"
                             style={
                               {
                                 "--semantic-color": catColor,
@@ -1536,10 +1576,12 @@ export function OfferingsBrowser({
                             }
                           >
                             <span
-                              className="semantic-color-dot h-1.5 w-1.5 shrink-0 rounded-full"
+                              className="semantic-color-dot mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
                               style={{ "--semantic-color": catColor } as CSSProperties}
                             />
-                            <span className="min-w-0">{o.offering_category}</span>
+                            <span className="min-w-0 whitespace-normal break-words">
+                              {o.offering_category}
+                            </span>
                           </span>
                         ) : (
                           <span className="text-text-secondary">{o.offering_category || "-"}</span>

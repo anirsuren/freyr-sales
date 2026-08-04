@@ -325,7 +325,6 @@ export default async function OfferingsPage() {
         <Stat
           label="Fully detailed"
           value={mapped}
-          sub="sales material uploaded"
           icon={CheckCircle2}
         />
         <Stat

@@ -5,6 +5,7 @@ import {
   isWorkflowManager,
   verifiedWorkflowActor,
 } from "@/lib/workflowAuthorization";
+import { sendTransactionalEmail, type EmailAttachment } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,40 @@ function rowId(record: Pick<FeedbackRecord, "workspaceId" | "id">) {
   return `feedback:${record.workspaceId}:${record.id}`;
 }
 
+function screenshotAttachment(screenshot?: string): EmailAttachment[] {
+  if (!screenshot) return [];
+  const match = screenshot.match(
+    /^data:image\/(png|jpeg|webp);base64,([a-z0-9+/=]+)$/i
+  );
+  if (!match) return [];
+  const extension = match[1].toLowerCase() === "jpeg" ? "jpg" : match[1].toLowerCase();
+  return [{ filename: `freyr-feedback-${Date.now()}.${extension}`, content: match[2] }];
+}
+
+function feedbackEmailBody(record: FeedbackRecord): string {
+  return [
+    "A new Freyr Sales Intelligence feedback report was submitted.",
+    "",
+    `Type: ${record.type.replaceAll("_", " ")}`,
+    `Title: ${record.title}`,
+    `Reporter: ${record.userName}`,
+    `User ID: ${record.userId}`,
+    `Workspace ID: ${record.workspaceId}`,
+    `Submitted: ${record.createdAt}`,
+    `Page: ${record.pageUrl || record.route || "Unknown"}`,
+    `Route: ${record.route || "Unknown"}`,
+    `Data mode: ${record.dataMode}`,
+    `Screen: ${record.screen.width} × ${record.screen.height}`,
+    `Browser: ${record.userAgent || "Unknown"}`,
+    `Report ID: ${record.id}`,
+    `Screenshot: ${record.screenshot ? "Attached" : "Not available"}`,
+    "",
+    "Description",
+    "-----------",
+    record.description,
+  ].join("\n");
+}
+
 export async function POST(req: NextRequest) {
   const actor = await verifiedWorkflowActor(req);
   if (!actor)
@@ -59,16 +94,16 @@ export async function POST(req: NextRequest) {
   const type = clean(body?.type, 40) as FeedbackRecord["type"];
   const title = clean(body?.title, 160);
   const description = clean(body?.description, 5000);
-  const screenshot = clean(body?.screenshot, 2_800_000);
+  const rawScreenshot = typeof body?.screenshot === "string" ? body.screenshot.trim() : "";
+  if (rawScreenshot.length > 2_800_000)
+    return NextResponse.json({ error: "The screenshot is too large (2MB maximum)." }, { status: 413 });
+  const screenshot = rawScreenshot;
   if (!["bug", "product_feedback", "feature_request", "question"].includes(type))
     return NextResponse.json({ error: "Choose a feedback type." }, { status: 400 });
   if (!title || !description)
     return NextResponse.json({ error: "Add a title and description." }, { status: 400 });
   if (screenshot && !/^data:image\/(png|jpeg|webp);base64,/i.test(screenshot))
     return NextResponse.json({ error: "The attachment must be a PNG, JPEG, or WebP image." }, { status: 400 });
-  if (screenshot.length > 2_800_000)
-    return NextResponse.json({ error: "The screenshot is too large (2MB maximum)." }, { status: 413 });
-
   const rawScreen = body?.screen && typeof body.screen === "object"
     ? body.screen as Record<string, unknown>
     : {};
@@ -104,7 +139,35 @@ export async function POST(req: NextRequest) {
   } else {
     localFeedback.push(record);
   }
-  return NextResponse.json({ ok: true, id: record.id });
+
+  const recipient =
+    process.env.FEEDBACK_RECIPIENT_EMAIL?.trim() ||
+    "anir@auctalai.com";
+  const emailResult = await sendTransactionalEmail({
+    to: recipient,
+    subject: `[Freyr feedback] ${record.type.replaceAll("_", " ")}: ${record.title.replace(/\s+/g, " ")}`,
+    body: feedbackEmailBody(record),
+    attachments: screenshotAttachment(record.screenshot),
+  });
+  if (!emailResult.ok) {
+    return NextResponse.json(
+      {
+        error: emailResult.skipped
+          ? `Feedback was saved, but email delivery to ${recipient} is not configured.`
+          : `Feedback was saved, but the email to ${recipient} could not be delivered.`,
+        id: record.id,
+        saved: true,
+      },
+      { status: 503 }
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    id: record.id,
+    deliveredTo: recipient,
+    delivery: emailResult.channel,
+  });
 }
 
 export async function GET(req: NextRequest) {

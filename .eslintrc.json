@@ -1,6 +1,11 @@
 {
   "extends": ["next/core-web-vitals", "next/typescript"],
-  "ignorePatterns": ["next-env.d.ts", ".next/**", "scripts/**"],
+  "ignorePatterns": [
+    "next-env.d.ts",
+    ".next/**",
+    "scripts/**",
+    "public/pdf.worker.min.mjs"
+  ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-require-imports": "off",

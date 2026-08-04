@@ -9,6 +9,11 @@ import {
   canonicalMaterialFolder,
   type OfferingMaterial,
 } from "./offeringMaterials";
+import {
+  normalizeServiceCardStyles,
+  type ServiceCardStyle,
+} from "./serviceCardStyle";
+export type { ServiceCardStyle } from "./serviceCardStyle";
 export {
   MATERIAL_META,
   JOURNEY_STAGES,
@@ -77,6 +82,10 @@ export interface Offering {
   offering_category: string; // the offering category name (Suren's Jun 27 video)
   offering_name: string;
   offering_description: string;
+  /** Optional, index-aligned appearance choices for the service cards parsed
+   *  from `offering_description`. Missing entries keep the deterministic
+   *  icon and colour the card has always used. */
+  service_card_styles?: ServiceCardStyle[];
   current_availability: string;
   future_availability: string; // "Availability comments" in the UI
   poc: string; // SME / service-delivery POC named on Suren's master sheet
@@ -1927,6 +1936,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     offering_name: data.offering_name || "Untitled offering",
     contacts: data.contacts ?? [],
     offering_description: normalizeOfferingDescription(data.offering_description),
+    service_card_styles: normalizeServiceCardStyles(data.service_card_styles),
     current_availability: data.current_availability || "",
     future_availability: data.future_availability || "",
     poc: data.poc || "",
@@ -1951,14 +1961,23 @@ export function updateOffering(
     ? data.materials.map((m) => ({ ...m, id: m.id || rid("m") }))
     : activeStore().offerings[i].materials;
   const normalizedData =
-    data.offering_description === undefined
-      ? data
-      : {
-          ...data,
-          offering_description: normalizeOfferingDescription(
-            data.offering_description
-          ),
-        };
+    {
+      ...data,
+      ...(data.offering_description === undefined
+        ? {}
+        : {
+            offering_description: normalizeOfferingDescription(
+              data.offering_description
+            ),
+          }),
+      ...(data.service_card_styles === undefined
+        ? {}
+        : {
+            service_card_styles: normalizeServiceCardStyles(
+              data.service_card_styles
+            ),
+          }),
+    };
   activeStore().offerings[i] = {
     ...activeStore().offerings[i],
     ...normalizedData,

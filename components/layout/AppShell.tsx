@@ -263,6 +263,7 @@ export function AppShell({
               onMenuClick={() => setMobileNavOpen(true)}
               onAgentToggle={toggleAgent}
               agentActive={visibleAgentOpen && !visibleAgentHidden}
+              feedbackAction={<FeedbackButton dataMode={dataMode} />}
             />
             {fullBleed ? (
               // key=pathname re-mounts so full-bleed pages (session detail, agent,
@@ -287,7 +288,14 @@ export function AppShell({
                 {/* key=pathname re-mounts on navigation so every page fades/rises
                     in, one place fixes "no animation when I click X" everywhere
                     (Suren, repeatedly). Full-bleed pages animate separately. */}
-                <div key={pathname} className="p-8 page-in">{children}</div>
+                {/* Global bottom safe-area for the floating Freyr AI bubble.
+                    It belongs to the one shared page scroller so every normal
+                    page and every tab can move its final row fully above the
+                    bottom-right control instead of fixing spacing screen by
+                    screen. */}
+                <div key={pathname} className="p-8 pb-28 page-in">
+                  {children}
+                </div>
               </main>
             )}
           </div>
@@ -323,7 +331,6 @@ export function AppShell({
           offeringsOnly={offeringsOnly}
           autoStart={approvalEnabled}
         />
-        <FeedbackButton dataMode={dataMode} />
         <AutoTruncationTooltip />
       </ToastProvider>
       </TimeZoneProvider>

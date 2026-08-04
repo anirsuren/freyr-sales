@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Check, type LucideIcon } from "lucide-react";
 import {
   PriorityLabel,
@@ -27,6 +28,52 @@ export type ColorOption = {
 /** Shared motion for the compress/expand — see components/ui/SearchPriority. */
 const SP_MOTION =
   "duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
+
+type FloatingMenuStyle = CSSProperties & {
+  left: number;
+  width: number;
+  maxHeight: number;
+};
+
+function floatingMenuStyle(
+  trigger: DOMRect,
+  desiredWidth: number,
+  minimumRoom: number
+): FloatingMenuStyle {
+  const edge = 12;
+  const gap = 6;
+  const width = Math.max(
+    1,
+    Math.min(desiredWidth, window.innerWidth - edge * 2)
+  );
+  const left =
+    trigger.left + width <= window.innerWidth - edge
+      ? Math.max(edge, trigger.left)
+      : Math.max(edge, trigger.right - width);
+  const roomBelow = window.innerHeight - trigger.bottom - edge;
+  const roomAbove = trigger.top - edge;
+  const opensUp = roomBelow < minimumRoom && roomAbove > roomBelow;
+  const maxHeight = Math.max(
+    72,
+    Math.min(300, Math.floor((opensUp ? roomAbove : roomBelow) - gap))
+  );
+
+  return opensUp
+    ? {
+        position: "fixed",
+        left,
+        bottom: window.innerHeight - trigger.top + gap,
+        width,
+        maxHeight,
+      }
+    : {
+        position: "fixed",
+        left,
+        top: trigger.bottom + gap,
+        width,
+        maxHeight,
+      };
+}
 
 function iconForeground(color?: string): string {
   if (!color) return "#FFFFFF";
@@ -58,6 +105,8 @@ export function ColorSelect({
   ariaLabel,
   collapsible = true,
   compactTrigger = false,
+  triggerLabel,
+  dense = false,
 }: {
   value: string;
   options: ColorOption[];
@@ -69,12 +118,15 @@ export function ColorSelect({
   collapsible?: boolean;
   /** Keep detailed descriptions in the menu while using a standard one-line trigger. */
   compactTrigger?: boolean;
+  /** A shorter stable label for dense toolbars, while the menu keeps full option labels. */
+  triggerLabel?: string;
+  /** Reduce internal padding/gaps without hiding the visible label. */
+  dense?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [menuAlign, setMenuAlign] = useState<"left" | "right">("left");
-  const [menuVertical, setMenuVertical] = useState<"up" | "down">("down");
-  const [menuMaxHeight, setMenuMaxHeight] = useState(300);
+  const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? options[0];
   const detailed = options.some((o) => o.description);
   const showDetailedTrigger = detailed && !compactTrigger;
@@ -93,16 +145,7 @@ export function ColorSelect({
     const rect = ref.current?.getBoundingClientRect();
     if (rect) {
       const desiredWidth = detailed ? 304 : Math.max(rect.width, 240);
-      const availableRight = window.innerWidth - rect.left - 12;
-      setMenuAlign(availableRight >= desiredWidth ? "left" : "right");
-
-      const roomBelow = window.innerHeight - rect.bottom - 12;
-      const roomAbove = rect.top - 12;
-      const opensUp = roomBelow < 190 && roomAbove > roomBelow;
-      setMenuVertical(opensUp ? "up" : "down");
-      setMenuMaxHeight(
-        Math.max(150, Math.min(300, Math.floor(opensUp ? roomAbove : roomBelow)))
-      );
+      setMenuStyle(floatingMenuStyle(rect, desiredWidth, 190));
     }
     setOpen(true);
   };
@@ -110,14 +153,23 @@ export function ColorSelect({
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (
+        ref.current &&
+        !ref.current.contains(target) &&
+        !menuRef.current?.contains(target)
+      )
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onResize = () => setOpen(false);
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
     };
   }, [open]);
 
@@ -177,7 +229,10 @@ export function ColorSelect({
     <div
       ref={ref}
       className={cn("relative transition-[min-width]", SP_MOTION, className)}
-      style={{ minWidth: compact ? SP_COMPACT_SIZE : minWidth }}
+      style={{
+        width: compact ? SP_COMPACT_SIZE : undefined,
+        minWidth: compact ? SP_COMPACT_SIZE : minWidth,
+      }}
     >
       <PriorityTooltip label={fullLabel} className="w-full">
         <button
@@ -193,7 +248,11 @@ export function ColorSelect({
             SP_MOTION,
             showDetailedTrigger
               ? "h-12 gap-2.5 px-2.5"
-              : cn("h-10 text-[13px] overflow-hidden", compact ? "px-0" : "px-3")
+              : cn(
+                  "h-10 overflow-hidden",
+                  dense ? "text-[12px]" : "text-[13px]",
+                  compact ? "px-0" : dense ? "px-2" : "px-3"
+                )
           )}
         >
           {selected && <Dot o={selected} prominent={showDetailedTrigger} solo={compact} />}
@@ -201,14 +260,14 @@ export function ColorSelect({
             collapsed={compact}
             // `detailed` keeps the button's own flex gap; the compact shape
             // trades that gap for a collapsing margin so the glyph centres.
-            gap={showDetailedTrigger ? false : "ml-2"}
+            gap={showDetailedTrigger ? false : dense ? "ml-1.5" : "ml-2"}
             className="min-w-0 text-left"
             // Same as `flex-1`, with the grow factor animated rather than
             // switched, so the slack drains smoothly instead of vanishing.
             style={{ flexGrow: compact ? 0 : 1, flexShrink: 1, flexBasis: "0%" }}
           >
             <span className={cn("block truncate", showDetailedTrigger && "text-[12.5px] font-semibold leading-tight")}>
-              {selected?.label}
+              {triggerLabel || selected?.label}
             </span>
             {showDetailedTrigger && selected?.description && (
               <span className="mt-0.5 block truncate text-[9.5px] leading-tight text-text-tertiary">
@@ -233,10 +292,10 @@ export function ColorSelect({
               </span>
             </PriorityLabel>
           )}
-          <PriorityLabel collapsed={compact} gap={detailed ? false : "ml-2"} className="shrink-0">
+          <PriorityLabel collapsed={compact} gap={detailed ? false : dense ? "ml-1.5" : "ml-2"} className="shrink-0">
             <span className={cn("flex items-center justify-center", detailed && "w-7 h-7 rounded-md bg-surface")}>
               <ChevronDown
-                size={15}
+                size={dense ? 13 : 15}
                 strokeWidth={2}
                 className={cn("text-text-tertiary transition-transform duration-150", open && "rotate-180")}
               />
@@ -245,20 +304,16 @@ export function ColorSelect({
         </button>
       </PriorityTooltip>
 
-      {open && (
+      {open && menuStyle && typeof document !== "undefined" && createPortal(
         <div
+          ref={menuRef}
           role="listbox"
           aria-label={ariaLabel}
           className={cn(
-            "absolute z-40 min-w-full w-max overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in",
-            menuAlign === "left" ? "left-0" : "right-0",
-            menuVertical === "up" ? "bottom-full mb-1.5" : "top-full mt-1.5",
-            detailed ? "w-[304px] p-2" : "p-1.5"
+            "z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in",
+            detailed ? "p-2" : "p-1.5"
           )}
-          style={{
-            maxWidth: "min(360px, calc(100vw - 24px))",
-            maxHeight: menuMaxHeight,
-          }}
+          style={menuStyle}
         >
           {options.map((o) => {
             const on = o.value === value;
@@ -321,7 +376,8 @@ export function ColorSelect({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -342,6 +398,11 @@ export function MultiColorSelect({
   allIcon: AllIcon,
   allColor = "#0071E3",
   collapsible = true,
+  triggerLabel,
+  width,
+  maxWidth,
+  dense = false,
+  fluid = false,
 }: {
   values: string[];
   options: ColorOption[];
@@ -357,33 +418,51 @@ export function MultiColorSelect({
   allColor?: string;
   /** Opt out of the search-priority compression (default: follow the toolbar). */
   collapsible?: boolean;
+  /** Short stable field name used in dense toolbars, e.g. "Customer". */
+  triggerLabel?: string;
+  /** Fixed trigger width for a dense toolbar. */
+  width?: number;
+  /** Let a selected value widen the trigger up to this limit. */
+  maxWidth?: number;
+  /** Reduce internal padding/gaps without hiding the visible label. */
+  dense?: boolean;
+  /** Fill the caller's grid column instead of sizing from the label. */
+  fluid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [menuAlign, setMenuAlign] = useState<"left" | "right">("left");
-  const [menuVertical, setMenuVertical] = useState<"up" | "down">("down");
-  const [menuMaxHeight, setMenuMaxHeight] = useState(300);
+  const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const searchHasPriority = useSearchPriority();
   const compact = collapsible && searchHasPriority;
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (
+        ref.current &&
+        !ref.current.contains(target) &&
+        !menuRef.current?.contains(target)
+      )
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onResize = () => setOpen(false);
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
     };
   }, [open]);
 
   const picked = options.filter((o) => values.includes(o.value));
   const summary =
     picked.length === 0
-      ? allLabel
+      ? triggerLabel || allLabel
       : picked.length === 1
         ? picked[0].label
         : `${picked.length} selected`;
@@ -396,10 +475,15 @@ export function MultiColorSelect({
   // but make it wide enough for "All customer types" / "All categories" at
   // rest. Multi-selection summaries stay deliberately short instead of
   // growing this track.
-  const triggerWidth = Math.max(
-    minWidth,
-    Math.ceil(allLabel.length * 7.2 + 70)
-  );
+  const baseTriggerWidth =
+    width ?? Math.max(minWidth, Math.ceil(allLabel.length * 7.2 + 70));
+  const triggerWidth =
+    width !== undefined && maxWidth !== undefined
+      ? Math.min(
+          maxWidth,
+          Math.max(baseTriggerWidth, Math.ceil(summary.length * 6.2 + 61))
+        )
+      : baseTriggerWidth;
   // Reserve the menu's final width before it opens. A selected row becomes
   // semibold; when `w-max` measured that live content, selecting the longest
   // label widened the menu by a few pixels and shifted every checkbox left.
@@ -424,23 +508,7 @@ export function MultiColorSelect({
     }
     const trigger = ref.current?.getBoundingClientRect();
     if (trigger) {
-      const viewportWidth = window.innerWidth;
-      const renderedMenuWidth = Math.min(menuWidth, viewportWidth - 24);
-      // Prefer matching the menu's left edge to the trigger. Near the right
-      // viewport edge, pin its right edge instead so the entire list remains
-      // visible. The alignment is chosen before mount, so it never jumps.
-      setMenuAlign(
-        trigger.left + renderedMenuWidth <= viewportWidth - 12
-          ? "left"
-          : "right"
-      );
-      const roomBelow = window.innerHeight - trigger.bottom - 12;
-      const roomAbove = trigger.top - 12;
-      const openUp = roomBelow < 180 && roomAbove > roomBelow;
-      setMenuVertical(openUp ? "up" : "down");
-      setMenuMaxHeight(
-        Math.max(48, Math.min(300, (openUp ? roomAbove : roomBelow) - 6))
-      );
+      setMenuStyle(floatingMenuStyle(trigger, menuWidth, 180));
     }
     setOpen(true);
   };
@@ -455,8 +523,8 @@ export function MultiColorSelect({
       // The summary already truncates and carries a count, so growing the
       // control adds no information and only moves the interaction targets.
       style={{
-        width: compact ? SP_COMPACT_SIZE : triggerWidth,
-        minWidth: compact ? SP_COMPACT_SIZE : triggerWidth,
+        width: compact ? SP_COMPACT_SIZE : fluid ? "100%" : triggerWidth,
+        minWidth: compact ? SP_COMPACT_SIZE : fluid ? 0 : triggerWidth,
       }}
     >
       <PriorityTooltip label={selectionLabel} className="w-full">
@@ -467,15 +535,29 @@ export function MultiColorSelect({
           aria-expanded={open}
           aria-label={ariaLabel ? `${ariaLabel}. ${selectionLabel}` : selectionLabel}
           className={cn(
-            "w-full h-10 flex items-center justify-center overflow-hidden text-[13px] bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow,padding]",
+            "w-full h-10 flex items-center justify-center overflow-hidden bg-white border border-border-light rounded-lg text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-[border-color,box-shadow,padding]",
             SP_MOTION,
-            compact ? "px-0" : "px-3"
+            dense ? "text-[12px]" : "text-[13px]",
+            compact ? "px-0" : dense ? "px-2" : "px-3"
           )}
         >
           {/* This leading slot is always 20px wide. Swapping an unrestricted
               icon for one/two/three selection dots cannot move the label. */}
           <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-            {picked.length > 0 ? (
+            {picked.length === 1 && picked[0].icon ? (
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-md"
+                style={{
+                  background: picked[0].color || "#8E98A8",
+                  color: iconForeground(picked[0].color || "#8E98A8"),
+                }}
+              >
+                {(() => {
+                  const PickedIcon = picked[0].icon;
+                  return PickedIcon ? <PickedIcon size={12} strokeWidth={2.1} /> : null;
+                })()}
+              </span>
+            ) : picked.length > 0 ? (
               <span className="flex items-center justify-center">
                 {picked.slice(0, 3).map((o, i) => (
                   <span
@@ -503,14 +585,15 @@ export function MultiColorSelect({
           </span>
           <PriorityLabel
             collapsed={compact}
+            gap={dense ? "ml-1.5" : "ml-2"}
             className="min-w-0 text-left"
             style={{ flexGrow: compact ? 0 : 1, flexShrink: 1, flexBasis: "0%" }}
           >
             <span className="block truncate">{summary}</span>
           </PriorityLabel>
-          <PriorityLabel collapsed={compact} className="shrink-0">
+          <PriorityLabel collapsed={compact} gap={dense ? "ml-1.5" : "ml-2"} className="shrink-0">
             <ChevronDown
-              size={15}
+              size={dense ? 13 : 15}
               strokeWidth={2}
               className={cn("text-text-tertiary transition-transform duration-150", open && "rotate-180")}
             />
@@ -518,23 +601,16 @@ export function MultiColorSelect({
         </button>
       </PriorityTooltip>
 
-      {open && (
+      {open && menuStyle && typeof document !== "undefined" && createPortal(
         <div
+          ref={menuRef}
           role="listbox"
           aria-multiselectable="true"
           aria-label={ariaLabel}
           className={cn(
-            "absolute z-40 overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in",
-            menuVertical === "down" && "mt-1.5"
+            "z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in"
           )}
-          style={{
-            width: `min(${menuWidth}px, calc(100vw - 24px))`,
-            maxWidth: "calc(100vw - 24px)",
-            maxHeight: menuMaxHeight,
-            left: menuAlign === "left" ? 0 : "auto",
-            right: menuAlign === "right" ? 0 : "auto",
-            bottom: menuVertical === "up" ? "calc(100% + 6px)" : "auto",
-          }}
+          style={menuStyle}
         >
           {/* "All" clears every pick — reads as the unrestricted state. */}
           <button
@@ -609,7 +685,8 @@ export function MultiColorSelect({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

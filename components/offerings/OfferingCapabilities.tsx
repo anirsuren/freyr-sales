@@ -7,7 +7,8 @@ import {
   renderBriefInline,
   stripBriefFormatting,
 } from "@/components/offerings/BriefText";
-import { offeringMark } from "@/components/ui/OfferingIcon";
+import { offeringMark, serviceCardMark } from "@/components/ui/OfferingIcon";
+import type { ServiceCardStyle } from "@/lib/serviceCardStyle";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -252,12 +253,18 @@ export function parseCapabilities(text: string): ParsedBrief {
 // The card
 // ---------------------------------------------------------------------------
 
-function CapabilityCard({ item }: { item: Capability }) {
+function CapabilityCard({
+  item,
+  style,
+}: {
+  item: Capability;
+  style?: ServiceCardStyle;
+}) {
   // Every tile carries a colour AND an icon, never flat gray — offeringMark is
   // the app's stable name→glyph+hue map, the same one the offering cards and
   // ServiceTag use, so a capability reads as the mini-offering it is.
   const displayTitle = stripBriefFormatting(item.title);
-  const { icon: Icon, color, light } = offeringMark(displayTitle);
+  const { icon: Icon, color, light } = serviceCardMark(displayTitle, style);
   const many = item.subItems.length >= 3;
   // Titles run from three words ("Building QMS") to a full sentence that wraps
   // onto two lines, so a row used to pair a squat card with a tall one and the
@@ -345,10 +352,12 @@ const PREVIEW = 6;
 export function OfferingCapabilities({
   text,
   offeringName,
+  styles = [],
   className,
 }: {
   text: string;
   offeringName: string;
+  styles?: ServiceCardStyle[];
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -362,8 +371,13 @@ export function OfferingCapabilities({
   const collapsible = parsed.count > PREVIEW;
   const limit = !collapsible || open ? parsed.count : PREVIEW;
 
+  let styleIndex = 0;
+  const styledGroups = parsed.groups.map((group) => ({
+    ...group,
+    items: group.items.map((item) => ({ item, style: styles[styleIndex++] })),
+  }));
   let seen = 0;
-  const visibleGroups = parsed.groups.map((group) => {
+  const visibleGroups = styledGroups.map((group) => {
     const items = group.items.filter(() => seen++ < limit);
     return { title: group.title, items };
   });
@@ -415,8 +429,12 @@ export function OfferingCapabilities({
                   makes `h-full` on the card mean "as tall as my neighbour",
                   spelled out so a later refactor can't quietly drop it. */}
               <ul className="grid grid-cols-1 items-stretch gap-2.5 md:grid-cols-2">
-                {group.items.map((item, ii) => (
-                  <CapabilityCard key={`${ii}-${item.title}`} item={item} />
+                {group.items.map(({ item, style }, ii) => (
+                  <CapabilityCard
+                    key={`${ii}-${item.title}`}
+                    item={item}
+                    style={style}
+                  />
                 ))}
               </ul>
             </div>

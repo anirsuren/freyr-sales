@@ -32,18 +32,36 @@ import {
   Check,
   CircleCheck,
   CircleHelp,
+  Info,
+  AlertCircle,
+  X,
   Clock,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
-import type { CustomerType, Market, OfferingCategory } from "@/lib/offerings";
+import type {
+  CustomerType,
+  Market,
+  OfferingCategory,
+  ServiceCardStyle,
+} from "@/lib/offerings";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
-import { offeringMark } from "@/components/ui/OfferingIcon";
+import {
+  offeringMark,
+  serviceCardMark,
+  SERVICE_CARD_ICON_COMPONENTS,
+} from "@/components/ui/OfferingIcon";
+import {
+  SERVICE_CARD_COLOR_OPTIONS,
+  SERVICE_CARD_ICON_OPTIONS,
+} from "@/lib/serviceCardStyle";
 import { parseCapabilities } from "@/components/offerings/OfferingCapabilities";
+import { stripBriefFormatting } from "@/components/offerings/BriefText";
 import { cn } from "@/lib/utils";
 import { PeoplePicker, type PickablePerson } from "@/components/ui/PeoplePicker";
 import { pocNames } from "@/lib/pocNames";
@@ -62,22 +80,13 @@ import {
   materialFolderLabel,
   canonicalMaterialFolder,
   materialJourneyStages,
+  type OfferingMaterial,
   type AccessLevel,
   type JourneyStage,
   type MaterialKind,
 } from "@/lib/offeringMaterials";
 
-interface MaterialRow {
-  kind: MaterialKind;
-  label: string;
-  url: string;
-  /** The optional one-line note (item 10). "" means the owner cleared it. */
-  description?: string;
-  journeyStage?: JourneyStage;
-  journeyStages?: JourneyStage[];
-  accessLevel?: AccessLevel;
-  folder?: string;
-}
+type MaterialRow = Omit<OfferingMaterial, "id"> & { id?: string };
 
 // CR-3 tag dropdowns for each material row — colour-coded, matching the
 // AddMaterialButton popup so tagging feels the same everywhere.
@@ -119,6 +128,12 @@ function normalizeUrl(u: string) {
   const t = u.trim();
   if (!t || /^https?:\/\//i.test(t) || t.startsWith("/")) return t;
   return `https://${t}`;
+}
+
+function readableOfferingSaveError(message: string): string {
+  if (/every new material needs/i.test(message))
+    return "One or more sales materials is incomplete. Open Sales materials and add its name, file or link, format, fixed folder, buyer stage, and viewing access.";
+  return message || "The offering could not be saved. Review the highlighted section and try again.";
 }
 
 const FIELD =
@@ -251,23 +266,29 @@ function buildAvailability(mode: AvailMode, month: string, year: string) {
 type CapRow = {
   kind: "item" | "section";
   text: string;
+  style?: ServiceCardStyle;
   listStyle?: "bullet" | "number";
   depth?: number;
   ordinal?: number;
 };
 
-function toRows(text: string): { intro: string; rows: CapRow[] } {
+function toRows(
+  text: string,
+  styles: ServiceCardStyle[] = []
+): { intro: string; rows: CapRow[] } {
   const parsed = parseCapabilities(text);
   // Plain prose has no rows to show — keep it whole as the opening line so
   // nothing a previous author wrote can be lost by opening this form.
   if (parsed.kind !== "capabilities") return { intro: parsed.text, rows: [] };
   const rows: CapRow[] = [];
+  let styleIndex = 0;
   for (const group of parsed.groups) {
     if (group.title) rows.push({ kind: "section", text: group.title });
     for (const item of group.items)
       rows.push({
         kind: "item",
         text: item.raw,
+        style: styles[styleIndex++],
         listStyle: item.listStyle,
         depth: item.depth,
         ordinal: item.ordinal,
@@ -299,6 +320,24 @@ function composeDescription(intro: string, rows: CapRow[]): string {
   }
   flush();
   return blocks.join("\n\n");
+}
+
+function serviceCardFields(text: string): { heading: string; description: string } {
+  const source = text.trim();
+  const labelled = source.match(/^\*\*([^*\n]{1,80}?):\*\*\s*([\s\S]*)$/);
+  if (labelled)
+    return {
+      heading: stripBriefFormatting(labelled[1]).trim(),
+      description: labelled[2].trim(),
+    };
+  return { heading: "", description: source };
+}
+
+function serviceCardText(heading: string, description: string): string {
+  const cleanHeading = heading.trim().replace(/:$/, "");
+  const cleanDescription = description.trim();
+  if (!cleanHeading) return cleanDescription;
+  return `**${cleanHeading}:**${cleanDescription ? ` ${cleanDescription}` : ""}`;
 }
 
 type BriefFormat = "bold" | "italic" | "underline" | "strike" | "heading" | "subheading" | "link" | "clear" | "bullets" | "numbers" | "indent" | "outdent";
@@ -557,33 +596,67 @@ function FormSection({
   title,
   hint,
   action,
+  defaultOpen = false,
   children,
 }: {
   icon: LucideIcon;
   title: string;
   hint: string;
   action?: React.ReactNode;
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const sectionSlug = sectionId(title);
+  const panelId = `${sectionSlug}-panel`;
+
   return (
     // NO overflow-hidden. It clipped every dropdown that opened inside the
     // card, which is why the POC picker's search bar was cut off (Anir, Jul
     // 28). The header carries its own top radius instead.
     <section
-      id={sectionId(title)}
+      id={sectionSlug}
       className="scroll-mt-24 rounded-xl border border-border-light bg-white shadow-card"
     >
-      <header className="flex items-start gap-3 rounded-t-[11px] border-b border-border-light bg-surface/60 px-4 py-3">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
-          <Icon size={15} strokeWidth={1.9} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[14px] font-semibold text-text-primary">{title}</h2>
-          <p className="mt-0.5 text-[11.5px] leading-snug text-text-tertiary">{hint}</p>
-        </div>
-        {action && <div className="shrink-0">{action}</div>}
+      <header
+        className={cn(
+          "flex items-center gap-3 rounded-[11px] bg-surface/60 px-4 py-3",
+          open && "rounded-b-none border-b border-border-light"
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className="group flex min-w-0 flex-1 items-start gap-3 text-left outline-none"
+        >
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary transition-colors group-hover:bg-blue-subtle/70">
+            <Icon size={15} strokeWidth={1.9} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span role="heading" aria-level={2} className="block text-[14px] font-semibold text-text-primary">
+              {title}
+            </span>
+            <span className="mt-0.5 block text-[11.5px] leading-snug text-text-tertiary">
+              {hint}
+            </span>
+          </span>
+          <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors group-hover:bg-white group-hover:text-blue-primary">
+            <ChevronDown
+              size={17}
+              strokeWidth={2}
+              className={cn("transition-transform duration-200", open && "rotate-180")}
+            />
+          </span>
+        </button>
+        {open && action && <div className="shrink-0">{action}</div>}
       </header>
-      <div className="space-y-3 p-4">{children}</div>
+      {open && (
+        <div id={panelId} className="space-y-3 p-4">
+          {children}
+        </div>
+      )}
     </section>
   );
 }
@@ -684,6 +757,7 @@ export function OfferingForm({
     offering_category?: string;
     offering_name?: string;
     offering_description?: string;
+    service_card_styles?: ServiceCardStyle[];
     current_availability?: string;
     future_availability?: string;
     poc?: string;
@@ -696,6 +770,7 @@ export function OfferingForm({
   const { toast } = useToast();
   const isEdit = !!offeringId;
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Adding a material opens a proper dialog. It used to append a blank row
   // straight into the list, so the "form" was a wall of half-filled rows
@@ -752,11 +827,17 @@ export function OfferingForm({
 
   // --- capability editor state ---------------------------------------------
   const seeded = useMemo(
-    () => toRows(initial?.offering_description ?? ""),
-    [initial?.offering_description]
+    () =>
+      toRows(
+        initial?.offering_description ?? "",
+        initial?.service_card_styles ?? []
+      ),
+    [initial?.offering_description, initial?.service_card_styles]
   );
   const [intro, setIntro] = useState(seeded.intro);
+  const introRef = useRef<HTMLTextAreaElement>(null);
   const [capRows, setCapRows] = useState<CapRow[]>(seeded.rows);
+  const [appearanceRow, setAppearanceRow] = useState<number | null>(null);
   /**
    * ADDING SOMETHING OPENS A POPUP. His standing rule, and this row was
    * breaking it: "Add capability" appended a blank input in the middle of an
@@ -769,21 +850,65 @@ export function OfferingForm({
    */
   const [addingCap, setAddingCap] = useState<null | CapRow["kind"]>(null);
   const [capDraft, setCapDraft] = useState("");
+  const [capDescriptionDraft, setCapDescriptionDraft] = useState("");
   // Formatting is the primary authoring experience. The structured service
   // card editor remains available for owners who prefer one row at a time.
-  const [pasteMode, setPasteMode] = useState(true);
+  // A structured brief renders as service cards on Overview, so open the same
+  // card-shaped editor by default. Plain prose still opens as a document.
+  const [pasteMode, setPasteMode] = useState(seeded.rows.length === 0);
   const [pasted, setPasted] = useState(
     composeDescription(seeded.intro, seeded.rows)
   );
   const description = pasteMode ? pasted : composeDescription(intro, capRows);
+  const serviceCardStyles = capRows
+    .filter((row) => row.kind === "item")
+    .map((row) => row.style ?? {});
+  while (
+    serviceCardStyles.length &&
+    !serviceCardStyles.at(-1)?.icon &&
+    !serviceCardStyles.at(-1)?.color
+  )
+    serviceCardStyles.pop();
   const capCount = capRows.filter((r) => r.kind === "item" && r.text.trim()).length;
+  const appearanceCard =
+    appearanceRow === null ? undefined : capRows[appearanceRow];
+  const appearanceFields = serviceCardFields(appearanceCard?.text ?? "");
+  const appearanceMark = serviceCardMark(
+    appearanceFields.heading || appearanceFields.description || "service",
+    appearanceCard?.style
+  );
+  const AppearanceIcon = appearanceMark.icon;
+  const appearanceAutomaticMark = offeringMark(
+    appearanceFields.heading || appearanceFields.description || "service"
+  );
+  const AppearanceAutomaticIcon = appearanceAutomaticMark.icon;
+
+  function updateAppearance(style: Partial<ServiceCardStyle>) {
+    if (appearanceRow === null) return;
+    setCapRows((rows) =>
+      rows.map((row, index) =>
+        index === appearanceRow
+          ? { ...row, style: { ...row.style, ...style } }
+          : row
+      )
+    );
+  }
+
+  // The opening overview is often several sentences. Keep the whole value in
+  // view instead of forcing the owner to scroll inside a two-line field.
+  useEffect(() => {
+    const field = introRef.current;
+    if (!field || pasteMode) return;
+    field.style.height = "auto";
+    field.style.height = `${field.scrollHeight}px`;
+  }, [intro, pasteMode]);
 
   function openPaste() {
     setPasted(composeDescription(intro, capRows));
     setPasteMode(true);
   }
   function openList() {
-    const next = toRows(pasted);
+    const next = toRows(pasted, serviceCardStyles);
     setIntro(next.intro);
     setCapRows(next.rows);
     setPasteMode(false);
@@ -836,17 +961,24 @@ export function OfferingForm({
   }, [offeringCategories, offeringCategory]);
   const [ctIds, setCtIds] = useState<string[]>(initial?.customer_type_ids ?? []);
   const [mktIds, setMktIds] = useState<string[]>(initial?.market_ids ?? []);
-  const [materials, setMaterials] = useState<MaterialRow[]>(
-    // Legacy rows without CR-3 tags get the default pairing here, visibly —
-    // what the dropdowns show is exactly what saving will persist.
-    (initial?.materials ?? []).map((m) => ({
-      ...m,
-      journeyStage: materialJourneyStages(m)[0] ?? "awareness",
-      journeyStages: materialJourneyStages(m).length ? materialJourneyStages(m) : ["awareness"],
-      folder: canonicalMaterialFolder(m as never),
-      accessLevel: m.accessLevel ?? "client_facing",
-    }))
+  const initialMaterials = useMemo<MaterialRow[]>(
+    () =>
+      // Legacy rows without CR-3 tags get the default pairing here, visibly —
+      // what the dropdowns show is exactly what saving will persist.
+      (initial?.materials ?? []).map((m) => ({
+        ...m,
+        journeyStage: materialJourneyStages(m)[0] ?? "awareness",
+        journeyStages: materialJourneyStages(m).length
+          ? materialJourneyStages(m)
+          : (["awareness"] as JourneyStage[]),
+        folder: canonicalMaterialFolder(m as never),
+        accessLevel: m.accessLevel ?? "client_facing",
+      })),
+    [initial?.materials]
   );
+  const [materials, setMaterials] = useState<MaterialRow[]>(initialMaterials);
+  const materialsChanged =
+    JSON.stringify(materials) !== JSON.stringify(initialMaterials);
   const hasOfferingChanges =
     !isEdit ||
     JSON.stringify({
@@ -854,6 +986,7 @@ export function OfferingForm({
       offeringCategory,
       offeringName,
       description,
+      serviceCardStyles,
       current,
       future,
       poc,
@@ -866,6 +999,7 @@ export function OfferingForm({
         offeringCategory: initial?.offering_category ?? "",
         offeringName: initial?.offering_name ?? "",
         description: composeDescription(seeded.intro, seeded.rows),
+        serviceCardStyles: initial?.service_card_styles ?? [],
         current: buildAvailability(
           initAvail.mode,
           initAvail.month,
@@ -875,13 +1009,7 @@ export function OfferingForm({
         poc: initial?.poc ?? "",
         ctIds: initial?.customer_type_ids ?? [],
         mktIds: initial?.market_ids ?? [],
-        materials: (initial?.materials ?? []).map((material) => ({
-          ...material,
-          journeyStage: materialJourneyStages(material).at(0) ?? "awareness",
-          journeyStages: materialJourneyStages(material).length ? materialJourneyStages(material) : ["awareness"],
-          folder: canonicalMaterialFolder(material as never),
-          accessLevel: material.accessLevel ?? "client_facing",
-        })),
+        materials: initialMaterials,
       });
 
   function toggle(list: string[], id: string) {
@@ -909,8 +1037,9 @@ export function OfferingForm({
   const availAccent = AVAIL_META[availMode].color;
 
   async function submit() {
+    setSaveError(null);
     if (!offeringName.trim()) {
-      toast("Give the offering a name first.", "error");
+      setSaveError("Give the offering a name first.");
       nameRef.current?.focus();
       nameRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
@@ -922,11 +1051,10 @@ export function OfferingForm({
         (m.label.trim() && !m.url.trim()) || (!m.label.trim() && m.url.trim())
     );
     if (partial) {
-      toast(
+      setSaveError(
         partial.label.trim()
           ? `Add a link for “${partial.label.trim()}”: or remove that material.`
-          : "Add a name for that material: or remove the empty link.",
-        "error"
+          : "Add a name for that material: or remove the empty link."
       );
       return;
     }
@@ -942,27 +1070,39 @@ export function OfferingForm({
             offering_category: offeringCategory,
             offering_name: offeringName,
             offering_description: description,
+            service_card_styles: serviceCardStyles,
             current_availability: current,
             future_availability: future,
             poc,
             customer_type_ids: ctIds,
             market_ids: mktIds,
-            materials: materials
-              .filter((m) => m.label.trim() && m.url.trim())
-              .map((m) => ({ ...m, url: normalizeUrl(m.url) })),
+            ...(!isEdit || materialsChanged
+              ? {
+                  materials: materials
+                    .filter((m) => m.label.trim() && m.url.trim())
+                    .map((m) => ({ ...m, url: normalizeUrl(m.url) })),
+                }
+              : {}),
           }),
         }
       );
       const data = await res.json();
       if (data.ok) {
+        setSaveError(null);
         toast(isEdit ? "Offering updated." : "Offering saved.");
         router.push(`/offerings/${isEdit ? offeringId : data.offering.id}`);
         router.refresh();
       } else {
-        toast(data.error || "Couldn't save the offering.", "error");
+        setSaveError(
+          readableOfferingSaveError(
+            data.error || "The offering could not be saved."
+          )
+        );
       }
     } catch {
-      toast("Couldn't save the offering.", "error");
+      setSaveError(
+        "The offering could not be saved because the connection failed. Your edits are still here; try Save changes again."
+      );
     } finally {
       setSaving(false);
     }
@@ -987,6 +1127,7 @@ export function OfferingForm({
         icon={Package}
         title="The basics"
         hint="What this offering is called, where it sits in the catalog, and who owns it."
+        defaultOpen
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -1057,8 +1198,8 @@ export function OfferingForm({
       {/* ------------------------------------------------- what's included */}
       <FormSection
         icon={ListChecks}
-        title="Offering brief"
-        hint="Write and format the seller-facing overview. Use headings, emphasis, lists, links and indentation just like a document."
+        title="Offering brief & service cards"
+        hint="Edit the opening overview and the same service cards sellers see on the offering page."
         action={
           <div className="flex items-center gap-1 rounded-lg bg-surface p-1">
             <button
@@ -1066,7 +1207,7 @@ export function OfferingForm({
               onClick={openPaste}
               className={modeButton(pasteMode)}
             >
-              <PencilLine size={12} strokeWidth={2.2} /> Write &amp; format
+              <PencilLine size={12} strokeWidth={2.2} /> Document editor
             </button>
             <button
               type="button"
@@ -1082,7 +1223,8 @@ export function OfferingForm({
           <div>
             <label className={LABEL}>Opening line (optional)</label>
             <textarea
-              className={`${FIELD} h-auto min-h-[64px] resize-y py-2 leading-relaxed`}
+              ref={introRef}
+              className={`${FIELD} h-auto min-h-[112px] resize-none overflow-hidden py-2.5 leading-relaxed`}
               value={intro}
               onChange={(e) => setIntro(e.target.value)}
               placeholder="One or two sentences of context before the list."
@@ -1101,13 +1243,57 @@ export function OfferingForm({
               ariaLabel="Offering brief"
             />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Formatting is saved safely and shown the same way to every seller.
-              Use <span className="font-medium">Service cards</span> when you want
-              to manage the included services one row at a time.
+              Formatting is saved safely. Each bulleted service becomes a card
+              on Overview; use <span className="font-medium">Service cards</span>
+              to edit those cards directly.
             </p>
           </div>
         ) : (
           <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-light bg-surface/50 px-2.5 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[12.5px] font-semibold text-text-primary">
+                  {capCount} {capCount === 1 ? "service card" : "service cards"}
+                </span>
+                <Tooltip
+                  label="These are the exact cards sellers see under What’s included on the offering Overview."
+                  side="bottom"
+                  align="left"
+                >
+                  <button
+                    type="button"
+                    aria-label="About service cards"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors hover:bg-blue-light hover:text-blue-primary focus-visible:ring-2 focus-visible:ring-blue-primary/25"
+                  >
+                    <Info size={15} strokeWidth={2} aria-hidden="true" />
+                  </button>
+                </Tooltip>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCapDraft("");
+                    setCapDescriptionDraft("");
+                    setAddingCap("section");
+                  }}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
+                >
+                  <Layers size={14} strokeWidth={2} /> Add group heading
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCapDraft("");
+                    setCapDescriptionDraft("");
+                    setAddingCap("item");
+                  }}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-primary px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-blue-hover"
+                >
+                  <Plus size={14} strokeWidth={2.2} /> Add service
+                </button>
+              </div>
+            </div>
             {capRows.length === 0 && (
               <p className="rounded-lg border border-dashed border-border-light px-3 py-4 text-center text-[12.5px] text-text-secondary">
                 Nothing listed yet. Add the services that make up this offering,
@@ -1115,82 +1301,295 @@ export function OfferingForm({
               </p>
             )}
             {capRows.map((row, i) => {
-              const mark = offeringMark(row.text || offeringName || "offering");
               const isSection = row.kind === "section";
+              const fields = serviceCardFields(row.text);
+              const mark = serviceCardMark(
+                fields.heading || fields.description || offeringName || "offering",
+                row.style
+              );
               const accent = isSection ? "#0071E3" : mark.color;
               const RowIcon = isSection ? Layers : mark.icon;
+              const updateCard = (heading: string, cardDescription: string) =>
+                setCapRows((list) =>
+                  list.map((item, index) =>
+                    index === i
+                      ? {
+                          ...item,
+                          text: serviceCardText(heading, cardDescription),
+                        }
+                      : item
+                  )
+                );
               return (
-                <div key={i} className="flex items-center gap-2">
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                    style={
-                      isSection
-                        ? { background: `${accent}1F`, color: accent }
-                        : {
-                            backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
-                            color: "#fff",
+                <div
+                  key={i}
+                  className={cn(
+                    "rounded-xl border border-border-light bg-white p-3.5",
+                    isSection && "items-center bg-surface/40"
+                  )}
+                >
+                  {isSection ? (
+                    <div className="flex items-end gap-3">
+                      <span
+                        className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                        style={{ background: `${accent}1F`, color: accent }}
+                      >
+                        <RowIcon size={16} strokeWidth={2} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <label className={LABEL}>Group heading</label>
+                        <input
+                          className={cn(FIELD, "font-semibold")}
+                          value={row.text}
+                          onChange={(event) =>
+                            setCapRows((list) =>
+                              list.map((item, index) =>
+                                index === i ? { ...item, text: event.target.value } : item
+                              )
+                            )
                           }
-                    }
-                  >
-                    <RowIcon size={14} strokeWidth={2} />
-                  </span>
-                  <input
-                    className={cn(FIELD, isSection && "font-semibold")}
-                    value={row.text}
-                    onChange={(e) =>
-                      setCapRows((l) =>
-                        l.map((x, j) => (j === i ? { ...x, text: e.target.value } : x))
-                      )
-                    }
-                    placeholder={
-                      isSection
-                        ? "Group heading: e.g. Product & Portfolio Strategy"
-                        : "A service inside this offering: e.g. GLP Audits of Test Facilities"
-                    }
-                    aria-label={isSection ? "Group heading" : "Service"}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
-                    aria-label={isSection ? "Remove group heading" : "Remove service"}
-                    className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
-                  >
-                    <Trash2 size={15} strokeWidth={1.7} />
-                  </button>
+                          placeholder="e.g. Product & Portfolio Strategy"
+                          aria-label="Group heading"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
+                        aria-label="Remove group heading"
+                        className="mb-1 shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
+                      >
+                        <Trash2 size={15} strokeWidth={1.7} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-end gap-3">
+                        <Tooltip
+                          label="Change icon and color"
+                          side="bottom"
+                          align="left"
+                        >
+                          <button
+                          type="button"
+                          onClick={() => setAppearanceRow(i)}
+                          aria-label={`Change ${fields.heading || "service"} card icon and color`}
+                          className="relative mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white outline-none transition-transform hover:scale-[1.04] focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+                          style={{
+                            backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
+                          }}
+                        >
+                          <RowIcon size={16} strokeWidth={2} />
+                          <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-blue-primary text-white shadow-sm">
+                            <PencilLine size={8} strokeWidth={2.4} />
+                          </span>
+                          </button>
+                        </Tooltip>
+                        <div className="min-w-0 flex-1">
+                          <label className={LABEL}>Card heading</label>
+                          <input
+                            className={cn(FIELD, "font-semibold")}
+                            value={fields.heading}
+                            onChange={(event) =>
+                              updateCard(event.target.value, fields.description)
+                            }
+                            placeholder="e.g. Products"
+                            aria-label={`Card ${i + 1} heading`}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCapRows((l) => l.filter((_, j) => j !== i))}
+                          aria-label="Remove service"
+                          className="mb-1 shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-error"
+                        >
+                          <Trash2 size={15} strokeWidth={1.7} />
+                        </button>
+                      </div>
+                      <div className="ml-[52px] mt-3">
+                        <label className={LABEL}>Card description</label>
+                        <textarea
+                          className={`${FIELD} h-auto min-h-[72px] resize-y py-2 leading-relaxed`}
+                          value={fields.description}
+                          onChange={(event) =>
+                            updateCard(fields.heading, event.target.value)
+                          }
+                          placeholder="Explain what this service does for the seller."
+                          aria-label={`Card ${i + 1} description`}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
-            <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setCapDraft("");
-                  setAddingCap("item");
-                }}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-light px-2.5 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-subtle/60"
-              >
-                {/* "Capability" was our word, not his — this whole section is
-                    described as "the services inside this offering" two lines
-                    above, and then the button asked for a capability. */}
-                <Plus size={14} strokeWidth={2.2} /> Add a service
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCapDraft("");
-                  setAddingCap("section");
-                }}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
-              >
-                <Layers size={14} strokeWidth={2} /> Add a group heading
-              </button>
-              {capCount > 0 && (
-                <span className="ml-auto rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-semibold text-blue-primary">
-                  {capCount} {capCount === 1 ? "service" : "services"}
-                </span>
-              )}
-            </div>
+            <Modal
+              open={appearanceRow !== null && appearanceCard?.kind === "item"}
+              onClose={() => setAppearanceRow(null)}
+              title="Card appearance"
+            >
+              <div className="space-y-5">
+                <div className="flex items-center gap-3 rounded-xl border border-border-light bg-surface/40 p-3">
+                  <span
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+                    style={{
+                      backgroundImage: `linear-gradient(135deg, ${appearanceMark.color}, ${appearanceMark.light})`,
+                    }}
+                  >
+                    <AppearanceIcon size={19} strokeWidth={2} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Preview
+                    </p>
+                    <p className="truncate text-[14px] font-semibold text-text-primary">
+                      {appearanceFields.heading || "Untitled service"}
+                    </p>
+                  </div>
+                </div>
 
+                <div>
+                  <label className={LABEL}>Icon</label>
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (appearanceRow === null) return;
+                        setCapRows((rows) =>
+                          rows.map((row, index) => {
+                            if (index !== appearanceRow) return row;
+                            const next = { ...row.style };
+                            delete next.icon;
+                            return { ...row, style: next };
+                          })
+                        );
+                      }}
+                      aria-label="Use automatic icon"
+                      className={cn(
+                        "relative flex h-14 flex-col items-center justify-center gap-1 rounded-lg border text-[10px] font-medium transition-colors",
+                        !appearanceCard?.style?.icon
+                          ? "border-blue-primary bg-blue-light text-blue-primary"
+                          : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
+                      )}
+                    >
+                      <AppearanceAutomaticIcon size={17} strokeWidth={2} />
+                      Auto
+                      {!appearanceCard?.style?.icon && (
+                        <Check className="absolute right-1 top-1" size={11} strokeWidth={2.5} />
+                      )}
+                    </button>
+                    {SERVICE_CARD_ICON_OPTIONS.map((option) => {
+                      const Icon = SERVICE_CARD_ICON_COMPONENTS[option.value];
+                      const selected = appearanceCard?.style?.icon === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => updateAppearance({ icon: option.value })}
+                          aria-label={`Use ${option.label} icon`}
+                          className={cn(
+                            "relative flex h-14 flex-col items-center justify-center gap-1 rounded-lg border text-[10px] font-medium transition-colors",
+                            selected
+                              ? "border-blue-primary bg-blue-light text-blue-primary"
+                              : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                          )}
+                        >
+                          <Icon size={17} strokeWidth={2} />
+                          {option.label}
+                          {selected && (
+                            <Check className="absolute right-1 top-1" size={11} strokeWidth={2.5} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={LABEL}>Color</label>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (appearanceRow === null) return;
+                        setCapRows((rows) =>
+                          rows.map((row, index) => {
+                            if (index !== appearanceRow) return row;
+                            const next = { ...row.style };
+                            delete next.color;
+                            return { ...row, style: next };
+                          })
+                        );
+                      }}
+                      aria-label="Use automatic color"
+                      className={cn(
+                        "relative flex h-11 items-center gap-2 rounded-lg border px-2 text-[11px] font-medium transition-colors",
+                        !appearanceCard?.style?.color
+                          ? "border-blue-primary bg-blue-light text-blue-primary"
+                          : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
+                      )}
+                    >
+                      <span
+                        className="h-5 w-5 rounded-full"
+                        style={{
+                          backgroundImage: `linear-gradient(135deg, ${appearanceAutomaticMark.color}, ${appearanceAutomaticMark.light})`,
+                        }}
+                      />
+                      Auto
+                      {!appearanceCard?.style?.color && (
+                        <Check className="absolute right-1.5 top-1.5" size={11} strokeWidth={2.5} />
+                      )}
+                    </button>
+                    {SERVICE_CARD_COLOR_OPTIONS.map((option) => {
+                      const selected = appearanceCard?.style?.color === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => updateAppearance({ color: option.value })}
+                          aria-label={`Use ${option.label} color`}
+                          className={cn(
+                            "relative flex h-11 items-center gap-2 rounded-lg border px-2 text-[11px] font-medium transition-colors",
+                            selected
+                              ? "border-blue-primary bg-blue-light text-blue-primary"
+                              : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
+                          )}
+                        >
+                          <span
+                            className="h-5 w-5 rounded-full"
+                            style={{
+                              backgroundImage: `linear-gradient(135deg, ${option.color}, ${option.light})`,
+                            }}
+                          />
+                          {option.label}
+                          {selected && (
+                            <Check className="absolute right-1.5 top-1.5" size={11} strokeWidth={2.5} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border-light pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (appearanceRow === null) return;
+                      setCapRows((rows) =>
+                        rows.map((row, index) =>
+                          index === appearanceRow ? { ...row, style: undefined } : row
+                        )
+                      );
+                    }}
+                    disabled={!appearanceCard?.style?.icon && !appearanceCard?.style?.color}
+                    className="text-[12.5px] font-semibold text-text-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Reset to automatic
+                  </button>
+                  <Button onClick={() => setAppearanceRow(null)}>Done</Button>
+                </div>
+              </div>
+            </Modal>
             <Modal
               open={addingCap !== null}
               onClose={() => setAddingCap(null)}
@@ -1204,42 +1603,45 @@ export function OfferingForm({
                     ? "A heading groups the services under it on the offering page — use it when the list is long enough to need sections."
                     : "One thing Freyr actually does inside this offering. Each one becomes its own card on the offering page, so a rep can point at it in a conversation."}
                 </p>
-                <div>
-                  <label className={LABEL}>
-                    {addingCap === "section" ? "Heading" : "Service"}
-                  </label>
-                  <input
-                    autoFocus
-                    className={FIELD}
-                    value={capDraft}
-                    onChange={(e) => setCapDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter" || !capDraft.trim()) return;
-                      e.preventDefault();
-                      setCapRows((l) => [
-                        ...l,
-                        { kind: addingCap ?? "item", text: capDraft.trim() },
-                      ]);
-                      // Straight back to an empty box: adding these one at a
-                      // time is the normal case, and closing after every one
-                      // would mean six clicks for six services.
-                      setCapDraft("");
-                    }}
-                    placeholder={
-                      addingCap === "section"
-                        ? "e.g. Product & Portfolio Strategy"
-                        : "e.g. GLP Audits of Test Facilities"
-                    }
-                    aria-label={
-                      addingCap === "section" ? "Group heading" : "Service"
-                    }
-                  />
-                  <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-                    Press Enter to add it and keep going. Adding a lot at once?
-                    Close this and use{" "}
-                    <span className="font-medium">Paste a list</span>.
-                  </p>
-                </div>
+                {addingCap === "section" ? (
+                  <div>
+                    <label className={LABEL}>Group heading</label>
+                    <input
+                      autoFocus
+                      className={FIELD}
+                      value={capDraft}
+                      onChange={(event) => setCapDraft(event.target.value)}
+                      placeholder="e.g. Product & Portfolio Strategy"
+                      aria-label="Group heading"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className={LABEL}>Card heading</label>
+                      <input
+                        autoFocus
+                        className={FIELD}
+                        value={capDraft}
+                        onChange={(event) => setCapDraft(event.target.value)}
+                        placeholder="e.g. Products"
+                        aria-label="New service card heading"
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL}>Card description</label>
+                      <textarea
+                        className={`${FIELD} h-auto min-h-[88px] resize-y py-2 leading-relaxed`}
+                        value={capDescriptionDraft}
+                        onChange={(event) =>
+                          setCapDescriptionDraft(event.target.value)
+                        }
+                        placeholder="Explain what this service does for the seller."
+                        aria-label="New service card description"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-end gap-2">
                   <Button variant="secondary" onClick={() => setAddingCap(null)}>
                     Done
@@ -1249,7 +1651,16 @@ export function OfferingForm({
                     onClick={() => {
                       setCapRows((l) => [
                         ...l,
-                        { kind: addingCap ?? "item", text: capDraft.trim() },
+                        {
+                          kind: addingCap ?? "item",
+                          text:
+                            addingCap === "section"
+                              ? capDraft.trim()
+                              : serviceCardText(
+                                  capDraft,
+                                  capDescriptionDraft
+                                ),
+                        },
                       ]);
                       setAddingCap(null);
                     }}
@@ -1636,6 +2047,8 @@ export function OfferingForm({
                 setDraftMaterial((d) => ({ ...d, kind: v as MaterialKind }))
               }
               ariaLabel="File format"
+              minWidth={0}
+              className="w-full"
             />
           </div>
           <div>
@@ -1674,6 +2087,9 @@ export function OfferingForm({
                 allIcon={Route}
                 allColor="#7C3AED"
                 ariaLabel="Buyer's journey stage"
+                minWidth={0}
+                fluid
+                className="w-full"
               />
             </div>
             <div>
@@ -1685,6 +2101,9 @@ export function OfferingForm({
                   setDraftMaterial((d) => ({ ...d, accessLevel: v as AccessLevel }))
                 }
                 ariaLabel="Who can see it"
+                minWidth={0}
+                compactTrigger
+                className="w-full"
               />
             </div>
           </div>
@@ -1695,6 +2114,8 @@ export function OfferingForm({
               options={FIXED_MATERIAL_FOLDERS.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "#0071E3", icon: Folder }))}
               onChange={(folder) => setDraftMaterial((draft) => ({ ...draft, folder }))}
               ariaLabel="Material folder"
+              minWidth={0}
+              className="w-full"
             />
           </div>
           <div className="flex items-center gap-3 pt-1">
@@ -1729,24 +2150,46 @@ export function OfferingForm({
           on the left (Anir, Jul 28: "I don't know why the Save Changes button
           is on the left. Shouldn't it be on the right like normal?"). Sticky,
           because the form is five sections tall. */}
-      <div className="sticky bottom-0 z-20 -mx-1 flex items-center gap-3 rounded-xl border border-border-light bg-white/95 px-4 py-3 shadow-card backdrop-blur">
-        <span className="text-[12px] text-text-tertiary">
-          {isEdit ? "Changes apply the moment you save." : "Nothing is saved until you press save."}
-        </span>
-        <button
-          type="button"
-          onClick={() =>
-            router.push(isEdit ? `/offerings/${offeringId}` : "/offerings")
-          }
-          className="ml-auto text-[14px] font-semibold text-text-secondary hover:text-text-primary"
-        >
-          Cancel
-        </button>
-        {hasOfferingChanges && (
-          <Button onClick={submit} loading={saving}>
-            {isEdit ? "Save changes" : "Save offering"}
-          </Button>
+      <div className="sticky bottom-0 z-20 -mx-1 rounded-xl border border-border-light bg-white/95 px-4 py-3 shadow-card backdrop-blur">
+        {saveError && (
+          <div
+            role="alert"
+            className="mb-3 flex items-start gap-2.5 rounded-lg border border-error/20 bg-error/5 px-3 py-2.5 text-[12.5px] leading-relaxed text-text-primary"
+          >
+            <AlertCircle size={17} strokeWidth={1.8} className="mt-0.5 shrink-0 text-error" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-error">Changes were not saved</p>
+              <p className="mt-0.5">{saveError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSaveError(null)}
+              aria-label="Dismiss save error"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-white hover:text-text-primary"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          </div>
         )}
+        <div className="flex items-center gap-3">
+          <span className="text-[12px] text-text-tertiary">
+            {isEdit ? "Changes apply the moment you save." : "Nothing is saved until you press save."}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              router.push(isEdit ? `/offerings/${offeringId}` : "/offerings")
+            }
+            className="ml-auto text-[14px] font-semibold text-text-secondary hover:text-text-primary"
+          >
+            Cancel
+          </button>
+          {hasOfferingChanges && (
+            <Button onClick={submit} loading={saving}>
+              {isEdit ? "Save changes" : "Save offering"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {isEdit && (

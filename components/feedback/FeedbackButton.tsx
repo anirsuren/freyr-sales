@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardPaste, ImagePlus, MessageSquarePlus, Send, X } from "lucide-react";
+import { ClipboardPaste, ImagePlus, LoaderCircle, MessageSquarePlus, Send, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
@@ -16,6 +16,28 @@ const TYPES = [
   { value: "question", label: "Question", color: "#0F766E" },
 ];
 
+const MAX_SCREENSHOT_DATA_URL = 2_700_000;
+
+function encodedScreenshot(canvas: HTMLCanvasElement): string {
+  let quality = 0.82;
+  let result = canvas.toDataURL("image/jpeg", quality);
+  while (result.length > MAX_SCREENSHOT_DATA_URL && quality > 0.42) {
+    quality -= 0.1;
+    result = canvas.toDataURL("image/jpeg", quality);
+  }
+  if (result.length <= MAX_SCREENSHOT_DATA_URL) return result;
+
+  const ratio = Math.max(
+    0.55,
+    Math.min(0.9, Math.sqrt(MAX_SCREENSHOT_DATA_URL / result.length) * 0.9)
+  );
+  const reduced = document.createElement("canvas");
+  reduced.width = Math.max(1, Math.round(canvas.width * ratio));
+  reduced.height = Math.max(1, Math.round(canvas.height * ratio));
+  reduced.getContext("2d")?.drawImage(canvas, 0, 0, reduced.width, reduced.height);
+  return reduced.toDataURL("image/jpeg", 0.72);
+}
+
 export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
   const pathname = usePathname() || "/";
   const { toast } = useToast();
@@ -25,6 +47,8 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [screenshot, setScreenshot] = useState("");
+  const [captureError, setCaptureError] = useState("");
+  const [capturing, setCapturing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   function reset() {
@@ -32,6 +56,53 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
     setTitle("");
     setDescription("");
     setScreenshot("");
+    setCaptureError("");
+  }
+
+  async function captureCurrentPage() {
+    const html2canvas = (await import("html2canvas")).default;
+    const canvas = await html2canvas(document.documentElement, {
+      backgroundColor: "#FFFFFF",
+      useCORS: true,
+      // The app uses modern CSS colour functions. Browser-native SVG
+      // rendering preserves those styles instead of asking html2canvas's
+      // legacy colour parser to interpret them.
+      foreignObjectRendering: true,
+      logging: false,
+      scale: Math.min(window.devicePixelRatio || 1, 1.25),
+      x: window.scrollX,
+      y: window.scrollY,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      windowWidth: document.documentElement.scrollWidth,
+      windowHeight: document.documentElement.scrollHeight,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      ignoreElements: (element) =>
+        element.hasAttribute("data-feedback-trigger") ||
+        element.getAttribute("role") === "tooltip",
+    });
+    return encodedScreenshot(canvas);
+  }
+
+  async function openFeedback() {
+    if (capturing) return;
+    reset();
+    setCapturing(true);
+    try {
+      setScreenshot(await captureCurrentPage());
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Unknown capture error";
+      console.error("Automatic feedback screenshot failed:", error);
+      setCaptureError(
+        process.env.NODE_ENV === "development"
+          ? `The page screenshot could not be captured automatically (${detail}). You can still paste or upload one below.`
+          : "The page screenshot could not be captured automatically. You can still paste or upload one below."
+      );
+    } finally {
+      setCapturing(false);
+      setOpen(true);
+    }
   }
 
   function takeImage(file?: File) {
@@ -79,12 +150,18 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openFeedback}
+        disabled={capturing}
+        data-feedback-trigger
         aria-label="Send feedback or report a problem"
         title="Send feedback"
-        className="fixed bottom-4 left-[84px] z-40 inline-flex h-9 items-center gap-2 rounded-full border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:text-blue-primary lg:left-[252px]"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface hover:text-blue-primary disabled:cursor-wait"
       >
-        <MessageSquarePlus size={14} strokeWidth={2} /> Feedback
+        {capturing ? (
+          <LoaderCircle size={19} strokeWidth={1.8} className="animate-spin" />
+        ) : (
+          <MessageSquarePlus size={19} strokeWidth={1.7} />
+        )}
       </button>
       <Modal open={open} onClose={() => !busy && setOpen(false)} title="Send feedback" size="wide">
         <div
@@ -95,7 +172,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
           }}
         >
           <p className="text-[12.5px] leading-relaxed text-text-secondary">
-            The current page, account, data mode, browser, screen size, and timestamp are captured automatically.
+            A screenshot of the page you were viewing is attached automatically, along with the page, account, data mode, browser, screen size, and timestamp.
           </p>
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Type</label>
@@ -111,9 +188,14 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
           </div>
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-3">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Screenshot <span className="font-medium normal-case tracking-normal">Optional</span></label>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Screenshot <span className="font-medium normal-case tracking-normal">Captured automatically</span></label>
               <span className="inline-flex items-center gap-1 text-[10.5px] text-text-tertiary"><ClipboardPaste size={12} /> Paste anywhere in this dialog</span>
             </div>
+            {captureError && (
+              <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+                {captureError}
+              </p>
+            )}
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => takeImage(event.target.files?.[0])} />
             {screenshot ? (
               <div className="relative overflow-hidden rounded-xl border border-border-light bg-surface p-2">

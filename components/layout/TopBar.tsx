@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Search, Bell, CircleHelp, ChevronDown, Sparkles, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, LogOut, CheckCircle2, Hammer, Sun, Moon } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -46,12 +46,14 @@ export function TopBar({
   agentActive,
   offeringsOnly = false,
   customersReleased = false,
+  feedbackAction,
 }: {
   onMenuClick?: () => void;
   onAgentToggle?: () => void;
   agentActive?: boolean;
   offeringsOnly?: boolean;
   customersReleased?: boolean;
+  feedbackAction?: ReactNode;
 } = {}) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -329,6 +331,7 @@ export function TopBar({
             <Sparkles size={19} strokeWidth={1.7} />
           </button>
         )}
+        {feedbackAction}
         {!offeringsOnly && <div className="relative">
           <button
             data-tour="notifications"

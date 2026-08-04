@@ -174,7 +174,11 @@ export function OfferingOverviewMain({
               bullet a service within the service. They render as real
               capability cards now instead of a pasted block of text; a plain
               prose description still renders as prose. */}
-          <OfferingCapabilities text={description} offeringName={o.offering_name} />
+          <OfferingCapabilities
+            text={description}
+            offeringName={o.offering_name}
+            styles={o.service_card_styles}
+          />
           {/* AVAILABILITY — a titled block in the app's card language, not a
               pill glued to the front of a run-on sentence. The eyebrow says
               what the block is, the pill says the status, and each caveat from

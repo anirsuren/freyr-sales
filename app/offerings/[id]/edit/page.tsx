@@ -85,18 +85,15 @@ export default async function EditOfferingPage({
             offering_category: o.offering_category,
             offering_name: o.offering_name,
             offering_description: o.offering_description,
+            service_card_styles: o.service_card_styles,
             current_availability: o.current_availability,
             future_availability: o.future_availability,
             poc: o.poc,
             customer_type_ids: o.customer_type_ids,
             market_ids: o.market_ids,
-            materials: o.materials.map((m) => ({
-              kind: m.kind,
-              label: m.label,
-              url: m.url,
-              journeyStage: m.journeyStage,
-              accessLevel: m.accessLevel,
-            })),
+            // Preserve server-owned material identity and every existing tag.
+            // Dropping IDs made a brief-only save look like 25 brand-new files.
+            materials: o.materials.map((material) => ({ ...material })),
           }}
           customerTypes={listCustomerTypes()}
           markets={listMarkets()}
