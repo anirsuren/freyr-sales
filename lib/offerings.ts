@@ -244,7 +244,7 @@ function seedMarkets(): Market[] {
   ];
 }
 
-// The 5 offering types, VERBATIM from Suren's "Digital Sales and Marketing.xlsx"
+// The 6 offering types, VERBATIM from Suren's "Digital Sales and Marketing.xlsx"
 // → "Offering Type" sheet, descriptions and all. (He confirmed these in the live
 // meeting: "these are all the offering types.")
 function seedOfferingTypes(): OfferingType[] {
@@ -269,9 +269,9 @@ function seedOfferingTypes(): OfferingType[] {
     },
     {
       id: "ot-fusion-platform",
-      name: "Freya Fusion (Platform)",
+      name: "Freya Fusion (Agents)",
       description:
-        "The complete Freya Fusion platform delivered as one unified regulatory ecosystem: its full suite of modules together with platform-level AI agents (Freya.Agents) and cross-module objects (Freya.OmniObject) that operate across the entire environment.",
+        "Freya Fusion Agents are platform-level AI agents and cross-module objects, including Freya.Agents and Freya.OmniObject, that work across the Freya Fusion environment rather than being limited to one module.",
     },
     {
       id: "ot-freyr-ai-native",
@@ -302,7 +302,8 @@ const CAT_GRI = "Global Regulatory Intelligence";
 // they live under Submissions and Document Operations.
 const CAT_OTHERS = "Others";
 const CAT_LABELING = "Labeling and Artwork";
-const CAT_PLATFORM = "Freya Fusion Platform and Agents";
+const LEGACY_PLATFORM_CATEGORY = "Freya Fusion Platform and Agents";
+const CAT_PLATFORM = "Freya Fusion Platform & Agents";
 const CAT_RA = "Regulatory Affairs";
 
 function seedOfferingCategories(): OfferingCategory[] {
@@ -449,7 +450,8 @@ const FREYR_URL = {
 const MODULE = "Freya Fusion (Module)";
 const MODULE_AGENT = "Freya Fusion (Module + Module Agent/s)";
 const MODULE_AGENT_ADDON = "Freya Fusion (Module + Module Agent/s + Add on Agent/s)";
-const PLATFORM_TYPE = "Freya Fusion (Platform)";
+const LEGACY_PLATFORM_TYPE = "Freya Fusion (Platform)";
+const AGENTS_TYPE = "Freya Fusion (Agents)";
 const AI_NATIVE = "Freyr AI Native Service";
 const SERVICE = "Freyr Service";
 // The catalogue links below entered the in-progress sample workspace in the
@@ -569,13 +571,13 @@ function seedOfferings(): Offering[] {
         { id: "m-012d", kind: "competition", label: "Freya vs. legacy RIM vendors", url: FREYR_URL.insights, journeyStage: "evaluation", accessLevel: "internal_only", addedAt: DEMO_MATERIAL_ADDED_AT },
       ],
     }),
-    off("of-013", PLATFORM_TYPE, "Freya.Agents", "", {
+    off("of-013", AGENTS_TYPE, "Freya.Agents", "", {
       poc: "Harshith",
       offering_category: CAT_PLATFORM,
       current_availability: "Currently available",
       customer_type_ids: [],
     }),
-    off("of-014", PLATFORM_TYPE, "Freya.OmniObject", "", {
+    off("of-014", AGENTS_TYPE, "Freya.OmniObject", "", {
       offering_category: CAT_PLATFORM,
       current_availability: "To be Decided",
       future_availability: "End of this year",
@@ -722,6 +724,12 @@ function seedOfferings(): Offering[] {
       poc: "Vikrant Mahajan",
       customer_type_ids: ALL_CT,
       market_ids: ALL_MKT,
+    }),
+    off("of-030", AGENTS_TYPE, "Agent.Via", "", {
+      offering_category: CAT_PLATFORM,
+    }),
+    off("of-031", AGENTS_TYPE, "Agent.Ria", "", {
+      offering_category: CAT_PLATFORM,
     }),
   ];
 }
@@ -1073,6 +1081,93 @@ if (!store.offeringCategories)
 // records arrived without `contacts` while seeded ones had it.
 function healOfferings(s: OfferingsStore): boolean {
   let catalogChanged = false;
+  // Change request 28 renamed the platform-wide type/category and added two
+  // named Agent offerings. Existing workspaces hold the catalogue as one
+  // persisted document, so changing the seed alone would never update them.
+  // Migrate only the exact legacy names, preserving every owner-entered field.
+  const agentsTypeDescription =
+    "Freya Fusion Agents are platform-level AI agents and cross-module objects, including Freya.Agents and Freya.OmniObject, that work across the Freya Fusion environment rather than being limited to one module.";
+  const legacyType = s.offeringTypes.find(
+    (type) => type.name === LEGACY_PLATFORM_TYPE
+  );
+  const currentAgentsType = s.offeringTypes.find(
+    (type) => type.name === AGENTS_TYPE
+  );
+  if (legacyType && !currentAgentsType) {
+    legacyType.name = AGENTS_TYPE;
+    legacyType.description = agentsTypeDescription;
+    catalogChanged = true;
+  } else if (!legacyType && !currentAgentsType) {
+    s.offeringTypes.push({
+      id: "ot-fusion-platform",
+      name: AGENTS_TYPE,
+      description: agentsTypeDescription,
+    });
+    catalogChanged = true;
+  } else if (legacyType && currentAgentsType) {
+    s.offeringTypes = s.offeringTypes.filter((type) => type !== legacyType);
+    catalogChanged = true;
+  }
+
+  const legacyCategory = s.offeringCategories.find(
+    (category) => category.name === LEGACY_PLATFORM_CATEGORY
+  );
+  const currentPlatformCategory = s.offeringCategories.find(
+    (category) => category.name === CAT_PLATFORM
+  );
+  if (legacyCategory && !currentPlatformCategory) {
+    legacyCategory.name = CAT_PLATFORM;
+    catalogChanged = true;
+  } else if (legacyCategory && currentPlatformCategory) {
+    if (!currentPlatformCategory.owner && legacyCategory.owner) {
+      currentPlatformCategory.owner = legacyCategory.owner;
+      currentPlatformCategory.owner_user_id = legacyCategory.owner_user_id;
+    }
+    s.offeringCategories = s.offeringCategories.filter(
+      (category) => category !== legacyCategory
+    );
+    catalogChanged = true;
+  }
+
+  for (const offering of s.offerings) {
+    if (offering.offering_type === LEGACY_PLATFORM_TYPE) {
+      offering.offering_type = AGENTS_TYPE;
+      catalogChanged = true;
+    }
+    if (offering.offering_category === LEGACY_PLATFORM_CATEGORY) {
+      offering.offering_category = CAT_PLATFORM;
+      catalogChanged = true;
+    }
+  }
+
+  for (const [id, name] of [
+    ["of-030", "Agent.Via"],
+    ["of-031", "Agent.Ria"],
+  ] as const) {
+    const existing = s.offerings.find(
+      (offering) => offering.offering_name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (existing) {
+      if (existing.offering_type !== AGENTS_TYPE) {
+        existing.offering_type = AGENTS_TYPE;
+        catalogChanged = true;
+      }
+      if (existing.offering_category !== CAT_PLATFORM) {
+        existing.offering_category = CAT_PLATFORM;
+        catalogChanged = true;
+      }
+      continue;
+    }
+    const stableId = s.offerings.some((offering) => offering.id === id)
+      ? `of-agent-${name.split(".")[1].toLowerCase()}`
+      : id;
+    s.offerings.push(
+      off(stableId, AGENTS_TYPE, name, "", {
+        offering_category: CAT_PLATFORM,
+      })
+    );
+    catalogChanged = true;
+  }
   // A catalogue persisted before "Global" existed has no such market, so an
   // owner opening the picker today would not find it (change request 11). Add
   // it back rather than reseeding — every other market and every edit stays.

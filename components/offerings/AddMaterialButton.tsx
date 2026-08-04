@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Folder, FolderOpen, FolderPlus, Plus } from "lucide-react";
+import {
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  Plus,
+  Route,
+  ShieldCheck,
+} from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -25,18 +32,34 @@ import {
 } from "@/lib/offeringMaterials";
 
 // The two CR-3 tag dropdowns — colour-coded options, never a gray <select>.
-const STAGE_OPTIONS: ColorOption[] = JOURNEY_STAGES.map((s) => ({
-  value: s,
-  label: JOURNEY_STAGE_META[s].label,
-  color: JOURNEY_STAGE_META[s].color,
-  icon: JOURNEY_STAGE_META[s].icon,
-}));
-const ACCESS_OPTIONS: ColorOption[] = ACCESS_LEVELS.map((l) => ({
-  value: l,
-  label: ACCESS_LEVEL_META[l].label,
-  color: ACCESS_LEVEL_META[l].color,
-  icon: ACCESS_LEVEL_META[l].icon,
-}));
+const STAGE_OPTIONS: ColorOption[] = [
+  {
+    value: "",
+    label: "Pick a journey stage",
+    color: "#0071E3",
+    icon: Route,
+  },
+  ...JOURNEY_STAGES.map((s) => ({
+    value: s,
+    label: JOURNEY_STAGE_META[s].label,
+    color: JOURNEY_STAGE_META[s].color,
+    icon: JOURNEY_STAGE_META[s].icon,
+  })),
+];
+const ACCESS_OPTIONS: ColorOption[] = [
+  {
+    value: "",
+    label: "Pick an access level",
+    color: "#0071E3",
+    icon: ShieldCheck,
+  },
+  ...ACCESS_LEVELS.map((l) => ({
+    value: l,
+    label: ACCESS_LEVEL_META[l].label,
+    color: ACCESS_LEVEL_META[l].color,
+    icon: ACCESS_LEVEL_META[l].icon,
+  })),
+];
 
 // Item 9 (Saras / Anant): the picker offers FOUR formats, not nine types. The
 // nine asked the owner to categorise the same file twice — the title they type
@@ -83,8 +106,8 @@ export function AddMaterialButton({
   const [newFolder, setNewFolder] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [folderBeforeDraft, setFolderBeforeDraft] = useState("");
-  const [journeyStage, setJourneyStage] = useState<JourneyStage>("awareness");
-  const [accessLevel, setAccessLevel] = useState<AccessLevel>("client_facing");
+  const [journeyStage, setJourneyStage] = useState<JourneyStage | "">("");
+  const [accessLevel, setAccessLevel] = useState<AccessLevel | "">("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
@@ -100,12 +123,12 @@ export function AddMaterialButton({
 
   function reset() {
     setKind("");
-    setJourneyStage("awareness");
+    setJourneyStage("");
     setFolder(normalizeFolderPath(openFolder));
     setNewFolder("");
     setCreatingFolder(false);
     setFolderBeforeDraft("");
-    setAccessLevel("client_facing");
+    setAccessLevel("");
     setLabel("");
     setDescription("");
     setUrl("");
@@ -240,7 +263,17 @@ export function AddMaterialButton({
       toast("Pick the file format first — video, presentation, document or other", "error");
       return;
     }
+    if (!journeyStage) {
+      toast("Pick the buyer's journey stage first", "error");
+      return;
+    }
+    if (!accessLevel) {
+      toast("Pick who can access this material first", "error");
+      return;
+    }
     const chosenKind: MaterialFormat = kind;
+    const chosenJourneyStage: JourneyStage = journeyStage;
+    const chosenAccessLevel: AccessLevel = accessLevel;
     setBusy(true);
     try {
       // The file's bytes go up first; the material row then references where
@@ -299,8 +332,8 @@ export function AddMaterialButton({
           // no note, not an empty line under the title.
           ...(description.trim() ? { description: description.trim() } : {}),
           folder,
-          journeyStage,
-          accessLevel,
+          journeyStage: chosenJourneyStage,
+          accessLevel: chosenAccessLevel,
         },
       ];
       const res = await fetch(`/api/offerings/${offeringId}`, {
@@ -539,29 +572,39 @@ export function AddMaterialButton({
           </div>
 
           {/* CR-3: every material carries its buyer's-journey stage + who may
-              see it. Two colour-coded dropdowns, defaulting to the most common
-              pairing (awareness + client facing). */}
+              see it. Both must be deliberately chosen rather than silently
+              inheriting defaults. */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
                 Buyer&apos;s journey stage
+                {!journeyStage && (
+                  <span className="font-semibold normal-case tracking-normal text-[color:#B02020]">
+                    · pick one
+                  </span>
+                )}
               </label>
               <ColorSelect
                 value={journeyStage}
                 options={STAGE_OPTIONS}
-                onChange={(v) => setJourneyStage(v as JourneyStage)}
+                onChange={(v) => setJourneyStage(v as JourneyStage | "")}
                 ariaLabel="Buyer's journey stage"
                 minWidth={0}
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
                 Access level
+                {!accessLevel && (
+                  <span className="font-semibold normal-case tracking-normal text-[color:#B02020]">
+                    · pick one
+                  </span>
+                )}
               </label>
               <ColorSelect
                 value={accessLevel}
                 options={ACCESS_OPTIONS}
-                onChange={(v) => setAccessLevel(v as AccessLevel)}
+                onChange={(v) => setAccessLevel(v as AccessLevel | "")}
                 ariaLabel="Access level"
                 minWidth={0}
               />

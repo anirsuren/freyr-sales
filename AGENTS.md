@@ -180,6 +180,17 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Aug 4 change-log closeout is ready to ship:** sales-material upload now
+  requires an explicit file format, buyer-journey stage, and access level
+  instead of silently assigning defaults. The catalogue now uses the exact
+  `Freya Fusion (Agents)` type and `Freya Fusion Platform & Agents` category,
+  includes Agent.Via and Agent.Ria, and safely heals persisted catalogues by
+  exact legacy name without replacing owner-entered offering data. Later
+  product decisions remain authoritative: folder assignment is optional,
+  owners may create a folder inline, Folder/All-files layouts remain, the
+  explicit Ask Freyr AI handoff carries offering context, and released Real
+  mode modules are not hidden merely because the older change log said so.
+
 - **Aug 4 sales-material viewer batch is ready to ship:** ZIP materials can be
   reindexed and browsed member-by-member, and PDF members use Freyr's custom
   in-app viewer instead of the browser wrapper. Spreadsheet members now render
@@ -266,8 +277,8 @@ what was written back, `deleted-test-customers.json`).
 - Freya.Register's 21 restored materials: 8 files are **unfiled** (only
   unambiguous folder placements were made); ~4 of the original 25 were
   link-only materials whose names are unrecoverable — Eeswar re-adds them.
-- In-progress mode now overlays a complete, read-only sample roadmap on all 29
-  offerings: past, current, next, and category-specific comparison features.
+- In-progress mode now overlays a complete, read-only sample roadmap on every
+  catalogue offering: past, current, next, and category-specific comparison features.
   Ready-now mode still shows only roadmap versions an owner actually saved.
 
 ### Open queue
