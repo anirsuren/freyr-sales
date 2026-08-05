@@ -10,6 +10,7 @@ import { isOfferingsReleasePath } from "@/lib/release";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
+  "/",
   "/api/health",
   "/api/auth/access",
   // Decides whether the login page asks for a new password or an existing one.
@@ -180,6 +181,7 @@ export async function middleware(request: NextRequest) {
   if (
     offeringsOnly(request) &&
     !pathname.startsWith("/api/") &&
+    !isPublicPath(pathname) &&
     // The released module + the handful of non-module pages (sign-in, the
     // email-confirmation landing whose URL carries the session, access-pending,
     // settings, the tour). One shared list — see lib/release.ts.

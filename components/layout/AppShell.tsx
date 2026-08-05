@@ -55,7 +55,13 @@ export function AppShell({
   // copy is what stops a page from rendering its chrome for a frame before the
   // server bounce lands — and it restores /access-pending, which this list used
   // to omit, so an unapproved visitor no longer ping-pongs to /offerings.
-  const restrictedPath = !isReleasedPath(pathname, dataMode);
+  const standalonePublicPath =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/auth/confirm" ||
+    pathname === "/auth/reset-password" ||
+    pathname === "/access-pending";
+  const restrictedPath = !standalonePublicPath && !isReleasedPath(pathname, dataMode);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const hoverPreference = useHoverPreference();
   const agentHiddenStorageKey = userScopedStorageKey(
@@ -200,6 +206,7 @@ export function AppShell({
 
   // login + printable reports render chrome-free
   if (
+    pathname === "/" ||
     pathname === "/login" ||
     pathname === "/auth/confirm" ||
     pathname === "/auth/reset-password" ||
