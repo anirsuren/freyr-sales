@@ -180,8 +180,22 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
-- **Aug 5 local closeout batch — committed, NOT deployed (Anir: run locally
-  only):** sales-material view preferences persist per user (Folders vs All
+- **Aug 5 evening: Anir ordered the deploy — 9f55d84 + 80375ac pushed to
+  main.** 80375ac adds: the roadmap editor rebuilt as guided visual cards
+  (editable version-timeline, modules, comparison table whose editable
+  column headers ARE the comparison labels, history, owners-only next
+  card) saving with the Edit Offering page's ONE Save button; the landing
+  made actually public (the client access watchdog exempted every public
+  page except "/", yanking logged-out visitors to /login) with the hero's
+  Freyr AI mockup redrawn as the real light dock; and feedback alerts that
+  fall back to Anir's Telegram when email has no working provider — the
+  local Resend account 403s because freyrsolutions.com is unverified at
+  resend.com/domains (prod's invitation email is a separate working
+  setup). RESEND_API_KEY + FEEDBACK_RECIPIENT_EMAIL now exist in
+  .env.local.
+
+- **Aug 5 local closeout batch (9f55d84, deployed with the above):**
+  sales-material view preferences persist per user (Folders vs All
   files + list/card layout, restored without the default-view flash; explicit
   URL options still win); Feedback blurs the page immediately with a
   "Preparing feedback" state, blocks repeat clicks, excludes its own overlay
