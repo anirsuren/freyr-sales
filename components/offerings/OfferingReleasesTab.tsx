@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
+  Check,
+  ChevronRight,
   CircleCheck,
   Clock,
   GitCompareArrows,
@@ -503,18 +505,25 @@ export function RoadmapEditorFields({
         title="Version timeline"
         caption="The three milestones at the top of the Roadmap tab — previous, current, and what's coming."
       >
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="min-w-0 rounded-xl border border-border-light bg-surface/60 p-3.5">
-            <div className="flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="h-3.5 w-3.5 shrink-0 rounded-full bg-[#8E98A8] shadow-[0_0_0_3px_rgba(142,152,168,0.18)]"
-              />
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                Previous release
-              </p>
-            </div>
-            <p className="mt-2.5 text-[13.5px] font-semibold text-text-primary">
+        {/* A REAL timeline: one continuous track through all three stops —
+            solid where it already shipped, dashed blue with an arrowhead
+            into the future. Dots sit ON the line; the editable fields hang
+            under their stop. On small screens the line runs vertically. */}
+        <div className="grid gap-y-8 py-1 md:grid-cols-3 md:gap-x-8">
+          {/* -------------------------------------------------- previous */}
+          <div className="relative min-w-0 pl-9 md:pl-0 md:pt-10">
+            <span
+              aria-hidden="true"
+              className="absolute bottom-[-32px] left-[9px] top-7 w-0.5 bg-border md:bottom-auto md:left-7 md:right-[-32px] md:top-[9px] md:h-0.5 md:w-auto"
+            />
+            <span
+              aria-hidden="true"
+              className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white bg-[#8E98A8] shadow-[0_0_0_1px_rgba(17,24,39,0.12)]"
+            />
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-text-tertiary md:absolute md:left-8 md:top-0">
+              Previous release
+            </p>
+            <p className="mt-2 text-[13.5px] font-semibold text-text-primary md:mt-0">
               {previousPeriod || "Nothing recorded yet"}
             </p>
             <p className="mt-1 text-[11px] leading-snug text-text-tertiary">
@@ -522,17 +531,33 @@ export function RoadmapEditorFields({
             </p>
           </div>
 
-          <div className="min-w-0 rounded-xl border border-border-light bg-white p-3.5">
-            <div className="flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="h-3.5 w-3.5 shrink-0 rounded-full bg-[#20B15A] shadow-[0_0_0_3px_rgba(32,177,90,0.18)]"
-              />
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                Current version
-              </p>
-            </div>
-            <div className="mt-2.5 space-y-2">
+          {/* --------------------------------------------------- current */}
+          <div className="relative min-w-0 pl-9 md:pl-0 md:pt-10">
+            {canSeeNext && (
+              <>
+                {/* The future is a dashed line — it hasn't happened yet. */}
+                <span
+                  aria-hidden="true"
+                  className="absolute bottom-[-32px] left-[9px] top-7 w-0 border-l-2 border-dashed border-blue-primary/45 md:bottom-auto md:left-7 md:right-[-26px] md:top-[8px] md:h-0 md:w-auto md:border-l-0 md:border-t-2"
+                />
+                <ChevronRight
+                  size={14}
+                  strokeWidth={2.6}
+                  aria-hidden="true"
+                  className="absolute bottom-[-40px] left-[3px] rotate-90 text-blue-primary/60 md:bottom-auto md:left-auto md:right-[-32px] md:top-[2px] md:rotate-0"
+                />
+              </>
+            )}
+            <span
+              aria-hidden="true"
+              className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white bg-[#20B15A] shadow-[0_0_0_1px_rgba(17,24,39,0.12)]"
+            >
+              <Check size={9} strokeWidth={3.4} className="text-white" />
+            </span>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-text-secondary md:absolute md:left-8 md:top-0">
+              Current version
+            </p>
+            <div className="mt-2 space-y-2 md:mt-0">
               <input
                 className={FIELD}
                 value={draft.currentVersion}
@@ -554,18 +579,19 @@ export function RoadmapEditorFields({
             </div>
           </div>
 
+          {/* ------------------------------------------------------ next */}
           {canSeeNext && (
-            <div className="min-w-0 rounded-xl border border-blue-primary/25 bg-blue-light/40 p-3.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5 shrink-0 rounded-full bg-blue-primary shadow-[0_0_0_3px_rgba(0,113,227,0.18)]"
-                />
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-blue-primary">
-                  Next expected
-                </p>
-              </div>
-              <div className="mt-2.5 space-y-2">
+            <div className="relative min-w-0 pl-9 md:pl-0 md:pt-10">
+              <span
+                aria-hidden="true"
+                className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white bg-blue-primary shadow-[0_0_0_1px_rgba(17,24,39,0.12)]"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-white" aria-hidden="true" />
+              </span>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-blue-primary md:absolute md:left-8 md:top-0">
+                Next expected
+              </p>
+              <div className="mt-2 space-y-2 md:mt-0">
                 <input
                   className={FIELD}
                   value={draft.nextVersions}

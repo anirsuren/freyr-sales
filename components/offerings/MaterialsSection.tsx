@@ -15,10 +15,6 @@ import {
   FilterX,
   Route,
   ShieldCheck,
-  Rows3,
-  Columns2,
-  Grid2X2,
-  Table2,
   GripVertical,
   type LucideIcon,
 } from "lucide-react";
@@ -178,17 +174,6 @@ function TagPill({
 
 type MaterialColumns = 1 | 2 | 4 | "table";
 
-const MATERIAL_LAYOUTS: Array<{
-  columns: MaterialColumns;
-  label: string;
-  icon: LucideIcon;
-}> = [
-  { columns: 1, label: "One column", icon: Rows3 },
-  { columns: 2, label: "Two columns", icon: Columns2 },
-  { columns: 4, label: "Four columns", icon: Grid2X2 },
-  { columns: "table", label: "Details table", icon: Table2 },
-];
-
 function materialGridClass(columns: MaterialColumns) {
   if (columns === 2) return "grid grid-cols-1 gap-2.5 md:grid-cols-2";
   if (columns === 4)
@@ -229,39 +214,15 @@ export function MaterialsSection({
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
-  // Folder navigation is always a compact four-up grid; files default to the
-  // roomier two-up view and can still be switched to one or four columns.
-  const [columns, setColumns] = useState<MaterialColumns>(2);
-  const [layoutPreferenceReady, setLayoutPreferenceReady] = useState(false);
+  // ONE view for files: the details table (Change Request point 25, Saras,
+  // Aug 3 — "restrict the sales materials view option to only one 'List'
+  // view"). The 1/2/4-column tile layouts and their saved preference are
+  // deliberately gone; folder navigation keeps its compact grid.
+  const columns: MaterialColumns = "table";
   const [savedScope, setSavedScope] = useState<"folders" | "files">("folders");
   const [scopePreferenceReady, setScopePreferenceReady] = useState(false);
   const preferenceSuffix = preferenceOwnerId?.trim() || "anonymous";
-  const layoutStorageKey = `freyr.materials.layout.v2:${preferenceSuffix}`;
   const scopeStorageKey = `freyr.materials.scope.v2:${preferenceSuffix}`;
-
-  useEffect(() => {
-    try {
-      // Migrate the old browser-wide preference once, then remove it so the
-      // next person using this browser cannot inherit another user's choice.
-      const legacyKey = "freyr.materials.layout.v1";
-      const scoped = localStorage.getItem(layoutStorageKey);
-      const saved = scoped ?? localStorage.getItem(legacyKey);
-      if (saved === "1" || saved === "2" || saved === "4")
-        setColumns(Number(saved) as MaterialColumns);
-      else if (saved === "table") setColumns("table");
-      if (scoped === null && saved !== null) {
-        localStorage.setItem(layoutStorageKey, saved);
-        localStorage.removeItem(legacyKey);
-      }
-    } catch {}
-    setLayoutPreferenceReady(true);
-  }, [layoutStorageKey]);
-  useEffect(() => {
-    if (!layoutPreferenceReady) return;
-    try {
-      localStorage.setItem(layoutStorageKey, String(columns));
-    } catch {}
-  }, [columns, layoutPreferenceReady, layoutStorageKey]);
 
   useEffect(() => {
     try {
@@ -622,7 +583,7 @@ export function MaterialsSection({
   // folders/two-column UI first made every tab switch visibly jump to the
   // saved preference. Keep the footprint stable for that one hydration frame,
   // then paint the user's actual preference as the first interactive view.
-  if (!layoutPreferenceReady || !scopePreferenceReady) {
+  if (!scopePreferenceReady) {
     return (
       <div
         className="mt-5 ml-11"
@@ -740,33 +701,6 @@ export function MaterialsSection({
               <Files size={14} strokeWidth={2} aria-hidden="true" />
               All files
             </button>
-          </div>
-          <div
-            role="group"
-            aria-label="Sales materials layout"
-            className="inline-flex items-center rounded-lg border border-border-light bg-surface p-1"
-          >
-            {MATERIAL_LAYOUTS.map(({ columns: option, label, icon: Icon }) => {
-              const selected = columns === option;
-              return (
-                <Tooltip key={option} label={label} side="bottom">
-                  <button
-                    type="button"
-                    aria-label={label}
-                    aria-pressed={selected}
-                    title={label}
-                    onClick={() => setColumns(option)}
-                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                      selected
-                        ? "bg-white text-blue-primary shadow-card"
-                        : "text-text-tertiary hover:bg-white/70 hover:text-text-primary"
-                    }`}
-                  >
-                    <Icon size={15} strokeWidth={2} aria-hidden="true" />
-                  </button>
-                </Tooltip>
-              );
-            })}
           </div>
           {action}
         </div>
@@ -983,7 +917,7 @@ export function MaterialsSection({
                 <th className="px-3 py-3">File format</th>
                 <th className="px-3 py-3">Access level</th>
                 <th className="px-3 py-3">Buyer&apos;s journey stage(s)</th>
-                <th className="px-3 py-3">Added by</th>
+                <th className="px-3 py-3">Upload date</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
