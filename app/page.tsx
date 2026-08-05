@@ -52,15 +52,15 @@ export default function Home() {
         <div className={styles.copy}>
           <div className={styles.eyebrow}>
             <span className={styles.eyebrowDot} />
-            The internal source of truth for every offering
+            Sales Intelligence
           </div>
           <h1>
-            Know what Freyr can sell.
-            <span>Know how to sell it.</span>
+            The all-in-one sales platform
+            <span>for Freyr.</span>
           </h1>
           <p className={styles.lede}>
-            Sales Intelligence brings offering briefs, current roadmaps,
-            approved sales materials and Freyr AI into one governed workspace.
+            Offering briefs, roadmaps, sales materials and Freyr AI — in one
+            place.
           </p>
 
           <div className={styles.actions}>
