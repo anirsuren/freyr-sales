@@ -1235,3 +1235,15 @@ input {
 /* Opacity only — the tip's inline transform positions it relative to the
    hovered element, so animating transform here would yank it off-target. */
 .autotip-in { animation: autotipIn 130ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Feedback camera-snap: a white flash + viewfinder frame right after the
+   page screenshot is taken, so clicking Feedback FEELS like a capture. */
+@keyframes feedback-flash {
+  0% { opacity: 0.92; }
+  100% { opacity: 0; }
+}
+@keyframes feedback-frame {
+  0% { opacity: 1; transform: scale(1.012); }
+  60% { opacity: 0.7; }
+  100% { opacity: 0; transform: scale(1); }
+}

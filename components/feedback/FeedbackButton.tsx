@@ -80,6 +80,9 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
   const [screenshot, setScreenshot] = useState("");
   const [captureError, setCaptureError] = useState("");
   const [capturing, setCapturing] = useState(false);
+  // True for ~600ms right after the screenshot lands: drives the camera
+  // flash + viewfinder snap so the click visibly TAKES the picture.
+  const [flash, setFlash] = useState(false);
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState("");
@@ -225,6 +228,12 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
         window.requestAnimationFrame(() => resolve())
       );
       setScreenshot(await captureCurrentPage());
+      // The shot is in hand — fire the camera flash, let it read for a
+      // beat, then open the form over the fading frame.
+      setCapturing(false);
+      setFlash(true);
+      window.setTimeout(() => setFlash(false), 650);
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 280));
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown capture error";
       console.error("Automatic feedback screenshot failed:", error);
@@ -331,6 +340,29 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
                 </span>
               </span>
             </div>
+          </div>,
+          document.body
+        )}
+      {flash &&
+        createPortal(
+          <div
+            data-feedback-capture-overlay
+            aria-hidden="true"
+            className="pointer-events-none fixed inset-0 z-[130]"
+          >
+            {/* The flash… */}
+            <div
+              className="absolute inset-0 bg-white"
+              style={{ animation: "feedback-flash 600ms ease-out forwards" }}
+            />
+            {/* …and the viewfinder frame snapping onto the page. */}
+            <div
+              className="absolute inset-2 rounded-2xl border-4 border-white"
+              style={{
+                animation: "feedback-frame 600ms ease-out forwards",
+                boxShadow: "0 0 34px rgba(255,255,255,0.85)",
+              }}
+            />
           </div>,
           document.body
         )}

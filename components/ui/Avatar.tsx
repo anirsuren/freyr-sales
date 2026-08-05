@@ -12,6 +12,20 @@ import {
 // and rep now has a real headshot (Anir, Jul 8: "everywhere there's a name of
 // the person, you have the pfp of the entity"). Doctors are keyed both with and
 // without the "Dr." prefix so a lookup matches however the name is rendered.
+// ACTUAL photographs of the real Freyr team, each pulled from the person's
+// own verified LinkedIn profile (Aug 6). Unlike the synthetic PHOTOS map
+// below, these are allowed in Real mode: they are the true faces, not
+// stand-ins. Keyed by every name form the app renders.
+const REAL_PHOTOS: Record<string, string> = {
+  "eswar subramanian": "/avatars/eswar-subramanian.png",
+  "eswar subramanian ramakrishnan": "/avatars/eswar-subramanian.png",
+  "inayat pawar": "/avatars/inayat-pawar.png",
+  "priyanka manchanda": "/avatars/priyanka-manchanda.png",
+  "dr. priyanka manchanda": "/avatars/priyanka-manchanda.png",
+  "saras verma": "/avatars/saras-verma.png",
+  "raj vinesh": "/avatars/raj-vinesh.png",
+};
+
 const PHOTOS: Record<string, string> = {
   // Contacts
   "dr. lena vogt": "/avatars/lena-vogt.png",
@@ -145,12 +159,13 @@ export function Avatar({
     !!myPhoto &&
     !!name &&
     name.trim().toLowerCase() === myName.trim().toLowerCase();
-  // Static portraits are generated demo assets. Real mode shows an explicit
-  // account photo (or the signed-in user's uploaded photo) and otherwise uses
-  // honest initials; it never presents a synthetic face as a colleague.
+  // Static portraits in PHOTOS are generated demo assets — mock only; Real
+  // mode never presents a synthetic face as a colleague. REAL_PHOTOS are the
+  // colleagues' own verified LinkedIn photographs and render in BOTH modes.
   const photo =
     src ||
     (isMe ? myPhoto : null) ||
+    REAL_PHOTOS[name.trim().toLowerCase()] ||
     (dataMode === "mock" ? photoFor(name) : null);
   const words = name.split(/\s+/).filter(Boolean);
   const nameWords = words.filter((w) => NAME_WORD.test(w));
