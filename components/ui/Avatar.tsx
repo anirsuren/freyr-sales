@@ -17,6 +17,9 @@ import {
 // below, these are allowed in Real mode: they are the true faces, not
 // stand-ins. Keyed by every name form the app renders.
 const REAL_PHOTOS: Record<string, string> = {
+  "anant puranik": "/avatars/anant-puranik.png",
+  "suren dheenadayalan": "/avatars/suren-dheenadayalan.png",
+  "suren dheenadayalan (ceo)": "/avatars/suren-dheenadayalan.png",
   "eswar subramanian": "/avatars/eswar-subramanian.png",
   "eswar subramanian ramakrishnan": "/avatars/eswar-subramanian.png",
   "inayat pawar": "/avatars/inayat-pawar.png",

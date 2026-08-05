@@ -1592,7 +1592,7 @@ export function SettingsTabs({
             <Card className="px-5 py-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Authentication path</p>
               <div className="mt-3 flex items-center gap-2 text-[11px] font-semibold text-text-primary"><span className="rounded-md bg-blue-light px-2 py-1 text-blue-primary">Identity</span><span className="text-text-tertiary">→</span><span className="rounded-md bg-warning/10 px-2 py-1 text-warning">Approval</span><span className="text-text-tertiary">→</span><span className="rounded-md bg-success/10 px-2 py-1 text-success">Role</span></div>
-              <p className="mt-3 text-[11px] text-text-secondary">Unapproved identities stop at a pending screen before the application shell loads.</p>
+              <p className="mt-3 text-[11px] text-text-secondary">New sign-ins wait at a pending screen until an admin approves them.</p>
             </Card>
           </div>
 
