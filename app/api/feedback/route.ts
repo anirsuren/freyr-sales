@@ -6,6 +6,7 @@ import {
   verifiedWorkflowActor,
 } from "@/lib/workflowAuthorization";
 import { sendTransactionalEmail, type EmailAttachment } from "@/lib/email";
+import { sendTelegram } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -150,6 +151,31 @@ export async function POST(req: NextRequest) {
     attachments: screenshotAttachment(record.screenshot),
   });
   if (!emailResult.ok) {
+    // Email has no provider here (or the send failed): the alert must still
+    // reach Anir. Telegram is the proven fallback channel in this workspace,
+    // so the report goes there and the submitter sees a clean success.
+    const telegramResult = await sendTelegram(
+      [
+        "🛎️ <b>Freyr feedback</b>",
+        `<b>${record.type.replaceAll("_", " ")}:</b> ${record.title.replace(/\s+/g, " ")}`,
+        "",
+        feedbackEmailBody(record),
+        "",
+        record.screenshot
+          ? "Screenshot: saved with the report in the app (email attachments need the email key)."
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+    if (telegramResult.ok) {
+      return NextResponse.json({
+        ok: true,
+        id: record.id,
+        deliveredTo: "Telegram",
+        delivery: "telegram",
+      });
+    }
     return NextResponse.json(
       {
         error: emailResult.skipped

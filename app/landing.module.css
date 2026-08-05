@@ -184,17 +184,24 @@
 .signalItem strong { font-size: 9px; line-height: 1.2; }
 .signalItem small { margin-top: 3px; color: #8a96a4; font-size: 7px; }
 .signalCheck { color: #24aa58; }
-.aiAnswer { min-width: 0; padding: 14px; border-radius: 13px; color: white; background: linear-gradient(145deg, #08254b, #0c3769); box-shadow: inset 0 1px rgba(255, 255, 255, 0.11); }
-.aiHeading { display: grid; grid-template-columns: 29px 1fr auto; align-items: center; gap: 7px; }
-.aiHeading > span { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 9px; background: var(--freyr-blue); }
-.aiHeading strong { font-size: 10px; }
-.aiHeading em { font-size: 7px; font-style: normal; color: #9edcf0; }
-.aiAnswer p { margin: 18px 0 16px; color: #e8f1fb; font-size: 10px; line-height: 1.55; }
-.sources { padding-top: 10px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255, 255, 255, 0.12); color: #a9bfd7; font-size: 7px; font-weight: 650; }
-.sourceDots { display: flex; }
-.sourceDots i { width: 17px; height: 17px; margin-left: -4px; border: 2px solid #11385f; border-radius: 50%; background: #2b8aeb; }
-.sourceDots i:nth-child(2) { background: #28afbe; }
-.sourceDots i:nth-child(3) { background: #8c65e8; }
+/* Freyr AI exactly as it exists in the product: the light dock panel that
+   floats above the page bottom-right, plus its round launcher bubble. */
+.aiDockWrap { min-width: 0; display: grid; justify-items: end; align-content: end; gap: 8px; }
+.aiDock { width: 100%; display: grid; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 15px; background: #fff; box-shadow: 0 18px 40px -18px rgba(8, 37, 75, 0.28); }
+.aiDockHead { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #edf1f6; background: linear-gradient(#fff, #f7fafd); }
+.aiDockIcon { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: var(--freyr-blue); box-shadow: 0 2px 8px rgba(0, 113, 227, 0.35); }
+.aiDockTitle { display: grid; line-height: 1.2; }
+.aiDockTitle strong { font-size: 9.5px; }
+.aiDockTitle small { margin-top: 1px; font-size: 7px; color: #8a96a4; }
+.aiChat { display: grid; gap: 7px; padding: 11px 12px; }
+.aiUserMsg { max-width: 82%; margin: 0; justify-self: end; padding: 6px 9px; border-radius: 11px 11px 3px 11px; background: var(--freyr-blue); color: #fff; font-size: 8.5px; line-height: 1.45; }
+.aiAnswerMsg { max-width: 92%; justify-self: start; padding: 8px 10px; border: 1px solid #e7edf4; border-radius: 11px 11px 11px 3px; background: #f6f9fc; }
+.aiAnswerMsg p { margin: 0; color: #24303d; font-size: 8.5px; line-height: 1.5; }
+.aiSourceRow { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px; }
+.aiSourceRow span { padding: 2px 7px; border: 1px solid #cfe4fb; border-radius: 999px; background: #e9f3ff; color: #0877e8; font-size: 6.5px; font-weight: 650; }
+.aiInputBar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 12px 11px; padding: 4px 4px 4px 11px; border: 1px solid #e2e8f0; border-radius: 999px; background: #fff; color: #97a3b1; font-size: 7.5px; }
+.aiSend { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--freyr-blue); color: #fff; }
+.dockFab { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--freyr-blue); color: #fff; box-shadow: 0 8px 24px -6px rgba(0, 113, 227, 0.55); }
 
 .capabilities {
   width: min(1440px, calc(100% - 8vw));
@@ -214,7 +221,7 @@
   .hero { grid-template-columns: 0.85fr 1.15fr; gap: 28px; }
   .copy h1 { font-size: 52px; }
   .signalGrid { grid-template-columns: 1fr; }
-  .aiAnswer { display: none; }
+  .aiDockWrap { display: none; }
 }
 
 @media (max-width: 760px) {

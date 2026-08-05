@@ -49,7 +49,10 @@ import type {
   OfferingRoadmapDetails,
   ServiceCardStyle,
 } from "@/lib/offerings";
-import { OfferingRoadmapInlineEditor } from "@/components/offerings/OfferingReleasesTab";
+import {
+  RoadmapEditorFields,
+  blankRoadmapDetails,
+} from "@/components/offerings/OfferingReleasesTab";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
@@ -785,6 +788,13 @@ export function OfferingForm({
   };
 }) {
   const router = useRouter();
+  // The roadmap is part of THIS form: it lives in the Product roadmap
+  // section below and saves with the page's one Save button — no separate
+  // save, no separate page (Anir, Aug 5: "there's already a save button at
+  // the very end... everything's part of the same thing").
+  const [roadmapDraft, setRoadmapDraft] = useState<OfferingRoadmapDetails>(
+    () => structuredClone(roadmapDetails ?? blankRoadmapDetails())
+  );
   const { toast } = useToast();
   const isEdit = !!offeringId;
   const [saving, setSaving] = useState(false);
@@ -1100,6 +1110,12 @@ export function OfferingForm({
             poc,
             customer_type_ids: ctIds,
             market_ids: mktIds,
+            // The roadmap edits ride the same save as everything else on
+            // this page. Never sent from Mock: the sample overlay must not
+            // overwrite the real roadmap.
+            ...(isEdit && roadmapEditable
+              ? { roadmap_details: roadmapDraft }
+              : {}),
             ...(!isEdit || materialsChanged
               ? {
                   materials: materials
@@ -1945,21 +1961,23 @@ export function OfferingForm({
       </FormSection>
 
       {/* ------------------------------------------------ product roadmap */}
-      {/* The complete roadmap editor lives right here in the accordion — no
-          separate page, no new tab. It saves independently of the rest of the
-          form so a roadmap edit never depends on (or discards) other field
-          changes on this page. */}
+      {/* The complete roadmap editor lives right here in the accordion and
+          saves with the page's ONE Save button — no inner save, no separate
+          page, no new tab. */}
       {isEdit && offeringId && (
         <FormSection
           icon={Route}
           title="Product roadmap"
-          hint="Edit current and previous versions, comparisons, release history, and the approved next version."
+          hint="The version timeline, modules, comparison and history sellers see on the Roadmap tab. Saves with this page's Save button."
         >
           {roadmapEditable ? (
-            <OfferingRoadmapInlineEditor
-              offeringId={offeringId}
-              initialDetails={roadmapDetails}
-            />
+            <div className="space-y-4">
+              <RoadmapEditorFields
+                draft={roadmapDraft}
+                onChange={setRoadmapDraft}
+                canSeeNext
+              />
+            </div>
           ) : (
             <p className="rounded-xl border border-border-light bg-surface/60 p-4 text-[12.5px] leading-relaxed text-text-secondary">
               The roadmap shown in Mock is a read-only sample. Switch to Real

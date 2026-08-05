@@ -147,6 +147,10 @@ export function AppShell({
   useEffect(() => {
     if (
       !approvalEnabled ||
+      // The public landing page: a signed-out visitor is SUPPOSED to be here.
+      // Without this exemption the access watchdog 401s and yanks every
+      // logged-out visitor off the landing straight to /login.
+      pathname === "/" ||
       pathname === "/login" ||
       // The confirmation landing is BUSY signing the visitor in — its access
       // check would 401 (cookies aren't set yet) and this watchdog would yank

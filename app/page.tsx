@@ -127,20 +127,39 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className={styles.aiAnswer}>
-                    <div className={styles.aiHeading}>
-                      <span><Sparkles size={17} /></span>
-                      <strong>Freyr AI</strong>
-                      <em>Grounded answer</em>
+                  {/* The REAL assistant: the light dock panel that floats
+                      bottom-right in the app, not an invented dark widget. */}
+                  <div className={styles.aiDockWrap}>
+                    <div className={styles.aiDock}>
+                      <div className={styles.aiDockHead}>
+                        <span className={styles.aiDockIcon}><Sparkles size={13} /></span>
+                        <span className={styles.aiDockTitle}>
+                          <strong>Freyr AI</strong>
+                          <small>Grounded in this offering</small>
+                        </span>
+                      </div>
+                      <div className={styles.aiChat}>
+                        <p className={styles.aiUserMsg}>What does Freya.Register do?</p>
+                        <div className={styles.aiAnswerMsg}>
+                          <p>
+                            Freya.Register gives regulatory teams a governed
+                            source of truth across products, applications and
+                            registrations.
+                          </p>
+                          <div className={styles.aiSourceRow}>
+                            <span>Offering brief</span>
+                            <span>Roadmap</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className={styles.aiInputBar}>
+                        <span>Ask about this offering…</span>
+                        <i className={styles.aiSend}><ArrowRight size={11} /></i>
+                      </div>
                     </div>
-                    <p>
-                      Freya.Register gives regulatory teams a governed source of
-                      truth across products, applications and registrations.
-                    </p>
-                    <div className={styles.sources}>
-                      <span>3 verified sources</span>
-                      <div className={styles.sourceDots}><i /><i /><i /></div>
-                    </div>
+                    <span className={styles.dockFab} aria-hidden="true">
+                      <Sparkles size={15} />
+                    </span>
                   </div>
                 </div>
               </div>
