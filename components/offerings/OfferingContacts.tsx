@@ -781,12 +781,56 @@ export function OfferingContacts({
               <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 What they do here
               </p>
-              <ColorSelect
-                value={editRole}
-                options={ROLE_OPTIONS}
-                onChange={setEditRole}
-                ariaLabel={`${editing.name}'s role on this offering`}
-              />
+              {/* The modal's ONE decision, shown as a flat option list. A
+                  dropdown here opened PAST the bottom of this short modal and
+                  hung over the page (Anir, Aug 6: "it's poking out"). */}
+              <div
+                role="radiogroup"
+                aria-label={`${editing.name}'s role on this offering`}
+                className="space-y-1.5"
+              >
+                {ROLE_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const selected = option.value === editRole;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setEditRole(option.value)}
+                      className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                        selected
+                          ? "border-blue-primary bg-blue-light/50"
+                          : "border-border-light bg-white hover:border-blue-subtle"
+                      }`}
+                    >
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white"
+                        style={{ backgroundColor: option.color }}
+                      >
+                        {Icon && <Icon size={14} strokeWidth={2} />}
+                      </span>
+                      <span
+                        className={`min-w-0 flex-1 text-[13.5px] ${
+                          selected
+                            ? "font-semibold text-text-primary"
+                            : "font-medium text-text-secondary"
+                        }`}
+                      >
+                        {option.label}
+                      </span>
+                      {selected && (
+                        <Check
+                          size={16}
+                          strokeWidth={2.4}
+                          className="shrink-0 text-blue-primary"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
               {/* Same box as the add flow: picking "Something else" has to ask
                   what it is, or Save would write the sentinel as a job title. */}
               {editRole === CUSTOM_ROLE && (

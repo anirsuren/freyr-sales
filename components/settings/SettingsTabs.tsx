@@ -129,6 +129,22 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 type Member = { name: string; email: string; role: string; you?: boolean };
+
+/** "Just now" → "45m ago" → "7h ago" → "Yesterday" → "4 days ago" → "Jul 29". */
+function lastSeenLabel(iso: string | null | undefined): string {
+  if (!iso) return "Not yet";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "Not yet";
+  const minutes = Math.round((Date.now() - then) / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 type AccessRole = "admin" | "editor" | "sales";
 type AccessDirectory = {
   members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; accountType: "real" | "test"; lastSeenAt: string | null }[];
@@ -1509,7 +1525,15 @@ export function SettingsTabs({
                       stretching the pill to the full column width. */}
                   <RoleTag role={member.role} size="sm" className="w-fit" />
                   <span className={cn("inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-semibold", member.active ? "bg-success/10 text-success" : "bg-surface text-text-tertiary")}><span className={cn("h-1.5 w-1.5 rounded-full", member.active ? "bg-success" : "bg-text-tertiary")} />{member.active ? "Active" : "Suspended"}</span>
-                  <span className="text-[11px] text-text-tertiary">{member.lastSeenAt ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(-Math.max(1, Math.round((Date.now() - new Date(member.lastSeenAt).getTime()) / 3600000)), "hour") : "Not yet"}</span>
+                  {/* Human time, not an hour counter — "186 hours ago" means
+                      nothing; "Jul 30" does (Anir, Aug 6). Hover shows the
+                      exact moment, per the app-wide timestamp rule. */}
+                  <span
+                    className="text-[11px] text-text-tertiary"
+                    title={member.lastSeenAt ? new Date(member.lastSeenAt).toLocaleString() : undefined}
+                  >
+                    {lastSeenLabel(member.lastSeenAt)}
+                  </span>
                 </li>
               ))}
             </ul>

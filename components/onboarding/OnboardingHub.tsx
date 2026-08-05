@@ -209,8 +209,17 @@ export function OnboardingHub({
 
   return (
     <div className="max-w-[1080px]" data-tour="onboarding-hub">
-      <Card className="overflow-hidden border-blue-subtle bg-gradient-to-br from-blue-light via-white to-white p-0">
-        <div className="grid gap-8 p-7 lg:grid-cols-[1.25fr_0.75fr] lg:p-9">
+      {/* Solid bg-white (which dark mode remaps) + a translucent blue glow
+          overlay. The old white GRADIENT STOPS (via-white/to-white) are not
+          remapped by .dark, so in dark mode the card stayed light while its
+          text flipped to near-white — an unreadable white slab (Anir, Aug 6:
+          "I'm on dark mode, but it shows up like this"). */}
+      <Card className="relative overflow-hidden border-blue-subtle bg-white p-0">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[rgba(0,113,227,0.14)] via-transparent to-transparent"
+        />
+        <div className="relative grid gap-8 p-7 lg:grid-cols-[1.25fr_0.75fr] lg:p-9">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-blue-subtle bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-blue-primary">
               <Compass size={14} />
