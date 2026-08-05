@@ -43,6 +43,9 @@ export function isReleased(href: string, dataMode: DataMode): boolean {
 const RELEASED_MODULE_PREFIXES = [
   "/offerings",
   "/agent",
+  // The Team page ships with honest zeros: real workspace members as the
+  // roster, every pipeline number 0 until deals exist (Anir, Aug 6).
+  "/team",
 ] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,

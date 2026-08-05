@@ -1507,8 +1507,9 @@ export function SettingsTabs({
                   </div>
                   {/* Same three names, same chip, as the account menu. This
                       row used to say "Catalog editor" for the role the invite
-                      form calls "Manager". */}
-                  <RoleTag role={member.role} size="sm" />
+                      form calls "Manager". w-fit stops the grid cell from
+                      stretching the pill to the full column width. */}
+                  <RoleTag role={member.role} size="sm" className="w-fit" />
                   <span className={cn("inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-semibold", member.active ? "bg-success/10 text-success" : "bg-surface text-text-tertiary")}><span className={cn("h-1.5 w-1.5 rounded-full", member.active ? "bg-success" : "bg-text-tertiary")} />{member.active ? "Active" : "Suspended"}</span>
                   <span className="text-[11px] text-text-tertiary">{member.lastSeenAt ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(-Math.max(1, Math.round((Date.now() - new Date(member.lastSeenAt).getTime()) / 3600000)), "hour") : "Not yet"}</span>
                 </li>

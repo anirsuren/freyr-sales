@@ -14,7 +14,10 @@ import {
   isCurrentRep,
   repOwnsDeal,
   salesTeamFor,
+  STAGES,
+  STAGE_COLOR,
 } from "@/lib/pipeline";
+import { listWorkspaceAccess } from "@/lib/accessStore";
 import {
   repEmail,
   repPhone,
@@ -66,7 +69,83 @@ function synthStageDeals(
 
 export default async function TeamPage() {
   if (getDataMode() === "live") {
-    return <EmptyState icon={Users} title="No teammates yet" description="Invite your first teammate from Settings to build the sales workspace." />;
+    // The REAL team: every active workspace member from the directory, in the
+    // exact same page as Mock — stat tiles, roster, charts — with honest
+    // zeros everywhere until deals and meetings exist (Anir, Aug 6: "same
+    // thing as fake mode, but all the data should say 0").
+    const workspace = process.env.FREYR_WORKSPACE_ID;
+    const [directory, currentUser] = await Promise.all([
+      workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
+      getCurrentUser().catch(() => null),
+    ]);
+    const members = (directory?.members ?? []).filter(
+      (member) => member.active && member.accountType === "real"
+    );
+    if (members.length === 0) {
+      return (
+        <EmptyState
+          icon={Users}
+          title="No teammates yet"
+          description="Invite your first teammate from Settings to build the sales workspace."
+        />
+      );
+    }
+    const ROLE_TITLE: Record<string, { title: string; role: RosterRep["role"] }> = {
+      admin: { title: "Workspace administrator", role: "Admin" },
+      editor: { title: "Sales manager", role: "Manager" },
+      sales: { title: "Sales representative", role: "Rep" },
+    };
+    const zeroStages = STAGES.map((stage) => ({
+      stage,
+      color: STAGE_COLOR[stage],
+      value: 0,
+      count: 0,
+    }));
+    const reps: RosterRep[] = members.map((member) => {
+      const meta = ROLE_TITLE[member.role] ?? ROLE_TITLE.sales;
+      return {
+        identityKey: member.email || member.id,
+        name: member.name,
+        slug: member.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        title: meta.title,
+        role: meta.role,
+        you: currentUser?.memberId === member.id,
+        region: "Global",
+        email: member.email || "",
+        phone: "",
+        linkedin: "",
+        teamsUrl: member.email ? teamsChatUrl(member.email) : "",
+        openValue: 0,
+        weighted: 0,
+        openCount: 0,
+        meetings: 0,
+        quota: 0,
+        wonFY: 0,
+        trend: [0, 0, 0, 0, 0, 0],
+        stageValues: zeroStages,
+        stageDeals: {},
+      };
+    });
+    const rollup = [
+      { icon: Users, label: "Team members", value: String(reps.length), sub: "in the workspace" },
+      { icon: Wallet, label: "Team pipeline", value: formatMoney(0), sub: "across 0 open deals" },
+      { icon: TrendingUp, label: "Weighted forecast", value: formatMoney(0), sub: "probability-adjusted" },
+      { icon: CalendarCheck, label: "Meetings booked", value: "0", sub: "live across the team" },
+    ];
+    return (
+      <div className="space-y-5">
+        <PageHeader
+          title="Team"
+          subtitle="Everyone in the workspace — pipeline numbers fill in as deals are logged."
+        />
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {rollup.map((tile) => (
+            <StatTile key={tile.label} icon={tile.icon} label={tile.label} value={tile.value} sub={tile.sub} />
+          ))}
+        </div>
+        <TeamRoster reps={reps} />
+      </div>
+    );
   }
   const [currentUser, scope] = await Promise.all([
     getCurrentUser(),
