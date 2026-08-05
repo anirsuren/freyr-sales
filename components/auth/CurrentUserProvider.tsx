@@ -8,22 +8,33 @@ import {
   type ReactNode,
 } from "react";
 import type { UserIdentity } from "@/lib/userIdentity";
+import type { DataMode } from "@/lib/dataMode";
 import { detectTimeZone, isValidTimeZone } from "@/lib/timeZone";
 
 const CurrentUserContext = createContext<UserIdentity | null>(null);
+const DataModeContext = createContext<DataMode>("live");
 
 export function CurrentUserProvider({
   user,
+  dataMode,
   children,
 }: {
   user: UserIdentity;
+  dataMode: DataMode;
   children: ReactNode;
 }) {
   return (
-    <CurrentUserContext.Provider value={user}>
-      {children}
-    </CurrentUserContext.Provider>
+    <DataModeContext.Provider value={dataMode}>
+      <CurrentUserContext.Provider value={user}>
+        {children}
+      </CurrentUserContext.Provider>
+    </DataModeContext.Provider>
   );
+}
+
+/** Mock mode may use generated demo portraits; Real mode never may. */
+export function useCurrentDataMode(): DataMode {
+  return useContext(DataModeContext);
 }
 
 /**

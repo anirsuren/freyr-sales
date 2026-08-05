@@ -24,7 +24,10 @@ import { OfferingActions } from "@/components/offerings/OfferingActions";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { canEditOffering } from "@/lib/offeringOwnership";
-import { listAssignablePeople } from "@/lib/assignablePeople";
+import {
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "@/lib/assignablePeople";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
@@ -62,9 +65,12 @@ export default async function OfferingDetailPage({
   const query = await searchParams;
   const raw = getOffering((await params).id);
   if (!raw) notFound();
-  const hydrated = hydrateOffering(raw);
+  const people = await listAssignablePeople();
+  const hydrated = hydrateOffering(
+    redactUnverifiedOfferingPeople(raw, people)
+  );
   const me = await getCurrentUser();
-  const admin = await canEditOffering(hydrated);
+  const admin = await canEditOffering(raw);
   // Agent-only rows must never be serialized into a non-owner's client tree.
   // Filtering only inside MaterialsSection would hide pixels while leaving the
   // full metadata in the RSC payload.
@@ -142,6 +148,7 @@ export default async function OfferingDetailPage({
         .filter(
           (x) => x.id !== raw.id && x.offering_type === raw.offering_type
         )
+        .map((x) => redactUnverifiedOfferingPeople(x, people))
         .map((x) => redactAgentOnlyMaterials(x, me.memberId))
     : [];
 
@@ -154,7 +161,6 @@ export default async function OfferingDetailPage({
   // his sales materials, etc., if he owns that offering"). Owning one offering
   // never grants rights over any other.
   // Real accounts, so assigning a contact assigns a PERSON, not a typed name.
-  const people = await listAssignablePeople();
   // Assigning and approving owners is an admin action; editing content is
   // open to the owners they grant.
   const workspaceAdmin = await canManageOfferings();
@@ -168,20 +174,7 @@ export default async function OfferingDetailPage({
   // only when the live directory supplied a stable member id for that person.
   // In-progress mode intentionally keeps the full sample roster so the page is
   // populated and demonstrates the finished experience.
-  const offeringContacts =
-    dataMode === "live"
-      ? (o.contacts ?? []).filter((contact) => {
-          const contactEmail = (contact.email || "").trim().toLowerCase();
-          const contactName = contact.name.trim().toLowerCase();
-          return people.some(
-            (person) =>
-              Boolean(person.memberId) &&
-              ((contactEmail &&
-                (person.email || "").trim().toLowerCase() === contactEmail) ||
-                person.name.trim().toLowerCase() === contactName)
-          );
-        })
-      : o.contacts ?? [];
+  const offeringContacts = o.contacts ?? [];
 
   // Each market + size band reads as its own color so they scan at a glance
   // (Anir: "USA, Europe, Japan, China, Korea each a different color; same for

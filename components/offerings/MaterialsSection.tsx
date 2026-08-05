@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   CalendarDays,
@@ -8,6 +8,7 @@ import {
   Download,
   Folder,
   FolderOpen,
+  FileText,
   X,
   ExternalLink,
   Files,
@@ -18,6 +19,7 @@ import {
   Columns2,
   Grid2X2,
   Table2,
+  GripVertical,
   type LucideIcon,
 } from "lucide-react";
 import { MultiColorSelect } from "@/components/ui/ColorSelect";
@@ -31,6 +33,7 @@ import { formatDate } from "@/lib/utils";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
+  DOCUMENT_TYPE_META,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
   MATERIAL_COLOR,
@@ -78,6 +81,64 @@ function uploadedAt(material: OfferingMaterial): string | null {
   if (!match) return null;
   const date = new Date(Number(match[1]));
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function safeDownloadName(label: string): string {
+  return (
+    label
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, " ")
+      .slice(0, 120) || "sales-material"
+  );
+}
+
+/**
+ * Uploaded assets download their original bytes. Link-only catalogue rows do
+ * not have bytes in storage, so they download a small portable HTML shortcut
+ * instead of silently losing the download action.
+ */
+function downloadMaterialCopy(material: OfferingMaterial): void {
+  if (material.docsPath) {
+    window.location.href = material.url;
+    return;
+  }
+  let source: URL;
+  try {
+    source = new URL(material.url, window.location.origin);
+  } catch {
+    return;
+  }
+  if (source.protocol !== "http:" && source.protocol !== "https:") return;
+  const escapeHtml = (value: string) =>
+    value.replace(
+      /[&<>"']/g,
+      (character) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[character] || character
+    );
+  const title = escapeHtml(material.label);
+  const href = escapeHtml(source.toString());
+  const blob = new Blob(
+    [
+      "<!doctype html><html><head><meta charset=\"utf-8\">",
+      `<meta http-equiv=\"refresh\" content=\"0;url=${href}\">`,
+      `<title>${title}</title></head><body>`,
+      `<p>Opening <a href=\"${href}\">${title}</a>…</p></body></html>`,
+    ],
+    { type: "text/html;charset=utf-8" }
+  );
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = `${safeDownloadName(material.label)}.html`;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
 }
 
 // A colour + icon tag pill (standing rule: never flat gray, never bare text).
@@ -143,6 +204,7 @@ export function MaterialsSection({
   materials,
   action,
   offeringId,
+  offeringName,
   canEdit = false,
   materialFolders = [],
 }: {
@@ -154,6 +216,8 @@ export function MaterialsSection({
   action?: React.ReactNode;
   /** Needed to delete a row through the offering PATCH. */
   offeringId?: string;
+  /** Lets Freyr AI identify the offering behind an open material. */
+  offeringName?: string;
   /** Owners add and remove. Seller-visible files are downloadable by the
    *  workspace; agent-only files reach this component only for an owner. */
   canEdit?: boolean;
@@ -189,6 +253,22 @@ export function MaterialsSection({
   const [pendingRemoval, setPendingRemoval] = useState<OfferingMaterial | null>(
     null
   );
+  const [draggingMaterialId, setDraggingMaterialId] = useState<string | null>(
+    null
+  );
+  const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
+  const [movingMaterialId, setMovingMaterialId] = useState<string | null>(null);
+  const [folderOverrides, setFolderOverrides] = useState<
+    Record<string, string>
+  >({});
+  const folderMoveHistory = useRef<
+    Array<{
+      materialId: string;
+      label: string;
+      from: string;
+      to: string;
+    }>
+  >([]);
 
   /** Take a material off the offering. Owner-only: the button is not rendered
    *  for anyone else, and the PATCH refuses them regardless. */
@@ -229,6 +309,142 @@ export function MaterialsSection({
       setRemoving(null);
       setPendingRemoval(null);
     }
+  }
+
+  const moveMaterial = useCallback(
+    async (
+      target: OfferingMaterial,
+      destination: string,
+      { remember = true }: { remember?: boolean } = {}
+    ): Promise<boolean> => {
+      if (!canEdit || !offeringId || movingMaterialId) return false;
+      const current =
+        folderOverrides[target.id] || canonicalMaterialFolder(target);
+      if (!destination || current === destination) return false;
+
+      setFolderOverrides((previous) => ({
+        ...previous,
+        [target.id]: destination,
+      }));
+      setMovingMaterialId(target.id);
+      try {
+        const next = materials.map((material) =>
+          material.id === target.id
+            ? { ...material, folder: destination }
+            : material
+        );
+        const response = await fetch(`/api/offerings/${offeringId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ materials: next }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Could not move that material.");
+        }
+        if (remember) {
+          folderMoveHistory.current.push({
+            materialId: target.id,
+            label: target.label,
+            from: current,
+            to: destination,
+          });
+          folderMoveHistory.current = folderMoveHistory.current.slice(-20);
+        }
+        toast(
+          remember
+            ? `Moved "${target.label}" to ${materialFolderLabel(destination)}. Press Cmd/Ctrl+Z to undo.`
+            : `Moved "${target.label}" back to ${materialFolderLabel(destination)}`
+        );
+        router.refresh();
+        return true;
+      } catch (error) {
+        setFolderOverrides((previous) => {
+          const next = { ...previous };
+          delete next[target.id];
+          return next;
+        });
+        toast(
+          error instanceof Error
+            ? error.message
+            : "Could not move that material.",
+          "error"
+        );
+        return false;
+      } finally {
+        setMovingMaterialId(null);
+        setDraggingMaterialId(null);
+        setDropTargetPath(null);
+      }
+    },
+    [
+      canEdit,
+      folderOverrides,
+      materials,
+      movingMaterialId,
+      offeringId,
+      router,
+      toast,
+    ]
+  );
+
+  useEffect(() => {
+    const undoLastFolderMove = async (event: KeyboardEvent) => {
+      if (
+        event.key.toLowerCase() !== "z" ||
+        (!event.metaKey && !event.ctrlKey) ||
+        event.shiftKey ||
+        movingMaterialId
+      )
+        return;
+
+      const targetElement = event.target as HTMLElement | null;
+      if (
+        targetElement?.isContentEditable ||
+        targetElement?.closest("input, textarea, select, [contenteditable='true']")
+      )
+        return;
+
+      const previous = folderMoveHistory.current.at(-1);
+      if (!previous) return;
+      const material = materials.find(
+        (item) => item.id === previous.materialId
+      );
+      if (!material) return;
+
+      event.preventDefault();
+      const restored = await moveMaterial(material, previous.from, {
+        remember: false,
+      });
+      if (restored) folderMoveHistory.current.pop();
+    };
+
+    window.addEventListener("keydown", undoLastFolderMove);
+    return () => window.removeEventListener("keydown", undoLastFolderMove);
+  }, [materials, moveMaterial, movingMaterialId]);
+
+  function startMaterialDrag(
+    event: React.DragEvent,
+    material: OfferingMaterial
+  ) {
+    if (!canEdit || movingMaterialId) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-freyr-material", material.id);
+    event.dataTransfer.setData("text/plain", material.id);
+    setDraggingMaterialId(material.id);
+  }
+
+  function dropMaterial(event: React.DragEvent, destination: string) {
+    event.preventDefault();
+    const materialId =
+      event.dataTransfer.getData("application/x-freyr-material") ||
+      draggingMaterialId;
+    const target = materials.find((material) => material.id === materialId);
+    setDropTargetPath(null);
+    if (target) void moveMaterial(target, destination);
   }
 
   /**
@@ -288,10 +504,15 @@ export function MaterialsSection({
   // knowledge for the assistant, not collateral, so only an owner — who has
   // to be able to manage them — sees them here at all.
   const visibleToMember = canEdit ? materials : materials.filter(isSalesVisible);
-  const mine = visibleToMember.map((material) => ({
-    ...material,
-    folder: canonicalMaterialFolder(material),
-  }));
+  const mine = visibleToMember.map((material) => {
+    const overriddenFolder = folderOverrides[material.id];
+    return {
+      ...material,
+      folder:
+        overriddenFolder ||
+        canonicalMaterialFolder(material),
+    };
+  });
   // How many of the rows an OWNER is looking at are invisible to everyone
   // else. Counted from the rows themselves, not from what the filter removed:
   // for an owner nothing is removed, which is exactly when this line needs to
@@ -342,6 +563,8 @@ export function MaterialsSection({
       {viewing?.docsPath && offeringId && (
         <MaterialViewer
           offeringId={offeringId}
+          offeringName={offeringName || "This offering"}
+          material={viewing}
           path={viewing.docsPath}
           label={viewing.label}
           downloadUrl={viewing.url}
@@ -552,6 +775,13 @@ export function MaterialsSection({
         )}
       </div>
 
+      {canEdit && subFolders.length > 0 && visible.length > 0 && (
+        <p className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-text-tertiary">
+          <GripVertical size={13} strokeWidth={2} aria-hidden="true" />
+          Drag a material onto a folder to move it.
+        </p>
+      )}
+
       {/* FOLDERS FIRST, then the files that sit in this folder — the shape
           anyone already knows from a file browser. A folder shows how many
           files are under it INCLUDING its sub-folders, so a folder whose
@@ -570,11 +800,29 @@ export function MaterialsSection({
                 key={path}
                 type="button"
                 onClick={() => goToFolder(path)}
+                onDragOver={(event) => {
+                  if (!canEdit || !draggingMaterialId) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setDropTargetPath(path);
+                }}
+                onDragLeave={(event) => {
+                  if (event.currentTarget.contains(event.relatedTarget as Node))
+                    return;
+                  setDropTargetPath((current) =>
+                    current === path ? null : current
+                  );
+                }}
+                onDrop={(event) => dropMaterial(event, path)}
                 // Same card language as the files below them and the related
                 // offerings further down the page — one radius, one shadow,
                 // one lift. A folder that looked like a different species of
                 // card was half of why the section read as busy.
-                className="group flex min-h-[72px] cursor-pointer items-center gap-3 rounded-2xl border border-border-light bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
+                className={`group flex min-h-[72px] cursor-pointer items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)] ${
+                  dropTargetPath === path
+                    ? "scale-[1.02] border-blue-primary bg-blue-light ring-2 ring-blue-primary/25"
+                    : "border-border-light"
+                }`}
               >
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
@@ -652,7 +900,7 @@ export function MaterialsSection({
                 <th className="px-3 py-3">File format</th>
                 <th className="px-3 py-3">Access level</th>
                 <th className="px-3 py-3">Buyer&apos;s journey stage(s)</th>
-                <th className="px-3 py-3">Upload date</th>
+                <th className="px-3 py-3">Added by</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -661,28 +909,82 @@ export function MaterialsSection({
                 const format = materialFormat(material.kind);
                 const formatMeta = MATERIAL_FORMAT_META[format];
                 const Icon = MATERIAL_ICON[material.kind] ?? formatMeta.icon;
+                const originalKind = legacyKindLabel(material.kind);
+                const documentType = material.documentType
+                  ? DOCUMENT_TYPE_META[material.documentType]
+                  : null;
                 const level = material.accessLevel ? ACCESS_LEVEL_META[material.accessLevel] : null;
                 const stagesForMaterial = materialJourneyStages(material);
                 const uploaded = Boolean(material.docsPath);
                 const uploadDate = uploadedAt(material);
                 return (
-                  <tr key={material.id} className="transition-colors hover:bg-blue-light/20">
+                  <tr
+                    key={material.id}
+                    draggable={canEdit && !movingMaterialId}
+                    onDragStart={(event) => startMaterialDrag(event, material)}
+                    onDragEnd={() => {
+                      setDraggingMaterialId(null);
+                      setDropTargetPath(null);
+                    }}
+                    title={canEdit ? "Drag onto a folder to move" : undefined}
+                    className={`transition-colors hover:bg-blue-light/20 ${
+                      canEdit ? "cursor-grab active:cursor-grabbing" : ""
+                    } ${
+                      draggingMaterialId === material.id ||
+                      movingMaterialId === material.id
+                        ? "opacity-45"
+                        : ""
+                    }`}
+                  >
                     <td className="max-w-[320px] px-4 py-3">
                       <button
                         type="button"
                         onClick={() => uploaded ? setViewing(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
                         className="flex min-w-0 items-center gap-2.5 text-left"
                       >
+                        {canEdit && (
+                          <GripVertical
+                            size={15}
+                            strokeWidth={2}
+                            className="shrink-0 text-text-tertiary"
+                            aria-hidden="true"
+                          />
+                        )}
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
                           <Icon size={15} strokeWidth={1.9} />
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-semibold text-text-primary hover:text-blue-primary" title={material.label}>{material.label}</span>
-                          <span className="block truncate text-[10.5px] text-text-tertiary" title={material.folder}>{materialFolderLabel(material.folder || "Others")}</span>
+                          <span className="block break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary">{material.label}</span>
+                          <span className="block break-words text-[10.5px] text-text-tertiary">{materialFolderLabel(material.folder || "Others")}</span>
+                          {material.description && (
+                            <span className="mt-1 block break-words text-[11px] leading-snug text-text-secondary">
+                              {material.description}
+                            </span>
+                          )}
                         </span>
                       </button>
                     </td>
-                    <td className="px-3 py-3"><TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} /></td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-col items-start gap-1">
+                        <TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} />
+                        {documentType && (
+                          <TagPill
+                            label={documentType.label}
+                            color={documentType.color}
+                            icon={FileText}
+                            variant="outline"
+                          />
+                        )}
+                        {!documentType && originalKind && (
+                          <TagPill
+                            label={originalKind}
+                            color={MATERIAL_COLOR[material.kind]}
+                            icon={Icon}
+                            variant="outline"
+                          />
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-3">
                       {level ? <TagPill label={level.label} color={level.color} icon={level.icon} variant={material.accessLevel === "internal_only" ? "solid" : "tint"} /> : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
                     </td>
@@ -694,8 +996,36 @@ export function MaterialsSection({
                         }) : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-[12px] text-text-secondary">
-                      {uploadDate ? <time dateTime={uploadDate} title={new Date(uploadDate).toLocaleString()}>{formatDate(uploadDate)}</time> : "Not recorded"}
+                    <td className="px-3 py-3">
+                      <div className="flex min-w-[145px] items-center gap-2">
+                        {material.addedBy ? (
+                          <Avatar
+                            name={material.addedBy}
+                            className="h-7 w-7 shrink-0 text-[9px]"
+                          />
+                        ) : (
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+                            <FileText size={13} strokeWidth={1.9} />
+                          </span>
+                        )}
+                        <span className="min-w-0">
+                          <span className="block break-words text-[11.5px] font-semibold text-text-primary">
+                            {material.addedBy || "Not recorded"}
+                          </span>
+                          <span className="mt-0.5 block text-[10.5px] text-text-tertiary">
+                            {uploadDate ? (
+                              <time
+                                dateTime={uploadDate}
+                                title={new Date(uploadDate).toLocaleString()}
+                              >
+                                {formatDate(uploadDate)}
+                              </time>
+                            ) : (
+                              "Date not recorded"
+                            )}
+                          </span>
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
@@ -707,16 +1037,17 @@ export function MaterialsSection({
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
                           ><ExternalLink size={14} strokeWidth={1.9} /></button>
                         </Tooltip>
-                        {uploaded && (
-                          <Tooltip label="Download original" side="top">
+                        <Tooltip
+                          label={uploaded ? "Download original" : "Download link shortcut"}
+                          side="top"
+                        >
                             <button
                               type="button"
                               aria-label={`Download ${material.label}`}
-                              onClick={() => { window.location.href = material.url; }}
+                              onClick={() => downloadMaterialCopy(material)}
                               className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
                             ><Download size={14} strokeWidth={1.9} /></button>
-                          </Tooltip>
-                        )}
+                        </Tooltip>
                         {canEdit && offeringId && <EditMaterialButton offeringId={offeringId} material={material} materials={materials} materialFolders={materialFolders} />}
                         {canEdit && offeringId && (
                           <Tooltip label="Remove material" side="top">
@@ -778,6 +1109,12 @@ export function MaterialsSection({
               <a
                 key={material.id}
                 href={viewUrl}
+                draggable={canEdit && !movingMaterialId}
+                onDragStart={(event) => startMaterialDrag(event, material)}
+                onDragEnd={() => {
+                  setDraggingMaterialId(null);
+                  setDropTargetPath(null);
+                }}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => {
@@ -794,6 +1131,11 @@ export function MaterialsSection({
                   columns === 4
                     ? "min-h-[210px] flex-col items-stretch"
                     : "min-h-[72px] items-center"
+                } ${canEdit ? "cursor-grab active:cursor-grabbing" : ""} ${
+                  draggingMaterialId === material.id ||
+                  movingMaterialId === material.id
+                    ? "opacity-45"
+                    : ""
                 }`}
                 // An internal-only file keeps its rail down the left edge, so a
                 // file that must never be forwarded is obvious before you read
@@ -811,6 +1153,14 @@ export function MaterialsSection({
                     : { paddingLeft: 15 }
                 }
               >
+                {canEdit && (
+                  <GripVertical
+                    size={15}
+                    strokeWidth={2}
+                    className="mt-2 shrink-0 text-text-tertiary"
+                    aria-hidden="true"
+                  />
+                )}
                 {/* Pinned to the top so it reads beside the file's NAME. A
                     card with a three-line description is 100px tall, and a
                     centred icon ended up level with the middle of the blurb,
@@ -961,28 +1311,26 @@ export function MaterialsSection({
                       receive their original bytes; pasted web assets receive
                       a portable HTML shortcut to their source. The control is
                       present on EVERY row and available to every seller. */}
-                  {uploaded && <span
+                  <span
                     role="button"
                     tabIndex={0}
                     aria-label={`Download ${material.label}`}
-                    title={
-                      "Download a copy"
-                    }
+                    title={uploaded ? "Download original" : "Download link shortcut"}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      window.location.href = material.url;
+                      downloadMaterialCopy(material);
                     }}
                     onKeyDown={(e) => {
                       if (e.key !== "Enter" && e.key !== " ") return;
                       e.preventDefault();
                       e.stopPropagation();
-                      window.location.href = material.url;
+                      downloadMaterialCopy(material);
                     }}
                     className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                   >
                     <Download size={14} strokeWidth={1.8} />
-                  </span>}
+                  </span>
                   {canEdit && offeringId && (
                     <EditMaterialButton
                       offeringId={offeringId}

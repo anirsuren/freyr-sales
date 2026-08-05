@@ -24,6 +24,12 @@ import {
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
+import {
+  accountBackedPeopleForPoc,
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "@/lib/assignablePeople";
+import { getDataMode } from "@/lib/dataMode";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +55,10 @@ export async function GET(
 ) {
   const offering = getOffering((await params).id);
   if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const hydrated = hydrateOffering(offering);
+  const people = await listAssignablePeople();
+  const hydrated = hydrateOffering(
+    redactUnverifiedOfferingPeople(offering, people)
+  );
   const user = await getCurrentUser();
   const visible = redactAgentOnlyMaterials(hydrated, user.memberId);
   return NextResponse.json({
@@ -69,6 +78,7 @@ export async function PATCH(
   // broad object spread here must never bypass that gate. Record identity and
   // creation metadata are likewise server-owned.
   delete body.owners;
+  delete body.contacts;
   delete body.id;
   delete body.created_at;
   const { id } = await params;
@@ -82,6 +92,35 @@ export async function PATCH(
   const existing = getOffering(id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!(await canEditOffering(existing))) return FORBIDDEN;
+  const people = await listAssignablePeople();
+  if (getDataMode() === "live" && body.poc !== undefined) {
+    const selected = accountBackedPeopleForPoc(String(body.poc || ""), people);
+    if (selected.invalid.length) {
+      return NextResponse.json(
+        {
+          error: `Choose active workspace accounts for POC: ${selected.invalid.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+    const existingByName = new Map(
+      (existing.contacts || []).map((contact) => [
+        contact.name.trim().toLowerCase(),
+        contact,
+      ])
+    );
+    body.poc = selected.people.map((person) => person.name).join(" / ");
+    body.contacts = selected.people.map((person, index) => {
+      const prior = existingByName.get(person.name.trim().toLowerCase());
+      return {
+        id: prior?.id || `oc-${id}-${Date.now().toString(36)}-${index}`,
+        name: person.name,
+        role: person.role || prior?.role || "Service delivery POC",
+        email: person.email || "",
+        phone: prior?.phone || "",
+      };
+    });
+  }
   if (Array.isArray(body.materialFolders)) {
     body.materialFolders = Array.from(
       new Set(
@@ -163,7 +202,10 @@ export async function PATCH(
     const user = await getCurrentUser();
     return NextResponse.json({
       ok: true,
-      offering: redactAgentOnlyMaterials(offering, user.memberId),
+      offering: redactAgentOnlyMaterials(
+        redactUnverifiedOfferingPeople(offering, people),
+        user.memberId
+      ),
     });
   } catch (error) {
     return NextResponse.json(

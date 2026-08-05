@@ -349,7 +349,7 @@ export function AgentDock({
     function onAsk(e: Event) {
       const detail =
         (e as CustomEvent<AskAgentDetail>).detail ?? ({} as AskAgentDetail);
-      onOpenChange(true);
+      if (detail.open !== false) onOpenChange(true);
       if (detail.offering) {
         explicitContextRef.current = true;
         setPendingOffering(detail.offering);
@@ -542,7 +542,8 @@ export function AgentDock({
     visibleConvos.find((conversation) => conversation.id === activeId) || null;
   const offeringContext = active?.offeringContext ?? pendingOffering;
   const visibleMsgs = active?.messages ?? [];
-  const focusedSubject = offeringContext?.name || subject;
+  const focusedSubject =
+    offeringContext?.material?.label || offeringContext?.name || subject;
 
   // Read what's on screen (the page's H1) so the assistant knows the record.
   useEffect(() => {
@@ -635,6 +636,7 @@ export function AgentDock({
           history: prior,
           excludeSources: active?.excludedSources ?? [],
           offeringId: requestOffering?.id,
+          materialId: requestOffering?.material?.id,
         }),
         signal: controller.signal,
       });
@@ -694,14 +696,22 @@ export function AgentDock({
 
   if (hidden) return null;
 
-  const suggestions = offeringContext
+  const suggestions = offeringContext?.material
+    ? [
+        `Summarize ${offeringContext.material.label}`,
+        "How should I use this material with a customer?",
+        "What are the most important points in this material?",
+      ]
+    : offeringContext
     ? [
         `Explain ${offeringContext.name} in plain English`,
         `What materials do we have for ${offeringContext.name}?`,
         `Who is ${offeringContext.name} best suited for?`,
       ]
     : suggestionsFor(label, offeringsOnly);
-  const greeting = offeringContext
+  const greeting = offeringContext?.material
+    ? `Hi ${firstName}. Freyr AI is focused on **${offeringContext.material.label}** from **${offeringContext.name}**. Ask me anything about this material, or pick a starting point below.`
+    : offeringContext
     ? `Hi ${firstName}. Freyr AI is focused on **${offeringContext.name}**. Ask me anything about this offering, or pick a starting point below.`
     : subject
       ? `Hi ${firstName}. I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
@@ -710,7 +720,7 @@ export function AgentDock({
   return (
     <>
       {open && (
-        <div className="fixed bottom-24 right-5 z-[60] w-[min(400px,calc(100vw-2.5rem))] flex flex-col rounded-2xl border border-border-light bg-white shadow-[0_24px_60px_-15px_rgba(0,0,0,0.28)] overflow-hidden slide-in-right">
+        <div className="fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] flex flex-col rounded-2xl border border-border-light bg-white shadow-[0_24px_60px_-15px_rgba(0,0,0,0.28)] overflow-hidden slide-in-right">
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border-light bg-gradient-to-b from-white to-surface/40 shrink-0">
             <span className="w-8 h-8 rounded-xl bg-blue-primary text-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(0,113,227,0.35)]">
@@ -719,8 +729,10 @@ export function AgentDock({
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold text-text-primary leading-tight">Freyr AI</p>
               <p className="text-[11.5px] text-text-tertiary truncate leading-tight">
-                {offeringContext
-                  ? `Focused on ${offeringContext.name}`
+                {offeringContext?.material
+                  ? `Focused on ${offeringContext.material.label}`
+                  : offeringContext
+                    ? `Focused on ${offeringContext.name}`
                   : subject
                     ? `Looking at ${subject}`
                     : `On ${label}`}
@@ -829,7 +841,7 @@ export function AgentDock({
         onClick={() => onOpenChange(!open)}
         aria-label={open ? "Close your agent" : "Open your agent"}
         className={cn(
-          "fixed bottom-5 right-5 z-[60] w-14 h-14 rounded-full flex items-center justify-center text-white transition-all",
+          "fixed bottom-5 right-5 z-[120] w-14 h-14 rounded-full flex items-center justify-center text-white transition-all",
           "bg-blue-primary hover:bg-blue-hover shadow-[0_8px_24px_-6px_rgba(0,113,227,0.55)] hover:shadow-[0_12px_30px_-6px_rgba(0,113,227,0.65)] hover:-translate-y-0.5"
         )}
       >

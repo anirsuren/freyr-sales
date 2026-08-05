@@ -18,6 +18,10 @@ import {
   secureKnowledgePassagesForMember,
 } from "@/lib/materialAccess";
 import { materialJourneyStages } from "@/lib/offeringMaterials";
+import {
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "@/lib/assignablePeople";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +86,10 @@ export async function POST(req: Request) {
       await initializeLiveOfferings();
       const raw = getOffering(onOffering);
       if (raw) {
-        const hydrated = hydrateOffering(raw);
+        const people = await listAssignablePeople();
+        const hydrated = hydrateOffering(
+          redactUnverifiedOfferingPeople(raw, people)
+        );
         const roadmapSafe = (await canViewNextCustomerVersion(raw))
           ? hydrated
           : hideNextCustomerVersions(hydrated);

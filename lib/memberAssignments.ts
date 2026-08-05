@@ -15,6 +15,7 @@ import {
   DEFAULT_LOCAL_USER_IDENTITY,
   GENERIC_USER_IDENTITY,
 } from "./userIdentity";
+import { legacyAccountTypeForMember } from "./legacyAccountClassification";
 
 export class MemberAssignmentError extends Error {
   constructor(
@@ -63,12 +64,29 @@ async function directoryMember(
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
-  const result = await client
+  let result = await client
     .from("app_users")
     .select("id, display_name, email")
     .eq("workspace_id", workspaceId)
     .eq("active", true)
+    .eq("account_type", "real")
     .limit(1000);
+  if (
+    result.error &&
+    ["42703", "PGRST204"].includes(result.error.code || "")
+  ) {
+    result = await client
+      .from("app_users")
+      .select("id, display_name, email")
+      .eq("workspace_id", workspaceId)
+      .eq("active", true)
+      .limit(1000);
+    if (!result.error) {
+      result.data = (result.data || []).filter(
+        (member) => legacyAccountTypeForMember(member.id) === "real"
+      );
+    }
+  }
   if (result.error) {
     throw new MemberAssignmentError(
       `Could not verify the account owner: ${result.error.message}`,

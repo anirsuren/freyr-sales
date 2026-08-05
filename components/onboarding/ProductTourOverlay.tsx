@@ -178,7 +178,10 @@ function useTourTarget(
 
     const frame = window.requestAnimationFrame(locate);
     const observer = new MutationObserver(locate);
-    observer.observe(document.body, { childList: true, subtree: true });
+    const body = document.body;
+    if (body) {
+      observer.observe(body, { childList: true, subtree: true });
+    }
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(frame);

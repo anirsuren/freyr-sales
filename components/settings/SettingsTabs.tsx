@@ -37,7 +37,6 @@ import {
   type UserIdentity,
 } from "@/lib/userIdentity";
 import { canSwitchWorkspaceMode } from "@/lib/release";
-import { isSampleAccountEmail } from "@/lib/sampleAccounts";
 
 /**
  * WHAT AN INVITED PERSON MAY DO, as a colour + icon each.
@@ -130,7 +129,7 @@ const SERVICE_LABELS: Record<string, string> = {
 type Member = { name: string; email: string; role: string; you?: boolean };
 type AccessRole = "admin" | "editor" | "sales";
 type AccessDirectory = {
-  members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; lastSeenAt: string | null }[];
+  members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; accountType: "real" | "test"; lastSeenAt: string | null }[];
   requests: { id: string; name: string; email: string | null; requestedRole: AccessRole; requestedAt: string }[];
   invitations: {
     id: string;
@@ -178,6 +177,7 @@ function initialAccessDirectory(currentUser: UserIdentity): AccessDirectory {
         email: currentUser.email,
         role: currentUser.role,
         active: true,
+        accountType: "real",
         lastSeenAt: new Date().toISOString(),
       },
     ],
@@ -597,7 +597,7 @@ export function SettingsTabs({
               ? {
                   ...directory,
                   members: directory.members.filter(
-                    (member) => !isSampleAccountEmail(member.email)
+                    (member) => member.accountType === "real"
                   ),
                 }
               : directory
@@ -946,7 +946,7 @@ export function SettingsTabs({
               decision === "approve" && request
                 ? [
                     ...directory.members,
-                    { id: `member-${Date.now()}`, name: request.name, email: request.email, role: accessRole, active: true, lastSeenAt: null },
+                    { id: `member-${Date.now()}`, name: request.name, email: request.email, role: accessRole, active: true, accountType: "real", lastSeenAt: null },
                   ]
                 : directory.members,
           };

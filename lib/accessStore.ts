@@ -9,6 +9,8 @@ import {
 import { isAutoApprovedEmail } from "./authEmailPolicy";
 import { authUrl } from "./authOrigin";
 import { sendTransactionalEmail, type EmailResult } from "./email";
+import { getDataMode } from "./dataMode";
+import { legacyAccountTypeForMember } from "./legacyAccountClassification";
 
 export type AccessMember = {
   id: string;
@@ -16,6 +18,7 @@ export type AccessMember = {
   email: string | null;
   role: WorkspaceRole;
   active: boolean;
+  accountType: "real" | "test";
   lastSeenAt: string | null;
 };
 
@@ -97,7 +100,7 @@ export async function verifyAccessControlStorage(): Promise<void> {
   const core = await Promise.all([
     client
       .from("app_users")
-      .select("id, auth_provider, entra_object_id, active")
+      .select("id, auth_provider, entra_object_id, active, account_type")
       .limit(1),
     client
       .from("access_requests")
@@ -313,6 +316,7 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
         email,
         display_name: canonicalName,
         app_role: role,
+        account_type: "real",
         auth_provider: provider,
         // Keep a newly invited member inactive until this request atomically
         // wins the pending-invitation update below. Concurrent requests cannot
@@ -410,12 +414,33 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
 
 export async function listWorkspaceAccess(workspace: string): Promise<AccessDirectory> {
   const client = adminClient();
-  const [members, requests, invitations] = await Promise.all([
-    client
+  const classifiedMembers = await client
+      .from("app_users")
+      .select("id, display_name, email, app_role, active, account_type, last_seen_at")
+      .eq("workspace_id", workspace)
+      .order("display_name");
+  let memberRows: Array<{
+    id: string;
+    display_name: string;
+    email: string | null;
+    app_role: string;
+    active: boolean;
+    account_type?: string | null;
+    last_seen_at: string | null;
+  }> = classifiedMembers.data || [];
+  let membersError = classifiedMembers.error;
+  let legacyAccountTypes = false;
+  if (membersError && isMissingSchemaError(membersError)) {
+    legacyAccountTypes = true;
+    const legacyMembers = await client
       .from("app_users")
       .select("id, display_name, email, app_role, active, last_seen_at")
       .eq("workspace_id", workspace)
-      .order("display_name"),
+      .order("display_name");
+    memberRows = legacyMembers.data || [];
+    membersError = legacyMembers.error;
+  }
+  const [requests, invitations] = await Promise.all([
     client
       .from("access_requests")
       .select("id, display_name, email, requested_role, created_at")
@@ -429,19 +454,38 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
   ]);
-  for (const result of [members, requests, invitations]) {
+  if (membersError) throw new Error(membersError.message);
+  for (const result of [requests, invitations]) {
     if (result.error) throw new Error(result.error.message);
   }
+  const mappedMembers = memberRows
+    .map((item) => {
+      const accountType = legacyAccountTypes
+        ? legacyAccountTypeForMember(item.id)
+        : (item.account_type as
+            | "real"
+            | "test"
+            | null);
+      // Before migration 018, an unknown row has no explicit classification.
+      // Fail closed in Real mode instead of accidentally exposing a test user.
+      if (!accountType) return null;
+      return {
+        id: item.id,
+        name: item.display_name,
+        email: item.email,
+        role: item.app_role as WorkspaceRole,
+        active: item.active,
+        accountType,
+        lastSeenAt: item.last_seen_at,
+      };
+    })
+    .filter((member): member is AccessMember => member !== null);
   return {
     workspaceId: workspace,
-    members: (members.data || []).map((item) => ({
-      id: item.id,
-      name: item.display_name,
-      email: item.email,
-      role: item.app_role as WorkspaceRole,
-      active: item.active,
-      lastSeenAt: item.last_seen_at,
-    })),
+    members:
+      getDataMode() === "live"
+        ? mappedMembers.filter((member) => member.accountType === "real")
+        : mappedMembers,
     requests: (requests.data || []).map((item) => ({
       id: item.id,
       name: item.display_name,
@@ -673,6 +717,7 @@ export async function reviewAccessRequest(
       : await client.from("app_users").insert({
           workspace_id: request.data.workspace_id,
           entra_object_id: request.data.provider_subject,
+          account_type: "real",
           ...values,
         }).select("id").single();
     if (user.error || !user.data?.id) {

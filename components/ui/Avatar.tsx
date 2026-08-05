@@ -2,7 +2,10 @@
 
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { useMyPhoto } from "@/components/auth/CurrentUserProvider";
+import {
+  useCurrentDataMode,
+  useMyPhoto,
+} from "@/components/auth/CurrentUserProvider";
 
 // Real generated profile photos, keyed by person name (lowercased). People with
 // a photo show it; everyone else falls back to initials. Every seeded contact
@@ -137,11 +140,18 @@ export function Avatar({
    * this quietly falls through to the name map, then to initials.
    */
   const { photo: myPhoto, name: myName } = useMyPhoto();
+  const dataMode = useCurrentDataMode();
   const isMe =
     !!myPhoto &&
     !!name &&
     name.trim().toLowerCase() === myName.trim().toLowerCase();
-  const photo = src || (isMe ? myPhoto : null) || photoFor(name);
+  // Static portraits are generated demo assets. Real mode shows an explicit
+  // account photo (or the signed-in user's uploaded photo) and otherwise uses
+  // honest initials; it never presents a synthetic face as a colleague.
+  const photo =
+    src ||
+    (isMe ? myPhoto : null) ||
+    (dataMode === "mock" ? photoFor(name) : null);
   const words = name.split(/\s+/).filter(Boolean);
   const nameWords = words.filter((w) => NAME_WORD.test(w));
   const initials =

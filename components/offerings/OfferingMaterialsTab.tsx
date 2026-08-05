@@ -44,6 +44,7 @@ export function OfferingMaterialsTab({
       <MaterialsSection
         materials={o.materials}
         offeringId={o.id}
+        offeringName={o.offering_name}
         canEdit={admin}
         materialFolders={o.materialFolders ?? []}
         action={

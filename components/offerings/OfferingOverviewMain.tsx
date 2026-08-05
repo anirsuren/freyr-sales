@@ -3,6 +3,7 @@ import {
   BarChart3,
   BookOpen,
   CalendarCheck,
+  Check,
   ChevronRight,
   DollarSign,
   FolderOpen,
@@ -160,6 +161,21 @@ export function OfferingOverviewMain({
     };
   });
   const outlookMax = Math.max(...outlook.map((month) => month.value), 1);
+  const upcomingAvailability = o.future_availability
+    ? availabilityNotes(o.future_availability)
+    : [];
+  const currentVersionNote = /(?:available\s+now|currently\s+available)/i.test(
+    o.current_availability || ""
+  )
+    ? upcomingAvailability.find(
+        (note) =>
+          !note.label && /^version\s+\S+$/i.test(note.body.trim())
+      )
+    : undefined;
+  const currentVersion = currentVersionNote?.body.trim() || null;
+  const futureAvailability = currentVersionNote
+    ? upcomingAvailability.filter((note) => note !== currentVersionNote)
+    : upcomingAvailability;
 
   return (
     <div className="min-w-0">
@@ -179,47 +195,83 @@ export function OfferingOverviewMain({
             offeringName={o.offering_name}
             styles={o.service_card_styles}
           />
-          {/* AVAILABILITY — a titled block in the app's card language, not a
-              pill glued to the front of a run-on sentence. The eyebrow says
-              what the block is, the pill says the status, and each caveat from
-              the sheet gets its own line. */}
+          {/* Availability reads as a progression: today's status followed by
+              each upcoming milestone. It collapses to a vertical timeline on
+              narrow screens so labels never compete for horizontal space. */}
           {(o.current_availability || o.future_availability) && (
-            <div className="mt-5 rounded-xl border border-border-light bg-blue-light px-4 py-3.5">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <CalendarCheck
-                  size={13}
-                  strokeWidth={2.1}
-                  className="shrink-0 text-blue-primary"
-                  aria-hidden="true"
-                />
-                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary">
-                  Availability
-                </p>
-                <AvailabilityPill value={o.current_availability} size="sm" />
+            <div className="mt-5 overflow-hidden rounded-xl border border-border-light bg-surface shadow-sm">
+              <div className="flex items-center gap-2.5 border-b border-border-light bg-surface/50 px-4 py-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                  <CalendarCheck size={14} strokeWidth={2} aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-[12px] font-semibold text-text-primary">
+                    Availability timeline
+                  </p>
+                  <p className="text-[10.5px] text-text-tertiary">
+                    Current status and what comes next
+                  </p>
+                </div>
               </div>
-              {o.future_availability && (
-                <ul className="mt-2.5 space-y-1.5 border-t border-border-light pt-2.5">
-                  {availabilityNotes(o.future_availability).map((note, index) => (
-                    <li
-                      key={`${index}-${note.body}`}
-                      className="flex items-start gap-2 text-[12.5px] leading-relaxed"
-                    >
+
+              <div className="flex flex-col px-4 py-4 md:flex-row md:px-5">
+                {o.current_availability && (
+                  <div className="relative flex min-w-0 gap-3 pb-5 md:block md:flex-1 md:pb-0 md:pr-5">
+                    {futureAvailability.length > 0 && (
                       <span
-                        className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary"
+                        className="absolute bottom-[-4px] left-[15px] top-8 w-px bg-border md:bottom-auto md:left-8 md:right-0 md:top-[15px] md:h-px md:w-auto"
                         aria-hidden="true"
                       />
-                      <span className="min-w-0">
-                        {note.label && (
-                          <span className="font-semibold text-text-primary">
-                            {note.label}:{" "}
-                          </span>
-                        )}
-                        <span className="text-text-secondary">{note.body}</span>
+                    )}
+                    <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-4 border-surface bg-success text-white shadow-sm">
+                      <Check size={13} strokeWidth={2.6} aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 pt-0.5 md:mt-3 md:pt-0">
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                        {currentVersion ? "Current release" : "Current status"}
+                      </p>
+                      {currentVersion ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[12.5px] font-semibold text-text-primary">
+                            {currentVersion}
+                          </p>
+                          <AvailabilityPill value={o.current_availability} size="sm" />
+                        </div>
+                      ) : (
+                        <AvailabilityPill value={o.current_availability} size="sm" />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {futureAvailability.map((note, index) => {
+                  const isLast = index === futureAvailability.length - 1;
+                  return (
+                    <div
+                      key={`${index}-${note.body}`}
+                      className="relative flex min-w-0 gap-3 pb-5 last:pb-0 md:block md:flex-1 md:pb-0 md:pr-5 md:last:pr-0"
+                    >
+                      {!isLast && (
+                        <span
+                          className="absolute bottom-[-4px] left-[15px] top-8 w-px bg-border md:bottom-auto md:left-8 md:right-0 md:top-[15px] md:h-px md:w-auto"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-4 border-surface bg-blue-primary shadow-sm">
+                        <span className="h-2 w-2 rounded-full bg-white" aria-hidden="true" />
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                      <div className="min-w-0 pt-0.5 md:mt-3 md:pt-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary">
+                          {note.label || (index === 0 ? "Next milestone" : "Upcoming")}
+                        </p>
+                        <p className="mt-1 text-[12.5px] font-medium leading-relaxed text-text-primary">
+                          {note.body}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

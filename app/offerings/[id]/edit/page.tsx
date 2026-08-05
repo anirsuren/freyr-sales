@@ -17,7 +17,10 @@ import {
   listOfferingCategories,
 } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
-import { listAssignablePeople } from "@/lib/assignablePeople";
+import {
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "@/lib/assignablePeople";
 import { ViewOnlyNotice } from "@/components/offerings/ViewOnlyNotice";
 
 export const dynamic = "force-dynamic";
@@ -32,14 +35,15 @@ export default async function EditOfferingPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const o = getOffering((await params).id);
-  if (!o) notFound();
+  const raw = getOffering((await params).id);
+  if (!raw) notFound();
   // Direct navigation is gated exactly like the button that leads here: you
   // must be an admin-assigned owner. Hiding the button alone would leave the
   // URL open, so the same rule is enforced on direct navigation.
-  if (!(await canEditOffering(o)))
-    return <ViewOnlyNotice backHref={`/offerings/${o.id}`} />;
+  if (!(await canEditOffering(raw)))
+    return <ViewOnlyNotice backHref={`/offerings/${raw.id}`} />;
   const people = await listAssignablePeople();
+  const o = redactUnverifiedOfferingPeople(raw, people);
   return (
     <div>
       <Link

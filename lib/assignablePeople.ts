@@ -1,12 +1,11 @@
 import "server-only";
 
-import { listOfferingPeople } from "./offerings";
+import { listOfferingPeople, type Offering } from "./offerings";
 import { getCurrentUser } from "./currentUser";
 import { cookies } from "next/headers";
 import { listWorkspaceAccess } from "./accessStore";
 import { ACCESS_COOKIE, verifyAccessGrant } from "./accessControl";
 import { getDataMode } from "./dataMode";
-import { isSampleAccountEmail } from "./sampleAccounts";
 
 export type AssignablePerson = {
   name: string;
@@ -48,19 +47,33 @@ export async function listAssignablePeople(): Promise<AssignablePerson[]> {
   try {
     const jar = await cookies();
     const grant = await verifyAccessGrant(jar.get(ACCESS_COOKIE)?.value);
-    if (grant?.workspaceId) {
-      const dir = await listWorkspaceAccess(grant.workspaceId);
+    // Local Real mode deliberately runs without an auth/approval gate, but it
+    // still points at the configured real workspace. Without this fallback the
+    // picker silently collapsed to only the local demo identity and hid every
+    // actual teammate (including Eswar). Production continues to require a
+    // verified access grant; the service credential never reaches the browser.
+    const workspaceId =
+      grant?.workspaceId ||
+      (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE
+        ? process.env.FREYR_WORKSPACE_ID
+        : undefined);
+    if (workspaceId) {
+      const dir = await listWorkspaceAccess(workspaceId);
       // THE LINKEDIN CHIP HAD NO SOURCE. Every person object reached the UI with
       // `linkedin` undefined, so the chip could not appear for anybody however
       // many profiles were filled in (Anir, Jul 29: "LinkedIn: just make sure
       // that's there"). It lives on each member's own prefs row, saved from
       // Settings › Profile, so it is read here in one query for the workspace
       // rather than a lookup per card.
-      const profiles = await linkedInByMember(grant.workspaceId);
+      const profiles = await linkedInByMember(workspaceId);
       for (const m of dir.members || []) {
-        // QA/demo identities remain available to the seeded Mock workspace,
-        // but Real mode must never present them as real colleagues.
-        if (getDataMode() === "live" && isSampleAccountEmail(m.email)) continue;
+        // Deactivated rows are retained for audit history, not assignment.
+        // Treating one as a selectable POC would put an account-shaped person
+        // on a live offering even though that person can no longer sign in.
+        if (!m.active) continue;
+        // Account classification is explicit in Supabase. Never infer it from
+        // a name or email address.
+        if (getDataMode() === "live" && m.accountType !== "real") continue;
         put({
           name: m.name || m.email || "",
           role: roleLabel(m.role),
@@ -75,10 +88,7 @@ export async function listAssignablePeople(): Promise<AssignablePerson[]> {
   }
 
   const me = await getCurrentUser().catch(() => null);
-  if (
-    me?.name &&
-    (getDataMode() === "mock" || !isSampleAccountEmail(me.email))
-  )
+  if (me?.name)
     put({
       name: me.name,
       // WITHOUT A ROLE HERE, YOU ARE THE BLANK ROW. Every colleague arrived
@@ -104,6 +114,118 @@ export async function listAssignablePeople(): Promise<AssignablePerson[]> {
   return Array.from(byKey.values())
     .filter((person) => getDataMode() === "mock" || Boolean(person.memberId))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Remove every person-shaped offering field that is not backed by an active
+ * workspace account. The stored catalogue deliberately keeps the historical
+ * spreadsheet roster for Mock mode and for source-data recovery, but Real
+ * mode may only present identities that can actually sign in.
+ *
+ * This is a read-time copy: it never mutates or persists the catalogue.
+ * Permission checks must continue to use the stored offering and stable owner
+ * member ids; this helper controls presentation and AI grounding only.
+ */
+export function redactUnverifiedOfferingPeople<T extends Offering>(
+  offering: T,
+  people: readonly AssignablePerson[]
+): T {
+  if (getDataMode() !== "live") return offering;
+
+  const accounts = people.filter((person) => Boolean(person.memberId));
+  const accountFor = (candidate: {
+    name?: string | null;
+    email?: string | null;
+    memberId?: string | null;
+  }) => {
+    const memberId = (candidate.memberId || "").trim();
+    const email = (candidate.email || "").trim().toLowerCase();
+    const name = (candidate.name || "").trim().toLowerCase();
+    return accounts.find(
+      (person) =>
+        (memberId && person.memberId === memberId) ||
+        (email && (person.email || "").trim().toLowerCase() === email) ||
+        (name && person.name.trim().toLowerCase() === name)
+    );
+  };
+
+  const contacts = (offering.contacts || [])
+    .map((contact) => {
+      const account = accountFor(contact);
+      if (!account) return null;
+      return {
+        ...contact,
+        // Use the account's canonical identity, never a stale spreadsheet
+        // spelling or a client-supplied email.
+        name: account.name,
+        email: account.email || "",
+      };
+    })
+    .filter((contact): contact is NonNullable<typeof contact> => !!contact);
+
+  const owners = (offering.owners || [])
+    .map((owner) => {
+      const account = accountFor(owner);
+      if (!account) return null;
+      return {
+        ...owner,
+        name: account.name,
+        email: account.email || null,
+      };
+    })
+    .filter((owner): owner is NonNullable<typeof owner> => !!owner);
+
+  return {
+    ...offering,
+    contacts,
+    poc: contacts.map((contact) => contact.name).join(" / "),
+    owners,
+  };
+}
+
+/** Resolve a POC picker value to canonical active-account names. */
+export function canonicalAccountBackedPoc(
+  value: string | null | undefined,
+  people: readonly AssignablePerson[]
+): { value: string; invalid: string[] } {
+  const requested = (value || "")
+    .split(/\s*(?:\/|,|&|\band\b)\s*/i)
+    .map((name) => name.trim())
+    .filter(Boolean);
+  const accounts = people.filter((person) => Boolean(person.memberId));
+  const canonical: string[] = [];
+  const invalid: string[] = [];
+  for (const name of requested) {
+    const account = accounts.find(
+      (person) => person.name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (!account) invalid.push(name);
+    else if (!canonical.includes(account.name)) canonical.push(account.name);
+  }
+  return { value: canonical.join(" / "), invalid };
+}
+
+/** The active account records selected by a POC value, in picker order. */
+export function accountBackedPeopleForPoc(
+  value: string | null | undefined,
+  people: readonly AssignablePerson[]
+): { people: AssignablePerson[]; invalid: string[] } {
+  const requested = (value || "")
+    .split(/\s*(?:\/|,|&|\band\b)\s*/i)
+    .map((name) => name.trim())
+    .filter(Boolean);
+  const accounts = people.filter((person) => Boolean(person.memberId));
+  const selected: AssignablePerson[] = [];
+  const invalid: string[] = [];
+  for (const name of requested) {
+    const account = accounts.find(
+      (person) => person.name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (!account) invalid.push(name);
+    else if (!selected.some((person) => person.memberId === account.memberId))
+      selected.push(account);
+  }
+  return { people: selected, invalid };
 }
 
 /**

@@ -25,7 +25,10 @@ import {
 } from "@/lib/materialAccess";
 import { isOfferingsOnly } from "@/lib/release";
 import { getDataMode } from "@/lib/dataMode";
-import { listAssignablePeople } from "@/lib/assignablePeople";
+import {
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "@/lib/assignablePeople";
 import {
   canViewNextCustomerVersion,
   hideNextCustomerVersions,
@@ -82,41 +85,61 @@ export async function POST(req: NextRequest) {
   if (!message) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
   }
+  const liveAccounts =
+    getDataMode() === "live" ? await listAssignablePeople() : [];
+  const visibleOfferings = () =>
+    listOfferings().map((offering) =>
+      redactUnverifiedOfferingPeople(offering, liveAccounts)
+    );
   const requestedOfferingId = String(body.offeringId || "").trim().slice(0, 120);
+  const requestedMaterialId = String(body.materialId || "").trim().slice(0, 160);
   let focusedOfferingName = "";
+  let focusedMaterialId = "";
+  let focusedMaterialLabel = "";
   let offeringFocus = "";
   if (requestedOfferingId) {
     try {
       await initializeLiveOfferings();
       const raw = getOffering(requestedOfferingId);
       if (raw) {
-        const liveAccounts =
-          getDataMode() === "live" ? await listAssignablePeople() : [];
+        const displayRaw = redactUnverifiedOfferingPeople(raw, liveAccounts);
         const roadmapSafe = (await canViewNextCustomerVersion(raw))
-          ? hydrateOffering(raw)
-          : hideNextCustomerVersions(hydrateOffering(raw));
+          ? hydrateOffering(displayRaw)
+          : hideNextCustomerVersions(hydrateOffering(displayRaw));
         const offering = redactAgentOnlyMaterials(roadmapSafe, actor.userId);
-        const verifiedContacts =
-          getDataMode() === "live"
-            ? offering.contacts.filter((contact) => {
-                const name = contact.name.trim().toLowerCase();
-                const email = (contact.email || "").trim().toLowerCase();
-                return liveAccounts.some(
-                  (person) =>
-                    Boolean(person.memberId) &&
-                    (person.name.trim().toLowerCase() === name ||
-                      Boolean(
-                        email &&
-                          (person.email || "").trim().toLowerCase() === email
-                      ))
-                );
-              })
-            : offering.contacts;
+        const verifiedContacts = offering.contacts;
         focusedOfferingName = offering.offering_name;
         const materials = offering.materials || [];
+        const focusedMaterial = requestedMaterialId
+          ? materials.find((material) => material.id === requestedMaterialId)
+          : undefined;
+        focusedMaterialId = focusedMaterial?.id || "";
+        focusedMaterialLabel = focusedMaterial?.label || "";
         offeringFocus =
           "\n\nOFFERING SELECTED BY THE USER (explicit context from the Ask Freyr AI button):\n" +
           [
+            focusedMaterial &&
+              "SPECIFIC SALES MATERIAL CURRENTLY OPEN ON SCREEN:\n" +
+                [
+                  `Material: ${focusedMaterial.label}`,
+                  `Material ID: ${focusedMaterial.id}`,
+                  `Format: ${focusedMaterial.kind}`,
+                  focusedMaterial.folder && `Folder: ${focusedMaterial.folder}`,
+                  (focusedMaterial.journeyStages?.length ||
+                    focusedMaterial.journeyStage) &&
+                    `Buyer journey: ${(
+                      focusedMaterial.journeyStages?.length
+                        ? focusedMaterial.journeyStages
+                        : [focusedMaterial.journeyStage]
+                    ).join(", ")}`,
+                  focusedMaterial.accessLevel &&
+                    `Access level: ${focusedMaterial.accessLevel}`,
+                  focusedMaterial.description &&
+                    `Description: ${focusedMaterial.description}`,
+                  "Resolve phrases such as 'this material', 'this file', 'this document', and 'it' to this exact sales material unless the user explicitly changes the subject.",
+                ]
+                  .filter(Boolean)
+                  .join("\n"),
             `Name: ${offering.offering_name}`,
             offering.offering_type && `Offering type: ${offering.offering_type}`,
             offering.offering_category && `Category: ${offering.offering_category}`,
@@ -177,7 +200,7 @@ export async function POST(req: NextRequest) {
   // excluded one of their material ids; catalogue-only sources may still be
   // scoped for a conversation.
   const uploadedMaterialIds = new Set(
-    listOfferings().flatMap((offering) =>
+    visibleOfferings().flatMap((offering) =>
       offering.materials
         .filter((material) => !!material.docsPath)
         .map((material) => material.id)
@@ -282,7 +305,7 @@ export async function POST(req: NextRequest) {
     // owns the conversation and this is purely the offline net.
     const off = offeringsAnswer(
       message,
-      listOfferings().map((offering) =>
+      visibleOfferings().map((offering) =>
         redactAgentOnlyMaterials(offering, actor.userId)
       )
     );
@@ -383,7 +406,7 @@ export async function POST(req: NextRequest) {
        * Offering ids in the panel are the offering's own id, so the same
        * matcher the corpus uses applies here.
        */
-      const all = listOfferings().filter((o) =>
+      const all = visibleOfferings().filter((o) =>
         isAllowed({ id: o.id, href: `/offerings/${o.id}` })
       );
       if (!all.length) return "";
@@ -427,7 +450,21 @@ export async function POST(req: NextRequest) {
         actor.userId
       );
       const scoped = excludedSourceIds.length ? corpus.filter(isAllowed) : corpus;
-      const hits = searchKnowledge(message, 5, scoped);
+      const materialScoped = focusedMaterialId
+        ? scoped.filter(
+            (passage) =>
+              passage.id === focusedMaterialId ||
+              passage.id.startsWith(`${focusedMaterialId}#`)
+          )
+        : [];
+      const searchScope = materialScoped.length ? materialScoped : scoped;
+      const hits = searchKnowledge(
+        focusedMaterialLabel
+          ? `${focusedMaterialLabel} ${message}`
+          : message,
+        5,
+        searchScope
+      );
       if (!hits.length) return "";
       return (
         "\n\nFREYR'S OWN KNOWLEDGE (offerings catalogue and the contents of " +

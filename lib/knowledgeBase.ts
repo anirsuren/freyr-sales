@@ -1,6 +1,15 @@
 import "server-only";
 
-import { listOfferings, listCustomerTypes, listMarkets } from "./offerings";
+import {
+  listOfferings,
+  listCustomerTypes,
+  listMarkets,
+  type Offering,
+} from "./offerings";
+import {
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "./assignablePeople";
 import { loadMaterialText } from "./materialText";
 import type { MaterialTextEntry } from "./materialText";
 import { isReadByAgent, materialJourneyStages } from "./offeringMaterials";
@@ -93,11 +102,12 @@ function chunkText(text: string): string[] {
  *  uploading them; omit it and it answers from the catalogue alone, exactly as
  *  it did before. */
 export function buildKnowledgeBase(
-  fileText: Record<string, MaterialTextEntry> = {}
+  fileText: Record<string, MaterialTextEntry> = {},
+  offerings: readonly Offering[] = listOfferings()
 ): KnowledgePassage[] {
   const out: KnowledgePassage[] = [];
 
-  for (const o of listOfferings()) {
+  for (const o of offerings) {
     const types = (o.customer_type_ids || [])
       .map((id) => listCustomerTypes().find((c) => c.id === id)?.name)
       .filter(Boolean);
@@ -264,8 +274,14 @@ export function buildKnowledgeBase(
 /** The knowledge base INCLUDING the contents of every uploaded file. Async
  *  because the file text is loaded from the database once per process. */
 export async function buildKnowledgeBaseAsync(): Promise<KnowledgePassage[]> {
-  const index = await loadMaterialText().catch(() => ({}));
-  return buildKnowledgeBase(index);
+  const [index, people] = await Promise.all([
+    loadMaterialText().catch(() => ({})),
+    listAssignablePeople(),
+  ]);
+  const offerings = listOfferings().map((offering) =>
+    redactUnverifiedOfferingPeople(offering, people)
+  );
+  return buildKnowledgeBase(index, offerings);
 }
 
 const STOP = new Set([

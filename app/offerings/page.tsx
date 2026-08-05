@@ -24,8 +24,11 @@ import {
   listOfferingTypes,
   listOfferingCategories,
   hydrateOffering,
-  listOfferingPeople,
 } from "@/lib/offerings";
+import {
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "@/lib/assignablePeople";
 import { getRole } from "@/lib/role";
 import { getDb } from "@/lib/db";
 import {
@@ -228,10 +231,15 @@ function Stat({
 }
 
 export default async function OfferingsPage() {
+  const people = await listAssignablePeople();
   // The browser receives these records as props, so server-side redaction is
-  // required even though the visible card only shows material counts.
+  // required even though the visible card only shows material counts. Real
+  // mode also strips spreadsheet-only POCs and orphan owners before any data
+  // reaches the client: only active account-backed people may render there.
   const offerings = (await redactOfferingsForCurrentUser(
-    listOfferings().map(hydrateOffering)
+    listOfferings()
+      .map((offering) => redactUnverifiedOfferingPeople(offering, people))
+      .map(hydrateOffering)
   )) as unknown as HydratedOffering[];
   const customerTypes = listCustomerTypes();
   const markets = listMarkets();
@@ -299,7 +307,7 @@ export default async function OfferingsPage() {
             {canEdit && <ImportExcel />}
             {canEdit && (
               <NewOfferingButton
-            people={listOfferingPeople()}
+                people={people}
                 customerTypes={customerTypes}
                 markets={markets}
                 existingTypes={Array.from(
@@ -358,7 +366,7 @@ export default async function OfferingsPage() {
           newOfferingAction={
             canEdit ? (
               <NewOfferingButton
-                people={listOfferingPeople()}
+                people={people}
                 customerTypes={customerTypes}
                 markets={markets}
                 existingTypes={Array.from(

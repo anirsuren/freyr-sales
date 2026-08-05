@@ -8,7 +8,10 @@ import {
   commitOfferingsChange,
 } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
-import { listAssignablePeople } from "@/lib/assignablePeople";
+import {
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "@/lib/assignablePeople";
 import { getDataMode } from "@/lib/dataMode";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +39,21 @@ async function guard(id: string) {
   return { offering };
 }
 
+async function liveAccountFor(name?: string, email?: string) {
+  const people = await listAssignablePeople();
+  if (getDataMode() !== "live") return { people, account: null };
+  const wantedName = (name || "").trim().toLowerCase();
+  const wantedEmail = (email || "").trim().toLowerCase();
+  const account = people.find(
+    (person) =>
+      Boolean(person.memberId) &&
+      ((wantedName && person.name.trim().toLowerCase() === wantedName) ||
+        (wantedEmail &&
+          (person.email || "").trim().toLowerCase() === wantedEmail))
+  );
+  return { people, account };
+}
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -55,15 +73,9 @@ export async function POST(
 
   // A live contact is an account assignment, not free text. Re-check on the
   // server so a hand-written request cannot bypass the account-only picker.
+  const resolved = await liveAccountFor(body.name, body.email);
   if (getDataMode() === "live") {
-    const name = body.name!.trim().toLowerCase();
-    const email = (body.email || "").trim().toLowerCase();
-    const account = (await listAssignablePeople()).find(
-      (person) =>
-        Boolean(person.memberId) &&
-        (person.name.trim().toLowerCase() === name ||
-          Boolean(email && (person.email || "").trim().toLowerCase() === email))
-    );
+    const account = resolved.account;
     if (!account) {
       return NextResponse.json(
         { error: "Choose a person with a real workspace account." },
@@ -84,7 +96,11 @@ export async function POST(
       })
     );
     if (!saved) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ offering: hydrateOffering(saved) });
+    return NextResponse.json({
+      offering: hydrateOffering(
+        redactUnverifiedOfferingPeople(saved, resolved.people)
+      ),
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Could not add that contact" },
@@ -111,12 +127,34 @@ export async function PATCH(
   if (!body.contactId)
     return NextResponse.json({ error: "Which contact?" }, { status: 400 });
 
+  const existingContact = gate.offering?.contacts?.find(
+    (contact) => contact.id === body.contactId
+  );
+  const resolved = await liveAccountFor(
+    body.name ?? existingContact?.name,
+    body.email ?? existingContact?.email
+  );
+  if (getDataMode() === "live") {
+    if (!resolved.account) {
+      return NextResponse.json(
+        { error: "Choose a person with a real workspace account." },
+        { status: 400 }
+      );
+    }
+    body.name = resolved.account.name;
+    body.email = resolved.account.email || "";
+  }
+
   try {
     const saved = await commitOfferingsChange(() =>
       updateOfferingContact(id, body.contactId!, body)
     );
     if (!saved) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ offering: hydrateOffering(saved) });
+    return NextResponse.json({
+      offering: hydrateOffering(
+        redactUnverifiedOfferingPeople(saved, resolved.people)
+      ),
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Could not save that contact" },
@@ -142,7 +180,12 @@ export async function DELETE(
       removeOfferingContact(id, contactId)
     );
     if (!saved) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ offering: hydrateOffering(saved) });
+    const people = await listAssignablePeople();
+    return NextResponse.json({
+      offering: hydrateOffering(
+        redactUnverifiedOfferingPeople(saved, people)
+      ),
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Could not remove that contact" },

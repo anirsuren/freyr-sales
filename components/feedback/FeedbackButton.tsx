@@ -1,7 +1,7 @@
 "use client";
 
-import { ClipboardPaste, ImagePlus, LoaderCircle, MessageSquarePlus, Send, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { ClipboardPaste, ImagePlus, Keyboard, LoaderCircle, MessageSquarePlus, Mic, Send, Square, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -17,6 +17,32 @@ const TYPES = [
 ];
 
 const MAX_SCREENSHOT_DATA_URL = 2_700_000;
+
+type SpeechResult = {
+  isFinal: boolean;
+  0: { transcript: string };
+};
+
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: { results: ArrayLike<SpeechResult> }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 function encodedScreenshot(canvas: HTMLCanvasElement): string {
   let quality = 0.82;
@@ -42,6 +68,10 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
   const pathname = usePathname() || "/";
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const voiceBaseRef = useRef("");
+  const voiceTextRef = useRef("");
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("bug");
   const [title, setTitle] = useState("");
@@ -50,13 +80,109 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
   const [captureError, setCaptureError] = useState("");
   const [capturing, setCapturing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+
+  useEffect(
+    () => () => {
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+    },
+    []
+  );
+
+  function stopVoice() {
+    recognitionRef.current?.stop();
+  }
+
+  function chooseTyping() {
+    if (listening) stopVoice();
+    descriptionRef.current?.focus();
+  }
+
+  function startVoice() {
+    if (listening) {
+      stopVoice();
+      return;
+    }
+    const Recognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      setVoiceError(
+        "Voice input is not available in this browser. You can still type your feedback below."
+      );
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || "en-US";
+    voiceBaseRef.current = description.trim();
+    voiceTextRef.current = "";
+    setVoiceError("");
+    recognition.onresult = (event) => {
+      let finalText = "";
+      let interimText = "";
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (result.isFinal) finalText += `${result[0].transcript} `;
+        else interimText += result[0].transcript;
+      }
+      const spoken = `${finalText}${interimText}`.trim();
+      voiceTextRef.current = spoken;
+      setDescription(
+        [voiceBaseRef.current, spoken].filter(Boolean).join(
+          voiceBaseRef.current && spoken ? "\n\n" : ""
+        )
+      );
+    };
+    recognition.onerror = (event) => {
+      setVoiceError(
+        event.error === "not-allowed" || event.error === "service-not-allowed"
+          ? "Microphone access was blocked. Allow microphone access, then press Speak your feedback again."
+          : "Voice input stopped unexpectedly. Your transcript is still below, and you can continue typing."
+      );
+      setListening(false);
+    };
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setListening(false);
+      const spoken = voiceTextRef.current.trim();
+      if (spoken) {
+        setTitle((current) => {
+          if (current.trim()) return current;
+          return (spoken.split(/[.!?]/)[0] || spoken).trim().slice(0, 160);
+        });
+      }
+    };
+    recognitionRef.current = recognition;
+    setListening(true);
+    try {
+      recognition.start();
+    } catch {
+      recognitionRef.current = null;
+      setListening(false);
+      setVoiceError("Voice input could not start. Please try again or type below.");
+    }
+  }
 
   function reset() {
+    recognitionRef.current?.abort();
+    recognitionRef.current = null;
+    setListening(false);
+    setVoiceError("");
     setType("bug");
     setTitle("");
     setDescription("");
     setScreenshot("");
     setCaptureError("");
+  }
+
+  function closeFeedback() {
+    if (busy) return;
+    reset();
+    setOpen(false);
   }
 
   async function captureCurrentPage() {
@@ -163,7 +289,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
           <MessageSquarePlus size={19} strokeWidth={1.7} />
         )}
       </button>
-      <Modal open={open} onClose={() => !busy && setOpen(false)} title="Send feedback" size="wide">
+      <Modal open={open} onClose={closeFeedback} title="Send feedback" size="wide">
         <div
           className="space-y-4"
           onPaste={(event) => {
@@ -184,7 +310,58 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Description <span className="text-error">*</span></label>
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={5} maxLength={5000} className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] leading-relaxed text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus" />
+            <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2">
+              <button
+                type="button"
+                onClick={chooseTyping}
+                aria-label="Type your feedback"
+                className="flex min-w-0 items-center gap-2.5 rounded-xl border border-border-light bg-white px-3 py-2.5 text-left transition-all hover:border-blue-subtle hover:bg-blue-light/20 focus-visible:border-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/15"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                  <Keyboard size={16} strokeWidth={1.9} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-semibold text-text-primary">
+                    Type your feedback
+                  </span>
+                  <span className="block text-[10.5px] text-text-secondary">
+                    Write it below
+                  </span>
+                </span>
+              </button>
+              <span className="self-center text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                or
+              </span>
+              <button
+                type="button"
+                onClick={startVoice}
+                aria-pressed={listening}
+                aria-label={listening ? "Stop voice feedback" : "Speak your feedback"}
+                className={`flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 ${
+                  listening
+                    ? "border-red-300 bg-red-50 text-red-800 focus-visible:ring-red-500/15"
+                    : "border-border-light bg-white text-text-primary hover:border-blue-subtle hover:bg-blue-light/20 focus-visible:border-blue-primary focus-visible:ring-blue-primary/15"
+                }`}
+              >
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${listening ? "bg-red-600 text-white" : "bg-blue-primary text-white"}`}>
+                  {listening ? <Square size={12} fill="currentColor" /> : <Mic size={16} />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-semibold">
+                    {listening ? "Listening… tap to stop" : "Speak your feedback"}
+                  </span>
+                  <span className="block text-[10.5px] text-text-secondary">
+                    {listening ? "Your words appear below" : "Talk instead of typing"}
+                  </span>
+                </span>
+              </button>
+            </div>
+            {voiceError && (
+              <p role="alert" className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+                {voiceError}
+              </p>
+            )}
+            <textarea ref={descriptionRef} aria-label="Feedback description" placeholder={listening ? "Listening… your words will appear here." : "Type your feedback here."} value={description} onChange={(event) => setDescription(event.target.value)} rows={5} maxLength={5000} className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] leading-relaxed text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus" />
           </div>
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-3">
@@ -208,7 +385,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
             )}
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="secondary" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
+            <Button variant="secondary" onClick={closeFeedback} disabled={busy}>Cancel</Button>
             <Button onClick={submit} disabled={busy || !title.trim() || !description.trim()} loading={busy}><Send size={14} /> Send feedback</Button>
           </div>
         </div>

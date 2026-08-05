@@ -197,7 +197,7 @@ export function AppShell({
     /^\/customers\/[^/]+\/report$/.test(pathname)
   ) {
     return (
-      <CurrentUserProvider user={currentUser}>
+      <CurrentUserProvider user={currentUser} dataMode={dataMode}>
         <MyPhotoProvider>
           <TimeZoneProvider>{children}</TimeZoneProvider>
         </MyPhotoProvider>
@@ -212,7 +212,7 @@ export function AppShell({
     isSessionDetail || pathname === "/recordings" || pathname === "/agent";
 
   return (
-    <CurrentUserProvider user={currentUser}>
+    <CurrentUserProvider user={currentUser} dataMode={dataMode}>
       <MyPhotoProvider>
       <TimeZoneProvider>
       <ToastProvider>

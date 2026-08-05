@@ -21,6 +21,12 @@ import {
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { redactOfferingsForCurrentUser } from "@/lib/materialAccess";
+import {
+  accountBackedPeopleForPoc,
+  listAssignablePeople,
+  redactUnverifiedOfferingPeople,
+} from "@/lib/assignablePeople";
+import { getDataMode } from "@/lib/dataMode";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +36,12 @@ const FORBIDDEN = NextResponse.json(
 );
 
 export async function GET() {
+  const people = await listAssignablePeople();
   const offeringsWithRoadmapAccess = await Promise.all(
     listOfferings().map(async (offering) => {
-      const hydrated = hydrateOffering(offering);
+      const hydrated = hydrateOffering(
+        redactUnverifiedOfferingPeople(offering, people)
+      );
       return (await canViewNextCustomerVersion(offering))
         ? hydrated
         : hideNextCustomerVersions(hydrated);
@@ -47,8 +56,35 @@ export async function GET() {
 export async function POST(req: Request) {
   if (!(await canManageOfferings())) return FORBIDDEN;
   const body = await req.json().catch(() => ({}));
+  // Record identity, ownership and person rows are server-owned. A caller may
+  // select active workspace accounts through `poc`; it may not inject an
+  // arbitrary contacts/owners payload.
+  delete body.id;
+  delete body.created_at;
+  delete body.owners;
+  delete body.contacts;
   if (!body.offering_name || !String(body.offering_name).trim()) {
     return NextResponse.json({ error: "Offering name is required" }, { status: 400 });
+  }
+  const people = await listAssignablePeople();
+  if (getDataMode() === "live") {
+    const selected = accountBackedPeopleForPoc(String(body.poc || ""), people);
+    if (selected.invalid.length) {
+      return NextResponse.json(
+        {
+          error: `Choose active workspace accounts for POC: ${selected.invalid.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+    body.poc = selected.people.map((person) => person.name).join(" / ");
+    body.contacts = selected.people.map((person, index) => ({
+      id: `oc-new-${Date.now().toString(36)}-${index}`,
+      name: person.name,
+      role: person.role || "Service delivery POC",
+      email: person.email || "",
+      phone: "",
+    }));
   }
   if (Array.isArray(body.materialFolders)) {
     body.materialFolders = Array.from(
@@ -95,7 +131,9 @@ export async function POST(req: Request) {
   }
   try {
     const offering = await commitOfferingsChange(() => createOffering(body));
-    const [visible] = await redactOfferingsForCurrentUser([offering]);
+    const [visible] = await redactOfferingsForCurrentUser([
+      redactUnverifiedOfferingPeople(offering, people),
+    ]);
     return NextResponse.json({ ok: true, offering: visible });
   } catch (error) {
     return NextResponse.json(

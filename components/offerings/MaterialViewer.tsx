@@ -27,6 +27,11 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { PdfViewer } from "@/components/offerings/PdfViewer";
 import { VideoPlayer } from "@/components/offerings/VideoPlayer";
+import { askFreyrAgent } from "@/lib/agentEvents";
+import {
+  materialJourneyStages,
+  type OfferingMaterial,
+} from "@/lib/offeringMaterials";
 
 /**
  * THE FILE AS IT WAS UPLOADED — not a summary of it.
@@ -79,12 +84,16 @@ function extensionOf(path: string): string {
 
 export function MaterialViewer({
   offeringId,
+  offeringName,
+  material,
   path,
   label,
   downloadUrl,
   onClose,
 }: {
   offeringId: string;
+  offeringName: string;
+  material: OfferingMaterial;
   path: string;
   label: string;
   downloadUrl: string;
@@ -176,6 +185,44 @@ export function MaterialViewer({
   // player on black instead, like every native video lightbox.
   const isVideo = isNative && ["mp4", "webm", "mov"].includes(ext);
   const isText = isNative && ["txt", "md", "csv"].includes(ext);
+
+  // Keep the assistant aware of the exact file on screen without forcing the
+  // chat panel open. The dock remains available above this full-screen viewer;
+  // when the rep opens it, the first question starts a clean material-focused
+  // conversation rather than inheriting an unrelated offering thread.
+  useEffect(() => {
+    askFreyrAgent({
+      open: false,
+      newConversation: true,
+      offering: {
+        id: offeringId,
+        name: offeringName,
+        material: {
+          id: material.id,
+          label: currentLabel,
+          kind: material.kind,
+          folder: material.folder,
+          accessLevel: material.accessLevel,
+          journeyStages: materialJourneyStages(material),
+          description: material.description,
+        },
+      },
+    });
+  }, [currentLabel, material, offeringId, offeringName]);
+
+  useEffect(
+    () => () => {
+      // If no material conversation was started, closing the viewer must not
+      // leave the unopened dock silently focused on a file that is no longer
+      // on screen. An active conversation keeps its own saved context.
+      askFreyrAgent({
+        open: false,
+        newConversation: false,
+        offering: { id: offeringId, name: offeringName },
+      });
+    },
+    [offeringId, offeringName]
+  );
 
   useEffect(() => {
     setStatus("loading");
