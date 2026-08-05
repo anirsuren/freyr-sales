@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   BarChart3,
   BookOpen,
-  CalendarCheck,
   Check,
   ChevronRight,
   DollarSign,
@@ -83,11 +82,14 @@ export function OfferingOverviewMain({
   report,
   related,
   admin,
+  canSeeNextVersion = false,
 }: {
   offering: ReturnType<typeof hydrateOffering>;
   report: OfferingReport;
   related: Offering[];
   admin: boolean;
+  /** Unreleased roadmap versions are gated; sales reps never see them here. */
+  canSeeNextVersion?: boolean;
 }) {
   const description =
     o.offering_description ||
@@ -172,10 +174,43 @@ export function OfferingOverviewMain({
           !note.label && /^version\s+\S+$/i.test(note.body.trim())
       )
     : undefined;
-  const currentVersion = currentVersionNote?.body.trim() || null;
+  // The structured roadmap is authoritative when an owner has filled it in;
+  // the sheet-note parse is the fallback for catalogue offerings without one.
+  const roadmap = o.roadmap_details;
+  const currentVersion =
+    roadmap?.currentVersion?.trim() || currentVersionNote?.body.trim() || null;
+  const currentReleaseDate = roadmap?.releaseWave?.trim() || null;
   const futureAvailability = currentVersionNote
     ? upcomingAvailability.filter((note) => note !== currentVersionNote)
     : upcomingAvailability;
+  // Next milestones: the gated next customer version first (admins, owners,
+  // and approved exceptions only), then any remaining sheet notes. A note
+  // that just repeats the structured next version is dropped as a duplicate.
+  const nextVersion = (canSeeNextVersion && roadmap?.nextVersions?.trim()) || "";
+  const nextExpected = roadmap?.nextExpectedLive?.trim() || "";
+  const nextMilestones: { label: string; body: string }[] = nextVersion
+    ? [
+        {
+          label: "Next version",
+          body: nextExpected
+            ? `${nextVersion} · expected ${nextExpected}`
+            : nextVersion,
+        },
+      ]
+    : [];
+  futureAvailability.forEach((note, index) => {
+    if (
+      nextVersion &&
+      note.body.trim().toLowerCase() === nextVersion.toLowerCase()
+    )
+      return;
+    nextMilestones.push({
+      label:
+        note.label ||
+        (index === 0 && !nextVersion ? "Next milestone" : "Upcoming"),
+      body: note.body,
+    });
+  });
 
   return (
     <div className="min-w-0">
@@ -195,83 +230,67 @@ export function OfferingOverviewMain({
             offeringName={o.offering_name}
             styles={o.service_card_styles}
           />
-          {/* Availability reads as a progression: today's status followed by
-              each upcoming milestone. It collapses to a vertical timeline on
-              narrow screens so labels never compete for horizontal space. */}
-          {(o.current_availability || o.future_availability) && (
-            <div className="mt-5 overflow-hidden rounded-xl border border-border-light bg-surface shadow-sm">
-              <div className="flex items-center gap-2.5 border-b border-border-light bg-surface/50 px-4 py-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
-                  <CalendarCheck size={14} strokeWidth={2} aria-hidden="true" />
+          {/* Availability is ONE compact strip, not a captioned card: the
+              current release (version · date · status pill), a connector, and
+              the next milestone when one exists. With nothing upcoming it
+              hugs its single node — no header band, no empty region. */}
+          {(o.current_availability || currentVersion || nextMilestones.length > 0) && (
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border border-border-light bg-surface px-4 py-3.5 shadow-sm">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success text-white shadow-sm">
+                  <Check size={13} strokeWidth={2.6} aria-hidden="true" />
                 </span>
-                <div>
-                  <p className="text-[12px] font-semibold text-text-primary">
-                    Availability timeline
+                <div className="min-w-0">
+                  <p className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                    {currentVersion ? "Current release" : "Current status"}
                   </p>
-                  <p className="text-[10.5px] text-text-tertiary">
-                    Current status and what comes next
-                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {currentVersion && (
+                      <span className="text-[13px] font-bold leading-none text-text-primary">
+                        {currentVersion}
+                      </span>
+                    )}
+                    {currentReleaseDate && (
+                      <span className="text-[11.5px] leading-none text-text-tertiary">
+                        {currentReleaseDate}
+                      </span>
+                    )}
+                    {o.current_availability && (
+                      <AvailabilityPill value={o.current_availability} size="sm" />
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-col px-4 py-4 md:flex-row md:px-5">
-                {o.current_availability && (
-                  <div className="relative flex min-w-0 gap-3 pb-5 md:block md:flex-1 md:pb-0 md:pr-5">
-                    {futureAvailability.length > 0 && (
-                      <span
-                        className="absolute bottom-[-4px] left-[15px] top-8 w-px bg-border md:bottom-auto md:left-8 md:right-0 md:top-[15px] md:h-px md:w-auto"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-4 border-surface bg-success text-white shadow-sm">
-                      <Check size={13} strokeWidth={2.6} aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0 pt-0.5 md:mt-3 md:pt-0">
-                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                        {currentVersion ? "Current release" : "Current status"}
-                      </p>
-                      {currentVersion ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-[12.5px] font-semibold text-text-primary">
-                            {currentVersion}
-                          </p>
-                          <AvailabilityPill value={o.current_availability} size="sm" />
-                        </div>
-                      ) : (
-                        <AvailabilityPill value={o.current_availability} size="sm" />
-                      )}
-                    </div>
+              {nextMilestones.map((milestone, index) => (
+                <div
+                  key={`${index}-${milestone.body}`}
+                  className="flex min-w-0 flex-1 items-center gap-2.5"
+                >
+                  {/* The progression line, pointing at what comes next. */}
+                  <span
+                    aria-hidden="true"
+                    className="hidden h-px min-w-[24px] flex-1 bg-gradient-to-r from-success/40 to-blue-primary/50 sm:block"
+                  />
+                  <ChevronRight
+                    size={13}
+                    strokeWidth={2.4}
+                    aria-hidden="true"
+                    className="hidden shrink-0 text-blue-primary/60 sm:-ml-2.5 sm:block"
+                  />
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-primary shadow-sm">
+                    <span className="h-2 w-2 rounded-full bg-white" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-blue-primary">
+                      {milestone.label}
+                    </p>
+                    <p className="mt-1 text-[12.5px] font-medium leading-snug text-text-primary">
+                      {milestone.body}
+                    </p>
                   </div>
-                )}
-
-                {futureAvailability.map((note, index) => {
-                  const isLast = index === futureAvailability.length - 1;
-                  return (
-                    <div
-                      key={`${index}-${note.body}`}
-                      className="relative flex min-w-0 gap-3 pb-5 last:pb-0 md:block md:flex-1 md:pb-0 md:pr-5 md:last:pr-0"
-                    >
-                      {!isLast && (
-                        <span
-                          className="absolute bottom-[-4px] left-[15px] top-8 w-px bg-border md:bottom-auto md:left-8 md:right-0 md:top-[15px] md:h-px md:w-auto"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-4 border-surface bg-blue-primary shadow-sm">
-                        <span className="h-2 w-2 rounded-full bg-white" aria-hidden="true" />
-                      </span>
-                      <div className="min-w-0 pt-0.5 md:mt-3 md:pt-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-blue-primary">
-                          {note.label || (index === 0 ? "Next milestone" : "Upcoming")}
-                        </p>
-                        <p className="mt-1 text-[12.5px] font-medium leading-relaxed text-text-primary">
-                          {note.body}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

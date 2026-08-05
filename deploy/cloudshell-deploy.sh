@@ -122,6 +122,7 @@ add_key ANTHROPIC_API_KEY "${ANTHROPIC_API_KEY:-}"
 add_key APIFY_API_TOKEN "${APIFY_API_TOKEN:-}"
 add_key ELEVENLABS_API_KEY "${ELEVENLABS_API_KEY:-}"
 add_key FIRECRAWL_API_KEY "${FIRECRAWL_API_KEY:-}"
+add_key RESEND_API_KEY "${RESEND_API_KEY:-}"
 add_key SUPABASE_SERVICE_ROLE_KEY "${SUPABASE_SERVICE_ROLE_KEY:-}"
 add_key AUTH_COOKIE_SECRET "${AUTH_COOKIE_SECRET:-}"
 add_key FREYR_WORKSPACE_ID "${FREYR_WORKSPACE_ID:-}"
@@ -154,6 +155,7 @@ echo "$TD" | jq \
   | set_env("DEFAULT_DATA_MODE"; "live")
   | set_env("DATA_MODE_LOCKED"; "0")
   | set_env("AUTO_APPROVE_EMAIL_DOMAINS"; "freyrsolutions.com")
+  | set_env("FEEDBACK_RECIPIENT_EMAIL"; "anir@auctalai.com")
   | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
         .compatibilities, .registeredAt, .registeredBy)
 ' > taskdef.json

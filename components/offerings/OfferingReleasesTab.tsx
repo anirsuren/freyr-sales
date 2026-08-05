@@ -327,6 +327,241 @@ function RoadmapHistoryEditor({
   );
 }
 
+function blankRoadmapDetails(): OfferingRoadmapDetails {
+  return {
+    currentVersion: "",
+    releaseWave: "",
+    currentModules: [],
+    platformCapabilities: [],
+    comparisonCurrentLabel: "Current version",
+    comparisonPreviousLabel: "Previous version",
+    comparisonRows: [],
+    history: [],
+    nextExpectedLive: "",
+    nextVersions: "",
+    nextModules: [],
+  };
+}
+
+function RoadmapEditorFields({
+  draft,
+  onChange,
+  canSeeNext,
+}: {
+  draft: OfferingRoadmapDetails;
+  onChange: (details: OfferingRoadmapDetails) => void;
+  canSeeNext: boolean;
+}) {
+  return (
+    <>
+      <section className="rounded-2xl border border-border-light p-4">
+        <h3 className="mb-3 text-[13.5px] font-semibold text-text-primary">
+          Current and next milestones
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={LABEL}>Current version</label>
+            <input
+              className={FIELD}
+              value={draft.currentVersion}
+              onChange={(event) =>
+                onChange({ ...draft, currentVersion: event.target.value })
+              }
+              placeholder="Version 2.5"
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Current release date / wave</label>
+            <input
+              className={FIELD}
+              value={draft.releaseWave}
+              onChange={(event) =>
+                onChange({ ...draft, releaseWave: event.target.value })
+              }
+              placeholder="Live since July 2026"
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Previous-version comparison label</label>
+            <input
+              className={FIELD}
+              value={draft.comparisonPreviousLabel}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  comparisonPreviousLabel: event.target.value,
+                })
+              }
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Current-version comparison label</label>
+            <input
+              className={FIELD}
+              value={draft.comparisonCurrentLabel}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  comparisonCurrentLabel: event.target.value,
+                })
+              }
+            />
+          </div>
+          {canSeeNext && (
+            <>
+              <div>
+                <label className={LABEL}>Next expected live date</label>
+                <input
+                  className={FIELD}
+                  value={draft.nextExpectedLive}
+                  onChange={(event) =>
+                    onChange({ ...draft, nextExpectedLive: event.target.value })
+                  }
+                  placeholder="August 2026"
+                />
+              </div>
+              <div>
+                <label className={LABEL}>Next version(s)</label>
+                <input
+                  className={FIELD}
+                  value={draft.nextVersions}
+                  onChange={(event) =>
+                    onChange({ ...draft, nextVersions: event.target.value })
+                  }
+                  placeholder="Version 2.6"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      <RoadmapModuleEditor
+        title="Current module versions and capabilities"
+        rows={draft.currentModules}
+        onChange={(currentModules) => onChange({ ...draft, currentModules })}
+      />
+
+      <section className="rounded-2xl border border-border-light p-4">
+        <label className={LABEL}>Platform capabilities</label>
+        <textarea
+          className={`${FIELD} h-auto min-h-[150px] py-3 leading-relaxed`}
+          value={draft.platformCapabilities.join("\n")}
+          onChange={(event) =>
+            onChange({
+              ...draft,
+              platformCapabilities: event.target.value
+                .split("\n")
+                .map((item) => item.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder="One capability per line"
+        />
+      </section>
+
+      <RoadmapComparisonEditor
+        rows={draft.comparisonRows}
+        onChange={(comparisonRows) => onChange({ ...draft, comparisonRows })}
+      />
+
+      <RoadmapHistoryEditor
+        rows={draft.history}
+        onChange={(history) => onChange({ ...draft, history })}
+      />
+
+      {canSeeNext && (
+        <RoadmapModuleEditor
+          title="Next-version module changes"
+          rows={draft.nextModules}
+          versions={false}
+          onChange={(nextModules) => onChange({ ...draft, nextModules })}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * The edit-offering page owns a true inline roadmap editor. It deliberately
+ * saves the roadmap independently: an owner can update the roadmap without
+ * navigating away from (or losing changes in) the rest of the offering form.
+ */
+export function OfferingRoadmapInlineEditor({
+  offeringId,
+  initialDetails,
+  canSeeNext = true,
+}: {
+  offeringId: string;
+  initialDetails?: OfferingRoadmapDetails;
+  canSeeNext?: boolean;
+}) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [draft, setDraft] = useState<OfferingRoadmapDetails>(() =>
+    structuredClone(initialDetails ?? blankRoadmapDetails())
+  );
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setDraft(structuredClone(initialDetails ?? blankRoadmapDetails()));
+  }, [initialDetails]);
+
+  async function saveInlineRoadmap() {
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/offerings/${offeringId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roadmap_details: draft }),
+      });
+      if (!response.ok) {
+        throw new Error((await response.json()).error || "Save failed");
+      }
+      toast("Roadmap updated", "success");
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Save failed", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void saveInlineRoadmap();
+      }}
+    >
+      <div className="flex flex-col gap-3 rounded-xl border border-blue-primary/15 bg-blue-light/55 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[13.5px] font-semibold text-text-primary">
+            Edit the roadmap here
+          </p>
+          <p className="mt-0.5 text-[12.5px] leading-relaxed text-text-secondary">
+            These fields are the content sellers see on the Roadmap tab.
+          </p>
+        </div>
+        <Button type="submit" loading={busy} className="shrink-0">
+          Save roadmap
+        </Button>
+      </div>
+      <RoadmapEditorFields
+        draft={draft}
+        onChange={setDraft}
+        canSeeNext={canSeeNext}
+      />
+      <div className="flex justify-end border-t border-border-light pt-4">
+        <Button type="submit" loading={busy}>
+          Save roadmap
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function OfferingReleasesTab({
   offeringId,
   offeringName,
@@ -337,7 +572,6 @@ export function OfferingReleasesTab({
   contacts,
   people,
   owners,
-  openEditor = false,
 }: {
   offeringId: string;
   offeringName: string;
@@ -348,8 +582,6 @@ export function OfferingReleasesTab({
   contacts: OfferingContact[];
   people: PickablePerson[];
   owners: OwnerRow[];
-  /** Open the complete editor when arriving from Edit Offering. */
-  openEditor?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -376,12 +608,6 @@ export function OfferingReleasesTab({
     featureLines.length > 0 &&
     (status === "next" || Boolean(date)) &&
     !duplicateVersion;
-
-  useEffect(() => {
-    if (!openEditor || !canEdit || !roadmapDetails) return;
-    setDraftRoadmap(structuredClone(roadmapDetails));
-    setEditingRoadmap(true);
-  }, [canEdit, openEditor, roadmapDetails]);
 
   // Newest first, and a version with no date sorts after ones that have one —
   // an undated row is usually the next release, not the oldest.
@@ -779,79 +1005,11 @@ export function OfferingReleasesTab({
               Changes save to the shared offering and are visible immediately.
             </div>
 
-            <section className="rounded-2xl border border-border-light p-4">
-              <h3 className="mb-3 text-[13.5px] font-semibold text-text-primary">
-                Current and next milestones
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className={LABEL}>Current version</label>
-                  <input className={FIELD} value={draftRoadmap.currentVersion} onChange={(e) => setDraftRoadmap({ ...draftRoadmap, currentVersion: e.target.value })} />
-                </div>
-                <div>
-                  <label className={LABEL}>Current release date / wave</label>
-                  <input className={FIELD} value={draftRoadmap.releaseWave} onChange={(e) => setDraftRoadmap({ ...draftRoadmap, releaseWave: e.target.value })} placeholder="Live since July 2026" />
-                </div>
-                <div>
-                  <label className={LABEL}>Previous-version comparison label</label>
-                  <input className={FIELD} value={draftRoadmap.comparisonPreviousLabel} onChange={(e) => setDraftRoadmap({ ...draftRoadmap, comparisonPreviousLabel: e.target.value })} />
-                </div>
-                <div>
-                  <label className={LABEL}>Current-version comparison label</label>
-                  <input className={FIELD} value={draftRoadmap.comparisonCurrentLabel} onChange={(e) => setDraftRoadmap({ ...draftRoadmap, comparisonCurrentLabel: e.target.value })} />
-                </div>
-                {canSeeNext && (
-                  <>
-                    <div>
-                      <label className={LABEL}>Next expected live date</label>
-                      <input className={FIELD} value={draftRoadmap.nextExpectedLive} onChange={(e) => setDraftRoadmap({ ...draftRoadmap, nextExpectedLive: e.target.value })} placeholder="August 2026" />
-                    </div>
-                    <div>
-                      <label className={LABEL}>Next version(s)</label>
-                      <input className={FIELD} value={draftRoadmap.nextVersions} onChange={(e) => setDraftRoadmap({ ...draftRoadmap, nextVersions: e.target.value })} />
-                    </div>
-                  </>
-                )}
-              </div>
-            </section>
-
-            <RoadmapModuleEditor
-              title="Current module versions and capabilities"
-              rows={draftRoadmap.currentModules}
-              onChange={(currentModules) => setDraftRoadmap({ ...draftRoadmap, currentModules })}
+            <RoadmapEditorFields
+              draft={draftRoadmap}
+              onChange={setDraftRoadmap}
+              canSeeNext={canSeeNext}
             />
-
-            <section className="rounded-2xl border border-border-light p-4">
-              <label className={LABEL}>Platform capabilities</label>
-              <textarea
-                className={`${FIELD} h-auto min-h-[150px] py-3 leading-relaxed`}
-                value={draftRoadmap.platformCapabilities.join("\n")}
-                onChange={(e) => setDraftRoadmap({
-                  ...draftRoadmap,
-                  platformCapabilities: e.target.value.split("\n").map((item) => item.trim()).filter(Boolean),
-                })}
-                placeholder="One capability per line"
-              />
-            </section>
-
-            <RoadmapComparisonEditor
-              rows={draftRoadmap.comparisonRows}
-              onChange={(comparisonRows) => setDraftRoadmap({ ...draftRoadmap, comparisonRows })}
-            />
-
-            <RoadmapHistoryEditor
-              rows={draftRoadmap.history}
-              onChange={(history) => setDraftRoadmap({ ...draftRoadmap, history })}
-            />
-
-            {canSeeNext && (
-              <RoadmapModuleEditor
-                title="Next-version module changes"
-                rows={draftRoadmap.nextModules}
-                versions={false}
-                onChange={(nextModules) => setDraftRoadmap({ ...draftRoadmap, nextModules })}
-              />
-            )}
 
             <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border-light bg-white py-4">
               <Button type="button" variant="secondary" onClick={closeRoadmapEditor} disabled={busy}>

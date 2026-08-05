@@ -17,6 +17,7 @@ import {
   listOfferingCategories,
 } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
+import { getDataMode } from "@/lib/dataMode";
 import {
   listAssignablePeople,
   redactUnverifiedOfferingPeople,
@@ -84,6 +85,11 @@ export default async function EditOfferingPage({
       >
         <OfferingForm
           offeringId={o.id}
+          // The complete roadmap editor renders inline in the Product roadmap
+          // section. Mock's sample-roadmap overlay stays read-only: fake
+          // versions must never be savable into the shared live catalogue.
+          roadmapDetails={o.roadmap_details}
+          roadmapEditable={getDataMode() === "live"}
           initial={{
             offering_type: o.offering_type,
             offering_category: o.offering_category,

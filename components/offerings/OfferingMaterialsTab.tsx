@@ -19,9 +19,11 @@ import type { Offering } from "@/lib/offerings";
 export function OfferingMaterialsTab({
   offering: o,
   admin,
+  preferenceOwnerId,
 }: {
   offering: Offering;
   admin: boolean;
+  preferenceOwnerId?: string | null;
 }) {
   return (
     <section className="mt-6">
@@ -47,6 +49,7 @@ export function OfferingMaterialsTab({
         offeringName={o.offering_name}
         canEdit={admin}
         materialFolders={o.materialFolders ?? []}
+        preferenceOwnerId={preferenceOwnerId}
         action={
           admin ? (
             <AddMaterialButton

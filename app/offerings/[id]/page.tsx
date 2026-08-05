@@ -389,6 +389,7 @@ export default async function OfferingDetailPage({
           <OfferingMaterialsTab
             offering={o}
             admin={admin}
+            preferenceOwnerId={me.memberId || me.id}
           />
         ) : tab === "roadmap" ? (
           <OfferingReleasesTab
@@ -415,7 +416,6 @@ export default async function OfferingDetailPage({
             contacts={offeringContacts}
             people={people}
             owners={o.owners ?? []}
-            openEditor={query?.edit === "roadmap"}
           />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
@@ -425,6 +425,7 @@ export default async function OfferingDetailPage({
             report={report}
             related={related}
             admin={admin}
+            canSeeNextVersion={canSeeNextCustomerVersion}
           />
           {/* ---------------------------------------------------- SIDE rail */}
           {/* `stagger` — the rail's cards lift in one after another, the same

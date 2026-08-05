@@ -91,12 +91,18 @@ The JSON secret referenced by `APP_SECRETS_ARN` must contain all of these keys:
 - `OWNER_EMAILS`: a comma-separated bootstrap allowlist. Initially set it to
   the exact verified email address(es) that may create the first administrator.
 - `RESEND_API_KEY`: the server-only Resend key used for workspace invitations.
+  It also delivers feedback and bug reports. Deployments are blocked if the
+  live task has no binding for this key.
   Invitation delivery is transactional and remains active while the UI is
   showing mock data.
 
 The optional `EMAIL_FROM` task environment variable may override the default
 `Freyr <sales@freyrsolutions.com>` sender. Whichever address is used must be
 verified with the email provider before inviting users.
+
+Feedback and bug reports are delivered to `anir@auctalai.com` by default. Set
+`FEEDBACK_RECIPIENT_EMAIL` on the task to change the support recipient without
+changing application code.
 
 The Azure DevOps variable group must also provide
 `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to the container

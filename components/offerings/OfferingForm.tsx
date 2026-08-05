@@ -46,8 +46,10 @@ import type {
   CustomerType,
   Market,
   OfferingCategory,
+  OfferingRoadmapDetails,
   ServiceCardStyle,
 } from "@/lib/offerings";
+import { OfferingRoadmapInlineEditor } from "@/components/offerings/OfferingReleasesTab";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
@@ -752,6 +754,8 @@ export function OfferingForm({
   offeringCategories = [],
   people = [],
   offeringId,
+  roadmapDetails,
+  roadmapEditable = false,
   initial,
 }: {
   customerTypes: CustomerType[];
@@ -761,6 +765,10 @@ export function OfferingForm({
   /** Everyone in the workspace, for the POC picker. */
   people?: PickablePerson[];
   offeringId?: string;
+  /** The structured roadmap, edited inline in the Product roadmap section. */
+  roadmapDetails?: OfferingRoadmapDetails;
+  /** False in Mock: the sample roadmap overlay must never be saved as real. */
+  roadmapEditable?: boolean;
   initial?: {
     offering_type?: string;
     offering_category?: string;
@@ -1937,35 +1945,27 @@ export function OfferingForm({
       </FormSection>
 
       {/* ------------------------------------------------ product roadmap */}
+      {/* The complete roadmap editor lives right here in the accordion — no
+          separate page, no new tab. It saves independently of the rest of the
+          form so a roadmap edit never depends on (or discards) other field
+          changes on this page. */}
       {isEdit && offeringId && (
         <FormSection
           icon={Route}
           title="Product roadmap"
           hint="Edit current and previous versions, comparisons, release history, and the approved next version."
         >
-          <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-surface/60 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[13.5px] font-semibold text-text-primary">
-                The entire roadmap is editable
-              </p>
-              <p className="mt-1 max-w-3xl text-[12.5px] leading-relaxed text-text-secondary">
-                This opens the complete Roadmap editor without discarding any changes currently on this page.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                window.open(
-                  `/offerings/${offeringId}?tab=roadmap&edit=roadmap`,
-                  "_blank",
-                  "noopener,noreferrer"
-                );
-              }}
-              className="inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-primary px-4 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-hover"
-            >
-              <PencilLine size={15} strokeWidth={2.1} /> Edit roadmap
-            </button>
-          </div>
+          {roadmapEditable ? (
+            <OfferingRoadmapInlineEditor
+              offeringId={offeringId}
+              initialDetails={roadmapDetails}
+            />
+          ) : (
+            <p className="rounded-xl border border-border-light bg-surface/60 p-4 text-[12.5px] leading-relaxed text-text-secondary">
+              The roadmap shown in Mock is a read-only sample. Switch to Real
+              mode to edit the actual roadmap.
+            </p>
+          )}
         </FormSection>
       )}
 

@@ -207,6 +207,7 @@ export function MaterialsSection({
   offeringName,
   canEdit = false,
   materialFolders = [],
+  preferenceOwnerId,
 }: {
   materials: OfferingMaterial[];
   /** Folders an owner made that hold nothing yet; the rest are implied by the
@@ -221,6 +222,9 @@ export function MaterialsSection({
   /** Owners add and remove. Seller-visible files are downloadable by the
    *  workspace; agent-only files reach this component only for an owner. */
   canEdit?: boolean;
+  /** Keeps a shared browser from leaking one signed-in user's view preference
+   *  into another user's session. */
+  preferenceOwnerId?: string | null;
 }) {
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
@@ -229,22 +233,50 @@ export function MaterialsSection({
   // roomier two-up view and can still be switched to one or four columns.
   const [columns, setColumns] = useState<MaterialColumns>(2);
   const [layoutPreferenceReady, setLayoutPreferenceReady] = useState(false);
+  const [savedScope, setSavedScope] = useState<"folders" | "files">("folders");
+  const [scopePreferenceReady, setScopePreferenceReady] = useState(false);
+  const preferenceSuffix = preferenceOwnerId?.trim() || "anonymous";
+  const layoutStorageKey = `freyr.materials.layout.v2:${preferenceSuffix}`;
+  const scopeStorageKey = `freyr.materials.scope.v2:${preferenceSuffix}`;
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("freyr.materials.layout.v1");
+      // Migrate the old browser-wide preference once, then remove it so the
+      // next person using this browser cannot inherit another user's choice.
+      const legacyKey = "freyr.materials.layout.v1";
+      const scoped = localStorage.getItem(layoutStorageKey);
+      const saved = scoped ?? localStorage.getItem(legacyKey);
       if (saved === "1" || saved === "2" || saved === "4")
         setColumns(Number(saved) as MaterialColumns);
       else if (saved === "table") setColumns("table");
+      if (scoped === null && saved !== null) {
+        localStorage.setItem(layoutStorageKey, saved);
+        localStorage.removeItem(legacyKey);
+      }
     } catch {}
     setLayoutPreferenceReady(true);
-  }, []);
+  }, [layoutStorageKey]);
   useEffect(() => {
     if (!layoutPreferenceReady) return;
     try {
-      localStorage.setItem("freyr.materials.layout.v1", String(columns));
+      localStorage.setItem(layoutStorageKey, String(columns));
     } catch {}
-  }, [columns, layoutPreferenceReady]);
+  }, [columns, layoutPreferenceReady, layoutStorageKey]);
+
+  useEffect(() => {
+    try {
+      const legacyKey = "freyr.materials.scope.v1";
+      const scoped = localStorage.getItem(scopeStorageKey);
+      const saved = scoped ?? localStorage.getItem(legacyKey);
+      if (saved === "files") setSavedScope("files");
+      else setSavedScope("folders");
+      if (scoped === null && (saved === "files" || saved === "folders")) {
+        localStorage.setItem(scopeStorageKey, saved);
+        localStorage.removeItem(legacyKey);
+      }
+    } catch {}
+    setScopePreferenceReady(true);
+  }, [scopeStorageKey]);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -459,7 +491,10 @@ export function MaterialsSection({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const folder = normalizeFolderPath(searchParams.get("mf") || "");
-  const showAllFiles = searchParams.get("mv") === "files";
+  const hasExplicitScope = searchParams.has("mv") || searchParams.has("mf");
+  const showAllFiles =
+    searchParams.get("mv") === "files" ||
+    (!hasExplicitScope && scopePreferenceReady && savedScope === "files");
 
   /** A shareable, app-owned preview URL. The new tab is a dedicated material
    *  page, not another copy of the offering with its viewer dialog reopened. */
@@ -473,14 +508,12 @@ export function MaterialsSection({
   // folder or `mv` in a shared URL always wins; otherwise restore the last
   // scope used in this browser.
   useEffect(() => {
-    if (searchParams.has("mv") || searchParams.has("mf")) return;
-    try {
-      if (localStorage.getItem("freyr.materials.scope.v1") !== "files") return;
-      const params = new URLSearchParams(Array.from(searchParams.entries()));
-      params.set("mv", "files");
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    } catch {}
-  }, [pathname, router, searchParams]);
+    if (!scopePreferenceReady || hasExplicitScope || savedScope !== "files")
+      return;
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.set("mv", "files");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [hasExplicitScope, pathname, router, savedScope, scopePreferenceReady, searchParams]);
 
   const goToFolder = (next: string) => {
     const params = new URLSearchParams(Array.from(searchParams.entries()));
@@ -491,8 +524,9 @@ export function MaterialsSection({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
   const setMaterialsView = (view: "folders" | "files") => {
+    setSavedScope(view);
     try {
-      localStorage.setItem("freyr.materials.scope.v1", view);
+      localStorage.setItem(scopeStorageKey, view);
     } catch {}
     const params = new URLSearchParams(Array.from(searchParams.entries()));
     if (view === "files") {
@@ -583,6 +617,28 @@ export function MaterialsSection({
     setStages([]);
     setLevels([]);
   };
+
+  // localStorage cannot be read during the server render. Showing the default
+  // folders/two-column UI first made every tab switch visibly jump to the
+  // saved preference. Keep the footprint stable for that one hydration frame,
+  // then paint the user's actual preference as the first interactive view.
+  if (!layoutPreferenceReady || !scopePreferenceReady) {
+    return (
+      <div
+        className="mt-5 ml-11"
+        aria-busy="true"
+        aria-label="Loading your sales materials view"
+      >
+        <div className="flex animate-pulse items-center gap-2">
+          <span className="h-10 w-[150px] rounded-lg bg-surface" />
+          <span className="h-10 w-[170px] rounded-lg bg-surface" />
+          <span className="h-10 w-[160px] rounded-lg bg-surface" />
+          <span className="ml-auto h-10 w-[280px] rounded-lg bg-surface" />
+        </div>
+        <div className="mt-3 h-20 animate-pulse rounded-2xl bg-surface" />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-5 ml-11">

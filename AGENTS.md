@@ -180,6 +180,28 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Aug 5 local closeout batch — committed, NOT deployed (Anir: run locally
+  only):** sales-material view preferences persist per user (Folders vs All
+  files + list/card layout, restored without the default-view flash; explicit
+  URL options still win); Feedback blurs the page immediately with a
+  "Preparing feedback" state, blocks repeat clicks, excludes its own overlay
+  from the capture, and its notifications auto-dismiss (the persistent
+  email-not-configured banner is gone — recipient anir@auctalai.com, deploy
+  config expects RESEND_API_KEY and fails loudly without it); the complete
+  roadmap editor now lives INLINE in the Edit Offering "Product roadmap"
+  accordion (`OfferingRoadmapInlineEditor`, saves independently of the rest
+  of the form) and the old Edit-roadmap button + `?edit=roadmap` new-tab hop
+  is gone (the Roadmap tab keeps its own Edit button; Mock's sample roadmap
+  stays read-only); the offering-overview availability card is now ONE
+  compact strip — current release (version · date · status pill) → connector
+  → next milestone, gated next version only for authorized viewers, and it
+  hugs a single node when nothing is upcoming. Email delivery to
+  anir@auctalai.com is NOT yet proven end-to-end: no RESEND_API_KEY exists
+  locally, so that proof requires the key on the live task (deploy-time).
+  Verified: tsc clean, targeted lint clean, landing public, logged-out
+  /offerings redirects to /login, reset-password renders, offerings pages
+  render live on :3000.
+
 - **Aug 4 change-log closeout is ready to ship:** sales-material upload now
   requires an explicit file format, buyer-journey stage, and access level
   instead of silently assigning defaults. The catalogue now uses the exact

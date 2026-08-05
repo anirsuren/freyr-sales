@@ -2,6 +2,7 @@
 
 import { ClipboardPaste, ImagePlus, Keyboard, LoaderCircle, MessageSquarePlus, Mic, Send, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -206,6 +207,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
       scrollY: window.scrollY,
       ignoreElements: (element) =>
         element.hasAttribute("data-feedback-trigger") ||
+        element.hasAttribute("data-feedback-capture-overlay") ||
         element.getAttribute("role") === "tooltip",
     });
     return encodedScreenshot(canvas);
@@ -216,6 +218,12 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
     reset();
     setCapturing(true);
     try {
+      // Let React paint the blocking capture state before html2canvas starts
+      // doing synchronous layout work. Without this frame, the click appears
+      // dead for several seconds and people naturally press it again.
+      await new Promise<void>((resolve) =>
+        window.requestAnimationFrame(() => resolve())
+      );
       setScreenshot(await captureCurrentPage());
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown capture error";
@@ -261,7 +269,18 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Feedback could not be sent.");
+      if (!response.ok) {
+        if (result.saved) {
+          setOpen(false);
+          reset();
+          toast(
+            "Feedback saved, but the email alert failed. Contact support if it is urgent.",
+            "error"
+          );
+          return;
+        }
+        throw new Error(result.error || "Feedback could not be sent. Try again.");
+      }
       toast("Feedback sent. Thank you.", "success");
       setOpen(false);
       reset();
@@ -278,6 +297,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
         type="button"
         onClick={openFeedback}
         disabled={capturing}
+        aria-busy={capturing}
         data-feedback-trigger
         aria-label="Send feedback or report a problem"
         title="Send feedback"
@@ -289,6 +309,31 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
           <MessageSquarePlus size={19} strokeWidth={1.7} />
         )}
       </button>
+      {capturing &&
+        createPortal(
+          <div
+            data-feedback-capture-overlay
+            className="fixed inset-0 z-[120] flex cursor-wait items-center justify-center bg-slate-950/35 backdrop-blur-sm"
+            role="status"
+            aria-live="polite"
+            aria-label="Preparing feedback form"
+          >
+            <div className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/95 px-5 py-4 shadow-[0_18px_52px_-18px_rgba(15,23,42,0.55)]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+                <LoaderCircle size={20} strokeWidth={1.9} className="animate-spin" />
+              </span>
+              <span>
+                <span className="block text-[13px] font-semibold text-text-primary">
+                  Preparing feedback
+                </span>
+                <span className="block text-[11.5px] text-text-secondary">
+                  Capturing this page…
+                </span>
+              </span>
+            </div>
+          </div>,
+          document.body
+        )}
       <Modal open={open} onClose={closeFeedback} title="Send feedback" size="wide">
         <div
           className="space-y-4"

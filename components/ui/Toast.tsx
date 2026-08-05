@@ -41,11 +41,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     (message: string, variant: Variant = "success", action?: ToastAction) => {
       const id = `t${counter++}`;
       setToasts((t) => [...t, { id, message, variant, action }]);
-      // Errors stay until the user dismisses them. Auto-hiding a validation
-      // explanation before someone can finish reading it makes recovery
-      // impossible; success notices may remain brief.
-      if (variant !== "error")
-        setTimeout(() => dismiss(id), action ? 8000 : 2600);
+      // Every transient notice clears itself. Errors remain long enough to
+      // read and act on, but must never cover the app indefinitely.
+      const durationMs = action ? 8000 : variant === "error" ? 6000 : 2600;
+      setTimeout(() => dismiss(id), durationMs);
     },
     [dismiss]
   );
