@@ -46,6 +46,10 @@ const RELEASED_MODULE_PREFIXES = [
   // The Team page ships with honest zeros: real workspace members as the
   // roster, every pipeline number 0 until deals exist (Anir, Aug 6).
   "/team",
+  // ONLY the per-rep profile pages travel with Team — clicking a teammate
+  // must open them, not bounce to Offerings. The /analytics module root
+  // stays unreleased and hidden from navigation.
+  "/analytics/reps",
 ] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,

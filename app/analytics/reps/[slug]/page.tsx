@@ -10,6 +10,8 @@ import {
   ArrowRight,
   Trophy,
   ArrowLeft,
+  Briefcase,
+  CalendarCheck,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { repEmail, repPhone, teamsChatUrl } from "@/lib/team";
@@ -37,6 +39,8 @@ import {
 } from "@/lib/pipeline";
 import { repTitle, repRegion, repQuota, repWonFY } from "@/lib/team";
 import { getCurrentUser } from "@/lib/currentUser";
+import { getDataMode } from "@/lib/dataMode";
+import { listWorkspaceAccess } from "@/lib/accessStore";
 
 export const metadata = { title: "Rep" };
 export const dynamic = "force-dynamic";
@@ -59,6 +63,91 @@ export default async function RepPage({
   params: Promise<{ slug: string }>;
 }) {
   const slug = (await params).slug;
+
+  // Real mode: the rep is a REAL workspace member, reached from the Team
+  // page. Their profile renders with honest zeros until deals exist — no
+  // synthetic pipeline, no invented charts (Anir, Aug 6: "I should be able
+  // to click on each rep").
+  if (getDataMode() === "live") {
+    const workspace = process.env.FREYR_WORKSPACE_ID;
+    const directory = workspace
+      ? await listWorkspaceAccess(workspace).catch(() => null)
+      : null;
+    const member = (directory?.members ?? []).find(
+      (m) =>
+        m.active &&
+        m.accountType === "real" &&
+        m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === slug
+    );
+    if (!member) {
+      return (
+        <EmptyState
+          icon={SearchX}
+          title="Rep not found"
+          description="That teammate isn't on the roster. Head back to the team."
+          className="py-24"
+          action={
+            <Link
+              href="/team"
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+            >
+              <ArrowLeft size={15} strokeWidth={2} />
+              Back to team
+            </Link>
+          }
+        />
+      );
+    }
+    const roleTitle =
+      member.role === "admin"
+        ? "Workspace administrator"
+        : member.role === "editor"
+          ? "Sales manager"
+          : "Sales representative";
+    const zeroTiles = [
+      { label: "Open pipeline", value: formatMoney(0), sub: "0 live deals", icon: DollarSign },
+      { label: "Weighted forecast", value: formatMoney(0), sub: "probability-adjusted", icon: TrendingUp },
+      { label: "Open deals", value: "0", sub: "in the pipeline", icon: Briefcase },
+      { label: "Meetings", value: "0", sub: "booked", icon: CalendarCheck },
+    ];
+    return (
+      <div className="space-y-5">
+        <BackButton fallback="/team" label="Back to team" />
+        <Card className="flex flex-wrap items-center gap-4 p-5">
+          <Avatar name={member.name} className="h-16 w-16 text-[20px]" />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[19px] font-bold leading-tight text-text-primary">
+              {member.name}
+            </h1>
+            <p className="mt-0.5 text-[13px] text-text-secondary">{roleTitle}</p>
+            {member.email && (
+              <p className="mt-0.5 text-[12px] text-text-tertiary">{member.email}</p>
+            )}
+          </div>
+          {member.email && (
+            <a
+              href={teamsChatUrl(member.email)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+            >
+              <TeamsIcon size={15} />
+              Message on Teams
+            </a>
+          )}
+        </Card>
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {zeroTiles.map((tile) => (
+            <StatTile key={tile.label} icon={tile.icon} label={tile.label} value={tile.value} sub={tile.sub} />
+          ))}
+        </div>
+        <p className="text-[12.5px] text-text-tertiary">
+          Deals, meetings and activity charts fill in here as {member.name.split(" ")[0]} logs real work.
+        </p>
+      </div>
+    );
+  }
+
   const currentUser = await getCurrentUser();
   const db = getDb();
   const [sessions, customers, contacts, interactions] = await Promise.all([
