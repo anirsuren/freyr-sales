@@ -5,6 +5,7 @@ import {
   deleteOffering,
   hydrateOffering,
   commitOfferingsChange,
+  normalizeRoadmapDetails,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { forgetMaterialText } from "@/lib/materialText";
@@ -168,6 +169,19 @@ export async function PATCH(
         material.journeyStages = stages;
         material.journeyStage = stages[0];
       }
+    }
+  }
+  if (body.roadmap_details !== undefined) {
+    try {
+      body.roadmap_details = normalizeRoadmapDetails(body.roadmap_details);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error ? error.message : "Invalid roadmap details",
+        },
+        { status: 400 }
+      );
     }
   }
   // "Who added this" is stamped here, from the session — never from the body.

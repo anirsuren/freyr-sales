@@ -35,8 +35,8 @@ export default function LoginPage() {
   const joinDomainLabel = joinDomains.map((d) => `@${d}`).join(" or ");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface px-6">
-      <Card className="w-full max-w-[420px] p-8">
+    <div className="flex h-dvh items-center justify-center overflow-hidden bg-surface px-6 py-4">
+      <Card className="max-h-[calc(100dvh-2rem)] w-full max-w-[420px] overflow-y-auto p-8">
         <div className="text-center">
           <span className="text-[25px] font-bold text-blue-primary tracking-tight">FREYR</span>
           <h1 className="mt-4 text-[20px] font-semibold text-text-primary">Sales Intelligence</h1>
@@ -76,18 +76,6 @@ export default function LoginPage() {
             </Link>
           )}
         </div>
-
-        <p className="mt-5 text-center text-[11px] leading-relaxed text-text-tertiary">
-          {!authenticationReady
-            ? "The application is locked. Customer and sales data remain inaccessible."
-            : supabase && joinDomains.length > 0
-            ? `Freyr colleagues join automatically with a confirmed ${joinDomainLabel} email. Everyone else needs an invitation.`
-            : supabase
-            ? "Authentication is provided by Supabase. Workspace access is invitation-only."
-            : authMode
-            ? "Protected by Freyr single sign-on. Do not share credentials."
-            : "Local development only: production must set AUTH_MODE=aws-alb."}
-        </p>
       </Card>
     </div>
   );

@@ -30,7 +30,9 @@ export async function canViewNextCustomerVersion(
 }
 
 /** Remove unreleased versions before an offering leaves a server boundary. */
-export function hideNextCustomerVersions<T extends Pick<Offering, "releases">>(
+export function hideNextCustomerVersions<
+  T extends Pick<Offering, "releases" | "roadmap_details">
+>(
   offering: T
 ): T {
   return {
@@ -38,5 +40,13 @@ export function hideNextCustomerVersions<T extends Pick<Offering, "releases">>(
     releases: (offering.releases || []).filter(
       (release) => release.status === "released"
     ),
+    roadmap_details: offering.roadmap_details
+      ? {
+          ...offering.roadmap_details,
+          nextExpectedLive: "",
+          nextVersions: "",
+          nextModules: [],
+        }
+      : undefined,
   };
 }

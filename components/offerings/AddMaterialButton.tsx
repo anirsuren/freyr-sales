@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Folder,
@@ -22,6 +22,7 @@ import {
   MATERIAL_FORMAT_META,
   MATERIAL_META,
   allFolders,
+  buildMaterialFolderUploadPlan,
   cleanFolderName,
   isFixedMaterialFolder,
   materialFolderLabel,
@@ -141,11 +142,13 @@ export function AddMaterialButton({
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   /** 0-100 while bytes are moving, null when nothing is uploading. */
-  const [progress, setProgress] = useState<number | null>(null);
+  const [, setProgress] = useState<number | null>(null);
   const [uploadIndex, setUploadIndex] = useState(0);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   function fileKey(file: File) {
-    return `${file.name}\u0000${file.size}\u0000${file.lastModified}`;
+    const relativePath = file.webkitRelativePath || file.name;
+    return `${relativePath}\u0000${file.size}\u0000${file.lastModified}`;
   }
 
   function reset() {
@@ -182,6 +185,32 @@ export function AddMaterialButton({
       }
       return next;
     });
+
+    // A directory pick is not merely a faster multi-select. Preserve the
+    // directory tree the owner chose so "Proposals/Client A" does not arrive
+    // as a flat pile of files in an unrelated system folder. The browser puts
+    // the relative path on every File; ordinary file picks leave it blank.
+    const folderPlan = buildMaterialFolderUploadPlan(
+      picked.map((file) => ({
+        key: fileKey(file),
+        relativePath: file.webkitRelativePath,
+      }))
+    );
+    if (folderPlan.folders.length) {
+      setCreatedFolders((current) =>
+        Array.from(new Set([...current, ...folderPlan.folders]))
+      );
+      if (folderPlan.commonRoot) setFolder(folderPlan.commonRoot);
+      setFileOverrides((current) => {
+        const next = { ...current };
+        for (const [key, originalFolder] of Object.entries(
+          folderPlan.folderByKey
+        )) {
+          next[key] = { ...next[key], folder: originalFolder };
+        }
+        return next;
+      });
+    }
   }
 
   function removeFile(file: File) {
@@ -571,7 +600,12 @@ export function AddMaterialButton({
       const res = await fetch(`/api/offerings/${offeringId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ materials: next }),
+        body: JSON.stringify({
+          materials: next,
+          materialFolders: Array.from(
+            new Set([...materialFolders, ...createdFolders])
+          ),
+        }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -910,6 +944,36 @@ export function AddMaterialButton({
                 </>
               )}
             </label>
+            <input
+              ref={folderInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              accept=".mp4,.mov,.webm,.m4v,.ppt,.pptx,.key,.doc,.docx,.pdf,.txt,.rtf,.xls,.xlsx,.csv,.zip"
+              {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
+              onChange={(event) => {
+                takeFiles(event.target.files);
+                event.currentTarget.value = "";
+              }}
+            />
+            <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-border-light bg-surface/60 px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-text-primary">
+                  Upload a whole folder
+                </p>
+                <p className="text-[11px] text-text-tertiary">
+                  Keeps the original folder and subfolder names; each file can still be adjusted below.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => folderInputRef.current?.click()}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-blue-subtle bg-white px-3 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-blue-light"
+              >
+                <Folder size={14} strokeWidth={2} aria-hidden="true" />
+                Choose folder
+              </button>
+            </div>
             {files.length > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between gap-3">
@@ -941,7 +1005,7 @@ export function AddMaterialButton({
                           className="h-8 w-full rounded-md border border-border bg-white px-2.5 text-[12.5px] font-medium text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus"
                         />
                         <p className="mt-1 truncate text-[10.5px] text-text-tertiary">
-                          {selected.name} · {(selected.size / 1024 / 1024).toFixed(1)}MB
+                          {selected.webkitRelativePath || selected.name} · {(selected.size / 1024 / 1024).toFixed(1)}MB
                         </p>
                         </div>
                         <button

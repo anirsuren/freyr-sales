@@ -4,7 +4,7 @@ import {
   APP_SESSION_COOKIE,
   requestUsesHttps,
 } from "@/lib/appSession";
-import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
+import { configuredAuthOrigin } from "@/lib/authOrigin";
 import { DATA_MODE_COOKIE } from "@/lib/dataMode";
 
 const AUTH_COOKIES = [
@@ -20,8 +20,26 @@ const AUTH_COOKIES = [
   DATA_MODE_COOKIE,
 ];
 
-function safeLogoutUrl(): URL {
-  const origin = configuredAuthOrigin();
+function localRequestOrigin(request: NextRequest): string | null {
+  if (process.env.NODE_ENV === "production") return null;
+  const candidate = request.nextUrl;
+  if (
+    (candidate.protocol === "http:" || candidate.protocol === "https:") &&
+    (candidate.hostname === "localhost" ||
+      candidate.hostname === "127.0.0.1" ||
+      candidate.hostname === "[::1]")
+  ) {
+    return candidate.origin;
+  }
+  return null;
+}
+
+function safeLogoutUrl(request: NextRequest): URL {
+  // Production must use the single configured public origin. Local review is
+  // allowed to fall back to the actual loopback request so signing out cannot
+  // strand someone on a JSON 503 merely because AUTH_PUBLIC_ORIGIN was not
+  // copied into their local shell.
+  const origin = configuredAuthOrigin() || localRequestOrigin(request);
   if (!origin) {
     throw new Error("Authentication redirect is not configured.");
   }
@@ -40,18 +58,18 @@ function safeLogoutUrl(): URL {
   }
 
   if (process.env.AUTH_MODE === "entra") {
-    return authUrl("/.auth/logout?post_logout_redirect_uri=/login");
+    return new URL("/.auth/logout?post_logout_redirect_uri=/login", origin);
   }
   if (process.env.AUTH_MODE === "supabase") {
-    return authUrl("/login?signedOut=1");
+    return new URL("/login?signedOut=1", origin);
   }
-  return authUrl("/login");
+  return new URL("/login", origin);
 }
 
 export async function GET(request: NextRequest) {
   let destination: URL;
   try {
-    destination = safeLogoutUrl();
+    destination = safeLogoutUrl(request);
   } catch {
     return NextResponse.json(
       { error: "Authentication redirect is not configured." },

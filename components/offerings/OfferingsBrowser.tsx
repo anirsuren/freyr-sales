@@ -48,7 +48,6 @@ import { servesMarket } from "@/lib/offeringCatalogue";
 import {
   SearchPriority,
   PrioritySearchInput,
-  PriorityLabel,
   PriorityTooltip,
 } from "@/components/ui/SearchPriority";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
@@ -404,6 +403,7 @@ export function OfferingsBrowser({
   const [sort, setSort] = useState(initSort);
   // Tile (cards) vs Grid (compact table). Suren's live-meeting ask.
   const [view, setView] = useState<"tile" | "grid">(initView);
+  const [viewPreferenceReady, setViewPreferenceReady] = useState(false);
 
   // Keep filters in sync when the URL changes via in-app navigation (chips, the
   // "still to map" stat link, etc.), useState only seeds on first mount, so
@@ -427,9 +427,30 @@ export function OfferingsBrowser({
     setOwnerId(keep(owner, (id) => id === "unassigned" || ownerOptions.some((item) => item.memberId === id)));
     setGtm(keep(gtmValue, (id) => ["available", "coming", "tbd"].includes(id)));
     setSort(SORTS.includes(so) ? so : "default");
-    setView(params.get("view") === "grid" ? "grid" : "tile");
+    const viewFromUrl = params.get("view");
+    if (viewFromUrl === "grid" || viewFromUrl === "tile") {
+      setView(viewFromUrl);
+    } else {
+      try {
+        const savedView = localStorage.getItem("freyr.offerings.layout.v1");
+        setView(savedView === "grid" ? "grid" : "tile");
+      } catch {
+        setView("tile");
+      }
+    }
+    setViewPreferenceReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
+
+  // A display preference is personal UI state, so it saves immediately and
+  // never asks the user to hunt for a separate Save button. An explicit view
+  // in a shared URL still wins for that visit.
+  useEffect(() => {
+    if (!viewPreferenceReady) return;
+    try {
+      localStorage.setItem("freyr.offerings.layout.v1", view);
+    } catch {}
+  }, [view, viewPreferenceReady]);
 
   const isMapped = (o: HydratedOffering) =>
     o.customerTypes.length > 0 || o.markets.length > 0 || o.materials.length > 0;

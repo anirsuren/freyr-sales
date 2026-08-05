@@ -395,6 +395,18 @@ export default async function OfferingDetailPage({
             offeringId={o.id}
             offeringName={o.offering_name}
             releases={o.releases ?? []}
+            roadmapDetails={
+              canSeeNextCustomerVersion
+                ? o.roadmap_details
+                : o.roadmap_details
+                  ? {
+                      ...o.roadmap_details,
+                      nextExpectedLive: "",
+                      nextVersions: "",
+                      nextModules: [],
+                    }
+                  : undefined
+            }
             // Mock roadmaps are an intentionally read-only overlay. Keeping
             // the editor out of in-progress mode guarantees fake versions can
             // never be saved into the shared live catalogue.

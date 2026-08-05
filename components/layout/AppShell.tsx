@@ -21,7 +21,10 @@ import {
   userScopedStorageKey,
   type UserIdentity,
 } from "@/lib/userIdentity";
-import { ASK_AGENT_EVENT } from "@/lib/agentEvents";
+import {
+  ASK_AGENT_EVENT,
+  type AskAgentDetail,
+} from "@/lib/agentEvents";
 import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 
 const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
@@ -41,6 +44,7 @@ export function AppShell({
   currentUser: UserIdentity;
 }) {
   const pathname = usePathname() || "";
+  const isMaterialPage = /^\/offerings\/[^/]+\/materials\/[^/]+$/.test(pathname);
   /** Any page whose whole job is a form you fill in and save. */
   const isEditingForm =
     pathname.endsWith("/edit") || pathname.endsWith("/new");
@@ -72,6 +76,7 @@ export function AppShell({
   // (bubble dismissed) persists, and the top-bar spark button brings it back.
   const [agentOpen, setAgentOpen] = useState(false);
   const [agentHidden, setAgentHidden] = useState(false);
+  const [materialAgentDocked, setMaterialAgentDocked] = useState(false);
   const [loadedAgentHiddenKey, setLoadedAgentHiddenKey] = useState<
     string | null
   >(null);
@@ -107,7 +112,12 @@ export function AppShell({
   // An explicit CTA inside the app must always be able to reveal the dock,
   // even if this user previously dismissed its floating bubble.
   useEffect(() => {
-    function revealAgent() {
+    function revealAgent(event: Event) {
+      const detail = (event as CustomEvent<AskAgentDetail>).detail;
+      // Material viewers publish context with `open: false`: the assistant
+      // should know what is on screen when the user opens it later, but a new
+      // document tab must never be covered by an unsolicited chat panel.
+      if (detail?.open === false) return;
       if (!agentStateReady) return;
       setAgentHidden(false);
       setAgentOpen(true);
@@ -200,6 +210,73 @@ export function AppShell({
       <CurrentUserProvider user={currentUser} dataMode={dataMode}>
         <MyPhotoProvider>
           <TimeZoneProvider>{children}</TimeZoneProvider>
+        </MyPhotoProvider>
+      </CurrentUserProvider>
+    );
+  }
+
+  // A material opened in a new browser tab is a document workspace, not a
+  // second copy of the Freyr application. No sidebar, top bar or route back
+  // into Offerings. The assistant behaves like it does everywhere else by
+  // default (floating popup, zero layout change). Its header offers an explicit
+  // right-dock option; only choosing that option allocates a side column.
+  if (isMaterialPage) {
+    return (
+      <CurrentUserProvider user={currentUser} dataMode={dataMode}>
+        <MyPhotoProvider>
+          <TimeZoneProvider>
+            <ToastProvider>
+              <div className="flex h-screen min-h-0 overflow-hidden bg-white">
+                <main
+                  id="main-content"
+                  data-tour="page-content"
+                  tabIndex={-1}
+                  className="min-h-0 min-w-0 flex-1 overflow-hidden"
+                >
+                  {children}
+                </main>
+                {materialAgentDocked && (
+                  <aside
+                    aria-label="Freyr AI"
+                    className="h-full w-[min(400px,30vw)] shrink-0 overflow-hidden"
+                  >
+                    <AgentDock
+                      embedded
+                      dockable
+                      docked
+                      onDockChange={setMaterialAgentDocked}
+                      open={visibleAgentOpen}
+                      onOpenChange={(open) => {
+                        setAgentOpen(open);
+                        // Closing a docked assistant must release its layout
+                        // column too. Otherwise the chat disappears but the
+                        // material stays squeezed beside an empty white rail.
+                        if (!open) setMaterialAgentDocked(false);
+                      }}
+                      hidden={false}
+                      onHide={hideAgent}
+                      pathname={pathname}
+                      offeringsOnly={offeringsOnly}
+                    />
+                  </aside>
+                )}
+              </div>
+              {!materialAgentDocked && (
+                <AgentDock
+                  dockable
+                  docked={false}
+                  onDockChange={setMaterialAgentDocked}
+                  open={visibleAgentOpen}
+                  onOpenChange={setAgentOpen}
+                  hidden={false}
+                  onHide={hideAgent}
+                  pathname={pathname}
+                  offeringsOnly={offeringsOnly}
+                />
+              )}
+              <AutoTruncationTooltip />
+            </ToastProvider>
+          </TimeZoneProvider>
         </MyPhotoProvider>
       </CurrentUserProvider>
     );

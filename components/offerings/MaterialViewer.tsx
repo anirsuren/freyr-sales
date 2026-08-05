@@ -25,10 +25,15 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { Avatar } from "@/components/ui/Avatar";
 import { PdfViewer } from "@/components/offerings/PdfViewer";
 import { VideoPlayer } from "@/components/offerings/VideoPlayer";
 import { askFreyrAgent } from "@/lib/agentEvents";
 import {
+  ACCESS_LEVEL_META,
+  JOURNEY_STAGE_META,
+  MATERIAL_FORMAT_META,
+  materialFormat,
   materialJourneyStages,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
@@ -89,7 +94,9 @@ export function MaterialViewer({
   path,
   label,
   downloadUrl,
+  openInNewTabUrl,
   onClose,
+  standalone = false,
 }: {
   offeringId: string;
   offeringName: string;
@@ -97,7 +104,10 @@ export function MaterialViewer({
   path: string;
   label: string;
   downloadUrl: string;
+  openInNewTabUrl: string;
   onClose: () => void;
+  /** Render as the content of a dedicated material route, not inside a dialog. */
+  standalone?: boolean;
 }) {
   /** The ZIP remains the material of record. Opening a row swaps only the
    * bytes rendered in this dialog; Back returns to the archive manifest. */
@@ -575,16 +585,8 @@ export function MaterialViewer({
     [pageCount, scrollBox]
   );
 
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={currentLabel}
-      // The widest dialog the app has: a slide rendered small in a narrow box
-      // is a slide nobody reads.
-      size="viewer"
-      actions={
-        <>
+  const viewerActions = (
+    <>
           {archiveMember && (
             <button
               type="button"
@@ -604,21 +606,30 @@ export function MaterialViewer({
           >
             <Download size={16} strokeWidth={1.9} />
           </a>
-          <a
-            href={inlineUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open in a new tab"
-            aria-label="Open in a new tab"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-blue-primary"
-          >
-            <ExternalLink size={16} strokeWidth={1.9} />
-          </a>
-          <span className="mx-1 h-5 w-px bg-border-light" />
-        </>
-      }
-    >
-      <div className="flex h-[calc(100vh-6.75rem)] flex-col">
+          {!standalone && (
+            <a
+              href={openInNewTabUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open in a new tab"
+              aria-label="Open in a new tab"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-blue-primary"
+            >
+              <ExternalLink size={16} strokeWidth={1.9} />
+            </a>
+          )}
+          {!standalone && <span className="mx-1 h-5 w-px bg-border-light" />}
+    </>
+  );
+
+  const viewerBody = (
+      <div
+        className={
+          standalone
+            ? "flex h-full min-h-0 flex-col"
+            : "flex h-[calc(100vh-6.75rem)] flex-col"
+        }
+      >
         {(fellBack || partial) && (
           <p className="mb-2 shrink-0 rounded-lg bg-[color:#C2410C]/10 px-3 py-2 text-[12px] font-medium text-[color:#C2410C]">
             {fellBack
@@ -1032,6 +1043,111 @@ export function MaterialViewer({
         )}
         </div>
       </div>
+  );
+
+  if (standalone) {
+    const format = MATERIAL_FORMAT_META[materialFormat(material.kind)];
+    const stages = materialJourneyStages(material);
+    const access = material.accessLevel
+      ? ACCESS_LEVEL_META[material.accessLevel]
+      : null;
+    return (
+      <section
+        aria-label={currentLabel}
+        className="flex h-full min-h-0 flex-col bg-white"
+      >
+        <header className="shrink-0 border-b border-border-light bg-white px-4 py-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                {offeringName} · Sales material
+              </p>
+              <h1 className="mt-0.5 truncate text-[17px] font-semibold text-text-primary">
+                {currentLabel}
+              </h1>
+              {material.description && (
+                <p className="mt-1 line-clamp-2 text-[12.5px] text-text-secondary">
+                  {material.description}
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">{viewerActions}</div>
+          </div>
+
+          <dl className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11.5px]">
+            <div className="flex items-center gap-1.5">
+              <dt className="font-medium text-text-tertiary">Format</dt>
+              <dd className="font-semibold text-text-primary">{format.label}</dd>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <dt className="font-medium text-text-tertiary">Added by</dt>
+              <dd className="flex items-center gap-1.5 font-semibold text-text-primary">
+                {material.addedBy && (
+                  <Avatar name={material.addedBy} className="h-5 w-5 text-[8px]" />
+                )}
+                {material.addedBy || "Not recorded"}
+              </dd>
+            </div>
+            {material.folder && (
+              <div className="flex items-center gap-1.5">
+                <dt className="font-medium text-text-tertiary">Folder</dt>
+                <dd className="font-semibold text-text-primary">{material.folder}</dd>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <dt className="font-medium text-text-tertiary">Buyer stage</dt>
+              <dd className="flex flex-wrap gap-1">
+                {stages.length ? (
+                  stages.map((stage) => {
+                    const meta = JOURNEY_STAGE_META[stage];
+                    return (
+                      <span
+                        key={stage}
+                        className="rounded-full px-2 py-0.5 font-semibold"
+                        style={{ color: meta.color, backgroundColor: `${meta.color}14` }}
+                      >
+                        {meta.short}
+                      </span>
+                    );
+                  })
+                ) : (
+                  <span className="font-semibold text-text-primary">Not recorded</span>
+                )}
+              </dd>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <dt className="font-medium text-text-tertiary">Access</dt>
+              <dd>
+                {access ? (
+                  <span
+                    className="rounded-full px-2 py-0.5 font-semibold"
+                    style={{ color: access.color, backgroundColor: `${access.color}14` }}
+                  >
+                    {access.short}
+                  </span>
+                ) : (
+                  <span className="font-semibold text-text-primary">Not recorded</span>
+                )}
+              </dd>
+            </div>
+          </dl>
+        </header>
+        <div className="min-h-0 flex-1 p-3">{viewerBody}</div>
+      </section>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={currentLabel}
+      // The widest dialog the app has: a slide rendered small in a narrow box
+      // is a slide nobody reads.
+      size="viewer"
+      actions={viewerActions}
+    >
+      {viewerBody}
     </Modal>
   );
 }

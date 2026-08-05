@@ -633,15 +633,75 @@ export function cleanFolderName(raw: string): string {
  * names. Slash remains the hierarchy separator. */
 export function sanitizeMaterialFolderPath(value: unknown): string {
   if (typeof value !== "string") return "";
-  const normalized = LEGACY_FOLDER_NAMES[value.trim()] || normalizeFolderPath(value);
+  const normalized =
+    LEGACY_FOLDER_NAMES[value.trim()] || normalizeFolderPath(value, 20);
   if (!normalized) return "";
   const parts = normalized.split("/");
   if (
-    parts.length > 5 ||
-    parts.some((part) => !part || cleanFolderName(part) !== part)
+    parts.length > 20 ||
+    parts.some(
+      (part) =>
+        !part ||
+        part === "." ||
+        part === ".." ||
+        cleanFolderName(part) !== part
+    )
   )
     return "";
   return normalized;
+}
+
+export interface MaterialFolderUploadEntry {
+  /** Stable file key, including relative path so duplicate filenames survive. */
+  key: string;
+  /** Browser-supplied path such as "Roadmap/Technical/Details.pdf". */
+  relativePath: string;
+}
+
+export interface MaterialFolderUploadPlan {
+  folders: string[];
+  commonRoot: string;
+  folderByKey: Record<string, string>;
+}
+
+/**
+ * Convert a native directory pick into the exact catalogue folder tree.
+ *
+ * Ordinary multi-file picks carry no relative path and therefore create no
+ * folders. Directory picks include the selected root and every subfolder. All
+ * ancestors are returned explicitly so an empty parent still survives after a
+ * later move, and assignment is keyed by relative-path-aware file identity so
+ * two different folders may safely contain the same filename.
+ */
+export function buildMaterialFolderUploadPlan(
+  entries: MaterialFolderUploadEntry[]
+): MaterialFolderUploadPlan {
+  const folders = new Set<string>();
+  const folderByKey: Record<string, string> = {};
+  const roots = new Set<string>();
+
+  for (const entry of entries) {
+    if (!entry.relativePath.trim()) continue;
+    const parts = entry.relativePath
+      .replace(/\\/g, "/")
+      .split("/")
+      .filter(Boolean);
+    if (parts.length < 2) continue;
+    const folder = sanitizeMaterialFolderPath(parts.slice(0, -1).join("/"));
+    if (!folder) continue;
+    folderByKey[entry.key] = folder;
+    const folderParts = folder.split("/");
+    roots.add(folderParts[0]);
+    for (let depth = 1; depth <= folderParts.length; depth += 1) {
+      folders.add(folderParts.slice(0, depth).join("/"));
+    }
+  }
+
+  return {
+    folders: Array.from(folders),
+    commonRoot: roots.size === 1 ? Array.from(roots)[0] : "",
+    folderByKey,
+  };
 }
 
 /**

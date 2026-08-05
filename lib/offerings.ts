@@ -120,6 +120,11 @@ export interface Offering {
    * is deliberately not built yet.
    */
   releases?: OfferingRelease[];
+  /** Structured roadmap copy supplied by the Offering Owner. This preserves
+   *  module tables, the current-vs-previous comparison, release history, and
+   *  the restricted next-version table without flattening them into generic
+   *  release bullets. */
+  roadmap_details?: OfferingRoadmapDetails;
   /** WHO OWNS THIS OFFERING, as account records rather than a name string.
    *  Editing rights are decided by `memberId`, an exact match against the
    *  signed-in workspace account, never by matching a person's display name
@@ -156,6 +161,109 @@ export interface OfferingRelease {
   features: string[];
   /** Free-text note for anything a feature list can't carry. */
   note?: string;
+}
+
+export interface OfferingRoadmapModuleRow {
+  module: string;
+  version?: string;
+  details: string[];
+}
+
+export interface OfferingRoadmapComparisonRow {
+  area: string;
+  current: string;
+  previous: string;
+}
+
+export interface OfferingRoadmapHistoryRow {
+  period: string;
+  summary: string[];
+}
+
+export interface OfferingRoadmapDetails {
+  currentVersion: string;
+  releaseWave: string;
+  currentModules: OfferingRoadmapModuleRow[];
+  platformCapabilities: string[];
+  comparisonCurrentLabel: string;
+  comparisonPreviousLabel: string;
+  comparisonRows: OfferingRoadmapComparisonRow[];
+  history: OfferingRoadmapHistoryRow[];
+  nextExpectedLive: string;
+  nextVersions: string;
+  nextModules: OfferingRoadmapModuleRow[];
+}
+
+function roadmapText(value: unknown, max = 4_000): string {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function roadmapLines(value: unknown, maxItems = 80): string[] {
+  return Array.isArray(value)
+    ? value
+        .slice(0, maxItems)
+        .map((item) => roadmapText(item))
+        .filter(Boolean)
+    : [];
+}
+
+function roadmapModules(value: unknown): OfferingRoadmapModuleRow[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 80).flatMap((candidate) => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const row = candidate as Record<string, unknown>;
+    const moduleName = roadmapText(row.module, 250);
+    const details = roadmapLines(row.details);
+    if (!moduleName && details.length === 0) return [];
+    const version = roadmapText(row.version, 120);
+    return [{ module: moduleName, ...(version ? { version } : {}), details }];
+  });
+}
+
+/** Validate and bound the owner-editable structured roadmap before it enters
+ * the shared catalog document. The generic offering PATCH is intentionally
+ * flexible, but a nested arbitrary payload must not be allowed to grow the
+ * singleton catalog without limits. */
+export function normalizeRoadmapDetails(value: unknown): OfferingRoadmapDetails {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Roadmap details must be a structured object");
+  }
+  const input = value as Record<string, unknown>;
+  const comparisonRows = Array.isArray(input.comparisonRows)
+    ? input.comparisonRows.slice(0, 80).flatMap((candidate) => {
+        if (!candidate || typeof candidate !== "object") return [];
+        const row = candidate as Record<string, unknown>;
+        const area = roadmapText(row.area, 250);
+        const current = roadmapText(row.current);
+        const previous = roadmapText(row.previous);
+        if (!area && !current && !previous) return [];
+        return [{ area, current, previous }];
+      })
+    : [];
+  const history = Array.isArray(input.history)
+    ? input.history.slice(0, 100).flatMap((candidate) => {
+        if (!candidate || typeof candidate !== "object") return [];
+        const row = candidate as Record<string, unknown>;
+        const period = roadmapText(row.period, 120);
+        const summary = roadmapLines(row.summary);
+        if (!period && summary.length === 0) return [];
+        return [{ period, summary }];
+      })
+    : [];
+
+  return {
+    currentVersion: roadmapText(input.currentVersion, 120),
+    releaseWave: roadmapText(input.releaseWave, 250),
+    currentModules: roadmapModules(input.currentModules),
+    platformCapabilities: roadmapLines(input.platformCapabilities),
+    comparisonCurrentLabel: roadmapText(input.comparisonCurrentLabel, 250),
+    comparisonPreviousLabel: roadmapText(input.comparisonPreviousLabel, 250),
+    comparisonRows,
+    history,
+    nextExpectedLive: roadmapText(input.nextExpectedLive, 250),
+    nextVersions: roadmapText(input.nextVersions, 500),
+    nextModules: roadmapModules(input.nextModules),
+  };
 }
 
 export interface OfferingContact {
@@ -431,6 +539,9 @@ function off(
     customer_type_ids: opts.customer_type_ids ?? [],
     market_ids: opts.market_ids ?? [],
     materials: opts.materials ?? [],
+    materialFolders: opts.materialFolders ?? [],
+    releases: opts.releases ?? [],
+    roadmap_details: opts.roadmap_details,
     // Nobody owns a seeded offering until a real account CLAIMS it. Ownership
     // is never inferred from the sheet's POC name.
     owners: opts.owners ?? [],
@@ -484,6 +595,260 @@ const SERVICE = "Freyr Services";
 // persisted `addedAt` value (or the timestamp embedded in their Docs path).
 const DEMO_MATERIAL_ADDED_AT = "2026-07-30T12:00:00.000Z";
 
+// Eswar Subramanian Ramakrishnan, "Freya.Register - Technical Details",
+// supplied 5 Aug 2026. Keep this as structured source copy so the Roadmap tab
+// can render the document's actual tables instead of a lossy generic list.
+const FREYA_REGISTER_ROADMAP_DETAILS: OfferingRoadmapDetails = {
+  currentVersion: "V2.5",
+  releaseWave: "Live since July 2026.",
+  currentModules: [
+    {
+      module: "Products",
+      version: "V2.5",
+      details: [
+        "Manages product data across Pharmaceutical, Medical Devices, Consumer and Cosmetic domains: types, details, formulations, composition models, packaging, labelling and therapeutic details, and manufacturing details.",
+        "Includes xEVMPD and IDMP data management.",
+      ],
+    },
+    {
+      module: "Applications",
+      version: "V2.2",
+      details: [
+        "Manages Marketable and Investigational applications (CTAs and INDs) through a guided wizard.",
+        "Supports MRP, DCP, CP, NP, GCC and Eurasian procedures.",
+        "Linked to Products and Docs.",
+      ],
+    },
+    {
+      module: "Registrations",
+      version: "V2.5",
+      details: [
+        "Manages registration records through a guided wizard, with full procedure coverage and xEVMPD, IDMP and UDI data.",
+        "Linked to Products and Docs.",
+      ],
+    },
+    {
+      module: "RTQ (Regulatory Queries)",
+      version: "V2.5",
+      details: [
+        "Manages Health Authority queries, responses, meetings and scientific advice, and interactions, with an RTQ chatbot and structured document handling.",
+      ],
+    },
+    {
+      module: "LCM (Lifecycle Management)",
+      version: "V2.5",
+      details: [
+        "Manages obligations, commitments and local updates, including registration updates driven by local updates.",
+      ],
+    },
+  ],
+  platformCapabilities: [
+    "Global search across all five modules",
+    "Configurable lifecycle stages and statuses",
+    "Electronic signature",
+    "Plan and Track integration, notifications and milestones",
+    "Record versioning and cloning",
+    "Time zone support",
+    "xEVMPD submission (XML generation, EVPRM export, attachments, acknowledgement handling) and SPOR integration",
+    "IDMP (in UAT with EMA on the PMS API)",
+  ],
+  comparisonCurrentLabel: "Current version (V2.5, July 2026)",
+  comparisonPreviousLabel: "Previous version (V2.4, June 2026)",
+  comparisonRows: [
+    { area: "Localisation", current: "Time zone support added", previous: "-" },
+    {
+      area: "Record management",
+      current: "Record cloning extended across further modules",
+      previous: "Record cloning (including sub-menu and grid) for LCM",
+    },
+    {
+      area: "Data entry",
+      current: "Automatic propagation of data from upstream modules",
+      previous: "Auto-population of packaging details",
+    },
+    {
+      area: "Workflow",
+      current: "Automatic obligation re-occurrence (creation scenario) in LCM",
+      previous: "Configurable workflow colour; workflow auto-start; cross-module workflow",
+    },
+    {
+      area: "Regulatory status",
+      current: "Regulatory Status Base introduced (Registrations)",
+      previous: "-",
+    },
+    {
+      area: "Performance",
+      current: "Lazy-loading improvements across grids",
+      previous: "Dynamic wizard introduced for LCM",
+    },
+  ],
+  history: [
+    {
+      period: "Jul 2026",
+      summary: [
+        "V2.5 wave (current live version): time zone support, record cloning enhancements, lazy-loading improvements, upstream data propagation, Regulatory Status Base and automatic obligation re-occurrence (creation scenario).",
+      ],
+    },
+    {
+      period: "Jun 2026",
+      summary: [
+        "V2.4 wave: dynamic wizard for LCM, auto-population of packaging details, configurable workflow colour, workflow auto-start, cross-module workflow, record cloning and historical minor version support.",
+      ],
+    },
+    {
+      period: "May 2026",
+      summary: [
+        "V2.3 wave: workflow enhancements, configurable e-signature and permissions, historical version view, auto-populate, dynamic wizard for RTQ, and full record export (Excel and PDF) for compliance.",
+      ],
+    },
+    {
+      period: "Apr 2026",
+      summary: [
+        "V2.2 wave: configurable wizards, parent-child and tree search, configurable notifications, duplicate record checks, unique record IDs and shareable record hyperlinks.",
+        "New Projects and Project Request modules.",
+      ],
+    },
+    {
+      period: "Feb 2026",
+      summary: [
+        "Major V2.0 and V2.1 wave: master file management (DMF, ASMF, PMF), milestones and event dates, linked records, auto-tag and comments, lazy load.",
+        "xEVMPD gateway connection with acknowledgement management.",
+      ],
+    },
+    {
+      period: "Jan 2026",
+      summary: [
+        "RTQ enhancements: wizard upgrades, Docs linking, validations and versioning.",
+      ],
+    },
+    {
+      period: "Dec 2025",
+      summary: [
+        "Registrations wizard and platform upgrades, with performance improvements.",
+      ],
+    },
+    {
+      period: "Oct 2025",
+      summary: [
+        "xEVMPD submission mechanics (XML generation, EVPRM export, attachments, acknowledgements).",
+        "Applications and Products platform upgrades: data privileges, Plan and Track, notifications and versioning.",
+      ],
+    },
+    {
+      period: "Sept 2025",
+      summary: [
+        "xEVMPD Submission Module (registration sync and acknowledgement handling) and SPOR integration.",
+      ],
+    },
+    {
+      period: "Aug 2025",
+      summary: [
+        "Baseline launch.",
+        "Five modules go live: Products, Applications, Registrations, RTQ and LCM.",
+        "Core regulatory data management, full procedure coverage (MRP, DCP, CP, NP, GCC, Eurasian), Docs and Knowledge Manager integration, global search, configurable lifecycles and electronic signature.",
+      ],
+    },
+  ],
+  nextExpectedLive: "August 2026",
+  nextVersions:
+    "Products / Registrations / RTQ / LCM V2.6, Applications V2.3",
+  nextModules: [
+    {
+      module: "Registrations",
+      details: [
+        "Procedure conversions: Repeat Use Procedure (MRP and DCP), step-down conversions in MRP and DCP, and conversion from NP to MRP.",
+      ],
+    },
+    {
+      module: "LCM",
+      details: [
+        "Automatic obligation re-occurrence extended to update and delete scenarios.",
+      ],
+    },
+    {
+      module: "Products, LCM, RTQ, Applications",
+      details: ["Regulatory Status Base rolled out across modules."],
+    },
+    {
+      module: "Products, RTQ, LCM",
+      details: [
+        "Support for historical minor versions extended across modules.",
+      ],
+    },
+  ],
+};
+
+const FREYA_REGISTER_RELEASES: OfferingRelease[] = [
+  {
+    id: "freya-register-v2-0-v2-1",
+    version: "V2.0 / V2.1",
+    date: "2026-02-01",
+    status: "released",
+    features: FREYA_REGISTER_ROADMAP_DETAILS.history[4].summary,
+  },
+  {
+    id: "freya-register-v2-2",
+    version: "V2.2",
+    date: "2026-04-01",
+    status: "released",
+    features: FREYA_REGISTER_ROADMAP_DETAILS.history[3].summary,
+  },
+  {
+    id: "freya-register-v2-3",
+    version: "V2.3",
+    date: "2026-05-01",
+    status: "released",
+    features: FREYA_REGISTER_ROADMAP_DETAILS.history[2].summary,
+  },
+  {
+    id: "freya-register-v2-4",
+    version: "V2.4",
+    date: "2026-06-01",
+    status: "released",
+    features: FREYA_REGISTER_ROADMAP_DETAILS.history[1].summary,
+  },
+  {
+    id: "freya-register-v2-5",
+    version: "V2.5",
+    date: "2026-07-01",
+    status: "released",
+    features: FREYA_REGISTER_ROADMAP_DETAILS.history[0].summary,
+  },
+  {
+    id: "freya-register-next-aug-2026",
+    version: FREYA_REGISTER_ROADMAP_DETAILS.nextVersions,
+    date: "2026-08-01",
+    status: "next",
+    features: FREYA_REGISTER_ROADMAP_DETAILS.nextModules.flatMap(
+      (row) => row.details.map((detail) => `${row.module}: ${detail}`)
+    ),
+  },
+];
+
+const FREYA_REGISTER_KEY_CONTACTS: OfferingContact[] = [
+  {
+    id: "oc-of-001-eswar-owner",
+    name: "Eswar Subramanian Ramakrishnan",
+    role: "Offering Owner",
+    email: "Eswar.Subramanian@FreyrSolutions.com",
+    phone: "",
+  },
+  {
+    id: "oc-of-001-sameer-product",
+    name: "Sameer Siddiqui",
+    role: "Product Owner",
+    email: "Sameer.siddiqui@FreyrSolutions.com",
+    phone: "",
+  },
+  {
+    id: "oc-of-001-sameer-roadmap",
+    name: "Sameer Siddiqui",
+    role: "Technical / Roadmap Contact",
+    email: "Sameer.siddiqui@FreyrSolutions.com",
+    phone: "",
+  },
+];
+
 function seedOfferings(): Offering[] {
   // Seeded VERBATIM from Freyr's "Digital Sales and Marketing (Offerings)" master
   // sheet — the fully-populated version reconciled with 12 senior service-delivery
@@ -497,9 +862,12 @@ function seedOfferings(): Offering[] {
       poc: "Eswar Subramanian",
       offering_category: CAT_RIM,
       current_availability: "Currently available",
-      future_availability: "Version 1",
+      future_availability: "Version 2.5",
       customer_type_ids: ALL_CT,
       market_ids: GLOBAL_MKT,
+      releases: structuredClone(FREYA_REGISTER_RELEASES),
+      roadmap_details: structuredClone(FREYA_REGISTER_ROADMAP_DETAILS),
+      contacts: structuredClone(FREYA_REGISTER_KEY_CONTACTS),
       // Every seeded material carries its buyer's-journey stage + access level
       // (CR-3): overviews open the conversation (awareness), references and
       // case studies prove it (evaluation) — all safe to share with a client.
@@ -768,6 +1136,8 @@ interface OfferingsStore {
   offerings: Offering[];
   /** One-time migration marker for the approved offering-type descriptions. */
   offeringTypeCopyVersion?: number;
+  /** One-time marker for Eswar's approved Freya.Register roadmap document. */
+  freyaRegisterRoadmapVersion?: number;
 }
 
 declare global {
@@ -798,6 +1168,7 @@ function seed(): OfferingsStore {
     offeringCategories: seedOfferingCategories(),
     offerings: seedOfferings(),
     offeringTypeCopyVersion: 1,
+    freyaRegisterRoadmapVersion: 1,
   };
 }
 
@@ -1123,6 +1494,19 @@ function healOfferings(s: OfferingsStore): boolean {
       }
     }
     s.offeringTypeCopyVersion = 1;
+    catalogChanged = true;
+  }
+  if ((s.freyaRegisterRoadmapVersion ?? 0) < 1) {
+    const register = s.offerings.find((offering) => offering.id === "of-001");
+    if (register) {
+      register.releases = structuredClone(FREYA_REGISTER_RELEASES);
+      register.roadmap_details = structuredClone(
+        FREYA_REGISTER_ROADMAP_DETAILS
+      );
+      register.contacts = structuredClone(FREYA_REGISTER_KEY_CONTACTS);
+      register.future_availability = "Version 2.5";
+    }
+    s.freyaRegisterRoadmapVersion = 1;
     catalogChanged = true;
   }
   // The editable customer taxonomy gained two approved families. Add only
@@ -1945,6 +2329,8 @@ export function createOffering(data: Partial<Offering>): Offering {
     owners: data.owners ?? [],
     materials: (data.materials || []).map((m) => ({ ...m, id: m.id || rid("m") })),
     materialFolders: data.materialFolders || [],
+    releases: data.releases || [],
+    roadmap_details: data.roadmap_details,
     created_at: new Date().toISOString(),
   };
   ensureOfferingType(record.offering_type);

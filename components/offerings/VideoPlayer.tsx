@@ -68,6 +68,18 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
   }, []);
   useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
 
+  // Opening or reloading a material is a read action, never an instruction to
+  // start playback. Some browsers restore media state during reload, so pause
+  // explicitly as well as omitting the autoplay attribute.
+  useEffect(() => {
+    const v = vid.current;
+    if (!v) return;
+    v.autoplay = false;
+    v.pause();
+    setPlaying(false);
+    setShowControls(true);
+  }, [src]);
+
   const toggle = useCallback(() => {
     const v = vid.current;
     if (!v) return;
@@ -127,7 +139,7 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
       <video
         ref={vid}
         src={src}
-        autoPlay
+        preload="metadata"
         playsInline
         className="h-full w-full object-contain"
         onClick={toggle}

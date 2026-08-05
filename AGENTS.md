@@ -188,8 +188,16 @@ what was written back, `deleted-test-customers.json`).
   exact legacy name without replacing owner-entered offering data. Later
   product decisions remain authoritative: folder assignment is optional,
   owners may create a folder inline, Folder/All-files layouts remain, the
-  explicit Ask Freyr AI handoff carries offering context, and released Real
-  mode modules are not hidden merely because the older change log said so.
+  explicit Ask Freyr AI handoff carries offering context. A later Aug 4 pilot
+  decision is authoritative for navigation: Real mode temporarily exposes
+  only Offerings and Agent, while Mock continues to expose the full app.
+
+- **Aug 4 pilot navigation is intentionally narrow:** Customers and Reports
+  are hidden from Real-mode navigation and their direct page URLs redirect to
+  Offerings. Both modules remain available in Mock for product review. The
+  inactive Reports tab is also removed from every individual offering page
+  (in both modes) until it has trustworthy live data; the useful commercial
+  summary that already appears on Overview remains in place.
 
 - **Aug 4 sales-material viewer batch is ready to ship:** ZIP materials can be
   reindexed and browsed member-by-member, and PDF members use Freyr's custom
@@ -227,7 +235,11 @@ what was written back, `deleted-test-customers.json`).
   ownership is admin-assigned (the member self-claim/request path is gone),
   Supabase users can request and complete a password reset from Settings, both
   Medical Writing offerings are filed under Submissions and Document
-  Operations, Offering Brief supports safe rich-text/list formatting, contact
+  Operations, Offering Brief now opens in a Google-Docs-style formatted editor
+  with heading/subheading, bold, italic, underline, strike, bullet/numbered
+  list, indent/outdent, link, undo/redo, clear-formatting, and live preview
+  controls; it stores safe Markdown and preserves existing brief content,
+  contact
   rows no longer show the Service Delivery POC tag, Agent Training Only
   materials are owner-only at page/API/download/archive boundaries and expose
   no filename/title metadata through AI citations, and every uploaded offering
@@ -240,8 +252,25 @@ what was written back, `deleted-test-customers.json`).
   top-level folders plus the Product Demos and Sales Decks subfolders. Filing
   is optional, and an owner may create an offering-specific folder directly
   while assigning a material. The offering Roadmap separates current,
-  past, and next customer versions, removes key contacts, and hides unreleased
-  versions from ordinary sales reps at both the page and API boundaries.
+  past, and next customer versions, includes the verified key contacts supplied
+  by Eswar, and hides unreleased versions from ordinary sales reps at both the
+  page and API boundaries.
+
+- **Aug 5 offering closeout is ready to ship:** uploaded materials open on a
+  dedicated app-owned page in a new tab instead of downloading or reopening an
+  offering dialog. The page shows the title, format, uploader, folder, buyer
+  stage and access level; video never autoplays. Freyr AI stays closed until
+  requested, can be docked on the right without changing the media dimensions,
+  and fully releases the right rail when closed. Offering Owners can upload a
+  native folder tree in bulk, preserving its folder paths, while table/list
+  preference auto-saves locally. Freya.Register's structured roadmap now shows
+  an explicit previous/current/next timeline and gives authorized owners a
+  complete editor for release dates, module versions, feature comparison,
+  history, next-version details and key contacts. Local logout clears the real
+  session and returns to the one-screen login page; the obsolete environment
+  note under the login button is gone. Verification for this batch is limited
+  to TypeScript, focused pure-data tests and deployment health checks because
+  the production-backed Playwright suite is prohibited by §1.
 
 - **This release adds the Customer Offering Heat Map:** a Reports entry, the
   full customer × offering matrix, display/filter controls, and a versioned
@@ -290,11 +319,12 @@ what was written back, `deleted-test-customers.json`).
    name wrapping; app-wide icon/logo audit.
 3. **Test-suite DB guard** (§1) — proposed to Anir, not yet approved/built.
 
-Completed: offering pages now have an explicit **Ask Freyr AI** handoff. It
-starts a visibly offering-scoped conversation on `/agent`, automatically
-sends an offering-specific overview question, and grounds the response in
-that offering; ordinary Agent navigation remains generic, and **New chat**
-clears that context.
+Completed locally, not deployed: offering pages now use a larger, explicit
+**Ask Freyr AI about {offering}** action. It opens the existing bottom-right
+assistant on the same page, starts a clean offering-scoped conversation
+without spending credits on an automatic prompt, and shares the signed-in
+member's account-backed conversation history with the full Agent page.
+Ordinary Agent navigation remains generic.
 
 Completed locally, not deployed: main-Agent conversations recover all legacy
 browser keys, no longer truncate after 50 chats, and mirror the full ordered

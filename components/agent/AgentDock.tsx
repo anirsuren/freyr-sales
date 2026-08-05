@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowUp, X, MessageCircle } from "lucide-react";
+import {
+  Sparkles,
+  ArrowUp,
+  X,
+  MessageCircle,
+  PanelRightOpen,
+  PanelRightClose,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -271,6 +278,10 @@ export function AgentDock({
   hidden,
   pathname,
   offeringsOnly = false,
+  embedded = false,
+  dockable = false,
+  docked = false,
+  onDockChange,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -279,6 +290,12 @@ export function AgentDock({
   pathname: string;
   /** The offerings-only release: keep answers inside pages that exist. */
   offeringsOnly?: boolean;
+  /** Reserve a real side rail instead of floating over the page. */
+  embedded?: boolean;
+  /** Material pages may switch between the normal popup and a right dock. */
+  dockable?: boolean;
+  docked?: boolean;
+  onDockChange?: (docked: boolean) => void;
 }) {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
@@ -718,9 +735,16 @@ export function AgentDock({
     : `Hi ${firstName}. I'm on **${label}** with you. Ask me anything, or pick a starting point below.`;
 
   return (
-    <>
+    <div className={embedded ? "flex h-full min-h-0 w-full flex-col bg-white" : "contents"}>
       {open && (
-        <div className="fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] flex flex-col rounded-2xl border border-border-light bg-white shadow-[0_24px_60px_-15px_rgba(0,0,0,0.28)] overflow-hidden slide-in-right">
+        <div
+          className={cn(
+            "flex min-h-0 flex-col overflow-hidden bg-white",
+            embedded
+              ? "h-full w-full border-l border-border-light shadow-[-8px_0_30px_rgba(16,24,40,0.06)]"
+              : "fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] rounded-2xl border border-border-light shadow-[0_24px_60px_-15px_rgba(0,0,0,0.28)] slide-in-right"
+          )}
+        >
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border-light bg-gradient-to-b from-white to-surface/40 shrink-0">
             <span className="w-8 h-8 rounded-xl bg-blue-primary text-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(0,113,227,0.35)]">
@@ -738,6 +762,21 @@ export function AgentDock({
                     : `On ${label}`}
               </p>
             </div>
+            {dockable && onDockChange && (
+              <button
+                type="button"
+                onClick={() => onDockChange(!docked)}
+                aria-label={docked ? "Use AI as a popup" : "Dock AI on the right"}
+                title={docked ? "Use as popup" : "Dock on right"}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+              >
+                {docked ? (
+                  <PanelRightClose size={17} strokeWidth={1.9} />
+                ) : (
+                  <PanelRightOpen size={17} strokeWidth={1.9} />
+                )}
+              </button>
+            )}
             <button
               onClick={() => onOpenChange(false)}
               aria-label="Close"
@@ -750,7 +789,10 @@ export function AgentDock({
           {/* Messages: greeting is always the first bubble so it never vanishes */}
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto px-4 py-4 space-y-2.5 h-[400px] max-h-[58vh]"
+            className={cn(
+              "flex-1 overflow-y-auto px-4 py-4 space-y-2.5",
+              embedded ? "min-h-0" : "h-[400px] max-h-[58vh]"
+            )}
           >
             <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-surface text-text-primary px-3.5 py-2.5 text-[13px] leading-relaxed">
               {renderRich(greeting, entities, !offeringsOnly)}
@@ -837,16 +879,19 @@ export function AgentDock({
       )}
 
       {/* Bubble */}
-      <button
-        onClick={() => onOpenChange(!open)}
-        aria-label={open ? "Close your agent" : "Open your agent"}
-        className={cn(
-          "fixed bottom-5 right-5 z-[120] w-14 h-14 rounded-full flex items-center justify-center text-white transition-all",
-          "bg-blue-primary hover:bg-blue-hover shadow-[0_8px_24px_-6px_rgba(0,113,227,0.55)] hover:shadow-[0_12px_30px_-6px_rgba(0,113,227,0.65)] hover:-translate-y-0.5"
-        )}
-      >
-        {open ? <X size={22} strokeWidth={2} /> : <MessageCircle size={24} strokeWidth={1.9} />}
-      </button>
-    </>
+      {(!embedded || !open) && (
+        <button
+          onClick={() => onOpenChange(!open)}
+          aria-label={open ? "Close your agent" : "Open your agent"}
+          className={cn(
+            "w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-white transition-all",
+            embedded ? "mx-auto mb-5 mt-auto" : "fixed bottom-5 right-5 z-[120]",
+            "bg-blue-primary hover:bg-blue-hover shadow-[0_8px_24px_-6px_rgba(0,113,227,0.55)] hover:shadow-[0_12px_30px_-6px_rgba(0,113,227,0.65)] hover:-translate-y-0.5"
+          )}
+        >
+          {open ? <X size={22} strokeWidth={2} /> : <MessageCircle size={24} strokeWidth={1.9} />}
+        </button>
+      )}
+    </div>
   );
 }

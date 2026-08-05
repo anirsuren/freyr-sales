@@ -461,6 +461,14 @@ export function MaterialsSection({
   const folder = normalizeFolderPath(searchParams.get("mf") || "");
   const showAllFiles = searchParams.get("mv") === "files";
 
+  /** A shareable, app-owned preview URL. The new tab is a dedicated material
+   *  page, not another copy of the offering with its viewer dialog reopened. */
+  const materialPreviewUrl = useCallback(
+    (material: OfferingMaterial) =>
+      `${pathname}/materials/${encodeURIComponent(material.id)}`,
+    [pathname]
+  );
+
   // Remember the user's scope as well as their card/table layout. An explicit
   // folder or `mv` in a shared URL always wins; otherwise restore the last
   // scope used in this browser.
@@ -499,6 +507,24 @@ export function MaterialsSection({
 
   /** The file being read in the viewer popup. */
   const [viewing, setViewing] = useState<OfferingMaterial | null>(null);
+
+  useEffect(() => {
+    const requestedId = searchParams.get("material");
+    if (!requestedId) return;
+    const requested = materials.find(
+      (material) => material.id === requestedId && material.docsPath
+    );
+    if (requested) setViewing(requested);
+  }, [materials, searchParams]);
+
+  const closeViewer = useCallback(() => {
+    setViewing(null);
+    if (!searchParams.has("material")) return;
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.delete("material");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
   const anyFilter = formats.length > 0 || stages.length > 0 || levels.length > 0;
   // Agent-training uploads never reach a rep's list. They are background
   // knowledge for the assistant, not collateral, so only an owner — who has
@@ -568,7 +594,8 @@ export function MaterialsSection({
           path={viewing.docsPath}
           label={viewing.label}
           downloadUrl={viewing.url}
-          onClose={() => setViewing(null)}
+          openInNewTabUrl={materialPreviewUrl(viewing)}
+          onClose={closeViewer}
         />
       )}
       {/* One row of three compact dropdowns — the app-wide filter pattern.
@@ -1033,7 +1060,9 @@ export function MaterialsSection({
                           <button
                             type="button"
                             aria-label={`${uploaded ? "Open" : "Open link"} ${material.label}`}
-                            onClick={() => uploaded ? setViewing(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
+                            onClick={() => uploaded
+                              ? window.open(materialPreviewUrl(material), "_blank", "noopener,noreferrer")
+                              : window.open(material.url, "_blank", "noopener,noreferrer")}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
                           ><ExternalLink size={14} strokeWidth={1.9} /></button>
                         </Tooltip>
@@ -1099,11 +1128,11 @@ export function MaterialsSection({
             // An uploaded row used to carry `download`, so a rep who wanted to
             // glance at a deck got a file in their Downloads folder instead
             // (Saras, Jul 30, for the reps: "they need to be able to simply
-            // view them if they wish, not only download them"). `?view=1` makes
-            // the route serve the bytes inline; the Download control below is
-            // how you still get a copy.
+            // view them if they wish, not only download them"). The app-owned
+            // preview URL opens the renderer on our domain; the Download
+            // control below is how you still get a copy.
             const viewUrl = uploaded
-              ? `${material.url}${material.url.includes("?") ? "&" : "?"}view=1`
+              ? materialPreviewUrl(material)
               : material.url;
             return (
               <a
@@ -1121,8 +1150,8 @@ export function MaterialsSection({
                   // AN UPLOADED FILE OPENS IN THE APP. Word, PowerPoint and
                   // Excel cannot render in a browser tab at all — it downloads
                   // them — so the row opens the viewer, which reads a
-                  // server-converted version. Cmd/Ctrl-click still gets the
-                  // raw file in a new tab for anyone who wants that.
+                  // server-converted version. Cmd/Ctrl-click follows the
+                  // app-owned preview URL into a new tab, never the raw bytes.
                   if (!uploaded || e.metaKey || e.ctrlKey || e.shiftKey) return;
                   e.preventDefault();
                   setViewing(material);
