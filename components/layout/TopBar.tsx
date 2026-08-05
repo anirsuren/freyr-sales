@@ -454,7 +454,8 @@ export function TopBar({
             <div
               role="menu"
               aria-label="Account menu"
-              className="absolute right-0 mt-2 w-[248px] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden"
+              className="absolute right-0 mt-2.5 w-[264px] origin-top-right rounded-2xl border border-border-light bg-white z-50 overflow-hidden shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35),0_4px_16px_-8px_rgba(15,23,42,0.2)] ring-1 ring-black/[0.03]"
+              style={{ animation: "menu-pop 160ms cubic-bezier(0.16,1,0.3,1)" }}
             >
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-border-light">
                   <Avatar src={myPhoto} name={currentUser.name} className="w-9 h-9 text-[13px]" />

@@ -114,16 +114,18 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
     note: "Only an admin can grant edit access",
   },
   { cap: "Invite, approve or suspend teammates", admin: true, manager: false, rep: false },
-  { cap: "Temporarily view the sample workspace", admin: true, manager: true, rep: true },
+  { cap: "Preview modules that are still in progress", admin: true, manager: true, rep: true },
 ];
 
+// Function-first, no vendor names — a seller reads WHAT each connection
+// does, not which contractor supplies it.
 const SERVICE_LABELS: Record<string, string> = {
-  anthropic: "Anthropic: AI analysis & pitch generation",
-  supabase: "Supabase: database",
-  firecrawl: "Firecrawl: web crawl & scrape",
-  apify: "Apify: LinkedIn enrichment",
-  telegram: "Telegram: bot notifications",
-  email: "Email: Resend / SMTP send channel",
+  anthropic: "AI analysis & pitch generation",
+  supabase: "Workspace database",
+  firecrawl: "Website research",
+  apify: "LinkedIn enrichment",
+  telegram: "Instant notifications",
+  email: "Email delivery",
 };
 
 type Member = { name: string; email: string; role: string; you?: boolean };
@@ -345,7 +347,7 @@ export function SettingsTabs({
 
   async function changeDataMode(mode: "mock" | "live") {
     if (initialDataModeLocked) {
-      toast("Workspace data mode is controlled by this deployment");
+      toast("Only your organization can change this view");
       return;
     }
     if (!canChangeDataMode) {
@@ -1002,14 +1004,10 @@ export function SettingsTabs({
               );
             })}
           </nav>
-          <div className="mt-6 border-t border-border-light px-2 pt-4">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-success">
-              <ShieldCheck size={14} /> Server-side data access
-            </div>
-            <p className="mt-1 text-[10.5px] leading-relaxed text-text-tertiary">
-              Browser access to workspace tables is blocked by default.
-            </p>
-          </div>
+          {/* No engineering trivia in the sidebar — this once held a
+              "server-side data access" note that meant nothing to a sales
+              user (Anir, Aug 6: "there can't be any stupid stuff in the
+              settings page that's not user-facing"). */}
         </div>
       </aside>
 
@@ -1585,7 +1583,7 @@ export function SettingsTabs({
                       {authConfig.approvalEnabled ? "Invitation required" : "Approval gate off"}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                      <Database size={13} className="text-success" /> Server-only database
+                      <Database size={13} className="text-success" /> Private to this workspace
                     </span>
                   </div>
                 </div>
@@ -1700,20 +1698,21 @@ export function SettingsTabs({
                     Authentication &amp; security
                   </h2>
                   <p className="mt-1 text-[11.5px] text-text-secondary">
-                    Read-only deployment policy for this workspace.
+                    These rules apply to the whole workspace and can&apos;t be
+                    changed from this page.
                   </p>
                 </div>
                 <span className="rounded-md bg-blue-light px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-blue-primary">
-                  Managed by deployment
+                  Set by your organization
                 </span>
               </div>
               <dl className="mt-4 grid grid-cols-2 overflow-hidden rounded-md border border-border-light">
                 {[
                   {
-                    label: "Identity provider",
+                    label: "Accounts",
                     value:
                       authConfig.authMode === "supabase"
-                        ? "Supabase Auth"
+                        ? "Freyr workspace accounts"
                         : authProviderLabel,
                   },
                   { label: "Sign-in method", value: signInMethod },
@@ -1725,7 +1724,7 @@ export function SettingsTabs({
                     label: "Workspace access",
                     value: authConfig.approvalEnabled
                       ? "Invite only"
-                      : "Approval gate not enforced",
+                      : "Open to approved sign-ins",
                   },
                 ].map((item) => (
                   <div
