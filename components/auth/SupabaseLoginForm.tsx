@@ -51,6 +51,7 @@ export function SupabaseLoginForm({
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,6 +229,42 @@ export function SupabaseLoginForm({
     }
   }
 
+  async function requestPasswordReset() {
+    const normalizedEmail = normalizeAuthEmail(email);
+    if (!normalizedEmail) {
+      setError("Enter a valid email address first.");
+      return;
+    }
+
+    setResetBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/auth/password-reset/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(body.error || "Could not send the reset email.");
+      }
+      setMessage(
+        "Password reset email sent. Open the newest email from Freyr Sales to choose a new password."
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not send the reset email. Try again shortly."
+      );
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   const inputClass =
     "mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[14px] text-text-primary outline-none focus:border-blue-primary";
 
@@ -321,9 +358,26 @@ export function SupabaseLoginForm({
       )}
 
       {step === "password" && (
-        <label className="block text-[12px] font-semibold text-text-secondary">
-          Password
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor="login-password"
+              className="text-[12px] font-semibold text-text-secondary"
+            >
+              Password
+            </label>
+            <button
+              type="button"
+              disabled={busy || resetBusy}
+              onClick={() => void requestPasswordReset()}
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {resetBusy && <Loader2 size={13} className="animate-spin" />}
+              {resetBusy ? "Sending reset email…" : "Forgot password?"}
+            </button>
+          </div>
           <input
+            id="login-password"
             required
             autoFocus
             minLength={8}
@@ -333,7 +387,7 @@ export function SupabaseLoginForm({
             onChange={(event) => setPassword(event.target.value)}
             className={inputClass}
           />
-        </label>
+        </div>
       )}
 
       {step === "invite-only" && (
@@ -417,7 +471,7 @@ export function SupabaseLoginForm({
       {step !== "invite-only" && step !== "sent" && (
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || resetBusy}
           className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-blue-primary text-[14px] font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? (

@@ -1936,6 +1936,39 @@ export function OfferingForm({
         </div>
       </FormSection>
 
+      {/* ------------------------------------------------ product roadmap */}
+      {isEdit && offeringId && (
+        <FormSection
+          icon={Route}
+          title="Product roadmap"
+          hint="Edit current and previous versions, comparisons, release history, and the approved next version."
+        >
+          <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-surface/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[13.5px] font-semibold text-text-primary">
+                The entire roadmap is editable
+              </p>
+              <p className="mt-1 max-w-3xl text-[12.5px] leading-relaxed text-text-secondary">
+                This opens the complete Roadmap editor without discarding any changes currently on this page.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.open(
+                  `/offerings/${offeringId}?tab=roadmap&edit=roadmap`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+              className="inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-primary px-4 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-hover"
+            >
+              <PencilLine size={15} strokeWidth={2.1} /> Edit roadmap
+            </button>
+          </div>
+        </FormSection>
+      )}
+
       {/* ---------------------------------------------------- sales materials */}
       <FormSection
         icon={FolderOpen}

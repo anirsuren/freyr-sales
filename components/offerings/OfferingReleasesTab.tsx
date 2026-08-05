@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -337,6 +337,7 @@ export function OfferingReleasesTab({
   contacts,
   people,
   owners,
+  openEditor = false,
 }: {
   offeringId: string;
   offeringName: string;
@@ -347,6 +348,8 @@ export function OfferingReleasesTab({
   contacts: OfferingContact[];
   people: PickablePerson[];
   owners: OwnerRow[];
+  /** Open the complete editor when arriving from Edit Offering. */
+  openEditor?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -373,6 +376,12 @@ export function OfferingReleasesTab({
     featureLines.length > 0 &&
     (status === "next" || Boolean(date)) &&
     !duplicateVersion;
+
+  useEffect(() => {
+    if (!openEditor || !canEdit || !roadmapDetails) return;
+    setDraftRoadmap(structuredClone(roadmapDetails));
+    setEditingRoadmap(true);
+  }, [canEdit, openEditor, roadmapDetails]);
 
   // Newest first, and a version with no date sorts after ones that have one —
   // an undated row is usually the next release, not the oldest.

@@ -60,7 +60,7 @@ export default async function OfferingDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ tab?: string }>;
+  searchParams?: Promise<{ tab?: string; edit?: string }>;
 }) {
   const query = await searchParams;
   const raw = getOffering((await params).id);
@@ -415,6 +415,7 @@ export default async function OfferingDetailPage({
             contacts={offeringContacts}
             people={people}
             owners={o.owners ?? []}
+            openEditor={query?.edit === "roadmap"}
           />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">

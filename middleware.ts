@@ -15,6 +15,7 @@ const PUBLIC_PATHS = new Set([
   // Decides whether the login page asks for a new password or an existing one.
   // Must be reachable before anyone is signed in, like register and session.
   "/api/auth/lookup",
+  "/api/auth/password-reset/request",
   "/api/auth/register",
   "/api/auth/resolve",
   "/api/auth/session",

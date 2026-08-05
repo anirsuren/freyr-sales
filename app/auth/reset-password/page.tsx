@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
         } else {
           throw new Error(
             errorCode === "otp_expired"
-              ? "That reset link expired. Request a new one from Settings."
+              ? "That reset link expired. Request a new one from the sign-in page."
               : "That reset link is invalid or has already been used."
           );
         }
@@ -132,10 +132,10 @@ export default function ResetPasswordPage() {
           <div className="mt-4">
             <p className="text-[13.5px] leading-relaxed text-red-600">{detail}</p>
             <a
-              href="/settings?tab=profile"
+              href="/login"
               className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-md border border-border text-[13.5px] font-semibold text-text-primary hover:bg-surface"
             >
-              Return to Settings
+              Return to sign in
             </a>
           </div>
         ) : (
