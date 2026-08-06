@@ -24,9 +24,12 @@ import { isOfferingOwner, type Offering } from "./offerings";
 export async function canEditOffering(
   offering: Pick<Offering, "owners"> | null | undefined
 ): Promise<boolean> {
-  // OWNERSHIP IS THE ONLY KEY, for everybody. Workspace admin is the authority
-  // that assigns the key; it is not itself an implicit edit grant.
   if (!offering) return false;
   const user = await getCurrentUser();
+  // ADMINS CAN EDIT EVERY OFFERING (Anir, Aug 6: "if I'm an admin I
+  // [should] be able to check and test the edit level features across the
+  // app"). For everyone else, ownership is the only key: an admin-assigned
+  // record, matched on the stable memberId — never a name resemblance.
+  if (user.role === "admin") return true;
   return isOfferingOwner(offering, user.memberId);
 }

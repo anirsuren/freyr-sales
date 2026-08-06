@@ -101,10 +101,10 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
   { cap: "Ask the assistant", admin: true, manager: true, rep: true },
   {
     cap: "Edit an offering & its materials",
-    admin: false,
+    admin: true,
     manager: false,
     rep: false,
-    note: "Whoever owns that offering, any role",
+    note: "Owners of that offering, any role — admins can edit any offering",
   },
   {
     cap: "Assign offering owners",
