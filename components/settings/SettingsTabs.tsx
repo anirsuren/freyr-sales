@@ -1545,20 +1545,23 @@ export function SettingsTabs({
               </div>
               <span className="text-[11px] font-medium text-text-tertiary">{accessDirectory.members.length} people</span>
             </div>
-            <div className="grid grid-cols-[minmax(240px,1fr)_150px_120px_120px] border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            <div className="grid grid-cols-[minmax(220px,1fr)_190px_110px_120px] border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               <span>Member</span><span>Role</span><span>Status</span><span>Last seen</span>
             </div>
             <ul className="divide-y divide-border-light">
               {accessDirectory.members.map((member) => (
-                <li key={member.id} className="grid grid-cols-[minmax(240px,1fr)_150px_120px_120px] items-center px-5 py-3">
+                <li key={member.id} className="grid grid-cols-[minmax(220px,1fr)_190px_110px_120px] items-center px-5 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar name={member.name} className="h-9 w-9 shrink-0 text-[12px]" />
                     <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{member.name}</span><span className="block truncate text-[11px] text-text-tertiary">{member.email}</span></span>
                   </div>
                   {/* Admins get a live role control; everyone else sees the
                       chip. Same three names, same colours, everywhere. */}
+                  {/* 170px control inside a 190px track: ColorSelect's inline
+                      minWidth is 170, so the column must out-size it or the
+                      control bleeds into the Status column. */}
                   {currentUser.role === "admin" ? (
-                    <div className="w-[136px]">
+                    <div className="w-[170px]">
                       <ColorSelect
                         value={
                           ROLE_CHANGE_OPTIONS.some((o) => o.value === member.role)
