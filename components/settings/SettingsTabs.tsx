@@ -51,6 +51,14 @@ const INVITE_ROLE_OPTIONS: ColorOption[] = [
   { value: "Admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
+// The directory's role control for admins — same three identities, keyed by
+// the STORED role values the access API expects.
+const ROLE_CHANGE_OPTIONS: ColorOption[] = [
+  { value: "sales", label: "Rep", color: "#0071E3", icon: UserRound },
+  { value: "editor", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
+];
+
 const TABS = [
   { key: "workspace", label: "Workspace", description: "Data and behavior", icon: Settings2 },
   { key: "profile", label: "Profile", description: "Identity and preferences", icon: UserRound },
@@ -431,6 +439,34 @@ export function SettingsTabs({
     initialAccessDirectory(currentUser)
   );
   const [accessBusy, setAccessBusy] = useState<string | null>(null);
+
+  // Admins change any member's role right in the directory (Anir, Aug 6:
+  // "admins should be able to make other people admins and change other
+  // roles"). The server enforces the one hard rule — the workspace can never
+  // be left without an active admin.
+  async function changeMemberRole(
+    member: { id: string; name: string; role: string },
+    nextRole: string
+  ) {
+    if (member.role === nextRole || accessBusy) return;
+    setAccessBusy(member.id);
+    try {
+      const response = await fetch("/api/settings/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "change_role", memberId: member.id, role: nextRole }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not change the role");
+      if (data.directory) setAccessDirectory(data.directory);
+      const label = ROLE_CHANGE_OPTIONS.find((o) => o.value === nextRole)?.label || nextRole;
+      toast(`${member.name} is now ${label}`);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not change the role", "error");
+    } finally {
+      setAccessBusy(null);
+    }
+  }
   const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
 
   const activeTab = visibleTabs.find((item) => item.key === tab) || visibleTabs[0];
@@ -1519,11 +1555,24 @@ export function SettingsTabs({
                     <Avatar name={member.name} className="h-9 w-9 shrink-0 text-[12px]" />
                     <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{member.name}</span><span className="block truncate text-[11px] text-text-tertiary">{member.email}</span></span>
                   </div>
-                  {/* Same three names, same chip, as the account menu. This
-                      row used to say "Catalog editor" for the role the invite
-                      form calls "Manager". w-fit stops the grid cell from
-                      stretching the pill to the full column width. */}
-                  <RoleTag role={member.role} size="sm" className="w-fit" />
+                  {/* Admins get a live role control; everyone else sees the
+                      chip. Same three names, same colours, everywhere. */}
+                  {currentUser.role === "admin" ? (
+                    <div className="w-[136px]">
+                      <ColorSelect
+                        value={
+                          ROLE_CHANGE_OPTIONS.some((o) => o.value === member.role)
+                            ? member.role
+                            : "sales"
+                        }
+                        options={ROLE_CHANGE_OPTIONS}
+                        onChange={(next) => changeMemberRole(member, next)}
+                        ariaLabel={`${member.name}'s workspace role`}
+                      />
+                    </div>
+                  ) : (
+                    <RoleTag role={member.role} size="sm" className="w-fit" />
+                  )}
                   <span className={cn("inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-semibold", member.active ? "bg-success/10 text-success" : "bg-surface text-text-tertiary")}><span className={cn("h-1.5 w-1.5 rounded-full", member.active ? "bg-success" : "bg-text-tertiary")} />{member.active ? "Active" : "Suspended"}</span>
                   {/* Human time, not an hour counter — "186 hours ago" means
                       nothing; "Jul 30" does (Anir, Aug 6). Hover shows the
