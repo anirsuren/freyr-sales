@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PasskeySignIn } from "@/components/auth/PasskeySignIn";
 import { appHomePath } from "@/lib/appHome";
 import { ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -62,7 +63,10 @@ export default function LoginPage() {
               configure Supabase and the authentication cookie secret.
             </div>
           ) : supabase ? (
-            <SupabaseLoginForm joinDomainLabel={joinDomainLabel || null} />
+            <>
+              <SupabaseLoginForm joinDomainLabel={joinDomainLabel || null} />
+              <PasskeySignIn />
+            </>
           ) : entra ? (
             <a href="/.auth/login/aad" className="w-full h-11 rounded-lg bg-blue-primary text-white font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-blue-hover transition-colors">
               <ShieldCheck size={18} /> Continue with Microsoft

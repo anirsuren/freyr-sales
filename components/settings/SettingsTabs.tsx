@@ -13,6 +13,7 @@ import {
 } from "@/lib/timeZone";
 import { UserPlus, Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, MousePointer2, Settings2, UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { PasskeySetup } from "@/components/settings/PasskeySetup";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -1372,6 +1373,12 @@ export function SettingsTabs({
                 </span>
               )}
             </label>
+
+            {/* HOW YOU GET IN. Enrolled while already signed in, because a
+                passkey is an extra key to your own account — never a way to
+                claim one (Anir, Aug 7: "I hate logging in, I want Touch ID"). */}
+            <PasskeySetup />
+
             {profileDirty && (
               <div className="page-in">
                 <Button onClick={saveProfile}>Save profile</Button>

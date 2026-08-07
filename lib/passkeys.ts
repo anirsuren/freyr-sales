@@ -149,20 +149,30 @@ export async function consumeChallenge(
   return { authUserId: data.auth_user_id, email: data.email };
 }
 
-/** The signed-in identity a verified passkey resolves to. */
+/**
+ * The signed-in identity a verified passkey resolves to.
+ *
+ * Returns the AUTH principal — the same shape /api/auth/session builds from a
+ * Supabase token — and lets resolveWorkspaceAccess do the app_users matching,
+ * exactly as the password path does. Looking the row up by auth_user_id here
+ * was wrong: app_users.id is the APP row id, a different uuid from the auth
+ * user id the session carries.
+ *
+ * The liveness check is by email, which is the column both identities share.
+ */
 export async function userForCredential(
   cred: StoredCredential
 ): Promise<AuthenticatedUser | null> {
   const { data } = await db()
     .from("app_users")
-    .select("id, email, display_name, app_role, active")
-    .eq("id", cred.auth_user_id)
+    .select("display_name, active")
+    .ilike("email", cred.email)
     .maybeSingle();
-  if (!data || data.active === false) return null;
+  if (data && data.active === false) return null;
   return {
-    id: data.id as string,
-    name: (data.display_name as string) || cred.email,
-    email: (data.email as string) || cred.email,
+    id: cred.auth_user_id,
+    name: (data?.display_name as string) || cred.email.split("@")[0],
+    email: cred.email,
     roles: [],
   };
 }

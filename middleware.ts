@@ -19,6 +19,12 @@ const PUBLIC_PATHS = new Set([
   "/api/auth/password-reset/request",
   "/api/auth/register",
   "/api/auth/resolve",
+  // Passkey SIGN-IN is public by necessity — you are not signed in yet. The
+  // REGISTER routes are deliberately absent: enrolling a passkey requires an
+  // existing session, because a passkey is an extra key to your own account,
+  // never a way to claim one.
+  "/api/auth/passkey/login/options",
+  "/api/auth/passkey/login/verify",
   "/api/auth/session",
   "/api/auth/logout",
   "/login",
