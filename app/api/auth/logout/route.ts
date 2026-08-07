@@ -60,10 +60,15 @@ function safeLogoutUrl(request: NextRequest): URL {
   if (process.env.AUTH_MODE === "entra") {
     return new URL("/.auth/logout?post_logout_redirect_uri=/login", origin);
   }
+  // SIGNING OUT LANDS ON THE LANDING PAGE, not back on a sign-in form. The
+  // form is where you go to get IN; being dropped on it the instant you leave
+  // reads as a failed logout (Anir, Aug 7: "when I log out, it should take me
+  // to the landing page, not this page"). The landing page now knows you are
+  // signed out and offers the way back in.
   if (process.env.AUTH_MODE === "supabase") {
-    return new URL("/login?signedOut=1", origin);
+    return new URL("/?signedOut=1", origin);
   }
-  return new URL("/login", origin);
+  return new URL("/", origin);
 }
 
 export async function GET(request: NextRequest) {

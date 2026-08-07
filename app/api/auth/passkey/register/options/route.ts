@@ -37,6 +37,8 @@ export async function POST(request: NextRequest) {
       // Touch ID / Face ID / Windows Hello — the platform authenticator.
       authenticatorAttachment: "platform",
     },
+    // Build the key into THIS Mac, never onto a USB stick.
+    preferredAuthenticatorType: "localDevice",
   });
 
   await issueChallenge({

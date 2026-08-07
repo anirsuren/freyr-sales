@@ -45,7 +45,14 @@ export function PasskeySignIn({ next }: { next?: string }) {
       router.refresh();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Sign-in failed.";
-      setError(/NotAllowed|abort/i.test(message) ? null : message);
+      // A cancelled prompt is silent. But "nothing matched" is the case that
+      // actually confuses people: no passkey is enrolled on this device yet,
+      // and the browser just shows an empty security-key dialog. Say so.
+      setError(
+        /NotAllowed|abort/i.test(message)
+          ? "No passkey on this device yet — sign in with your password, then set up Touch ID in Settings."
+          : message
+      );
     } finally {
       setBusy(false);
     }

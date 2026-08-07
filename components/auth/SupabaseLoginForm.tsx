@@ -5,7 +5,6 @@ import { createClient } from "@supabase/supabase-js";
 import {
   ArrowRight,
   Building2,
-  KeyRound,
   Loader2,
   LockKeyhole,
   Mail,
@@ -497,11 +496,12 @@ export function SupabaseLoginForm({
           <p className="text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
             More sign-in options
           </p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "Microsoft", Icon: Building2 },
-              { label: "Passkey", Icon: KeyRound },
-            ].map(({ label, Icon }) => (
+          <div className="grid grid-cols-1 gap-2">
+            {/* "Passkey — Coming soon" is gone: it sat directly above a
+                working "Sign in with Touch ID" button and told you the exact
+                opposite (Anir, Aug 7). Microsoft stays because it genuinely
+                is not built. */}
+            {[{ label: "Microsoft", Icon: Building2 }].map(({ label, Icon }) => (
               <div
                 key={label}
                 aria-disabled="true"

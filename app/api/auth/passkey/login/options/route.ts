@@ -32,5 +32,15 @@ export async function POST(request: NextRequest) {
     kind: "login",
     email: email || undefined,
   });
-  return NextResponse.json(options, { headers: { "Cache-Control": "no-store" } });
+  // LEAD WITH TOUCH ID. With an empty allowCredentials list the request means
+  // "any authenticator at all", and Chrome opens on its USB security-key
+  // illustration — asking for hardware nobody owns (Anir, Aug 7: "it's using
+  // my security key, but it doesn't have my security key"). The WebAuthn L3
+  // `hints` field puts the built-in platform authenticator first. It is not in
+  // the library's TypeScript surface yet, so it is attached to the JSON the
+  // browser actually receives.
+  return NextResponse.json(
+    { ...options, hints: ["client-device"] },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
