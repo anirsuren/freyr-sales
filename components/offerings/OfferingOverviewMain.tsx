@@ -131,11 +131,37 @@ function formatTimelineDate(date: Date | null): string {
   });
 }
 
+/**
+ * TODAY IS AN EXACT DAY, NOT A MONTH.
+ *
+ * Release dates are recorded as month-and-year, so they format that way —
+ * but stamping the same shape on the Today marker printed "Aug 2026" for a
+ * date the reader knows is the 6th (Anir, Aug 6: "you can't say Aug 2026,
+ * that's not the date").
+ */
+function formatExactDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** True when the recorded text actually named a DAY, not just a month. Show
+ *  the day whenever it is known; never invent one when it is not. */
+function hasDayPrecision(value?: string | null): boolean {
+  if (!value) return false;
+  return /\b20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/.test(value);
+}
+
 type TimelineMilestone = {
   eyebrow: string;
   title: string;
   detail: string;
   date: Date | null;
+  /** The source text named a day, so the day may be shown. */
+  exact?: boolean;
   tone: "past" | "current" | "next";
 };
 
@@ -190,6 +216,7 @@ function ReleaseTimeline({
         title: previousReleased.release.version,
         detail: formatTimelineDate(previousReleased.date),
         date: previousReleased.date,
+        exact: hasDayPrecision(previousReleased.release.date),
         tone: "past",
       }
     : {
@@ -210,6 +237,7 @@ function ReleaseTimeline({
             ? "Available now · release date not recorded"
             : "Release date not recorded",
         date: parsedCurrentDate,
+        exact: hasDayPrecision(latestReleased?.release.date || currentReleaseDate),
         tone: "current",
       }
     : {
@@ -238,6 +266,7 @@ function ReleaseTimeline({
         ? `${fallbackNext.label} · date not recorded`
         : "No future date is on file",
     date: parsedNextDate,
+    exact: hasDayPrecision(datedNext?.release.date || nextExpected || availability),
     tone: "next",
   };
 
@@ -263,7 +292,13 @@ function ReleaseTimeline({
    * actually falls into, interpolated between the two real dates bounding
    * it, so "where we are" is truthful without distorting the rest.
    */
-  const stops = [16.5, 50, 83.5];
+  /**
+   * Stops sit at the CENTRE of each card below, and the cards are sized
+   * 26/48/26 so those centres land at 13/50/87 — near the edges, using the
+   * rail instead of leaving dead stubs at both ends (Anir, Aug 6: "the
+   * point could be closer to the edge… you're wasting space").
+   */
+  const stops = [13, 50, 87];
   const fractionBetween = (from: Date, to: Date, at: Date) => {
     const span = to.getTime() - from.getTime();
     if (span <= 0) return 0.5;
@@ -310,25 +345,25 @@ function ReleaseTimeline({
 
   return (
     <div className="mt-5 overflow-hidden rounded-2xl border border-border-light bg-surface shadow-sm">
-      <div className="border-b border-border-light px-5 py-3.5">
+      {/* Today's date lives in the header, top right — one statement of
+          "now", not a badge floating over the rail (Anir, Aug 6). */}
+      <div className="flex items-center justify-between gap-3 border-b border-border-light px-5 py-3">
         <p className="text-[13px] font-semibold text-text-primary">Release timeline</p>
-        <p className="mt-0.5 text-[11px] text-text-tertiary">
-          Where today sits against the last, current and next release.
-        </p>
+        <span className="shrink-0 rounded-full bg-blue-light px-2.5 py-1 text-[10.5px] font-semibold text-blue-primary">
+          Today · {formatExactDate(todayUtc)}
+        </span>
       </div>
 
       <div className="overflow-x-auto px-5 pb-5 pt-4">
         <div className="min-w-[600px]">
-          {/* TODAY rides above the rail on its own lane so it never collides
-              with a release dot. */}
-          <div className="relative h-7">
+          {/* A quiet "today" tick above the rail — the date itself is in the
+              header, so this only has to say WHERE now falls. */}
+          <div className="relative h-4">
             <div
-              className="absolute -translate-x-1/2 whitespace-nowrap"
+              className="absolute -translate-x-1/2 whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.1em] text-blue-primary"
               style={{ left: `${todayStop}%` }}
             >
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-primary px-2.5 py-1 text-[10px] font-bold tracking-[0.02em] text-white shadow-[0_2px_8px_rgba(0,113,227,0.35)]">
-                Today · {formatTimelineDate(todayUtc)}
-              </span>
+              Today
             </div>
           </div>
 
@@ -337,7 +372,7 @@ function ReleaseTimeline({
             role="img"
             aria-label={`Release timeline: ${milestones
               .map((m) => `${m.eyebrow} ${m.title}`)
-              .join(", ")}. Today is ${formatTimelineDate(todayUtc)}.`}
+              .join(", ")}. Today is ${formatExactDate(todayUtc)}.`}
           >
             {/* Solid slate-to-green through what shipped, dashed blue into
                 what has not happened yet. */}
@@ -391,36 +426,38 @@ function ReleaseTimeline({
             })}
           </div>
 
-          <div className="mt-3.5 grid grid-cols-3 gap-2.5">
+          {/* 26 / 48 / 26 puts each label's centre exactly under its dot at
+              13 / 50 / 87. No panels, no borders — just a tight centred
+              stack, because the fat cards dwarfed the timeline itself. */}
+          <div className="mt-2 grid grid-cols-[26fr_48fr_26fr]">
             {milestones.map((milestone) => {
               const tone = TONE[milestone.tone];
               const away = monthsAway(milestone.date);
               return (
-                <div
-                  key={milestone.eyebrow}
-                  className={`min-w-0 rounded-xl border border-border-light px-3.5 py-3 ${tone.panel}`}
-                >
+                <div key={milestone.eyebrow} className="min-w-0 px-2 text-center">
                   <p
-                    className={`flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] ${tone.text}`}
+                    className={`text-[9px] font-bold uppercase tracking-[0.09em] ${tone.text}`}
                   >
-                    <span
-                      aria-hidden="true"
-                      className="h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: tone.dot }}
-                    />
                     {milestone.eyebrow}
                   </p>
                   {/* The DATE is the headline — that is the question being
                       asked (Anir: "when was it released"). */}
-                  <p className="mt-2 text-[17px] font-bold leading-none tracking-[-0.01em] text-text-primary tnum">
-                    {milestone.date ? formatTimelineDate(milestone.date) : "No date yet"}
+                  <p className="mt-1 text-[13.5px] font-bold leading-tight tracking-[-0.01em] text-text-primary tnum">
+                    {milestone.date
+                      ? milestone.exact
+                        ? formatExactDate(milestone.date)
+                        : formatTimelineDate(milestone.date)
+                      : "No date yet"}
                   </p>
-                  <p className="mt-1.5 break-words text-[12px] font-semibold leading-snug text-text-secondary">
-                    {milestone.title}
+                  <p className="mt-0.5 break-words text-[11px] leading-snug text-text-secondary">
+                    <span className="font-semibold">{milestone.title}</span>
+                    {away ? <span className="text-text-tertiary"> · {away}</span> : null}
                   </p>
-                  <p className="mt-0.5 text-[10.5px] leading-snug text-text-tertiary">
-                    {away || milestone.detail}
-                  </p>
+                  {!milestone.date && (
+                    <p className="mt-0.5 text-[10px] leading-snug text-text-tertiary">
+                      {milestone.detail}
+                    </p>
+                  )}
                 </div>
               );
             })}
