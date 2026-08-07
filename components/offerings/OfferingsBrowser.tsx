@@ -1299,41 +1299,25 @@ export function OfferingsBrowser({
               { value: "mapped", label: "Most complete", color: "#059669", icon: SortComplete },
             ]}
           />
-          {/* Tile vs Grid view toggle (Suren's live-meeting ask) */}
-          <div
-            role="group"
-            aria-label="View"
-            className="inline-flex items-center rounded-lg border border-border-light bg-white p-0.5"
+          {/* ONE BUTTON, NOT TWO. A two-button segmented control spent twice
+              the width to say the same thing, and the row needed that width
+              for "GTM status" to spell itself out (Anir, Aug 7: "make the
+              tiles or the list view one thing so it saves some space, so the
+              go-to-market status shows up entirely"). The icon shows where
+              the click takes you, and the label says it out loud. */}
+          <button
+            type="button"
+            onClick={() => setView(view === "tile" ? "grid" : "tile")}
+            aria-label={view === "tile" ? "Switch to list view" : "Switch to tile view"}
+            title={view === "tile" ? "Switch to list view" : "Switch to tile view"}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
           >
-            <button
-              type="button"
-              onClick={() => setView("tile")}
-              aria-label="Tile view"
-              aria-pressed={view === "tile"}
-              title="Tile view"
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                view === "tile"
-                  ? "bg-white text-blue-primary shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <LayoutGrid size={14} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("grid")}
-              aria-label="Grid view"
-              aria-pressed={view === "grid"}
-              title="Grid view"
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                view === "grid"
-                  ? "bg-white text-blue-primary shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <Table2 size={14} strokeWidth={2} />
-            </button>
-          </div>
+            {view === "tile" ? (
+              <Table2 size={15} strokeWidth={2} />
+            ) : (
+              <LayoutGrid size={15} strokeWidth={2} />
+            )}
+          </button>
           {/* Export is off the toolbar until there is a catalogue worth
               exporting (Anir, Aug 7: "remove the download button for now,
               we only have one offering that's ready"). exportCsv still

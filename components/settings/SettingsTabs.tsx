@@ -90,7 +90,6 @@ const CONNECTORS = [
 ] as const;
 
 const ROLES = ["Admin", "Manager", "Rep"];
-const SSO_PROVIDERS = ["Okta", "Google Workspace", "Azure AD", "SAML 2.0"];
 /**
  * WHAT THE CODE ACTUALLY ENFORCES — checked against lib/role.ts and
  * lib/offeringOwnership.ts, not written from memory.
@@ -399,7 +398,13 @@ export function SettingsTabs({
 
   const [profile, setProfile] = useState({
     name: currentUser.name,
-    title: currentUser.title,
+    // NOT currentUser.title. That field is titleForUserRole(role) — the access
+    // level ("Admin") rendered as a job title. Seeding it here put "Admin" in
+    // the Title box on first paint, and the fetched profile then blanked it,
+    // which is the flash Anir kept seeing (Aug 7: "why is it saying admin and
+    // then it's disappearing… why is it saying my job title is admin?").
+    // Rep / Manager / Admin is ACCESS; the job title is the person's own.
+    title: "",
     email: currentUser.email || "",
     signature: `${currentUser.name}\nFreyr Solutions`,
     // The agent writes in the rep's voice, so it needs to know who the rep
@@ -471,26 +476,6 @@ export function SettingsTabs({
 
   const activeTab = visibleTabs.find((item) => item.key === tab) || visibleTabs[0];
   const isLocalAuth = authConfig.authMode === "local";
-  const authProviderLabel =
-    authConfig.authMode === "supabase"
-      ? "Supabase email/password"
-      : authConfig.authMode === "entra"
-        ? "Microsoft Entra"
-        : authConfig.authMode === "aws-alb"
-          ? "AWS ALB OIDC"
-          : "Local demo";
-  const authProviderDetail =
-    authConfig.authMode === "supabase"
-      ? "Verified email required"
-      : isLocalAuth
-        ? "No production identity"
-        : "Single sign-on configured";
-  const signInMethod =
-    authConfig.authMode === "supabase" ? "Email + password" : "Single sign-on";
-  const identityVerification =
-    authConfig.authMode === "supabase"
-      ? "Verified email required"
-      : "Identity provider managed";
 
   function toggleConnector(key: string, name: string) {
     const next = { ...connectors, [key]: !connectors[key] };
@@ -506,7 +491,7 @@ export function SettingsTabs({
     setHydratedUserId(null);
     let nextProfile = {
       name: currentUser.name,
-      title: currentUser.title,
+      title: "",
       email: currentUser.email || "",
       signature: `${currentUser.name}\nFreyr Solutions`,
       linkedin: "",
@@ -669,28 +654,7 @@ export function SettingsTabs({
   const canInvite = authConfig.approvalEnabled
     ? currentUser.role === "admin"
     : role === "Admin";
-  const canSecurity = authConfig.approvalEnabled
-    ? currentUser.role === "admin"
-    : role === "Admin";
 
-  function selectRole(r: string) {
-    if (authConfig.approvalEnabled) {
-      toast("Your role is managed by workspace access");
-      return;
-    }
-    setRole(r);
-    try {
-      localStorage.setItem(roleStorageKey, r);
-    } catch {}
-    toast(`You're now acting as ${r}`);
-  }
-  function updateSso(patch: Partial<typeof sso>) {
-    const next = { ...sso, ...patch };
-    setSso(next);
-    try {
-      localStorage.setItem(ssoStorageKey, JSON.stringify(next));
-    } catch {}
-  }
 
   /**
    * Turn the pasted LinkedIn URL into identity the agent can read. Runs as part
@@ -1071,45 +1035,13 @@ export function SettingsTabs({
 
       {tab === "workspace" && (
         <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              {
-                label: "Current data view",
-                value: dataMode === "mock" ? "Mock dataset" : "Real workspace",
-                detail: dataMode === "mock" ? "Safe sample records" : "Connected business records",
-                icon: Database,
-                color: "text-blue-primary bg-blue-light",
-              },
-              {
-                label: "Access policy",
-                value: authConfig.approvalEnabled ? "Invite only" : "Demo access",
-                detail: authConfig.approvalEnabled ? "Owner approval required" : "Enable for production",
-                icon: Lock,
-                color: authConfig.approvalEnabled ? "text-success bg-success/10" : "text-warning bg-warning/10",
-              },
-              {
-                label: "Identity provider",
-                value: authProviderLabel,
-                detail: authProviderDetail,
-                icon: ShieldCheck,
-                color: "text-violet-600 bg-violet-50",
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <Card key={item.label} className="flex items-center gap-3 px-4 py-3.5">
-                  <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md", item.color)}>
-                    <Icon size={16} strokeWidth={1.9} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">{item.label}</span>
-                    <span className="mt-0.5 block truncate text-[13px] font-semibold text-text-primary">{item.value}</span>
-                    <span className="block truncate text-[10.5px] text-text-tertiary">{item.detail}</span>
-                  </span>
-                </Card>
-              );
-            })}
-          </div>
+          {/* The three status cards that sat here — "Current data view",
+              "Access policy", "Identity provider: Supabase email/password" —
+              were deployment facts, not settings. Nobody reading this page can
+              act on which auth library the app uses, the data view is a
+              control six lines below, and the access policy has its own tab
+              (Anir, Aug 7: "remove the Supabase stuff that is not for the end
+              user… figure out if the user actually needs it or not"). */}
           <Card className="px-5 py-4" data-tour="settings-data-mode">
             <div className="flex items-center justify-between gap-6">
               <div>
@@ -1791,40 +1723,19 @@ export function SettingsTabs({
                   Set by your organization
                 </span>
               </div>
-              <dl className="mt-4 grid grid-cols-2 overflow-hidden rounded-md border border-border-light">
-                {[
-                  {
-                    label: "Accounts",
-                    value:
-                      authConfig.authMode === "supabase"
-                        ? "Freyr workspace accounts"
-                        : authProviderLabel,
-                  },
-                  { label: "Sign-in method", value: signInMethod },
-                  {
-                    label: "Identity verification",
-                    value: identityVerification,
-                  },
-                  {
-                    label: "Workspace access",
-                    value: authConfig.approvalEnabled
-                      ? "Invite only"
-                      : "Open to approved sign-ins",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="border-b border-r border-border-light px-4 py-3 last:border-b-0"
-                  >
-                    <dt className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      {item.label}
-                    </dt>
-                    <dd className="mt-1 text-[13px] font-semibold text-text-primary">
-                      {item.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+              {/* One plain sentence instead of a four-cell configuration
+                  grid. "Accounts / Sign-in method / Identity verification /
+                  Workspace access" restated deployment settings nobody on this
+                  page can change (Anir, Aug 7). What a person actually needs
+                  to know is how they get in and whether new people need
+                  approval. */}
+              <p className="mt-3 text-[13px] leading-relaxed text-text-secondary">
+                Sign in with your Freyr email and password, confirmed by an
+                email link.{" "}
+                {authConfig.approvalEnabled
+                  ? "New teammates need an invitation and an owner's approval before they can see anything."
+                  : "Anyone signing in with an approved address gets access."}
+              </p>
               <p className="mt-3 text-[11.5px] leading-relaxed text-text-secondary">
                 {authConfig.authMode === "supabase"
                   ? "Users must receive an invitation, create their own password, and confirm their email before they can access Freyr."

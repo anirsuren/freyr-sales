@@ -284,12 +284,17 @@ function CapabilityCard({
   //   • a title-only card centres its icon + text as a pair, so a one-line and
   //     a two-line card both read as icon-beside-title. Cards that carry
   //     sub-items keep the icon at the TOP, where a list belongs.
-  const hasSubs = item.subItems.length > 0;
   return (
     <li
       className={cn(
-        "flex h-full min-h-[64px] gap-2.5 rounded-xl border border-border-light bg-white p-3 transition-colors hover:border-blue-subtle",
-        hasSubs ? "items-start" : "items-center",
+        // EVERY CARD STARTS ITS TEXT ON THE SAME LINE. Cards used to centre
+        // their text vertically when they carried no sub-items, so a 3-line
+        // card sitting beside a 4-line one pushed its first line down and the
+        // pair read as misaligned (Anir, Aug 7: "these are not symmetrical,
+        // the right column clearly has the text a little bit up"). Top-aligned,
+        // the row's first lines share a baseline whatever the lengths are; the
+        // cards still stretch to one height inside the grid row.
+        "flex h-full min-h-[64px] items-start gap-2.5 rounded-xl border border-border-light bg-white p-3.5 transition-colors hover:border-blue-subtle",
         many && "md:col-span-2"
       )}
       style={
