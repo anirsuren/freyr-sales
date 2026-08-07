@@ -210,14 +210,24 @@ export function ServiceTag({
 
 export function OfferingIcon({
   name,
+  category,
   className,
 }: {
   name: string;
+  /**
+   * When given, the mark belongs to the CATEGORY, not the individual offering:
+   * every offering in "Regulatory Information Management" wears the same glyph
+   * and hue. The icons never meant anything on their own, and a shared mark
+   * turns them into a grouping cue you can scan a wall of tiles with (Anir,
+   * Aug 7: "for each category, all the offerings that fall in each category
+   * have the same icon… same colour, that will be helpful").
+   */
+  category?: string | null;
   className?: string;
 }) {
   // Two independent hashes so icon and color are chosen separately — otherwise
   // offerings that land on the same index look like duplicates.
-  const key = name || "offering";
+  const key = (category || "").trim() || name || "offering";
   const Icon = ICONS[hash(key) % ICONS.length];
   const [a, b] = GRADIENTS[hash(`${key}::hue`) % GRADIENTS.length];
   return (

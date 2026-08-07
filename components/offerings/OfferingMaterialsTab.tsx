@@ -33,7 +33,7 @@ export function OfferingMaterialsTab({
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-[19px] font-semibold tracking-[-0.01em] text-text-primary">
-            Sales materials ({o.materials.length})
+            Sales Materials ({o.materials.length})
           </h2>
           <p className="mt-0.5 text-[13.5px] text-text-secondary">
             Seller-ready assets, ordered by the way they are typically used.

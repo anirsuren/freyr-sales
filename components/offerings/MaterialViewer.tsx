@@ -640,12 +640,17 @@ export function MaterialViewer({
         <div className="relative min-h-0 flex-1">
         <div
           ref={scroller}
-          className={`material-scroll h-full overflow-auto rounded-xl border border-border-light ${
+          className={`material-scroll h-full rounded-xl border border-border-light ${
             isVideo
-              ? "bg-black"
+              ? "overflow-auto bg-black"
               : ext === "pdf"
                 ? "overflow-hidden bg-[#202124]"
-                : "bg-[var(--surface)]"
+                : sheets
+                  ? // A workbook scrolls INSIDE itself (frozen headers, sticky
+                    // row/column counts), so this pane is a plain flex column
+                    // that hands the sheet its full height.
+                    "flex flex-col overflow-hidden bg-[var(--surface)]"
+                  : "overflow-auto bg-[var(--surface)]"
           }`}
         >
           {status === "loading" && (
@@ -712,7 +717,13 @@ export function MaterialViewer({
                 ? "flex h-full items-center justify-center"
                 : listing || ext === "pdf"
                   ? "h-full"
-                  : undefined
+                  : sheets
+                    ? // A workbook is a full-height surface like the PDF and
+                      // video panes. Without this the zoom wrapper shrinks to
+                      // the rows it happens to hold, so a short sheet floated
+                      // in a half-empty modal.
+                      "flex h-full flex-col"
+                    : undefined
             }
           >
 
@@ -775,7 +786,7 @@ export function MaterialViewer({
           )}
 
           {sheets && (
-            <div className="material-workbook flex min-h-full flex-col overflow-hidden rounded-xl border border-border-light">
+            <div className="material-workbook flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl">
               <div className="material-sheet-tabs flex shrink-0 items-end gap-1 overflow-x-auto border-b border-border-light px-2 pt-2">
                 {sheets.map((currentSheet, i) => (
                   <button

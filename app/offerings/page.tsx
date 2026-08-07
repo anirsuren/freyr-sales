@@ -31,6 +31,7 @@ import {
 } from "@/lib/assignablePeople";
 import { getRole } from "@/lib/role";
 import { getDb } from "@/lib/db";
+import { getDataMode } from "@/lib/dataMode";
 import {
   reportForOffering,
   REVENUE_TYPES,
@@ -363,6 +364,7 @@ export default async function OfferingsPage() {
           offeringTypes={offeringTypes}
           offeringCategories={offeringCategories}
           commerce={commerce}
+          realMode={getDataMode() === "live"}
           newOfferingAction={
             canEdit ? (
               <NewOfferingButton

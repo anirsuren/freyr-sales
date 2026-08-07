@@ -253,7 +253,11 @@ export default async function OfferingDetailPage({
       <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
         <div className="min-w-0">
           <h1 className="flex items-center gap-3 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
-            <OfferingIcon name={o.offering_name} className="w-11 h-11 shrink-0" />
+            <OfferingIcon
+              name={o.offering_name}
+              category={o.offering_category}
+              className="w-11 h-11 shrink-0"
+            />
             {o.offering_name}
           </h1>
           {/* All tags on one line (Anir: single line to save space) */}
@@ -285,10 +289,10 @@ export default async function OfferingDetailPage({
                     } as CSSProperties
                   }
                 >
-                  <span
-                    className="semantic-color-dot h-1.5 w-1.5 rounded-full"
-                    style={{ "--semantic-color": typeColor } as CSSProperties}
-                  />
+                  {/* No leading dot. The pill is already the type's colour,
+                      so the bullet restated the hue and nothing else (Anir,
+                      Aug 7, on the same dots in the list view: "remove these
+                      bullet points, they are not needed"). */}
                   {o.offering_type}
                 </span>
               );
@@ -352,8 +356,8 @@ export default async function OfferingDetailPage({
             key: "materials",
             label:
               o.materials.length > 0
-                ? `Sales materials (${o.materials.length})`
-                : "Sales materials",
+                ? `Sales Materials (${o.materials.length})`
+                : "Sales Materials",
             href: `/offerings/${o.id}?tab=materials`,
           },
           // Past/current releases are visible to everyone. The next customer
@@ -426,6 +430,7 @@ export default async function OfferingDetailPage({
             related={related}
             admin={admin}
             canSeeNextVersion={canSeeNextCustomerVersion}
+            realMode={dataMode === "live"}
           />
           {/* ---------------------------------------------------- SIDE rail */}
           {/* `stagger` — the rail's cards lift in one after another, the same

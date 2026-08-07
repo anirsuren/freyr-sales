@@ -731,13 +731,13 @@ export function CustomerOfferingsTab({
         />
       )}
 
-      {expanded && (using || o.materials.length > 0 || o.poc) && (
+      {expanded && (using || o.materials.length > 0) && (
       <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-border-light">
         <div className="min-w-0 flex-1">
           {(using || o.materials.length > 0) && (
           <>
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-            Sales materials ({o.materials.length})
+            Sales Materials ({o.materials.length})
           </p>
           {o.materials.length === 0 ? (
             <p className="text-[12px] text-text-tertiary">
@@ -799,12 +799,6 @@ export function CustomerOfferingsTab({
           </>
           )}
         </div>
-        {o.poc && (
-          <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-text-secondary">
-            <Avatar name={o.poc} className="h-6 w-6 text-[8px]" />
-            POC: {o.poc}
-          </span>
-        )}
       </div>
       )}
     </Card>
@@ -855,13 +849,6 @@ export function CustomerOfferingsTab({
         <p className="text-[12.5px] text-text-secondary leading-relaxed line-clamp-3 mt-1.5">
           {o.description}
         </p>
-      )}
-      {o.poc && (
-        <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface px-2 py-1 text-[11.5px]">
-          <Avatar name={o.poc} className="h-6 w-6 shrink-0 text-[8px]" />
-          <span className="text-text-tertiary">POC</span>
-          <span className="min-w-0 break-words font-medium text-text-secondary">{o.poc}</span>
-        </div>
       )}
 
       <div className="mt-auto flex items-center justify-between gap-3 border-t border-border-light pt-3">

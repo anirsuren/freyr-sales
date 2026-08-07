@@ -29,12 +29,12 @@ import { formatDate } from "@/lib/utils";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
-  DOCUMENT_TYPE_META,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
   MATERIAL_COLOR,
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
+  DOCUMENT_TYPE_META,
   MATERIAL_ICON,
   allFolders,
   childFolders,
@@ -154,7 +154,12 @@ function TagPill({
 }) {
   const style =
     variant === "solid"
-      ? { background: color, color: "#FFFFFF" }
+      ? // A soft wash with the colour as INK, not a filled block of red.
+        // Solid red on every internal row shouted louder than anything else
+        // on the page (Anir, Aug 7: "can we make this internal only a bit
+        // less in your face, more pastel"). Still unmistakable — it is the
+        // only uppercase, bordered pill in the table.
+        { background: `${color}1A`, color, borderColor: `${color}59` }
       : variant === "outline"
         ? { color, borderColor: `${color}66` }
         : { background: `${color}14`, color };
@@ -163,7 +168,7 @@ function TagPill({
       title={title}
       className={`inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-none ${
         variant === "outline" ? "border bg-transparent" : ""
-      } ${variant === "solid" ? "tracking-[0.04em] uppercase" : ""}`}
+      } ${variant === "solid" ? "border tracking-[0.04em] uppercase" : ""}`}
       style={style}
     >
       <Icon size={10} strokeWidth={variant === "solid" ? 2.6 : 2.2} />
@@ -615,6 +620,51 @@ export function MaterialsSection({
           onClose={closeViewer}
         />
       )}
+      {/* WHERE YOU ARE — ABOVE the filters, because it is the root of the
+          page you are on, not a footnote under the controls (Anir, Aug 7:
+          "make this a bit bigger in font, and shift this above the
+          filters"). Only rendered once you are inside something, so an
+          offering with everything at the top level gains no chrome it doesn't
+          need. Filtering hides it too: the results span every folder then. */}
+      {folder && !anyFilter && !showAllFiles && (
+        <nav
+          aria-label="Folder path"
+          className="mb-3 flex flex-wrap items-center gap-1.5 text-[15px]"
+        >
+          <button
+            type="button"
+            onClick={() => goToFolder("")}
+            className="cursor-pointer font-semibold text-blue-primary hover:underline"
+          >
+            All materials
+          </button>
+          {folder.split("/").map((part, i, parts) => {
+            const upto = parts.slice(0, i + 1).join("/");
+            const last = i === parts.length - 1;
+            return (
+              <span key={upto} className="flex items-center gap-1">
+                <ChevronRight
+                  size={13}
+                  strokeWidth={2}
+                  className="text-text-tertiary"
+                />
+                {last ? (
+                  <span className="font-semibold text-text-primary">{part}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => goToFolder(upto)}
+                    className="cursor-pointer font-semibold text-blue-primary hover:underline"
+                  >
+                    {part}
+                  </button>
+                )}
+              </span>
+            );
+          })}
+        </nav>
+      )}
+
       {/* One row of three compact dropdowns — the app-wide filter pattern.
           Twelve loose chips across two-and-a-half wrapping rows read as chaos,
           and "Access level" landed wherever the wrap dropped it (Anir, Jul 25:
@@ -641,7 +691,7 @@ export function MaterialsSection({
           values={stages}
           onChange={setStages}
           minWidth={170}
-          allLabel="All journey stages"
+          allLabel="All buyer's journey stages"
           allIcon={Route}
           allColor="#7C3AED"
           ariaLabel="Filter by buyer's journey stage"
@@ -705,48 +755,6 @@ export function MaterialsSection({
           {action}
         </div>
       </div>
-
-      {/* WHERE YOU ARE. Only rendered once you are inside something, so an
-          offering with everything at the top level gains no chrome it doesn't
-          need. Filtering hides it too: the results span every folder then. */}
-      {folder && !anyFilter && !showAllFiles && (
-        <nav
-          aria-label="Folder path"
-          className="mt-3 flex flex-wrap items-center gap-1 text-[12.5px]"
-        >
-          <button
-            type="button"
-            onClick={() => goToFolder("")}
-            className="cursor-pointer font-semibold text-blue-primary hover:underline"
-          >
-            All materials
-          </button>
-          {folder.split("/").map((part, i, parts) => {
-            const upto = parts.slice(0, i + 1).join("/");
-            const last = i === parts.length - 1;
-            return (
-              <span key={upto} className="flex items-center gap-1">
-                <ChevronRight
-                  size={13}
-                  strokeWidth={2}
-                  className="text-text-tertiary"
-                />
-                {last ? (
-                  <span className="font-semibold text-text-primary">{part}</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => goToFolder(upto)}
-                    className="cursor-pointer font-semibold text-blue-primary hover:underline"
-                  >
-                    {part}
-                  </button>
-                )}
-              </span>
-            );
-          })}
-        </nav>
-      )}
 
       {/* Live count + one-click reset */}
       <div className="mt-3 flex items-center justify-between gap-3">
@@ -982,6 +990,12 @@ export function MaterialsSection({
                       </button>
                     </td>
                     <td className="px-3 py-3">
+                      {/* Format first, then WHAT KIND of document it is —
+                          "Sales deck", "Success story / case study", "Battle
+                          card". Both tags stay, and they read the same way in
+                          the table and on the cards (Anir, Aug 7: "the second
+                          tag for the success story will be needed… make sure
+                          it shows up on both views"). */}
                       <div className="flex flex-col items-start gap-1">
                         <TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} />
                         {documentType && (
@@ -1105,6 +1119,9 @@ export function MaterialsSection({
             // What this file was uploaded as, back when the picker offered
             // nine types. Shown only when it says more than the format does.
             const originalKind = legacyKindLabel(material.kind);
+            const documentType = material.documentType
+              ? DOCUMENT_TYPE_META[material.documentType]
+              : null;
             const materialStages = materialJourneyStages(material);
             const level = material.accessLevel
               ? ACCESS_LEVEL_META[material.accessLevel]
@@ -1227,14 +1244,23 @@ export function MaterialsSection({
                       color={formatMeta.color}
                       icon={formatMeta.icon}
                     />
-                    {originalKind && (
+                    {/* Same pair the table shows, in the same order, so the
+                        two views describe a file identically. */}
+                    {documentType ? (
+                      <TagPill
+                        label={documentType.label}
+                        color={documentType.color}
+                        icon={FileText}
+                        variant="outline"
+                      />
+                    ) : originalKind ? (
                       <TagPill
                         label={originalKind}
                         color={MATERIAL_COLOR[material.kind]}
                         icon={Icon}
                         variant="outline"
                       />
-                    )}
+                    ) : null}
                     {materialStages.map((stageName) => {
                       const stage = JOURNEY_STAGE_META[stageName];
                       return <TagPill key={stageName} label={stage.short} color={stage.color} icon={stage.icon} />;

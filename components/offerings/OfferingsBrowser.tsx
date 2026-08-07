@@ -5,23 +5,18 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
-  Video,
-  Presentation,
-  FileText,
   DollarSign,
+  FileText,
+  KeyRound,
   ChevronRight,
   Sparkles,
   X,
-  Download,
   Package,
   Users,
-  Swords,
   BookOpen,
-  Quote,
   Layers,
   LayoutGrid,
   Table2,
-  KeyRound,
   Crown,
   Rocket,
   CircleHelp,
@@ -31,6 +26,8 @@ import { Card } from "@/components/ui/Card";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { PersonFan } from "@/components/ui/PersonFan";
+import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
+import { Avatar } from "@/components/ui/Avatar";
 import {
   AreaChart,
   DonutChart,
@@ -39,7 +36,6 @@ import {
 } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { formatMoney } from "@/lib/pipeline";
-import { csvCell } from "@/lib/csv";
 import { flagForGeography } from "@/lib/countryFlags";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Store, Building, Building2 as BuildingLarge, Sparkles as SortSpark, ArrowDownAZ, Layers as SortLayers, Package as SortPackage, CheckCircle2 as SortComplete, Globe, Clock3 } from "lucide-react";
@@ -58,7 +54,6 @@ import { stripBriefFormatting } from "@/components/offerings/BriefText";
 // dropdowns (Suren: "color code all the dropdowns"). Shared with the
 // master-list managers so colours match everywhere.
 import { FILTER_PALETTE, listAccent } from "./filterPalette";
-import { pocNames as parsePocs } from "@/lib/pocNames";
 // A customer family is an IDENTITY, so it never borrows a status colour: red
 // means a problem, green means healthy, #C2410C means caution (Anir, Jul 28:
 // "red means horrible, red means negative... red, green and yellow are
@@ -184,16 +179,6 @@ export interface HydratedOffering {
   }[];
 }
 
-const MATERIAL_ICON: Record<string, typeof Video> = {
-  video: Video,
-  presentation: Presentation,
-  whitepaper: FileText,
-  pricing: DollarSign,
-  competition: Swords,
-  case_study: BookOpen,
-  reference: Quote,
-};
-
 // One row of a trend-point breakdown, the SAME shape as the charts' TipItem
 // so it feeds Sparkline's pointTips directly, while staying a plain
 // serializable object the server page can build.
@@ -241,42 +226,6 @@ export type OfferingCommerce = {
 };
 
 
-// The tile's POC row: label + overlapping avatar stack, exactly the campaigns
-// "Going to" pattern, each face hoverable for the full identity + Teams link.
-// FACES ONLY, at every count. It used to print the name inline whenever there
-// was one POC, which put an initials bubble next to a comma-separated name and
-// read as two people crushed into one photo (Anir, Jul 28: "the POC should show
-// kinda similar to the campaign's page... you can't merge both people in one
-// pfp... and when I hover over I see the name"). The name lives in the hover.
-function PocStrip({
-  poc,
-  offeringName,
-}: {
-  poc: string;
-  offeringName: string;
-}) {
-  const pocs = parsePocs(poc);
-  if (pocs.length === 0) return null;
-  return (
-    <div
-      role="group"
-      aria-label={`POC: ${poc}`}
-      className="relative z-10 flex items-center gap-2 min-w-0"
-    >
-      <span className="person-row-label person-row-label--poc shrink-0">
-        POC
-      </span>
-      <PersonFan
-        people={pocs.map((name) => ({
-          name,
-          role: "Service delivery POC",
-          context: offeringName,
-        }))}
-      />
-    </div>
-  );
-}
-
 // WHO OWNS THIS, shown as PEOPLE — the same shape as the POC row directly
 // underneath it: a label, then faces you can hover for the whole person (Anir,
 // Jul 28: "where the fuck can I see the owner... where it should show the
@@ -307,15 +256,28 @@ function OwnerStrip({
       <span className="person-row-label person-row-label--owner shrink-0">
         Owner
       </span>
-      <PersonFan
-        people={granted.map((o) => ({
-          name: o.name,
-          // Their actual role, not a restatement of the row they are sitting
-          // in: "Owns this offering" was already obvious from the OWNER label.
-          role: o.role || "Owns this offering",
-          context: offeringName,
-        }))}
-      />
+      {/* The NAME is on the card, not behind a hover. A face alone made you
+          mouse over every tile to learn who owns what (Anir, Aug 7: "instead
+          of the owner icons popping up, can we have their names directly
+          showing up"). The hover card still opens on the row for the rest of
+          the person — role, email, Teams. */}
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {granted.map((o) => (
+          <PersonHoverCard
+            key={o.memberId}
+            name={o.name}
+            role={o.role || "Owns this offering"}
+            context={offeringName}
+          >
+            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-0.5 transition-colors hover:bg-surface">
+              <Avatar name={o.name} className="h-6 w-6 text-[8px]" />
+              <span className="truncate text-[12px] font-semibold text-text-primary">
+                {o.name}
+              </span>
+            </span>
+          </PersonHoverCard>
+        ))}
+      </span>
     </div>
   );
 }
@@ -328,6 +290,7 @@ export function OfferingsBrowser({
   offeringCategories,
   commerce,
   newOfferingAction,
+  realMode = false,
 }: {
   offerings: HydratedOffering[];
   customerTypes: CustomerType[];
@@ -337,6 +300,9 @@ export function OfferingsBrowser({
   /** Per-offering revenue/usage rollup (server-computed) powering the hover
    *  mini-dashboard. */
   commerce?: Record<string, OfferingCommerce>;
+  /** Live workspace. The commercial rollups have no contracts behind them
+   *  there yet, so the hover dashboard stays in Mock until they do. */
+  realMode?: boolean;
   /**
    * The "New offering" pop-up trigger, handed down from the server page (it
    * needs server-only lists for its pickers, and this is a client component).
@@ -588,74 +554,10 @@ export function OfferingsBrowser({
   // Name the export by its active filter so repeated exports (Europe, then
   // Pharma-Large) don't all land as "freyr-offerings (1).csv" in Suren's
   // Downloads. Unfiltered stays "freyr-offerings.csv".
-  const exportFilename = () => {
-    const slug = (s: string) =>
-      s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const parts = ["freyr-offerings"];
-    // One pick names itself ("…-europe.csv"); a combination is counted, because
-    // a filename listing five markets helps nobody.
-    const pickedMarkets = markets.filter((m) => mktIds.includes(m.id));
-    const pickedTypes = customerTypes.filter((c) => ctIds.includes(c.id));
-    if (pickedMarkets.length === 1) parts.push(slug(pickedMarkets[0].name));
-    else if (pickedMarkets.length > 1) parts.push(`${pickedMarkets.length}-markets`);
-    if (pickedTypes.length === 1) parts.push(slug(pickedTypes[0].name));
-    else if (pickedTypes.length > 1) parts.push(`${pickedTypes.length}-customer-types`);
-    if (statuses.length === 1) parts.push(statuses[0]);
-    if (parts.length === 1 && q.trim()) parts.push("filtered");
-    return `${parts.join("-")}.csv`;
-  };
-
-  // Export the current (filtered) view to CSV. Suren built this from Excel, so
-  // round-tripping back out is natural.
-  function exportCsv() {
-    const header = [
-      "Offering Type",
-      "Offering",
-      "Offering Category",
-      "Description",
-      "Current Availability",
-      "Availability Comments",
-      "Service Delivery POC",
-      "Customer Types",
-      "Markets",
-      "Sales Materials",
-    ];
-    const rows = sorted.map((o) =>
-      [
-        o.offering_type,
-        o.offering_name,
-        o.offering_category,
-        // Fall back to the offering type's description when the offering's own
-        // isn't written yet, same as the detail page, so the Excel export
-        // isn't a column of blanks for the not-yet-detailed offerings.
-        o.offering_description ||
-          offeringTypes.find((t) => t.name === o.offering_type)?.description ||
-          "",
-        o.current_availability,
-        o.future_availability,
-        o.poc,
-        o.customerTypes.map((c) => c.name).join("; "),
-        o.markets.map((m) => m.name).join("; "),
-        o.materials.map((m) => `${m.label} (${m.url})`).join(" | "),
-      ]
-        .map((x) => csvCell(String(x || "")))
-        .join(",")
-    );
-    const blob = new Blob([[header.map(csvCell).join(","), ...rows].join("\n")], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = exportFilename();
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
+  // The CSV export went with the toolbar's download button (Anir, Aug 7:
+  // "we don't need an export download button at all"). Reports still exports.
 
   const renderCard = (o: HydratedOffering, i: number) => {
-    const matKinds = Array.from(new Set(o.materials.map((m) => m.kind)));
     const mapped =
       o.customerTypes.length > 0 ||
       o.markets.length > 0 ||
@@ -671,6 +573,7 @@ export function OfferingsBrowser({
     ];
     const hasCt = o.customerTypes.length > 0;
     const com = commerce?.[o.id];
+    const mixSyncId = `offering-mix-${o.id}`;
     // The commercial mix behind the hover panel. Suren: "for the 'who is using
     // it' part, you can definitely make that a pie chart… I think you can have
     // a pie chart on the left and, on the right, maybe a vertical bar chart."
@@ -688,7 +591,6 @@ export function OfferingsBrowser({
     );
     // One id links the donut and its legend: hover a legend row and the slice
     // lights up, and vice versa.
-    const mixSyncId = `offering-mix-${o.id}`;
     const revenueSegments: MixDatum[] = payingCustomers.map((c, ci) => ({
       label: c.name,
       value: c.revenue,
@@ -738,7 +640,11 @@ export function OfferingsBrowser({
               the customer-type families move down so they don't compete). */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <OfferingIcon name={o.offering_name} className="w-9 h-9 shrink-0" />
+              <OfferingIcon
+                name={o.offering_name}
+                category={o.offering_category}
+                className="w-9 h-9 shrink-0"
+              />
               <h3 className="text-[16px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
                 {o.offering_name}
               </h3>
@@ -804,28 +710,19 @@ export function OfferingsBrowser({
                 like the campaigns page so when I hover over it I can see
                 who's there"). */}
             <OwnerStrip owners={o.owners} offeringName={o.offering_name} />
-            {o.poc && <PocStrip poc={o.poc} offeringName={o.offering_name} />}
-            {/* Materials count + type icons */}
+            {/* POC is off the card (Anir, Aug 7: "you can remove the POC
+                aspect"). Owner is the person a rep needs from a tile; the
+                delivery contact belongs on the offering itself. */}
+            {/* Just the count. The little format icons said "there is a video
+                and some documents in here" without saying how many of what,
+                so they read as decoration next to a number that already tells
+                the story (Anir, Aug 7: "you can remove those icons, just have
+                sales material number"). */}
             {o.materials.length > 0 && (
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] text-text-tertiary">
-                  {o.materials.length} material
-                  {o.materials.length === 1 ? "" : "s"}
-                </p>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {matKinds.map((k) => {
-                    const Icon = MATERIAL_ICON[k] || FileText;
-                    return (
-                      <Icon
-                        key={k}
-                        size={14}
-                        strokeWidth={1.7}
-                        className="text-text-tertiary"
-                      />
-                    );
-                  })}
-                </div>
-              </div>
+              <p className="text-[11px] text-text-tertiary">
+                {o.materials.length} material
+                {o.materials.length === 1 ? "" : "s"}
+              </p>
             )}
             {/* Nothing filled in yet */}
             {!mapped && (
@@ -840,6 +737,16 @@ export function OfferingsBrowser({
           }
           extra={
             <>
+              {/* THE COMMERCIAL HALF IS MOCK-ONLY. On the live workspace
+                  every one of these reads 0 — no contracts are recorded yet —
+                  so the panel was four zeros where a rep expects substance
+                  (Anir, Aug 7: "what does the licensed seats part mean? that's
+                  all old… remove the bottom half"). It stays in Mock because
+                  it is where the product is going, not something we dropped
+                  ("if she says we're going to need it later, keep it on mock
+                  mode, just remove it from real"). */}
+              {!realMode && (
+                <>
               {/* The commercial mini-dashboard, the numbers a rep would
                   otherwise open the offering to see. Every tile is icon +
                   colour, never flat gray (standing chip rule). */}
@@ -1055,6 +962,8 @@ export function OfferingsBrowser({
                 </p>
               )}
 
+                </>
+              )}
               {/* Where it sells + any availability caveat. */}
               {(o.markets.length > 0 || o.future_availability) && (
                 <div className="mt-2.5 space-y-1.5">
@@ -1166,39 +1075,14 @@ export function OfferingsBrowser({
             each card, the "awaiting details" stat card), and both still filter
             from the URL, they just name themselves as a clearable chip below
             instead of owning a permanent control. */}
-        <MultiColorSelect
-          values={ctIds}
-          onChange={(next) => setCtId(next.join(","))}
-          minWidth={150}
-          width={120}
-          maxWidth={160}
-          triggerLabel="Customer"
-          dense
-          className="shrink-0"
-          allLabel="All customer types"
-          ariaLabel="Filter by customer type"
-          allIcon={Users}
-          allColor="#0071E3"
-          options={[
-            // Colour says the FAMILY, the icon says the SIZE, the list used
-            // to encode only family, so Small/Mid/Large read identically
-            // (Anir, Jul 25: "you only have it color-coded by the category…
-            // not by the size").
-            ...customerTypes.map((c) => {
-              const size = String((c as { size?: string }).size || "");
-              return {
-                value: c.id,
-                label: c.name,
-                color: familyColor((c as { family?: string }).family || c.name),
-                icon: size.includes("Small")
-                  ? Store
-                  : size.includes("Mid")
-                    ? Building
-                    : BuildingLarge,
-              };
-            }),
-          ]}
-        />
+        {/* The row holds two different jobs — narrowing the list and ordering
+            it — and five identical pills gave no hint where one ended and the
+            other began (Anir, Aug 7: "add the word filter and the word sort
+            before these dropdowns, so the end user knows there's a difference
+            between these two"). */}
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+          Filter
+        </span>
         <MultiColorSelect
           values={catId ? catId.split(",") : []}
           onChange={(next) => setCatId(next.join(","))}
@@ -1243,6 +1127,25 @@ export function OfferingsBrowser({
           ]}
         />
         <MultiColorSelect
+          values={gtmStatuses}
+          onChange={(next) => setGtm(next.join(","))}
+          minWidth={160}
+          width={128}
+          maxWidth={190}
+          triggerLabel="GTM status"
+          dense
+          className="shrink-0"
+          allLabel="All GTM statuses"
+          ariaLabel="Filter by go-to-market status"
+          allIcon={Rocket}
+          allColor="#0071E3"
+          options={[
+            { value: "available", label: "Available Now", color: "#059669", icon: SortComplete },
+            { value: "coming", label: "Coming Soon", color: "#C2410C", icon: Clock3 },
+            { value: "tbd", label: "To Be Decided", color: "#4338CA", icon: CircleHelp },
+          ]}
+        />
+        <MultiColorSelect
           values={ownerIds}
           onChange={(next) => setOwnerId(next.join(","))}
           minWidth={160}
@@ -1266,22 +1169,36 @@ export function OfferingsBrowser({
           ]}
         />
         <MultiColorSelect
-          values={gtmStatuses}
-          onChange={(next) => setGtm(next.join(","))}
-          minWidth={160}
-          width={90}
-          maxWidth={140}
-          triggerLabel="GTM"
+          values={ctIds}
+          onChange={(next) => setCtId(next.join(","))}
+          minWidth={150}
+          width={120}
+          maxWidth={160}
+          triggerLabel="Customer"
           dense
           className="shrink-0"
-          allLabel="All GTM statuses"
-          ariaLabel="Filter by go-to-market status"
-          allIcon={Rocket}
+          allLabel="All customer types"
+          ariaLabel="Filter by customer type"
+          allIcon={Users}
           allColor="#0071E3"
           options={[
-            { value: "available", label: "Available Now", color: "#059669", icon: SortComplete },
-            { value: "coming", label: "Coming Soon", color: "#C2410C", icon: Clock3 },
-            { value: "tbd", label: "To Be Decided", color: "#4338CA", icon: CircleHelp },
+            // Colour says the FAMILY, the icon says the SIZE, the list used
+            // to encode only family, so Small/Mid/Large read identically
+            // (Anir, Jul 25: "you only have it color-coded by the category…
+            // not by the size").
+            ...customerTypes.map((c) => {
+              const size = String((c as { size?: string }).size || "");
+              return {
+                value: c.id,
+                label: c.name,
+                color: familyColor((c as { family?: string }).family || c.name),
+                icon: size.includes("Small")
+                  ? Store
+                  : size.includes("Mid")
+                    ? Building
+                    : BuildingLarge,
+              };
+            }),
           ]}
         />
         {/* Market and completeness arrive by LINK, not by dropdown: the market
@@ -1363,6 +1280,9 @@ export function OfferingsBrowser({
 
           {/* Sort, a display control, so it lives here with view + export rather
               than wrapping onto a lonely second line under the filters. */}
+          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+            Sort
+          </span>
           <ColorSelect
             value={sort}
             onChange={setSort}
@@ -1414,19 +1334,31 @@ export function OfferingsBrowser({
               <Table2 size={14} strokeWidth={2} />
             </button>
           </div>
-          {sorted.length > 0 && (
-            <button
-              onClick={exportCsv}
-              aria-label="Export CSV"
-              title="Export CSV"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-light text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors"
-            >
-              <Download size={15} strokeWidth={1.9} />
-            </button>
-          )}
+          {/* Export is off the toolbar until there is a catalogue worth
+              exporting (Anir, Aug 7: "remove the download button for now,
+              we only have one offering that's ready"). exportCsv still
+              exists, so putting it back is one line. */}
         </div>
       </SearchPriority>
 
+      {/* HOW MANY AM I LOOKING AT. Always on, not only while a filter is set,
+          so the number never appears and disappears (Anir, Aug 7: "show how
+          many offerings are showing up when you click that… always show the
+          number of offerings, even when no filter"). */}
+      {offerings.length > 0 && (
+        <p className="-mt-1 mb-3 text-[12.5px] text-text-secondary">
+          Showing{" "}
+          <span className="font-semibold text-text-primary tnum">
+            {sorted.length}
+          </span>{" "}
+          of{" "}
+          <span className="font-semibold text-text-primary tnum">
+            {offerings.length}
+          </span>{" "}
+          offering{offerings.length === 1 ? "" : "s"}
+          {sorted.length !== offerings.length ? " · filters applied" : ""}
+        </p>
+      )}
 
       {offerings.length === 0 ? (
         <Card className="p-0">
@@ -1477,9 +1409,13 @@ export function OfferingsBrowser({
                   <th className="px-4 py-2.5 w-[12%]">Type</th>
                   <th className="px-4 py-2.5 w-[11%]">Availability</th>
                   <th className="px-4 py-2.5 w-[14%]">Who it&apos;s for</th>
+                  {/* Materials sits before the money columns: it is the one
+                      number in this table that is filled in today, and it is
+                      what a rep actually opens the row for (Anir, Aug 7:
+                      "shift the material column before revenue"). */}
+                  <th className="px-4 py-2.5 w-[5%]">Materials</th>
                   <th className="px-4 py-2.5 w-[9%]">Revenue</th>
                   <th className="px-4 py-2.5 w-[6%]">Trend</th>
-                  <th className="px-4 py-2.5 w-[5%] text-right">Materials</th>
                 </tr>
               </thead>
               <tbody>
@@ -1543,6 +1479,7 @@ export function OfferingsBrowser({
                         >
                           <OfferingIcon
                             name={o.offering_name}
+                            category={o.offering_category}
                             className="h-10 w-10 shrink-0 shadow-sm"
                           />
                           <span className="min-w-0 pt-0.5">
@@ -1573,25 +1510,6 @@ export function OfferingsBrowser({
                                     />
                                   </span>
                                 )}
-                                {o.poc && (
-                                  <span
-                                    className="inline-flex items-center gap-1.5"
-                                    aria-label={`POC: ${o.poc}`}
-                                  >
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
-                                      POC
-                                    </span>
-                                    <PersonFan
-                                      avatarClassName="h-5 w-5 text-[7px]"
-                                      overlap={-6}
-                                      people={parsePocs(o.poc).map((name) => ({
-                                        name,
-                                        role: "Service delivery POC",
-                                        context: o.offering_name,
-                                      }))}
-                                    />
-                                  </span>
-                                )}
                               </span>
                             )}
                           </span>
@@ -1608,10 +1526,6 @@ export function OfferingsBrowser({
                               } as CSSProperties
                             }
                           >
-                            <span
-                              className="semantic-color-dot mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
-                              style={{ "--semantic-color": catColor } as CSSProperties}
-                            />
                             <span className="min-w-0 whitespace-normal break-words">
                               {o.offering_category}
                             </span>
@@ -1631,10 +1545,6 @@ export function OfferingsBrowser({
                               } as CSSProperties
                             }
                           >
-                            <span
-                              className="semantic-color-dot mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
-                              style={{ "--semantic-color": typeColor } as CSSProperties}
-                            />
                             <span className="min-w-0">{o.offering_type}</span>
                           </span>
                         ) : (
@@ -1675,6 +1585,15 @@ export function OfferingsBrowser({
                           )
                         ) : (
                           <span className="text-text-secondary">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 tnum">
+                        {o.materials.length ? (
+                          <span className="inline-flex items-center rounded-full bg-blue-light px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary">
+                            {o.materials.length}
+                          </span>
+                        ) : (
+                          <span className="text-text-tertiary">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1734,15 +1653,6 @@ export function OfferingsBrowser({
                               interactive={false}
                             />
                           </div>
-                        ) : (
-                          <span className="text-text-tertiary">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 tnum">
-                        {o.materials.length ? (
-                          <span className="inline-flex items-center rounded-full bg-blue-light px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary">
-                            {o.materials.length}
-                          </span>
                         ) : (
                           <span className="text-text-tertiary">-</span>
                         )}

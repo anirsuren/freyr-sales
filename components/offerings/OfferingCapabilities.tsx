@@ -151,6 +151,13 @@ export function splitCapability(source: string): Capability {
 // SECTION HEADING ("Product & Portfolio Strategy"), not a capability. A long
 // paragraph in the same position is the offering's lead-in and stays prose.
 const HEADING_MAX = 90;
+// What the pieces of an offering are CALLED, by offering type.
+function includedNoun(offeringType: string | undefined, count: number): string {
+  const fusion = /freya\s*fusion/i.test(offeringType || "");
+  if (fusion) return count === 1 ? "module" : "modules";
+  return count === 1 ? "service" : "services";
+}
+
 const GENERIC_LEAD_IN = /^(services|offerings|capabilities|these)?\s*(include|includes|are)$/i;
 
 function asHeading(line: string): string | null {
@@ -294,19 +301,18 @@ function CapabilityCard({
           : undefined
       }
     >
-      <span
-        className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]",
-          hasSubs && "mt-px"
-        )}
-        style={{ backgroundImage: `linear-gradient(135deg, ${color}, ${light})` }}
-        aria-hidden="true"
-      >
-        <Icon size={14} strokeWidth={2} />
-      </span>
+      {/* No glyph tile. The icons were decoration — they carried no meaning
+          of their own and pulled the eye away from the sentence that does
+          (Anir, Aug 7: "we don't really need them, you can just keep the
+          box"). */}
       <span className="min-w-0 flex-1">
         {/* Wraps, never truncates — these are full service names. */}
-        <span className="block break-words text-[13.5px] font-semibold leading-snug text-text-primary">
+        {/* Same type as the brief paragraph above it — size, leading and
+            colour — so the section reads as one voice instead of two (Anir,
+            Aug 7: "keep that entire font and font style the same as the text
+            here, let's just make that uniform"). The lead-in label stays bold
+            because the source text marks it bold. */}
+        <span className="block break-words text-[14px] leading-relaxed text-text-secondary">
           {item.listStyle === "number" && (
             <span className="mr-1.5 text-blue-primary tnum">
               {item.ordinal ?? 1}.
@@ -352,11 +358,14 @@ const PREVIEW = 6;
 export function OfferingCapabilities({
   text,
   offeringName,
+  offeringType,
   styles = [],
   className,
 }: {
   text: string;
   offeringName: string;
+  /** Freya Fusion offerings ship MODULES; everything else sells services. */
+  offeringType?: string;
   styles?: ServiceCardStyle[];
   className?: string;
 }) {
@@ -404,7 +413,11 @@ export function OfferingCapabilities({
           className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
           style={{ background: `${accent}14`, color: accent }}
         >
-          {parsed.count} {parsed.count === 1 ? "service" : "services"}
+          {/* Freyr's own vocabulary: a Freya Fusion offering is made of
+              MODULES, everything else is made of services (Anir, Aug 7: "for
+              all the offerings that come under Freya Fusion, they will have
+              to say modules instead of services"). */}
+          {parsed.count} {includedNoun(offeringType, parsed.count)}
         </span>
       </div>
 

@@ -1077,6 +1077,37 @@ export function OfferingForm({
     !isEdit ||
     hasOfferingEditChanges(currentEditSnapshot, initialEditSnapshot);
 
+  // Unsaved work must never leave quietly. Closing the tab, hitting back or
+  // reloading with edits pending now costs a confirmation instead of the work.
+  const unsavedRef = useRef(false);
+  unsavedRef.current = isEdit ? hasOfferingChanges : false;
+  useEffect(() => {
+    function warn(event: BeforeUnloadEvent) {
+      if (!unsavedRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, []);
+
+  // Cancel is a discard. Say so out loud when there is something to discard.
+  function leaveForm() {
+    const back = isEdit ? `/offerings/${offeringId}` : "/offerings";
+    if (
+      hasOfferingChanges &&
+      !window.confirm(
+        isEdit
+          ? "Leave without saving? The changes you made on this page will be lost."
+          : "Leave without saving? This offering has not been created yet."
+      )
+    ) {
+      return;
+    }
+    unsavedRef.current = false;
+    router.push(back);
+  }
+
   function toggle(list: string[], id: string) {
     return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
   }
@@ -1251,18 +1282,10 @@ export function OfferingForm({
               <span className="font-medium">Offering categories</span>.
             </p>
           </div>
-          <div>
-            <label className={LABEL}>Service delivery POC</label>
-            {/* A picker over the people already in the workspace, with faces,
-                not a box you have to spell a name into. */}
-            <PeoplePicker
-              people={people}
-              value={pocList}
-              onChange={(next) => setPoc(next.join(" / "))}
-              emptyLabel="Pick who a rep should call"
-              placeholder="Search people in your workspace…"
-            />
-          </div>
+          {/* No POC field. Every offering already names an OWNER, and the
+              owner is who a rep calls (Anir, Aug 7: "we don't need POC, we
+              already have owner for each offering"). The stored value is left
+              untouched on existing records rather than deleted. */}
         </div>
       </FormSection>
 
@@ -2273,23 +2296,45 @@ export function OfferingForm({
           </div>
         )}
         <div className="flex items-center gap-3">
-          <span className="text-[12px] text-text-tertiary">
-            {isEdit ? "Changes apply the moment you save." : "Nothing is saved until you press save."}
+          {/* The button is ALWAYS here. It used to render only while the form
+              was dirty, so anyone whose edit failed to register saw a footer
+              with no Save at all and reasonably concluded the page was broken
+              (Freyr, Aug 7: "there's no 'Save' button either — so the content
+              disappeared when I left"). A disabled button that says why is a
+              statement; a missing button is a mystery. */}
+          <span
+            className={cn(
+              "text-[12px]",
+              isEdit && hasOfferingChanges
+                ? "font-semibold text-blue-primary"
+                : "text-text-tertiary"
+            )}
+          >
+            {!isEdit
+              ? "Nothing is saved until you press save."
+              : hasOfferingChanges
+                ? "You have unsaved changes on this page."
+                : "Everything on this page is saved."}
           </span>
           <button
             type="button"
-            onClick={() =>
-              router.push(isEdit ? `/offerings/${offeringId}` : "/offerings")
-            }
+            onClick={leaveForm}
             className="ml-auto text-[14px] font-semibold text-text-secondary hover:text-text-primary"
           >
             Cancel
           </button>
-          {hasOfferingChanges && (
-            <Button onClick={submit} loading={saving}>
-              {isEdit ? "Save changes" : "Save offering"}
-            </Button>
-          )}
+          <Button
+            onClick={submit}
+            loading={saving}
+            disabled={!hasOfferingChanges}
+            title={
+              hasOfferingChanges
+                ? undefined
+                : "Nothing has changed yet — edit a field and this turns on."
+            }
+          >
+            {isEdit ? "Save changes" : "Save offering"}
+          </Button>
         </div>
       </div>
 

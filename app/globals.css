@@ -1089,7 +1089,13 @@ input {
   --sheet-text: #1d1d1f;
   --sheet-muted: #6b7280;
   background: var(--sheet-bg);
-  height: max(620px, calc(100vh - 250px));
+  /* The workbook fills whatever pane it is in, exactly like the PDF and video
+     panes do. It used to carry height: max(620px, calc(100vh - 250px)) — a
+     guess at the viewer's size rather than the size itself — so in a tall
+     modal the sheet stopped short and left dead white space underneath
+     (Anir, Aug 7: "that CSV is supposed to extend down"). The min-height is
+     only a floor for short viewports; the flex parent supplies the height. */
+  min-height: 320px;
 }
 .material-sheet-tabs,
 .material-sheet-status {

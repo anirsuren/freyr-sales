@@ -8,6 +8,7 @@ import {
   CircleCheck,
   Clock,
   GitCompareArrows,
+  GripVertical,
   History,
   Layers,
   ListChecks,
@@ -23,6 +24,7 @@ import { Modal } from "@/components/ui/Modal";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
+import { ReleaseTimeline } from "@/components/offerings/ReleaseTimeline";
 import type {
   OfferingContact,
   OfferingRelease,
@@ -114,97 +116,9 @@ function ModuleTable({ rows }: { rows: OfferingRoadmapModuleRow[] }) {
   );
 }
 
-function RoadmapTimeline({
-  details,
-  showNext,
-}: {
-  details: OfferingRoadmapDetails;
-  showNext: boolean;
-}) {
-  const previous = details.history[1];
-  const steps = [
-    {
-      eyebrow: "Previous release",
-      title: details.comparisonPreviousLabel || previous?.period || "Previous version",
-      detail: previous?.period || "Release date not recorded",
-      tone: "bg-[#8E98A8]",
-    },
-    {
-      eyebrow: "Current version",
-      title: details.currentVersion,
-      detail: details.releaseWave,
-      tone: "bg-[#20B15A]",
-    },
-    ...(showNext
-      ? [
-          {
-            eyebrow: "Next expected",
-            title: details.nextVersions || "Version to be confirmed",
-            detail: details.nextExpectedLive || "Date to be confirmed",
-            tone: "bg-blue-primary",
-          },
-        ]
-      : []),
-  ];
-
-  return (
-    <div className="rounded-2xl border border-border-light bg-white px-5 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-text-secondary">
-        Version timeline
-      </p>
-      <div
-        className={`mt-4 grid gap-4 ${
-          steps.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"
-        }`}
-      >
-        {steps.map((step, index) => (
-          <div key={`${step.eyebrow}-${step.title}`} className="relative min-w-0 pl-7">
-            {index < steps.length - 1 && (
-              <span
-                aria-hidden="true"
-                className="absolute left-[9px] top-5 h-[calc(100%+1rem)] w-px bg-border md:left-5 md:right-[-16px] md:top-[9px] md:h-px md:w-auto"
-              />
-            )}
-            <span
-              aria-hidden="true"
-              className={`absolute left-0 top-0.5 h-5 w-5 rounded-full border-[4px] border-white shadow-[0_0_0_1px_rgba(17,24,39,0.12)] ${step.tone}`}
-            />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-              {step.eyebrow}
-            </p>
-            <p className="mt-1 text-[13.5px] font-semibold leading-snug text-text-primary">
-              {step.title}
-            </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">
-              {step.detail}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * ONE visual language for every roadmap-editing block: icon tile, plain
- * title, a one-line "what to do here" caption, action on the right — the same
- * header anatomy as the app's other section cards. The previous editor was a
- * column of naked inputs (Anir, Aug 5: "you basically just plop the data
- * there... make it visual, make it clear what they have to do").
- */
-/**
- * A LEVEL-2 GROUP INSIDE A FORM SECTION.
- *
- * The roadmap editor used to stack six white cards with icon tiles inside the
- * white "Product roadmap" card. Every block carried the same visual weight as
- * the section containing it, so nothing said what belonged to what (Anir, Aug
- * 6: "the way everything's organized is so confusing... make it very clear
- * that this section is a subsection of this").
- *
- * A group is therefore NOT another card: tinted surface, a numbered step chip,
- * and a coloured rail down its left edge. The eye reads it as a child of the
- * section, and the numbers say how many steps there are and where you are.
- */
+/* RoadmapTimeline (the flat three-step strip) was replaced by the real
+   ReleaseTimeline on Aug 7 — same three milestones, but placed against actual
+   dates with today interpolated between them. Git history has the old one. */
 function SubGroup({
   step,
   title,
@@ -291,6 +205,12 @@ function SummaryRow({
   onEdit,
   onRemove,
   removeLabel,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  dragging,
+  dropTarget,
 }: {
   title: string;
   meta?: string;
@@ -298,9 +218,44 @@ function SummaryRow({
   onEdit: () => void;
   onRemove: () => void;
   removeLabel: string;
+  /** Reorder wiring. Absent = the list is not reorderable. */
+  onDragStart?: (event: React.DragEvent<HTMLDivElement>) => void;
+  onDragOver?: (event: React.DragEvent<HTMLDivElement>) => void;
+  onDrop?: (event: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: () => void;
+  dragging?: boolean;
+  dropTarget?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5">
+    <div
+      draggable={!!onDragStart}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`flex items-center gap-3 rounded-xl border bg-white px-3.5 py-2.5 transition-[border-color,box-shadow,opacity] ${
+        dragging
+          ? "border-blue-primary opacity-60 shadow-[0_6px_18px_rgba(16,24,40,0.10)]"
+          : dropTarget
+            ? "border-blue-primary shadow-[0_0_0_3px_rgba(0,113,227,0.12)]"
+            : "border-border-light"
+      }`}
+    >
+      {/* DRAG TO REORDER. An owner types the history in whatever order it
+          comes to mind and then wants February above April (Anir, Aug 7: "if
+          he realises he messed up the order… give the offering owners an
+          option to shuffle it around, drag to reorder, like those three lines
+          that show you can shuffle it"). Order is saved with the page's Save
+          button, like every other roadmap edit. */}
+      {onDragStart && (
+        <span
+          aria-hidden="true"
+          title="Drag to reorder"
+          className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded text-text-tertiary transition-colors hover:text-blue-primary active:cursor-grabbing"
+        >
+          <GripVertical size={15} strokeWidth={2} />
+        </span>
+      )}
       <button
         type="button"
         onClick={onEdit}
@@ -340,6 +295,50 @@ function SummaryRow({
       </button>
     </div>
   );
+}
+
+/**
+ * Reorder-by-drag for any roadmap list. Returns the props a SummaryRow needs.
+ * Kept deliberately plain — HTML5 drag events, no library — because these
+ * lists are short and the rows are already single-purpose cards.
+ */
+function useRowReorder<T>(rows: T[], onChange: (next: T[]) => void) {
+  const [from, setFrom] = useState<number | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  return (index: number) => ({
+    dragging: from === index,
+    dropTarget: over === index && from !== null && from !== index,
+    onDragStart: (event: React.DragEvent<HTMLDivElement>) => {
+      setFrom(index);
+      event.dataTransfer.effectAllowed = "move";
+      // Firefox refuses to start a drag without data on the transfer.
+      event.dataTransfer.setData("text/plain", String(index));
+    },
+    onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
+      if (from === null) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      setOver(index);
+    },
+    onDrop: (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      if (from === null || from === index) {
+        setFrom(null);
+        setOver(null);
+        return;
+      }
+      const next = [...rows];
+      const [moved] = next.splice(from, 1);
+      next.splice(index, 0, moved);
+      onChange(next);
+      setFrom(null);
+      setOver(null);
+    },
+    onDragEnd: () => {
+      setFrom(null);
+      setOver(null);
+    },
+  });
 }
 
 /** One dialog shape for every roadmap list: title, fields, Cancel + Save. */
@@ -406,6 +405,7 @@ function RoadmapModuleEditor({
 }) {
   // -1 = adding a new one; null = dialog closed.
   const [editing, setEditing] = useState<number | null>(null);
+  const reorder = useRowReorder(rows, onChange);
   const [draft, setDraft] = useState<OfferingRoadmapModuleRow>(BLANK_MODULE);
 
   const openNew = () => {
@@ -459,6 +459,7 @@ function RoadmapModuleEditor({
             }
             onEdit={() => openRow(index)}
             onRemove={() => onChange(rows.filter((_, i) => i !== index))}
+            {...reorder(index)}
             removeLabel={`Remove ${row.module || `module ${index + 1}`}`}
           />
         ))
@@ -538,6 +539,7 @@ function RoadmapComparisonEditor({
   onCurrentLabel: (value: string) => void;
 }) {
   const [editing, setEditing] = useState<number | null>(null);
+  const reorder = useRowReorder(rows, onChange);
   const [draft, setDraft] = useState<OfferingRoadmapComparisonRow>(BLANK_COMPARISON);
 
   const openNew = () => {
@@ -616,6 +618,7 @@ function RoadmapComparisonEditor({
             }
             onEdit={() => openRow(index)}
             onRemove={() => onChange(rows.filter((_, i) => i !== index))}
+            {...reorder(index)}
             removeLabel={`Remove ${row.area || `comparison row ${index + 1}`}`}
           />
         ))
@@ -676,6 +679,7 @@ function RoadmapHistoryEditor({
   onChange: (rows: OfferingRoadmapHistoryRow[]) => void;
 }) {
   const [editing, setEditing] = useState<number | null>(null);
+  const reorder = useRowReorder(rows, onChange);
   const [draft, setDraft] = useState<OfferingRoadmapHistoryRow>(BLANK_HISTORY);
 
   const openNew = () => {
@@ -727,6 +731,7 @@ function RoadmapHistoryEditor({
             detail={row.summary.join(" · ") || "No release notes yet"}
             onEdit={() => openRow(index)}
             onRemove={() => onChange(rows.filter((_, i) => i !== index))}
+            {...reorder(index)}
             removeLabel={`Remove ${row.period || `period ${index + 1}`}`}
           />
         ))
@@ -1165,8 +1170,43 @@ export function OfferingReleasesTab({
         )}
       </div>
 
-      {roadmapDetails && (
-        <RoadmapTimeline details={roadmapDetails} showNext={canSeeNext} />
+      {/* THE RELEASE TIMELINE LIVES HERE NOW (Anir, Aug 7: "put the timeline
+          on the roadmap tab for now, and bring back the availability section
+          on the main offering page"). Same component he tuned on Overview —
+          today interpolated between the real dates, days shown whenever the
+          record names one. */}
+      {/* Gated on CONTENT, not on one shape of it. `roadmapDetails` is
+          undefined on offerings whose history lives in `releases`, which is
+          most of them — gating on it alone meant the rail never appeared. */}
+      {(roadmapDetails || releases.length > 0) && (
+        <ReleaseTimeline
+          availability={roadmapDetails?.releaseWave || ""}
+          currentVersion={
+            roadmapDetails?.currentVersion ||
+            releases.find((r) => r.status === "released")?.version ||
+            null
+          }
+          currentReleaseDate={
+            roadmapDetails?.history?.[0]?.period ||
+            releases.find((r) => r.status === "released")?.date ||
+            null
+          }
+          nextVersion={
+            canSeeNext
+              ? roadmapDetails?.nextVersions ||
+                releases.find((r) => r.status === "next")?.version ||
+                ""
+              : ""
+          }
+          nextExpected={
+            canSeeNext
+              ? roadmapDetails?.nextExpectedLive ||
+                releases.find((r) => r.status === "next")?.date ||
+                ""
+              : ""
+          }
+          releases={releases}
+        />
       )}
 
       <SectionCard title="Current Customer Version" icon={CircleCheck}>
