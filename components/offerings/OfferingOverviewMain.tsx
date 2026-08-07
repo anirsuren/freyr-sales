@@ -254,10 +254,30 @@ function ReleaseTimeline({
       Math.max(3, ((date.getTime() - domainStart.getTime()) / domainSpan) * 94 + 3)
     );
   const todayPosition = positionFor(todayUtc);
-  const toneClasses = {
-    past: "border-slate-400 bg-white text-slate-500",
-    current: "border-success bg-success text-white",
-    next: "border-blue-primary bg-white text-blue-primary",
+  /**
+   * WITH FEWER THAN TWO DATED MILESTONES THERE IS NO SPAN TO SCALE AGAINST.
+   *
+   * Proportional placement then piles every dot onto the left edge and the
+   * whole strip reads as broken — one lonely dot and a long empty rail
+   * (Anir, Aug 6). In that case the three stops sit at even thirds and the
+   * caption stops claiming proportional placement; nothing is invented
+   * either way, the dates below are still exactly what is on file.
+   */
+  const datedMilestoneCount = milestones.filter((m) => m.date).length;
+  const proportional = datedMilestoneCount >= 2;
+  const stopAt = (milestone: TimelineMilestone, index: number) =>
+    proportional && milestone.date
+      ? positionFor(milestone.date)
+      : ((index + 0.5) / 3) * 100;
+  const stops = milestones.map(stopAt);
+
+  // Identity by time, not by status vocabulary: shipped past is slate, the
+  // live release is green, what is coming is blue — the same three colours
+  // the roadmap editor uses, so both screens read as one language.
+  const TONE = {
+    past: { dot: "#8E98A8", text: "text-[#5A6472]", panel: "bg-white" },
+    current: { dot: "#20B15A", text: "text-[#137A3C]", panel: "bg-[rgba(32,177,90,0.06)]" },
+    next: { dot: "#0071E3", text: "text-blue-primary", panel: "bg-blue-light/25" },
   } as const;
 
   return (
@@ -266,7 +286,9 @@ function ReleaseTimeline({
         <div>
           <p className="text-[13px] font-semibold text-text-primary">Release timeline</p>
           <p className="mt-0.5 text-[11px] text-text-tertiary">
-            Recorded dates are positioned proportionally; missing dates are not estimated.
+            {proportional
+              ? "Recorded dates are positioned proportionally; missing dates are not estimated."
+              : "Where this offering stands. Only recorded dates are shown — nothing is estimated."}
           </p>
         </div>
         <span className="rounded-full bg-blue-light px-2.5 py-1 text-[10px] font-semibold text-blue-primary">
@@ -281,55 +303,91 @@ function ReleaseTimeline({
             role="img"
             aria-label={`Release timeline from ${formatTimelineDate(domainStart)} to ${formatTimelineDate(domainEnd)}`}
           >
-            <div className="absolute left-[3%] right-[3%] top-6 h-0.5 rounded-full bg-border-light" />
+            {/* The rail carries the story: solid slate-to-green through what
+                has shipped, dashed blue into what has not happened yet. */}
+            <div className="absolute left-0 right-0 top-[26px] h-[3px] rounded-full bg-border-light" />
             <div
-              className="absolute left-[3%] top-6 h-0.5 rounded-full bg-gradient-to-r from-slate-300 via-success to-blue-primary"
-              style={{ width: `${Math.max(todayPosition - 3, 0)}%` }}
+              className="absolute top-[26px] h-[3px] rounded-full"
+              style={{
+                left: `${stops[0]}%`,
+                width: `${Math.max(stops[1] - stops[0], 0)}%`,
+                backgroundImage: `linear-gradient(90deg, ${TONE.past.dot}, ${TONE.current.dot})`,
+              }}
+            />
+            <div
+              className="absolute top-[26px] h-0 border-t-[3px] border-dashed"
+              style={{
+                left: `${stops[1]}%`,
+                width: `${Math.max(stops[2] - stops[1], 0)}%`,
+                borderColor: TONE.next.dot,
+                opacity: 0.55,
+              }}
             />
 
-            {milestones.map((milestone) =>
-              milestone.date ? (
+            {milestones.map((milestone, index) => {
+              const tone = TONE[milestone.tone];
+              return (
                 <div
                   key={`${milestone.eyebrow}-${milestone.title}`}
-                  className="absolute top-[17px] -translate-x-1/2"
-                  style={{ left: `${positionFor(milestone.date)}%` }}
-                  title={`${milestone.eyebrow}: ${milestone.title} · ${formatTimelineDate(milestone.date)}`}
+                  className="absolute top-[18px] -translate-x-1/2"
+                  style={{ left: `${stops[index]}%` }}
+                  title={`${milestone.eyebrow}: ${milestone.title}${
+                    milestone.date ? ` · ${formatTimelineDate(milestone.date)}` : ""
+                  }`}
                 >
                   <span
-                    className={`flex h-4 w-4 items-center justify-center rounded-full border-[3px] shadow-[0_0_0_4px_white] ${toneClasses[milestone.tone]}`}
+                    className="flex h-[18px] w-[18px] items-center justify-center rounded-full border-4 border-white text-white"
+                    style={{
+                      backgroundColor: milestone.date ? tone.dot : "#FFFFFF",
+                      boxShadow: `0 0 0 2px ${tone.dot}${milestone.date ? "" : "80"}, 0 2px 6px rgba(15,23,42,0.16)`,
+                    }}
                   >
-                    {milestone.tone === "current" && (
-                      <Check size={8} strokeWidth={3} aria-hidden="true" />
+                    {milestone.tone === "current" && milestone.date && (
+                      <Check size={9} strokeWidth={3.2} aria-hidden="true" />
                     )}
                   </span>
                 </div>
-              ) : null
-            )}
+              );
+            })}
 
-            <div
-              className="absolute top-0 -translate-x-1/2"
-              style={{ left: `${todayPosition}%` }}
-              title={`Today: ${formatTimelineDate(todayUtc)}`}
-            >
-              <span className="block h-8 w-px bg-blue-primary" />
-              <span className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 rounded-full bg-blue-primary ring-4 ring-blue-light" />
-            </div>
+            {proportional && (
+              <div
+                className="absolute top-0 -translate-x-1/2"
+                style={{ left: `${todayPosition}%` }}
+                title={`Today: ${formatTimelineDate(todayUtc)}`}
+              >
+                <span className="block h-8 w-px bg-blue-primary/60" />
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-3 divide-x divide-border-light border-t border-border-light">
-            {milestones.map((milestone) => (
-              <div key={milestone.eyebrow} className="min-w-0 px-4 pt-3 first:pl-0 last:pr-0">
-                <p className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                  {milestone.eyebrow}
-                </p>
-                <p className="mt-1.5 break-words text-[12.5px] font-semibold leading-snug text-text-primary">
-                  {milestone.title}
-                </p>
-                <p className="mt-1 text-[10.5px] leading-snug text-text-tertiary">
-                  {milestone.detail}
-                </p>
-              </div>
-            ))}
+          <div className="grid grid-cols-3 gap-2.5">
+            {milestones.map((milestone) => {
+              const tone = TONE[milestone.tone];
+              return (
+                <div
+                  key={milestone.eyebrow}
+                  className={`min-w-0 rounded-xl border border-border-light px-3.5 py-3 ${tone.panel}`}
+                >
+                  <p
+                    className={`flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] ${tone.text}`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: tone.dot }}
+                    />
+                    {milestone.eyebrow}
+                  </p>
+                  <p className="mt-1.5 break-words text-[13px] font-semibold leading-snug text-text-primary">
+                    {milestone.title}
+                  </p>
+                  <p className="mt-1 text-[10.5px] leading-snug text-text-tertiary">
+                    {milestone.detail}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

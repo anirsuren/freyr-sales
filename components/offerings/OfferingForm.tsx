@@ -1375,8 +1375,6 @@ export function OfferingForm({
               );
               const accent = isSection ? "#0071E3" : mark.color;
               const RowIcon = isSection ? Layers : mark.icon;
-              const iconLabel = mark.iconLabel;
-              const colorLabel = mark.colorLabel;
               const updateCard = (heading: string, cardDescription: string) =>
                 setCapRows((list) =>
                   list.map((item, index) =>
@@ -1495,45 +1493,11 @@ export function OfferingForm({
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-white p-2.5">
-                        <span className="mr-auto text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                          Card appearance
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setAppearanceRow(i)}
-                          className="inline-flex min-w-[142px] items-center gap-2 rounded-lg border border-border-light px-2.5 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
-                        >
-                          <span
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white"
-                            style={{
-                              backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
-                            }}
-                          >
-                            <RowIcon size={13} strokeWidth={2} />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-[10px] uppercase tracking-[0.04em] text-text-tertiary">Icon</span>
-                            <span className="block truncate text-[12.5px] font-semibold text-text-primary">{iconLabel}</span>
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAppearanceRow(i)}
-                          className="inline-flex min-w-[142px] items-center gap-2 rounded-lg border border-border-light px-2.5 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
-                        >
-                          <span
-                            className="h-7 w-7 shrink-0 rounded-full border border-white shadow-sm"
-                            style={{
-                              backgroundImage: `linear-gradient(135deg, ${mark.color}, ${mark.light})`,
-                            }}
-                          />
-                          <span className="min-w-0">
-                            <span className="block text-[10px] uppercase tracking-[0.04em] text-text-tertiary">Color</span>
-                            <span className="block truncate text-[12.5px] font-semibold text-text-primary">{colorLabel}</span>
-                          </span>
-                        </button>
-                      </div>
+                      {/* NO separate "Card appearance" row. The preview icon
+                          above carries a pencil badge and opens this same
+                          picker, so a second control was the same job twice
+                          (Anir, Aug 6: "you can just click on the icon in the
+                          top left, and it'll automatically let you choose"). */}
                     </div>
                   )}
                 </div>
