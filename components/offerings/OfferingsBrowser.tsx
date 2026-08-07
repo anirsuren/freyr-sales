@@ -253,7 +253,12 @@ function OwnerStrip({
       aria-label={`Owner: ${granted.map((o) => o.name).join(", ")}`}
       className="relative z-10 flex min-w-0 items-center gap-2"
     >
-      <span className="person-row-label person-row-label--owner shrink-0">
+      {/* The crown rides with the word. It is the same mark the Owner filter
+          wears, so "who owns this" reads the same way in the toolbar and on
+          the card (Anir, Aug 7: "put the crown icon next to the text that
+          says the owner"). */}
+      <span className="person-row-label person-row-label--owner shrink-0 gap-1">
+        <Crown size={10} strokeWidth={2.6} aria-hidden="true" />
         Owner
       </span>
       {/* The NAME is on the card, not behind a hover. A face alone made you
@@ -1477,7 +1482,8 @@ export function OfferingsBrowser({
                                     className="inline-flex items-center gap-1.5"
                                     aria-label={`Owner: ${grantedOwners.map((owner) => owner.name).join(", ")}`}
                                   >
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.08em] text-blue-primary">
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.08em] text-blue-primary">
+                                      <Crown size={9} strokeWidth={2.6} aria-hidden="true" />
                                       Owner
                                     </span>
                                     <PersonFan
