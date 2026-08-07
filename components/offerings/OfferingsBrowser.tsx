@@ -650,9 +650,27 @@ export function OfferingsBrowser({
                 category={o.offering_category}
                 className="w-9 h-9 shrink-0"
               />
-              <h3 className="text-[16px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
-                {o.offering_name}
-              </h3>
+              <div className="min-w-0">
+                {/* CATEGORY IS AN EYEBROW, not a chip. It is the top-level
+                    grouping and it already colours the tile's icon, so saying
+                    it again as a pastel blob below was the loudest of three
+                    competing pills. Up here it names the group before you read
+                    the product, in the group's own colour. */}
+                {o.offering_category && (
+                  <p
+                    className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.07em]"
+                    style={{
+                      color: categoryColorByName[o.offering_category] || "#2563EB",
+                    }}
+                  >
+                    <Layers size={10} strokeWidth={2.6} aria-hidden="true" />
+                    <span className="min-w-0 break-words">{o.offering_category}</span>
+                  </p>
+                )}
+                <h3 className="text-[16px] font-semibold text-text-primary leading-snug tracking-[-0.01em]">
+                  {o.offering_name}
+                </h3>
+              </div>
             </div>
             <ChevronRight
               size={16}
@@ -675,41 +693,51 @@ export function OfferingsBrowser({
           </div>
 
           <div className="mt-auto pt-3 border-t border-border-light space-y-2">
-            {/* Offering category, Suren's Jun 27 grouping (replaces markets on
-                the tile). The primary qualifier above the offering type. */}
-            {/* Every data point is a colour + icon chip, never flat gray text
-                (standing chip rule; Anir, Jul 27: "for the data points on each
-                of these, definitely need tags, icons, and colors, the all
-                customer types or the Freyr service thing"). Category, offering
-                type and audience each carry their own hue so a card is
-                scannable without reading a word. */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {o.offering_category && (
-                <MetaChip
-                  icon={Layers}
-                  label={o.offering_category}
-                  color={categoryColorByName[o.offering_category] || "#2563EB"}
+            {/* TWO ROWS, ALWAYS THE SAME TWO ROWS. These used to be a
+                flex-wrap row of chips, so where a card broke depended on how
+                long its labels happened to be — no two cards in the grid
+                lined up (Anir, Aug 7: "it looks atrocious when they're all
+                disorganized, sometimes stacked and sometimes not"). A fixed
+                label column removes the variance entirely: every card has the
+                same skeleton whatever the text length, and the colour + icon
+                rule survives on the value. */}
+            <dl className="grid grid-cols-[34px_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1.5">
+              <dt className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
+                Type
+              </dt>
+              <dd className="flex min-w-0 items-baseline gap-1.5 text-[11.5px] font-semibold leading-snug">
+                <Sparkles
+                  size={11}
+                  strokeWidth={2.4}
+                  aria-hidden="true"
+                  className="translate-y-[1px] shrink-0"
+                  style={{ color: typeColorByName[o.offering_type] || "#7C3AED" }}
                 />
-              )}
-              {o.offering_type && (
-                <MetaChip
-                  icon={Sparkles}
-                  label={o.offering_type}
-                  color={typeColorByName[o.offering_type] || "#7C3AED"}
+                <span
+                  className="min-w-0 break-words"
+                  style={{ color: typeColorByName[o.offering_type] || "#7C3AED" }}
+                >
+                  {o.offering_type || "Not set"}
+                </span>
+              </dd>
+
+              <dt className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
+                For
+              </dt>
+              <dd className="flex min-w-0 items-baseline gap-1.5 text-[11.5px] font-semibold leading-snug text-[#0F766E]">
+                <Users
+                  size={11}
+                  strokeWidth={2.4}
+                  aria-hidden="true"
+                  className="translate-y-[1px] shrink-0 text-[#0F766E]"
                 />
-              )}
-              {hasCt && (
-                <MetaChip
-                  icon={Users}
-                  label={whoForLabel(
-                    families,
-                    o.customerTypes.length,
-                    customerTypes.length
-                  )}
-                  color="#0F766E"
-                />
-              )}
-            </div>
+                <span className="min-w-0 break-words">
+                  {hasCt
+                    ? whoForLabel(families, o.customerTypes.length, customerTypes.length)
+                    : "Not set"}
+                </span>
+              </dd>
+            </dl>
             {/* Service-delivery POC(s), hover a face for who's there + a
                 Teams line to them (Suren: "if there's multiple, make it look
                 like the campaigns page so when I hover over it I can see
