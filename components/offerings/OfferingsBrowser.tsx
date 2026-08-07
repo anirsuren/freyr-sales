@@ -1075,14 +1075,11 @@ export function OfferingsBrowser({
             each card, the "awaiting details" stat card), and both still filter
             from the URL, they just name themselves as a clearable chip below
             instead of owning a permanent control. */}
-        {/* The row holds two different jobs — narrowing the list and ordering
-            it — and five identical pills gave no hint where one ended and the
-            other began (Anir, Aug 7: "add the word filter and the word sort
-            before these dropdowns, so the end user knows there's a difference
-            between these two"). */}
-        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
-          Filter
-        </span>
+        {/* No "Filter" label. The five pills read as filters on sight, and
+            the divider plus the SORT label on the right already say where one
+            job ends and the other begins — the word was spending width the
+            row needed for "GTM status" to spell itself out (Anir, Aug 7:
+            "remove the text that says filter"). */}
         <MultiColorSelect
           values={catId ? catId.split(",") : []}
           onChange={(next) => setCatId(next.join(","))}
@@ -1129,9 +1126,9 @@ export function OfferingsBrowser({
         <MultiColorSelect
           values={gtmStatuses}
           onChange={(next) => setGtm(next.join(","))}
-          minWidth={160}
-          width={128}
-          maxWidth={190}
+          minWidth={170}
+          width={150}
+          maxWidth={210}
           triggerLabel="GTM status"
           dense
           className="shrink-0"
