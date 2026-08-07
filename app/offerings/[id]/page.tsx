@@ -33,6 +33,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
 import { OfferingReleasesTab } from "@/components/offerings/OfferingReleasesTab";
+import { roadmapFromReleases } from "@/lib/roadmapFromReleases";
 import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
@@ -400,22 +401,20 @@ export default async function OfferingDetailPage({
             offeringId={o.id}
             offeringName={o.offering_name}
             releases={o.releases ?? []}
-            roadmapDetails={
-              canSeeNextCustomerVersion
-                ? o.roadmap_details
-                : o.roadmap_details
-                  ? {
-                      ...o.roadmap_details,
-                      nextExpectedLive: "",
-                      nextVersions: "",
-                      nextModules: [],
-                    }
-                  : undefined
-            }
-            // Mock roadmaps are an intentionally read-only overlay. Keeping
-            // the editor out of in-progress mode guarantees fake versions can
-            // never be saved into the shared live catalogue.
-            canEdit={admin && getDataMode() === "live"}
+            roadmapDetails={(() => {
+              // Same bridge the edit page uses: most offerings keep their
+              // history in `releases`, not in a structured roadmap record.
+              const details = roadmapFromReleases(o.roadmap_details, o.releases);
+              if (!details) return undefined;
+              return canSeeNextCustomerVersion
+                ? details
+                : { ...details, nextExpectedLive: "", nextVersions: "", nextModules: [] };
+            })()}
+            // Editable in both modes. Mock writes go to the in-memory mock
+            // catalogue via activeStore(), never to the shared live one, so
+            // there is nothing to protect against here — and Mock is where
+            // there is sample history to practise reordering on.
+            canEdit={admin}
             canSeeNext={canSeeNextCustomerVersion}
             contacts={offeringContacts}
             people={people}

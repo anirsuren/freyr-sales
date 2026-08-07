@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { OfferingForm } from "@/components/offerings/OfferingForm";
+import { roadmapFromReleases } from "@/lib/roadmapFromReleases";
 import {
   getOffering,
   listCustomerTypes,
@@ -17,7 +18,6 @@ import {
   listOfferingCategories,
 } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
-import { getDataMode } from "@/lib/dataMode";
 import {
   listAssignablePeople,
   redactUnverifiedOfferingPeople,
@@ -86,10 +86,15 @@ export default async function EditOfferingPage({
         <OfferingForm
           offeringId={o.id}
           // The complete roadmap editor renders inline in the Product roadmap
-          // section. Mock's sample-roadmap overlay stays read-only: fake
-          // versions must never be savable into the shared live catalogue.
-          roadmapDetails={o.roadmap_details}
-          roadmapEditable={getDataMode() === "live"}
+          // section, in BOTH modes. It used to be live-only, which meant Mock
+          // — the one place with sample versions to practise on — showed a
+          // read-only notice instead of the feature (Anir, Aug 7: "on mock
+          // mode you have to be able to do all of that, mock mode needs to
+          // reflect this as well"). Mock edits are safe: every write goes
+          // through activeStore(), which is the in-memory mock catalogue, and
+          // persistLiveOfferings only ever uploads the live store.
+          roadmapDetails={roadmapFromReleases(o.roadmap_details, o.releases)}
+          roadmapEditable
           initial={{
             offering_type: o.offering_type,
             offering_category: o.offering_category,

@@ -1976,12 +1976,7 @@ export function OfferingForm({
                 canSeeNext
               />
             </div>
-          ) : (
-            <p className="rounded-xl border border-border-light bg-surface/60 p-4 text-[12.5px] leading-relaxed text-text-secondary">
-              The roadmap shown in Mock is a read-only sample. Switch to Real
-              mode to edit the actual roadmap.
-            </p>
-          )}
+          ) : null}
         </FormSection>
       )}
 

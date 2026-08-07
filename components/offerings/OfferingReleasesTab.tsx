@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -303,41 +303,50 @@ function SummaryRow({
  * lists are short and the rows are already single-purpose cards.
  */
 function useRowReorder<T>(rows: T[], onChange: (next: T[]) => void) {
+  // The drag source lives in a REF, not in state. `dragover` fires on the very
+  // next frame after `dragstart`, before React has re-rendered, so a state-held
+  // source still reads null there — preventDefault never runs, the browser
+  // treats the row as an invalid drop target, and `drop` never fires at all.
+  // The ref is what makes the drop land; the state copy only drives the
+  // highlight.
+  const fromRef = useRef<number | null>(null);
   const [from, setFrom] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
+  const reset = () => {
+    fromRef.current = null;
+    setFrom(null);
+    setOver(null);
+  };
   return (index: number) => ({
     dragging: from === index,
     dropTarget: over === index && from !== null && from !== index,
     onDragStart: (event: React.DragEvent<HTMLDivElement>) => {
+      fromRef.current = index;
       setFrom(index);
       event.dataTransfer.effectAllowed = "move";
       // Firefox refuses to start a drag without data on the transfer.
       event.dataTransfer.setData("text/plain", String(index));
     },
     onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
-      if (from === null) return;
+      if (fromRef.current === null) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
-      setOver(index);
+      if (over !== index) setOver(index);
     },
     onDrop: (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
-      if (from === null || from === index) {
-        setFrom(null);
-        setOver(null);
+      const source = fromRef.current;
+      if (source === null || source === index) {
+        reset();
         return;
       }
       const next = [...rows];
-      const [moved] = next.splice(from, 1);
+      const [moved] = next.splice(source, 1);
       next.splice(index, 0, moved);
       onChange(next);
-      setFrom(null);
-      setOver(null);
+      reset();
     },
-    onDragEnd: () => {
-      setFrom(null);
-      setOver(null);
-    },
+    onDragEnd: reset,
   });
 }
 
