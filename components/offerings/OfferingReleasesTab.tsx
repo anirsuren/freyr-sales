@@ -1017,6 +1017,21 @@ export function OfferingReleasesTab({
   const router = useRouter();
   const { toast } = useToast();
   const [adding, setAdding] = useState(false);
+  // SIX STACKED SECTIONS, EACH FOLDABLE. Once Eswar's roadmap content landed,
+  // the tab became a very long scroll with no way to skip a part you were not
+  // reading (Freyr, Aug 7: "can you make all the 6 sections in that tab
+  // collapsible"). Everything starts open — nothing hides on arrival — and the
+  // whole header band is the toggle, which SectionCard already supports.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const isOpen = (key: string) => openSections[key] !== false;
+  const toggleSection = (key: string) =>
+    setOpenSections((prev) => ({ ...prev, [key]: prev[key] === false }));
+  const foldProps = (key: string) => ({
+    emphasis: true,
+    chevron: true,
+    expanded: isOpen(key),
+    onHeaderClick: () => toggleSection(key),
+  });
   const [editingRoadmap, setEditingRoadmap] = useState(false);
   const [draftRoadmap, setDraftRoadmap] = useState<OfferingRoadmapDetails | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1218,7 +1233,7 @@ export function OfferingReleasesTab({
         />
       )}
 
-      <SectionCard title="Current Customer Version" icon={CircleCheck}>
+      <SectionCard title="Current Customer Version" icon={CircleCheck} {...foldProps("current")}>
         {roadmapDetails ? (
           <div className="space-y-5">
             <div>
@@ -1262,7 +1277,7 @@ export function OfferingReleasesTab({
         )}
       </SectionCard>
 
-      <SectionCard title="Feature Comparison — Current vs Previous Version" icon={GitCompareArrows}>
+      <SectionCard title="Feature Comparison — Current vs Previous Version" icon={GitCompareArrows} {...foldProps("comparison")}>
         {roadmapDetails ? (
           <div className="overflow-x-auto rounded-xl border border-border-light">
             <table className="w-full min-w-[760px] border-collapse text-left">
@@ -1326,7 +1341,7 @@ export function OfferingReleasesTab({
         )}
       </SectionCard>
 
-      <SectionCard title="Release History" icon={History}>
+      <SectionCard title="Release History" icon={History} {...foldProps("history")}>
         {roadmapDetails ? (
           <div className="overflow-hidden rounded-xl border border-border-light bg-white">
             {roadmapDetails.history.map((row) => (
@@ -1401,7 +1416,7 @@ export function OfferingReleasesTab({
       </SectionCard>
 
       {canSeeNext && (
-        <SectionCard title="Next Customer Version" icon={Clock}>
+        <SectionCard title="Next Customer Version" icon={Clock} {...foldProps("next")}>
           {roadmapDetails ? (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-xl bg-[#FFF7ED] px-4 py-3">

@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+
 /**
  * THE RELEASE TIMELINE — where today sits against the last, current and next
  * release. It lived on the offering Overview until Aug 7, when Anir moved it
@@ -111,6 +114,7 @@ export function ReleaseTimeline({
   fallbackNext?: { label: string; body: string };
   releases?: OfferingRelease[];
 }) {
+  const [open, setOpen] = useState(true);
   const today = new Date();
   const todayUtc = new Date(
     Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
@@ -276,12 +280,36 @@ export function ReleaseTimeline({
     <div className="mt-5 overflow-hidden rounded-2xl border border-border-light bg-surface shadow-sm">
       {/* Today's date lives in the header, top right — one statement of
           "now", not a badge floating over the rail (Anir, Aug 6). */}
-      <div className="flex items-center justify-between gap-3 border-b border-border-light px-5 py-3">
-        <p className="text-[13px] font-semibold text-text-primary">Release timeline</p>
+      {/* The header band is the toggle, and it wears the same emphasis as the
+          section cards below it so all six read as one stack (Freyr, Aug 7). */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          setOpen((v) => !v);
+        }}
+        className="flex cursor-pointer select-none items-center justify-between gap-3 border-b border-blue-subtle/60 bg-blue-light/60 px-5 py-3 transition-colors hover:bg-blue-light"
+      >
+        <p className="text-[12.5px] font-semibold uppercase tracking-[0.05em] text-blue-primary">
+          Release timeline
+        </p>
         <span className="shrink-0 rounded-full bg-blue-light px-2.5 py-1 text-[10.5px] font-semibold text-blue-primary">
           Today · {formatExactDate(todayUtc)}
         </span>
+        <ChevronDown
+          size={16}
+          strokeWidth={2.2}
+          aria-hidden="true"
+          className={`shrink-0 text-blue-primary transition-transform duration-200 ${
+            open ? "" : "-rotate-90"
+          }`}
+        />
       </div>
+      {open && (
 
       <div className="overflow-x-auto px-5 pb-5 pt-4">
         <div className="min-w-[600px]">
@@ -393,6 +421,7 @@ export function ReleaseTimeline({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

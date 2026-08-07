@@ -316,6 +316,7 @@ export function OfferingContacts({
       // The whole header band toggles, not just the chevron.
       onHeaderClick={() => setRailOpen((v) => !v)}
       expanded={railOpen}
+      emphasis
       bodyClassName={railOpen ? undefined : "hidden"}
       action={
         // Chevron at the rightmost edge, add tucked inside it and only while

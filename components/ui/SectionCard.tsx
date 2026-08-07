@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import { ChevronDown, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // A titled panel: an icon + a header band with a divider, then the body.
@@ -15,6 +15,8 @@ export function SectionCard({
   bodyClassName,
   onHeaderClick,
   expanded,
+  emphasis = false,
+  chevron = false,
 }: {
   title: ReactNode;
   icon?: LucideIcon;
@@ -35,6 +37,16 @@ export function SectionCard({
   onHeaderClick?: () => void;
   /** Drives aria-expanded when the header is a toggle. */
   expanded?: boolean;
+  /**
+   * A LOUDER HEADER BAND. On a page of six stacked sections the default
+   * near-white band did not separate them enough to scan (Freyr, Aug 7, after
+   * filling the Roadmap tab with Eswar's content: "can you make the section
+   * headings stand out more visually"). Opt-in, so the quieter cards
+   * elsewhere in the app are untouched.
+   */
+  emphasis?: boolean;
+  /** Render the disclosure chevron. Callers that draw their own leave this off. */
+  chevron?: boolean;
 }) {
   return (
     <section
@@ -58,7 +70,10 @@ export function SectionCard({
             }
           : {})}
         className={cn(
-          "flex items-center gap-2 px-5 py-3 bg-surface/70 border-b border-border-light",
+          "flex items-center gap-2 px-5 py-3 border-b",
+          emphasis
+            ? "bg-blue-light/60 border-blue-subtle/60"
+            : "bg-surface/70 border-border-light",
           // select-none because the first thing a click on a non-interactive
           // header does is highlight the title, which reads as "nothing
           // happened".
@@ -71,7 +86,12 @@ export function SectionCard({
             <Icon size={13} strokeWidth={2} />
           </span>
         )}
-        <h2 className="text-[12.5px] font-semibold uppercase tracking-[0.05em] text-text-secondary">
+        <h2
+          className={cn(
+            "text-[12.5px] font-semibold uppercase tracking-[0.05em]",
+            emphasis ? "text-blue-primary" : "text-text-secondary"
+          )}
+        >
           {title}
         </h2>
         {action && (
@@ -82,8 +102,23 @@ export function SectionCard({
             {action}
           </div>
         )}
+        {chevron && (
+          <ChevronDown
+            size={16}
+            strokeWidth={2.2}
+            aria-hidden="true"
+            className={cn(
+              "shrink-0 transition-transform duration-200",
+              action ? "ml-2" : "ml-auto",
+              emphasis ? "text-blue-primary" : "text-text-tertiary",
+              expanded === false && "-rotate-90"
+            )}
+          />
+        )}
       </header>
-      <div className={cn("p-5", bodyClassName)}>{children}</div>
+      {expanded === false ? null : (
+        <div className={cn("p-5", bodyClassName)}>{children}</div>
+      )}
     </section>
   );
 }
