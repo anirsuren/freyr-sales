@@ -46,12 +46,23 @@ export type StoredCredential = {
   last_used_at: string | null;
 };
 
-export async function credentialsForUser(authUserId: string): Promise<StoredCredential[]> {
-  const { data } = await db()
+/**
+ * SCOPED TO THIS ORIGIN. A credential enrolled on localhost can never be used
+ * on the deployed site, so listing it there is noise at best and misleading at
+ * worst — it showed eight dev-test passkeys in Anir's production Settings
+ * (Aug 7: "what is all this stuff?"). Pass the rpID and the list only ever
+ * shows keys that actually work where you are standing.
+ */
+export async function credentialsForUser(
+  authUserId: string,
+  rpID?: string
+): Promise<StoredCredential[]> {
+  let query = db()
     .from("webauthn_credentials")
     .select("*")
-    .eq("auth_user_id", authUserId)
-    .order("created_at", { ascending: true });
+    .eq("auth_user_id", authUserId);
+  if (rpID) query = query.eq("rp_id", rpID);
+  const { data } = await query.order("created_at", { ascending: true });
   return (data as StoredCredential[]) ?? [];
 }
 

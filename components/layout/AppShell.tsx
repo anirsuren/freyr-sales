@@ -7,6 +7,7 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AgentDock } from "@/components/agent/AgentDock";
+import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
 import type { DataMode } from "@/lib/dataMode";
 import { isOfferingsOnly, isReleased, isReleasedPath } from "@/lib/release";
 import { useHoverPreference } from "@/lib/hoverPreferences";
@@ -304,6 +305,10 @@ export function AppShell({
       <MyPhotoProvider>
       <TimeZoneProvider>
       <ToastProvider>
+        {/* Mounted on the signed-in shell only — the auth and access-pending
+            branches above return before this, so nobody who is not through
+            the door is ever reported present. */}
+        <PresenceHeartbeat />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-blue-primary focus:text-white focus:text-[14px] focus:font-semibold focus:shadow-card"

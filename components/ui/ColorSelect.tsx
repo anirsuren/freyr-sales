@@ -500,15 +500,21 @@ export function MultiColorSelect({
   // Reserve the menu's final width before it opens. A selected row becomes
   // semibold; when `w-max` measured that live content, selecting the longest
   // label widened the menu by a few pixels and shifted every checkbox left.
-  // This estimate includes checkbox + icon + gaps + row padding and is capped
-  // for narrow screens. The option labels already truncate gracefully.
+  // This estimate includes checkbox + icon + gaps + row padding.
+  //
+  // THE ESTIMATE HAS TO BE GENEROUS, because nothing downstream rescues it:
+  // option labels no longer truncate (standing rule — never cut a word with
+  // "…"), so an under-measured menu wraps a label onto two lines instead. At
+  // 7.5px/char "Presentation" came out 12px short and rendered "Presentati…"
+  // (Anir, Aug 7: "the presentations word is getting cut off"). 8.6 clears the
+  // widest glyphs in the 13px semibold face used for a selected row.
   const longestMenuLabel = Math.max(
     allLabel.length,
     ...options.map((option) => option.label.length)
   );
   const menuWidth = Math.min(
-    360,
-    Math.max(triggerWidth, Math.ceil(longestMenuLabel * 7.5 + 76))
+    400,
+    Math.max(triggerWidth, Math.ceil(longestMenuLabel * 8.6 + 92))
   );
 
   const toggle = (v: string) =>
@@ -704,7 +710,11 @@ export function MultiColorSelect({
                 ) : (
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: accent }} />
                 )}
-                <span className={cn("min-w-0 flex-1 truncate", on && "font-semibold")}>{o.label}</span>
+                {/* No truncation on an option label — a picker that hides
+                    which option it is is not a picker. The menu reserves a
+                    width from the longest label above; anything wider than
+                    the 400px cap wraps rather than cutting. */}
+                <span className={cn("min-w-0 flex-1 whitespace-normal leading-tight", on && "font-semibold")}>{o.label}</span>
               </button>
             );
           })}

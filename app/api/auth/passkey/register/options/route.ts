@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   }
   const { rpID } = relyingParty(request.headers.get("host"));
-  const existing = await credentialsForUser(session.id);
+  const existing = await credentialsForUser(session.id, rpID);
 
   const options = await generateRegistrationOptions({
     rpName: RP_NAME,

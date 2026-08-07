@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
+  ChevronDown,
   Check,
   CircleCheck,
   Clock,
@@ -135,6 +136,14 @@ function SubGroup({
   children: ReactNode;
 }) {
   const restricted = tone === "restricted";
+  // EVERY STEP FOLDS, AND ONLY STEP 1 STARTS OPEN. Six stacked editors —
+  // timeline, modules, capabilities, comparison, history, next — put a page of
+  // form in front of someone who came to change one date (Anir, Aug 7: "this
+  // is too much in the edit offering section on your product roadmap... each
+  // of those sub-sections should also be collapsible. It's too confusing").
+  // Because this lives in SubGroup, both places that render the roadmap
+  // editor — the Roadmap tab's modal and the Edit-offering page — get it.
+  const [open, setOpen] = useState(step === 1);
   return (
     <section
       className={`relative overflow-hidden rounded-xl border pl-[3px] ${
@@ -150,26 +159,43 @@ function SubGroup({
         }`}
       />
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-        <span
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-bold tnum ${
-            restricted
-              ? "bg-blue-primary text-white"
-              : "bg-white text-text-secondary ring-1 ring-border-light"
-          }`}
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
         >
-          {step}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[13.5px] font-semibold leading-tight text-text-primary">
-            {title}
-          </h3>
-          <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
-            {caption}
-          </p>
-        </div>
-        {action}
+          <span
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-bold tnum ${
+              restricted
+                ? "bg-blue-primary text-white"
+                : "bg-white text-text-secondary ring-1 ring-border-light"
+            }`}
+          >
+            {step}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-semibold leading-tight text-text-primary">
+              {title}
+            </span>
+            <span className="mt-0.5 block text-[11.5px] leading-snug text-text-secondary">
+              {caption}
+            </span>
+          </span>
+          <ChevronDown
+            size={16}
+            strokeWidth={2.2}
+            aria-hidden="true"
+            className={`shrink-0 text-text-tertiary transition-transform ${
+              open ? "" : "-rotate-90"
+            }`}
+          />
+        </button>
+        {/* An "Add module" button on a closed section would add a row nobody
+            can see, so the action travels with the content. */}
+        {open && action}
       </div>
-      <div className="space-y-2 px-4 pb-4">{children}</div>
+      {open && <div className="space-y-2 px-4 pb-4">{children}</div>}
     </section>
   );
 }
@@ -845,6 +871,21 @@ function Milestone({
   );
 }
 
+/** Write the current release's date into the newest Release-history row —
+ *  the one place the Roadmap timeline reads it from — creating that row when
+ *  the offering has no recorded history yet. */
+function withCurrentPeriod(
+  draft: OfferingRoadmapDetails,
+  period: string
+): OfferingRoadmapDetails {
+  if (draft.history.length === 0) {
+    return { ...draft, history: [{ period, summary: [] }] };
+  }
+  const history = [...draft.history];
+  history[0] = { ...history[0], period };
+  return { ...draft, history };
+}
+
 export function RoadmapEditorFields({
   draft,
   onChange,
@@ -856,6 +897,7 @@ export function RoadmapEditorFields({
 }) {
   const previousPeriod =
     draft.history[1]?.period || draft.comparisonPreviousLabel || "";
+  const currentPeriod = draft.history[0]?.period || "";
   return (
     <>
       {/* A TRUE timeline, read top to bottom. The old three-across layout ran
@@ -888,16 +930,31 @@ export function RoadmapEditorFields({
                 placeholder="Version 2.5"
                 aria-label="Current version"
               />
+              {/* THE DATE ON THE TIMELINE, EDITED WHERE IT IS READ. This input
+                  used to write `releaseWave` while the timeline read the newest
+                  Release-history period — so typing a date here changed nothing
+                  the reader could see (Anir, Aug 7: "just make sure it's
+                  editable"). It now edits that period directly; the same value
+                  appears at the top of Release history below. Free text on
+                  purpose: Freyr records some releases to the month only, and a
+                  date picker would force us to invent a day. */}
               <input
                 className={FIELD}
-                value={draft.releaseWave}
-                onChange={(event) =>
-                  onChange({ ...draft, releaseWave: event.target.value })
-                }
-                placeholder="Live since July 2026"
+                value={currentPeriod}
+                onChange={(event) => onChange(withCurrentPeriod(draft, event.target.value))}
+                placeholder="Jul 2026 — or 2026-07-14 for an exact day"
                 aria-label="Current release date"
               />
             </div>
+            <input
+              className={`${FIELD} mt-3`}
+              value={draft.releaseWave}
+              onChange={(event) =>
+                onChange({ ...draft, releaseWave: event.target.value })
+              }
+              placeholder="Release wave — optional note, e.g. Live since July 2026"
+              aria-label="Release wave note"
+            />
           </Milestone>
 
           {canSeeNext && (
@@ -1020,12 +1077,23 @@ export function OfferingReleasesTab({
   // SIX STACKED SECTIONS, EACH FOLDABLE. Once Eswar's roadmap content landed,
   // the tab became a very long scroll with no way to skip a part you were not
   // reading (Freyr, Aug 7: "can you make all the 6 sections in that tab
-  // collapsible"). Everything starts open — nothing hides on arrival — and the
-  // whole header band is the toggle, which SectionCard already supports.
+  // collapsible"). The whole header band is the toggle, which SectionCard
+  // already supports.
+  //
+  // ONLY THE FIRST ONE OPENS (Anir, Aug 7: "why is everything just opened by
+  // default... only the first should be opened right"). Opening all six put a
+  // page of scroll in front of the one thing a seller actually came for. The
+  // timeline strip above keeps its own default-open state — it is one line
+  // tall and it IS the glance, so collapsing it would leave the tab empty on
+  // arrival.
+  const DEFAULT_OPEN_SECTION = "current";
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const isOpen = (key: string) => openSections[key] !== false;
+  const isOpen = (key: string) => openSections[key] ?? key === DEFAULT_OPEN_SECTION;
   const toggleSection = (key: string) =>
-    setOpenSections((prev) => ({ ...prev, [key]: prev[key] === false }));
+    setOpenSections((prev) => ({
+      ...prev,
+      [key]: !(prev[key] ?? key === DEFAULT_OPEN_SECTION),
+    }));
   const foldProps = (key: string) => ({
     emphasis: true,
     chevron: true,
@@ -1464,7 +1532,6 @@ export function OfferingReleasesTab({
         people={people}
         owners={owners}
         title="Key Contacts"
-        defaultOpen
       />
 
       <Modal

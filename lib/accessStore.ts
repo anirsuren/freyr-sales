@@ -772,6 +772,23 @@ export async function reviewAccessRequest(
   if (reviewed.error) throw new Error(reviewed.error.message);
 }
 
+/**
+ * THE HEARTBEAT BEHIND ONLINE STATUS. Called from /api/presence roughly once a
+ * minute while a signed-in tab is open, so `last_seen_at` means "was using the
+ * app", not "signed in at some point" — which is all it meant when only the
+ * login path ever wrote it, and is why the directory could not tell anyone
+ * apart. Fails quietly: a missed heartbeat degrades a presence dot, and is
+ * never worth failing a page for.
+ */
+export async function touchMemberPresence(workspace: string, memberId: string) {
+  const client = adminClient();
+  await client
+    .from("app_users")
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq("id", memberId)
+    .eq("workspace_id", workspace);
+}
+
 export async function updateWorkspaceMember(
   workspace: string,
   memberId: string,

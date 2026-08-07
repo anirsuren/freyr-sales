@@ -81,12 +81,26 @@ export function PasskeySetup() {
             Touch ID and passkeys
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
-            Sign in with your fingerprint or face instead of typing a password.
-            Your password still works.
+            {passkeys.length > 0
+              ? `Touch ID is on for this account. Sign in with your fingerprint instead of a password${
+                  passkeys.length === 1 ? "" : ` on ${passkeys.length} devices`
+                }.`
+              : "Sign in with your fingerprint or face instead of typing a password. Your password still works."}
           </p>
         </div>
-        <Button onClick={enrol} loading={busy} disabled={!supported} className="shrink-0">
-          Set up Touch ID
+        {/* THE BUTTON SAYS WHAT IT WILL DO NEXT. It read "Set up Touch ID"
+            even once you had, which reads as "that did not work" (Anir, Aug 7:
+            "I just set up Touch ID and now it's saying I have to set up Touch
+            ID again"). With a key already on this device the job is adding
+            another one. */}
+        <Button
+          onClick={enrol}
+          loading={busy}
+          disabled={!supported}
+          variant={passkeys.length > 0 ? "secondary" : "primary"}
+          className="shrink-0"
+        >
+          {passkeys.length > 0 ? "Add another device" : "Set up Touch ID"}
         </Button>
       </div>
 

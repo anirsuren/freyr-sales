@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Phone, Mail, MapPin, Globe2, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
+import { PresenceDot } from "@/components/presence/PresenceDot";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Badge } from "@/components/ui/Badge";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
@@ -47,6 +48,13 @@ export type RosterRep = {
   // The actual deals sitting in each stage — so a hovered slice / row shows the
   // real company + contact + value behind the number, not just the aggregate.
   stageDeals?: Record<string, { company: string; contact: string; value: number }[]>;
+  /**
+   * When this person was last using the app, for the live presence dot beside
+   * their photo. Only real workspace members have one — the synthetic roster
+   * carries null, and a null reads "Never signed in" rather than inventing a
+   * plausible time for somebody who does not exist.
+   */
+  lastSeenAt?: string | null;
 };
 
 // The rep's biggest open deals across every stage — for the row-hover "Top open
@@ -439,7 +447,19 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                 summary={
                   <>
                     <div className="flex items-center gap-3">
-                      <Avatar name={r.name} className="w-11 h-11 text-[14px] shrink-0" />
+                      {/* Live presence on the photo. Rendered only for real workspace
+                          members — the synthetic mock roster passes no
+                          lastSeenAt at all, and a dot on a person who does not
+                          exist would be the exact fiction this replaced. */}
+                      <span className="relative shrink-0">
+                        <Avatar name={r.name} className="w-11 h-11 text-[14px] shrink-0" />
+                        {r.lastSeenAt !== undefined && (
+                          <PresenceDot
+                            lastSeenAt={r.lastSeenAt}
+                            className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white"
+                          />
+                        )}
+                      </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           {/* Stretched nav link — the whole card opens the rep. */}
@@ -714,7 +734,15 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         }
                       >
                         <Link href={`/analytics/reps/${r.slug}`} className="flex items-center gap-3 group">
-                          <Avatar name={r.name} className="w-10 h-10 text-[13px] shrink-0" />
+                          <span className="relative shrink-0">
+                            <Avatar name={r.name} className="w-10 h-10 text-[13px] shrink-0" />
+                            {r.lastSeenAt !== undefined && (
+                              <PresenceDot
+                                lastSeenAt={r.lastSeenAt}
+                                className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white"
+                              />
+                            )}
+                          </span>
                           <span className="min-w-0">
                             <span className="flex items-center gap-2">
                               <span className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary truncate">

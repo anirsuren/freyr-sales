@@ -38,6 +38,7 @@ import {
   type UserIdentity,
 } from "@/lib/userIdentity";
 import { canSwitchWorkspaceMode } from "@/lib/release";
+import { MemberPresence } from "@/components/presence/PresenceDot";
 
 /**
  * WHAT AN INVITED PERSON MAY DO, as a colour + icon each.
@@ -1524,7 +1525,14 @@ export function SettingsTabs({
                   ) : (
                     <RoleTag role={member.role} size="sm" className="w-fit" />
                   )}
-                  <span className={cn("inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-semibold", member.active ? "bg-success/10 text-success" : "bg-surface text-text-tertiary")}><span className={cn("h-1.5 w-1.5 rounded-full", member.active ? "bg-success" : "bg-text-tertiary")} />{member.active ? "Active" : "Suspended"}</span>
+                  {/* STATUS IS PRESENCE, NOT THE ACCOUNT FLAG. This column
+                      printed "Active" on every row, because `active` only means
+                      the account is not suspended — so eight people who were
+                      plainly not all at their desks read identically (Anir,
+                      Aug 7: "You have to know who is online... obviously
+                      they're not all online"). A suspended account still says
+                      so: that outranks where the person is. */}
+                  <MemberPresence active={member.active} lastSeenAt={member.lastSeenAt} />
                   {/* Human time, not an hour counter — "186 hours ago" means
                       nothing; "Jul 30" does (Anir, Aug 6). Hover shows the
                       exact moment, per the app-wide timestamp rule. */}

@@ -325,6 +325,44 @@ export function materialFormat(kind: string | undefined): MaterialFormat {
 }
 
 /**
+ * THE ACTUAL FILE TYPE — "PDF", "MP4", "PPTX", "CSV" — as distinct from the
+ * four broad formats above (Anir, Aug 7: "I want to see the CSV or I want to
+ * see an MP4 video... I think that should be a filter too"). A rep hunting for
+ * something they can drop into a deck cares that it is a PPTX, and "Presentation"
+ * does not tell them that.
+ *
+ * Read from the stored object path first — an uploaded file always has one —
+ * and from the link's own path second. Returns null when neither names an
+ * extension: a SharePoint folder or a YouTube link genuinely has no file type,
+ * and stamping a guessed one on a real row would be inventing data.
+ *
+ * The extension must start with a letter and be at least two characters, so a
+ * version fragment like ".../specs/v1.2" is not read as a file type.
+ */
+const FILE_TYPE_PATTERN = /\.([a-z][a-z0-9]{1,5})$/i;
+
+export function materialFileType(
+  material: Pick<OfferingMaterial, "docsPath" | "url">
+): string | null {
+  for (const source of [material.docsPath, material.url]) {
+    if (!source) continue;
+    let path = source.trim();
+    if (!path) continue;
+    if (/^https?:\/\//i.test(path)) {
+      try {
+        // A query string can carry its own dots; only the path names the file.
+        path = new URL(path).pathname;
+      } catch {
+        // Not parsable as a URL — fall through and read the raw string.
+      }
+    }
+    const match = path.match(FILE_TYPE_PATTERN);
+    if (match) return match[1].toUpperCase();
+  }
+  return null;
+}
+
+/**
  * The material's original, finer-grained type — but ONLY when it says more
  * than its format already does. A file uploaded as a plain Document returns
  * null (no point printing "Document · Document"); a case study uploaded under

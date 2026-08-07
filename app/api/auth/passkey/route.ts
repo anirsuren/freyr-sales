@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { APP_SESSION_COOKIE, verifyAppSession } from "@/lib/appSession";
-import { credentialsForUser, deleteCredential } from "@/lib/passkeys";
+import { credentialsForUser, deleteCredential, relyingParty } from "@/lib/passkeys";
 
 /** The passkeys on your own account: list them, remove one. */
 export async function GET(request: NextRequest) {
@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
     request.cookies.get(APP_SESSION_COOKIE)?.value
   );
   if (!session) return NextResponse.json({ passkeys: [] }, { status: 401 });
-  const creds = await credentialsForUser(session.id);
+  const { rpID } = relyingParty(request.headers.get("host"));
+  const creds = await credentialsForUser(session.id, rpID);
   return NextResponse.json(
     {
       passkeys: creds.map((c) => ({

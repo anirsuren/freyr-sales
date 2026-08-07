@@ -128,6 +128,7 @@ export default async function TeamPage() {
         trend: [0, 0, 0, 0, 0, 0],
         stageValues: zeroStages,
         stageDeals: {},
+        lastSeenAt: member.lastSeenAt,
       };
     });
     const rollup = [

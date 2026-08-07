@@ -9,6 +9,7 @@ import {
   Folder,
   FolderOpen,
   FileText,
+  FileType,
   X,
   ExternalLink,
   Files,
@@ -42,6 +43,7 @@ import {
   materialFolderLabel,
   normalizeFolderPath,
   materialFormat,
+  materialFileType,
   canonicalMaterialFolder,
   materialJourneyStages,
   type MaterialFormat,
@@ -216,6 +218,9 @@ export function MaterialsSection({
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
+  /** The literal extension — PDF, MP4, PPTX, CSV. Separate from `formats`,
+   *  which is the four broad families. */
+  const [fileTypes, setFileTypes] = useState<string[]>([]);
   // ONE view for files: the details table (Change Request point 25, Saras,
   // Aug 3 — "restrict the sales materials view option to only one 'List'
   // view"). The 1/2/4-column tile layouts and their saved preference are
@@ -522,7 +527,11 @@ export function MaterialsSection({
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
-  const anyFilter = formats.length > 0 || stages.length > 0 || levels.length > 0;
+  const anyFilter =
+    formats.length > 0 ||
+    stages.length > 0 ||
+    levels.length > 0 ||
+    fileTypes.length > 0;
   // Agent-training uploads never reach a rep's list. They are background
   // knowledge for the assistant, not collateral, so only an owner — who has
   // to be able to manage them — sees them here at all.
@@ -547,6 +556,28 @@ export function MaterialsSection({
     () => allFolders(mine, materialFolders),
     [mine, materialFolders]
   );
+  /**
+   * THE FILE TYPES ACTUALLY IN THIS OFFERING, not a fixed menu. The catalogue
+   * is whatever Freyr uploaded, so a hard-coded "CSV" row on an offering that
+   * holds none is a filter that can only ever return nothing. Each type
+   * borrows its format's glyph, keeping the one-blue-family look the format
+   * pills already have.
+   *
+   * The dropdown itself is hidden when the offering has no typed files at all
+   * — unlike the other three filters, whose options are the same everywhere,
+   * this one has genuinely nothing to offer on a link-only offering.
+   */
+  const fileTypeOptions = useMemo(() => {
+    const seen = new Map<string, LucideIcon>();
+    for (const material of mine) {
+      const type = materialFileType(material);
+      if (!type || seen.has(type)) continue;
+      seen.set(type, MATERIAL_FORMAT_META[materialFormat(material.kind)].icon);
+    }
+    return Array.from(seen.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([value, icon]) => ({ value, label: value, color: "#0071E3", icon }));
+  }, [mine]);
   const subFolders =
     anyFilter || showAllFiles ? [] : childFolders(folders, folder);
   /**
@@ -568,6 +599,10 @@ export function MaterialsSection({
       )
         return false;
       if (levels.length && !levels.includes(m.accessLevel ?? "")) return false;
+      // A material whose source names no extension matches no file type —
+      // it is never quietly folded into one it might have been.
+      if (fileTypes.length && !fileTypes.includes(materialFileType(m) ?? ""))
+        return false;
       return true;
     })
     .sort(
@@ -579,6 +614,7 @@ export function MaterialsSection({
     setFormats([]);
     setStages([]);
     setLevels([]);
+    setFileTypes([]);
   };
 
   // localStorage cannot be read during the server render. Showing the default
@@ -684,6 +720,18 @@ export function MaterialsSection({
             icon: MATERIAL_FORMAT_META[f].icon,
           }))}
         />
+        {fileTypeOptions.length > 0 && (
+          <MultiColorSelect
+            values={fileTypes}
+            onChange={setFileTypes}
+            minWidth={150}
+            allLabel="All file types"
+            allIcon={FileType}
+            allColor="#0071E3"
+            ariaLabel="Filter by file type"
+            options={fileTypeOptions}
+          />
+        )}
         <MultiColorSelect
           values={stages}
           onChange={setStages}
@@ -933,6 +981,7 @@ export function MaterialsSection({
                 const Icon = MATERIAL_ICON[material.kind] ?? formatMeta.icon;
                 const level = material.accessLevel ? ACCESS_LEVEL_META[material.accessLevel] : null;
                 const stagesForMaterial = materialJourneyStages(material);
+                const fileType = materialFileType(material);
                 const uploaded = Boolean(material.docsPath);
                 const uploadDate = uploadedAt(material);
                 return (
@@ -973,7 +1022,20 @@ export function MaterialsSection({
                         </span>
                         <span className="min-w-0">
                           <span className="block break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary">{material.label}</span>
-                          <span className="block break-words text-[10.5px] text-text-tertiary">{materialFolderLabel(material.folder || "Others")}</span>
+                          {/* Folder, then the real file type under it (Anir,
+                              Aug 7: "it should show me the file type on this
+                              row too. Maybe tuck it under sales decks"). The
+                              FILE FORMAT column says "Presentation"; this says
+                              PPTX, which is what a rep needs to know before
+                              they promise to send it. Nothing renders when the
+                              source names no extension — a linked SharePoint
+                              folder has no file type to state. */}
+                          <span className="block break-words text-[10.5px] text-text-tertiary">
+                            {materialFolderLabel(material.folder || "Others")}
+                            {fileType && (
+                              <span className="ml-1.5 font-semibold text-blue-primary">{fileType}</span>
+                            )}
+                          </span>
                           {material.description && (
                             <span className="mt-1 block break-words text-[11px] leading-snug text-text-secondary">
                               {material.description}
