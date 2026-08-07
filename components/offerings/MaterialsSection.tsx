@@ -31,10 +31,8 @@ import {
   ACCESS_LEVEL_META,
   JOURNEY_STAGES,
   JOURNEY_STAGE_META,
-  MATERIAL_COLOR,
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
-  DOCUMENT_TYPE_META,
   MATERIAL_ICON,
   allFolders,
   childFolders,
@@ -43,7 +41,6 @@ import {
   materialsInFolder,
   materialFolderLabel,
   normalizeFolderPath,
-  legacyKindLabel,
   materialFormat,
   canonicalMaterialFolder,
   materialJourneyStages,
@@ -934,10 +931,6 @@ export function MaterialsSection({
                 const format = materialFormat(material.kind);
                 const formatMeta = MATERIAL_FORMAT_META[format];
                 const Icon = MATERIAL_ICON[material.kind] ?? formatMeta.icon;
-                const originalKind = legacyKindLabel(material.kind);
-                const documentType = material.documentType
-                  ? DOCUMENT_TYPE_META[material.documentType]
-                  : null;
                 const level = material.accessLevel ? ACCESS_LEVEL_META[material.accessLevel] : null;
                 const stagesForMaterial = materialJourneyStages(material);
                 const uploaded = Boolean(material.docsPath);
@@ -990,31 +983,13 @@ export function MaterialsSection({
                       </button>
                     </td>
                     <td className="px-3 py-3">
-                      {/* Format first, then WHAT KIND of document it is —
-                          "Sales deck", "Success story / case study", "Battle
-                          card". Both tags stay, and they read the same way in
-                          the table and on the cards (Anir, Aug 7: "the second
-                          tag for the success story will be needed… make sure
-                          it shows up on both views"). */}
-                      <div className="flex flex-col items-start gap-1">
-                        <TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} />
-                        {documentType && (
-                          <TagPill
-                            label={documentType.label}
-                            color={documentType.color}
-                            icon={FileText}
-                            variant="outline"
-                          />
-                        )}
-                        {!documentType && originalKind && (
-                          <TagPill
-                            label={originalKind}
-                            color={MATERIAL_COLOR[material.kind]}
-                            icon={Icon}
-                            variant="outline"
-                          />
-                        )}
-                      </div>
+                      {/* FILE FORMAT means the format. Nothing else. The
+                          document-kind tag ("Sales deck", "Training material",
+                          "Success story / case study") repeated the folder the
+                          row already names underneath its title (Anir, Aug 7:
+                          "only the file format tags should show up… you have
+                          to remove this"). */}
+                      <TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} />
                     </td>
                     <td className="px-3 py-3">
                       {level ? <TagPill label={level.label} color={level.color} icon={level.icon} variant={material.accessLevel === "internal_only" ? "solid" : "tint"} /> : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
@@ -1118,10 +1093,7 @@ export function MaterialsSection({
             const Icon = MATERIAL_ICON[material.kind] ?? formatMeta.icon;
             // What this file was uploaded as, back when the picker offered
             // nine types. Shown only when it says more than the format does.
-            const originalKind = legacyKindLabel(material.kind);
-            const documentType = material.documentType
-              ? DOCUMENT_TYPE_META[material.documentType]
-              : null;
+
             const materialStages = materialJourneyStages(material);
             const level = material.accessLevel
               ? ACCESS_LEVEL_META[material.accessLevel]
@@ -1244,23 +1216,7 @@ export function MaterialsSection({
                       color={formatMeta.color}
                       icon={formatMeta.icon}
                     />
-                    {/* Same pair the table shows, in the same order, so the
-                        two views describe a file identically. */}
-                    {documentType ? (
-                      <TagPill
-                        label={documentType.label}
-                        color={documentType.color}
-                        icon={FileText}
-                        variant="outline"
-                      />
-                    ) : originalKind ? (
-                      <TagPill
-                        label={originalKind}
-                        color={MATERIAL_COLOR[material.kind]}
-                        icon={Icon}
-                        variant="outline"
-                      />
-                    ) : null}
+
                     {materialStages.map((stageName) => {
                       const stage = JOURNEY_STAGE_META[stageName];
                       return <TagPill key={stageName} label={stage.short} color={stage.color} icon={stage.icon} />;
