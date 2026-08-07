@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { appHomePath } from "@/lib/appHome";
 import { ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { SupabaseLoginForm } from "@/components/auth/SupabaseLoginForm";
@@ -67,11 +68,11 @@ export default function LoginPage() {
               <ShieldCheck size={18} /> Continue with Microsoft
             </a>
           ) : alb ? (
-            <Link href="/dashboard" className="w-full h-11 rounded-lg bg-blue-primary text-white font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-blue-hover transition-colors">
+            <Link href={appHomePath()} className="w-full h-11 rounded-lg bg-blue-primary text-white font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-blue-hover transition-colors">
               <ShieldCheck size={18} /> Continue with Microsoft
             </Link>
           ) : (
-            <Link href="/dashboard" className="w-full h-11 rounded-lg bg-blue-primary text-white font-semibold text-[14px] flex items-center justify-center hover:bg-blue-hover transition-colors">
+            <Link href={appHomePath()} className="w-full h-11 rounded-lg bg-blue-primary text-white font-semibold text-[14px] flex items-center justify-center hover:bg-blue-hover transition-colors">
               Enter local workspace
             </Link>
           )}

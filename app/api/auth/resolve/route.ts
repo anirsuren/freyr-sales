@@ -9,9 +9,10 @@ import {
 import { resolveWorkspaceAccess } from "@/lib/accessStore";
 import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
 import { authUrl, configuredAuthOrigin } from "@/lib/authOrigin";
+import { appHomePath } from "@/lib/appHome";
 
 function safeNext(request: NextRequest, origin: string): string {
-  const value = request.nextUrl.searchParams.get("next") || "/offerings";
+  const value = request.nextUrl.searchParams.get("next") || appHomePath();
   try {
     const candidate = new URL(value, origin);
     if (
@@ -23,7 +24,7 @@ function safeNext(request: NextRequest, origin: string): string {
       return `${candidate.pathname}${candidate.search}${candidate.hash}`;
     }
   } catch {}
-  return "/offerings";
+  return appHomePath();
 }
 
 export async function GET(request: NextRequest) {

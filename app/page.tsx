@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -10,6 +11,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import styles from "./landing.module.css";
+import { APP_SESSION_COOKIE, verifyAppSession } from "@/lib/appSession";
+import { appHomePath } from "@/lib/appHome";
+
+export const dynamic = "force-dynamic";
 
 const capabilities = [
   {
@@ -29,7 +34,16 @@ const capabilities = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  // THE LANDING PAGE ASKS WHO YOU ARE. It never did, so it offered "Sign in"
+  // to people already holding a valid session while /dashboard let them
+  // straight through — the same browser looked signed out on one URL and
+  // signed in on the next (Anir, Aug 7). The cookie is verified here, not
+  // merely read, so a tampered or expired one still shows the signed-out page.
+  const session = await verifyAppSession(
+    (await cookies()).get(APP_SESSION_COOKIE)?.value
+  );
+  const home = appHomePath();
   return (
     <main className={styles.page}>
       <div className={styles.ambient} aria-hidden="true" />
@@ -64,11 +78,25 @@ export default function Home() {
           </p>
 
           <div className={styles.actions}>
-            <Link href="/login" className={styles.primaryAction}>
-              Sign in to Sales Intelligence
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            <span className={styles.actionNote}>For Freyr teams</span>
+            {session ? (
+              <>
+                <Link href={home} className={styles.primaryAction}>
+                  Open Sales Intelligence
+                  <ArrowRight size={18} aria-hidden="true" />
+                </Link>
+                <span className={styles.actionNote}>
+                  Signed in as {session.name || session.email}
+                </span>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className={styles.primaryAction}>
+                  Sign in to Sales Intelligence
+                  <ArrowRight size={18} aria-hidden="true" />
+                </Link>
+                <span className={styles.actionNote}>For Freyr teams</span>
+              </>
+            )}
           </div>
         </div>
 
