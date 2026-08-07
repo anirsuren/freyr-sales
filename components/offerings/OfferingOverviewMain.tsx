@@ -21,7 +21,11 @@ import { HoverCard } from "@/components/ui/HoverCard";
 import { formatMoney } from "@/lib/pipeline";
 import { DonutChart, DonutLegend, VIZ_SERIES } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
-import { type Offering, hydrateOffering } from "@/lib/offerings";
+import {
+  type Offering,
+  type OfferingRelease,
+  hydrateOffering,
+} from "@/lib/offerings";
 import type { OfferingReport } from "@/lib/revenue";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
 import { formatDate } from "@/lib/utils";
@@ -73,6 +77,262 @@ function SectionHeading({
         </div>
       </div>
       {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
+const TIMELINE_MONTHS = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
+] as const;
+
+function parseTimelineDate(value?: string | null): Date | null {
+  if (!value) return null;
+  const text = value.trim();
+  if (!text) return null;
+
+  const iso = text.match(/\b(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/);
+  if (iso) {
+    const parsed = new Date(Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const monthYear = text.match(
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[\s./-]+(?:'?(\d{2})|(20\d{2}))\b/i
+  );
+  if (!monthYear) return null;
+
+  const month = TIMELINE_MONTHS.findIndex((candidate) =>
+    monthYear[1].toLowerCase().startsWith(candidate)
+  );
+  const year = monthYear[3]
+    ? Number(monthYear[3])
+    : 2000 + Number(monthYear[2]);
+  if (month < 0 || !Number.isFinite(year)) return null;
+  return new Date(Date.UTC(year, month, 1));
+}
+
+function formatTimelineDate(date: Date | null): string {
+  if (!date) return "Date not recorded";
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+type TimelineMilestone = {
+  eyebrow: string;
+  title: string;
+  detail: string;
+  date: Date | null;
+  tone: "past" | "current" | "next";
+};
+
+function ReleaseTimeline({
+  availability,
+  currentVersion,
+  currentReleaseDate,
+  nextVersion,
+  nextExpected,
+  fallbackNext,
+  releases,
+}: {
+  availability: string;
+  currentVersion: string | null;
+  currentReleaseDate: string | null;
+  nextVersion: string;
+  nextExpected: string;
+  fallbackNext?: { label: string; body: string };
+  releases?: OfferingRelease[];
+}) {
+  const today = new Date();
+  const todayUtc = new Date(
+    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+  );
+  const datedReleased = (releases || [])
+    .filter((release) => release.status === "released")
+    .map((release) => ({ release, date: parseTimelineDate(release.date) }))
+    .filter((entry): entry is { release: OfferingRelease; date: Date } => !!entry.date)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const datedNext = (releases || [])
+    .filter((release) => release.status === "next")
+    .map((release) => ({ release, date: parseTimelineDate(release.date) }))
+    .filter((entry): entry is { release: OfferingRelease; date: Date } => !!entry.date)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
+
+  const latestReleased = datedReleased.at(-1);
+  const previousReleased = datedReleased.at(-2);
+  const parsedCurrentDate =
+    latestReleased?.date || parseTimelineDate(currentReleaseDate);
+  const parsedNextDate =
+    datedNext?.date ||
+    parseTimelineDate(nextExpected) ||
+    parseTimelineDate(availability);
+  const availabilityIsFuture = !!(
+    parsedNextDate && parsedNextDate.getTime() > todayUtc.getTime()
+  );
+  const availableNow = /available\s+now|currently\s+available/i.test(availability);
+
+  const previous: TimelineMilestone = previousReleased
+    ? {
+        eyebrow: "Previous release",
+        title: previousReleased.release.version,
+        detail: formatTimelineDate(previousReleased.date),
+        date: previousReleased.date,
+        tone: "past",
+      }
+    : {
+        eyebrow: "Previous release",
+        title: "Not recorded",
+        detail: "No earlier dated release is on file",
+        date: null,
+        tone: "past",
+      };
+
+  const current: TimelineMilestone = latestReleased || currentVersion
+    ? {
+        eyebrow: "Current release",
+        title: latestReleased?.release.version || currentVersion || "Current release",
+        detail: parsedCurrentDate
+          ? `Live since ${formatTimelineDate(parsedCurrentDate)}`
+          : availableNow
+            ? "Available now · release date not recorded"
+            : "Release date not recorded",
+        date: parsedCurrentDate,
+        tone: "current",
+      }
+    : {
+        eyebrow: "Where we are now",
+        title: availabilityIsFuture
+          ? "In preparation"
+          : availableNow
+            ? "Available now"
+            : availability || "Status not recorded",
+        detail: "Today",
+        date: todayUtc,
+        tone: "current",
+      };
+
+  const nextTitle =
+    datedNext?.release.version ||
+    nextVersion ||
+    (availabilityIsFuture ? "Available" : fallbackNext?.body) ||
+    "Not scheduled";
+  const next: TimelineMilestone = {
+    eyebrow: availabilityIsFuture && !nextVersion ? "Next availability" : "Next release",
+    title: nextTitle,
+    detail: parsedNextDate
+      ? `${parsedNextDate.getTime() < todayUtc.getTime() ? "Planned" : "Expected"} ${formatTimelineDate(parsedNextDate)}`
+      : fallbackNext?.label
+        ? `${fallbackNext.label} · date not recorded`
+        : "No future date is on file",
+    date: parsedNextDate,
+    tone: "next",
+  };
+
+  const milestones = [previous, current, next];
+  const datedPoints = [...milestones.map((milestone) => milestone.date), todayUtc]
+    .filter((date): date is Date => !!date)
+    .sort((a, b) => a.getTime() - b.getTime());
+  const domainStart = datedPoints[0] || todayUtc;
+  const domainEnd = datedPoints.at(-1) || todayUtc;
+  const domainSpan = Math.max(domainEnd.getTime() - domainStart.getTime(), 1);
+  const positionFor = (date: Date) =>
+    Math.min(
+      97,
+      Math.max(3, ((date.getTime() - domainStart.getTime()) / domainSpan) * 94 + 3)
+    );
+  const todayPosition = positionFor(todayUtc);
+  const toneClasses = {
+    past: "border-slate-400 bg-white text-slate-500",
+    current: "border-success bg-success text-white",
+    next: "border-blue-primary bg-white text-blue-primary",
+  } as const;
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-2xl border border-border-light bg-surface shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border-light px-5 py-3.5">
+        <div>
+          <p className="text-[13px] font-semibold text-text-primary">Release timeline</p>
+          <p className="mt-0.5 text-[11px] text-text-tertiary">
+            Recorded dates are positioned proportionally; missing dates are not estimated.
+          </p>
+        </div>
+        <span className="rounded-full bg-blue-light px-2.5 py-1 text-[10px] font-semibold text-blue-primary">
+          Today · {formatTimelineDate(todayUtc)}
+        </span>
+      </div>
+
+      <div className="overflow-x-auto px-5 pb-4 pt-5">
+        <div className="min-w-[620px]">
+          <div
+            className="relative h-12"
+            role="img"
+            aria-label={`Release timeline from ${formatTimelineDate(domainStart)} to ${formatTimelineDate(domainEnd)}`}
+          >
+            <div className="absolute left-[3%] right-[3%] top-6 h-0.5 rounded-full bg-border-light" />
+            <div
+              className="absolute left-[3%] top-6 h-0.5 rounded-full bg-gradient-to-r from-slate-300 via-success to-blue-primary"
+              style={{ width: `${Math.max(todayPosition - 3, 0)}%` }}
+            />
+
+            {milestones.map((milestone) =>
+              milestone.date ? (
+                <div
+                  key={`${milestone.eyebrow}-${milestone.title}`}
+                  className="absolute top-[17px] -translate-x-1/2"
+                  style={{ left: `${positionFor(milestone.date)}%` }}
+                  title={`${milestone.eyebrow}: ${milestone.title} · ${formatTimelineDate(milestone.date)}`}
+                >
+                  <span
+                    className={`flex h-4 w-4 items-center justify-center rounded-full border-[3px] shadow-[0_0_0_4px_white] ${toneClasses[milestone.tone]}`}
+                  >
+                    {milestone.tone === "current" && (
+                      <Check size={8} strokeWidth={3} aria-hidden="true" />
+                    )}
+                  </span>
+                </div>
+              ) : null
+            )}
+
+            <div
+              className="absolute top-0 -translate-x-1/2"
+              style={{ left: `${todayPosition}%` }}
+              title={`Today: ${formatTimelineDate(todayUtc)}`}
+            >
+              <span className="block h-8 w-px bg-blue-primary" />
+              <span className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 rounded-full bg-blue-primary ring-4 ring-blue-light" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 divide-x divide-border-light border-t border-border-light">
+            {milestones.map((milestone) => (
+              <div key={milestone.eyebrow} className="min-w-0 px-4 pt-3 first:pl-0 last:pr-0">
+                <p className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                  {milestone.eyebrow}
+                </p>
+                <p className="mt-1.5 break-words text-[12.5px] font-semibold leading-snug text-text-primary">
+                  {milestone.title}
+                </p>
+                <p className="mt-1 text-[10.5px] leading-snug text-text-tertiary">
+                  {milestone.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -230,68 +490,19 @@ export function OfferingOverviewMain({
             offeringName={o.offering_name}
             styles={o.service_card_styles}
           />
-          {/* Availability is ONE compact strip, not a captioned card: the
-              current release (version · date · status pill), a connector, and
-              the next milestone when one exists. With nothing upcoming it
-              hugs its single node — no header band, no empty region. */}
+          {/* Dates on this rail are real data, not equally-spaced decoration.
+              Where a release date is missing the summary says so explicitly
+              and the undated milestone is intentionally absent from the rail. */}
           {(o.current_availability || currentVersion || nextMilestones.length > 0) && (
-            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border border-border-light bg-surface px-4 py-3.5 shadow-sm">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success text-white shadow-sm">
-                  <Check size={13} strokeWidth={2.6} aria-hidden="true" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                    {currentVersion ? "Current release" : "Current status"}
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {currentVersion && (
-                      <span className="text-[13px] font-bold leading-none text-text-primary">
-                        {currentVersion}
-                      </span>
-                    )}
-                    {currentReleaseDate && (
-                      <span className="text-[11.5px] leading-none text-text-tertiary">
-                        {currentReleaseDate}
-                      </span>
-                    )}
-                    {o.current_availability && (
-                      <AvailabilityPill value={o.current_availability} size="sm" />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {nextMilestones.map((milestone, index) => (
-                <div
-                  key={`${index}-${milestone.body}`}
-                  className="flex min-w-0 flex-1 items-center gap-2.5"
-                >
-                  {/* The progression line, pointing at what comes next. */}
-                  <span
-                    aria-hidden="true"
-                    className="hidden h-px min-w-[24px] flex-1 bg-gradient-to-r from-success/40 to-blue-primary/50 sm:block"
-                  />
-                  <ChevronRight
-                    size={13}
-                    strokeWidth={2.4}
-                    aria-hidden="true"
-                    className="hidden shrink-0 text-blue-primary/60 sm:-ml-2.5 sm:block"
-                  />
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-primary shadow-sm">
-                    <span className="h-2 w-2 rounded-full bg-white" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-blue-primary">
-                      {milestone.label}
-                    </p>
-                    <p className="mt-1 text-[12.5px] font-medium leading-snug text-text-primary">
-                      {milestone.body}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ReleaseTimeline
+              availability={o.current_availability}
+              currentVersion={currentVersion}
+              currentReleaseDate={currentReleaseDate}
+              nextVersion={nextVersion}
+              nextExpected={nextExpected}
+              fallbackNext={nextMilestones[0]}
+              releases={o.releases}
+            />
           )}
         </div>
       </section>

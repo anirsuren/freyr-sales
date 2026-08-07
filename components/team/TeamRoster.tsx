@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Phone, Mail, MapPin, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
+import { Phone, Mail, MapPin, Globe2, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -100,6 +100,32 @@ function TeamsButton({ url, name }: { url: string; name: string }) {
     >
       <TeamsIcon size={15} />
     </a>
+  );
+}
+
+function RegionLabel({
+  region,
+  className,
+}: {
+  region: string;
+  className?: string;
+}) {
+  const flag = flagForGeography(region);
+  const isGlobal = region.trim().toLowerCase() === "global";
+
+  return (
+    <span className={cn("inline-flex min-w-0 items-center gap-1.5", className)}>
+      {flag ? (
+        <span aria-hidden="true" className="shrink-0">
+          {flag}
+        </span>
+      ) : isGlobal ? (
+        <Globe2 size={12} strokeWidth={1.9} aria-hidden="true" className="shrink-0" />
+      ) : (
+        <MapPin size={12} strokeWidth={1.9} aria-hidden="true" className="shrink-0" />
+      )}
+      <span className="min-w-0">{region}</span>
+    </span>
   );
 }
 
@@ -511,14 +537,10 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           no region (the real signed-in person) get no row and
                           no dangling separator. */}
                       {r.region && (
-                        <span className="inline-flex items-start gap-1.5 text-[12px] text-text-secondary whitespace-normal">
-                          <MapPin size={12} strokeWidth={1.9} className="mt-0.5 shrink-0" />
-                          <span className="min-w-0">
-                            {flagForGeography(r.region)
-                              ? `${flagForGeography(r.region)} ${r.region}`
-                              : r.region}
-                          </span>
-                        </span>
+                        <RegionLabel
+                          region={r.region}
+                          className="items-start whitespace-normal text-[12px] text-text-secondary"
+                        />
                       )}
                     </div>
                   </>
@@ -608,9 +630,10 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                     and the role should always be on separate lines.
                                     You don't need that dot separator"). */}
                                 {r.region ? (
-                                  <p className="text-[11.5px] text-text-tertiary whitespace-nowrap">
-                                    {flagForGeography(r.region) || ""} {r.region}
-                                  </p>
+                                  <RegionLabel
+                                    region={r.region}
+                                    className="whitespace-nowrap text-[11.5px] text-text-tertiary"
+                                  />
                                 ) : null}
                               </div>
                             </div>
@@ -710,9 +733,10 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                 from its place (Anir: "the country and the role
                                 should always be on separate lines"). */}
                             {r.region ? (
-                              <span className="block text-[12px] text-text-secondary whitespace-nowrap">
-                                {flagForGeography(r.region) || ""} {r.region}
-                              </span>
+                              <RegionLabel
+                                region={r.region}
+                                className="whitespace-nowrap text-[12px] text-text-secondary"
+                              />
                             ) : null}
                           </span>
                         </Link>

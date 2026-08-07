@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { OFFERING_CATALOGUE_ORDER } from "@/lib/offeringCatalogue";
 import {
   SERVICE_CARD_COLOR_OPTIONS,
+  SERVICE_CARD_ICON_OPTIONS,
   type ServiceCardIcon,
   type ServiceCardStyle,
 } from "@/lib/serviceCardStyle";
@@ -52,6 +53,13 @@ const ICONS: LucideIcon[] = [
   Binoculars, Braces, Compass, GitBranch, Landmark, LibraryBig,
   LineChart, Network, Orbit, PenTool, Route, Sparkle,
 ];
+const ICON_LABELS = [
+  "Package", "Layers", "Globe", "Document", "Tag", "Boxes",
+  "Shield", "Radar", "Database", "Processor", "Checklist", "Workflow",
+  "Book", "Beaker", "Microscope", "Scale", "Stamp", "Send",
+  "Binoculars", "Braces", "Compass", "Branch", "Landmark", "Library",
+  "Chart", "Network", "Orbit", "Pen tool", "Route", "Sparkles",
+] as const;
 // IDENTITY HUES ONLY. Red, green, amber and burnt orange are RESERVED in this
 // app for meaning: red is a problem, green is healthy, orange is caution. An
 // identity palette that reaches for them paints a perfectly good record in the
@@ -72,6 +80,10 @@ const GRADIENTS: [string, string][] = [
   ["#9333EA", "#C084FC"], // purple
   ["#C026D3", "#E879F9"], // fuchsia
 ];
+const GRADIENT_LABELS = [
+  "Blue", "Indigo", "Teal", "Violet", "Cyan",
+  "Deep indigo", "Sky", "Pink", "Purple", "Fuchsia",
+] as const;
 
 export const SERVICE_CARD_ICON_COMPONENTS: Record<ServiceCardIcon, LucideIcon> = {
   package: Package,
@@ -113,6 +125,8 @@ export function offeringMark(name: string): {
   icon: LucideIcon;
   color: string;
   light: string;
+  iconLabel: string;
+  colorLabel: string;
 } {
   const key = name || "offering";
   const seeded = CATALOGUE_SLOT.get(key);
@@ -122,8 +136,16 @@ export function offeringMark(name: string): {
   const slot = seeded ?? hash(key) % (ICONS.length * GRADIENTS.length);
   const hueIndex =
     seeded != null ? seeded * 3 : Math.floor(slot / ICONS.length);
-  const [a, b] = GRADIENTS[hueIndex % GRADIENTS.length];
-  return { icon: ICONS[slot % ICONS.length], color: a, light: b };
+  const iconIndex = slot % ICONS.length;
+  const gradientIndex = hueIndex % GRADIENTS.length;
+  const [a, b] = GRADIENTS[gradientIndex];
+  return {
+    icon: ICONS[iconIndex],
+    color: a,
+    light: b,
+    iconLabel: ICON_LABELS[iconIndex],
+    colorLabel: GRADIENT_LABELS[gradientIndex],
+  };
 }
 
 /** Resolve a card's saved appearance, falling back to its stable legacy mark. */
@@ -131,13 +153,20 @@ export function serviceCardMark(name: string, style?: ServiceCardStyle): {
   icon: LucideIcon;
   color: string;
   light: string;
+  iconLabel: string;
+  colorLabel: string;
 } {
   const fallback = offeringMark(name);
   const color = style?.color ? SERVICE_CARD_COLORS.get(style.color) : undefined;
+  const icon = style?.icon
+    ? SERVICE_CARD_ICON_OPTIONS.find((option) => option.value === style.icon)
+    : undefined;
   return {
     icon: style?.icon ? SERVICE_CARD_ICON_COMPONENTS[style.icon] : fallback.icon,
     color: color?.color ?? fallback.color,
     light: color?.light ?? fallback.light,
+    iconLabel: icon?.label ?? fallback.iconLabel,
+    colorLabel: color?.label ?? fallback.colorLabel,
   };
 }
 

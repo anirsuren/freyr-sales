@@ -32,15 +32,14 @@ import {
   Check,
   CircleCheck,
   CircleHelp,
-  Info,
   AlertCircle,
   X,
   Clock,
   type LucideIcon,
 } from "lucide-react";
+import { hasOfferingEditChanges } from "@/lib/offeringEditDirty";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import type {
   CustomerType,
@@ -623,14 +622,28 @@ function FormSection({
     // 28). The header carries its own top radius instead.
     <section
       id={sectionSlug}
-      className="scroll-mt-24 rounded-xl border border-border-light bg-white shadow-card"
+      className={cn(
+        "scroll-mt-24 rounded-2xl border bg-white shadow-[0_3px_14px_rgba(15,23,42,0.055)] transition-[border-color,box-shadow] duration-200",
+        open
+          ? "border-blue-primary/25 shadow-[0_5px_20px_rgba(15,23,42,0.075)] ring-1 ring-blue-primary/5"
+          : "border-[#D9E2EC]"
+      )}
     >
       <header
         className={cn(
-          "flex items-center gap-3 rounded-[11px] bg-surface/60 px-4 py-3",
-          open && "rounded-b-none border-b border-border-light"
+          "relative flex items-center gap-3 px-5 py-4 transition-colors",
+          open
+            ? "rounded-t-[15px] bg-blue-light/25"
+            : "rounded-[15px] bg-[#FAFBFC] hover:bg-blue-light/15"
         )}
       >
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute inset-y-4 left-0 w-[3px] rounded-r-full transition-colors",
+            open ? "bg-blue-primary" : "bg-transparent"
+          )}
+        />
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
@@ -638,12 +651,19 @@ function FormSection({
           aria-controls={panelId}
           className="group flex min-w-0 flex-1 items-start gap-3 text-left outline-none"
         >
-          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary transition-colors group-hover:bg-blue-subtle/70">
-            <Icon size={15} strokeWidth={1.9} />
+          <span
+            className={cn(
+              "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors",
+              open
+                ? "border-blue-primary/15 bg-white text-blue-primary shadow-sm"
+                : "border-blue-primary/10 bg-blue-light text-blue-primary group-hover:bg-white"
+            )}
+          >
+            <Icon size={16} strokeWidth={1.9} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-2">
-              <span role="heading" aria-level={2} className="text-[14px] font-semibold text-text-primary">
+              <span role="heading" aria-level={2} className="text-[14.5px] font-semibold text-text-primary">
                 {title}
               </span>
               {typeof count === "number" && (
@@ -652,7 +672,7 @@ function FormSection({
                 </span>
               )}
             </span>
-            <span className="mt-0.5 block text-[11.5px] leading-snug text-text-tertiary">
+            <span className="mt-1 block text-[12px] leading-snug text-text-tertiary">
               {hint}
             </span>
           </span>
@@ -667,7 +687,10 @@ function FormSection({
         {open && action && <div className="shrink-0">{action}</div>}
       </header>
       {open && (
-        <div id={panelId} className="space-y-3 p-4">
+        <div
+          id={panelId}
+          className="space-y-4 rounded-b-2xl border-t border-[#DCE5EE] bg-[#FBFCFE] p-5"
+        >
           {children}
         </div>
       )}
@@ -1013,38 +1036,46 @@ export function OfferingForm({
   );
   const materialsChanged =
     JSON.stringify(materials) !== JSON.stringify(initialMaterials);
+  // These snapshots deliberately mirror every owner-editable value sent by
+  // submit(). A field missing here can hide Save and lose that edit, so the
+  // regression test changes every key individually.
+  const currentEditSnapshot: Record<string, unknown> = {
+    offeringType,
+    offeringCategory,
+    offeringName,
+    description,
+    serviceCardStyles,
+    current,
+    future,
+    poc,
+    ctIds,
+    mktIds,
+    materials,
+    ...(isEdit && roadmapEditable ? { roadmapDraft } : {}),
+  };
+  const initialEditSnapshot: Record<string, unknown> = {
+    offeringType: initial?.offering_type ?? "",
+    offeringCategory: initial?.offering_category ?? "",
+    offeringName: initial?.offering_name ?? "",
+    description: composeDescription(seeded.intro, seeded.rows),
+    serviceCardStyles: initial?.service_card_styles ?? [],
+    current: buildAvailability(
+      initAvail.mode,
+      initAvail.month,
+      initAvail.year
+    ),
+    future: initial?.future_availability ?? "",
+    poc: initial?.poc ?? "",
+    ctIds: initial?.customer_type_ids ?? [],
+    mktIds: initial?.market_ids ?? [],
+    materials: initialMaterials,
+    ...(isEdit && roadmapEditable
+      ? { roadmapDraft: roadmapDetails ?? blankRoadmapDetails() }
+      : {}),
+  };
   const hasOfferingChanges =
     !isEdit ||
-    JSON.stringify({
-      offeringType,
-      offeringCategory,
-      offeringName,
-      description,
-      serviceCardStyles,
-      current,
-      future,
-      poc,
-      ctIds,
-      mktIds,
-      materials,
-    }) !==
-      JSON.stringify({
-        offeringType: initial?.offering_type ?? "",
-        offeringCategory: initial?.offering_category ?? "",
-        offeringName: initial?.offering_name ?? "",
-        description: composeDescription(seeded.intro, seeded.rows),
-        serviceCardStyles: initial?.service_card_styles ?? [],
-        current: buildAvailability(
-          initAvail.mode,
-          initAvail.month,
-          initAvail.year
-        ),
-        future: initial?.future_availability ?? "",
-        poc: initial?.poc ?? "",
-        ctIds: initial?.customer_type_ids ?? [],
-        mktIds: initial?.market_ids ?? [],
-        materials: initialMaterials,
-      });
+    hasOfferingEditChanges(currentEditSnapshot, initialEditSnapshot);
 
   function toggle(list: string[], id: string) {
     return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -1161,7 +1192,7 @@ export function OfferingForm({
     // max-w-[880px], which on a normal monitor pinned every field to the left
     // edge with a third of the screen empty beside it (Anir, Jul 28: "I don't
     // know why everything is aligned to the left").
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-4">
       {/* ------------------------------------------------------ the basics */}
       <FormSection
         icon={Package}
@@ -1240,7 +1271,6 @@ export function OfferingForm({
         icon={ListChecks}
         title="Offering brief & service cards"
         hint="Edit the opening overview and the same service cards sellers see on the offering page."
-        count={capCount}
         action={
           <div className="flex items-center gap-1 rounded-lg bg-surface p-1">
             <button
@@ -1290,25 +1320,20 @@ export function OfferingForm({
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-light bg-surface/50 px-2.5 py-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[12.5px] font-semibold text-text-primary">
-                  {capCount} {capCount === 1 ? "service card" : "service cards"}
-                </span>
-                <Tooltip
-                  label="These are the exact cards sellers see under What’s included on the offering Overview."
-                  side="bottom"
-                  align="left"
-                >
-                  <button
-                    type="button"
-                    aria-label="About service cards"
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors hover:bg-blue-light hover:text-blue-primary focus-visible:ring-2 focus-visible:ring-blue-primary/25"
-                  >
-                    <Info size={15} strokeWidth={2} aria-hidden="true" />
-                  </button>
-                </Tooltip>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#DCE5EE] px-0.5 pb-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-[14px] font-semibold text-text-primary">
+                    Included services
+                  </h3>
+                  <span className="tnum inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-light px-2 text-[11px] font-semibold text-blue-primary">
+                    {capCount}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11.5px] leading-snug text-text-tertiary">
+                  These cards appear under What&apos;s included on the seller view.
+                </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
@@ -1318,9 +1343,9 @@ export function OfferingForm({
                     setCapDescriptionDraft("");
                     setAddingCap("section");
                   }}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-light bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#CFDAE6] bg-white px-3 py-2 text-[12.5px] font-semibold text-text-secondary shadow-sm transition-colors hover:border-blue-subtle hover:text-text-primary"
                 >
-                  <Layers size={14} strokeWidth={2} /> Add group heading
+                  <Layers size={14} strokeWidth={2} /> Add heading
                 </button>
                 <button
                   type="button"
@@ -1329,7 +1354,7 @@ export function OfferingForm({
                     setCapDescriptionDraft("");
                     setAddingCap("item");
                   }}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-primary px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-blue-hover"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-2 text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-hover"
                 >
                   <Plus size={14} strokeWidth={2.2} /> Add service
                 </button>
@@ -1350,14 +1375,8 @@ export function OfferingForm({
               );
               const accent = isSection ? "#0071E3" : mark.color;
               const RowIcon = isSection ? Layers : mark.icon;
-              const iconLabel =
-                SERVICE_CARD_ICON_OPTIONS.find(
-                  (option) => option.value === row.style?.icon
-                )?.label ?? "Automatic";
-              const colorLabel =
-                SERVICE_CARD_COLOR_OPTIONS.find(
-                  (option) => option.value === row.style?.color
-                )?.label ?? "Automatic";
+              const iconLabel = mark.iconLabel;
+              const colorLabel = mark.colorLabel;
               const updateCard = (heading: string, cardDescription: string) =>
                 setCapRows((list) =>
                   list.map((item, index) =>
@@ -1561,7 +1580,7 @@ export function OfferingForm({
                           })
                         );
                       }}
-                      aria-label="Use automatic icon"
+                      aria-label={`Use suggested ${appearanceAutomaticMark.iconLabel} icon`}
                       className={cn(
                         "relative flex h-14 flex-col items-center justify-center gap-1 rounded-lg border text-[10px] font-medium transition-colors",
                         !appearanceCard?.style?.icon
@@ -1570,7 +1589,7 @@ export function OfferingForm({
                       )}
                     >
                       <AppearanceAutomaticIcon size={17} strokeWidth={2} />
-                      Auto
+                      {appearanceAutomaticMark.iconLabel}
                       {!appearanceCard?.style?.icon && (
                         <Check className="absolute right-1 top-1" size={11} strokeWidth={2.5} />
                       )}
@@ -1618,7 +1637,7 @@ export function OfferingForm({
                           })
                         );
                       }}
-                      aria-label="Use automatic color"
+                      aria-label={`Use suggested ${appearanceAutomaticMark.colorLabel} color`}
                       className={cn(
                         "relative flex h-11 items-center gap-2 rounded-lg border px-2 text-[11px] font-medium transition-colors",
                         !appearanceCard?.style?.color
@@ -1632,7 +1651,7 @@ export function OfferingForm({
                           backgroundImage: `linear-gradient(135deg, ${appearanceAutomaticMark.color}, ${appearanceAutomaticMark.light})`,
                         }}
                       />
-                      Auto
+                      {appearanceAutomaticMark.colorLabel}
                       {!appearanceCard?.style?.color && (
                         <Check className="absolute right-1.5 top-1.5" size={11} strokeWidth={2.5} />
                       )}

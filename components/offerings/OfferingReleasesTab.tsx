@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Check,
-  ChevronRight,
   CircleCheck,
   Clock,
   GitCompareArrows,
@@ -193,59 +192,75 @@ function RoadmapTimeline({
  * column of naked inputs (Anir, Aug 5: "you basically just plop the data
  * there... make it visual, make it clear what they have to do").
  */
-function EditorCard({
-  icon: Icon,
+/**
+ * A LEVEL-2 GROUP INSIDE A FORM SECTION.
+ *
+ * The roadmap editor used to stack six white cards with icon tiles inside the
+ * white "Product roadmap" card. Every block carried the same visual weight as
+ * the section containing it, so nothing said what belonged to what (Anir, Aug
+ * 6: "the way everything's organized is so confusing... make it very clear
+ * that this section is a subsection of this").
+ *
+ * A group is therefore NOT another card: tinted surface, a numbered step chip,
+ * and a coloured rail down its left edge. The eye reads it as a child of the
+ * section, and the numbers say how many steps there are and where you are.
+ */
+function SubGroup({
+  step,
   title,
   caption,
   action,
-  accent = false,
+  tone = "default",
   children,
 }: {
-  icon: typeof Layers;
+  step: number;
   title: string;
   caption: string;
   action?: ReactNode;
-  accent?: boolean;
+  tone?: "default" | "restricted";
   children: ReactNode;
 }) {
+  const restricted = tone === "restricted";
   return (
     <section
-      className={`overflow-hidden rounded-2xl border bg-white ${
-        accent ? "border-blue-primary/25" : "border-border-light"
+      className={`relative overflow-hidden rounded-xl border pl-[3px] ${
+        restricted
+          ? "border-blue-primary/25 bg-blue-light/25"
+          : "border-border-light bg-surface/50"
       }`}
     >
-      <div
-        className={`flex flex-wrap items-center gap-3 border-b px-4 py-3 ${
-          accent
-            ? "border-blue-primary/15 bg-blue-light/60"
-            : "border-border-light bg-surface/60"
+      <span
+        aria-hidden="true"
+        className={`absolute inset-y-0 left-0 w-[3px] ${
+          restricted ? "bg-blue-primary" : "bg-border"
         }`}
-      >
+      />
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-            accent
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-bold tnum ${
+            restricted
               ? "bg-blue-primary text-white"
-              : "bg-blue-light text-blue-primary"
+              : "bg-white text-text-secondary ring-1 ring-border-light"
           }`}
         >
-          <Icon size={17} strokeWidth={1.9} />
+          {step}
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="text-[13.5px] font-semibold leading-tight text-text-primary">
             {title}
           </h3>
-          <p className="mt-0.5 text-[12px] leading-snug text-text-secondary">
+          <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
             {caption}
           </p>
         </div>
         {action}
       </div>
-      <div className="space-y-3 p-4">{children}</div>
+      <div className="space-y-2 px-4 pb-4">{children}</div>
     </section>
   );
 }
 
-/** A whole-width dashed door for an empty list — the invitation IS the state. */
+/** The dashed door shown when a list is empty — the invitation IS the state. */
 function EmptyRowButton({
   label,
   onClick,
@@ -257,105 +272,256 @@ function EmptyRowButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border py-6 text-[12.5px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-white/70 py-5 text-[12.5px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:bg-white hover:text-blue-primary"
     >
       <Plus size={14} /> {label}
     </button>
   );
 }
 
+/**
+ * A saved list entry, at a glance: what it is, a chip or two of meta, and the
+ * two things you can do to it. The fields themselves live in a dialog, so ten
+ * modules read as ten lines instead of thirty stacked textareas.
+ */
+function SummaryRow({
+  title,
+  meta,
+  detail,
+  onEdit,
+  onRemove,
+  removeLabel,
+}: {
+  title: string;
+  meta?: string;
+  detail?: string;
+  onEdit: () => void;
+  onRemove: () => void;
+  removeLabel: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5">
+      <button
+        type="button"
+        onClick={onEdit}
+        className="min-w-0 flex-1 text-left"
+      >
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-[13.5px] font-semibold text-text-primary">
+            {title}
+          </span>
+          {meta && (
+            <span className="rounded-md bg-blue-light px-1.5 py-0.5 text-[11px] font-semibold text-blue-primary">
+              {meta}
+            </span>
+          )}
+        </span>
+        {detail && (
+          <span className="mt-0.5 block truncate text-[11.5px] text-text-tertiary">
+            {detail}
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`Edit ${title}`}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+      >
+        <Pencil size={14} strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={removeLabel}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
+      >
+        <Trash2 size={14} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
+/** One dialog shape for every roadmap list: title, fields, Cancel + Save. */
+function RowDialog({
+  open,
+  title,
+  saveLabel,
+  canSave,
+  onCancel,
+  onSave,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  saveLabel: string;
+  canSave: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Modal open={open} onClose={onCancel} title={title} size="wide" stacked>
+      <div className="space-y-4">
+        {children}
+        <div className="flex items-center justify-end gap-3 border-t border-border-light pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-[13.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+          >
+            Cancel
+          </button>
+          <Button type="button" onClick={onSave} disabled={!canSave}>
+            {saveLabel}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+const BLANK_MODULE: OfferingRoadmapModuleRow = {
+  module: "",
+  version: "",
+  details: [],
+};
+
 function RoadmapModuleEditor({
+  step,
   title,
   caption,
-  icon,
-  accent = false,
+  restricted = false,
   rows,
   onChange,
   versions = true,
 }: {
+  step: number;
   title: string;
   caption: string;
-  icon: typeof Layers;
-  accent?: boolean;
+  restricted?: boolean;
   rows: OfferingRoadmapModuleRow[];
   onChange: (rows: OfferingRoadmapModuleRow[]) => void;
   versions?: boolean;
 }) {
-  const replace = (index: number, patch: Partial<OfferingRoadmapModuleRow>) =>
-    onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-  const addRow = () =>
-    onChange([...rows, { module: "", version: "", details: [] }]);
+  // -1 = adding a new one; null = dialog closed.
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draft, setDraft] = useState<OfferingRoadmapModuleRow>(BLANK_MODULE);
+
+  const openNew = () => {
+    setDraft({ ...BLANK_MODULE });
+    setEditing(-1);
+  };
+  const openRow = (index: number) => {
+    setDraft({ ...rows[index] });
+    setEditing(index);
+  };
+  const save = () => {
+    const clean: OfferingRoadmapModuleRow = {
+      module: draft.module.trim(),
+      version: versions ? (draft.version || "").trim() : "",
+      details: draft.details.map((d) => d.trim()).filter(Boolean),
+    };
+    onChange(
+      editing === -1
+        ? [...rows, clean]
+        : rows.map((row, i) => (i === editing ? clean : row))
+    );
+    setEditing(null);
+  };
+
   return (
-    <EditorCard
-      icon={icon}
+    <SubGroup
+      step={step}
       title={title}
       caption={caption}
-      accent={accent}
+      tone={restricted ? "restricted" : "default"}
       action={
         rows.length > 0 ? (
-          <Button type="button" variant="secondary" onClick={addRow}>
+          <Button type="button" variant="secondary" onClick={openNew}>
             <Plus size={14} /> Add module
           </Button>
         ) : undefined
       }
     >
-      {rows.length === 0 && (
-        <EmptyRowButton label="Add the first module" onClick={addRow} />
+      {rows.length === 0 ? (
+        <EmptyRowButton label="Add the first module" onClick={openNew} />
+      ) : (
+        rows.map((row, index) => (
+          <SummaryRow
+            key={index}
+            title={row.module || "Untitled module"}
+            meta={versions && row.version ? row.version : undefined}
+            detail={
+              row.details.length
+                ? row.details.join(" · ")
+                : "No customer-facing points yet"
+            }
+            onEdit={() => openRow(index)}
+            onRemove={() => onChange(rows.filter((_, i) => i !== index))}
+            removeLabel={`Remove ${row.module || `module ${index + 1}`}`}
+          />
+        ))
       )}
-      {rows.map((row, index) => (
-        <div
-          key={index}
-          className="rounded-xl border border-border-light bg-surface/60 p-3"
-        >
-          <div
-            className={`grid gap-3 ${versions ? "sm:grid-cols-[1fr_150px_auto]" : "sm:grid-cols-[1fr_auto]"}`}
-          >
+
+      <RowDialog
+        open={editing !== null}
+        title={editing === -1 ? `Add to ${title}` : "Edit module"}
+        saveLabel={editing === -1 ? "Add module" : "Save module"}
+        canSave={draft.module.trim().length > 0}
+        onCancel={() => setEditing(null)}
+        onSave={save}
+      >
+        <div className={`grid gap-4 ${versions ? "sm:grid-cols-[1fr_160px]" : ""}`}>
+          <div>
+            <label className={LABEL}>Module or area</label>
             <input
+              autoFocus
               className={FIELD}
-              value={row.module}
-              onChange={(event) => replace(index, { module: event.target.value })}
-              placeholder="Module or area (e.g. Registrations)"
-              aria-label={`${title} row ${index + 1} module`}
+              value={draft.module}
+              onChange={(event) => setDraft({ ...draft, module: event.target.value })}
+              placeholder="e.g. Registrations"
             />
-            {versions && (
+          </div>
+          {versions && (
+            <div>
+              <label className={LABEL}>Version</label>
               <input
                 className={FIELD}
-                value={row.version || ""}
-                onChange={(event) => replace(index, { version: event.target.value })}
-                placeholder="Version"
-                aria-label={`${title} row ${index + 1} version`}
+                value={draft.version || ""}
+                onChange={(event) => setDraft({ ...draft, version: event.target.value })}
+                placeholder="V2.5"
               />
-            )}
-            <button
-              type="button"
-              onClick={() => onChange(rows.filter((_, i) => i !== index))}
-              aria-label={`Remove ${row.module || `row ${index + 1}`}`}
-              className="flex h-12 w-12 items-center justify-center rounded-xl text-text-tertiary hover:bg-error/10 hover:text-error"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-          <textarea
-            className={`${FIELD} mt-3 h-auto min-h-[92px] py-3 leading-relaxed`}
-            value={row.details.join("\n")}
-            onChange={(event) =>
-              replace(index, {
-                details: event.target.value
-                  .split("\n")
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-              })
-            }
-            placeholder="What it gives the customer — one line per point"
-            aria-label={`${title} row ${index + 1} details`}
-          />
+            </div>
+          )}
         </div>
-      ))}
-    </EditorCard>
+        <div>
+          <label className={LABEL}>What it gives the customer</label>
+          <textarea
+            className={`${FIELD} h-auto min-h-[132px] py-3 leading-relaxed`}
+            value={draft.details.join("\n")}
+            onChange={(event) =>
+              setDraft({ ...draft, details: event.target.value.split("\n") })
+            }
+            placeholder="One point per line"
+          />
+          <p className="mt-1.5 text-[11.5px] text-text-tertiary">
+            Sellers see these as bullet points under the module.
+          </p>
+        </div>
+      </RowDialog>
+    </SubGroup>
   );
 }
 
+const BLANK_COMPARISON: OfferingRoadmapComparisonRow = {
+  area: "",
+  current: "",
+  previous: "",
+};
+
 function RoadmapComparisonEditor({
+  step,
   rows,
   onChange,
   previousLabel,
@@ -363,6 +529,7 @@ function RoadmapComparisonEditor({
   onPreviousLabel,
   onCurrentLabel,
 }: {
+  step: number;
   rows: OfferingRoadmapComparisonRow[];
   onChange: (rows: OfferingRoadmapComparisonRow[]) => void;
   previousLabel: string;
@@ -370,102 +537,232 @@ function RoadmapComparisonEditor({
   onPreviousLabel: (value: string) => void;
   onCurrentLabel: (value: string) => void;
 }) {
-  const replace = (index: number, patch: Partial<OfferingRoadmapComparisonRow>) =>
-    onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-  const addRow = () =>
-    onChange([...rows, { area: "", current: "", previous: "" }]);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draft, setDraft] = useState<OfferingRoadmapComparisonRow>(BLANK_COMPARISON);
+
+  const openNew = () => {
+    setDraft({ ...BLANK_COMPARISON });
+    setEditing(-1);
+  };
+  const openRow = (index: number) => {
+    setDraft({ ...rows[index] });
+    setEditing(index);
+  };
+  const save = () => {
+    const clean: OfferingRoadmapComparisonRow = {
+      area: draft.area.trim(),
+      current: draft.current.trim(),
+      previous: draft.previous.trim(),
+    };
+    onChange(
+      editing === -1
+        ? [...rows, clean]
+        : rows.map((row, i) => (i === editing ? clean : row))
+    );
+    setEditing(null);
+  };
+
   return (
-    <EditorCard
-      icon={GitCompareArrows}
+    <SubGroup
+      step={step}
       title="Previous vs current"
-      caption="Side by side, what changed. The two column names are editable and title the comparison table sellers see."
+      caption="Side by side, what changed between the two versions."
       action={
         rows.length > 0 ? (
-          <Button type="button" variant="secondary" onClick={addRow}>
+          <Button type="button" variant="secondary" onClick={openNew}>
             <Plus size={14} /> Add row
           </Button>
         ) : undefined
       }
     >
-      {/* The column headers ARE the comparison labels — no detached
-          "comparison label" fields to puzzle over. */}
-      <div className="hidden gap-3 lg:grid lg:grid-cols-[190px_1fr_1fr_48px]">
-        <p className="self-end pb-1 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-          Capability area
-        </p>
-        <input
-          className={`${FIELD} font-semibold`}
-          value={currentLabel}
-          onChange={(event) => onCurrentLabel(event.target.value)}
-          placeholder="Current version"
-          aria-label="Name of the current-version column"
-        />
-        <input
-          className={`${FIELD} font-semibold`}
-          value={previousLabel}
-          onChange={(event) => onPreviousLabel(event.target.value)}
-          placeholder="Previous version"
-          aria-label="Name of the previous-version column"
-        />
-        <span aria-hidden="true" />
-      </div>
-      {rows.length === 0 && (
-        <EmptyRowButton label="Add the first comparison row" onClick={addRow} />
-      )}
-      {rows.map((row, index) => (
-        <div
-          key={index}
-          className="grid gap-3 rounded-xl border border-border-light bg-surface/60 p-3 lg:grid-cols-[190px_1fr_1fr_auto]"
-        >
-          <input className={FIELD} value={row.area} onChange={(e) => replace(index, { area: e.target.value })} placeholder="Capability area" />
-          <textarea className={`${FIELD} h-auto min-h-[80px] py-3`} value={row.current} onChange={(e) => replace(index, { current: e.target.value })} placeholder={currentLabel || "Current version"} />
-          <textarea className={`${FIELD} h-auto min-h-[80px] py-3`} value={row.previous} onChange={(e) => replace(index, { previous: e.target.value })} placeholder={previousLabel || "Previous version"} />
-          <button type="button" onClick={() => onChange(rows.filter((_, i) => i !== index))} aria-label={`Remove comparison row ${index + 1}`} className="flex h-12 w-12 items-center justify-center rounded-xl text-text-tertiary hover:bg-error/10 hover:text-error"><Trash2 size={16} /></button>
+      {/* The two column names title the comparison table sellers see, so they
+          are edited right here rather than in a detached "label" field. */}
+      <div className="grid gap-3 rounded-xl border border-border-light bg-white p-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            Name the current column
+          </label>
+          <input
+            className={FIELD}
+            value={currentLabel}
+            onChange={(event) => onCurrentLabel(event.target.value)}
+            placeholder="Current version"
+          />
         </div>
-      ))}
-    </EditorCard>
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            Name the previous column
+          </label>
+          <input
+            className={FIELD}
+            value={previousLabel}
+            onChange={(event) => onPreviousLabel(event.target.value)}
+            placeholder="Previous version"
+          />
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <EmptyRowButton label="Add the first comparison row" onClick={openNew} />
+      ) : (
+        rows.map((row, index) => (
+          <SummaryRow
+            key={index}
+            title={row.area || "Untitled area"}
+            detail={
+              row.current || row.previous
+                ? `${currentLabel || "Current"}: ${row.current || "—"}  ·  ${previousLabel || "Previous"}: ${row.previous || "—"}`
+                : "Nothing filled in yet"
+            }
+            onEdit={() => openRow(index)}
+            onRemove={() => onChange(rows.filter((_, i) => i !== index))}
+            removeLabel={`Remove ${row.area || `comparison row ${index + 1}`}`}
+          />
+        ))
+      )}
+
+      <RowDialog
+        open={editing !== null}
+        title={editing === -1 ? "Add a comparison row" : "Edit comparison row"}
+        saveLabel={editing === -1 ? "Add row" : "Save row"}
+        canSave={draft.area.trim().length > 0}
+        onCancel={() => setEditing(null)}
+        onSave={save}
+      >
+        <div>
+          <label className={LABEL}>Capability area</label>
+          <input
+            autoFocus
+            className={FIELD}
+            value={draft.area}
+            onChange={(event) => setDraft({ ...draft, area: event.target.value })}
+            placeholder="e.g. Localisation"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={LABEL}>{currentLabel || "Current version"}</label>
+            <textarea
+              className={`${FIELD} h-auto min-h-[110px] py-3 leading-relaxed`}
+              value={draft.current}
+              onChange={(event) => setDraft({ ...draft, current: event.target.value })}
+              placeholder="What it does now"
+            />
+          </div>
+          <div>
+            <label className={LABEL}>{previousLabel || "Previous version"}</label>
+            <textarea
+              className={`${FIELD} h-auto min-h-[110px] py-3 leading-relaxed`}
+              value={draft.previous}
+              onChange={(event) => setDraft({ ...draft, previous: event.target.value })}
+              placeholder="What it did before"
+            />
+          </div>
+        </div>
+      </RowDialog>
+    </SubGroup>
   );
 }
 
+const BLANK_HISTORY: OfferingRoadmapHistoryRow = { period: "", summary: [] };
+
 function RoadmapHistoryEditor({
+  step,
   rows,
   onChange,
 }: {
+  step: number;
   rows: OfferingRoadmapHistoryRow[];
   onChange: (rows: OfferingRoadmapHistoryRow[]) => void;
 }) {
-  const replace = (index: number, patch: Partial<OfferingRoadmapHistoryRow>) =>
-    onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-  const addRow = () => onChange([...rows, { period: "", summary: [] }]);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draft, setDraft] = useState<OfferingRoadmapHistoryRow>(BLANK_HISTORY);
+
+  const openNew = () => {
+    setDraft({ ...BLANK_HISTORY });
+    setEditing(-1);
+  };
+  const openRow = (index: number) => {
+    setDraft({ ...rows[index] });
+    setEditing(index);
+  };
+  const save = () => {
+    const clean: OfferingRoadmapHistoryRow = {
+      period: draft.period.trim(),
+      summary: draft.summary.map((s) => s.trim()).filter(Boolean),
+    };
+    onChange(
+      editing === -1
+        ? [...rows, clean]
+        : rows.map((row, i) => (i === editing ? clean : row))
+    );
+    setEditing(null);
+  };
+
   return (
-    <EditorCard
-      icon={History}
+    <SubGroup
+      step={step}
       title="Release history"
-      caption="Everything that shipped, newest first — the release period and what landed in it."
+      caption="Everything that shipped, newest first. The second entry becomes the previous release above."
       action={
         rows.length > 0 ? (
-          <Button type="button" variant="secondary" onClick={addRow}>
+          <Button type="button" variant="secondary" onClick={openNew}>
             <Plus size={14} /> Add period
           </Button>
         ) : undefined
       }
     >
-      {rows.length === 0 && (
-        <EmptyRowButton label="Add the first release period" onClick={addRow} />
+      {rows.length === 0 ? (
+        <EmptyRowButton label="Add the first release period" onClick={openNew} />
+      ) : (
+        rows.map((row, index) => (
+          <SummaryRow
+            key={index}
+            title={row.period || "Untitled period"}
+            meta={
+              row.summary.length
+                ? `${row.summary.length} note${row.summary.length === 1 ? "" : "s"}`
+                : undefined
+            }
+            detail={row.summary.join(" · ") || "No release notes yet"}
+            onEdit={() => openRow(index)}
+            onRemove={() => onChange(rows.filter((_, i) => i !== index))}
+            removeLabel={`Remove ${row.period || `period ${index + 1}`}`}
+          />
+        ))
       )}
-      {rows.map((row, index) => (
-        <div key={index} className="grid gap-3 rounded-xl border border-border-light bg-surface/60 p-3 sm:grid-cols-[150px_1fr_auto]">
-          <input className={FIELD} value={row.period} onChange={(e) => replace(index, { period: e.target.value })} placeholder="Jul 2026" />
+
+      <RowDialog
+        open={editing !== null}
+        title={editing === -1 ? "Add a release period" : "Edit release period"}
+        saveLabel={editing === -1 ? "Add period" : "Save period"}
+        canSave={draft.period.trim().length > 0}
+        onCancel={() => setEditing(null)}
+        onSave={save}
+      >
+        <div>
+          <label className={LABEL}>Period</label>
+          <input
+            autoFocus
+            className={FIELD}
+            value={draft.period}
+            onChange={(event) => setDraft({ ...draft, period: event.target.value })}
+            placeholder="e.g. Jul 2026"
+          />
+        </div>
+        <div>
+          <label className={LABEL}>What shipped</label>
           <textarea
-            className={`${FIELD} h-auto min-h-[80px] py-3`}
-            value={row.summary.join("\n")}
-            onChange={(e) => replace(index, { summary: e.target.value.split("\n").map((item) => item.trim()).filter(Boolean) })}
+            className={`${FIELD} h-auto min-h-[132px] py-3 leading-relaxed`}
+            value={draft.summary.join("\n")}
+            onChange={(event) =>
+              setDraft({ ...draft, summary: event.target.value.split("\n") })
+            }
             placeholder="One release note per line"
           />
-          <button type="button" onClick={() => onChange(rows.filter((_, i) => i !== index))} aria-label={`Remove history period ${index + 1}`} className="flex h-12 w-12 items-center justify-center rounded-xl text-text-tertiary hover:bg-error/10 hover:text-error"><Trash2 size={16} /></button>
         </div>
-      ))}
-    </EditorCard>
+      </RowDialog>
+    </SubGroup>
   );
 }
 
@@ -485,6 +782,55 @@ export function blankRoadmapDetails(): OfferingRoadmapDetails {
   };
 }
 
+
+/** One stop on the vertical version timeline: dot, rail, label, fields. */
+function Milestone({
+  tone,
+  label,
+  children,
+  last = false,
+}: {
+  tone: "past" | "current" | "next";
+  label: string;
+  children: ReactNode;
+  last?: boolean;
+}) {
+  const dot =
+    tone === "past" ? "#8E98A8" : tone === "current" ? "#20B15A" : "#0071E3";
+  return (
+    <div className="relative grid grid-cols-[22px_minmax(0,1fr)] gap-x-3.5">
+      {!last && (
+        <span
+          aria-hidden="true"
+          className={`absolute bottom-[-18px] left-[10px] top-6 w-0 ${
+            tone === "current"
+              ? "border-l-2 border-dashed border-blue-primary/40"
+              : "border-l border-border"
+          }`}
+        />
+      )}
+      <span
+        aria-hidden="true"
+        className="relative z-10 mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white"
+        style={{ backgroundColor: dot, boxShadow: "0 0 0 1px rgba(17,24,39,0.12)" }}
+      >
+        {tone === "current" && (
+          <Check size={9} strokeWidth={3.4} className="text-white" />
+        )}
+      </span>
+      <div className="min-w-0 pb-1">
+        <p
+          className="text-[10.5px] font-semibold uppercase tracking-[0.07em]"
+          style={{ color: tone === "next" ? "#0071E3" : "#6B7280" }}
+        >
+          {label}
+        </p>
+        <div className="mt-2">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function RoadmapEditorFields({
   draft,
   onChange,
@@ -498,66 +844,27 @@ export function RoadmapEditorFields({
     draft.history[1]?.period || draft.comparisonPreviousLabel || "";
   return (
     <>
-      {/* The milestone strip, edited in the SAME shape sellers see it:
-          previous → current → next, one node each. */}
-      <EditorCard
-        icon={CalendarDays}
+      {/* A TRUE timeline, read top to bottom. The old three-across layout ran
+          its connector line straight through the labels, so every milestone
+          looked struck out (Anir, Aug 6: "the second screenshot is the worst
+          part"). */}
+      <SubGroup
+        step={1}
         title="Version timeline"
-        caption="The three milestones at the top of the Roadmap tab — previous, current, and what's coming."
+        caption="The three milestones at the top of the Roadmap tab."
       >
-        {/* A REAL timeline: one continuous track through all three stops —
-            solid where it already shipped, dashed blue with an arrowhead
-            into the future. Dots sit ON the line; the editable fields hang
-            under their stop. On small screens the line runs vertically. */}
-        <div className="grid gap-y-8 py-1 md:grid-cols-3 md:gap-x-8">
-          {/* -------------------------------------------------- previous */}
-          <div className="relative min-w-0 pl-9 md:pl-0 md:pt-10">
-            <span
-              aria-hidden="true"
-              className="absolute bottom-[-32px] left-[9px] top-7 w-0.5 bg-border md:bottom-auto md:left-7 md:right-[-32px] md:top-[9px] md:h-0.5 md:w-auto"
-            />
-            <span
-              aria-hidden="true"
-              className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white bg-[#8E98A8] shadow-[0_0_0_1px_rgba(17,24,39,0.12)]"
-            />
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-text-tertiary md:absolute md:left-8 md:top-0">
-              Previous release
-            </p>
-            <p className="mt-2 text-[13.5px] font-semibold text-text-primary md:mt-0">
+        <div className="space-y-4 rounded-xl border border-border-light bg-white p-4">
+          <Milestone tone="past" label="Previous release">
+            <p className="text-[13.5px] font-semibold text-text-primary">
               {previousPeriod || "Nothing recorded yet"}
             </p>
-            <p className="mt-1 text-[11px] leading-snug text-text-tertiary">
-              Fills itself from Release history below — nothing to type here.
+            <p className="mt-0.5 text-[11.5px] text-text-tertiary">
+              Fills itself from Release history — nothing to type here.
             </p>
-          </div>
+          </Milestone>
 
-          {/* --------------------------------------------------- current */}
-          <div className="relative min-w-0 pl-9 md:pl-0 md:pt-10">
-            {canSeeNext && (
-              <>
-                {/* The future is a dashed line — it hasn't happened yet. */}
-                <span
-                  aria-hidden="true"
-                  className="absolute bottom-[-32px] left-[9px] top-7 w-0 border-l-2 border-dashed border-blue-primary/45 md:bottom-auto md:left-7 md:right-[-26px] md:top-[8px] md:h-0 md:w-auto md:border-l-0 md:border-t-2"
-                />
-                <ChevronRight
-                  size={14}
-                  strokeWidth={2.6}
-                  aria-hidden="true"
-                  className="absolute bottom-[-40px] left-[3px] rotate-90 text-blue-primary/60 md:bottom-auto md:left-auto md:right-[-32px] md:top-[2px] md:rotate-0"
-                />
-              </>
-            )}
-            <span
-              aria-hidden="true"
-              className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white bg-[#20B15A] shadow-[0_0_0_1px_rgba(17,24,39,0.12)]"
-            >
-              <Check size={9} strokeWidth={3.4} className="text-white" />
-            </span>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-text-secondary md:absolute md:left-8 md:top-0">
-              Current version
-            </p>
-            <div className="mt-2 space-y-2 md:mt-0">
+          <Milestone tone="current" label="Current version" last={!canSeeNext}>
+            <div className="grid gap-3 sm:grid-cols-2">
               <input
                 className={FIELD}
                 value={draft.currentVersion}
@@ -577,21 +884,11 @@ export function RoadmapEditorFields({
                 aria-label="Current release date"
               />
             </div>
-          </div>
+          </Milestone>
 
-          {/* ------------------------------------------------------ next */}
           {canSeeNext && (
-            <div className="relative min-w-0 pl-9 md:pl-0 md:pt-10">
-              <span
-                aria-hidden="true"
-                className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white bg-blue-primary shadow-[0_0_0_1px_rgba(17,24,39,0.12)]"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-white" aria-hidden="true" />
-              </span>
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-blue-primary md:absolute md:left-8 md:top-0">
-                Next expected
-              </p>
-              <div className="mt-2 space-y-2 md:mt-0">
+            <Milestone tone="next" label="Next expected" last>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <input
                   className={FIELD}
                   value={draft.nextVersions}
@@ -611,26 +908,26 @@ export function RoadmapEditorFields({
                   aria-label="Next expected live date"
                 />
               </div>
-            </div>
+            </Milestone>
           )}
         </div>
-      </EditorCard>
+      </SubGroup>
 
       <RoadmapModuleEditor
-        icon={Layers}
+        step={2}
         title="What's in the current version"
-        caption="Each module in today's release, its version, and what it does for the customer."
+        caption="Each module in today's release, its version, and what it does."
         rows={draft.currentModules}
         onChange={(currentModules) => onChange({ ...draft, currentModules })}
       />
 
-      <EditorCard
-        icon={Sparkles}
+      <SubGroup
+        step={3}
         title="Platform capabilities"
-        caption="Strengths of the whole platform, across modules — sellers see these as bullet points."
+        caption="Strengths of the whole platform, across modules."
       >
         <textarea
-          className={`${FIELD} h-auto min-h-[150px] py-3 leading-relaxed`}
+          className={`${FIELD} h-auto min-h-[132px] py-3 leading-relaxed`}
           value={draft.platformCapabilities.join("\n")}
           onChange={(event) =>
             onChange({
@@ -644,9 +941,10 @@ export function RoadmapEditorFields({
           placeholder="One capability per line"
           aria-label="Platform capabilities, one per line"
         />
-      </EditorCard>
+      </SubGroup>
 
       <RoadmapComparisonEditor
+        step={4}
         rows={draft.comparisonRows}
         onChange={(comparisonRows) => onChange({ ...draft, comparisonRows })}
         previousLabel={draft.comparisonPreviousLabel}
@@ -660,16 +958,17 @@ export function RoadmapEditorFields({
       />
 
       <RoadmapHistoryEditor
+        step={5}
         rows={draft.history}
         onChange={(history) => onChange({ ...draft, history })}
       />
 
       {canSeeNext && (
         <RoadmapModuleEditor
-          icon={Rocket}
-          accent
+          step={6}
+          restricted
           title="Planned for the next version"
-          caption="What the approved next version adds. Sellers never see this — owners and admins only."
+          caption="Owners and admins only — sellers never see this until it ships."
           rows={draft.nextModules}
           versions={false}
           onChange={(nextModules) => onChange({ ...draft, nextModules })}
@@ -678,6 +977,7 @@ export function RoadmapEditorFields({
     </>
   );
 }
+
 
 export function OfferingReleasesTab({
   offeringId,

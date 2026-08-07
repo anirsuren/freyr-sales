@@ -41,6 +41,7 @@ import { repTitle, repRegion, repQuota, repWonFY } from "@/lib/team";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
+import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
 
 export const metadata = { title: "Rep" };
 export const dynamic = "force-dynamic";
@@ -70,9 +71,12 @@ export default async function RepPage({
   // to click on each rep").
   if (getDataMode() === "live") {
     const workspace = process.env.FREYR_WORKSPACE_ID;
-    const directory = workspace
-      ? await listWorkspaceAccess(workspace).catch(() => null)
-      : null;
+    const [directory, memberProfiles] = workspace
+      ? await Promise.all([
+          listWorkspaceAccess(workspace).catch(() => null),
+          readWorkspaceMemberProfiles(workspace).catch(() => new Map()),
+        ])
+      : [null, new Map()];
     const member = (directory?.members ?? []).find(
       (m) =>
         m.active &&
@@ -98,12 +102,7 @@ export default async function RepPage({
         />
       );
     }
-    const roleTitle =
-      member.role === "admin"
-        ? "Workspace administrator"
-        : member.role === "editor"
-          ? "Sales manager"
-          : "Sales representative";
+    const memberTitle = memberProfiles.get(member.id)?.title.trim();
     const zeroTiles = [
       { label: "Open pipeline", value: formatMoney(0), sub: "0 live deals", icon: DollarSign },
       { label: "Weighted forecast", value: formatMoney(0), sub: "probability-adjusted", icon: TrendingUp },
@@ -119,7 +118,9 @@ export default async function RepPage({
             <h1 className="text-[19px] font-bold leading-tight text-text-primary">
               {member.name}
             </h1>
-            <p className="mt-0.5 text-[13px] text-text-secondary">{roleTitle}</p>
+            <p className="mt-0.5 text-[13px] text-text-secondary">
+              {memberTitle || "Title not set"}
+            </p>
             {member.email && (
               <p className="mt-0.5 text-[12px] text-text-tertiary">{member.email}</p>
             )}

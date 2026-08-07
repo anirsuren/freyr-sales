@@ -1316,7 +1316,9 @@ export function SettingsTabs({
             />
             <div className="min-w-0">
               <p className="text-[15px] font-semibold text-text-primary">{profile.name}</p>
-              <p className="text-[13px] text-text-secondary">{profile.title}</p>
+              <p className="text-[13px] text-text-secondary">
+                {profile.title || "Title not set"}
+              </p>
               {/* The avatar itself is the control: hover it and it says Change
                   (Anir, Jul 29: "it shouldn't be an upload a picture button").
                   Remove only appears once there is something to remove. */}
@@ -1343,7 +1345,14 @@ export function SettingsTabs({
               </label>
               <label className="block">
                 <span className="block text-[13px] font-medium text-text-primary mb-1.5">Title</span>
-                <Input value={profile.title} onChange={(e) => setProfile({ ...profile, title: e.target.value })} />
+                <Input
+                  value={profile.title}
+                  placeholder="e.g. Director, Regulatory Solutions"
+                  onChange={(e) => setProfile({ ...profile, title: e.target.value })}
+                />
+                <span className="mt-1.5 block text-[11.5px] leading-relaxed text-text-tertiary">
+                  This job title appears on your Team profile. Your Admin, Manager, or Rep access is managed separately.
+                </span>
               </label>
             </div>
             <label className="block">

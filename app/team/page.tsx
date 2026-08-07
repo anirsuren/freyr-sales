@@ -36,6 +36,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
 import { requireServerMemberScope } from "@/lib/memberScope";
+import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
 
 export const metadata = { title: "Team" };
 export const dynamic = "force-dynamic";
@@ -74,9 +75,12 @@ export default async function TeamPage() {
     // zeros everywhere until deals and meetings exist (Anir, Aug 6: "same
     // thing as fake mode, but all the data should say 0").
     const workspace = process.env.FREYR_WORKSPACE_ID;
-    const [directory, currentUser] = await Promise.all([
+    const [directory, currentUser, memberProfiles] = await Promise.all([
       workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
       getCurrentUser().catch(() => null),
+      workspace
+        ? readWorkspaceMemberProfiles(workspace).catch(() => new Map())
+        : new Map(),
     ]);
     const members = (directory?.members ?? []).filter(
       (member) => member.active && member.accountType === "real"
@@ -90,10 +94,10 @@ export default async function TeamPage() {
         />
       );
     }
-    const ROLE_TITLE: Record<string, { title: string; role: RosterRep["role"] }> = {
-      admin: { title: "Workspace administrator", role: "Admin" },
-      editor: { title: "Sales manager", role: "Manager" },
-      sales: { title: "Sales representative", role: "Rep" },
+    const ACCESS_ROLE: Record<string, RosterRep["role"]> = {
+      admin: "Admin",
+      editor: "Manager",
+      sales: "Rep",
     };
     const zeroStages = STAGES.map((stage) => ({
       stage,
@@ -102,13 +106,13 @@ export default async function TeamPage() {
       count: 0,
     }));
     const reps: RosterRep[] = members.map((member) => {
-      const meta = ROLE_TITLE[member.role] ?? ROLE_TITLE.sales;
+      const title = memberProfiles.get(member.id)?.title.trim();
       return {
         identityKey: member.email || member.id,
         name: member.name,
         slug: member.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        title: meta.title,
-        role: meta.role,
+        title: title || "Title not set",
+        role: ACCESS_ROLE[member.role] ?? "Rep",
         you: currentUser?.memberId === member.id,
         region: "Global",
         email: member.email || "",

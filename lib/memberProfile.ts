@@ -26,6 +26,10 @@ function rowId(scope: WorkspaceMemberScope) {
   return `member-profile:${scope.workspaceId}:${scope.userId}`;
 }
 
+function workspaceRowPrefix(workspaceId: string) {
+  return `member-profile:${workspaceId}:%`;
+}
+
 function clean(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
@@ -47,6 +51,43 @@ export async function readMemberProfile(
     title: clean(profile?.title, 160),
     signature: clean(profile?.signature, 4_000),
   };
+}
+
+/**
+ * Read the editable identity fields for every member in a workspace. Access
+ * roles (admin/editor/sales) intentionally do not appear here: a permission is
+ * not a person's job title. Team and rep pages use this map so the title a
+ * person saves in Settings > Profile is the title everyone sees.
+ */
+export async function readWorkspaceMemberProfiles(
+  workspaceId: string
+): Promise<Map<string, MemberProfilePreferences>> {
+  const db = client();
+  const profiles = new Map<string, MemberProfilePreferences>();
+  if (!db) return profiles;
+  const { data, error } = await db
+    .from("offering_catalog_state")
+    .select("catalog")
+    .like("id", workspaceRowPrefix(workspaceId));
+  if (error) throw new Error(error.message);
+  for (const row of data || []) {
+    const catalog = row.catalog as {
+      workspaceId?: unknown;
+      userId?: unknown;
+      profile?: Record<string, unknown>;
+    } | null;
+    if (
+      catalog?.workspaceId !== workspaceId ||
+      typeof catalog.userId !== "string"
+    ) {
+      continue;
+    }
+    profiles.set(catalog.userId, {
+      title: clean(catalog.profile?.title, 160),
+      signature: clean(catalog.profile?.signature, 4_000),
+    });
+  }
+  return profiles;
 }
 
 export async function writeMemberProfile(
