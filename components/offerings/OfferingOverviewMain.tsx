@@ -253,23 +253,51 @@ function ReleaseTimeline({
       97,
       Math.max(3, ((date.getTime() - domainStart.getTime()) / domainSpan) * 94 + 3)
     );
-  const todayPosition = positionFor(todayUtc);
   /**
-   * WITH FEWER THAN TWO DATED MILESTONES THERE IS NO SPAN TO SCALE AGAINST.
+   * FOUR FACTS, ONE AXIS: today, and the three release dates around it.
    *
-   * Proportional placement then piles every dot onto the left edge and the
-   * whole strip reads as broken — one lonely dot and a long empty rail
-   * (Anir, Aug 6). In that case the three stops sit at even thirds and the
-   * caption stops claiming proportional placement; nothing is invented
-   * either way, the dates below are still exactly what is on file.
+   * The releases sit at fixed thirds so each one lines up with its own card
+   * underneath — proportional placement stacked them on the left edge
+   * whenever dates were thin and the strip read as broken (Anir, Aug 6).
+   * TODAY is the one marker that moves: it slides inside whichever gap it
+   * actually falls into, interpolated between the two real dates bounding
+   * it, so "where we are" is truthful without distorting the rest.
    */
-  const datedMilestoneCount = milestones.filter((m) => m.date).length;
-  const proportional = datedMilestoneCount >= 2;
-  const stopAt = (milestone: TimelineMilestone, index: number) =>
-    proportional && milestone.date
-      ? positionFor(milestone.date)
-      : ((index + 0.5) / 3) * 100;
-  const stops = milestones.map(stopAt);
+  const stops = [16.5, 50, 83.5];
+  const fractionBetween = (from: Date, to: Date, at: Date) => {
+    const span = to.getTime() - from.getTime();
+    if (span <= 0) return 0.5;
+    return Math.min(1, Math.max(0, (at.getTime() - from.getTime()) / span));
+  };
+  const dPrev = previous.date;
+  const dCur = current.date;
+  const dNext = next.date;
+  let todayStop: number;
+  if (dCur && todayUtc.getTime() < dCur.getTime()) {
+    todayStop = dPrev
+      ? stops[0] + fractionBetween(dPrev, dCur, todayUtc) * (stops[1] - stops[0])
+      : (stops[0] + stops[1]) / 2;
+  } else if (dNext && todayUtc.getTime() < dNext.getTime()) {
+    todayStop = dCur
+      ? stops[1] + fractionBetween(dCur, dNext, todayUtc) * (stops[2] - stops[1])
+      : (stops[1] + stops[2]) / 2;
+  } else if (dNext) {
+    todayStop = Math.min(96, stops[2] + 7);
+  } else {
+    todayStop = (stops[1] + stops[2]) / 2;
+  }
+
+  /** "3 months ago" / "in 2 months" / "this month" — the human distance. */
+  const monthsAway = (date: Date | null) => {
+    if (!date) return null;
+    const months =
+      (todayUtc.getUTCFullYear() - date.getUTCFullYear()) * 12 +
+      (todayUtc.getUTCMonth() - date.getUTCMonth());
+    if (months === 0) return "this month";
+    const n = Math.abs(months);
+    const unit = n === 1 ? "month" : "months";
+    return months > 0 ? `${n} ${unit} ago` : `in ${n} ${unit}`;
+  };
 
   // Identity by time, not by status vocabulary: shipped past is slate, the
   // live release is green, what is coming is blue — the same three colours
@@ -282,88 +310,91 @@ function ReleaseTimeline({
 
   return (
     <div className="mt-5 overflow-hidden rounded-2xl border border-border-light bg-surface shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border-light px-5 py-3.5">
-        <div>
-          <p className="text-[13px] font-semibold text-text-primary">Release timeline</p>
-          <p className="mt-0.5 text-[11px] text-text-tertiary">
-            {proportional
-              ? "Recorded dates are positioned proportionally; missing dates are not estimated."
-              : "Where this offering stands. Only recorded dates are shown — nothing is estimated."}
-          </p>
-        </div>
-        <span className="rounded-full bg-blue-light px-2.5 py-1 text-[10px] font-semibold text-blue-primary">
-          Today · {formatTimelineDate(todayUtc)}
-        </span>
+      <div className="border-b border-border-light px-5 py-3.5">
+        <p className="text-[13px] font-semibold text-text-primary">Release timeline</p>
+        <p className="mt-0.5 text-[11px] text-text-tertiary">
+          Where today sits against the last, current and next release.
+        </p>
       </div>
 
-      <div className="overflow-x-auto px-5 pb-4 pt-5">
-        <div className="min-w-[620px]">
-          <div
-            className="relative h-12"
-            role="img"
-            aria-label={`Release timeline from ${formatTimelineDate(domainStart)} to ${formatTimelineDate(domainEnd)}`}
-          >
-            {/* The rail carries the story: solid slate-to-green through what
-                has shipped, dashed blue into what has not happened yet. */}
-            <div className="absolute left-0 right-0 top-[26px] h-[3px] rounded-full bg-border-light" />
+      <div className="overflow-x-auto px-5 pb-5 pt-4">
+        <div className="min-w-[600px]">
+          {/* TODAY rides above the rail on its own lane so it never collides
+              with a release dot. */}
+          <div className="relative h-7">
             <div
-              className="absolute top-[26px] h-[3px] rounded-full"
+              className="absolute -translate-x-1/2 whitespace-nowrap"
+              style={{ left: `${todayStop}%` }}
+            >
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-primary px-2.5 py-1 text-[10px] font-bold tracking-[0.02em] text-white shadow-[0_2px_8px_rgba(0,113,227,0.35)]">
+                Today · {formatTimelineDate(todayUtc)}
+              </span>
+            </div>
+          </div>
+
+          <div
+            className="relative h-8"
+            role="img"
+            aria-label={`Release timeline: ${milestones
+              .map((m) => `${m.eyebrow} ${m.title}`)
+              .join(", ")}. Today is ${formatTimelineDate(todayUtc)}.`}
+          >
+            {/* Solid slate-to-green through what shipped, dashed blue into
+                what has not happened yet. */}
+            <div className="absolute left-0 right-0 top-[13px] h-[3px] rounded-full bg-border-light" />
+            <div
+              className="absolute top-[13px] h-[3px] rounded-full"
               style={{
                 left: `${stops[0]}%`,
-                width: `${Math.max(stops[1] - stops[0], 0)}%`,
+                width: `${stops[1] - stops[0]}%`,
                 backgroundImage: `linear-gradient(90deg, ${TONE.past.dot}, ${TONE.current.dot})`,
               }}
             />
             <div
-              className="absolute top-[26px] h-0 border-t-[3px] border-dashed"
+              className="absolute top-[13px] h-0 border-t-[3px] border-dashed"
               style={{
                 left: `${stops[1]}%`,
-                width: `${Math.max(stops[2] - stops[1], 0)}%`,
+                width: `${stops[2] - stops[1]}%`,
                 borderColor: TONE.next.dot,
-                opacity: 0.55,
+                opacity: 0.5,
               }}
+            />
+
+            {/* The today needle, drawn under the dots so it never covers one. */}
+            <div
+              className="absolute top-0 h-8 w-[2px] -translate-x-1/2 rounded-full bg-blue-primary"
+              style={{ left: `${todayStop}%` }}
+              aria-hidden="true"
             />
 
             {milestones.map((milestone, index) => {
               const tone = TONE[milestone.tone];
+              const dated = !!milestone.date;
               return (
                 <div
                   key={`${milestone.eyebrow}-${milestone.title}`}
-                  className="absolute top-[18px] -translate-x-1/2"
+                  className="absolute top-[5px] -translate-x-1/2"
                   style={{ left: `${stops[index]}%` }}
                   title={`${milestone.eyebrow}: ${milestone.title}${
-                    milestone.date ? ` · ${formatTimelineDate(milestone.date)}` : ""
+                    dated ? ` · ${formatTimelineDate(milestone.date)}` : ""
                   }`}
                 >
                   <span
-                    className="flex h-[18px] w-[18px] items-center justify-center rounded-full border-4 border-white text-white"
+                    className="block h-[19px] w-[19px] rounded-full border-[4px] border-white"
                     style={{
-                      backgroundColor: milestone.date ? tone.dot : "#FFFFFF",
-                      boxShadow: `0 0 0 2px ${tone.dot}${milestone.date ? "" : "80"}, 0 2px 6px rgba(15,23,42,0.16)`,
+                      backgroundColor: dated ? tone.dot : "#FFFFFF",
+                      boxShadow: `0 0 0 2px ${dated ? tone.dot : `${tone.dot}66`}, 0 2px 6px rgba(15,23,42,0.18)`,
                     }}
-                  >
-                    {milestone.tone === "current" && milestone.date && (
-                      <Check size={9} strokeWidth={3.2} aria-hidden="true" />
-                    )}
-                  </span>
+                  />
                 </div>
               );
             })}
-
-            {proportional && (
-              <div
-                className="absolute top-0 -translate-x-1/2"
-                style={{ left: `${todayPosition}%` }}
-                title={`Today: ${formatTimelineDate(todayUtc)}`}
-              >
-                <span className="block h-8 w-px bg-blue-primary/60" />
-              </div>
-            )}
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="mt-3.5 grid grid-cols-3 gap-2.5">
             {milestones.map((milestone) => {
               const tone = TONE[milestone.tone];
+              const away = monthsAway(milestone.date);
               return (
                 <div
                   key={milestone.eyebrow}
@@ -379,11 +410,16 @@ function ReleaseTimeline({
                     />
                     {milestone.eyebrow}
                   </p>
-                  <p className="mt-1.5 break-words text-[13px] font-semibold leading-snug text-text-primary">
+                  {/* The DATE is the headline — that is the question being
+                      asked (Anir: "when was it released"). */}
+                  <p className="mt-2 text-[17px] font-bold leading-none tracking-[-0.01em] text-text-primary tnum">
+                    {milestone.date ? formatTimelineDate(milestone.date) : "No date yet"}
+                  </p>
+                  <p className="mt-1.5 break-words text-[12px] font-semibold leading-snug text-text-secondary">
                     {milestone.title}
                   </p>
-                  <p className="mt-1 text-[10.5px] leading-snug text-text-tertiary">
-                    {milestone.detail}
+                  <p className="mt-0.5 text-[10.5px] leading-snug text-text-tertiary">
+                    {away || milestone.detail}
                   </p>
                 </div>
               );

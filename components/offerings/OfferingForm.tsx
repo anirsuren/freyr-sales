@@ -1552,11 +1552,12 @@ export function OfferingForm({
                           : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
                       )}
                     >
+                      {/* No tick badge. The blue border and wash already say
+                          "selected", and the corner tick squeezed the label
+                          (Anir, Aug 6: "the check mark is kind of ruining it
+                          because it's compressing it"). */}
                       <AppearanceAutomaticIcon size={17} strokeWidth={2} />
                       {appearanceAutomaticMark.iconLabel}
-                      {!appearanceCard?.style?.icon && (
-                        <Check className="absolute right-1 top-1" size={11} strokeWidth={2.5} />
-                      )}
                     </button>
                     {SERVICE_CARD_ICON_OPTIONS.map((option) => {
                       const Icon = SERVICE_CARD_ICON_COMPONENTS[option.value];
@@ -1576,9 +1577,6 @@ export function OfferingForm({
                         >
                           <Icon size={17} strokeWidth={2} />
                           {option.label}
-                          {selected && (
-                            <Check className="absolute right-1 top-1" size={11} strokeWidth={2.5} />
-                          )}
                         </button>
                       );
                     })}
@@ -1616,9 +1614,6 @@ export function OfferingForm({
                         }}
                       />
                       {appearanceAutomaticMark.colorLabel}
-                      {!appearanceCard?.style?.color && (
-                        <Check className="absolute right-1.5 top-1.5" size={11} strokeWidth={2.5} />
-                      )}
                     </button>
                     {SERVICE_CARD_COLOR_OPTIONS.map((option) => {
                       const selected = appearanceCard?.style?.color === option.value;
@@ -1642,9 +1637,6 @@ export function OfferingForm({
                             }}
                           />
                           {option.label}
-                          {selected && (
-                            <Check className="absolute right-1.5 top-1.5" size={11} strokeWidth={2.5} />
-                          )}
                         </button>
                       );
                     })}
