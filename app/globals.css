@@ -879,6 +879,44 @@ select:focus-visible {
   animation: hoverCardIn 0.13s ease-out both;
 }
 
+/* ---------------------------------------------------------------------------
+   DROPDOWN OPEN — the premium one.
+
+   Every select in the app shared the 0.13s pop above, which reads as "appeared"
+   rather than "opened" (Anir, Aug 7: "for other dropdowns, I'd like a premium
+   animation when I click it"). This grows the panel out of the trigger edge on
+   an expo-out curve, so it decelerates into place instead of snapping, and the
+   rows arrive just behind it in a short stagger.
+
+   `--menu-origin` is set inline from the menu's placement, so a dropdown that
+   flipped above its trigger grows UP out of it rather than down through it.
+--------------------------------------------------------------------------- */
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(calc(var(--menu-dir, 1) * -6px));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.menu-in {
+  transform-origin: var(--menu-origin, top left);
+  animation: menuIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes menuRowIn {
+  from { opacity: 0; transform: translateY(calc(var(--menu-dir, 1) * -4px)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.menu-row-in {
+  /* Capped at row 8: past that the stagger stops being a flourish and starts
+     being a wait, and a long list scrolls anyway. */
+  animation: menuRowIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(min(var(--row, 0), 8) * 18ms + 40ms);
+}
+
 /* One user-controlled delay for help tooltips and other CSS hover popups. */
 .freyr-hover-trigger:hover .freyr-hover-popup {
   transition-delay: var(--freyr-hover-delay, 500ms);
@@ -891,6 +929,7 @@ html[data-hover-popups="off"] .freyr-hover-popup {
 }
 @media (prefers-reduced-motion: reduce) {
   .hovercard-in { animation: none; }
+  .menu-in, .menu-row-in { animation: none; }
 }
 
 /* Hide scrollbars on tab chips while keeping scroll */

@@ -38,6 +38,19 @@ type FloatingMenuStyle = CSSProperties & {
   maxHeight: number;
 };
 
+/**
+ * Where the panel should grow FROM. A dropdown that flipped above its trigger
+ * has to expand upward out of that trigger, or the motion reads as the menu
+ * sliding through the control it belongs to.
+ */
+function menuMotionVars(style: FloatingMenuStyle | null): CSSProperties {
+  const opensUp = style ? style.bottom !== undefined : false;
+  return {
+    ["--menu-origin" as string]: opensUp ? "bottom left" : "top left",
+    ["--menu-dir" as string]: opensUp ? -1 : 1,
+  };
+}
+
 function floatingMenuStyle(
   trigger: DOMRect,
   desiredWidth: number,
@@ -310,7 +323,12 @@ export function ColorSelect({
               <ChevronDown
                 size={dense ? 13 : 15}
                 strokeWidth={2}
-                className={cn("text-text-tertiary transition-transform duration-150", open && "rotate-180")}
+                // Same expo-out curve the panel uses, so the chevron and the menu
+                // read as one gesture rather than two things that happened.
+                className={cn(
+                  "transition-[transform,color] duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+                  open ? "rotate-180 text-blue-primary" : "text-text-tertiary"
+                )}
               />
             </span>
           </PriorityLabel>
@@ -323,12 +341,12 @@ export function ColorSelect({
           role="listbox"
           aria-label={ariaLabel}
           className={cn(
-            "z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in",
+            "menu-in z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]",
             detailed ? "p-2" : "p-1.5"
           )}
-          style={menuStyle}
+          style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
         >
-          {options.map((o) => {
+          {options.map((o, rowIndex) => {
             const on = o.value === value;
             // Selected look = a whisper of the option's own color (Suren: the old
             // solid-blue fill + left notch looked bad). No bar, no heavy fill.
@@ -344,11 +362,14 @@ export function ColorSelect({
                   setOpen(false);
                 }}
                 className={cn(
-                  "relative w-full flex items-center rounded-lg text-left transition-[background-color,box-shadow,transform]",
+                  "menu-row-in relative w-full flex items-center rounded-lg text-left transition-[background-color,box-shadow,transform]",
                   detailed ? "min-h-[54px] gap-3 px-2.5 py-2" : "gap-2.5 px-2.5 py-2 text-[13px]",
                   !on && "hover:bg-surface active:scale-[0.99]"
                 )}
-                style={on ? { background: `${accent}0D` } : undefined}
+                style={{
+                  ...(on ? { background: `${accent}0D` } : null),
+                  ["--row" as string]: rowIndex,
+                }}
               >
                 <Dot o={o} prominent={detailed} />
                 <span className="flex-1 min-w-0">
@@ -619,7 +640,12 @@ export function MultiColorSelect({
             <ChevronDown
               size={dense ? 13 : 15}
               strokeWidth={2}
-              className={cn("text-text-tertiary transition-transform duration-150", open && "rotate-180")}
+              // Same expo-out curve the panel uses, so the chevron and the menu
+                // read as one gesture rather than two things that happened.
+                className={cn(
+                  "transition-[transform,color] duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+                  open ? "rotate-180 text-blue-primary" : "text-text-tertiary"
+                )}
             />
           </PriorityLabel>
         </button>
@@ -632,9 +658,9 @@ export function MultiColorSelect({
           aria-multiselectable="true"
           aria-label={ariaLabel}
           className={cn(
-            "z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] hovercard-in"
+            "menu-in z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           )}
-          style={menuStyle}
+          style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
         >
           {/* "All" clears every pick — reads as the unrestricted state. */}
           <button
@@ -665,7 +691,7 @@ export function MultiColorSelect({
             )}
             {allLabel}
           </button>
-          {options.map((o) => {
+          {options.map((o, rowIndex) => {
             const on = values.includes(o.value);
             const accent = o.color || "#0071E3";
             const Icon = o.icon;
@@ -677,10 +703,13 @@ export function MultiColorSelect({
                 aria-selected={on}
                 onClick={() => toggle(o.value)}
                 className={cn(
-                  "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
+                  "menu-row-in w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
                   !on && "hover:bg-surface"
                 )}
-                style={on ? { background: `${accent}0D` } : undefined}
+                style={{
+                  ...(on ? { background: `${accent}0D` } : null),
+                  ["--row" as string]: rowIndex,
+                }}
               >
                 {/* The checkbox — the literal ask ("checkboxes before them"). */}
                 <span
