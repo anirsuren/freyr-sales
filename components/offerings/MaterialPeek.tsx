@@ -20,9 +20,11 @@ import type { OfferingMaterial } from "@/lib/offeringMaterials";
  * showing an empty frame that looks broken.
  */
 
-/** Same deliberate rest the folder peek uses — and here it also stops a
- *  document conversion firing for every row a cursor crosses. */
-const OPEN_DELAY_MS = 500;
+/** A FULL SECOND of rest before the first open. Half a second still caught
+ *  cursors on their way somewhere else (Anir, Aug 8: "0.5 seconds is too
+ *  much") — and every accidental open costs a document render. Reopening an
+ *  already-rendered card stays near-instant below. */
+const OPEN_DELAY_MS = 1000;
 /** A card that is already rendered reopens almost immediately. */
 const REOPEN_DELAY_MS = 120;
 const CLOSE_DELAY_MS = 140;
