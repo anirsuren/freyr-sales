@@ -120,6 +120,8 @@ export interface Offering {
    * is deliberately not built yet.
    */
   releases?: OfferingRelease[];
+  /** FDL components connected to this offering — the software the package contains. */
+  component_ids?: string[];
   /** Structured roadmap copy supplied by the Offering Owner. This preserves
    *  module tables, the current-vs-previous comparison, release history, and
    *  the restricted next-version table without flattening them into generic
@@ -161,6 +163,41 @@ export interface OfferingRelease {
   features: string[];
   /** Free-text note for anything a feature list can't carry. */
   note?: string;
+}
+
+/**
+ * FDL COMPONENTS — FDL is Freya Digital, the software line. An offering is a
+ * PACKAGE; the software inside it are FDL components, each a first-class
+ * record with its own versions and its own features (Suren via Anir, Aug 8:
+ * "an offering can be a package and have multiple components in offering and
+ * every component can have its own roadmap and features"). Offerings connect
+ * to them by id (`component_ids`), so one component — say the Register Module
+ * — can sit inside several packages without its roadmap being copied around.
+ * The offering's own `releases` stay what they were: the package-level
+ * version history.
+ */
+export type FdlComponentType = "Module" | "Agent" | "Platform";
+export interface FdlRelease {
+  id: string;
+  version: string;
+  date?: string;
+  status: "released" | "next";
+  /** Exactly one release per component should carry this — the version sellers quote today. */
+  current?: boolean;
+}
+export interface FdlFeature {
+  id: string;
+  name: string;
+  description?: string;
+  /** FdlRelease ids this feature is available in — the feature↔version mapping. */
+  versionIds: string[];
+}
+export interface FdlComponent {
+  id: string;
+  name: string;
+  type: FdlComponentType;
+  releases: FdlRelease[];
+  features: FdlFeature[];
 }
 
 export interface OfferingRoadmapModuleRow {
@@ -1134,6 +1171,9 @@ interface OfferingsStore {
   offeringTypes: OfferingType[];
   offeringCategories: OfferingCategory[];
   offerings: Offering[];
+  /** Freya Digital components — the software pieces offerings are made of.
+   *  Optional on the wire: catalogs persisted before Aug 8 lack it. */
+  fdlComponents?: FdlComponent[];
   /** One-time migration marker for the approved offering-type descriptions. */
   offeringTypeCopyVersion?: number;
   /** One-time marker for Eswar's approved Freya.Register roadmap document. */
@@ -1161,15 +1201,76 @@ declare global {
 }
 
 function seed(): OfferingsStore {
+  const offerings = seedOfferings();
+  // Demo connections for the showroom: Freya.Register is a package of its
+  // module and its agent; Freya.Intelligence carries the intelligence feed
+  // (Suren's own example: "freya dot register will have 2 components, one is
+  // register module and register agent").
+  const register = offerings.find((o) => o.id === "of-001");
+  if (register) register.component_ids = ["fdl-001", "fdl-002"];
+  const intelligence = offerings.find((o) => o.id === "of-002");
+  if (intelligence) intelligence.component_ids = ["fdl-003"];
   return {
     customerTypes: seedCustomerTypes(),
     markets: seedMarkets(),
     offeringTypes: seedOfferingTypes(),
     offeringCategories: seedOfferingCategories(),
-    offerings: seedOfferings(),
+    offerings,
+    fdlComponents: seedFdlComponents(),
     offeringTypeCopyVersion: 1,
     freyaRegisterRoadmapVersion: 1,
   };
+}
+
+/** Demo FDL components for the mock showroom — enough versions and mapped
+ *  features that the comparison matrix and feature sheets demo themselves. */
+function seedFdlComponents(): FdlComponent[] {
+  return [
+    {
+      id: "fdl-001",
+      name: "Register Module",
+      type: "Module",
+      releases: [
+        { id: "fdl-001-v1", version: "V1", date: "2026-03-10", status: "released" },
+        { id: "fdl-001-v2", version: "V2", date: "2026-06-20", status: "released", current: true },
+        { id: "fdl-001-v21", version: "V2.1", date: "2026-10-01", status: "next" },
+      ],
+      features: [
+        { id: "fdl-001-f1", name: "Product registration tracking", description: "Every product's registration status, by market, in one place.", versionIds: ["fdl-001-v1", "fdl-001-v2", "fdl-001-v21"] },
+        { id: "fdl-001-f2", name: "Health-authority submission calendar", description: "Upcoming submissions and renewals with owner and due date.", versionIds: ["fdl-001-v1", "fdl-001-v2", "fdl-001-v21"] },
+        { id: "fdl-001-f3", name: "Change-control workflow", description: "Route a product change through review and approval before filing.", versionIds: ["fdl-001-v2", "fdl-001-v21"] },
+        { id: "fdl-001-f4", name: "Bulk import from Excel", description: "Load an existing registration book in one pass.", versionIds: ["fdl-001-v2", "fdl-001-v21"] },
+        { id: "fdl-001-f5", name: "Audit-ready activity log", description: "Who changed what, when — exportable for inspections.", versionIds: ["fdl-001-v2", "fdl-001-v21"] },
+        { id: "fdl-001-f6", name: "Automated post-approval variations", description: "Draft variation packages from the recorded change.", versionIds: ["fdl-001-v21"] },
+      ],
+    },
+    {
+      id: "fdl-002",
+      name: "PI Agent",
+      type: "Agent",
+      releases: [
+        { id: "fdl-002-v1", version: "V1", date: "2026-06-01", status: "released", current: true },
+        { id: "fdl-002-v11", version: "V1.1", date: "2026-09-15", status: "next" },
+      ],
+      features: [
+        { id: "fdl-002-f1", name: "Answers product-information questions", description: "Grounded in approved product information only.", versionIds: ["fdl-002-v1", "fdl-002-v11"] },
+        { id: "fdl-002-f2", name: "Drafts label updates for review", description: "Proposes the edit; a human approves it.", versionIds: ["fdl-002-v1", "fdl-002-v11"] },
+        { id: "fdl-002-f3", name: "Flags conflicting product data across markets", description: "Spots when two markets state different strengths or storage conditions.", versionIds: ["fdl-002-v11"] },
+      ],
+    },
+    {
+      id: "fdl-003",
+      name: "Intelligence Feed",
+      type: "Module",
+      releases: [
+        { id: "fdl-003-v1", version: "V1", date: "2026-04-02", status: "released", current: true },
+      ],
+      features: [
+        { id: "fdl-003-f1", name: "Daily regulatory-change digest", description: "What changed in each market since yesterday.", versionIds: ["fdl-003-v1"] },
+        { id: "fdl-003-f2", name: "Impact tagging by market and product line", description: "Each change tagged with who at the customer should care.", versionIds: ["fdl-003-v1"] },
+      ],
+    },
+  ];
 }
 
 const store: OfferingsStore = globalThis.__FREYR_OFFERINGS_STORE__ ?? seed();
@@ -1352,6 +1453,12 @@ const DEFAULT_DEMO_ROADMAP_THEME: DemoRoadmapTheme = {
   ],
 };
 
+/** Which demo components each showroom offering is a package of. */
+const DEMO_COMPONENT_CONNECTIONS: Record<string, string[]> = {
+  "of-001": ["fdl-001", "fdl-002"],
+  "of-002": ["fdl-003"],
+};
+
 function demoRoadmapForOffering(offering: Offering): OfferingRelease[] {
   const number = Number(offering.id.match(/\d+/)?.[0] || 1);
   const theme =
@@ -1449,6 +1556,9 @@ function withVisibleMaterials(off: Offering): Offering {
       materials: normalizeMaterials(off.materials || []),
       materialFolders: Array.from(new Set(canonicalFolders)),
       releases: demoRoadmapForOffering(off),
+      // The showroom's demo component connections, unless real ones exist.
+      component_ids:
+        off.component_ids ?? DEMO_COMPONENT_CONNECTIONS[off.id] ?? [],
     };
   }
   if (!off.materials?.length)
@@ -1469,6 +1579,8 @@ globalThis.__FREYR_LIVE_OFFERINGS_STORE__ = liveStore;
 if (!store.offeringTypes) store.offeringTypes = seedOfferingTypes();
 if (!store.offeringCategories)
   store.offeringCategories = seedOfferingCategories();
+if (!store.fdlComponents) store.fdlComponents = seedFdlComponents();
+if (!liveStore.fdlComponents) liveStore.fdlComponents = [];
 // FIELDS THAT ARRIVED AFTER CATALOGS WERE ALREADY PERSISTED. A stored offering
 // that predates them loads with the field undefined, and the first `.map` or
 // `.some` on it takes the whole page down. This healer runs at EVERY point a
@@ -1707,6 +1819,8 @@ function replaceStore(target: OfferingsStore, source: OfferingsStore) {
   target.offeringTypes = structuredClone(source.offeringTypes);
   target.offeringCategories = structuredClone(source.offeringCategories);
   target.offerings = structuredClone(source.offerings);
+  // Catalogs persisted before FDL components existed load without the field.
+  target.fdlComponents = structuredClone(source.fdlComponents ?? []);
 }
 
 function isOfferingsStore(value: unknown): value is OfferingsStore {
@@ -2375,6 +2489,69 @@ export function updateOffering(
   if (data.offering_category)
     ensureOfferingCategory(activeStore().offerings[i].offering_category);
   return activeStore().offerings[i];
+}
+
+// ---------------------------------------------------------------------------
+// FDL components — mutations run inside commitOfferingsChange like offerings.
+// ---------------------------------------------------------------------------
+
+function fdlList(): FdlComponent[] {
+  const s = activeStore();
+  if (!s.fdlComponents) s.fdlComponents = [];
+  return s.fdlComponents;
+}
+
+export function listFdlComponents(): FdlComponent[] {
+  const list = fdlList();
+  // Mock is the showroom: with nothing stored yet it presents the demo set,
+  // read-time only — nothing is written (Anir, Aug 8: "mock mode is just
+  // purely for looks. Just make sure real mode works").
+  if (list.length === 0 && getDataMode() !== "live") return seedFdlComponents();
+  return list;
+}
+
+export function getFdlComponent(id: string): FdlComponent | null {
+  return listFdlComponents().find((c) => c.id === id) ?? null;
+}
+
+export function createFdlComponent(data: {
+  name: string;
+  type: FdlComponentType;
+}): FdlComponent {
+  const component: FdlComponent = {
+    id: `fdl-${Math.random().toString(36).slice(2, 9)}`,
+    name: data.name,
+    type: data.type,
+    releases: [],
+    features: [],
+  };
+  fdlList().unshift(component);
+  return component;
+}
+
+export function updateFdlComponent(
+  id: string,
+  data: Partial<Omit<FdlComponent, "id">>
+): FdlComponent | null {
+  const list = fdlList();
+  const i = list.findIndex((c) => c.id === id);
+  if (i === -1) return null;
+  list[i] = { ...list[i], ...data, id };
+  return list[i];
+}
+
+export function deleteFdlComponent(id: string): boolean {
+  const list = fdlList();
+  const i = list.findIndex((c) => c.id === id);
+  if (i === -1) return false;
+  list.splice(i, 1);
+  // A deleted component must not linger as a ghost connection on any package.
+  for (const offering of activeStore().offerings) {
+    if (offering.component_ids?.includes(id)) {
+      offering.component_ids = offering.component_ids.filter((x) => x !== id);
+    }
+  }
+  return true;
 }
 
 export function deleteOffering(id: string): boolean {

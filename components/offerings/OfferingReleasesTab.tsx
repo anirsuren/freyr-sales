@@ -1272,23 +1272,30 @@ export function OfferingReleasesTab({
             {canSeeNext ? ", plus the approved next customer version." : "."}
           </p>
         </div>
-        {canEdit && roadmapDetails && (
-          <button
-            type="button"
-            onClick={openRoadmapEditor}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-primary hover:text-blue-primary"
-          >
-            <Pencil size={14} strokeWidth={2} /> Edit roadmap
-          </button>
-        )}
-        {canEdit && !roadmapDetails && (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-blue-hover"
-          >
-            <Plus size={14} strokeWidth={2.4} /> Add a version
-          </button>
+        {/* ADD A VERSION IS ALWAYS AVAILABLE TO EDITORS. It used to render
+            only while the offering had no structured roadmap yet — the moment
+            real content existed, the only button left was "Edit roadmap" and
+            there was no path to the add-version modal at all (Anir, Aug 8:
+            "how the fuck do i add a version to an offering"). */}
+        {canEdit && (
+          <div className="flex shrink-0 items-center gap-2">
+            {roadmapDetails && (
+              <button
+                type="button"
+                onClick={openRoadmapEditor}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-primary hover:text-blue-primary"
+              >
+                <Pencil size={14} strokeWidth={2} /> Edit roadmap
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-blue-hover"
+            >
+              <Plus size={14} strokeWidth={2.4} /> Add a version
+            </button>
+          </div>
         )}
       </div>
 

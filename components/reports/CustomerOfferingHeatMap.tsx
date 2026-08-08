@@ -118,7 +118,9 @@ const DISPLAY_OPTIONS: ColorOption[] = [
   },
   {
     value: "potential_close_date",
-    label: "Potential closure",
+    // Renamed from "Potential closure" (Anir, Aug 8: "instead of potential
+    // closure say key dates for the heatmap dropdown").
+    label: "Key dates",
     color: "#7C3AED",
     icon: CalendarClock,
   },

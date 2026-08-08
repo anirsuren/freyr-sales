@@ -33,8 +33,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
 import { OfferingReports } from "@/components/offerings/OfferingReports";
-import { OfferingReleasesTab } from "@/components/offerings/OfferingReleasesTab";
-import { roadmapFromReleases } from "@/lib/roadmapFromReleases";
+import { ConnectedComponents } from "@/components/offerings/ConnectedComponents";
 import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
@@ -43,7 +42,14 @@ import { formatMoney } from "@/lib/pipeline";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
 import { reportForOffering } from "@/lib/revenue";
 import { cn } from "@/lib/utils";
-import { getOffering, hydrateOffering, listOfferings, listOfferingTypes } from "@/lib/offerings";
+import {
+  getOffering,
+  hydrateOffering,
+  listFdlComponents,
+  listOfferings,
+  listOfferingTypes,
+  type FdlComponent,
+} from "@/lib/offerings";
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { canViewNextCustomerVersion } from "@/lib/roadmapAccess";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
@@ -87,13 +93,20 @@ export default async function OfferingDetailPage({
    * neither shows the chip nor honours the URL.
    */
   const showReports = getDataMode() !== "live";
+  // The package's contents: FDL components connected by id.
+  const allComponents = listFdlComponents();
+  const connectedComponents = (o.component_ids ?? [])
+    .map((id) => allComponents.find((c) => c.id === id))
+    .filter((c): c is FdlComponent => !!c);
   const tab =
     query?.tab === "reports" && showReports
       ? "reports"
       : query?.tab === "materials"
         ? "materials"
-        : query?.tab === "roadmap" || query?.tab === "releases"
-          ? "roadmap"
+        : query?.tab === "components" ||
+            query?.tab === "roadmap" ||
+            query?.tab === "releases"
+          ? "components"
           : "overview";
   const allCustomers = await getDb().customers.list();
 
@@ -184,10 +197,6 @@ export default async function OfferingDetailPage({
   // A POC name copied from the catalogue is useful sample/catalogue context,
   // but it is not proof that the person has a workspace account. In live mode
   // this card must show accounts, not plausible-looking names. Keep a contact
-  // only when the live directory supplied a stable member id for that person.
-  // In-progress mode intentionally keeps the full sample roster so the page is
-  // populated and demonstrates the finished experience.
-  const offeringContacts = o.contacts ?? [];
 
   // Each market + size band reads as its own color so they scan at a glance
   // (Anir: "USA, Europe, Japan, China, Korea each a different color; same for
@@ -373,12 +382,15 @@ export default async function OfferingDetailPage({
             label: `Sales Materials (${o.materials.length})`,
             href: `/offerings/${o.id}?tab=materials`,
           },
-          // Past/current releases are visible to everyone. The next customer
-          // version inside this tab is restricted server-side.
+          // The roadmap left the offering: an offering is a package of FDL
+          // components, and each component carries its own versions and
+          // features (Suren via Anir, Aug 8: "take the roadmap off from
+          // here… components will have features and roadmap, not the
+          // offering").
           {
-            key: "roadmap",
-            label: "Roadmap",
-            href: `/offerings/${o.id}?tab=roadmap`,
+            key: "components",
+            label: `Components (${(o.component_ids ?? []).length})`,
+            href: `/offerings/${o.id}?tab=components`,
           },
           ...(showReports
             ? [
@@ -422,29 +434,12 @@ export default async function OfferingDetailPage({
           />
         ) : tab === "reports" ? (
           <OfferingReports report={report} offeringName={o.offering_name} />
-        ) : tab === "roadmap" ? (
-          <OfferingReleasesTab
+        ) : tab === "components" ? (
+          <ConnectedComponents
             offeringId={o.id}
-            offeringName={o.offering_name}
-            releases={o.releases ?? []}
-            roadmapDetails={(() => {
-              // Same bridge the edit page uses: most offerings keep their
-              // history in `releases`, not in a structured roadmap record.
-              const details = roadmapFromReleases(o.roadmap_details, o.releases);
-              if (!details) return undefined;
-              return canSeeNextCustomerVersion
-                ? details
-                : { ...details, nextExpectedLive: "", nextVersions: "", nextModules: [] };
-            })()}
-            // Editable in both modes. Mock writes go to the in-memory mock
-            // catalogue via activeStore(), never to the shared live one, so
-            // there is nothing to protect against here — and Mock is where
-            // there is sample history to practise reordering on.
+            connected={connectedComponents}
+            all={allComponents}
             canEdit={admin}
-            canSeeNext={canSeeNextCustomerVersion}
-            contacts={offeringContacts}
-            people={people}
-            owners={o.owners ?? []}
           />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 mt-6 items-start">
