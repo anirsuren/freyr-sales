@@ -52,6 +52,8 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [speed, setSpeed] = useState(1);
+  const [speedOpen, setSpeedOpen] = useState(false);
+  const speedRef = useRef<HTMLDivElement>(null);
   const [waiting, setWaiting] = useState(true);
   const [showControls, setShowControls] = useState(true);
   const [scrubbing, setScrubbing] = useState(false);
@@ -124,6 +126,20 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [toggle, seekBy, fullscreen, poke]);
+
+  useEffect(() => {
+    if (!speedOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!speedRef.current?.contains(e.target as Node)) setSpeedOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSpeedOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [speedOpen]);
 
   const pct = duration ? (time / duration) * 100 : 0;
   const bufPct = duration ? (buffered / duration) * 100 : 0;
@@ -260,20 +276,53 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
             {label}
           </span>
 
-          {/* Speed as visible one-tap chips — the whole reason for the custom
-              deck. No kebab, no submenu. */}
-          <div className="mr-1 flex items-center gap-0.5 rounded-lg bg-white/10 p-0.5">
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                onClick={() => { const v = vid.current; if (v) { v.playbackRate = s; setSpeed(s); } }}
-                className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold tnum transition-colors ${
-                  speed === s ? "bg-white text-black" : "text-white/75 hover:bg-white/15"
-                }`}
+          {/* SPEED IS ONE BUTTON. Six always-visible chips ate half the
+              control bar — hopeless in the narrow hover peek (Anir, Aug 8:
+              "the speed thing should just be a dropdown... click the current
+              speed and it'll show me all the other ones"). The bar sits at
+              the bottom of the player, so the menu opens UPWARD. */}
+          <div ref={speedRef} className="relative mr-1">
+            <button
+              onClick={() => setSpeedOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={speedOpen}
+              aria-label="Playback speed"
+              className={`min-w-[44px] rounded-lg px-2 py-1 text-[12px] font-semibold tnum transition-colors ${
+                speedOpen ? "bg-white text-black" : "bg-white/10 text-white/90 hover:bg-white/20"
+              }`}
+            >
+              {speed === 1 ? "1×" : `${speed}×`}
+            </button>
+            {speedOpen && (
+              <div
+                role="menu"
+                className="menu-in absolute bottom-full right-0 z-20 mb-1.5 w-[76px] rounded-lg bg-[#1D1D1F]/95 p-1 shadow-[0_8px_24px_rgba(0,0,0,0.4)] backdrop-blur-md"
+                style={{
+                  ["--menu-origin" as string]: "bottom right",
+                  ["--menu-dir" as string]: -1,
+                }}
               >
-                {s === 1 ? "1×" : `${s}×`}
-              </button>
-            ))}
+                {/* Fastest at the top: the list grows upward, so the order
+                    reads as a continuation of the closed button below it. */}
+                {[...SPEEDS].reverse().map((s) => (
+                  <button
+                    key={s}
+                    role="menuitemradio"
+                    aria-checked={speed === s}
+                    onClick={() => {
+                      const v = vid.current;
+                      if (v) { v.playbackRate = s; setSpeed(s); }
+                      setSpeedOpen(false);
+                    }}
+                    className={`block w-full rounded-md px-2 py-1 text-left text-[12px] font-semibold tnum transition-colors ${
+                      speed === s ? "bg-white text-black" : "text-white/80 hover:bg-white/15"
+                    }`}
+                  >
+                    {s === 1 ? "1×" : `${s}×`}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <button

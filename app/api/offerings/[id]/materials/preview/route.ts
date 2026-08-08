@@ -261,12 +261,44 @@ export async function GET(
             return String(cell);
           })
         );
+        /**
+         * TRIM TO WHAT IS ACTUALLY THERE. Excel keeps a stale "!ref" range —
+         * cells once touched or merely formatted — so a 6×5 sheet arrived
+         * declaring columns out to Z and a thousand rows, and the preview
+         * dutifully drew the emptiness (Anir, Aug 8: "if the source file does
+         * not have that many columns, that's a problem... if there's nothing,
+         * why are you filling the space?"). Only TRAILING emptiness goes: a
+         * gap between B and Z with content on both sides is kept, because
+         * dropping interior columns would misalign every row.
+         */
+        const emptyCell = (cell: unknown) =>
+          cell == null || (typeof cell === "string" && cell.trim() === "");
+        let lastRow = -1;
+        let lastColumn = -1;
+        rows.forEach((row, r) => {
+          row.forEach((cell, c) => {
+            if (emptyCell(cell)) return;
+            if (r > lastRow) lastRow = r;
+            if (c > lastColumn) lastColumn = c;
+          });
+        });
+        const usedRows =
+          lastRow >= 0
+            ? rows.slice(0, lastRow + 1).map((row) => {
+                const trimmed = row.slice(0, lastColumn + 1);
+                // Pad short rows so every row has the same column count.
+                while (trimmed.length < lastColumn + 1) trimmed.push(null);
+                return trimmed;
+              })
+            : [[null]];
         return {
           name,
-          rows,
-          totalRows,
-          totalColumns,
-          truncated: totalRows > MAX_ROWS || totalColumns > MAX_COLUMNS,
+          rows: usedRows,
+          totalRows: lastRow >= 0 ? lastRow + 1 : 1,
+          totalColumns: lastRow >= 0 ? lastColumn + 1 : 1,
+          // Truncated only when CONTENT hits the window edge — a stale declared
+          // range reaching Z is not a reason to claim the preview is limited.
+          truncated: lastRow + 1 >= MAX_ROWS || lastColumn + 1 >= MAX_COLUMNS,
         };
       });
       return NextResponse.json({

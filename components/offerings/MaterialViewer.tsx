@@ -1159,6 +1159,22 @@ export function MaterialViewer({
     return (
       <section aria-label={currentLabel} className="material-embed relative h-full min-h-0 bg-white">
         {viewerBody}
+        {/* Inside an archive member the embed had NO way back — the toolbar
+            that carries the back arrow is exactly what embed mode strips
+            (Anir, Aug 8: "if it's a zip and I click a file in the zip, it
+            doesn't let me go back"). One floating control, top-left, back to
+            the archive's file list. */}
+        {archiveMember && (
+          <button
+            type="button"
+            onClick={() => setArchiveMember(null)}
+            aria-label="Back to the archive's file list"
+            title="Back to the archive"
+            className="absolute left-2 top-2 z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[#1D1D1F]/85 text-white shadow-[0_4px_14px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-colors hover:bg-[#1D1D1F]"
+          >
+            <ArrowLeft size={15} strokeWidth={2.2} />
+          </button>
+        )}
         {pageCount > 1 && (
           <div
             aria-hidden={!peekScrolling}
