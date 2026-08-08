@@ -157,6 +157,7 @@ export function FdlComponentDetail({
   /** null = closed; "" = adding; otherwise the feature id being edited. */
   const [featureModal, setFeatureModal] = useState<string | null>(null);
   const [featName, setFeatName] = useState("");
+  const [featFid, setFeatFid] = useState("");
   const [featDesc, setFeatDesc] = useState("");
   const [featVersions, setFeatVersions] = useState<string[]>([]);
   const [confirmFeatureDelete, setConfirmFeatureDelete] = useState<string | null>(null);
@@ -164,6 +165,7 @@ export function FdlComponentDetail({
   function openFeatureModal(feature?: FdlFeature) {
     setFeatureModal(feature ? feature.id : "");
     setFeatName(feature?.name ?? "");
+    setFeatFid(feature?.fid ?? "");
     setFeatDesc(feature?.description ?? "");
     setFeatVersions(feature?.versionIds ?? releases.map((r) => r.id));
   }
@@ -172,6 +174,7 @@ export function FdlComponentDetail({
     if (!featName.trim()) return;
     const record: FdlFeature = {
       id: featureModal || `feat-${Math.random().toString(36).slice(2, 9)}`,
+      fid: featFid.trim() || undefined,
       name: featName.trim(),
       description: featDesc.trim() || undefined,
       versionIds: featVersions,
@@ -454,7 +457,14 @@ export function FdlComponentDetail({
                 {component.features.map((feature) => (
                   <tr key={feature.id}>
                     <td className="max-w-[340px] py-2.5 pr-4">
-                      <p className="text-[13px] font-semibold text-text-primary">{feature.name}</p>
+                      <p className="text-[13px] font-semibold text-text-primary">
+                        {feature.fid && (
+                          <span className="mr-1.5 inline-flex rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1 py-0.5 align-middle text-[10px] font-bold tracking-[0.03em] text-[color:#0040A0] tnum">
+                            {feature.fid}
+                          </span>
+                        )}
+                        {feature.name}
+                      </p>
                       {feature.description && (
                         <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
                           {feature.description}
@@ -737,6 +747,18 @@ export function FdlComponentDetail({
               value={featName}
               onChange={(event) => setFeatName(event.target.value)}
               placeholder="Bulk import from Excel"
+              className={FIELD}
+            />
+          </div>
+          <div>
+            <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
+              Feature ID
+              <InfoHint text="The short ID from the feature sheet (Fid). Optional." />
+            </label>
+            <input
+              value={featFid}
+              onChange={(event) => setFeatFid(event.target.value)}
+              placeholder="F-001"
               className={FIELD}
             />
           </div>

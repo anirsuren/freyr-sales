@@ -187,6 +187,8 @@ export interface FdlRelease {
 }
 export interface FdlFeature {
   id: string;
+  /** The sheet's human feature ID (Fid column) — shown wherever the feature is. */
+  fid?: string;
   name: string;
   description?: string;
   /** FdlRelease ids this feature is available in — the feature↔version mapping. */

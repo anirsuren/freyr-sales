@@ -179,13 +179,28 @@ export function ColorSelect({
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const onResize = () => setOpen(false);
+    // The menu is position:fixed, measured once at open. Page scroll used to
+    // leave it stranded mid-viewport while its trigger moved away (Anir,
+    // Aug 8: "when I click the dropdown and I scroll... the dropdown floats").
+    // Re-anchor on every scroll — capture catches nested containers too.
+    const onScroll = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      // Keep the width the menu opened with; only the anchor moves.
+      setMenuStyle((prev) => {
+        const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 240);
+        return floatingMenuStyle(rect, width, 190);
+      });
+    };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
     };
   }, [open]);
 
@@ -483,13 +498,28 @@ export function MultiColorSelect({
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const onResize = () => setOpen(false);
+    // The menu is position:fixed, measured once at open. Page scroll used to
+    // leave it stranded mid-viewport while its trigger moved away (Anir,
+    // Aug 8: "when I click the dropdown and I scroll... the dropdown floats").
+    // Re-anchor on every scroll — capture catches nested containers too.
+    const onScroll = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      // Keep the width the menu opened with; only the anchor moves.
+      setMenuStyle((prev) => {
+        const width = typeof prev?.width === "number" ? prev.width : Math.max(rect.width, 240);
+        return floatingMenuStyle(rect, width, 180);
+      });
+    };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
     };
   }, [open]);
 

@@ -60,6 +60,10 @@ function sanitize(
       .slice(0, 200)
       .map((f) => ({
         id: typeof f?.id === "string" && f.id ? f.id.slice(0, 60) : rid("feat"),
+        fid:
+          typeof f?.fid === "string" && f.fid.trim()
+            ? f.fid.trim().slice(0, 20)
+            : undefined,
         name: String(f?.name ?? "").trim().slice(0, 120),
         description:
           typeof f?.description === "string" && f.description.trim()
