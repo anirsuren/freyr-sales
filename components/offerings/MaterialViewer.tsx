@@ -181,10 +181,15 @@ export function MaterialViewer({
   const scrollBox = useCallback((): HTMLElement | null => {
     const outer = scroller.current;
     if (!outer) return null;
+    // In embed the pptx wrapper is UNLOCKED (height auto) so the OUTER box is
+    // what scrolls — reading the wrapper there left the slide counter stuck on
+    // whatever it last saw (Anir, Aug 8: "I was on slide 13 and it was saying
+    // slide 5").
+    if (embed) return outer;
     return (
       outer.querySelector<HTMLElement>(".pptx-preview-wrapper") ?? outer
     );
-  }, []);
+  }, [embed]);
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(1);
   /** Embed only: true while the reader is actively scrolling, so the page
