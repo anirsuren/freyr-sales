@@ -145,7 +145,6 @@ export function AddMaterialButton({
   /** 0-100 while bytes are moving, null when nothing is uploading. */
   const [, setProgress] = useState<number | null>(null);
   const [uploadIndex, setUploadIndex] = useState(0);
-  const folderInputRef = useRef<HTMLInputElement>(null);
 
   function fileKey(file: File) {
     const relativePath = file.webkitRelativePath || file.name;
@@ -967,50 +966,20 @@ export function AddMaterialButton({
                 </>
               ) : (
                 <>
-                  {/* ONE door for everything (Anir, Aug 8: "there's no
-                      separate thing for choosing a folder — the app should
-                      know"): drop files, drop a whole folder, click to browse,
-                      or pick a folder from the inline link. The old separate
-                      "Upload a whole folder" card is gone. */}
+                  {/* ONE door, no side buttons (Anir, Aug 8: "the whole
+                      thing is just file or folder, stop confusing them").
+                      Drag takes files OR a whole folder; click opens the file
+                      browser — an OS picker cannot offer both at once, so
+                      folders come in by drag. */}
                   <span className="text-[13.5px] font-semibold text-text-primary">
-                    Drop files or a whole folder here, or click to browse
+                    Drop files or a whole folder here
                   </span>
                   <span className="text-[11.5px] text-text-tertiary">
-                    PPT, Word, Excel, PDF, ZIP or video ·{" "}
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      className="cursor-pointer font-semibold text-blue-primary hover:underline"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        folderInputRef.current?.click();
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        folderInputRef.current?.click();
-                      }}
-                    >
-                      choose a whole folder
-                    </span>
+                    or click to browse · PPT, Word, Excel, PDF, ZIP or video
                   </span>
                 </>
               )}
             </label>
-            <input
-              ref={folderInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              accept=".mp4,.mov,.webm,.m4v,.ppt,.pptx,.key,.doc,.docx,.pdf,.txt,.rtf,.xls,.xlsx,.csv,.zip"
-              {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
-              onChange={(event) => {
-                takeFiles(event.target.files);
-                event.currentTarget.value = "";
-              }}
-            />
             {files.length > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between gap-3">
