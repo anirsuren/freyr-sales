@@ -9,12 +9,14 @@ export function StandaloneMaterialViewer({
   offeringName,
   material,
   embed = false,
+  initialMember = null,
 }: {
   offeringId: string;
   offeringName: string;
   material: OfferingMaterial;
   /** Bare-document mode for the hover peek — see MaterialViewer. */
   embed?: boolean;
+  initialMember?: string | null;
 }) {
   const router = useRouter();
   const backUrl = `/offerings/${offeringId}?tab=materials&mv=files`;
@@ -23,6 +25,7 @@ export function StandaloneMaterialViewer({
     <MaterialViewer
       standalone
       embed={embed}
+      initialMember={initialMember}
       offeringId={offeringId}
       offeringName={offeringName}
       material={material}

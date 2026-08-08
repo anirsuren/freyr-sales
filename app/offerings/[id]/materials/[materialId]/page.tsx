@@ -26,10 +26,10 @@ export default async function MaterialPage({
   searchParams,
 }: {
   params: Promise<{ id: string; materialId: string }>;
-  searchParams: Promise<{ embed?: string }>;
+  searchParams: Promise<{ embed?: string; member?: string }>;
 }) {
   const { id, materialId } = await params;
-  const { embed } = await searchParams;
+  const { embed, member } = await searchParams;
   const offering = getOffering(id);
   if (!offering) notFound();
 
@@ -46,6 +46,7 @@ export default async function MaterialPage({
       offeringName={visibleOffering.offering_name}
       material={material}
       embed={embed === "1"}
+      initialMember={typeof member === "string" && member ? member : null}
     />
   );
 }

@@ -98,6 +98,7 @@ export function MaterialViewer({
   onClose,
   standalone = false,
   embed = false,
+  initialMember = null,
 }: {
   offeringId: string;
   offeringName: string;
@@ -118,10 +119,13 @@ export function MaterialViewer({
    * BE the same component.
    */
   embed?: boolean;
+  /** Open straight onto this file inside the archive — how "Open in a new
+   *  tab" keeps showing the MEMBER you were reading, not the ZIP manifest. */
+  initialMember?: string | null;
 }) {
   /** The ZIP remains the material of record. Opening a row swaps only the
    * bytes rendered in this dialog; Back returns to the archive manifest. */
-  const [archiveMember, setArchiveMember] = useState<string | null>(null);
+  const [archiveMember, setArchiveMember] = useState<string | null>(initialMember);
   const host = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState<string | null>(null);
@@ -704,8 +708,16 @@ export function MaterialViewer({
             <Download size={16} strokeWidth={1.9} />
           </a>
           {!standalone && (
+            // The href tracks WHAT IS ON SCREEN: reading a file inside a ZIP
+            // and opening a new tab used to land on the archive manifest
+            // instead of the file (Anir, Aug 8: "it's opening the entire zip,
+            // not the file").
             <a
-              href={openInNewTabUrl}
+              href={
+                archiveMember
+                  ? `${openInNewTabUrl}${openInNewTabUrl.includes("?") ? "&" : "?"}member=${encodeURIComponent(archiveMember)}`
+                  : openInNewTabUrl
+              }
               target="_blank"
               rel="noopener noreferrer"
               title="Open in a new tab"
@@ -1220,11 +1232,14 @@ export function MaterialViewer({
             <div className="flex shrink-0 items-center gap-1">{viewerActions}</div>
           </div>
 
-          <dl className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11.5px]">
+          {/* Facts divided by hairlines — five label/value pairs in a row
+              read as one unbroken sentence without them. */}
+          <dl className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11.5px]">
             <div className="flex items-center gap-1.5">
               <dt className="font-medium text-text-tertiary">Format</dt>
               <dd className="font-semibold text-text-primary">{format.label}</dd>
             </div>
+<span aria-hidden="true" className="h-4 w-px bg-border-light" />
             <div className="flex items-center gap-1.5">
               <dt className="font-medium text-text-tertiary">Added by</dt>
               <dd className="flex items-center gap-1.5 font-semibold text-text-primary">
@@ -1235,11 +1250,15 @@ export function MaterialViewer({
               </dd>
             </div>
             {material.folder && (
+              <>
+              <span aria-hidden="true" className="h-4 w-px bg-border-light" />
               <div className="flex items-center gap-1.5">
                 <dt className="font-medium text-text-tertiary">Folder</dt>
                 <dd className="font-semibold text-text-primary">{material.folder}</dd>
               </div>
+              </>
             )}
+<span aria-hidden="true" className="h-4 w-px bg-border-light" />
             <div className="flex items-center gap-1.5">
               <dt className="font-medium text-text-tertiary">Buyer stage</dt>
               <dd className="flex flex-wrap gap-1">
@@ -1261,6 +1280,7 @@ export function MaterialViewer({
                 )}
               </dd>
             </div>
+<span aria-hidden="true" className="h-4 w-px bg-border-light" />
             <div className="flex items-center gap-1.5">
               <dt className="font-medium text-text-tertiary">Access</dt>
               <dd>
