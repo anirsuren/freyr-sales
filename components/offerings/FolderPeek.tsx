@@ -35,26 +35,48 @@ const ROW_HEIGHT = 38;
 const PANEL_WIDTH = 300;
 /** Grace while the pointer crosses the gap between card and panel. */
 const CLOSE_DELAY_MS = 140;
+/**
+ * Deliberate hover, not a passing cursor. Sweeping across a twelve-card grid
+ * used to fire a panel per card (Anir, Aug 8: "when I hover over it for 0.5
+ * seconds, it'll show me the pop-up").
+ */
+const OPEN_DELAY_MS = 500;
 
-type PanelPosition = { left: number; top: number; maxHeight: number };
+type PanelPosition = {
+  left: number;
+  top?: number;
+  bottom?: number;
+  maxHeight: number;
+  above: boolean;
+};
 
+/**
+ * ABOVE THE CARD, like every other hover panel in the app — it scales UP off
+ * the thing you are pointing at instead of dropping below it (standing rule,
+ * and Anir again on Aug 8: "it should be right above. It's okay if it covers
+ * something from another folder"). Covering the row above is the point: the
+ * folder you are reading stays visible underneath the panel.
+ *
+ * Only the top row of cards, where there is genuinely no room overhead, drops
+ * below — a panel clipped to a 40px sliver would be worse than the flip.
+ */
 function positionFor(anchor: DOMRect): PanelPosition {
   const gap = 8;
-  const below = window.innerHeight - anchor.bottom - gap - 12;
-  const above = anchor.top - gap - 12;
-  // Flip above the card when there is more room up there — a folder in the
-  // bottom row would otherwise open into a 40px sliver.
-  const flip = below < 200 && above > below;
-  const maxHeight = Math.max(160, Math.min(360, flip ? above : below));
-  const left = Math.min(
-    Math.max(12, anchor.left),
-    window.innerWidth - PANEL_WIDTH - 12
+  const edge = 12;
+  const roomAbove = anchor.top - edge;
+  const roomBelow = window.innerHeight - anchor.bottom - edge;
+  const above = roomAbove >= 180 || roomAbove >= roomBelow;
+  const maxHeight = Math.max(
+    160,
+    Math.min(360, (above ? roomAbove : roomBelow) - gap)
   );
-  return {
-    left,
-    top: flip ? anchor.top - gap - maxHeight : anchor.bottom + gap,
-    maxHeight,
-  };
+  const left = Math.min(
+    Math.max(edge, anchor.left),
+    window.innerWidth - PANEL_WIDTH - edge
+  );
+  return above
+    ? { left, bottom: window.innerHeight - anchor.top + gap, maxHeight, above }
+    : { left, top: anchor.bottom + gap, maxHeight, above };
 }
 
 export function FolderPeek({
@@ -79,6 +101,7 @@ export function FolderPeek({
   const [position, setPosition] = useState<PanelPosition | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | null>(null);
+  const openTimer = useRef<number | null>(null);
 
   const cancelClose = useCallback(() => {
     if (closeTimer.current !== null) {
@@ -87,7 +110,15 @@ export function FolderPeek({
     }
   }, []);
 
+  const cancelOpen = useCallback(() => {
+    if (openTimer.current !== null) {
+      window.clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  }, []);
+
   const scheduleClose = useCallback(() => {
+    cancelOpen();
     cancelClose();
     closeTimer.current = window.setTimeout(() => {
       setOpen(false);
@@ -95,16 +126,29 @@ export function FolderPeek({
       // wandered to.
       setPeekPath(path);
     }, CLOSE_DELAY_MS);
-  }, [cancelClose, path]);
+  }, [cancelClose, cancelOpen, path]);
 
+  // Measured at FIRE time, not at hover time — the page may have moved in the
+  // half second the pointer was resting there.
   const reveal = useCallback(() => {
     cancelClose();
-    const rect = wrapRef.current?.getBoundingClientRect();
-    if (rect) setPosition(positionFor(rect));
-    setOpen(true);
+    if (openTimer.current !== null) return;
+    openTimer.current = window.setTimeout(() => {
+      openTimer.current = null;
+      const rect = wrapRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setPosition(positionFor(rect));
+      setOpen(true);
+    }, OPEN_DELAY_MS);
   }, [cancelClose]);
 
-  useEffect(() => cancelClose, [cancelClose]);
+  useEffect(
+    () => () => {
+      cancelClose();
+      cancelOpen();
+    },
+    [cancelClose, cancelOpen]
+  );
 
   // A page that scrolls under a floating panel leaves it stranded beside the
   // wrong card, so the peek closes rather than following.
@@ -125,9 +169,13 @@ export function FolderPeek({
   const rowCount = nested.length + files.length;
 
   return (
+    // h-full, because THIS is the grid cell now. Wrapping the folder button in
+    // a plain div made the div the grid item and left the button sizing itself
+    // from its own text, so every card came out a different width and the rows
+    // stopped lining up (Anir, Aug 8: "you broke how the folders look").
     <div
       ref={wrapRef}
-      className="relative"
+      className="relative h-full"
       onMouseEnter={reveal}
       onMouseLeave={scheduleClose}
     >
@@ -143,10 +191,16 @@ export function FolderPeek({
             style={{
               left: position.left,
               top: position.top,
+              bottom: position.bottom,
               width: PANEL_WIDTH,
               maxHeight: position.maxHeight,
+              // Grows out of the card's edge, the same gesture the dropdowns use.
+              ["--menu-origin" as string]: position.above
+                ? "bottom left"
+                : "top left",
+              ["--menu-dir" as string]: position.above ? -1 : 1,
             }}
-            className="fixed z-[70] flex flex-col overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_12px_32px_rgba(16,24,40,0.16)]"
+            className="menu-in fixed z-[70] flex flex-col overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_12px_32px_rgba(16,24,40,0.16)]"
           >
             <div className="flex items-center gap-2 border-b border-border-light bg-surface/60 px-3 py-2">
               {drilled && (

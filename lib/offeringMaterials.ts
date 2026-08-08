@@ -346,20 +346,70 @@ export function materialFileType(
 ): string | null {
   for (const source of [material.docsPath, material.url]) {
     if (!source) continue;
-    let path = source.trim();
-    if (!path) continue;
-    if (/^https?:\/\//i.test(path)) {
+    const raw = source.trim();
+    if (!raw) continue;
+    const candidates: string[] = [];
+    if (/^https?:\/\//i.test(raw)) {
       try {
-        // A query string can carry its own dots; only the path names the file.
-        path = new URL(path).pathname;
+        const parsed = new URL(raw);
+        candidates.push(parsed.pathname);
+        // Some hosts hand the real filename over in the query rather than the
+        // path — ?file=Deck.pptx, ?download=demo.mp4 — so it is worth a look
+        // before giving up on this row.
+        for (const value of parsed.searchParams.values()) candidates.push(value);
       } catch {
-        // Not parsable as a URL — fall through and read the raw string.
+        candidates.push(raw);
       }
+    } else {
+      candidates.push(raw);
     }
-    const match = path.match(FILE_TYPE_PATTERN);
-    if (match) return match[1].toUpperCase();
+    for (const candidate of candidates) {
+      const match = candidate.trim().match(FILE_TYPE_PATTERN);
+      if (match) return match[1].toUpperCase();
+    }
   }
   return null;
+}
+
+/**
+ * WHAT TO PRINT IN THE FILE-TYPE SLOT, ALWAYS. Every row has to say something
+ * here (Anir, Aug 8: "every single thing needs a file format... everything
+ * needs to have a file format").
+ *
+ * When the source names a real extension, that is what it says. When it does
+ * not, the row is a hosted LINK — a SharePoint page, a Stream recording — and
+ * that is the true answer, not a guess. Stamping "MP4" on a video that is
+ * actually a web page would put a wrong fact on a real record and send a rep
+ * off to attach a file that does not exist.
+ */
+export function materialFileTypeLabel(
+  material: Pick<OfferingMaterial, "docsPath" | "url">
+): string {
+  return materialFileType(material) ?? "LINK";
+}
+
+/**
+ * WHERE A LINK ACTUALLY GOES, for the row's tooltip. Four of Freya.Register's
+ * materials are SharePoint Stream and Minerva course pages Eswar pasted rather
+ * than files he uploaded, so clicking them leaves the app — correctly, since
+ * neither will render inside it (Anir, Aug 8: "why is it opening the second
+ * one in a new tab?"). Naming the destination on the row is the difference
+ * between that being obvious and it looking broken.
+ */
+export function materialLinkHost(
+  material: Pick<OfferingMaterial, "docsPath" | "url">
+): string | null {
+  if (material.docsPath) return null;
+  try {
+    const url = new URL(material.url);
+    // Outlook rewrites shared links through safelinks; the wrapper is not the
+    // destination anyone cares about.
+    const inner = url.searchParams.get("url");
+    const real = inner ? new URL(inner) : url;
+    return real.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
 }
 
 /**

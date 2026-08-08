@@ -44,7 +44,8 @@ import {
   materialFolderLabel,
   normalizeFolderPath,
   materialFormat,
-  materialFileType,
+  materialFileTypeLabel,
+  materialLinkHost,
   canonicalMaterialFolder,
   materialJourneyStages,
   type MaterialFormat,
@@ -571,8 +572,8 @@ export function MaterialsSection({
   const fileTypeOptions = useMemo(() => {
     const seen = new Map<string, LucideIcon>();
     for (const material of mine) {
-      const type = materialFileType(material);
-      if (!type || seen.has(type)) continue;
+      const type = materialFileTypeLabel(material);
+      if (seen.has(type)) continue;
       seen.set(type, MATERIAL_FORMAT_META[materialFormat(material.kind)].icon);
     }
     return Array.from(seen.entries())
@@ -602,7 +603,7 @@ export function MaterialsSection({
       if (levels.length && !levels.includes(m.accessLevel ?? "")) return false;
       // A material whose source names no extension matches no file type —
       // it is never quietly folded into one it might have been.
-      if (fileTypes.length && !fileTypes.includes(materialFileType(m) ?? ""))
+      if (fileTypes.length && !fileTypes.includes(materialFileTypeLabel(m)))
         return false;
       return true;
     })
@@ -903,7 +904,7 @@ export function MaterialsSection({
                 // offerings further down the page — one radius, one shadow,
                 // one lift. A folder that looked like a different species of
                 // card was half of why the section read as busy.
-                className={`group flex min-h-[72px] cursor-pointer items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)] ${
+                className={`group flex h-full w-full min-h-[72px] cursor-pointer items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)] ${
                   dropTargetPath === path
                     ? "scale-[1.02] border-blue-primary bg-blue-light ring-2 ring-blue-primary/25"
                     : "border-border-light"
@@ -997,7 +998,7 @@ export function MaterialsSection({
                 const Icon = MATERIAL_ICON[material.kind] ?? formatMeta.icon;
                 const level = material.accessLevel ? ACCESS_LEVEL_META[material.accessLevel] : null;
                 const stagesForMaterial = materialJourneyStages(material);
-                const fileType = materialFileType(material);
+                const fileType = materialFileTypeLabel(material);
                 const uploaded = Boolean(material.docsPath);
                 const uploadDate = uploadedAt(material);
                 return (
@@ -1038,19 +1039,13 @@ export function MaterialsSection({
                         </span>
                         <span className="min-w-0">
                           <span className="block break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary">{material.label}</span>
-                          {/* Folder, then the real file type under it (Anir,
-                              Aug 7: "it should show me the file type on this
-                              row too. Maybe tuck it under sales decks"). The
-                              FILE FORMAT column says "Presentation"; this says
-                              PPTX, which is what a rep needs to know before
-                              they promise to send it. Nothing renders when the
-                              source names no extension — a linked SharePoint
-                              folder has no file type to state. */}
+                          {/* Folder only. The file type moved into the FILE
+                              FORMAT column, under the format pill, where the
+                              two facts about the file's shape sit together
+                              (Anir, Aug 8: "put the file format right below
+                              where it says video... in a second column"). */}
                           <span className="block break-words text-[10.5px] text-text-tertiary">
                             {materialFolderLabel(material.folder || "Others")}
-                            {fileType && (
-                              <span className="ml-1.5 font-semibold text-blue-primary">{fileType}</span>
-                            )}
                           </span>
                           {material.description && (
                             <span className="mt-1 block break-words text-[11px] leading-snug text-text-secondary">
@@ -1067,7 +1062,24 @@ export function MaterialsSection({
                           row already names underneath its title (Anir, Aug 7:
                           "only the file format tags should show up… you have
                           to remove this"). */}
-                      <TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} />
+                      <span className="flex flex-col items-start gap-1">
+                        <TagPill label={formatMeta.label} color={formatMeta.color} icon={formatMeta.icon} />
+                        {/* EVERY ROW SAYS ONE. A real extension when the source
+                            names one; LINK when the row is a hosted page with
+                            no file behind it. Never a guessed extension — an
+                            invented "MP4" would send a rep off to attach a file
+                            that does not exist. */}
+                        <span
+                          className="pl-0.5 text-[10px] font-semibold tracking-[0.04em] text-text-tertiary"
+                          title={
+                            fileType === "LINK"
+                              ? `Opens on ${materialLinkHost(material) ?? "another site"} — a hosted link, not an uploaded file`
+                              : `${fileType} file`
+                          }
+                        >
+                          {fileType}
+                        </span>
+                      </span>
                     </td>
                     <td className="px-3 py-3">
                       {level ? <TagPill label={level.label} color={level.color} icon={level.icon} variant={material.accessLevel === "internal_only" ? "solid" : "tint"} /> : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
