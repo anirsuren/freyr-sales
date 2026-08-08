@@ -153,6 +153,7 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
     >
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
+        aria-label={label}
         ref={vid}
         src={src}
         preload="metadata"
@@ -272,9 +273,12 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
             {clock(time)} <span className="text-white/50">/ {clock(duration)}</span>
           </span>
 
-          <span className="min-w-0 flex-1 truncate px-3 text-center text-[12px] text-white/45">
-            {label}
-          </span>
+          {/* No name in the bar. Everywhere this player renders, the file's
+              name is already on screen — the dialog and standalone headers
+              above it, and in the hover peek the row it belongs to (Anir,
+              Aug 8: "you don't even have to show the video name, it's right
+              below"). The bar keeps the space for controls. */}
+          <span className="min-w-0 flex-1" />
 
           {/* SPEED IS ONE BUTTON. Six always-visible chips ate half the
               control bar — hopeless in the narrow hover peek (Anir, Aug 8:
