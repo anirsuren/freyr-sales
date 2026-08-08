@@ -10,7 +10,7 @@ import { AgentDock } from "@/components/agent/AgentDock";
 import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
 import type { DataMode } from "@/lib/dataMode";
 import { isOfferingsOnly, isReleased, isReleasedPath } from "@/lib/release";
-import { useHoverPreference } from "@/lib/hoverPreferences";
+import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
 import {
@@ -67,20 +67,18 @@ export function AppShell({
     pathname === "/access-pending";
   const restrictedPath = !standalonePublicPath && !isReleasedPath(pathname, dataMode);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const hoverPreference = useHoverPreference();
   const agentHiddenStorageKey = userScopedStorageKey(
     AGENT_HIDDEN_KEY,
     currentUser.id
   );
 
-  // CSS-only tooltips read the same preference as the interactive chart and
-  // hover-card components. Keeping it on <html> also lets the off switch hide
-  // every hover popup immediately, including server-rendered help text.
+  // CSS-only tooltips read the same app-wide delay as the interactive
+  // hover-card components, via one root CSS variable.
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--freyr-hover-delay", `${hoverPreference.delayMs}ms`);
-    root.dataset.hoverPopups = hoverPreference.enabled ? "on" : "off";
-  }, [hoverPreference.delayMs, hoverPreference.enabled]);
+    root.style.setProperty("--freyr-hover-delay", `${HOVER_DELAY_MS}ms`);
+    root.dataset.hoverPopups = "on";
+  }, []);
 
   // Always-on assistant dock (Anir, Jul 8). Open state is per-session; "hidden"
   // (bubble dismissed) persists, and the top-bar spark button brings it back.

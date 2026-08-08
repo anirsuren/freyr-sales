@@ -3,11 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import {
-  DEFAULT_HOVER_DELAY_MS,
-  readHoverPreference,
-  useHoverPreference,
-} from "@/lib/hoverPreferences";
+import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 
 // A hover popover that STAYS OPEN while the cursor is over the popover itself
 // (Suren: "when I hover onto the pop-up it shouldn't disappear"), and that can
@@ -32,8 +28,9 @@ export function HoverCard({
   side?: "bottom" | "top" | "left" | "right";
   width?: number;
   className?: string;
-  // Charts pass 0 because inspecting data is always intentional. Contextual
-  // previews omit this and continue to respect the user's hover preference.
+  // Charts pass 0: inspecting a data point is deliberate, so graph surfaces
+  // open instantly (Anir, Aug 8: "If it's a graph, it's immediate"). Any other
+  // value is ignored — every non-graph popup waits the app-wide second.
   delayMs?: number;
   // Wide rows should open beside the pointer. Centering on a full-width row
   // can put the card hundreds of pixels away from what the user hovered.
@@ -62,9 +59,6 @@ export function HoverCard({
   const cursorRef = useRef<{ x: number; y: number } | null>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { enabled } = useHoverPreference();
-  const hoverEnabled = delayOverride != null || enabled;
-
   function place() {
     const el = triggerRef.current;
     if (!el) return;
@@ -126,18 +120,13 @@ export function HoverCard({
   }
 
   function show() {
-    // `delayMs` no longer sets the delay: it only marks a surface that opens
-    // regardless of the user's show-popups toggle (charts). The DELAY itself is
-    // always DEFAULT_HOVER_DELAY_MS, everywhere. Callers passing 0 used to make
-    // popups fire the instant the cursor touched them.
-    const current =
-      delayOverride != null
-        ? { enabled: true, delayMs: DEFAULT_HOVER_DELAY_MS }
-        : { ...readHoverPreference(), delayMs: DEFAULT_HOVER_DELAY_MS };
-    if (!current.enabled) return;
+    // Graphs (delayMs 0) open instantly; every other popup waits the app-wide
+    // second. There is no user toggle any more — the Settings card is gone
+    // (Anir, Aug 8: "Remove the setting. We don't need the fucking setting").
+    const delay = delayOverride === 0 ? 0 : HOVER_DELAY_MS;
     if (hideTimer.current) clearTimeout(hideTimer.current);
     if (showTimer.current) clearTimeout(showTimer.current);
-    showTimer.current = setTimeout(place, current.delayMs);
+    showTimer.current = setTimeout(place, delay);
   }
 
   // The popup is position:fixed (portal), so page scroll would leave it
@@ -145,11 +134,6 @@ export function HoverCard({
   // should scroll with it"). While open, re-anchor to the trigger on every
   // scroll/resize — capture phase catches nested scroll containers too.
   const open = pos != null;
-  useEffect(() => {
-    if (hoverEnabled) return;
-    if (showTimer.current) clearTimeout(showTimer.current);
-    setPos(null);
-  }, [hoverEnabled]);
   useEffect(() => {
     if (!open) return;
     const sync = () => place();

@@ -921,7 +921,7 @@ select:focus-visible {
 
 /* One user-controlled delay for help tooltips and other CSS hover popups. */
 .freyr-hover-trigger:hover .freyr-hover-popup {
-  transition-delay: var(--freyr-hover-delay, 500ms);
+  transition-delay: var(--freyr-hover-delay, 1000ms);
 }
 .freyr-hover-trigger:focus-within .freyr-hover-popup {
   transition-delay: 0ms;

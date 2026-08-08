@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useHoverPreference } from "@/lib/hoverPreferences";
+import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 
 type Popup = {
   text: string;
@@ -28,15 +28,9 @@ function isClipped(element: HTMLElement) {
 // It avoids the brittle requirement that each individual table/card remembers
 // to duplicate its full text into a tooltip, and it also covers future screens.
 export function AutoTruncationTooltip() {
-  const preference = useHoverPreference();
   const [popup, setPopup] = useState<Popup | null>(null);
 
   useEffect(() => {
-    if (!preference.enabled) {
-      setPopup(null);
-      return;
-    }
-
     let timer: ReturnType<typeof setTimeout> | null = null;
     let active: HTMLElement | null = null;
 
@@ -77,7 +71,7 @@ export function AutoTruncationTooltip() {
           y: below ? rect.bottom + 8 : rect.top - 8,
           below,
         });
-      }, preference.delayMs);
+      }, HOVER_DELAY_MS);
     };
 
     const onHoverIn = (event: Event) => {
@@ -139,7 +133,7 @@ export function AutoTruncationTooltip() {
       window.removeEventListener("scroll", clear, true);
       window.removeEventListener("resize", clear);
     };
-  }, [preference.delayMs, preference.enabled]);
+  }, []);
 
   if (!popup || typeof document === "undefined") return null;
   return createPortal(

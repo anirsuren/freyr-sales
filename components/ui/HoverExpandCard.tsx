@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useHoverPreference } from "@/lib/hoverPreferences";
+import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 
 // A card that, on hover, POPS OUT in place — it scales up over its neighbours
 // and reveals extra detail that's hidden at rest — instead of dropping a
@@ -33,7 +33,6 @@ export function HoverExpandCard({
    *  Opt-in, so every other card in the app keeps its exact current layout. */
   stretchSummary?: boolean;
 }) {
-  const { enabled, delayMs } = useHoverPreference();
   const summaryRef = useRef<HTMLDivElement>(null);
   const [summaryHeight, setSummaryHeight] = useState(56);
 
@@ -46,20 +45,19 @@ export function HoverExpandCard({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  const hoverDelayStyle = enabled
-    ? ({ "--hover-expand-delay": `${delayMs}ms` } as CSSProperties)
-    : undefined;
+  const hoverDelayStyle = {
+    "--hover-expand-delay": `${HOVER_DELAY_MS}ms`,
+  } as CSSProperties;
   const cardCls = cn(
     // min-h-full: when the wrapper is stretched by a grid row, the resting
     // card face fills the cell so neighbouring cards stay equal-height
     // (Suren's symmetry rule). Growth on hover is unaffected — it's a minimum.
     "absolute inset-x-0 top-0 min-h-full bg-white border border-border-light rounded-xl p-5 shadow-card origin-top transition-[transform,box-shadow,border-color] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]",
     stretchSummary ? "flex flex-col" : "block",
-    enabled &&
-      // Press-down on click: navigation from these cards had no feedback at
-      // all — snapping back to 1.0 reads as nothing (Anir, Jul 25: "there's no
-      // animation when I click"). 0.97 matches the app-wide button press.
-      "group-hover:scale-[1.03] group-hover:z-30 group-hover:border-blue-subtle group-hover:shadow-[0_28px_64px_-16px_rgba(0,0,0,0.30)] group-active:scale-[0.97] group-active:duration-75"
+    // Press-down on click: navigation from these cards had no feedback at
+    // all — snapping back to 1.0 reads as nothing (Anir, Jul 25: "there's no
+    // animation when I click"). 0.97 matches the app-wide button press.
+    "group-hover:scale-[1.03] group-hover:z-30 group-hover:border-blue-subtle group-hover:shadow-[0_28px_64px_-16px_rgba(0,0,0,0.30)] group-active:scale-[0.97] group-active:duration-75"
   );
 
   const body = (
@@ -68,7 +66,7 @@ export function HoverExpandCard({
         {summary}
       </div>
       {/* grid-rows 0fr → 1fr animates the reveal without a fixed max-height */}
-      {enabled && (
+      {(
         <div
           className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]"
         >
@@ -90,7 +88,7 @@ export function HoverExpandCard({
     // top (z-index only competes within a cell, and each card sits in its own
     // `relative` wrapper). This keeps the pop-out on top of every neighbour.
     <div
-      className={cn("group relative", enabled && "hover:z-30", className)}
+      className={cn("group relative hover:z-30", className)}
       style={hoverDelayStyle}
     >
       {/* The real, visible card comes FIRST in DOM so any `.first()` selector

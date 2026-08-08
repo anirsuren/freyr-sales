@@ -96,7 +96,6 @@ export function PersonHoverCard({
   return (
     <HoverCard
       side="top"
-      delayMs={0}
       width={296}
       className="inline-flex"
       content={

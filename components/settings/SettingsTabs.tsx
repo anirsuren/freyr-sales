@@ -11,7 +11,7 @@ import {
   detectTimeZone,
   formatAbsolute,
 } from "@/lib/timeZone";
-import { UserPlus, Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, MousePointer2, Settings2, UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
+import { UserPlus, Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, Settings2, UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Clock3, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PasskeySetup } from "@/components/settings/PasskeySetup";
 import { Input } from "@/components/ui/Input";
@@ -22,13 +22,6 @@ import { ThemeSetting } from "@/components/settings/ThemeSetting";
 import { CrmSyncCard } from "@/components/settings/CrmSyncCard";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
-import {
-  DEFAULT_HOVER_DELAY_MS,
-  MAX_HOVER_DELAY_MS,
-  formatHoverDelay,
-  saveHoverPreference,
-  useHoverPreference,
-} from "@/lib/hoverPreferences";
 import {
   useCurrentUser,
   useMyPhoto,
@@ -365,7 +358,6 @@ export function SettingsTabs({
   );
   const [dataMode, setDataMode] = useState<"mock" | "live">(initialDataMode);
   const [modeBusy, setModeBusy] = useState(false);
-  const hoverPreference = useHoverPreference();
   // Mock mode is a temporary viewer choice for this signed-in session. Every
   // workspace role may preview it without changing anybody else's view.
   const canChangeDataMode = canSwitchWorkspaceMode(currentUser.role);
@@ -1092,81 +1084,6 @@ export function SettingsTabs({
                 </span>
               </div>
             </div>
-          </Card>
-
-          <Card className="px-5 py-4">
-            <div className="flex items-start justify-between gap-6">
-              <div className="flex items-start gap-3 min-w-0">
-                <span className="w-9 h-9 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
-                  <MousePointer2 size={17} strokeWidth={1.8} />
-                </span>
-                <div>
-                  <h2 className="text-[15px] font-semibold text-text-primary">
-                    Context previews
-                  </h2>
-                  <p className="mt-0.5 text-[12.5px] text-text-secondary">
-                    Set the delay for people, company, and detail previews. Chart data always appears instantly.
-                  </p>
-                </div>
-              </div>
-              <Toggle
-                on={hoverPreference.enabled}
-                onClick={() =>
-                  saveHoverPreference({
-                    ...hoverPreference,
-                    enabled: !hoverPreference.enabled,
-                  })
-                }
-                label="Enable contextual hover previews"
-              />
-            </div>
-
-            {hoverPreference.enabled ? (
-              <div className="mt-4 pl-12">
-                <div className="flex items-center justify-between gap-4 mb-2">
-                  <label htmlFor="hover-delay" className="text-[12px] font-medium text-text-primary">
-                    Preview delay
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {hoverPreference.delayMs === DEFAULT_HOVER_DELAY_MS && (
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-success">
-                        Recommended
-                      </span>
-                    )}
-                    <output
-                      htmlFor="hover-delay"
-                      className="min-w-[74px] text-right text-[12px] font-semibold text-blue-primary tnum"
-                    >
-                      {formatHoverDelay(hoverPreference.delayMs)}
-                    </output>
-                  </div>
-                </div>
-                <input
-                  id="hover-delay"
-                  aria-label="Context preview delay"
-                  type="range"
-                  min={0}
-                  max={MAX_HOVER_DELAY_MS}
-                  step={100}
-                  value={hoverPreference.delayMs}
-                  onChange={(event) =>
-                    saveHoverPreference({
-                      enabled: true,
-                      delayMs: Number(event.target.value),
-                    })
-                  }
-                  className="w-full h-1.5 accent-blue-primary cursor-pointer"
-                />
-                <div className="mt-1 flex justify-between text-[10.5px] text-text-tertiary tnum">
-                  <span>Instant</span>
-                  <span>2 seconds</span>
-                </div>
-              </div>
-            ) : (
-              <p className="mt-3 pl-12 text-[12px] text-warning">
-                Context previews are off. Chart inspection remains available instantly.
-              </p>
-            )}
           </Card>
 
           <Card

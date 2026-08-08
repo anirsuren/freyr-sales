@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Folder } from "lucide-react";
+import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 import {
   MATERIAL_FORMAT_META,
   MATERIAL_ICON,
@@ -37,10 +38,11 @@ const PANEL_WIDTH = 300;
 const CLOSE_DELAY_MS = 140;
 /**
  * Deliberate hover, not a passing cursor. Sweeping across a twelve-card grid
- * used to fire a panel per card (Anir, Aug 8: "when I hover over it for 0.5
- * seconds, it'll show me the pop-up").
+ * used to fire a panel per card. Originally half a second, raised to the
+ * app-wide second (Anir, Aug 8: "every single hover pop-up should be set to
+ * 1 second").
  */
-const OPEN_DELAY_MS = 500;
+const OPEN_DELAY_MS = HOVER_DELAY_MS;
 
 type PanelPosition = {
   left: number;

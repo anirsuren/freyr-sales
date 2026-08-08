@@ -11,7 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { GLOSSARY } from "@/lib/glossary";
-import { readHoverPreference } from "@/lib/hoverPreferences";
+import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 
 type Anchor = {
   left: number;
@@ -44,8 +44,9 @@ export function Tooltip({
   side?: "top" | "bottom";
   align?: "center" | "left" | "right";
   className?: string;
-  // Data visualizations set this to 0. Contextual previews continue to use the
-  // workspace hover preference because brushing a chart is intentional.
+  // Data visualizations set this to 0 — brushing a chart is intentional, so
+  // graph tips open instantly. Any other value is ignored: every non-graph
+  // tooltip waits the app-wide second (Anir, Aug 8).
   delayMs?: number;
 }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -75,9 +76,7 @@ export function Tooltip({
 
   const show = (immediate = false) => {
     clearTimer();
-    const preference = readHoverPreference();
-    if (!preference.enabled) return;
-    const delay = immediate ? 0 : delayMs ?? preference.delayMs;
+    const delay = immediate || delayMs === 0 ? 0 : HOVER_DELAY_MS;
     timerRef.current = setTimeout(captureAnchor, delay);
   };
 

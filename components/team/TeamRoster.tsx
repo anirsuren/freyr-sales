@@ -438,7 +438,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4 stagger">
           {reps.map((r) => {
             const rc = ROLE_COLOR[r.role];
-            const pct = Math.round((r.wonFY / r.quota) * 100);
+            const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
             const ac = attainColor(pct);
             const trendSum = r.trend.reduce((s, x) => s + x, 0);
             return (
@@ -515,8 +515,8 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary tnum">
                           Quota {formatMoney(r.quota)}
                         </span>
-                        <span className="text-[12px] font-bold tnum" style={{ color: ac }}>
-                          {pct}%
+                        <span className="text-[12px] font-bold tnum" style={r.quota > 0 ? { color: ac } : undefined}>
+                          {r.quota > 0 ? `${pct}%` : "—"}
                         </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-surface overflow-hidden">
@@ -623,7 +623,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             <tbody className="divide-y divide-border-light stagger">
               {reps.map((r) => {
                 const rc = ROLE_COLOR[r.role];
-                const pct = Math.round((r.wonFY / r.quota) * 100);
+                const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
                 const ac = attainColor(pct);
                 return (
                   <tr key={r.identityKey} className="hover:bg-surface transition-colors">
@@ -661,8 +661,8 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                               <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary tnum">
                                 Quota attainment
                               </span>
-                              <span className="text-[12px] font-bold tnum" style={{ color: ac }}>
-                                {pct}%
+                              <span className="text-[12px] font-bold tnum" style={r.quota > 0 ? { color: ac } : undefined}>
+                                {r.quota > 0 ? `${pct}%` : "—"}
                               </span>
                             </div>
                             <div className="h-1.5 rounded-full bg-surface overflow-hidden mb-3">

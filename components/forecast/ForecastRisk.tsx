@@ -141,11 +141,8 @@ function StageChip({ stage }: { stage: Stage }) {
   );
 }
 
-// Chart tips open instantly because pointing at a data point is deliberate.
-// These rows are different — the pointer crosses them just reading the list, so
-// firing at 0ms made the section flicker (Anir, Jul 28: "it should only be when
-// I hover over it for a certain amount of time… 0.3 seconds").
-const HOVER_OPEN_MS = 300;
+// These row popovers use HoverCard's default open delay — the app-wide second
+// (graph tips elsewhere pass 0 and stay instant).
 
 export function ForecastRisk({
   open,
@@ -548,7 +545,6 @@ export function ForecastRisk({
       side="right"
       anchor="trigger"
       width={280}
-      delayMs={HOVER_OPEN_MS}
       content={hover}
       className="min-w-0 flex-1 cursor-pointer rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface)]"
     >
@@ -640,7 +636,6 @@ export function ForecastRisk({
                   <HoverCard
                     side="top"
                     width={288}
-                    delayMs={HOVER_OPEN_MS}
                     className="h-full w-full cursor-pointer"
                     content={splitHover(
                       "Active",
@@ -662,7 +657,6 @@ export function ForecastRisk({
                   <HoverCard
                     side="top"
                     width={288}
-                    delayMs={HOVER_OPEN_MS}
                     className="h-full w-full cursor-pointer"
                     content={splitHover(
                       "Exposed",
@@ -738,7 +732,6 @@ export function ForecastRisk({
                         key={s.stage}
                         side="right"
                         width={272}
-                        delayMs={HOVER_OPEN_MS}
                         className="cursor-pointer rounded-md px-1.5 py-1 transition-colors hover:bg-[var(--surface)]"
                         content={splitHover(
                           s.stage,
@@ -838,7 +831,6 @@ export function ForecastRisk({
                           // covering up the graph").
                           side="right"
                           width={300}
-                          delayMs={HOVER_OPEN_MS}
                           anchor="trigger"
                           className="cursor-pointer rounded-md transition-colors hover:bg-[var(--surface)]"
                           content={quietHover(deal)}
