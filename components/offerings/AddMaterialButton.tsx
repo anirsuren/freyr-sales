@@ -12,6 +12,7 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { InfoHint } from "@/components/ui/InfoHint";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -169,6 +170,33 @@ export function AddMaterialButton({
 
   // Picking a file fills in what the file already says: its name and format.
   // Both stay editable.
+  /** Depth-first walk of dropped directory entries into plain Files. */
+  async function collectDroppedEntries(entries: FileSystemEntry[]): Promise<File[]> {
+    const out: File[] = [];
+    async function walk(entry: FileSystemEntry): Promise<void> {
+      if (entry.isFile) {
+        const file = await new Promise<File | null>((resolve) =>
+          (entry as FileSystemFileEntry).file(resolve, () => resolve(null))
+        );
+        if (file) out.push(file);
+        return;
+      }
+      if (entry.isDirectory) {
+        const reader = (entry as FileSystemDirectoryEntry).createReader();
+        // readEntries returns batches of at most 100; drain until empty.
+        for (;;) {
+          const batch = await new Promise<FileSystemEntry[]>((resolve) =>
+            reader.readEntries(resolve, () => resolve([]))
+          );
+          if (!batch.length) break;
+          for (const child of batch) await walk(child);
+        }
+      }
+    }
+    for (const entry of entries) await walk(entry);
+    return out;
+  }
+
   function takeFiles(list: FileList | File[] | null) {
     const picked = Array.from(list || []);
     if (!picked.length) return;
@@ -728,6 +756,7 @@ export function AddMaterialButton({
           <div>
             <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               <span>Folder</span>
+              <InfoHint text="Choose an existing folder or create a new one for this offering. “All files” is only a viewing mode." />
               {!folder && (
                 <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                   Required
@@ -762,22 +791,17 @@ export function AddMaterialButton({
                 <Plus size={17} strokeWidth={2.2} />
               </button>
             </div>
-            <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Choose an existing folder or create a new one for this offering. “All files” is only a viewing mode.
-            </p>
           </div>
 
           {/* CR-3: every material carries its buyer's-journey stage + who may
               see it. Both must be deliberately chosen rather than silently
               inheriting defaults. */}
           <div className="space-y-3">
-            <p className="rounded-lg border border-blue-subtle bg-blue-light/40 px-3 py-2 text-[11.5px] leading-relaxed text-text-secondary">
-              These shared defaults apply to the batch. Review and adjust each file before uploading.
-            </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
               <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 <span>Buyer&apos;s journey stage</span>
+                <InfoHint text="Select Awareness, Evaluation, Decision, or any combination." />
                 {!journeyStages.length && (
                   <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                     Required
@@ -796,11 +820,11 @@ export function AddMaterialButton({
                 collapsible={false}
                 className="w-full"
               />
-              <p className="mt-1.5 text-[11.5px] text-text-tertiary">Select Awareness, Evaluation, Decision, or any combination.</p>
               </div>
               <div>
               <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 <span>Who can view this file?</span>
+                <InfoHint text="Freyr AI uses every uploaded file — this choice only controls who can open it." />
                 {!accessLevel && (
                   <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                     Required
@@ -817,12 +841,6 @@ export function AddMaterialButton({
                 compactTrigger
                 className="w-full"
               />
-              <p className="mt-1.5 text-[11.5px] leading-relaxed text-text-tertiary">
-                <span className="font-semibold text-text-secondary">
-                  Freyr AI uses every uploaded file.
-                </span>{" "}
-                This choice only controls who can open it.
-              </p>
               </div>
             </div>
           </div>
@@ -879,6 +897,20 @@ export function AddMaterialButton({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOver(false);
+                // A dropped FOLDER arrives as a directory entry, not files —
+                // walk it so dragging a whole folder in just works (Anir,
+                // Aug 8: "if he drags a folder in, it's fine"). Browsers
+                // without the entry API fall back to plain files.
+                const items = Array.from(e.dataTransfer.items || []);
+                const entries = items
+                  .map((item) => item.webkitGetAsEntry?.())
+                  .filter((entry): entry is FileSystemEntry => Boolean(entry));
+                if (entries.some((entry) => entry.isDirectory)) {
+                  void collectDroppedEntries(entries).then((collected) => {
+                    if (collected.length) takeFiles(collected);
+                  });
+                  return;
+                }
                 takeFiles(e.dataTransfer.files);
               }}
               className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-5 text-center transition-colors ${
@@ -935,11 +967,34 @@ export function AddMaterialButton({
                 </>
               ) : (
                 <>
+                  {/* ONE door for everything (Anir, Aug 8: "there's no
+                      separate thing for choosing a folder — the app should
+                      know"): drop files, drop a whole folder, click to browse,
+                      or pick a folder from the inline link. The old separate
+                      "Upload a whole folder" card is gone. */}
                   <span className="text-[13.5px] font-semibold text-text-primary">
-                    Drop files here, or click to browse
+                    Drop files or a whole folder here, or click to browse
                   </span>
                   <span className="text-[11.5px] text-text-tertiary">
-                    Select one or many files · PPT, Word, Excel, PDF, ZIP or video
+                    PPT, Word, Excel, PDF, ZIP or video ·{" "}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer font-semibold text-blue-primary hover:underline"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        folderInputRef.current?.click();
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        folderInputRef.current?.click();
+                      }}
+                    >
+                      choose a whole folder
+                    </span>
                   </span>
                 </>
               )}
@@ -956,24 +1011,6 @@ export function AddMaterialButton({
                 event.currentTarget.value = "";
               }}
             />
-            <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-border-light bg-surface/60 px-3 py-2.5">
-              <div className="min-w-0">
-                <p className="text-[12px] font-semibold text-text-primary">
-                  Upload a whole folder
-                </p>
-                <p className="text-[11px] text-text-tertiary">
-                  Keeps the original folder and subfolder names; each file can still be adjusted below.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => folderInputRef.current?.click()}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-blue-subtle bg-white px-3 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-blue-light"
-              >
-                <Folder size={14} strokeWidth={2} aria-hidden="true" />
-                Choose folder
-              </button>
-            </div>
             {files.length > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between gap-3">

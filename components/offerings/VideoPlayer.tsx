@@ -40,7 +40,16 @@ function clock(t: number): string {
     : `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export function VideoPlayer({ src, label }: { src: string; label: string }) {
+export function VideoPlayer({
+  src,
+  label,
+  showTitle = true,
+}: {
+  src: string;
+  label: string;
+  /** Off in the hover peek — the row right under the card already names it. */
+  showTitle?: boolean;
+}) {
   const stage = useRef<HTMLDivElement>(null);
   const vid = useRef<HTMLVideoElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -273,12 +282,16 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
             {clock(time)} <span className="text-white/50">/ {clock(duration)}</span>
           </span>
 
-          {/* No name in the bar. Everywhere this player renders, the file's
-              name is already on screen — the dialog and standalone headers
-              above it, and in the hover peek the row it belongs to (Anir,
-              Aug 8: "you don't even have to show the video name, it's right
-              below"). The bar keeps the space for controls. */}
+          {/* The name centres on the BAR, not on the leftover space — the
+              left control cluster is wider than the right, so flex centering
+              drifted it off-middle (Anir, Aug 8: "it's not centered"). In the
+              hover peek it is off entirely: the row right below names it. */}
           <span className="min-w-0 flex-1" />
+          {showTitle && (
+            <span className="pointer-events-none absolute inset-x-0 bottom-[18px] mx-auto w-fit max-w-[34%] truncate text-[12px] text-white/45">
+              {label}
+            </span>
+          )}
 
           {/* SPEED IS ONE BUTTON. Six always-visible chips ate half the
               control bar — hopeless in the narrow hover peek (Anir, Aug 8:

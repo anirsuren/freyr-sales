@@ -494,12 +494,19 @@ export function MultiColorSelect({
   }, [open]);
 
   const picked = options.filter((o) => values.includes(o.value));
+  // NAME THE PICKS when they fit. "2 selected" makes the reader open the menu
+  // to learn what they already chose (Anir, Aug 8: "say the stage instead of
+  // 2 selected — you'll have the space"). Only a pick list too long for the
+  // trigger falls back to the count.
+  const joined = picked.map((option) => option.label).join(", ");
   const summary =
     picked.length === 0
       ? triggerLabel || allLabel
       : picked.length === 1
         ? picked[0].label
-        : `${picked.length} selected`;
+        : joined.length <= 34
+          ? joined
+          : `${picked.length} selected`;
   const selectionLabel =
     picked.length === 0
       ? allLabel

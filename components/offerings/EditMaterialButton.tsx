@@ -238,6 +238,7 @@ export function EditMaterialButton({
                 ariaLabel="Buyer's journey stage"
                 minWidth={0}
                 collapsible={false}
+                fluid
                 className="w-full"
               />
             </div>
@@ -252,6 +253,7 @@ export function EditMaterialButton({
                 ariaLabel="Who can view this file?"
                 minWidth={0}
                 collapsible={false}
+                compactTrigger
                 className="w-full"
               />
               <p className="mt-1.5 text-[11.5px] leading-relaxed text-text-tertiary">

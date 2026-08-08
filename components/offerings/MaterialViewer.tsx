@@ -849,7 +849,7 @@ export function MaterialViewer({
               className="h-full min-h-[calc(100vh-8rem)] w-full rounded-lg bg-white"
             />
           )}
-          {isVideo && <VideoPlayer src={inlineUrl} label={currentLabel} />}
+          {isVideo && <VideoPlayer src={inlineUrl} label={currentLabel} showTitle={!embed} />}
           {isNative && ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext) && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={inlineUrl} alt={currentLabel} className="mx-auto max-h-[68vh] rounded-lg" />

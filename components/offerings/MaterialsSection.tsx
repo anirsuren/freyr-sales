@@ -436,6 +436,19 @@ export function MaterialsSection({
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("application/x-freyr-material", material.id);
     event.dataTransfer.setData("text/plain", material.id);
+    // The ghost under the cursor is the WHOLE ROW. With `draggable` on the
+    // six-dot handle the browser snapshots just the handle — a few grey dots
+    // — so nothing looked like it was moving (Anir, Aug 8: "it's not showing
+    // me that I'm moving the row").
+    const row = (event.target as HTMLElement).closest("tr, [data-material-card]");
+    if (row instanceof HTMLElement) {
+      const rect = row.getBoundingClientRect();
+      event.dataTransfer.setDragImage(
+        row,
+        event.clientX - rect.left,
+        event.clientY - rect.top
+      );
+    }
     setDraggingMaterialId(material.id);
   }
 
@@ -1017,7 +1030,17 @@ export function MaterialsSection({
                   // mouse over the six dots"). The handle below owns it.
                   <tr
                     key={material.id}
-                    className={`transition-colors hover:bg-blue-light/20 ${
+                    onClick={(event) => {
+                      // Anywhere on the row opens the file (Anir, Aug 8: "I
+                      // shouldn't have to click on the name") — but never a
+                      // click that was already FOR something: a button, a
+                      // link, or the drag handle.
+                      const target = event.target as HTMLElement;
+                      if (target.closest("button, a, [draggable]")) return;
+                      if (uploaded) setViewing(material);
+                      else window.open(material.url, "_blank", "noopener,noreferrer");
+                    }}
+                    className={`cursor-pointer transition-colors hover:bg-blue-light/20 ${
                       draggingMaterialId === material.id ||
                       movingMaterialId === material.id
                         ? "opacity-45"
