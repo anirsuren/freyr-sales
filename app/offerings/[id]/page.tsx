@@ -32,6 +32,7 @@ import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
+import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { OfferingReleasesTab } from "@/components/offerings/OfferingReleasesTab";
 import { roadmapFromReleases } from "@/lib/roadmapFromReleases";
 import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
@@ -77,8 +78,19 @@ export default async function OfferingDetailPage({
   // full metadata in the RSC payload.
   const o = redactAgentOnlyMaterials(hydrated, me.memberId);
 
+  /**
+   * REPORTS IS BACK, MOCK ONLY. The Aug 4 offering-page rebuild rebuilt the
+   * tab bar to the pilot's three tabs and silently dropped the Reports tab
+   * Suren asked for ("I need a reports tab in offering") — nobody noticed
+   * until Anir did (Aug 8: "where did the report section go?"). It returns
+   * under the Aug 7 ruling that commercial views live in Mock; Real mode
+   * neither shows the chip nor honours the URL.
+   */
+  const showReports = getDataMode() !== "live";
   const tab =
-    query?.tab === "materials"
+    query?.tab === "reports" && showReports
+      ? "reports"
+      : query?.tab === "materials"
         ? "materials"
         : query?.tab === "roadmap" || query?.tab === "releases"
           ? "roadmap"
@@ -368,6 +380,18 @@ export default async function OfferingDetailPage({
             label: "Roadmap",
             href: `/offerings/${o.id}?tab=roadmap`,
           },
+          ...(showReports
+            ? [
+                {
+                  key: "reports",
+                  label:
+                    report.customerCount > 0
+                      ? `Reports (${report.customerCount})`
+                      : "Reports",
+                  href: `/offerings/${o.id}?tab=reports`,
+                },
+              ]
+            : []),
         ].map((t) => (
           <Link
             key={t.key}
@@ -396,6 +420,8 @@ export default async function OfferingDetailPage({
             admin={admin}
             preferenceOwnerId={me.memberId || me.id}
           />
+        ) : tab === "reports" ? (
+          <OfferingReports report={report} offeringName={o.offering_name} />
         ) : tab === "roadmap" ? (
           <OfferingReleasesTab
             offeringId={o.id}
