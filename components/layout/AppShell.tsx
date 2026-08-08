@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -45,7 +45,10 @@ export function AppShell({
   currentUser: UserIdentity;
 }) {
   const pathname = usePathname() || "";
+  const searchParams = useSearchParams();
   const isMaterialPage = /^\/offerings\/[^/]+\/materials\/[^/]+$/.test(pathname);
+  const isEmbeddedMaterial =
+    isMaterialPage && searchParams?.get("embed") === "1";
   /** Any page whose whole job is a form you fill in and save. */
   const isEditingForm =
     pathname.endsWith("/edit") || pathname.endsWith("/new");
@@ -206,6 +209,24 @@ export function AppShell({
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [approvalEnabled, pathname]);
+
+  // The hover peek iframes the material page with ?embed=1 and must receive
+  // ONLY the document — no dock, no toolbar, no floating UI. The agent bubble
+  // was literally rendering inside the 560px preview card. This return sits
+  // BELOW every hook so the hook order never changes between renders.
+  if (isEmbeddedMaterial) {
+    return (
+      <CurrentUserProvider user={currentUser} dataMode={dataMode}>
+        <MyPhotoProvider>
+          <TimeZoneProvider>
+            <ToastProvider>
+              <div className="h-screen overflow-hidden bg-white">{children}</div>
+            </ToastProvider>
+          </TimeZoneProvider>
+        </MyPhotoProvider>
+      </CurrentUserProvider>
+    );
+  }
 
   if (restrictedPath) return null;
 

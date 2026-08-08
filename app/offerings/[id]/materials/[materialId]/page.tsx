@@ -23,10 +23,13 @@ export async function generateMetadata({
 
 export default async function MaterialPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; materialId: string }>;
+  searchParams: Promise<{ embed?: string }>;
 }) {
   const { id, materialId } = await params;
+  const { embed } = await searchParams;
   const offering = getOffering(id);
   if (!offering) notFound();
 
@@ -42,6 +45,7 @@ export default async function MaterialPage({
       offeringId={visibleOffering.id}
       offeringName={visibleOffering.offering_name}
       material={material}
+      embed={embed === "1"}
     />
   );
 }

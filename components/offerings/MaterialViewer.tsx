@@ -97,6 +97,7 @@ export function MaterialViewer({
   openInNewTabUrl,
   onClose,
   standalone = false,
+  embed = false,
 }: {
   offeringId: string;
   offeringName: string;
@@ -108,6 +109,15 @@ export function MaterialViewer({
   onClose: () => void;
   /** Render as the content of a dedicated material route, not inside a dialog. */
   standalone?: boolean;
+  /**
+   * BARE DOCUMENT MODE, for the hover peek. Same renderers as a click —
+   * docx-preview, pptx-preview drawing real slides, the native PDF viewer —
+   * with no header, no metadata, no toolbar. The peek must look exactly like
+   * opening the file (Anir, Aug 8: "it has to look the same as if I clicked
+   * on it, show the actual file"), and the only way to guarantee that is to
+   * BE the same component.
+   */
+  embed?: boolean;
 }) {
   /** The ZIP remains the material of record. Opening a row swaps only the
    * bytes rendered in this dialog; Back returns to the archive manifest. */
@@ -177,6 +187,11 @@ export function MaterialViewer({
   }, []);
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(1);
+  /** Embed only: true while the reader is actively scrolling, so the page
+   *  number can show itself and get out of the way again (Anir, Aug 8: "the
+   *  page numbers... shouldn't always show up — when I'm scrolling"). */
+  const [peekScrolling, setPeekScrolling] = useState(false);
+  const peekScrollTimer = useRef<number | null>(null);
 
   const currentPath = archiveMember || path;
   const currentLabel = archiveMember
@@ -320,10 +335,9 @@ export function MaterialViewer({
             const box = scroller.current;
             const availW = box?.clientWidth || container.clientWidth || 900;
             const availH = box?.clientHeight || 700;
-            const width = Math.max(
-              560,
-              Math.min(availW, Math.floor((availH * 16) / 9))
-            );
+            const width = embed
+              ? Math.max(200, availW)
+              : Math.max(560, Math.min(availW, Math.floor((availH * 16) / 9)));
             const previewer = init(container, {
               width,
               height: Math.round((width * 9) / 16),
@@ -367,7 +381,7 @@ export function MaterialViewer({
     return () => {
       live = false;
     };
-  }, [archiveMember, ext, inlineUrl, isNative, isText, offeringId, path]);
+  }, [archiveMember, embed, ext, inlineUrl, isNative, isText, offeringId, path]);
 
   useEffect(() => {
     setArchiveMember(null);
@@ -435,6 +449,84 @@ export function MaterialViewer({
     window.addEventListener("unhandledrejection", swallow);
     return () => window.removeEventListener("unhandledrejection", swallow);
   }, [ext]);
+
+  /**
+   * EMBED = FIT WIDTH, ALWAYS. A Word page renders at its own ~816px and a
+   * 560px peek showed the top-left corner of it with dead space elsewhere
+   * (Anir, Aug 8: "the pptx are supposed to take up the entire dimensions...
+   * this applies to all the popups"). Measure the rendered document once and
+   * zoom it to the frame; CSS `zoom` keeps scroll height honest.
+   */
+  useEffect(() => {
+    if (!embed || status !== "ready" || ext !== "docx") return;
+    const box = scroller.current;
+    const doc = host.current;
+    if (!box || !doc) return;
+    const natural = doc.scrollWidth;
+    if (natural > 0 && box.clientWidth > 0) {
+      setZoom(Math.min(3, Math.max(0.2, box.clientWidth / natural)));
+    }
+  }, [embed, status, ext]);
+
+  /**
+   * TELL THE PEEK HOW TALL THE DOCUMENT REALLY IS. A one-slide deck is ~315px
+   * in a 420px frame, and the difference rendered as dead white space under
+   * the slide (Anir, Aug 8: "no empty space, since it's small already"). The
+   * embed posts its content height up to the parent, which shrinks the card
+   * to fit. Same-origin on both sides; the parent verifies the source.
+   */
+  useEffect(() => {
+    if (!embed || status !== "ready") return;
+    const box = scroller.current;
+    if (!box) return;
+    const onScroll = () => {
+      setPeekScrolling(true);
+      if (peekScrollTimer.current !== null)
+        window.clearTimeout(peekScrollTimer.current);
+      peekScrollTimer.current = window.setTimeout(
+        () => setPeekScrolling(false),
+        900
+      );
+    };
+    box.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      box.removeEventListener("scroll", onScroll);
+      if (peekScrollTimer.current !== null)
+        window.clearTimeout(peekScrollTimer.current);
+    };
+  }, [embed, status]);
+
+  /** The peek forwards wheel deltas from the parent page — scrolling with the
+   *  pointer still on the row must scroll the DOCUMENT, not the page under it
+   *  (Anir, Aug 8: "it does that when I scroll in the preview"). */
+  useEffect(() => {
+    if (!embed) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; deltaY?: number };
+      if (data?.type !== "freyr-embed-scroll" || typeof data.deltaY !== "number") return;
+      scroller.current?.scrollBy({ top: data.deltaY });
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [embed]);
+
+  useEffect(() => {
+    if (!embed || status !== "ready") return;
+    const box = scroller.current;
+    if (!box) return;
+    const report = () => {
+      window.parent?.postMessage(
+        { type: "freyr-embed-size", height: box.scrollHeight },
+        window.location.origin
+      );
+    };
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(box);
+    if (box.firstElementChild) observer.observe(box.firstElementChild);
+    return () => observer.disconnect();
+  }, [embed, status, zoom]);
 
   const changeZoom = useCallback((next: number) => {
     // 50%–300%. Below 50% a Word page is unreadable anyway; above 300% one
@@ -730,7 +822,7 @@ export function MaterialViewer({
           {/* Exact by definition: the browser's own PDF, video and image
               rendering of the very bytes that were uploaded. */}
           {isNative && ext === "pdf" && (
-            <PdfViewer src={inlineUrl} label={currentLabel} />
+            <PdfViewer src={inlineUrl} label={currentLabel} bare={embed} />
           )}
           {isText && (
             <iframe
@@ -952,7 +1044,9 @@ export function MaterialViewer({
             currently — do it like a native PDF viewer"). Typing a number or
             using the arrows scrolls there, and the same bar carries zoom, so
             everything you do to the document is in one place. */}
-        {status === "ready" && (pageCount > 1 || !isNative) && !listing && (
+        {/* Embed = the document and a scrollbar, nothing floating over it
+            (Anir, Aug 8: "you don't need zoom or anything"). */}
+        {!embed && status === "ready" && (pageCount > 1 || !isNative) && !listing && (
           // z-10 because a Word table renders positioned cells that otherwise
           // paint over the bar and swallow its clicks.
           <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
@@ -1055,6 +1149,26 @@ export function MaterialViewer({
         </div>
       </div>
   );
+
+  if (embed) {
+    return (
+      <section aria-label={currentLabel} className="material-embed relative h-full min-h-0 bg-white">
+        {viewerBody}
+        {pageCount > 1 && (
+          <div
+            aria-hidden={!peekScrolling}
+            className={`pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center transition-opacity duration-300 ${
+              peekScrolling ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <span className="tabular-nums rounded-full bg-[#1D1D1F]/85 px-2.5 py-1 text-[11px] font-semibold text-white shadow-[0_4px_14px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+              {unit} {page} / {pageCount}
+            </span>
+          </div>
+        )}
+      </section>
+    );
+  }
 
   if (standalone) {
     const format = MATERIAL_FORMAT_META[materialFormat(material.kind)];

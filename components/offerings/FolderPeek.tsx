@@ -100,6 +100,7 @@ export function FolderPeek({
   const [peekPath, setPeekPath] = useState(path);
   const [position, setPosition] = useState<PanelPosition | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | null>(null);
   const openTimer = useRef<number | null>(null);
 
@@ -154,12 +155,19 @@ export function FolderPeek({
   // wrong card, so the peek closes rather than following.
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
+    // The capture-phase listener also hears the panel's OWN list scrolling —
+    // which closed the peek the moment anyone scrolled the files inside it.
+    // Only a scroll OUTSIDE the panel (the page moving under it) closes.
+    const close = (event: Event) => {
+      if (panelRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    const closeAlways = () => setOpen(false);
     window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
+    window.addEventListener("resize", closeAlways);
     return () => {
       window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      window.removeEventListener("resize", closeAlways);
     };
   }, [open]);
 
@@ -184,6 +192,7 @@ export function FolderPeek({
         position &&
         createPortal(
           <div
+            ref={panelRef}
             role="dialog"
             aria-label={`Inside ${materialFolderLabel(peekPath)}`}
             onMouseEnter={cancelClose}

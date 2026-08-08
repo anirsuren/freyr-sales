@@ -138,6 +138,7 @@ function PdfPage({
   document,
   pageNumber,
   zoom,
+  bare = false,
   availableWidth,
   root,
   register,
@@ -145,6 +146,7 @@ function PdfPage({
   document: PDFDocumentProxy;
   pageNumber: number;
   zoom: number;
+  bare?: boolean;
   availableWidth: number;
   root: HTMLDivElement | null;
   register: (page: number, node: HTMLDivElement | null) => void;
@@ -154,7 +156,9 @@ function PdfPage({
   const [visible, setVisible] = useState(pageNumber <= 2);
   const [ratio, setRatio] = useState(16 / 9);
   const [rendering, setRendering] = useState(true);
-  const pageWidth = Math.max(300, Math.min(1180, availableWidth - 56)) * zoom;
+  // Bare mode: the page IS the frame — no stage padding to subtract, no
+  // clamp that would letterbox a 560px peek.
+  const pageWidth = (bare ? availableWidth : Math.max(300, Math.min(1180, availableWidth - 56))) * zoom;
 
   useEffect(() => {
     register(pageNumber, holder.current);
@@ -229,11 +233,22 @@ function PdfPage({
   );
 }
 
-export function PdfViewer({ src, label }: { src: string; label: string }) {
+export function PdfViewer({
+  src,
+  label,
+  bare = false,
+}: {
+  src: string;
+  label: string;
+  /** Hover-peek mode: no sidebar, no toolbar — pages fill the frame,
+   *  scrollbar only (Anir, Aug 8: "you don't need zoom or anything, the
+   *  viewer should take up the entire thing with a simple scroll bar"). */
+  bare?: boolean;
+}) {
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [zoom, setZoom] = useState(1);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(!bare);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const viewport = useRef<HTMLDivElement>(null);
@@ -242,6 +257,9 @@ export function PdfViewer({ src, label }: { src: string; label: string }) {
   const pageNodes = useRef(new Map<number, HTMLDivElement>());
   const scrollFrame = useRef<number | null>(null);
   const [viewportWidth, setViewportWidth] = useState(0);
+  /** Bare mode: the page number shows while scrolling and fades at rest. */
+  const [bareScrolling, setBareScrolling] = useState(false);
+  const bareScrollTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const node = viewport.current;
@@ -357,7 +375,13 @@ export function PdfViewer({ src, label }: { src: string; label: string }) {
   }, []);
 
   return (
-    <div ref={stage} className="pdf-viewer relative flex h-full min-h-[520px] overflow-hidden rounded-xl bg-[var(--pdf-stage)] text-[var(--pdf-text)]">
+    <div
+      ref={stage}
+      className={`pdf-viewer relative flex h-full overflow-hidden bg-[var(--pdf-stage)] text-[var(--pdf-text)] ${
+        bare ? "" : "min-h-[520px] rounded-xl"
+      }`}
+    >
+      {!bare && (
       <aside
         className={`shrink-0 overflow-hidden border-r border-[var(--pdf-border)] bg-[var(--pdf-sidebar)] transition-[width] duration-200 ${
           sidebarOpen ? "w-[180px]" : "w-0 border-r-0"
@@ -383,8 +407,10 @@ export function PdfViewer({ src, label }: { src: string; label: string }) {
             ))}
         </div>
       </aside>
+      )}
 
       <section className="flex min-w-0 flex-1 flex-col">
+        {!bare && (
         <div className="grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-[var(--pdf-border)] bg-[var(--pdf-chrome)] px-3 shadow-sm">
           <div className="flex min-w-0 items-center gap-2">
             <button
@@ -475,20 +501,34 @@ export function PdfViewer({ src, label }: { src: string; label: string }) {
             </button>
           </div>
         </div>
+        )}
 
         <div
           ref={viewport}
-          onScroll={syncPageFromScroll}
-          className="material-scroll relative min-h-0 flex-1 overflow-y-scroll overflow-x-auto bg-[var(--pdf-stage)] px-7 py-6"
+          onScroll={() => {
+            syncPageFromScroll();
+            if (!bare) return;
+            setBareScrolling(true);
+            if (bareScrollTimer.current !== null)
+              window.clearTimeout(bareScrollTimer.current);
+            bareScrollTimer.current = window.setTimeout(
+              () => setBareScrolling(false),
+              900
+            );
+          }}
+          className={`material-scroll relative min-h-0 flex-1 overflow-y-scroll overflow-x-auto bg-[var(--pdf-stage)] ${
+            bare ? "" : "px-7 py-6"
+          }`}
         >
           {document && viewportWidth > 0 && (
-            <div className="flex min-w-max flex-col gap-6 pb-8">
+            <div className={`flex min-w-max flex-col ${bare ? "gap-2" : "gap-6 pb-8"}`}>
               {Array.from({ length: pageCount }, (_, index) => (
                 <PdfPage
                   key={index + 1}
                   document={document}
                   pageNumber={index + 1}
                   zoom={zoom}
+                  bare={bare}
                   availableWidth={viewportWidth}
                   root={viewport.current}
                   register={registerPage}
@@ -522,6 +562,19 @@ export function PdfViewer({ src, label }: { src: string; label: string }) {
           <div className="max-w-[420px] rounded-xl border border-[var(--pdf-border)] bg-[var(--pdf-chrome)] p-5 text-center text-[13px] text-[var(--pdf-muted)] shadow-sm">
             {error}
           </div>
+        </div>
+      )}
+
+      {bare && pageCount > 1 && (
+        <div
+          aria-hidden={!bareScrolling}
+          className={`pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center transition-opacity duration-300 ${
+            bareScrolling ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <span className="tabular-nums rounded-full bg-[#1D1D1F]/85 px-2.5 py-1 text-[11px] font-semibold text-white shadow-[0_4px_14px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+            Page {pageNumber} / {pageCount}
+          </span>
         </div>
       )}
     </div>

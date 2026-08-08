@@ -26,6 +26,7 @@ import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { FolderPeek } from "@/components/offerings/FolderPeek";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
 import {
@@ -150,29 +151,28 @@ function TagPill({
   label: string;
   color: string;
   icon: LucideIcon;
-  variant?: "tint" | "outline" | "solid";
+  variant?: "tint" | "outline";
   title?: string;
 }) {
+  // ONE PILL SHAPE FOR THE WHOLE ROW. "Internal only" used to be uppercase,
+  // letter-spaced and bordered, which made it wider and louder than every
+  // other tag beside it (Anir, Aug 8: "why is the internal only tag so big
+  // compared to the other tags and so prominent"). It is still unmistakable —
+  // it is the only warm-hued pill in a row of blues and greens, and it carries
+  // a padlock — without shouting over the file it belongs to.
   const style =
-    variant === "solid"
-      ? // A soft wash with the colour as INK, not a filled block of red.
-        // Solid red on every internal row shouted louder than anything else
-        // on the page (Anir, Aug 7: "can we make this internal only a bit
-        // less in your face, more pastel"). Still unmistakable — it is the
-        // only uppercase, bordered pill in the table.
-        { background: `${color}1A`, color, borderColor: `${color}59` }
-      : variant === "outline"
-        ? { color, borderColor: `${color}66` }
-        : { background: `${color}14`, color };
+    variant === "outline"
+      ? { color, borderColor: `${color}66` }
+      : { background: `${color}14`, color };
   return (
     <span
       title={title}
       className={`inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold leading-none ${
         variant === "outline" ? "border bg-transparent" : ""
-      } ${variant === "solid" ? "border tracking-[0.04em] uppercase" : ""}`}
+      }`}
       style={style}
     >
-      <Icon size={10} strokeWidth={variant === "solid" ? 2.6 : 2.2} />
+      <Icon size={10} strokeWidth={2.2} />
       <span className="truncate">{label}</span>
     </span>
   );
@@ -982,13 +982,20 @@ export function MaterialsSection({
         <div className="materials-view-enter mt-3 overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <table className="w-full min-w-[920px] border-collapse text-left">
             <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              {/* "Uploaded by" — the person is the headline and the date sits
+                  under their name anyway, so the old "Upload date" labelled the
+                  smaller of the two facts in the column (Anir, Aug 8). */}
               <tr>
-                <th className="px-4 py-3">File name</th>
-                <th className="px-3 py-3">File format</th>
-                <th className="px-3 py-3">Access level</th>
-                <th className="px-3 py-3">Buyer&apos;s journey stage(s)</th>
-                <th className="px-3 py-3">Upload date</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                {/* LEFT-ALIGNED. Centring every column was tried on Aug 8 and
+                    pulled back the same day — a table of tags and names reads
+                    as a ragged cloud when nothing shares an edge. Only ACTIONS
+                    centres, because it is a fixed row of icons. */}
+                <th className="px-4 py-3 align-middle">File name</th>
+                <th className="px-3 py-3 align-middle">File format</th>
+                <th className="px-3 py-3 align-middle">Access level</th>
+                <th className="px-3 py-3 align-middle">Buyer&apos;s journey stage(s)</th>
+                <th className="px-3 py-3 align-middle">Uploaded by</th>
+                <th className="px-4 py-3 text-center align-middle">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -1002,43 +1009,60 @@ export function MaterialsSection({
                 const uploaded = Boolean(material.docsPath);
                 const uploadDate = uploadedAt(material);
                 return (
+                  // THE ROW IS NOT THE DRAG HANDLE. Making the whole row
+                  // draggable meant a click that moved a pixel anywhere —
+                  // over the name, over a tag — started a drag, and the row
+                  // wore a grab cursor everywhere (Anir, Aug 8: "I shouldn't
+                  // be able to shuffle it just anywhere. I have to hover my
+                  // mouse over the six dots"). The handle below owns it.
                   <tr
                     key={material.id}
-                    draggable={canEdit && !movingMaterialId}
-                    onDragStart={(event) => startMaterialDrag(event, material)}
-                    onDragEnd={() => {
-                      setDraggingMaterialId(null);
-                      setDropTargetPath(null);
-                    }}
-                    title={canEdit ? "Drag onto a folder to move" : undefined}
                     className={`transition-colors hover:bg-blue-light/20 ${
-                      canEdit ? "cursor-grab active:cursor-grabbing" : ""
-                    } ${
                       draggingMaterialId === material.id ||
                       movingMaterialId === material.id
                         ? "opacity-45"
                         : ""
                     }`}
                   >
-                    <td className="max-w-[320px] px-4 py-3">
+                    <td className="max-w-[320px] px-4 py-3 align-middle">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        {canEdit && (
+                          // The six dots ARE the handle: they carry draggable,
+                          // the grab cursor and the only "drag to move" hint.
+                          <span
+                            draggable={!movingMaterialId}
+                            onDragStart={(event) => startMaterialDrag(event, material)}
+                            onDragEnd={() => {
+                              setDraggingMaterialId(null);
+                              setDropTargetPath(null);
+                            }}
+                            title="Drag onto a folder to move"
+                            aria-label="Drag to move this file"
+                            className="shrink-0 cursor-grab text-text-tertiary transition-colors hover:text-blue-primary active:cursor-grabbing"
+                          >
+                            <GripVertical size={15} strokeWidth={2} aria-hidden="true" />
+                          </span>
+                        )}
                       <button
                         type="button"
                         onClick={() => uploaded ? setViewing(material) : window.open(material.url, "_blank", "noopener,noreferrer")}
                         className="flex min-w-0 items-center gap-2.5 text-left"
                       >
-                        {canEdit && (
-                          <GripVertical
-                            size={15}
-                            strokeWidth={2}
-                            className="shrink-0 text-text-tertiary"
-                            aria-hidden="true"
-                          />
-                        )}
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
                           <Icon size={15} strokeWidth={1.9} />
                         </span>
                         <span className="min-w-0">
-                          <span className="block break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary">{material.label}</span>
+                          {/* Only the NAME previews. Wrapping the whole row
+                              button meant the card appeared over the icon, the
+                              folder line and the description too (Anir, Aug 8:
+                              "the pop-up should only show up when I'm on top
+                              of the name"). */}
+                          <MaterialPeek
+                            material={material}
+                            previewUrl={uploaded ? `${materialPreviewUrl(material)}?embed=1` : null}
+                          >
+                            <span className="block break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary">{material.label}</span>
+                          </MaterialPeek>
                           {/* Folder only. The file type moved into the FILE
                               FORMAT column, under the format pill, where the
                               two facts about the file's shape sit together
@@ -1054,8 +1078,9 @@ export function MaterialsSection({
                           )}
                         </span>
                       </button>
+                      </div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 align-middle">
                       {/* FILE FORMAT means the format. Nothing else. The
                           document-kind tag ("Sales deck", "Training material",
                           "Success story / case study") repeated the folder the
@@ -1081,18 +1106,20 @@ export function MaterialsSection({
                         </span>
                       </span>
                     </td>
-                    <td className="px-3 py-3">
-                      {level ? <TagPill label={level.label} color={level.color} icon={level.icon} variant={material.accessLevel === "internal_only" ? "solid" : "tint"} /> : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
+                    <td className="px-3 py-3 align-middle">
+                      {level ? <TagPill label={level.label} color={level.color} icon={level.icon} /> : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-1">
+                    <td className="px-3 py-3 align-middle">
+                      {/* Stacked. Side by side, two stages ran wider than the
+                          column and pushed the row's other facts around. */}
+                      <div className="flex flex-col items-start gap-1">
                         {stagesForMaterial.length ? stagesForMaterial.map((stage) => {
                           const meta = JOURNEY_STAGE_META[stage];
                           return <TagPill key={stage} label={meta.short} color={meta.color} icon={meta.icon} />;
                         }) : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
                       </div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 align-middle">
                       <div className="flex min-w-[145px] items-center gap-2">
                         {material.addedBy ? (
                           <Avatar
@@ -1123,8 +1150,8 @@ export function MaterialsSection({
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex items-center justify-center gap-1">
                         <Tooltip label={uploaded ? "Open preview" : "Open link"} side="top">
                           <button
                             type="button"
@@ -1320,7 +1347,6 @@ export function MaterialsSection({
                         // Solid burnt orange + a lock, against a page where
                         // every other chip is a light tint — it cannot be
                         // mistaken for "safe to send".
-                        variant={internal ? "solid" : "tint"}
                         title={
                           internal
                             ? "Internal only: never send this file to a client"

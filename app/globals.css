@@ -1299,3 +1299,38 @@ input {
   from { opacity: 0; transform: scale(0.94) translateY(-4px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* Embedded material peek: the document fills the frame edge to edge — the
+   card already draws the border, so the viewer's own chrome goes. */
+.material-embed .material-scroll {
+  border: 0 !important;
+  border-radius: 0 !important;
+  /* Hitting the top/bottom of the document must not hand the wheel to the
+     page behind the card. */
+  overscroll-behavior: contain;
+}
+/* The document spans the frame edge to edge — docx-preview's grey stage
+   padding read as the file "not taking up the whole thing". */
+.material-embed .docx-wrapper {
+  padding: 0 !important;
+  background: #fff !important;
+}
+.material-embed .docx-wrapper > section {
+  margin: 0 auto 8px !important;
+  box-shadow: none !important;
+}
+.material-embed .material-pptx,
+.material-embed .material-docx {
+  margin: 0 !important;
+}
+/* pptx-preview hard-sizes its own inner viewport to exactly ONE slide and
+   scrolls the deck inside it — invisible in a peek, where the card is the
+   scroller. Slide 2 sat unreachable under dead space (Anir, Aug 8: "why are
+   you not showing the next slide, it can easily fit"). Author !important
+   outranks the library's inline height, so the wrapper grows to the whole
+   deck and the card scrolls through it. */
+.material-embed .pptx-preview-wrapper {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
