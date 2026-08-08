@@ -249,7 +249,10 @@ export function VideoPlayer({ src, label }: { src: string; label: string }) {
             />
           </div>
 
-          <span className="ml-1.5 text-[12.5px] font-medium tnum text-white/90">
+          {/* One line, always. In the narrow hover peek the control bar has
+              no spare width, and the clock wrapped into "0:00 /" over "3:32"
+              (Anir, Aug 8: "the time should always show up on one line"). */}
+          <span className="ml-1.5 shrink-0 whitespace-nowrap text-[12.5px] font-medium tnum text-white/90">
             {clock(time)} <span className="text-white/50">/ {clock(duration)}</span>
           </span>
 
