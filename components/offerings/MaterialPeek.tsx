@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Loader2 } from "lucide-react";
+import { Check, Copy, Loader2 } from "lucide-react";
 import type { OfferingMaterial } from "@/lib/offeringMaterials";
 
 /**
@@ -62,10 +62,6 @@ export function MaterialPeek({
   previewUrl: string | null;
   children: ReactNode;
 }) {
-  // A PASTED LINK GETS NO CARD AT ALL. There is no file to preview, and a
-  // popup whose only message is "there is nothing to preview" is worse than
-  // no popup (Anir, Aug 8: "if it's a link there doesn't have to be a popup").
-  // The row already says LINK, and its tooltip names the destination.
   const [open, setOpen] = useState(false);
   /** Once opened, the iframe STAYS MOUNTED. Closing only hides it, so any
    *  close — intended or not — costs nothing: reopening is instant, with the
@@ -73,6 +69,7 @@ export function MaterialPeek({
    *  "when it's loading, it should load everything, and I should be able to
    *  scroll"). */
   const [everOpened, setEverOpened] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const unmountTimer = useRef<number | null>(null);
   /** The document's real height, reported by the embed — the card fits the
@@ -167,7 +164,7 @@ export function MaterialPeek({
    * delta into the embed, which scrolls the document itself.
    */
   useEffect(() => {
-    if (!open) return;
+    if (!open || !previewUrl) return;
     const onWheel = (event: WheelEvent) => {
       const target = event.target as Node;
       const inWrap = wrapRef.current?.contains(target) ?? false;
@@ -182,7 +179,7 @@ export function MaterialPeek({
     window.addEventListener("wheel", onWheel, { passive: false, capture: true });
     return () =>
       window.removeEventListener("wheel", onWheel, { capture: true } as EventListenerOptions);
-  }, [open]);
+  }, [open, previewUrl]);
 
   useEffect(() => {
     if (!open) return;
@@ -201,8 +198,6 @@ export function MaterialPeek({
       window.removeEventListener("resize", close);
     };
   }, [open]);
-
-  if (!previewUrl) return <>{children}</>;
 
   return (
     <span
@@ -246,40 +241,68 @@ export function MaterialPeek({
             }`}
           >
             {/* No header. The file IS the preview. */}
-            {/* THE REAL VIEWER, chrome stripped. ?embed=1 renders the same
-                docx-preview / pptx-preview / native-PDF pipeline a click
-                opens — actual drawn slides, not extracted text (Anir, Aug 8:
-                "it has to look the same as if I clicked on it"). The page
-                strips its own header, toolbar and agent dock in embed mode. */}
-            <div
-              className="relative bg-white transition-[height] duration-150"
-              style={{
-                height: contentHeight
-                  ? Math.min(FRAME_HEIGHT, contentHeight)
-                  : FRAME_HEIGHT,
-              }}
-            >
-              <iframe
-                ref={frameRef}
-                src={previewUrl ?? undefined}
-                title={`Preview of ${material.label}`}
-                onLoad={() => setLoaded(true)}
-                className="block h-full w-full border-0 bg-white"
-              />
-              {!loaded && (
-                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-white">
-                  <Loader2
-                    size={14}
-                    strokeWidth={2.2}
-                    className="animate-spin text-blue-primary"
-                    aria-hidden="true"
-                  />
-                  <span className="text-[12px] font-medium text-text-secondary">
-                    Loading preview…
-                  </span>
-                </div>
-              )}
-            </div>
+            {previewUrl ? (
+              /* THE REAL VIEWER, chrome stripped. ?embed=1 renders the same
+                 docx-preview / pptx-preview / native-PDF pipeline a click
+                 opens — actual drawn slides, not extracted text. */
+              <div
+                className="relative bg-white transition-[height] duration-150"
+                style={{
+                  height: contentHeight
+                    ? Math.min(FRAME_HEIGHT, contentHeight)
+                    : FRAME_HEIGHT,
+                }}
+              >
+                <iframe
+                  ref={frameRef}
+                  src={previewUrl}
+                  title={`Preview of ${material.label}`}
+                  onLoad={() => setLoaded(true)}
+                  className="block h-full w-full border-0 bg-white"
+                />
+                {!loaded && (
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 bg-white">
+                    <Loader2
+                      size={14}
+                      strokeWidth={2.2}
+                      className="animate-spin text-blue-primary"
+                      aria-hidden="true"
+                    />
+                    <span className="text-[12px] font-medium text-text-secondary">
+                      Loading preview…
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* A pasted link has no file to render, so the card shows the
+                 one thing a rep wants from it: the address, and a one-click
+                 copy (Anir, Aug 8: "show the link right on top, and a button
+                 with the copy icon"). */
+              <div className="flex items-start gap-2 bg-white p-3">
+                <p className="min-h-0 max-h-32 min-w-0 flex-1 overflow-y-auto break-all font-mono text-[11.5px] leading-snug text-text-secondary">
+                  {material.url}
+                </p>
+                <button
+                  type="button"
+                  aria-label="Copy the link"
+                  title={copied ? "Copied" : "Copy the link"}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(material.url).then(() => {
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 1500);
+                    });
+                  }}
+                  className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light text-text-tertiary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                >
+                  {copied ? (
+                    <Check size={14} strokeWidth={2.4} className="text-success" />
+                  ) : (
+                    <Copy size={14} strokeWidth={2} />
+                  )}
+                </button>
+              </div>
+            )}
           </div>,
           document.body
         )}
