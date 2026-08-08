@@ -219,9 +219,6 @@ export function EditMaterialButton({
                     color: "#0071E3",
                   }))}
                 />
-            <p className="mt-1.5 text-[11.5px] text-text-tertiary">
-              Choose from the system folders or folders created for this offering.
-            </p>
           </div>
           <div className="space-y-3">
             <div>

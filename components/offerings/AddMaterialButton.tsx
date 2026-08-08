@@ -756,7 +756,7 @@ export function AddMaterialButton({
           <div>
             <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               <span>Folder</span>
-              <InfoHint text="Choose an existing folder or create a new one for this offering. “All files” is only a viewing mode." />
+              <InfoHint text="Which folder this file will live in. Create a new one with the + button." />
               {!folder && (
                 <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                   Required
