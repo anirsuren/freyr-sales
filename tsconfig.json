@@ -37,12 +37,13 @@
     ".next-e2e/types/**/*.ts",
     ".next-live/types/**/*.ts",
     ".next-local-preview/types/**/*.ts",
+    ".next-nodocs/types/**/*.ts",
     ".next-onboarding-test/types/**/*.ts",
     ".next-test/types/**/*.ts",
     ".next-verify/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-nodocs/types/**/*.ts"
+    ".next-build/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

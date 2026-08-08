@@ -13,6 +13,7 @@ import {
   X,
   ExternalLink,
   Files,
+  Crown,
   FilterX,
   Route,
   ShieldCheck,
@@ -199,6 +200,7 @@ export function MaterialsSection({
   canEdit = false,
   materialFolders = [],
   preferenceOwnerId,
+  ownerNames = [],
 }: {
   materials: OfferingMaterial[];
   /** Folders an owner made that hold nothing yet; the rest are implied by the
@@ -216,6 +218,9 @@ export function MaterialsSection({
   /** Keeps a shared browser from leaking one signed-in user's view preference
    *  into another user's session. */
   preferenceOwnerId?: string | null;
+  /** Display names of this offering's OWNERS — an uploader on the list gets
+   *  the crown beside their name, the same mark ownership wears everywhere. */
+  ownerNames?: string[];
 }) {
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
@@ -542,6 +547,12 @@ export function MaterialsSection({
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
+  const ownerNameSet = new Set(
+    ownerNames.map((name) => name.trim().toLocaleLowerCase()).filter(Boolean)
+  );
+  const uploaderIsOwner = (name: string | undefined) =>
+    Boolean(name && ownerNameSet.has(name.trim().toLocaleLowerCase()));
+
   const anyFilter =
     formats.length > 0 ||
     stages.length > 0 ||
@@ -1155,8 +1166,18 @@ export function MaterialsSection({
                           </span>
                         )}
                         <span className="min-w-0">
-                          <span className="block break-words text-[11.5px] font-semibold text-text-primary">
+                          <span className="flex items-center gap-1 break-words text-[11.5px] font-semibold text-text-primary">
                             {material.addedBy || "Not recorded"}
+                            {uploaderIsOwner(material.addedBy) && (
+                              <span title="Offering owner" className="shrink-0 leading-none">
+                                <Crown
+                                  size={11}
+                                  strokeWidth={2.6}
+                                  aria-label="Offering owner"
+                                  className="text-[color:#B45309]"
+                                />
+                              </span>
+                            )}
                           </span>
                           <span className="mt-0.5 block text-[10.5px] text-text-tertiary">
                             {uploadDate ? (
@@ -1394,8 +1415,13 @@ export function MaterialsSection({
                           name={material.addedBy}
                           className="h-5 w-5 text-[8px]"
                         />
-                        <span className="truncate">
+                        <span className="flex items-center gap-1 truncate">
                           Added by {material.addedBy}
+                          {uploaderIsOwner(material.addedBy) && (
+                            <span title="Offering owner" className="inline-flex shrink-0">
+                              <Crown size={10} strokeWidth={2.6} aria-label="Offering owner" className="text-[color:#B45309]" />
+                            </span>
+                          )}
                         </span>
                       </>
                     ) : (

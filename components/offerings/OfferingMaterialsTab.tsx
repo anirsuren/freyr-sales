@@ -49,6 +49,9 @@ export function OfferingMaterialsTab({
         offeringName={o.offering_name}
         canEdit={admin}
         materialFolders={o.materialFolders ?? []}
+        ownerNames={(o.owners ?? [])
+          .filter((owner) => owner.status === "owner")
+          .map((owner) => owner.name)}
         preferenceOwnerId={preferenceOwnerId}
         action={
           admin ? (
