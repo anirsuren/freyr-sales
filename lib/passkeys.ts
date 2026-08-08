@@ -132,7 +132,16 @@ export async function issueChallenge(input: {
   authUserId?: string;
   email?: string;
 }): Promise<void> {
-  await db().from("webauthn_challenges").insert({
+  const supabase = db();
+  // Only CONSUMED challenges delete themselves; an abandoned prompt (cancelled
+  // Touch ID, closed tab) leaves its row behind. Sweeping expired rows on
+  // every new challenge keeps this table a handful of rows forever — a
+  // thousand attempts never become a thousand rows (Anir, Aug 8).
+  await supabase
+    .from("webauthn_challenges")
+    .delete()
+    .lt("expires_at", new Date().toISOString());
+  await supabase.from("webauthn_challenges").insert({
     challenge: input.challenge,
     kind: input.kind,
     auth_user_id: input.authUserId ?? null,

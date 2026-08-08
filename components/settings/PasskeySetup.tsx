@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Fingerprint, Trash2 } from "lucide-react";
+import { Fingerprint, RotateCw, Trash2 } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { Button } from "@/components/ui/Button";
 
@@ -72,6 +72,23 @@ export function PasskeySetup() {
     await load();
   }
 
+  /** Throw the old key away and enrol a fresh one in the same click. A glitched
+   *  passkey must never need itself to get fixed (Anir, Aug 8: "I should be
+   *  able to reset my touch ID for any reason... if something glitches") —
+   *  this runs on your signed-in session alone. Cancelling the new prompt
+   *  leaves you with password + email link, so you are never locked out. */
+  async function resetDevice(id: string) {
+    setBusy(true);
+    setNote(null);
+    try {
+      await fetch(`/api/auth/passkey?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      await load();
+    } finally {
+      setBusy(false);
+    }
+    await enrol();
+  }
+
   return (
     <div className="rounded-xl border border-border-light bg-white p-4">
       <div className="flex items-start justify-between gap-4">
@@ -138,6 +155,17 @@ export function PasskeySetup() {
                     : " · not used yet"}
                 </span>
               </span>
+              <button
+                type="button"
+                onClick={() => void resetDevice(p.id)}
+                disabled={busy || !supported}
+                aria-label={`Reset ${p.label || "passkey"}`}
+                title="Remove this key and set it up again"
+                className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light px-2.5 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary disabled:cursor-default disabled:opacity-50"
+              >
+                <RotateCw size={13} strokeWidth={2} />
+                Reset
+              </button>
               <button
                 type="button"
                 onClick={() => remove(p.id)}
