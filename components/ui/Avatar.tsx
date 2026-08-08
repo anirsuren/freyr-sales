@@ -156,7 +156,7 @@ export function Avatar({
    * Outside the provider (the login screen) the context default is empty and
    * this quietly falls through to the name map, then to initials.
    */
-  const { photo: myPhoto, name: myName } = useMyPhoto();
+  const { photo: myPhoto, name: myName, teamPhotos } = useMyPhoto();
   const dataMode = useCurrentDataMode();
   const isMe =
     !!myPhoto &&
@@ -168,6 +168,11 @@ export function Avatar({
   const photo =
     src ||
     (isMe ? myPhoto : null) ||
+    // A teammate's own uploaded picture — visible to EVERYONE signed in, not
+    // just its owner (Anir, Aug 8, browsing as Suren: "Why does my profile
+    // picture not show up?"). It beats the hand-maintained map below because
+    // it is the freshest true face and needs no code change per person.
+    teamPhotos[name.trim().toLowerCase()] ||
     REAL_PHOTOS[name.trim().toLowerCase()] ||
     (dataMode === "mock" ? photoFor(name) : null);
   const words = name.split(/\s+/).filter(Boolean);

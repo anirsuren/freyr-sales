@@ -51,12 +51,18 @@ const MyPhotoContext = createContext<{
   photo: string | null;
   /** Whose photo it is, so any Avatar can tell if it is drawing this person. */
   name: string;
+  /** The whole team's uploaded pictures, keyed by lowercased display name —
+   *  so a picture you upload shows to your colleagues, not only to you
+   *  (Anir, Aug 8, browsing as Suren: "Why does my profile picture not show
+   *  up?"). */
+  teamPhotos: Record<string, string>;
   refresh: () => void;
-}>({ photo: null, name: "", refresh: () => {} });
+}>({ photo: null, name: "", teamPhotos: {}, refresh: () => {} });
 
 export function MyPhotoProvider({ children }: { children: ReactNode }) {
   const user = useContext(CurrentUserContext);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [teamPhotos, setTeamPhotos] = useState<Record<string, string>>({});
   const [tick, setTick] = useState(0);
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +70,14 @@ export function MyPhotoProvider({ children }: { children: ReactNode }) {
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled) setPhoto(typeof d?.photo === "string" ? d.photo : null);
+      })
+      .catch(() => {});
+    fetch("/api/profile/photo/team", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d?.photos && typeof d.photos === "object") {
+          setTeamPhotos(d.photos as Record<string, string>);
+        }
       })
       .catch(() => {});
     return () => {
@@ -75,6 +89,7 @@ export function MyPhotoProvider({ children }: { children: ReactNode }) {
       value={{
         photo,
         name: user?.name ?? "",
+        teamPhotos,
         refresh: () => setTick((n) => n + 1),
       }}
     >

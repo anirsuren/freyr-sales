@@ -11,6 +11,15 @@ type Passkey = { id: string; label: string | null; createdAt: string; lastUsedAt
  * "Set up Touch ID" — enrol this device as a passkey (Anir, Aug 7: "I hate
  * logging in, I want to use Touch ID"). Your password keeps working; this is
  * an additional key to the same account.
+ *
+ * ONE SWITCH, NOT A DEVICE LIST. Touch ID is on or off for your account, and
+ * while it is on you can Reset it (start over on the machine you are holding)
+ * or Remove it. The first version listed each stored key as a row with its
+ * own buttons and offered "Add another device" — which read like managing
+ * sessions (Anir, Aug 8: "Why would it go on a session?... Why the fuck would
+ * they add it to another device? They should be able to remove it or reset
+ * it"). Reset and Remove act on every stored key, so a glitched one can never
+ * survive by hiding behind a second row.
  */
 export function PasskeySetup() {
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
@@ -67,27 +76,49 @@ export function PasskeySetup() {
     }
   }
 
-  async function remove(id: string) {
-    await fetch(`/api/auth/passkey?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  async function deleteAllKeys() {
+    for (const key of passkeys) {
+      await fetch(`/api/auth/passkey?id=${encodeURIComponent(key.id)}`, { method: "DELETE" });
+    }
     await load();
   }
 
-  /** Throw the old key away and enrol a fresh one in the same click. A glitched
-   *  passkey must never need itself to get fixed (Anir, Aug 8: "I should be
-   *  able to reset my touch ID for any reason... if something glitches") —
-   *  this runs on your signed-in session alone. Cancelling the new prompt
-   *  leaves you with password + email link, so you are never locked out. */
-  async function resetDevice(id: string) {
+  /** Turn Touch ID off. Password and the email link keep signing you in. */
+  async function removeAll() {
     setBusy(true);
     setNote(null);
     try {
-      await fetch(`/api/auth/passkey?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      await load();
+      await deleteAllKeys();
+      setNote({ ok: true, text: "Touch ID is off. Your password and email link still work." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Start over: throw every stored key away and enrol this device fresh. A
+   *  glitched passkey must never need itself to get fixed (Anir, Aug 8: "I
+   *  should be able to reset my touch ID for any reason... if something
+   *  glitches") — this runs on your signed-in session alone. Cancelling the
+   *  new prompt just leaves Touch ID off; you are never locked out. */
+  async function resetAll() {
+    setBusy(true);
+    setNote(null);
+    try {
+      await deleteAllKeys();
     } finally {
       setBusy(false);
     }
     await enrol();
   }
+
+  const on = passkeys.length > 0;
+  const setUpAt = on
+    ? new Date(Math.min(...passkeys.map((p) => new Date(p.createdAt).getTime())))
+    : null;
+  const lastUsedTimes = passkeys
+    .map((p) => (p.lastUsedAt ? new Date(p.lastUsedAt).getTime() : null))
+    .filter((t): t is number => t !== null);
+  const lastUsedAt = lastUsedTimes.length ? new Date(Math.max(...lastUsedTimes)) : null;
 
   return (
     <div className="rounded-xl border border-border-light bg-white p-4">
@@ -98,27 +129,50 @@ export function PasskeySetup() {
             Touch ID and passkeys
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
-            {passkeys.length > 0
-              ? `Touch ID is on for this account. Sign in with your fingerprint instead of a password${
-                  passkeys.length === 1 ? "" : ` on ${passkeys.length} devices`
-                }.`
+            {on
+              ? "Touch ID is on for this account. Sign in with your fingerprint instead of a password."
               : "Sign in with your fingerprint or face instead of typing a password. Your password still works."}
           </p>
+          {on && setUpAt && (
+            <p className="mt-1 text-[11.5px] text-text-tertiary tnum">
+              Set up {setUpAt.toLocaleDateString()}
+              {lastUsedAt ? ` · last used ${lastUsedAt.toLocaleDateString()}` : " · not used yet"}
+            </p>
+          )}
         </div>
-        {/* THE BUTTON SAYS WHAT IT WILL DO NEXT. It read "Set up Touch ID"
-            even once you had, which reads as "that did not work" (Anir, Aug 7:
-            "I just set up Touch ID and now it's saying I have to set up Touch
-            ID again"). With a key already on this device the job is adding
-            another one. */}
-        <Button
-          onClick={enrol}
-          loading={busy}
-          disabled={!supported}
-          variant={passkeys.length > 0 ? "secondary" : "primary"}
-          className="shrink-0"
-        >
-          {passkeys.length > 0 ? "Add another device" : "Set up Touch ID"}
-        </Button>
+        {on ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              onClick={() => void resetAll()}
+              loading={busy}
+              disabled={!supported}
+              variant="secondary"
+              title="Start over: remove Touch ID and set it up again on this device"
+            >
+              <RotateCw size={13} strokeWidth={2} />
+              Reset
+            </Button>
+            <Button
+              onClick={() => void removeAll()}
+              disabled={busy}
+              variant="secondary"
+              title="Turn Touch ID off for this account"
+            >
+              <Trash2 size={13} strokeWidth={2} />
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <Button
+            onClick={enrol}
+            loading={busy}
+            disabled={!supported}
+            variant="primary"
+            className="shrink-0"
+          >
+            Set up Touch ID
+          </Button>
+        )}
       </div>
 
       {!supported && (
@@ -134,49 +188,6 @@ export function PasskeySetup() {
         >
           {note.text}
         </p>
-      )}
-
-      {passkeys.length > 0 && (
-        <ul className="mt-4 space-y-2">
-          {passkeys.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center gap-3 rounded-lg border border-border-light px-3 py-2"
-            >
-              <Fingerprint size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-semibold text-text-primary">
-                  {p.label || "Passkey"}
-                </span>
-                <span className="block text-[11.5px] text-text-tertiary">
-                  Added {new Date(p.createdAt).toLocaleDateString()}
-                  {p.lastUsedAt
-                    ? ` · last used ${new Date(p.lastUsedAt).toLocaleDateString()}`
-                    : " · not used yet"}
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={() => void resetDevice(p.id)}
-                disabled={busy || !supported}
-                aria-label={`Reset ${p.label || "passkey"}`}
-                title="Remove this key and set it up again"
-                className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light px-2.5 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary disabled:cursor-default disabled:opacity-50"
-              >
-                <RotateCw size={13} strokeWidth={2} />
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={() => remove(p.id)}
-                aria-label={`Remove ${p.label || "passkey"}`}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
-              >
-                <Trash2 size={14} strokeWidth={2} />
-              </button>
-            </li>
-          ))}
-        </ul>
       )}
     </div>
   );
