@@ -201,6 +201,11 @@ export function MaterialViewer({
    *  page numbers... shouldn't always show up — when I'm scrolling"). */
   const [peekScrolling, setPeekScrolling] = useState(false);
   const peekScrollTimer = useRef<number | null>(null);
+  /** Embed only: the archive back button shows itself when the pointer nears
+   *  the top-left corner, and stays out of the way otherwise (Anir, Aug 8:
+   *  "the back arrow should only appear when my cursor approaches the top
+   *  left"). */
+  const [backHot, setBackHot] = useState(false);
 
   const currentPath = archiveMember || path;
   const currentLabel = archiveMember
@@ -1169,7 +1174,21 @@ export function MaterialViewer({
 
   if (embed) {
     return (
-      <section aria-label={currentLabel} className="material-embed relative h-full min-h-0 bg-white">
+      <section
+        aria-label={currentLabel}
+        className="material-embed relative h-full min-h-0 bg-white"
+        onMouseMove={
+          archiveMember
+            ? (event) => {
+                const box = event.currentTarget.getBoundingClientRect();
+                const hot =
+                  event.clientX - box.left < 130 && event.clientY - box.top < 90;
+                setBackHot((current) => (current === hot ? current : hot));
+              }
+            : undefined
+        }
+        onMouseLeave={archiveMember ? () => setBackHot(false) : undefined}
+      >
         {viewerBody}
         {/* Inside an archive member the embed had NO way back — the toolbar
             that carries the back arrow is exactly what embed mode strips
@@ -1182,7 +1201,9 @@ export function MaterialViewer({
             onClick={() => setArchiveMember(null)}
             aria-label="Back to the archive's file list"
             title="Back to the archive"
-            className="absolute left-2 top-2 z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[#1D1D1F]/85 text-white shadow-[0_4px_14px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-colors hover:bg-[#1D1D1F]"
+            className={`absolute left-2 top-2 z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[#1D1D1F]/85 text-white shadow-[0_4px_14px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-[opacity,background-color] duration-200 hover:bg-[#1D1D1F] ${
+              backHot ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
           >
             <ArrowLeft size={15} strokeWidth={2.2} />
           </button>
