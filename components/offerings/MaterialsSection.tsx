@@ -25,6 +25,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
+import { FolderPeek } from "@/components/offerings/FolderPeek";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
 import {
@@ -866,8 +867,22 @@ export function MaterialsSection({
             const count = countUnder(mine, path);
             const nested = childFolders(folders, path).length;
             return (
-              <button
+              /* HOVER TO LOOK INSIDE. The card still opens the folder on click;
+                 the peek is for the twelve-folder scan where clicking into each
+                 one and back out is the whole cost. */
+              <FolderPeek
                 key={path}
+                path={path}
+                materials={mine}
+                folderPaths={folders}
+                onOpenFolder={goToFolder}
+                onOpenMaterial={(material) =>
+                  material.docsPath
+                    ? setViewing(material)
+                    : window.open(material.url, "_blank", "noopener,noreferrer")
+                }
+              >
+              <button
                 type="button"
                 onClick={() => goToFolder(path)}
                 onDragOver={(event) => {
@@ -922,6 +937,7 @@ export function MaterialsSection({
                   className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
                 />
               </button>
+              </FolderPeek>
             );
           })}
         </div>

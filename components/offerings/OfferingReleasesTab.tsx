@@ -144,21 +144,40 @@ function SubGroup({
   // Because this lives in SubGroup, both places that render the roadmap
   // editor — the Roadmap tab's modal and the Edit-offering page — get it.
   const [open, setOpen] = useState(step === 1);
+  /**
+   * OPEN AND CLOSED HAVE TO LOOK DIFFERENT AT A GLANCE. Every section was the
+   * same pale card with the same faint border, so six of them read as one
+   * undifferentiated wall (Anir, Aug 7: "the section separation is still not
+   * clear to me... it's still very, very confusing"). Now:
+   *
+   *   open   — white, lifted, a solid blue rail down the left and a tinted
+   *            header band. Unmistakably the one you are working in.
+   *   closed — flat, quiet, no shadow, a hairline rail. A row, not a card.
+   *
+   * The step number carries the same signal: filled blue when open, outlined
+   * when not, so you can count where you are without reading a word.
+   */
+  const railColor = open
+    ? "bg-blue-primary"
+    : restricted
+      ? "bg-blue-primary/40"
+      : "bg-border";
   return (
     <section
-      className={`relative overflow-hidden rounded-xl border pl-[3px] ${
-        restricted
-          ? "border-blue-primary/25 bg-blue-light/25"
-          : "border-border-light bg-surface/50"
+      className={`relative overflow-hidden rounded-xl border pl-[3px] transition-[box-shadow,border-color,background-color] ${
+        open
+          ? "border-blue-primary/35 bg-white shadow-[0_4px_16px_rgba(16,24,40,0.08)]"
+          : restricted
+            ? "border-blue-primary/20 bg-blue-light/20 hover:border-blue-primary/40"
+            : "border-border-light bg-surface/70 hover:border-border"
       }`}
     >
-      <span
-        aria-hidden="true"
-        className={`absolute inset-y-0 left-0 w-[3px] ${
-          restricted ? "bg-blue-primary" : "bg-border"
+      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-[3px] ${railColor}`} />
+      <div
+        className={`flex flex-wrap items-center gap-3 px-4 ${
+          open ? "border-b border-border-light bg-blue-light/40 py-3" : "py-2.5"
         }`}
-      />
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+      >
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
@@ -167,7 +186,7 @@ function SubGroup({
         >
           <span
             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-bold tnum ${
-              restricted
+              open
                 ? "bg-blue-primary text-white"
                 : "bg-white text-text-secondary ring-1 ring-border-light"
             }`}
@@ -175,19 +194,30 @@ function SubGroup({
             {step}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] font-semibold leading-tight text-text-primary">
+            <span
+              className={`block leading-tight ${
+                open
+                  ? "text-[14px] font-semibold text-text-primary"
+                  : "text-[13px] font-semibold text-text-secondary"
+              }`}
+            >
               {title}
             </span>
-            <span className="mt-0.5 block text-[11.5px] leading-snug text-text-secondary">
-              {caption}
-            </span>
+            {/* The caption explains a section you are IN. On a closed row it is
+                a second line of gray nobody reads, and five of them were most
+                of the wall. */}
+            {open && (
+              <span className="mt-0.5 block text-[11.5px] leading-snug text-text-secondary">
+                {caption}
+              </span>
+            )}
           </span>
           <ChevronDown
             size={16}
             strokeWidth={2.2}
             aria-hidden="true"
-            className={`shrink-0 text-text-tertiary transition-transform ${
-              open ? "" : "-rotate-90"
+            className={`shrink-0 transition-transform ${
+              open ? "text-blue-primary" : "-rotate-90 text-text-tertiary"
             }`}
           />
         </button>
@@ -195,7 +225,7 @@ function SubGroup({
             can see, so the action travels with the content. */}
         {open && action}
       </div>
-      {open && <div className="space-y-2 px-4 pb-4">{children}</div>}
+      {open && <div className="space-y-2 px-4 py-4">{children}</div>}
     </section>
   );
 }
@@ -909,7 +939,7 @@ export function RoadmapEditorFields({
         title="Version timeline"
         caption="The three milestones at the top of the Roadmap tab."
       >
-        <div className="space-y-4 rounded-xl border border-border-light bg-white p-4">
+        <div className="space-y-4">
           <Milestone tone="past" label="Previous release">
             <p className="text-[13.5px] font-semibold text-text-primary">
               {previousPeriod || "Nothing recorded yet"}
