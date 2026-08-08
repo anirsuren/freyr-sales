@@ -258,9 +258,11 @@ html.dark body {
   text-transform: uppercase;
 }
 .person-row-label--owner {
-  color: #0756a8;
-  background: rgba(0, 113, 227, 0.1);
-  border-color: rgba(0, 113, 227, 0.2);
+  /* Ownership is PURPLE everywhere the crown appears (Anir, Aug 8) —
+     matching the Owner filter and the owner tags. */
+  color: #6d28d9;
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.22);
 }
 .person-row-label--poc {
   color: #0f766e;
@@ -268,9 +270,9 @@ html.dark body {
   border-color: rgba(15, 118, 110, 0.2);
 }
 .dark .person-row-label--owner {
-  color: #8ac4ff;
-  background: rgba(10, 132, 255, 0.18);
-  border-color: rgba(111, 182, 255, 0.38);
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(167, 139, 250, 0.4);
 }
 .dark .person-row-label--poc {
   color: #79ded5;

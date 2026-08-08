@@ -1060,9 +1060,14 @@ export function MaterialsSection({
                   >
                     <td className="max-w-[320px] px-4 py-3 align-middle">
                       <div className="flex min-w-0 items-center gap-2.5">
-                        {canEdit && (
+                        {canEdit && !showAllFiles && !anyFilter && (
                           // The six dots ARE the handle: they carry draggable,
                           // the grab cursor and the only "drag to move" hint.
+                          // Hidden when NO folder cards are on screen (All
+                          // files, or any filter) — the handle exists to drag
+                          // a file ONTO a folder, and with no target it reads
+                          // as a broken reorder control (Anir, Aug 8: "the
+                          // order doesn't matter here... fucking remove it").
                           <span
                             draggable={!movingMaterialId}
                             onDragStart={(event) => startMaterialDrag(event, material)}
@@ -1174,7 +1179,7 @@ export function MaterialsSection({
                                   size={11}
                                   strokeWidth={2.6}
                                   aria-label="Offering owner"
-                                  className="text-[color:#B45309]"
+                                  className="text-[color:#7C3AED]"
                                 />
                               </span>
                             )}
@@ -1278,7 +1283,7 @@ export function MaterialsSection({
               <a
                 key={material.id}
                 href={viewUrl}
-                draggable={canEdit && !movingMaterialId}
+                draggable={canEdit && !movingMaterialId && !showAllFiles && !anyFilter}
                 onDragStart={(event) => startMaterialDrag(event, material)}
                 onDragEnd={() => {
                   setDraggingMaterialId(null);
@@ -1322,7 +1327,7 @@ export function MaterialsSection({
                     : { paddingLeft: 15 }
                 }
               >
-                {canEdit && (
+                {canEdit && !showAllFiles && !anyFilter && (
                   <GripVertical
                     size={15}
                     strokeWidth={2}
@@ -1419,7 +1424,7 @@ export function MaterialsSection({
                           Added by {material.addedBy}
                           {uploaderIsOwner(material.addedBy) && (
                             <span title="Offering owner" className="inline-flex shrink-0">
-                              <Crown size={10} strokeWidth={2.6} aria-label="Offering owner" className="text-[color:#B45309]" />
+                              <Crown size={10} strokeWidth={2.6} aria-label="Offering owner" className="text-[color:#7C3AED]" />
                             </span>
                           )}
                         </span>
