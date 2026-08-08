@@ -367,10 +367,10 @@ export default async function OfferingDetailPage({
           // tab called sales materials").
           {
             key: "materials",
-            label:
-              o.materials.length > 0
-                ? `Sales Materials (${o.materials.length})`
-                : "Sales Materials",
+            // The count is always visible, zero included (Anir, Aug 8: "If
+            // there's zero, then say zero") — an empty library should say so
+            // before anyone clicks into it.
+            label: `Sales Materials (${o.materials.length})`,
             href: `/offerings/${o.id}?tab=materials`,
           },
           // Past/current releases are visible to everyone. The next customer
