@@ -16,6 +16,7 @@ import {
   GitCompareArrows,
   LayoutGrid,
   ListChecks,
+  Sparkles,
   Minus,
   Paperclip,
   Pencil,
@@ -70,6 +71,98 @@ function slug(value: string) {
 function orderedReleases(component: FdlComponent): FdlRelease[] {
   return [...component.releases].sort((a, b) =>
     (a.date || "9999").localeCompare(b.date || "9999")
+  );
+}
+
+/**
+ * A STACK OF COMPANY LOGOS THAT FANS OPEN ON HOVER.
+ *
+ * The same mechanic as the campaigns "Going to" row and PersonFan (Anir, Aug 9:
+ * "I need the thing where the circles are kinda on top of each other. You did
+ * it somewhere else in the app... on campaigns page"). Collapsed they overlap
+ * so the column stays narrow; hovering the group slides them apart so every
+ * mark is separately reachable, and hovering one names that company.
+ *
+ * Animated margin rather than a gap, because the collapsed state IS a negative
+ * margin: animating it makes the logos slide out from under each other instead
+ * of the row snapping to a new layout. Reversed z-index on expand keeps the
+ * leftmost mark on top as it travels, which is what reads as a fan.
+ */
+function CustomerDots({
+  people,
+  max = 6,
+  note,
+}: {
+  people: { id: string; name: string }[];
+  max?: number;
+  note?: (person: { id: string; name: string }) => string | undefined;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (people.length === 0)
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary">
+        <Building2 size={11} strokeWidth={2} className="text-text-tertiary" />
+        Nobody yet
+      </span>
+    );
+  const visible = people.slice(0, max);
+  const hidden = people.length - visible.length;
+  return (
+    <span
+      className="inline-flex items-center rounded-lg px-1 py-0.5 transition-colors duration-200 hover:bg-surface focus-within:bg-surface"
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+      onFocusCapture={() => setExpanded(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+          setExpanded(false);
+      }}
+    >
+      {visible.map((person, i) => (
+        <span
+          key={person.id}
+          className="relative inline-flex transition-[margin,transform] duration-200 ease-out"
+          style={{
+            marginLeft: i === 0 ? 0 : expanded ? 4 : -8,
+            zIndex: expanded ? visible.length - i : i + 1,
+          }}
+        >
+          <HoverCard
+            width={230}
+            anchor="trigger"
+            content={
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-light bg-white">
+                  <CompanyLogo name={person.name} className="h-6 w-6 object-contain" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold text-text-primary">
+                    {person.name}
+                  </span>
+                  {note?.(person) && (
+                    <span className="block text-[11.5px] text-text-secondary">
+                      {note(person)}
+                    </span>
+                  )}
+                </span>
+              </div>
+            }
+          >
+            <span className="flex h-7 w-7 cursor-default items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-white transition-transform duration-150 hover:scale-110">
+              <CompanyLogo name={person.name} className="h-5 w-5 object-contain" />
+            </span>
+          </HoverCard>
+        </span>
+      ))}
+      {hidden > 0 && (
+        <span
+          className="relative inline-flex h-7 w-7 items-center justify-center rounded-full bg-surface text-[10.5px] font-bold text-text-secondary ring-2 ring-white transition-[margin] duration-200 ease-out tnum"
+          style={{ marginLeft: expanded ? 4 : -8 }}
+        >
+          +{hidden}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -139,22 +232,26 @@ export function FdlComponentDetail({
   }
   const releases = orderedReleases(component);
   const current = fdlCurrentVersion(component);
-  /** Which version the Features table is showing. Defaults to the current one. */
-  const [shownVersionId, setShownVersionId] = useState<string>(
-    () =>
-      component.releases.find((r) => r.current)?.id ??
-      orderedReleases(component)[orderedReleases(component).length - 1]?.id ??
-      ""
-  );
+  /**
+   * WHICH VERSIONS THE FEATURES TABLE SHOWS. Multi-select (Anir, Aug 9:
+   * "multiselect"): a feature appears if ANY picked version carries it, so
+   * "what is in 1.05 and V2.0.0 together" is one question, not two passes.
+   * Nothing picked means no filter, which is what an empty trigger reads as.
+   */
+  const [shownVersionIds, setShownVersionIds] = useState<string[]>(() => {
+    const current = component.releases.find((r) => r.current)?.id;
+    return current ? [current] : [];
+  });
+  const shownReleases = releases.filter((r) => shownVersionIds.includes(r.id));
+  const shownFeatures = shownReleases.length
+    ? component.features.filter((f) =>
+        shownReleases.some((r) => f.versionIds.includes(r.id))
+      )
+    : component.features;
 
-  const shownRelease =
-    releases.find((r) => r.id === shownVersionId) ??
-    releases.find((r) => r.current) ??
-    releases[releases.length - 1] ??
-    null;
-  const shownFeatures = shownRelease
-    ? component.features.filter((f) => f.versionIds.includes(shownRelease.id))
-    : [];
+  /** Narrow the customer list to the versions you care about ("we want to be
+   *  able to filter based on which customers have this version"). */
+  const [customerVersions, setCustomerVersions] = useState<string[]>([]);
 
   async function patch(data: Record<string, unknown>, done: string) {
     setBusy(true);
@@ -235,6 +332,12 @@ export function FdlComponentDetail({
 
   const connected = customers.filter((customer) => customer.connected);
   const unconnected = customers.filter((customer) => !customer.connected);
+  /** The customer list after the version filter. Empty filter means all. */
+  const shownCustomers = customerVersions.length
+    ? connected.filter(
+        (c) => c.releaseId && customerVersions.includes(c.releaseId)
+      )
+    : connected;
   function customersOnVersion(releaseId: string) {
     return connected.filter((customer) => customer.releaseId === releaseId);
   }
@@ -798,10 +901,19 @@ export function FdlComponentDetail({
           // chips — so you can tell the released one from the planned one
           // without reading.
           <div className="mt-3.5 space-y-2.5">
-            {releases.map((release) => {
+            {releases.map((release, releaseIndex) => {
               const versionFeatures = component.features.filter((feature) =>
                 feature.versionIds.includes(release.id)
               );
+              // What this version adds over the one before it. The count on
+              // its own answers "how much is in it"; the delta answers the
+              // question a seller is actually asked, "why upgrade".
+              const previous = releases[releaseIndex - 1];
+              const addedHere = previous
+                ? versionFeatures.filter(
+                    (feature) => !feature.versionIds.includes(previous.id)
+                  )
+                : versionFeatures;
               const versionCustomers = customersOnVersion(release.id);
               const open = openVersions.has(release.id);
               const shipped = release.status === "released";
@@ -872,17 +984,124 @@ export function FdlComponentDetail({
                             <CalendarDays size={11} strokeWidth={2} className="text-text-tertiary" />
                             {release.date ? formatDate(release.date) : "Date not set"}
                           </span>
-                          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
-                            <ListChecks size={11} strokeWidth={2} className="text-text-tertiary" />
-                            {versionFeatures.length}{" "}
-                            {versionFeatures.length === 1 ? "feature" : "features"}
-                          </span>
-                          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
-                            <Building2 size={11} strokeWidth={2} className="text-text-tertiary" />
-                            {versionCustomers.length}{" "}
-                            {versionCustomers.length === 1 ? "customer" : "customers"}
+                          {/* The count alone made you scroll to the features
+                              table and re-filter to answer "which two?"
+                              (Anir, Aug 9: "I need hover over the 2 features
+                              thing"). Hovering names them right here. */}
+                          <HoverCard
+                            width={280}
+                            anchor="trigger"
+                            content={
+                              <div>
+                                <p className="text-[12px] font-semibold text-text-primary">
+                                  In {release.version}
+                                </p>
+                                {versionFeatures.length === 0 ? (
+                                  <p className="mt-1 text-[11.5px] text-text-secondary">
+                                    No feature is marked as part of this version yet.
+                                  </p>
+                                ) : (
+                                  <ul className="mt-1.5 space-y-1">
+                                    {versionFeatures.slice(0, 8).map((feature) => (
+                                      <li key={feature.id} className="flex gap-1.5">
+                                        <Check
+                                          size={11}
+                                          strokeWidth={2.6}
+                                          className="mt-[3px] shrink-0 text-blue-primary"
+                                        />
+                                        <span className="min-w-0">
+                                          <span className="block text-[12px] font-medium text-text-primary">
+                                            {feature.name}
+                                          </span>
+                                          {feature.description && (
+                                            <span className="block text-[11px] leading-snug text-text-secondary">
+                                              {feature.description.length > 90
+                                                ? `${feature.description.slice(0, 90)}…`
+                                                : feature.description}
+                                            </span>
+                                          )}
+                                        </span>
+                                      </li>
+                                    ))}
+                                    {versionFeatures.length > 8 && (
+                                      <li className="text-[11.5px] text-text-secondary">
+                                        and {versionFeatures.length - 8} more
+                                      </li>
+                                    )}
+                                  </ul>
+                                )}
+                              </div>
+                            }
+                          >
+                            <span className="inline-flex cursor-default items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary transition-colors duration-150 hover:bg-blue-light hover:text-blue-primary tnum">
+                              <ListChecks size={11} strokeWidth={2} className="text-text-tertiary" />
+                              {versionFeatures.length}{" "}
+                              {versionFeatures.length === 1 ? "feature" : "features"}
+                            </span>
+                          </HoverCard>
+                          <CustomerDots
+                            people={versionCustomers}
+                            note={() => `On ${release.version}`}
+                          />
+                        </span>
+                      </span>
+                      {/* THE BAR IS A FIXED 72px, NOT A STRETCH (Anir, Aug 9:
+                          "it's just too big, each one should be a set amount
+                          and it doesn't need to be that long, you can easily
+                          fit something else"). A share only needs enough width
+                          to be compared against the row above it, and a
+                          full-width rule read as the most important thing on
+                          the row. The reclaimed space carries what actually
+                          changed in this version. */}
+                      <span className="ml-4 hidden min-w-0 flex-1 items-center gap-3 lg:flex">
+                        {/* Always a sentence, never a blank. "Nothing new"
+                            is itself the answer a seller needs when a customer
+                            asks whether an upgrade is worth scheduling. */}
+                        <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary">
+                          <Sparkles
+                            size={11}
+                            strokeWidth={2.2}
+                            className="shrink-0"
+                            style={{ color: accent }}
+                          />
+                          <span className="truncate">
+                            {addedHere.length > 0 ? (
+                              <>
+                                <span className="font-semibold text-text-primary">
+                                  {previous ? "New here: " : "Launched with: "}
+                                </span>
+                                {addedHere.map((f) => f.name).join(", ")}
+                              </>
+                            ) : versionFeatures.length === 0 ? (
+                              "No features listed on this version yet"
+                            ) : (
+                              <>
+                                <span className="font-semibold text-text-primary">
+                                  Nothing new:{" "}
+                                </span>
+                                same features as {previous?.version}
+                              </>
+                            )}
                           </span>
                         </span>
+                        {connected.length > 0 && (
+                          <span className="ml-auto flex shrink-0 items-center gap-2">
+                            <span className="h-1.5 w-[72px] overflow-hidden rounded-full bg-surface">
+                              <span
+                                className="block h-full rounded-full transition-[width] duration-500"
+                                style={{
+                                  width: `${Math.round(
+                                    (versionCustomers.length / connected.length) * 100
+                                  )}%`,
+                                  background: accent,
+                                }}
+                              />
+                            </span>
+                            <span className="text-[11px] font-semibold text-text-secondary tnum">
+                              {versionCustomers.length} of {connected.length} on this
+                            </span>
+                          </span>
+                        )}
                       </span>
                     </button>
                     <span className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -1044,15 +1263,26 @@ export function FdlComponentDetail({
             <InfoHint text="What is in one version. Pick the version above the table. To compare two versions side by side, use the Compare versions card lower down." />
           </h2>
           <div className="flex shrink-0 items-center gap-2">
-            {shownFeatures.length > 0 && shownRelease && (
-              <Button variant="secondary" onClick={() => downloadVersionSheet(shownRelease)}>
-                <Download size={14} strokeWidth={2} /> Download {shownRelease.version}
-              </Button>
-            )}
             {canEdit && (
-              <Button variant="secondary" onClick={() => openFeatureModal()} disabled={releases.length === 0}>
-                <Plus size={14} strokeWidth={2.2} /> Add feature
-              </Button>
+              /* Same square as Add customer: on this page a plus always means
+                 add, and it always looks the same (Anir, Aug 9). */
+              <Tooltip
+                label={
+                  releases.length === 0
+                    ? "Add a version first"
+                    : "Add a feature"
+                }
+              >
+                <button
+                  type="button"
+                  aria-label="Add a feature"
+                  onClick={() => openFeatureModal()}
+                  disabled={releases.length === 0}
+                  className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-colors hover:bg-blue-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus size={17} strokeWidth={2.4} />
+                </button>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -1069,12 +1299,15 @@ export function FdlComponentDetail({
             <span className="text-[12.5px] text-text-secondary">
               Showing what is in
             </span>
-            <ColorSelect
-              value={shownVersionId}
-              onChange={setShownVersionId}
+            <MultiColorSelect
+              values={shownVersionIds}
+              onChange={setShownVersionIds}
               options={versionOptions}
-              ariaLabel="Which version to show"
+              allLabel="Every version"
+              allIcon={ListChecks}
+              ariaLabel="Which versions to show"
               collapsible={false}
+              minWidth={200}
             />
           </div>
         )}
@@ -1087,8 +1320,9 @@ export function FdlComponentDetail({
           </p>
         ) : shownFeatures.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-secondary">
-            Nothing is ticked for {shownRelease?.version ?? "this version"} yet.
-            Open a feature and tick this version, or pick another version above.
+            Nothing is ticked for{" "}
+            {shownReleases.map((r) => r.version).join(" or ") || "this version"}{" "}
+            yet. Open a feature and tick the version, or pick another above.
           </p>
         ) : (
           <div className="mt-3 overflow-x-auto">
@@ -1132,27 +1366,82 @@ export function FdlComponentDetail({
                         feature, fill in that space"). Every column here is
                         read off data we already hold: no invented metric. */}
                     <td className="py-2.5 pr-4">
-                      <span className="flex flex-wrap gap-1">
-                        {releases
-                          .filter((r) => feature.versionIds.includes(r.id))
-                          .map((r) => (
+                      {(() => {
+                        /* SUMMARISE, DO NOT ENUMERATE. One pill per version
+                           was fine at three and absurd at a hundred (Anir,
+                           Aug 9: "this doesn't make sense if there's a lot of
+                           versions"). Most features are "available from here
+                           onward", so say that when it is true and fall back
+                           to a count when it is not. The full list is one
+                           hover away either way. */
+                        const inThem = releases.filter((r) =>
+                          feature.versionIds.includes(r.id)
+                        );
+                        if (inThem.length === 0)
+                          return (
+                            <span className="text-[11.5px] text-text-tertiary">
+                              No version ticked
+                            </span>
+                          );
+                        const firstIndex = releases.findIndex(
+                          (r) => r.id === inThem[0].id
+                        );
+                        // Contiguous and running to the newest release.
+                        const onward =
+                          inThem.length === releases.length - firstIndex &&
+                          inThem.every(
+                            (r, i) => releases[firstIndex + i]?.id === r.id
+                          );
+                        const label =
+                          inThem.length === releases.length
+                            ? "Every version"
+                            : onward
+                              ? `From ${inThem[0].version} onward`
+                              : `${inThem.length} of ${releases.length} versions`;
+                        return (
+                          <HoverCard
+                            width={230}
+                            anchor="trigger"
+                            content={
+                              <div>
+                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                  In these versions
+                                </p>
+                                <ul className="space-y-1">
+                                  {inThem.map((r) => (
+                                    <li
+                                      key={r.id}
+                                      className="flex items-center gap-2 text-[12.5px] text-text-primary"
+                                    >
+                                      <Check
+                                        size={12}
+                                        strokeWidth={2.6}
+                                        className="shrink-0 text-[color:#1A7A35]"
+                                      />
+                                      <span className="tnum">{r.version}</span>
+                                      {r.current && (
+                                        <span className="ml-auto text-[10px] font-bold uppercase tracking-[0.04em] text-blue-primary">
+                                          current
+                                        </span>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            }
+                          >
                             <span
-                              key={r.id}
-                              className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold tnum ${
-                                r.current
+                              className={`inline-flex cursor-default items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] font-semibold whitespace-nowrap ${
+                                inThem.some((r) => r.current)
                                   ? "border-blue-primary bg-blue-light text-blue-primary"
                                   : "border-border-light text-text-secondary"
                               }`}
                             >
-                              {r.version}
+                              {label}
                             </span>
-                          ))}
-                        {feature.versionIds.length === 0 && (
-                          <span className="text-[11.5px] text-text-tertiary">
-                            No version ticked
-                          </span>
-                        )}
-                      </span>
+                          </HoverCard>
+                        );
+                      })()}
                     </td>
                     <td className="py-2.5 pr-4">
                       {(() => {
@@ -1170,61 +1459,16 @@ export function FdlComponentDetail({
                             </span>
                           );
                         return (
-                          /* LOGOS SIDE BY SIDE, NOT STACKED. Overlapping them
-                             clipped every wordmark into an unreadable smear
-                             (Anir, Aug 9: "I don't know if the logo should
-                             show up properly"). Hovering names them, the same
-                             way every other row in the app reveals its detail. */
-                          <HoverCard
-                            width={260}
-                            anchor="cursor"
-                            content={
-                              <div>
-                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                  On a version with this feature
-                                </p>
-                                <ul className="space-y-1.5">
-                                  {on.map((c) => {
-                                    const rel = component.releases.find(
-                                      (r) => r.id === c.releaseId
-                                    );
-                                    return (
-                                      <li
-                                        key={c.id}
-                                        className="flex items-center gap-2"
-                                      >
-                                        <CompanyLogo
-                                          name={c.name}
-                                          className="h-5 w-5 shrink-0"
-                                        />
-                                        <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-text-primary">
-                                          {c.name}
-                                        </span>
-                                        <span className="shrink-0 text-[11.5px] font-semibold text-text-secondary tnum">
-                                          {rel?.version ?? ""}
-                                        </span>
-                                      </li>
-                                    );
-                                  })}
-                                </ul>
-                              </div>
-                            }
-                          >
-                            <span className="flex cursor-default items-center gap-1.5">
-                              <span className="flex items-center gap-1">
-                                {on.slice(0, 3).map((c) => (
-                                  <CompanyLogo
-                                    key={c.id}
-                                    name={c.name}
-                                    className="h-5 w-5 shrink-0"
-                                  />
-                                ))}
-                              </span>
-                              <span className="text-[12px] font-semibold text-text-primary tnum">
-                                {on.length}
-                              </span>
-                            </span>
-                          </HoverCard>
+                          <CustomerDots
+                            people={on}
+                            note={(person) => {
+                              const c = connected.find((x) => x.id === person.id);
+                              const rel = component.releases.find(
+                                (r) => r.id === c?.releaseId
+                              );
+                              return rel ? `On ${rel.version}` : undefined;
+                            }}
+                          />
                         );
                       })()}
                     </td>
@@ -1291,6 +1535,18 @@ export function FdlComponentDetail({
               add customer button and the add customer button can just be a
               white + with a blue square"). */}
           <div className="flex shrink-0 items-center gap-2">
+            {connected.length > 0 && releases.length > 1 && (
+              <MultiColorSelect
+                values={customerVersions}
+                onChange={setCustomerVersions}
+                options={versionOptions}
+                allLabel="Every version"
+                allIcon={Building2}
+                ariaLabel="Filter customers by version"
+                collapsible={false}
+                minWidth={185}
+              />
+            )}
             {connected.length > 0 && (
               <div className="flex shrink-0 overflow-hidden rounded-md border border-border">
                 <button
@@ -1351,7 +1607,7 @@ export function FdlComponentDetail({
                 of their width on the gap between the name and the version. */}
             {customerView === "grid" ? (
               <ul className="stagger mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {connected.map((customer) => {
+                {shownCustomers.map((customer) => {
                   const release = component.releases.find(
                     (item) => item.id === customer.releaseId
                   );
@@ -1402,7 +1658,7 @@ export function FdlComponentDetail({
                     </tr>
                   </thead>
                   <tbody className="stagger divide-y divide-border-light">
-                    {connected.map((customer) => {
+                    {shownCustomers.map((customer) => {
                       const release = component.releases.find(
                         (item) => item.id === customer.releaseId
                       );
@@ -1494,50 +1750,44 @@ export function FdlComponentDetail({
                 <InfoHint text="Pick two or more versions. You get the features side by side, and only the ones at least one of those versions has." />
               </h2>
               <p className="mt-1 text-[12.5px] text-text-secondary">
-                Pick two or more versions to see them side by side.
+                {compareReleases.length >= 2
+                  ? `Comparing ${compareReleases
+                      .map((r) => r.version)
+                      .join(" vs ")}.`
+                  : "Pick two or more versions to see them side by side."}
               </p>
             </div>
-            {/* TOP RIGHT, ICON ONLY (Anir, Aug 9). Below the table it sat at
-                the end of a scroll and the word only repeated the card's own
-                title. The label lives in the tooltip and the a11y name. */}
-            {compareRows.length > 0 && (
-              <Tooltip label="Download this comparison">
-                <button
-                  type="button"
-                  aria-label="Download this comparison"
-                  onClick={downloadComparison}
-                  className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
-                >
-                  <Download size={15} strokeWidth={2} />
-                </button>
-              </Tooltip>
-            )}
-          </div>
-          {/* A HUNDRED VERSIONS STILL FITS. As pills this row grew without
-              limit (Anir, Aug 9: "imagine there are like a hundred versions.
-              What's gonna happen? It should be a separate thing where I'm
-              choosing the versions, and then it obviously will say what I
-              have chosen"). The dropdown stays one line and its trigger
-              names the picks. */}
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            <MultiColorSelect
-              values={compareIds}
-              onChange={setCompareIds}
-              options={versionOptions}
-              allLabel="Pick versions"
-              allIcon={GitCompareArrows}
-              ariaLabel="Versions to compare"
-              collapsible={false}
-              minWidth={210}
-            />
-            {compareReleases.length > 0 && (
-              <span className="text-[12.5px] text-text-secondary">
-                Comparing{" "}
-                <span className="font-semibold text-text-primary">
-                  {compareReleases.map((r) => r.version).join(" vs ")}
-                </span>
-              </span>
-            )}
+            {/* THE CONTROL BELONGS ON THE HEADER LINE, next to the action it
+                feeds. On its own row underneath, the picker sat beside a
+                sentence that just repeated the table's own column headers,
+                and left a long empty gap to the right (Anir, Aug 9: "I don't
+                think the dropdown and the 'comparing these two versions' text
+                is positioned correctly"). Same rule he set for the customers
+                header: how you look at it, then what you do with it. */}
+            <div className="flex shrink-0 items-center gap-2">
+              <MultiColorSelect
+                values={compareIds}
+                onChange={setCompareIds}
+                options={versionOptions}
+                allLabel="Pick versions"
+                allIcon={GitCompareArrows}
+                ariaLabel="Versions to compare"
+                collapsible={false}
+                minWidth={200}
+              />
+              {compareRows.length > 0 && (
+                <Tooltip label="Download this comparison">
+                  <button
+                    type="button"
+                    aria-label="Download this comparison"
+                    onClick={downloadComparison}
+                    className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                  >
+                    <Download size={15} strokeWidth={2} />
+                  </button>
+                </Tooltip>
+              )}
+            </div>
           </div>
           {compareReleases.length >= 2 && compareRows.length === 0 ? (
             /* Two versions picked and neither carries a single feature. The
@@ -1550,20 +1800,33 @@ export function FdlComponentDetail({
             </p>
           ) : compareReleases.length >= 2 ? (
             <>
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[420px] text-left">
+              {/* MANY VERSIONS SCROLLS, IT DOES NOT SQUEEZE (Anir, Aug 9:
+                  "if they choose a lot of versions to compare, obviously it'll
+                  scroll properly horizontally and not glitch"). Each version
+                  column keeps a fixed width so ten of them overflow the card
+                  instead of crushing the feature name, and the name column is
+                  sticky so you always know which row you are reading. */}
+              <div className="heat-map-scroll mt-4 overflow-x-auto">
+                <table className="w-full min-w-max text-left">
                   <thead>
                     <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      <th className="py-2 pr-4">Feature</th>
+                      <th className="sticky left-0 z-10 min-w-[220px] bg-white py-2 pr-4">
+                        Feature
+                      </th>
                       {compareReleases.map((r) => (
-                        <th key={r.id} className="px-2 py-2 text-center">{r.version}</th>
+                        <th
+                          key={r.id}
+                          className="w-[120px] min-w-[120px] px-2 py-2 text-center whitespace-nowrap"
+                        >
+                          {r.version}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light">
                     {compareRows.map((feature) => (
                       <tr key={feature.id}>
-                        <td className="py-2.5 pr-4 text-[13px] font-medium text-text-primary">
+                        <td className="sticky left-0 z-10 min-w-[220px] bg-white py-2.5 pr-4 text-[13px] font-medium text-text-primary">
                           {feature.name}
                         </td>
                         {compareReleases.map((release) => (

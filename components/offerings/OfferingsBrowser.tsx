@@ -252,11 +252,18 @@ function OwnerRows({
       {/* The crown rides with the word — the same mark the Owner filter wears,
           so "who owns this" reads the same in the toolbar and on the card
           (Anir, Aug 7). It only prints once, against the first name. */}
-      <dt className="flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-[0.07em] text-[color:#6D28D9]">
+      {/* THE LABEL SITS ON THE NAME, not below it. The rest of the grid aligns
+          on the text baseline, but this row's baseline is dragged down by an
+          18px avatar and its padding, so "Owner" landed lower than the name it
+          labels (Anir, Aug 9: "its not even aligned properly, the owner name
+          with 'owner'"). Pinning the label to the top and giving it the exact
+          height of one owner line centres the two on each other, whatever the
+          name length and however many owners there are. */}
+      <dt className="flex h-[22px] items-center gap-1 self-start text-[9.5px] font-bold uppercase tracking-[0.07em] text-[color:#6D28D9]">
         <Crown size={10} strokeWidth={2.6} aria-hidden="true" />
         Owner
       </dt>
-      <dd className="min-w-0">
+      <dd className="min-w-0 self-start">
         {/* One name per line. Wrapping mid-row is what made two owners look
             different from one; a column looks the same at any name length. */}
         <span className="flex min-w-0 flex-col gap-1">
@@ -1419,18 +1426,25 @@ export function OfferingsBrowser({
                 "Submissions and Document Operations", on ONE line. */}
             <table className="w-full min-w-[1040px] table-fixed text-[13px] border-collapse">
               <thead>
-                <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  <th className="px-5 py-2.5 w-[25%]">Offering</th>
-                  <th className="px-4 py-2.5 w-[18%]">Category</th>
-                  <th className="px-4 py-2.5 w-[12%]">Type</th>
+                {/* WIDTHS SIZED TO THE HEADINGS, NOT JUST THE CELLS (Anir,
+                    Aug 9: MATERIALS was printing straight through REVENUE).
+                    "Materials" held 5% while its own uppercase, letter-spaced
+                    heading needs roughly twice that, so the word overflowed
+                    into the next column. whitespace-nowrap makes any future
+                    mistake here show up as a scroll rather than as two words
+                    on top of each other. */}
+                <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
+                  <th className="px-5 py-2.5 w-[24%]">Offering</th>
+                  <th className="px-4 py-2.5 w-[16%]">Category</th>
+                  <th className="px-4 py-2.5 w-[11%]">Type</th>
                   <th className="px-4 py-2.5 w-[11%]">Availability</th>
-                  <th className="px-4 py-2.5 w-[14%]">Who it&apos;s for</th>
+                  <th className="px-4 py-2.5 w-[13%]">Who it&apos;s for</th>
                   {/* Materials sits before the money columns: it is the one
                       number in this table that is filled in today, and it is
                       what a rep actually opens the row for (Anir, Aug 7:
                       "shift the material column before revenue"). */}
-                  <th className="px-4 py-2.5 w-[5%]">Materials</th>
-                  <th className="px-4 py-2.5 w-[9%]">Revenue</th>
+                  <th className="px-4 py-2.5 w-[9%]">Materials</th>
+                  <th className="px-4 py-2.5 w-[10%]">Revenue</th>
                   <th className="px-4 py-2.5 w-[6%]">Trend</th>
                 </tr>
               </thead>

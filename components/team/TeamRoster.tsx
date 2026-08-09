@@ -412,50 +412,60 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
 
   return (
     <Card data-tour="team-roster" className="p-0 overflow-hidden">
-      <div className="px-5 pt-4 pb-3 border-b border-border-light flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-[15px] font-semibold text-text-primary">
-            The sales floor{" "}
-            <span className="text-text-tertiary tnum font-normal">({reps.length})</span>
-          </h2>
-          <p className="text-[12.5px] text-text-tertiary mt-0.5">
-            Ranked by open pipeline. Message on Teams or call, click a rep for their full analytics.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-        <label className="relative">
-          <Search
-            size={14}
-            strokeWidth={2}
-            aria-hidden="true"
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
-          />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search the floor…"
-            aria-label="Search the sales floor"
-            className="w-[190px] rounded-md border border-border bg-white py-1.5 pl-8 pr-2.5 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
-          />
-        </label>
-        <div className="flex border border-border rounded-md overflow-hidden shrink-0">
-          <button
-            onClick={() => setView("grid")}
-            aria-label="Grid view"
-            title="Grid view"
-            className={cn("p-2 transition-colors", view === "grid" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
-          >
-            <LayoutGrid size={16} strokeWidth={1.6} />
-          </button>
-          <button
-            onClick={() => setView("table")}
-            aria-label="Table view"
-            title="Table view"
-            className={cn("p-2 border-l border-border transition-colors", view === "table" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
-          >
-            <Table2 size={16} strokeWidth={1.6} />
-          </button>
-        </div>
+      {/* SEARCH ON THE LEFT, WHERE EVERY OTHER LIST PUTS IT (Anir, Aug 9:
+          "not a good place for the search bar right? def on the left side
+          needs to be there"). It was crammed against the view toggle in the
+          title row, so the one control you reach for first sat furthest from
+          where the eye starts and moved every time the heading changed width.
+          Offerings, Customers and Components all open with a left-aligned
+          search and keep view controls on the right; the floor now matches. */}
+      <div className="px-5 pt-4 pb-3 border-b border-border-light">
+        <h2 className="text-[15px] font-semibold text-text-primary">
+          The sales floor{" "}
+          <span className="text-text-tertiary tnum font-normal">({reps.length})</span>
+        </h2>
+        <p className="text-[12.5px] text-text-tertiary mt-0.5">
+          Ranked by open pipeline. Message on Teams or call, click a rep for their full analytics.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="relative min-w-0 flex-1 sm:max-w-[280px]">
+            <Search
+              size={14}
+              strokeWidth={2}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+            />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search the floor…"
+              aria-label="Search the sales floor"
+              className="w-full rounded-md border border-border bg-white py-1.5 pl-8 pr-2.5 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
+            />
+          </label>
+          {query.trim() && (
+            <span className="text-[12px] text-text-secondary tnum">
+              {shown.length} of {reps.length}
+            </span>
+          )}
+          <div className="ml-auto flex border border-border rounded-md overflow-hidden shrink-0">
+            <button
+              onClick={() => setView("grid")}
+              aria-label="Grid view"
+              title="Grid view"
+              className={cn("p-2 transition-colors", view === "grid" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
+            >
+              <LayoutGrid size={16} strokeWidth={1.6} />
+            </button>
+            <button
+              onClick={() => setView("table")}
+              aria-label="Table view"
+              title="Table view"
+              className={cn("p-2 border-l border-border transition-colors", view === "table" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
+            >
+              <Table2 size={16} strokeWidth={1.6} />
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,6 +10,10 @@ import {
   CircleCheck,
   Clock,
   Layers,
+  LayoutGrid,
+  Package,
+  Table2,
+  Unplug,
   Plus,
   Search,
   Server,
@@ -18,7 +22,7 @@ import {
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { ColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
@@ -48,6 +52,21 @@ export const FDL_TYPE_META: Record<
     Icon: Server,
   },
 };
+
+/** The sentinel for "belongs to no offering", which is a real answer here and
+ *  not the absence of one. */
+const UNCONNECTED = "\u0000none";
+
+/** Identity hues for offering names. Status colours (red/amber/green) are
+ *  reserved for meaning, so they are deliberately absent. */
+const OFFERING_HUES = [
+  "#0071E3",
+  "#6D28D9",
+  "#0E7490",
+  "#B4318F",
+  "#4338CA",
+  "#0F766E",
+];
 
 export function FdlTypeChip({ type }: { type: FdlComponentType }) {
   const meta = FDL_TYPE_META[type];
@@ -92,6 +111,34 @@ export function FdlComponentsBrowser({
   // probably need a search bar on the [FDL] fold, just saying").
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  // TWO MORE WAYS TO NARROW 55 COMPONENTS (Anir, Aug 9: "add maybe 2 more
+  // dropdown filters"). Type answers "what kind of thing is it"; these answer
+  // the two questions a seller actually opens this page with: which offering
+  // does it belong to, and is it shippable yet.
+  const [offeringFilter, setOfferingFilter] = useState<string[]>([]);
+  const [stateFilter, setStateFilter] = useState("");
+  // TILES OR A TABLE, THE SAME CHOICE OFFERINGS OFFERS (Anir, Aug 9: "need an
+  // option for table here just like offerings page, don't cut corners"). Tiles
+  // are for browsing 55 things by eye; the table is for comparing them column
+  // by column. The choice is remembered per browser, exactly as the offerings
+  // page remembers it, so the page opens the way you left it.
+  const [view, setView] = useState<"tile" | "table">("tile");
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("freyr.components.view");
+      if (saved === "table" || saved === "tile") setView(saved);
+    } catch {
+      /* private mode: fall back to tiles */
+    }
+  }, []);
+  function chooseView(next: "tile" | "table") {
+    setView(next);
+    try {
+      window.localStorage.setItem("freyr.components.view", next);
+    } catch {
+      /* nothing to remember, the page still works */
+    }
+  }
 
   async function create() {
     if (!name.trim()) return;
@@ -122,8 +169,31 @@ export function FdlComponentsBrowser({
     </Button>
   );
 
+  // Every offering that owns at least one component, so the picker never
+  // offers a choice that returns nothing.
+  const offeringNames = Array.from(
+    new Set(Object.values(usedIn).flat())
+  ).sort((a, b) => a.localeCompare(b));
+
   const q = query.trim().toLowerCase();
   const shown = components.filter(
+    (component) => {
+      const homes = usedIn[component.id] ?? [];
+      const matchesOffering =
+        offeringFilter.length === 0 ||
+        offeringFilter.some((pick) =>
+          pick === UNCONNECTED ? homes.length === 0 : homes.includes(pick)
+        );
+      const hasCurrent = Boolean(fdlCurrentVersion(component));
+      const hasNext = component.releases.some((r) => r.status === "next");
+      const matchesState =
+        !stateFilter ||
+        (stateFilter === "shipping" && hasCurrent) ||
+        (stateFilter === "unreleased" && !hasCurrent) ||
+        (stateFilter === "next" && hasNext);
+      return matchesOffering && matchesState;
+    }
+  ).filter(
     (component) =>
       (!typeFilter || component.type === typeFilter) &&
       (!q ||
@@ -177,11 +247,80 @@ export function FdlComponentsBrowser({
               })),
             ]}
           />
+          <MultiColorSelect
+            values={offeringFilter}
+            onChange={setOfferingFilter}
+            allLabel="All offerings"
+            allIcon={Package}
+            ariaLabel="Filter by offering"
+            dense
+            collapsible={false}
+            width={186}
+            options={[
+              ...offeringNames.map((name, i) => ({
+                value: name,
+                label: name,
+                color: OFFERING_HUES[i % OFFERING_HUES.length],
+                icon: Package,
+              })),
+              {
+                value: UNCONNECTED,
+                label: "Not in an offering yet",
+                color: "#6D28D9",
+                icon: Unplug,
+              },
+            ]}
+          />
+          <ColorSelect
+            value={stateFilter}
+            onChange={setStateFilter}
+            ariaLabel="Filter by release state"
+            dense
+            collapsible={false}
+            className="w-[178px] shrink-0"
+            options={[
+              { value: "", label: "Any release state", color: "#0071E3", icon: Boxes },
+              {
+                value: "shipping",
+                label: "Has a current version",
+                color: "#1A7A35",
+                icon: CircleCheck,
+              },
+              {
+                value: "unreleased",
+                label: "No version yet",
+                color: "#6D28D9",
+                icon: Clock,
+              },
+              {
+                value: "next",
+                label: "Next version planned",
+                color: "#0E7490",
+                icon: Layers,
+              },
+            ]}
+          />
           <span className="ml-auto text-[12.5px] text-text-secondary tnum">
             {shown.length === components.length
               ? `${components.length} components`
               : `${shown.length} of ${components.length}`}
           </span>
+          {/* One button, same as Offerings: the icon shows where the click
+              takes you rather than spending double the width on a segmented
+              control. */}
+          <button
+            type="button"
+            onClick={() => chooseView(view === "tile" ? "table" : "tile")}
+            aria-label={view === "tile" ? "Switch to table view" : "Switch to tile view"}
+            title={view === "tile" ? "Switch to table view" : "Switch to tile view"}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+          >
+            {view === "tile" ? (
+              <Table2 size={15} strokeWidth={2} />
+            ) : (
+              <LayoutGrid size={15} strokeWidth={2} />
+            )}
+          </button>
         </div>
       )}
 
@@ -199,7 +338,10 @@ export function FdlComponentsBrowser({
           {canEdit && <div className="mt-4 flex justify-center">{newButton}</div>}
         </div>
       ) : (
-        <>
+        // key=view re-mounts the panel so the switch animates, the same trick
+        // the team roster and the customer tabs use.
+        <div key={view} className="tab-panel">
+          {view === "tile" ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 stagger">
             {shown.map((component) => {
               const current = fdlCurrentVersion(component);
@@ -268,7 +410,110 @@ export function FdlComponentsBrowser({
               );
             })}
           </div>
-        </>
+          ) : (
+            /* THE TABLE. Every column is a fact already on the tile, but laid
+               out so 55 rows can be read down a column instead of hunted
+               across 55 cards: what kind of thing it is, the version being
+               quoted, how much is in it, and which offerings ship it. */
+            <div className="overflow-x-auto rounded-xl border border-border-light bg-white shadow-card">
+              <table className="w-full min-w-[820px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-border-light text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
+                    <th className="w-[26%] px-5 py-2.5">Component</th>
+                    <th className="w-[12%] px-4 py-2.5">Type</th>
+                    <th className="w-[16%] px-4 py-2.5">Current version</th>
+                    <th className="w-[10%] px-4 py-2.5 text-right">Versions</th>
+                    <th className="w-[10%] px-4 py-2.5 text-right">Features</th>
+                    <th className="w-[26%] px-4 py-2.5">In offerings</th>
+                  </tr>
+                </thead>
+                <tbody className="stagger">
+                  {shown.map((component) => {
+                    const current = fdlCurrentVersion(component);
+                    const homes = usedIn[component.id] ?? [];
+                    const meta = FDL_TYPE_META[component.type];
+                    return (
+                      <tr
+                        key={component.id}
+                        onClick={() => router.push(`/components/${component.id}`)}
+                        className="group cursor-pointer border-b border-border-light transition-colors last:border-0 hover:bg-blue-light/30"
+                      >
+                        <td className="px-5 py-2.5">
+                          <Link
+                            href={`/components/${component.id}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="flex min-w-0 items-center gap-2.5"
+                          >
+                            <OfferingIcon
+                              name={component.name}
+                              className="h-8 w-8 shrink-0"
+                            />
+                            <span className="min-w-0 text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                              {component.name}
+                            </span>
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                            style={{
+                              color: meta.color,
+                              background: meta.bg,
+                              borderColor: meta.border,
+                            }}
+                          >
+                            <meta.Icon size={11} strokeWidth={2.2} />
+                            {component.type}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-2.5">
+                          {current ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#1A7A35]">
+                              <CircleCheck size={11} strokeWidth={2.2} /> {current}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
+                              <Clock size={11} strokeWidth={2.2} /> None yet
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-[12.5px] text-text-secondary tnum">
+                          {component.releases.length}
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-[12.5px] text-text-secondary tnum">
+                          {component.features.length}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {homes.length === 0 ? (
+                            <span className="text-[12px] text-text-tertiary">
+                              Not connected yet
+                            </span>
+                          ) : (
+                            <span className="flex flex-wrap gap-1">
+                              {homes.map((home) => (
+                                <span
+                                  key={home}
+                                  className="inline-flex items-center gap-1 rounded-full border border-border-light px-2 py-0.5 text-[11px] text-text-secondary"
+                                >
+                                  <Package
+                                    size={10}
+                                    strokeWidth={2.2}
+                                    className="text-blue-primary"
+                                  />
+                                  {home}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       <Modal open={adding} onClose={() => setAdding(false)} title="New FDL component">

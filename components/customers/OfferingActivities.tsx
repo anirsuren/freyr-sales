@@ -4,6 +4,9 @@ import { useState } from "react";
 import {
   Activity as ActivityIcon,
   CalendarClock,
+  Check,
+  Circle,
+  CircleAlert,
   CheckCircle2,
   CircleDot,
   Clock3,
@@ -261,27 +264,45 @@ export function OfferingActivities({
       </div>
 
       {versions.length === 0 ? (
-        <p className="mt-2 text-[12px] text-text-tertiary">
-          No activity recorded yet. Add the first one, a lead, an opportunity,
-          a pilot, and it becomes the current activity.
-        </p>
+        /* NOT A SUGGESTION (Anir, Aug 9: "make it more clear they have to add
+           an activity here, it shouldn't be optional"). Grey body text read as
+           a note you could scroll past. Without an activity this offering is
+           invisible on the heat map and in every report, so the empty state
+           now says that plainly and puts the button inside it. */
+        <div className="mt-2.5 rounded-xl border border-dashed border-[rgba(180,49,143,0.4)] bg-[rgba(180,49,143,0.04)] px-4 py-4 text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.12)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.05em] text-[color:#B4318F]">
+            <CircleAlert size={12} strokeWidth={2.4} /> Needed
+          </span>
+          <p className="mt-2 text-[13px] font-semibold text-text-primary">
+            This offering needs an activity.
+          </p>
+          <p className="mx-auto mt-0.5 max-w-[460px] text-[12px] leading-snug text-text-secondary">
+            Until you add one, this account does not show up for this
+            offering on the heat map or in any report. Add where it stands
+            today, a lead, an opportunity, a pilot.
+          </p>
+          <span className="mt-3 inline-flex">
+            <Button onClick={() => openEditor()}>
+              <Plus size={13} strokeWidth={2.2} /> Add the first activity
+            </Button>
+          </span>
+        </div>
       ) : (
         /* A TABLE, NOT A STACK OF CARDS. Suren, Aug 9: "this is not the way
            they will consume it… activity has to be a table, columns have to
            show up — activity name, details, status, start date, end date. I
            want them to use the table nature." */
         <div className="mt-2.5 overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-left">
+          <table className="w-full min-w-[860px] border-collapse text-left">
             <thead>
               <tr className="border-b border-border-light text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                <th className="py-2 pr-3 font-bold">Activity</th>
+                <th className="w-[132px] py-2 pr-3 font-bold">Activity</th>
                 <th className="py-2 pr-3 font-bold">Details</th>
-                <th className="py-2 pr-3 font-bold">Status</th>
-                <th className="py-2 pr-3 font-bold">Start</th>
-                <th className="py-2 pr-3 font-bold">End</th>
-                <th className="py-2 pr-3 text-right font-bold">Value</th>
-                <th className="py-2 pr-2 text-center font-bold">Current</th>
-                <th className="py-2 font-bold" />
+                <th className="w-[116px] py-2 pr-3 font-bold">Status</th>
+                <th className="w-[184px] py-2 pr-3 font-bold">Dates</th>
+                <th className="w-[104px] py-2 pr-3 text-right font-bold">Value</th>
+                <th className="w-[124px] py-2 pr-2 font-bold">Current</th>
+                <th className="w-[76px] py-2 font-bold" />
               </tr>
             </thead>
             <tbody>
@@ -291,8 +312,8 @@ export function OfferingActivities({
                 return (
                   <tr
                     key={version.id}
-                    className={`border-b border-border-light align-top last:border-0 ${
-                      version.linked ? "bg-blue-light/40" : ""
+                    className={`border-b border-border-light align-middle transition-colors last:border-0 ${
+                      version.linked ? "bg-blue-light/40" : "hover:bg-surface/70"
                     }`}
                   >
                     <td className="py-2.5 pr-3">
@@ -317,26 +338,55 @@ export function OfferingActivities({
                         <StatusChip status={version.status} />
                       )}
                     </td>
-                    <td className="py-2.5 pr-3 text-[12px] text-text-secondary tnum">
-                      {started ? formatDate(started) : "Not set"}
+                    {/* ONE DATES COLUMN, NOT TWO (Anir, Aug 9: "this is really
+                        ugly"). Two narrow columns turned every unfinished row
+                        into "Not set" stacked over "Not set", each wrapping
+                        onto a second line and pushing the row taller than the
+                        one beside it. A date range is one fact, so it reads as
+                        one. */}
+                    <td className="whitespace-nowrap py-2.5 pr-3 text-[12px] text-text-secondary tnum">
+                      {started ? (
+                        <>
+                          {formatDate(started)}
+                          <span className="px-1 text-text-tertiary">to</span>
+                          {version.end_date ? (
+                            formatDate(version.end_date)
+                          ) : (
+                            <span className="text-text-tertiary">open</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-text-tertiary">No dates yet</span>
+                      )}
                     </td>
-                    <td className="py-2.5 pr-3 text-[12px] text-text-secondary tnum">
-                      {version.end_date ? formatDate(version.end_date) : "Not set"}
+                    <td className="whitespace-nowrap py-2.5 pr-3 text-right text-[12px] font-semibold text-text-primary tnum">
+                      {version.dollar_value > 0 ? (
+                        money(version.dollar_value, version.currency)
+                      ) : (
+                        <span className="font-normal text-text-tertiary">
+                          No value
+                        </span>
+                      )}
                     </td>
-                    <td className="py-2.5 pr-3 text-right text-[12px] font-semibold text-text-primary tnum">
-                      {version.dollar_value > 0
-                        ? money(version.dollar_value, version.currency)
-                        : "Not set"}
-                    </td>
-                    <td className="py-2.5 pr-2 text-center">
-                      <input
-                        type="radio"
-                        checked={!!version.linked}
-                        onChange={() => makeCurrent(version.id)}
-                        aria-label={`Make this the current activity`}
-                        title="Show this activity in the heat map"
-                        className="h-3.5 w-3.5 cursor-pointer accent-blue-primary"
-                      />
+                    {/* A BARE RADIO SAID NOTHING. It is the control that
+                        decides what the heat map shows, so it now names itself
+                        in both states instead of leaving a naked dot in a
+                        column headed "Current". */}
+                    <td className="py-2.5 pr-2">
+                      {version.linked ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-primary px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.03em] text-white">
+                          <Check size={10} strokeWidth={3} /> Current
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => makeCurrent(version.id)}
+                          title="Show this activity in the heat map"
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light px-2 py-0.5 text-[10.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                        >
+                          <Circle size={10} strokeWidth={2.4} /> Make current
+                        </button>
+                      )}
                     </td>
                     <td className="py-2.5">
                       <span className="flex items-center justify-end gap-1">
@@ -489,20 +539,9 @@ export function OfferingActivities({
                 ariaLabel="End date"
               />
             </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-[12px] font-medium text-text-primary">
-                Value
-              </label>
-              <input
-                value={amount}
-                onChange={(event) =>
-                  setAmount(event.target.value.replace(/[^0-9]/g, ""))
-                }
-                inputMode="numeric"
-                placeholder="250000"
-                className={`${FIELD} tnum`}
-              />
-            </div>
+            {/* CURRENCY FIRST, THEN THE AMOUNT (Anir, Aug 9: "currency on the
+                left, amount on the right"), which is the order money is
+                written and the order it is read back in the table. */}
             <div className="min-w-0">
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
                 Currency
@@ -519,15 +558,25 @@ export function OfferingActivities({
                 className="w-full"
               />
             </div>
+            <div className="min-w-0">
+              <label className="mb-1 block text-[12px] font-medium text-text-primary">
+                Value
+              </label>
+              <input
+                value={amount}
+                onChange={(event) =>
+                  setAmount(event.target.value.replace(/[^0-9]/g, ""))
+                }
+                inputMode="numeric"
+                placeholder="250000"
+                className={`${FIELD} tnum`}
+              />
+            </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setEditing(null)}
-            >
-              <X size={14} strokeWidth={2} /> Cancel
-            </Button>
+          {/* NO CANCEL BUTTON (Anir, Aug 9: "don't need a Cancel button, it's
+              already in the top right"). The X closes it, Escape closes it,
+              and one save button leaves no doubt which one commits. */}
+          <div className="flex justify-end">
             <Button type="submit">
               {editing === "" ? (
                 <>
