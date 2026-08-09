@@ -25,6 +25,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
 import type { FdlComponent, FdlFeature, FdlRelease } from "@/lib/offerings";
 import { FdlTypeChip, fdlCurrentVersion } from "@/components/fdl/FdlComponentsBrowser";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 
 /**
  * ONE COMPONENT, THE WHOLE STORY — Suren's model (Aug 8, via Anir): "first
@@ -277,6 +278,7 @@ export function FdlComponentDetail({
           <ArrowLeft size={13} strokeWidth={2.2} /> All components
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
+          <OfferingIcon name={component.name} className="h-10 w-10 shrink-0" />
           <h1 className="text-[22px] font-bold text-text-primary">{component.name}</h1>
           <FdlTypeChip type={component.type} />
           {current && (

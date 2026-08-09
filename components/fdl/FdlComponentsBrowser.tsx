@@ -3,7 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bot, Boxes, Layers, Plus, Server, X } from "lucide-react";
+import {
+  Bot,
+  Boxes,
+  ChevronRight,
+  CircleCheck,
+  Clock,
+  Layers,
+  Plus,
+  Server,
+  X,
+} from "lucide-react";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -129,28 +140,62 @@ export function FdlComponentsBrowser({
                 <Link
                   key={component.id}
                   href={`/components/${component.id}`}
-                  className="group rounded-xl border border-border-light bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg"
+                  className="group flex flex-col gap-3 rounded-xl border border-border-light bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-[14.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                      {component.name}
-                    </p>
-                    <FdlTypeChip type={component.type} />
+                  {/* Same anatomy as an offering tile (Anir, Aug 8: "fdl
+                      should really look pretty similar to the offerings
+                      page"): branded icon tile, the type as a coloured
+                      eyebrow, the name as the headline, chevron on the right. */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <OfferingIcon name={component.name} className="h-9 w-9 shrink-0" />
+                      <div className="min-w-0">
+                        <p
+                          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.07em]"
+                          style={{ color: FDL_TYPE_META[component.type].color }}
+                        >
+                          {(() => {
+                            const TypeIcon = FDL_TYPE_META[component.type].Icon;
+                            return <TypeIcon size={10} strokeWidth={2.6} aria-hidden="true" />;
+                          })()}
+                          {component.type}
+                        </p>
+                        <h3 className="text-[16px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">
+                          {component.name}
+                        </h3>
+                      </div>
+                    </div>
+                    <ChevronRight
+                      size={16}
+                      strokeWidth={1.6}
+                      className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
+                    />
                   </div>
-                  <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                    {current ? `Current version ${current}` : "No version recorded yet"}
-                    {" · "}
-                    {component.releases.length}{" "}
-                    {component.releases.length === 1 ? "version" : "versions"}
-                    {" · "}
-                    {component.features.length}{" "}
-                    {component.features.length === 1 ? "feature" : "features"}
-                  </p>
-                  <p className="mt-2 text-[11.5px] text-text-tertiary">
-                    {homes.length > 0
-                      ? `In: ${homes.join(", ")}`
-                      : "Not connected to an offering yet."}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {current ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#1A7A35]">
+                        <CircleCheck size={11} strokeWidth={2.2} /> Current {current}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
+                        <Clock size={11} strokeWidth={2.2} /> No version yet
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-auto space-y-1 border-t border-border-light pt-3">
+                    <p className="text-[12px] text-text-secondary">
+                      {component.releases.length}{" "}
+                      {component.releases.length === 1 ? "version" : "versions"}
+                      {" · "}
+                      {component.features.length}{" "}
+                      {component.features.length === 1 ? "feature" : "features"}
+                    </p>
+                    <p className="text-[11.5px] text-text-tertiary">
+                      {homes.length > 0
+                        ? `In: ${homes.join(", ")}`
+                        : "Not connected to an offering yet."}
+                    </p>
+                  </div>
                 </Link>
               );
             })}

@@ -12,6 +12,7 @@ import {
   FdlTypeChip,
   fdlCurrentVersion,
 } from "@/components/fdl/FdlComponentsBrowser";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
 
 /**
  * THE OFFERING IS A PACKAGE — this tab lists the FDL components inside it
@@ -120,9 +121,12 @@ export function ConnectedComponents({
               >
                 <Link href={`/components/${component.id}`} className="block">
                   <div className="flex items-start justify-between gap-3 pr-8">
-                    <p className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary">
-                      {component.name}
-                    </p>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <OfferingIcon name={component.name} className="h-8 w-8 shrink-0" />
+                      <p className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary">
+                        {component.name}
+                      </p>
+                    </span>
                     <FdlTypeChip type={component.type} />
                   </div>
                   <p className="mt-1.5 text-[12.5px] text-text-secondary">
