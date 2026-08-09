@@ -103,26 +103,17 @@ export function CompanyLogo({
   const resolved = src || logoFor(name);
 
   if (resolved) {
-    // The real files are pre-composed 512x512 tiles: the source wordmark is
-    // trimmed of its transparent margin, fitted to 80% of the square and
-    // centred on white. Fitting a 960x145 wordmark into a 24px box at render
-    // time instead produced a three-pixel sliver that read as "the logo isn't
-    // loading" (Anir, Aug 8) — a square source is the only thing that survives
-    // every place this component is used, from a 20px row icon to a 96px
-    // account header.
-    const wordmark = resolved.startsWith("/logos/real/");
+    // Every logo file — generated mark or real brand mark — is a square tile
+    // with its padding already composed in, so this is one branch: fill the
+    // rounded square exactly like the initials mark it replaces. Fitting a
+    // wide wordmark at render time was what produced the three-pixel sliver
+    // that read as a broken image (Anir, Aug 9).
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={resolved}
         alt={name}
-        className={cn(
-          "rounded-xl shrink-0",
-          wordmark
-            ? "border border-border-light bg-white object-contain"
-            : "object-cover",
-          className
-        )}
+        className={cn("rounded-xl object-cover shrink-0", className)}
       />
     );
   }

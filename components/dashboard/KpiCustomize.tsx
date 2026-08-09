@@ -63,7 +63,7 @@ export function KpiCustomize({
         </button>
         {open && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <div className="menu-in fixed inset-0 z-40" onClick={() => setOpen(false)} />
             <div
               role="menu"
               aria-label="Customize KPIs"

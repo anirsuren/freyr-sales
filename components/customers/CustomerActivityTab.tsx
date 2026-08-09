@@ -216,7 +216,7 @@ export function CustomerActivityTab({
           An activity is always about one offering. Pick it and the Lead /
           Opportunity / Pilot / Contract / Delivery editor opens underneath.
         </p>
-        <ScrollHint count={offerings.length} label="more" className="max-h-80">
+        <ScrollHint className="max-h-80">
           <ul className="space-y-1.5">
             {offerings.map((offering) => {
               const logged =

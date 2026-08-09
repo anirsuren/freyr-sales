@@ -445,7 +445,7 @@ export function TopBar({
             className="flex items-center gap-2 group rounded-full hover:bg-surface transition-colors py-1 pl-1 pr-2"
           >
             <Avatar src={myPhoto} name={currentUser.name} className="w-8 h-8 text-[12px]" />
-            <span className="text-[14px] font-medium text-text-primary hidden md:block">
+            <span className="menu-in text-[14px] font-medium text-text-primary hidden md:block">
               {currentUser.name}
             </span>
             <ChevronDown size={16} strokeWidth={1.5} className="text-text-tertiary" />

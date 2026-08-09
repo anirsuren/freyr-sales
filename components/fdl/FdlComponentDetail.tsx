@@ -128,7 +128,18 @@ export function FdlComponentDetail({
    *  download (Suren, Aug 8: "if I have to see all one version's features,
    *  how do I download? Here also, for version 4, when it clicks, give those
    *  features for version 4 and then download"). */
-  const [openVersion, setOpenVersion] = useState<string | null>(null);
+  // EACH VERSION OPENS AND CLOSES ON ITS OWN. A single-open accordion snapped
+  // the one you were reading shut the moment you opened another, which is
+  // exactly what you do not want when comparing two releases (Anir, Aug 9:
+  // "why is it closing the other dropdown when I open one?").
+  const [openVersions, setOpenVersions] = useState<Set<string>>(new Set());
+  const toggleVersion = (id: string) =>
+    setOpenVersions((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const [addingCustomers, setAddingCustomers] = useState(false);
   const [pickedCustomers, setPickedCustomers] = useState<string[]>([]);
 
@@ -424,7 +435,7 @@ export function FdlComponentDetail({
                 feature.versionIds.includes(release.id)
               );
               const versionCustomers = customersOnVersion(release.id);
-              const open = openVersion === release.id;
+              const open = openVersions.has(release.id);
               const shipped = release.status === "released";
               const accent = shipped ? "#1A7A35" : "#6D28D9";
               return (
@@ -447,7 +458,7 @@ export function FdlComponentDetail({
                         version 4 and then download"). */}
                     <button
                       type="button"
-                      onClick={() => setOpenVersion(open ? null : release.id)}
+                      onClick={() => toggleVersion(release.id)}
                       aria-expanded={open}
                       aria-label={`${open ? "Hide" : "Show"} what is in ${release.version}`}
                       className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
@@ -1024,7 +1035,7 @@ export function FdlComponentDetail({
             . Change the version on the customer&apos;s own page or here in the
             list afterwards.
           </p>
-          <ScrollHint count={unconnected.length} label="more" className="max-h-72">
+          <ScrollHint className="max-h-72">
           <ul className="space-y-1.5">
             {unconnected.map((customer) => {
               const active = pickedCustomers.includes(customer.id);

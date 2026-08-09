@@ -2094,10 +2094,7 @@ export function OfferingForm({
             can scroll through"). Capped at roughly four rows so the section
             reads as one block you scroll, and everything after it stays where
             you left it. Under five materials it never scrolls at all. */}
-        <ScrollHint
-          count={materials.length}
-          label="more below"
-          className={cn(
+        <ScrollHint className={cn(
             materials.length > 4 &&
               "material-scroll max-h-[460px] rounded-xl border border-border-light bg-surface p-3"
           )}

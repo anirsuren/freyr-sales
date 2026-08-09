@@ -188,7 +188,7 @@ export function OfferingActions({
                           onKeyDown={onSearchKey}
                           placeholder="Search customers…"
                           aria-label="Search customers"
-                          className="h-11 flex-1 bg-transparent text-[13.5px] text-text-primary outline-none placeholder:text-text-tertiary focus:shadow-none"
+                          className="menu-in h-11 flex-1 bg-transparent text-[13.5px] text-text-primary outline-none placeholder:text-text-tertiary focus:shadow-none"
                         />
                       </div>
 

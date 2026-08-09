@@ -86,7 +86,7 @@ export function PeopleSelect({
       {open && (
         <div
           role="listbox"
-          className="absolute z-40 mt-1.5 w-full max-h-[280px] overflow-y-auto rounded-xl border border-border-light bg-white shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)] p-1.5"
+          className="menu-in absolute z-40 mt-1.5 w-full max-h-[280px] overflow-y-auto rounded-xl border border-border-light bg-white shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)] p-1.5"
         >
           {items.map((m) => {
             const on = m.name === value;

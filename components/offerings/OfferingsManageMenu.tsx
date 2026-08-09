@@ -25,7 +25,7 @@ export function OfferingsManageMenu() {
       >
         <SlidersHorizontal size={15} strokeWidth={1.8} />
         Manage
-        <ChevronDown size={14} strokeWidth={2} className="opacity-70" />
+        <ChevronDown size={14} strokeWidth={2} className="menu-in opacity-70" />
       </button>
       {open && (
         <>

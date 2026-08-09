@@ -468,7 +468,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
               <div
                 role="menu"
                 aria-label="Saved views"
-                className="absolute left-0 mt-1.5 w-[220px] bg-white border border-border-light rounded-lg shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] z-50 p-1.5 hovercard-in"
+                className="menu-in absolute left-0 mt-1.5 w-[220px] bg-white border border-border-light rounded-lg shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)] z-50 p-1.5 hovercard-in"
               >
                 <p className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                   Built-in
