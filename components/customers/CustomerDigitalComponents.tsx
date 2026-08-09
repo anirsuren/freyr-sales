@@ -127,6 +127,13 @@ export function CustomerDigitalComponents({
             Everything this customer runs today, and which version of each.
           </p>
         </div>
+        {/* ONE GROUP ON THE RIGHT (Anir, Aug 9: "why is the connect component
+            button just in the middle? It should be to the left of the tile
+            dropdown thing"). Three children under justify-between space
+            themselves evenly, so the button was parked in the gap between the
+            heading and the view toggle rather than sitting with the control it
+            belongs beside. */}
+        <div className="flex shrink-0 items-center gap-2">
         {canEdit && (
           <Button
             variant="secondary"
@@ -155,6 +162,7 @@ export function CustomerDigitalComponents({
             )}
           </button>
         )}
+        </div>
       </div>
 
       {state.length === 0 ? (
