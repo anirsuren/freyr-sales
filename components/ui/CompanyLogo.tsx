@@ -103,9 +103,13 @@ export function CompanyLogo({
   const resolved = src || logoFor(name);
 
   if (resolved) {
-    // A real company wordmark is wide (Novartis is 960x145), so object-cover
-    // crops it down to two letters. Contained on a white tile it reads as the
-    // brand it is; the square generated marks below keep cover.
+    // The real files are pre-composed 512x512 tiles: the source wordmark is
+    // trimmed of its transparent margin, fitted to 80% of the square and
+    // centred on white. Fitting a 960x145 wordmark into a 24px box at render
+    // time instead produced a three-pixel sliver that read as "the logo isn't
+    // loading" (Anir, Aug 8) — a square source is the only thing that survives
+    // every place this component is used, from a 20px row icon to a 96px
+    // account header.
     const wordmark = resolved.startsWith("/logos/real/");
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -115,7 +119,7 @@ export function CompanyLogo({
         className={cn(
           "rounded-xl shrink-0",
           wordmark
-            ? "border border-border-light bg-white object-contain p-[9%]"
+            ? "border border-border-light bg-white object-contain"
             : "object-cover",
           className
         )}
