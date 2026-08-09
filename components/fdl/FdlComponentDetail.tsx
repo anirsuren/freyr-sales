@@ -27,6 +27,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import {
+  ColorSelect,
+  MultiColorSelect,
+  type ColorOption,
+} from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ScrollHint } from "@/components/ui/ScrollHint";
@@ -213,6 +218,20 @@ export function FdlComponentDetail({
     );
     setAddingCustomers(true);
   }
+
+  /**
+   * A VERSION PICKER THAT SURVIVES A LONG HISTORY. As pills, a component with
+   * a dozen releases wrapped into three rows and pushed the real content off
+   * the screen (Anir, Aug 9: "this isn't going to look good. There are a lot
+   * of versions"). A dropdown is one line whatever the count, and it is the
+   * control the rest of the app already uses for a single choice.
+   */
+  const versionOptions: ColorOption[] = releases.map((release) => ({
+    value: release.id,
+    label: release.current ? `${release.version} (current)` : release.version,
+    color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+    icon: release.status === "released" ? CircleCheck : Clock,
+  }));
 
   const connected = customers.filter((customer) => customer.connected);
   const unconnected = customers.filter((customer) => !customer.connected);
@@ -450,7 +469,8 @@ export function FdlComponentDetail({
     );
   }
 
-  const CARD = "rounded-xl border border-border-light bg-white p-5 shadow-card";
+  const CARD =
+  "rise-in rounded-xl border border-border-light bg-white p-5 shadow-card";
 
   return (
     <div className="space-y-5">
@@ -1049,30 +1069,13 @@ export function FdlComponentDetail({
             <span className="text-[12.5px] text-text-secondary">
               Showing what is in
             </span>
-            {releases.map((release) => {
-              const picked = release.id === shownVersionId;
-              return (
-                <button
-                  key={release.id}
-                  type="button"
-                  aria-pressed={picked}
-                  onClick={() => setShownVersionId(release.id)}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
-                    picked
-                      ? "border-blue-primary bg-blue-light text-blue-primary"
-                      : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40"
-                  }`}
-                >
-                  {picked && <Check size={12} strokeWidth={2.8} />}
-                  {release.version}
-                  {release.current && (
-                    <span className="text-[10px] font-bold uppercase tracking-[0.04em] opacity-70">
-                      current
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            <ColorSelect
+              value={shownVersionId}
+              onChange={setShownVersionId}
+              options={versionOptions}
+              ariaLabel="Which version to show"
+              collapsible={false}
+            />
           </div>
         )}
 
@@ -1347,7 +1350,7 @@ export function FdlComponentDetail({
                 options"). Four cards across: the old two-wide rows spent most
                 of their width on the gap between the name and the version. */}
             {customerView === "grid" ? (
-              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <ul className="stagger mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {connected.map((customer) => {
                   const release = component.releases.find(
                     (item) => item.id === customer.releaseId
@@ -1394,10 +1397,11 @@ export function FdlComponentDetail({
                       <th className="py-2 pr-4">Customer</th>
                       <th className="py-2 pr-4">Current version</th>
                       <th className="py-2 pr-4">Next version</th>
+                      <th className="py-2 pr-4">Upgrade status</th>
                       <th className="py-2" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-light">
+                  <tbody className="stagger divide-y divide-border-light">
                     {connected.map((customer) => {
                       const release = component.releases.find(
                         (item) => item.id === customer.releaseId
@@ -1405,34 +1409,68 @@ export function FdlComponentDetail({
                       const next = component.releases.find(
                         (item) => item.id === customer.nextReleaseId
                       );
+                      // HOW FAR BEHIND, counted against the current release.
+                      // Both indexes come from the same ordered list, so this
+                      // is arithmetic on real data, not a guess.
+                      const here = release
+                        ? releases.findIndex((r) => r.id === release.id)
+                        : -1;
+                      const currentIndex = releases.findIndex((r) => r.current);
+                      const behind =
+                        here >= 0 && currentIndex >= 0 ? currentIndex - here : null;
                       return (
                         <tr
                           key={customer.id}
-                          className="group transition-colors hover:bg-blue-light/25"
+                          onClick={() =>
+                            router.push(`/customers/${customer.id}?tab=components`)
+                          }
+                          className="group cursor-pointer transition-colors hover:bg-blue-light/25"
                         >
-                          <td className="py-2.5 pr-4">
+                          <td className="py-3 pr-4">
+                            {/* The whole row navigates (Anir, Aug 9: "it's not
+                                letting me click on this row"); the link stays
+                                for keyboard and middle-click. */}
                             <Link
                               href={`/customers/${customer.id}?tab=components`}
-                              className="flex items-center gap-2.5 text-[13px] font-semibold text-text-primary group-hover:text-blue-primary"
+                              onClick={(event) => event.stopPropagation()}
+                              className="flex items-center gap-3 text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary"
                             >
                               <CompanyLogo
                                 name={customer.name}
-                                className="h-7 w-7 shrink-0"
+                                className="h-9 w-9 shrink-0"
                               />
                               {customer.name}
                             </Link>
                           </td>
-                          <td className="py-2.5 pr-4 text-[12.5px] font-semibold text-text-primary tnum">
-                            {release ? release.version : "Not set yet"}
+                          <td className="py-3 pr-4">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-border-light px-2.5 py-1 text-[12px] font-semibold text-text-primary tnum">
+                              {release ? release.version : "Not set yet"}
+                            </span>
                           </td>
-                          <td className="py-2.5 pr-4 text-[12.5px] text-text-secondary tnum">
+                          <td className="py-3 pr-4 text-[12.5px] text-text-secondary tnum">
                             {next ? next.version : "Not planned"}
                           </td>
-                          <td className="py-2.5 text-right">
+                          <td className="py-3 pr-4">
+                            {behind === null ? (
+                              <span className="text-[12px] text-text-tertiary">
+                                Not known
+                              </span>
+                            ) : behind <= 0 ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:#1A7A35]">
+                                <CircleCheck size={11} strokeWidth={2.2} /> Up to date
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(194,65,12,0.25)] bg-[rgba(194,65,12,0.08)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:#C2410C]">
+                                <Clock size={11} strokeWidth={2.2} />
+                                {behind} behind
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 text-right">
                             <ChevronRight
                               size={15}
                               strokeWidth={2}
-                              className="inline text-text-tertiary transition-colors group-hover:text-blue-primary"
+                              className="inline text-text-tertiary transition-colors group-hover:translate-x-0.5 group-hover:text-blue-primary"
                             />
                           </td>
                         </tr>
@@ -1456,8 +1494,7 @@ export function FdlComponentDetail({
                 <InfoHint text="Pick two or more versions. You get the features side by side, and only the ones at least one of those versions has." />
               </h2>
               <p className="mt-1 text-[12.5px] text-text-secondary">
-                Tap a version to add it to the table below. Tap it again to take
-                it out.
+                Pick two or more versions to see them side by side.
               </p>
             </div>
             {/* TOP RIGHT, ICON ONLY (Anir, Aug 9). Below the table it sat at
@@ -1476,34 +1513,31 @@ export function FdlComponentDetail({
               </Tooltip>
             )}
           </div>
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {releases.map((release) => {
-              const active = compareIds.includes(release.id);
-              return (
-                <button
-                  key={release.id}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() =>
-                    setCompareIds((prev) =>
-                      active ? prev.filter((x) => x !== release.id) : [...prev, release.id]
-                    )
-                  }
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
-                    active
-                      ? "border-blue-primary bg-blue-light text-blue-primary"
-                      : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40"
-                  }`}
-                >
-                  {active ? (
-                    <Check size={12} strokeWidth={2.8} />
-                  ) : (
-                    <Plus size={12} strokeWidth={2.4} />
-                  )}
-                  {release.version}
-                </button>
-              );
-            })}
+          {/* A HUNDRED VERSIONS STILL FITS. As pills this row grew without
+              limit (Anir, Aug 9: "imagine there are like a hundred versions.
+              What's gonna happen? It should be a separate thing where I'm
+              choosing the versions, and then it obviously will say what I
+              have chosen"). The dropdown stays one line and its trigger
+              names the picks. */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <MultiColorSelect
+              values={compareIds}
+              onChange={setCompareIds}
+              options={versionOptions}
+              allLabel="Pick versions"
+              allIcon={GitCompareArrows}
+              ariaLabel="Versions to compare"
+              collapsible={false}
+              minWidth={210}
+            />
+            {compareReleases.length > 0 && (
+              <span className="text-[12.5px] text-text-secondary">
+                Comparing{" "}
+                <span className="font-semibold text-text-primary">
+                  {compareReleases.map((r) => r.version).join(" vs ")}
+                </span>
+              </span>
+            )}
           </div>
           {compareReleases.length >= 2 && compareRows.length === 0 ? (
             /* Two versions picked and neither carries a single feature. The
@@ -1683,32 +1717,15 @@ export function FdlComponentDetail({
             <p className="mb-1.5 text-[12.5px] font-semibold text-text-primary">
               Which version are they on?
             </p>
-            <div className="flex flex-wrap gap-2">
-              {releases.map((release) => {
-                const picked = addingRelease === release.id;
-                return (
-                  <button
-                    key={release.id}
-                    type="button"
-                    aria-pressed={picked}
-                    onClick={() => setAddingRelease(release.id)}
-                    className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
-                      picked
-                        ? "border-blue-primary bg-blue-light text-blue-primary"
-                        : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40"
-                    }`}
-                  >
-                    {picked && <Check size={12} strokeWidth={2.8} />}
-                    {release.version}
-                    {release.current && (
-                      <span className="text-[10px] font-bold uppercase tracking-[0.04em] opacity-70">
-                        current
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            <ColorSelect
+              value={addingRelease}
+              onChange={setAddingRelease}
+              options={versionOptions}
+              ariaLabel="Which version are they on"
+              collapsible={false}
+              minWidth={0}
+              className="w-full"
+            />
             <p className="mt-1.5 text-[12px] text-text-secondary">
               You can change this later on their own page.
             </p>
