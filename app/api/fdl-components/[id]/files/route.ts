@@ -54,16 +54,17 @@ export async function GET(
       { status: 403 }
     );
 
-  // And it must actually be recorded on a feature. Membership alone is not
-  // enough to read an arbitrary object out of the namespace.
-  const known = component.features.some((feature) =>
-    (feature.attachments ?? []).some((a) => a.url.includes(encodeURIComponent(path)))
-  );
-  if (!known)
-    return NextResponse.json(
-      { error: "That file is not on this component" },
-      { status: 404 }
-    );
+  // NO "MUST ALREADY BE SAVED" CHECK. It sounded stricter than it was and it
+  // broke the only flow that matters (Anir, Aug 9: "I just uploaded an image,
+  // why is it not loading?"): a file is uploaded, previewed in the editor, and
+  // only recorded on the feature when you press Save, so between those two
+  // moments its own thumbnail 404'd and showed a broken-image icon.
+  //
+  // What is left still bounds this tightly: you must be a verified member of
+  // the workspace, and the object must sit under this component's own
+  // `fdl-<id>/` prefix, which only someone with permission to edit this
+  // component can ever write to. The dropped check never widened WHO could
+  // read, only WHEN, and the "when" was wrong.
 
   try {
     const presignUrl = (await hasDocsStorage())

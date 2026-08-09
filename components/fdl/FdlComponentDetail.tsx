@@ -1332,7 +1332,12 @@ export function FdlComponentDetail({
                             }
                           >
                             <span className="flex shrink-0 cursor-pointer items-center gap-2">
-                              <span className="h-2 w-[180px] overflow-hidden rounded-full bg-surface">
+                              {/* bg-border, not bg-surface: the pale track was
+                                  invisible against the card so the bar had no
+                                  readable "out of" (Anir, Aug 9: "it's hard to
+                                  see the grey part of the progress bar, it's
+                                  too light"). */}
+                              <span className="h-2 w-[180px] overflow-hidden rounded-full bg-border">
                                 <span
                                   className="block h-full rounded-full transition-[width] duration-500"
                                   style={{
@@ -1861,10 +1866,65 @@ export function FdlComponentDetail({
                     </td>
                     <td className="py-2.5 pr-4">
                       {(feature.attachments ?? []).length > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-text-secondary">
-                          <Paperclip size={11} strokeWidth={2.4} />
-                          {(feature.attachments ?? []).length}
-                        </span>
+                        /* THE COUNT OPENS THE FILES (Anir, Aug 9: "if I hover
+                           over that number, if there are 10 files, it should
+                           show me, kinda like how you did it in the sales
+                           materials... I can click on any one of them and it'll
+                           actually open it in its own preview". Reaching a file
+                           meant opening the editor first, which he called out:
+                           "right now, literally, I don't think I can even
+                           access this. Okay, I can if I click Edit"). */
+                        <HoverCard
+                          width={300}
+                          anchor="trigger"
+                          delayMs={0}
+                          content={
+                            <div>
+                              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                {(feature.attachments ?? []).length} file
+                                {(feature.attachments ?? []).length === 1 ? "" : "s"} on{" "}
+                                {feature.name}
+                              </p>
+                              <ul className="space-y-1">
+                                {(feature.attachments ?? []).map((file) => (
+                                  <li key={file.id}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewing(file)}
+                                      className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border-light px-2 py-1.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+                                    >
+                                      {file.kind === "image" ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                          src={file.url}
+                                          alt=""
+                                          className="h-8 w-8 shrink-0 rounded object-cover"
+                                        />
+                                      ) : (
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-blue-light text-blue-primary">
+                                          <FileText size={14} strokeWidth={2} />
+                                        </span>
+                                      )}
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-[12.5px] font-medium text-text-primary">
+                                          {file.name}
+                                        </span>
+                                        <span className="block text-[11px] text-text-secondary">
+                                          Open it here
+                                        </span>
+                                      </span>
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          }
+                        >
+                          <span className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-semibold text-text-secondary transition-colors hover:bg-blue-light hover:text-blue-primary">
+                            <Paperclip size={11} strokeWidth={2.4} />
+                            {(feature.attachments ?? []).length}
+                          </span>
+                        </HoverCard>
                       ) : (
                         <span className="text-[11.5px] text-text-tertiary">None</span>
                       )}
@@ -2712,11 +2772,15 @@ export function FdlComponentDetail({
             </label>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setFeatureModal(null)} disabled={busy}>
-              <X size={14} strokeWidth={2} /> Cancel
-            </Button>
-            <Button type="submit" disabled={!featName.trim()} loading={busy}>
+          {/* No Cancel: the X is already in the top right and Escape closes it
+              (Anir, Aug 9: "we don't need a cancel button here, by the way,
+              it's already in the top right"). */}
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              disabled={!featName.trim() || featVersions.length === 0}
+              loading={busy}
+            >
               {featureModal === "" ? (
                 <>
                   <Plus size={14} strokeWidth={2.2} /> Add feature
