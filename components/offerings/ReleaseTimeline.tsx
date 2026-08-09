@@ -164,8 +164,12 @@ export function ReleaseTimeline({
     ? {
         eyebrow: "Current release",
         title: latestReleased?.release.version || currentVersion || "Current release",
+        // A date still ahead of us is a plan, not a history (Anir, Aug 9:
+        // "it isn't even September yet, it says September 1").
         detail: parsedCurrentDate
-          ? `Live since ${formatTimelineDate(parsedCurrentDate)}`
+          ? parsedCurrentDate > new Date()
+            ? `Due ${formatTimelineDate(parsedCurrentDate)}`
+            : `Live since ${formatTimelineDate(parsedCurrentDate)}`
           : availableNow
             ? "Available now · release date not recorded"
             : "Release date not recorded",

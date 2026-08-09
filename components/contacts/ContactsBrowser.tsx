@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownAZ, Building2, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -79,7 +80,11 @@ export function ContactsBrowser({
   const [q, setQ] = useState("");
   const [role, setRole] = useState("all");
   const [sort, setSort] = useState("name");
-  const [layout, setLayout] = useState<"grid" | "list">("grid");
+  const [layout, setLayout] = useStoredView<"grid" | "list">(
+    "freyr.contacts.layout",
+    "grid",
+    ["grid", "list"]
+  );
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [voiceCategory, setVoiceCategory] = useState(voiceCategories[0] || "");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { Phone, Mail, MapPin, Globe2, ArrowRight, LayoutGrid, Search, Table2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -392,7 +393,11 @@ function ActivityTrendInspector({ rep }: { rep: RosterRep }) {
 }
 
 export function TeamRoster({ reps }: { reps: RosterRep[] }) {
-  const [view, setView] = useState<"table" | "grid">("table");
+  const [view, setView] = useStoredView<"table" | "grid">(
+    "freyr.team.view",
+    "table",
+    ["table", "grid"]
+  );
   // FIND A PERSON WITHOUT READING THE FLOOR. Eight names fit on a screen; a
   // real sales org does not, and every other list in the app opens with a
   // search (Anir, Aug 9: "there should be a search bar for the sales floor. I

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SearchX, Download, LayoutGrid, Table2, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload } from "lucide-react";
@@ -162,7 +163,11 @@ export function CustomersBrowser({
   const [query, setQuery] = useState("");
   const [healthFilter, setHealthFilter] = useState("all");
   const [sort, setSort] = useState("recent");
-  const [view, setView] = useState<"grid" | "table">("grid");
+  const [view, setView] = useStoredView<"grid" | "table">(
+    "freyr.customers.view",
+    "grid",
+    ["grid", "table"]
+  );
   const [page, setPage] = useState(1);
   const [loadedListUserId, setLoadedListUserId] = useState<string | null>(null);
   // How many rows per page — user's choice, remembered (Suren: "let me decide how

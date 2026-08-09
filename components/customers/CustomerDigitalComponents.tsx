@@ -399,7 +399,19 @@ export function CustomerDigitalComponents({
                 </div>
 
                 <p className="mt-2.5 flex flex-wrap items-center gap-2 text-[11.5px] text-text-tertiary">
-                  {live?.date && <span className="tnum">Live since {formatDate(live.date)}</span>}
+                  {/* "LIVE SINCE" ONLY IF IT IS (Anir, Aug 9: "something's
+                      wrong here, it isn't even September yet, it says September
+                      1"). The label assumed every recorded date was in the
+                      past, so a release still ahead of us read as one this
+                      account had been running for months. A future date is a
+                      plan, and the wording now says so. */}
+                  {live?.date &&
+                    (new Date(`${live.date}T00:00:00`) > new Date() ||
+                    live.status === "next" ? (
+                      <span className="tnum">Due {formatDate(live.date)}</span>
+                    ) : (
+                      <span className="tnum">Live since {formatDate(live.date)}</span>
+                    ))}
                   {behind && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(194,65,12,0.25)] bg-[rgba(194,65,12,0.08)] px-2 py-0.5 font-semibold text-[color:#C2410C]">
                       <Rocket size={10} strokeWidth={2.4} /> {latest} is out

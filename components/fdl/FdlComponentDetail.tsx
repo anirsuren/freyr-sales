@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -354,7 +355,11 @@ export function FdlComponentDetail({
   /** Cards or rows for "Customers running this", the same choice the sales
    *  floor offers (Anir, Aug 9: "make it look something like this, like a
    *  team's page, or maybe make it customizable... both these options"). */
-  const [customerView, setCustomerView] = useState<"grid" | "table">("grid");
+  const [customerView, setCustomerView] = useStoredView<"grid" | "table">(
+    "freyr.componentCustomers.view",
+    "grid",
+    ["grid", "table"]
+  );
 
   const [addingCustomers, setAddingCustomers] = useState(false);
   const [pickedCustomers, setPickedCustomers] = useState<string[]>([]);
@@ -500,6 +505,8 @@ export function FdlComponentDetail({
   const [featVersions, setFeatVersions] = useState<string[]>([]);
   const [featFiles, setFeatFiles] = useState<FdlFeatureAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  /** The release whose Files panel opened the picker, if any. */
+  const [filesForRelease, setFilesForRelease] = useState<string | null>(null);
   const [confirmFeatureDelete, setConfirmFeatureDelete] = useState<string | null>(null);
 
   /** Send the picked files to storage, then hold the returned URLs on the
@@ -526,6 +533,47 @@ export function FdlComponentDetail({
       );
     } finally {
       setUploading(false);
+    }
+  }
+
+  /**
+   * ADD A FILE FROM THE VERSION PANEL (Anir, Aug 9: "if I can add customers, I
+   * should be able to add files here too"). Files belong to features, not to
+   * releases, so this uploads and then pins the result to a feature that the
+   * version actually carries. With one feature there is nothing to ask; with
+   * several the panel asks which, because guessing would file a spec under the
+   * wrong feature and nothing in the UI would ever show that it was wrong.
+   */
+  async function attachToFeature(featureId: string, files: FileList | null) {
+    if (!files || !files.length) return;
+    setUploading(true);
+    try {
+      const added: FdlFeatureAttachment[] = [];
+      for (const file of Array.from(files).slice(0, 5)) {
+        const body = new FormData();
+        body.append("file", file);
+        const res = await fetch(`/api/fdl-components/${component.id}/upload`, {
+          method: "POST",
+          body,
+        });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error || "Could not upload that file.");
+        added.push(payload.attachment);
+      }
+      const next = component.features.map((f) =>
+        f.id === featureId
+          ? { ...f, attachments: [...(f.attachments ?? []), ...added] }
+          : f
+      );
+      await patch({ features: next }, added.length === 1 ? "File added." : "Files added.");
+    } catch (caught) {
+      toast(
+        caught instanceof Error ? caught.message : "Could not upload that file.",
+        "error"
+      );
+    } finally {
+      setUploading(false);
+      setFilesForRelease(null);
     }
   }
 
@@ -1153,13 +1201,22 @@ export function FdlComponentDetail({
                           line at 34px they read as the accounts they are. Five
                           then +N, so the row's length never depends on how many
                           customers a version happens to have. */}
-                      <span className="ml-4 hidden shrink-0 items-center lg:flex">
+                      {/* THE COUNT UNDER THE FACES (Anir, Aug 9: "underneath
+                          the circles for the logos, you can say five customers
+                          or ten customers or whatever"). Five marks and a +N
+                          make you do arithmetic to answer "how many"; the line
+                          underneath just says it. */}
+                      <span className="ml-4 hidden shrink-0 flex-col items-start lg:flex">
                         <CustomerDots
                           people={versionCustomers}
                           max={5}
                           size={34}
                           note={() => `On ${release.version}`}
                         />
+                        <span className="mt-0.5 pl-1 text-[10.5px] font-medium text-text-tertiary tnum">
+                          {versionCustomers.length}{" "}
+                          {versionCustomers.length === 1 ? "customer" : "customers"}
+                        </span>
                       </span>
                       {/* THE BAR IS A FIXED 72px, NOT A STRETCH (Anir, Aug 9:
                           "it's just too big, each one should be a set amount
@@ -1169,55 +1226,19 @@ export function FdlComponentDetail({
                           full-width rule read as the most important thing on
                           the row. The reclaimed space carries what actually
                           changed in this version. */}
-                      <span className="ml-4 hidden min-w-0 flex-1 items-center gap-3 lg:flex">
+                      {/* THE BAR TAKES THE ROW (Anir, Aug 9: "remove that, I
+                          don't need that text, just make the progress bar take
+                          up a little bit more space and align it to the left,
+                          not the right. It's okay if there's a gap between the
+                          numbers and the download button"). The sentence about
+                          what changed was a paragraph competing with a number,
+                          and pinning the bar right meant its length told you
+                          nothing until you found its end. */}
+                      <span className="ml-5 hidden min-w-0 flex-1 items-center lg:flex">
                         {/* THE BAR RIDES WITH THE VERSION (Anir, Aug 9: "the
                             progress bar should go right after"). Pinned to the
                             far edge it belonged to nothing you were reading. */}
 
-                        {/* SOMETHING WORTH READING, NEVER "NOTHING NEW" (Anir,
-                            Aug 9: "I don't understand the point of seeing
-                            nothing new, include some other thing there"). When
-                            a version adds no feature of its own, the useful
-                            fact is how many accounts are still behind it, which
-                            is a number a seller can act on. */}
-                        <span className="ml-auto flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary">
-                          <Sparkles
-                            size={11}
-                            strokeWidth={2.2}
-                            className="shrink-0"
-                            style={{ color: accent }}
-                          />
-                          <span className="truncate">
-                            {addedHere.length > 0 ? (
-                              <>
-                                <span className="font-semibold text-text-primary">
-                                  {previous ? "New here: " : "Launched with: "}
-                                </span>
-                                {addedHere.map((f) => f.name).join(", ")}
-                              </>
-                            ) : behindCount > 0 ? (
-                              <>
-                                <span className="font-semibold text-text-primary">
-                                  {behindCount} on an older build
-                                </span>{" "}
-                                could move up to this
-                              </>
-                            ) : versionFeatures.length > 0 ? (
-                              <>
-                                <span className="font-semibold text-text-primary">
-                                  Carries{" "}
-                                </span>
-                                {versionFeatures.length}{" "}
-                                {versionFeatures.length === 1
-                                  ? "feature"
-                                  : "features"}{" "}
-                                from {previous?.version ?? "launch"}
-                              </>
-                            ) : (
-                              "No features listed on this version yet"
-                            )}
-                          </span>
-                        </span>
                         {/* THE BAR MOVES RIGHT AND EXPLAINS ITSELF (Anir, Aug 9:
                             "you're gonna move the progress bar to the right"
                             and "when I hover over this bar, I probably should
@@ -1311,7 +1332,7 @@ export function FdlComponentDetail({
                             }
                           >
                             <span className="flex shrink-0 cursor-pointer items-center gap-2">
-                              <span className="h-1.5 w-[72px] overflow-hidden rounded-full bg-surface">
+                              <span className="h-2 w-[180px] overflow-hidden rounded-full bg-surface">
                                 <span
                                   className="block h-full rounded-full transition-[width] duration-500"
                                   style={{
@@ -1534,6 +1555,20 @@ export function FdlComponentDetail({
                             <span className="ml-auto font-bold tnum">
                               {versionAttachments.length}
                             </span>
+                            {/* Same blue plus as Add customer beside it, so on
+                                this panel a plus always means add. */}
+                            {canEdit && versionFeatures.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setFilesForRelease(release.id)}
+                                disabled={uploading}
+                                title={`Add a file to ${release.version}`}
+                                aria-label={`Add a file to ${release.version}`}
+                                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+                              >
+                                <Plus size={13} strokeWidth={2.6} />
+                              </button>
+                            )}
                           </p>
                           {versionAttachments.length === 0 ? (
                             <p className="text-[12.5px] text-text-secondary">
@@ -2266,6 +2301,73 @@ export function FdlComponentDetail({
       )}
 
       {/* --------------------------------------------------------- modals */}
+      {/* WHICH FEATURE DOES THIS FILE BELONG TO. Storage keys attachments to
+          features, so this is the one question the panel cannot answer on your
+          behalf without risking filing a spec under the wrong thing. */}
+      <Modal
+        open={filesForRelease !== null}
+        onClose={() => setFilesForRelease(null)}
+        title={`Add a file to ${
+          releases.find((r) => r.id === filesForRelease)?.version ?? "this version"
+        }`}
+      >
+        {(() => {
+          const target = releases.find((r) => r.id === filesForRelease);
+          const choices = target
+            ? component.features.filter((f) => f.versionIds.includes(target.id))
+            : [];
+          return (
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-text-secondary">
+                A file is pinned to a feature, so it travels with every version
+                that carries that feature. Pick the one this belongs to.
+              </p>
+              <ul className="space-y-1.5">
+                {choices.map((feature) => (
+                  <li key={feature.id}>
+                    <label
+                      className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors ${
+                        uploading
+                          ? "cursor-wait opacity-60"
+                          : "border-border-light hover:border-blue-subtle hover:bg-blue-light/30"
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        multiple
+                        disabled={uploading}
+                        className="hidden"
+                        onChange={(event) =>
+                          void attachToFeature(feature.id, event.target.files)
+                        }
+                      />
+                      <Paperclip
+                        size={13}
+                        strokeWidth={2.2}
+                        className="shrink-0 text-blue-primary"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-semibold text-text-primary">
+                          {feature.fid ? `${feature.fid} ` : ""}
+                          {feature.name}
+                        </span>
+                        <span className="block text-[11.5px] text-text-secondary">
+                          {(feature.attachments ?? []).length} file
+                          {(feature.attachments ?? []).length === 1 ? "" : "s"} so far
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              {uploading && (
+                <p className="text-[12px] text-text-secondary">Uploading…</p>
+              )}
+            </div>
+          );
+        })()}
+      </Modal>
+
       <Modal open={renaming} onClose={() => setRenaming(false)} title="Rename component">
         <form
           onSubmit={async (event) => {
