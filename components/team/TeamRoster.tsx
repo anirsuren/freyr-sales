@@ -557,7 +557,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           Quota {formatMoney(r.quota)}
                         </span>
                         <span className="text-[12px] font-bold tnum" style={r.quota > 0 ? { color: ac } : undefined}>
-                          {r.quota > 0 ? `${pct}%` : "—"}
+                          {r.quota > 0 ? `${pct}%` : "No quota"}
                         </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-surface overflow-hidden">
@@ -703,7 +703,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                 Quota attainment
                               </span>
                               <span className="text-[12px] font-bold tnum" style={r.quota > 0 ? { color: ac } : undefined}>
-                                {r.quota > 0 ? `${pct}%` : "—"}
+                                {r.quota > 0 ? `${pct}%` : "No quota"}
                               </span>
                             </div>
                             <div className="h-1.5 rounded-full bg-surface overflow-hidden mb-3">

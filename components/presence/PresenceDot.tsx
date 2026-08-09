@@ -37,7 +37,7 @@ export function PresenceDot({
   return (
     <span
       suppressHydrationWarning
-      title={`${meta.label} — ${meta.title}`}
+      title={`${meta.label}, ${meta.title}`}
       aria-label={meta.label}
       className={cn("inline-block h-2.5 w-2.5 shrink-0 rounded-full", className)}
       style={

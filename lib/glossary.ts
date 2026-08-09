@@ -78,7 +78,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   // --- deal size -----------------------------------------------------------
   size_tier: {
     term: "Deal size",
-    def: "How big this account is, bucketed into Small, Mid-size, and Large so you can filter and focus on the deals that matter most.",
+    def: "How big this account is: Small, Mid-size or Large. Use it to filter down to the deals that matter most.",
   },
   size_small: {
     term: "Small",
@@ -96,7 +96,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   // --- account health ------------------------------------------------------
   health: {
     term: "Account health",
-    def: "A quick read on how a relationship is doing, from 0–100, based on recent activity, deal momentum, and how many people you know there. Higher and greener is better.",
+    def: "A score out of 100 for how the relationship is doing. It looks at recent activity, whether deals are moving, and how many people you know there. Higher and greener is better.",
   },
   health_healthy: {
     term: "Healthy",
@@ -140,7 +140,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   // --- knowledge / misc ----------------------------------------------------
   kb_version: {
     term: "KB version",
-    def: "Which version of your Freyr knowledge base (services, messaging, positioning) the agent used to write this pitch: so you know it's on the latest playbook.",
+    def: "Which version of the Freyr playbook the agent used to write this pitch. It tells you whether the pitch is built on the latest services and messaging.",
   },
   next_best_action: {
     term: "Next best action",
@@ -148,11 +148,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   pending_approval: {
     term: "Pending approval",
-    def: "Something the agent has prepared (like a pitch or email) that's waiting for you to review and approve before it can go out.",
+    def: "Something the agent has written, like a pitch or an email. It waits here until you approve it. Nothing goes out on its own.",
   },
   pre_call_brief: {
     term: "Pre-call brief",
-    def: "A quick summary the agent puts together before a call: where the deal stands, what's at stake, and the one thing to focus on, so you walk in prepared.",
+    def: "A short summary the agent writes before a call. It covers where the deal stands, what is at stake, and the one thing to focus on.",
   },
 
   // --- dashboard KPIs ------------------------------------------------------

@@ -974,7 +974,7 @@ export function ForecastRisk({
                 <h3 className="text-[13.5px] font-semibold text-text-primary">
                   Deals driving the risk
                 </h3>
-                <InfoHint text="The inactive deals carrying the most weighted commit. The bar under each row is that deal's share of the total exposed commit." />
+                <InfoHint text="The quiet deals with the most money riding on them. The bar under each row is that deal's share of the total at risk." />
               </div>
               <p className="mt-0.5 text-[10.5px] text-text-secondary">
                 Biggest exposure first, hover a row for the full record

@@ -534,7 +534,7 @@ function seedOfferingCategories(): OfferingCategory[] {
       id: "oc-others",
       name: CAT_OTHERS,
       description:
-        "Specialist services that stand on their own rather than under one of the six categories — pharmacovigilance, medical writing, compliance and audit, and medical communication.",
+        "Specialist services that stand on their own rather than under one of the six categories, pharmacovigilance, medical writing, compliance and audit, and medical communication.",
       owner: "",
     },
   ];
@@ -1270,7 +1270,7 @@ function demoFeatureDescription(
   const closers = [
     `Available from ${firstVersion} onward and covered by the standard Freyr implementation.`,
     `Configurable per market, with the defaults set during onboarding.`,
-    `Included in the base module — no separate licence.`,
+    `Included in the base module, no separate licence.`,
   ];
   let h = 0;
   for (const ch of feature) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -2048,7 +2048,7 @@ function healOfferings(s: OfferingsStore): boolean {
       id: "oc-others",
       name: CAT_OTHERS,
       description:
-        "Specialist services that stand on their own rather than under one of the six categories — pharmacovigilance, compliance and audit, and medical communication.",
+        "Specialist services that stand on their own rather than under one of the six categories, pharmacovigilance, compliance and audit, and medical communication.",
       owner: "",
     });
   }

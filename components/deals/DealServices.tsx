@@ -48,7 +48,7 @@ export function DealServices({
         {/* The KB badge lives here, next to the recommendations it produced. */}
         <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-light px-2 py-1 text-[11px] font-semibold text-blue-primary">
           <BookOpen size={12} strokeWidth={1.9} /> KB v{kbVersion}
-          <InfoHint text="Which snapshot of Freyr's service catalogue this pitch was built from." />
+          <InfoHint text="Which version of the Freyr service list this pitch was built from." />
         </span>
       </div>
 

@@ -505,7 +505,7 @@ export const ACCESS_LEVEL_META: Record<
 > = {
   client_facing: { label: "Client Facing", short: "Client facing", color: "#0F766E", icon: Users }, // teal
   internal_only: { label: "Internal Only", short: "Internal only", color: "#C2410C", icon: Lock }, // burnt orange, #B45309 read as brown in the pill
-  agent_only: { label: "Freyr AI Only", short: "AI only", color: "#6D28D9", icon: Bot }, // violet — never a status hue
+  agent_only: { label: "Freyr AI Only", short: "AI only", color: "#6D28D9", icon: Bot }, // violet, never a status hue
 };
 
 /**

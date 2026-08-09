@@ -356,10 +356,7 @@ export function CustomerAnalyzePanel({
             You haven&apos;t analyzed this customer yet
           </p>
           <p className="text-[12.5px] text-text-secondary leading-relaxed">
-            Press Analyze to run a full enrichment pass, it pulls this company&apos;s
-            customer type, ownership, revenue, and the offerings that fit, from the
-            open web (Perplexity, LinkedIn, Firecrawl, and more). You review and
-            approve everything before it saves.
+            Press Analyze and Freyr AI looks this company up on the open web. It fills in their customer type, ownership, revenue, and the offerings that fit. You review and approve everything before it saves.
           </p>
         </div>
       }

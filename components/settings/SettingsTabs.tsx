@@ -106,7 +106,7 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
     admin: true,
     manager: false,
     rep: false,
-    note: "Owners of that offering, any role — admins can edit any offering",
+    note: "Owners of that offering, any role. Admins can edit any offering",
   },
   {
     cap: "Assign offering owners",
@@ -1230,7 +1230,7 @@ export function SettingsTabs({
                 options={[
                   {
                     value: "",
-                    label: `Automatic — follow this device (${describeZone(detectedZone)})`,
+                    label: `Automatic, follow this device (${describeZone(detectedZone)})`,
                     icon: MonitorSmartphone,
                     color: "#0071E3",
                   },

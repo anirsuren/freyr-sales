@@ -110,7 +110,7 @@ export function KnowledgePanel({
       label: "Uploaded documents",
       icon: FileText,
       blurb:
-        "The sales materials uploaded on each offering — this is their text, and what the assistant actually reads.",
+        "The sales materials uploaded on each offering. This is their text, and what the assistant actually reads.",
     },
     {
       key: "offerings",

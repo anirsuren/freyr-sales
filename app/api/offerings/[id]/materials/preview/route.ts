@@ -195,7 +195,7 @@ export async function GET(
       return NextResponse.json({
         preview: {
           kind: "unsupported",
-          reason: `This file is ${humanSize(buffer.byteLength)} — too large to open in the browser. Download it instead.`,
+          reason: `This file is ${humanSize(buffer.byteLength)}, too large to open in the browser. Download it instead.`,
         } satisfies Preview,
         label: member ? member.split("/").pop() || member : material.label,
       });

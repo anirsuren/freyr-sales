@@ -96,7 +96,7 @@ export async function POST(req: Request) {
         const o = redactAgentOnlyMaterials(roadmapSafe, viewer.memberId);
         const mats = o.materials || [];
         focus = [
-          `THE OFFERING ON SCREEN — complete record, treat as authoritative:`,
+          `THE OFFERING ON SCREEN, complete record, treat as authoritative:`,
           `Name: ${o.offering_name}`,
           o.offering_type && `Offering type: ${o.offering_type}`,
           o.offering_category && `Category: ${o.offering_category}`,
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
               .map((r) => `${r.version} (${r.status}${r.date ? `, ${r.date}` : ""})`)
               .join("; ")}`,
           "",
-          `ALL ${mats.length} SALES MATERIALS on this offering (this is the complete list — never say you only have some of them):`,
+          `ALL ${mats.length} SALES MATERIALS on this offering (this is the complete list, never say you only have some of them):`,
           ...mats.map((m, i) => {
             const bits = [
               `in folder "${m.folder || "Others"}"`,
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
                   : "client-facing",
               m.description || "",
             ].filter(Boolean);
-            return `${i + 1}. ${m.label} — ${m.kind}; ${bits.join("; ")}`;
+            return `${i + 1}. ${m.label}, ${m.kind}; ${bits.join("; ")}`;
           }),
         ]
           .filter(Boolean)

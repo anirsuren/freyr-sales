@@ -730,7 +730,7 @@ function RoadmapComparisonEditor({
             title={row.area || "Untitled area"}
             detail={
               row.current || row.previous
-                ? `${currentLabel || "Current"}: ${row.current || "—"}  ·  ${previousLabel || "Previous"}: ${row.previous || "—"}`
+                ? `${currentLabel || "Current"}: ${row.current || "Not filled in"}  ·  ${previousLabel || "Previous"}: ${row.previous || "Not filled in"}`
                 : "Nothing filled in yet"
             }
             onEdit={() => openRow(index)}
@@ -1001,7 +1001,7 @@ export function RoadmapEditorFields({
               {previousPeriod || "Nothing recorded yet"}
             </p>
             <p className="mt-0.5 text-[11.5px] text-text-tertiary">
-              Fills itself from Release history — nothing to type here.
+              Fills itself from Release history, nothing to type here.
             </p>
           </Milestone>
 
@@ -1028,7 +1028,7 @@ export function RoadmapEditorFields({
                 className={FIELD}
                 value={currentPeriod}
                 onChange={(event) => onChange(withCurrentPeriod(draft, event.target.value))}
-                placeholder="Jul 2026 — or 2026-07-14 for an exact day"
+                placeholder="Jul 2026, or 2026-07-14 for an exact day"
                 aria-label="Current release date"
               />
             </div>
@@ -1038,7 +1038,7 @@ export function RoadmapEditorFields({
               onChange={(event) =>
                 onChange({ ...draft, releaseWave: event.target.value })
               }
-              placeholder="Release wave — optional note, e.g. Live since July 2026"
+              placeholder="Release wave, optional. Example: Live since July 2026"
               aria-label="Release wave note"
             />
           </Milestone>
@@ -1125,7 +1125,7 @@ export function RoadmapEditorFields({
           step={6}
           restricted
           title="Planned for the next version"
-          caption="Owners and admins only — sellers never see this until it ships."
+          caption="Owners and admins only. Sellers never see this until it ships."
           rows={draft.nextModules}
           versions={false}
           onChange={(nextModules) => onChange({ ...draft, nextModules })}
@@ -1438,7 +1438,7 @@ export function OfferingReleasesTab({
         )}
       </SectionCard>
 
-      <SectionCard title="Feature Comparison — Current vs Previous Version" icon={GitCompareArrows} {...foldProps("comparison")}>
+      <SectionCard title="Feature comparison: current vs previous version" icon={GitCompareArrows} {...foldProps("comparison")}>
         {roadmapDetails ? (
           <div className="overflow-x-auto rounded-xl border border-border-light">
             <table className="w-full min-w-[760px] border-collapse text-left">

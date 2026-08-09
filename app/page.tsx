@@ -73,7 +73,7 @@ export default async function Home() {
             <span>for Freyr.</span>
           </h1>
           <p className={styles.lede}>
-            Offering briefs, roadmaps, sales materials and Freyr AI — in one
+            Offering briefs, roadmaps, sales materials and Freyr AI, in one
             place.
           </p>
 

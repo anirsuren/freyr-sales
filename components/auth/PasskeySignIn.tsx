@@ -50,7 +50,7 @@ export function PasskeySignIn({ next }: { next?: string }) {
       // and the browser just shows an empty security-key dialog. Say so.
       setError(
         /NotAllowed|abort/i.test(message)
-          ? "No passkey on this device yet — sign in with your password, then set up Touch ID in Settings."
+          ? "No passkey on this device yet. Sign in with your password, then set up Touch ID in Settings."
           : message
       );
     } finally {

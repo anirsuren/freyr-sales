@@ -2245,7 +2245,7 @@ export function CustomerTabs({
             <div>
               <label className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
                 Competitor / incumbent
-                <InfoHint text="Who this account currently uses for this work, or who you're up against to win it (their existing vendor or a rival you're displacing). Knowing the incumbent shapes how you pitch." />
+                <InfoHint text="Who they use for this work today, or who you are up against to win it. Knowing that changes how you pitch." />
               </label>
               {editingComp ? (
                 <div className="flex items-center gap-1.5">

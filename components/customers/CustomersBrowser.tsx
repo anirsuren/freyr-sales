@@ -724,7 +724,7 @@ export function CustomersBrowser({
             title="No customers yet"
             description={
               canAddCustomers
-                ? "Add your first account, or import your whole list from a CSV — columns: company_name, website_url, contact_name, contact_email."
+                ? "Add your first account, or import your whole list from a CSV. Columns: company_name, website_url, contact_name, contact_email."
                 : "There are no accounts in this workspace yet. Ask a workspace admin to add or import the first accounts."
             }
             action={canAddCustomers ? (

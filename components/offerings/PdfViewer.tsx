@@ -450,7 +450,7 @@ export function PdfViewer({
                 aria-label="Page number"
                 className="h-6 w-10 rounded-md bg-[var(--pdf-chrome)] text-center font-semibold text-[var(--pdf-text)] outline-none ring-blue-primary focus:ring-1"
               />
-              <span>/ {pageCount || "—"}</span>
+              <span>/ {pageCount || "?"}</span>
             </label>
             <button
               type="button"

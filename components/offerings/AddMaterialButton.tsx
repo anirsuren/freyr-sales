@@ -488,7 +488,7 @@ export function AddMaterialButton({
     // without it — this is the guard that makes "no auto-tag" real rather than
     // a default sitting one click away from being wrong.
     if (!files.length && !kind) {
-      toast("Pick the file format first — video, presentation, document or other", "error");
+      toast("Pick the file format first: video, presentation, document or other", "error");
       return;
     }
     if (!files.length && !folder) {
@@ -648,11 +648,11 @@ export function AddMaterialButton({
           !files.length
             ? "Material added"
             : wasRead
-              ? `${files.length === 1 ? "Material" : `${files.length} materials`} added — Freyr AI read ${readWords.toLocaleString()} words`
+              ? `${files.length === 1 ? "Material" : `${files.length} materials`} added, Freyr AI read ${readWords.toLocaleString()} words`
               : unsupported
                 ? "Material added. There is no text in this kind of file, so the assistant answers from its title and tags."
                 : readFailed
-                  ? "Material added. The assistant hasn't read it yet — open Edit and save to try again."
+                  ? "Material added. The assistant hasn't read it yet. Open Edit and save to try again."
                   : "Material added. The assistant found no text inside it.",
           failedCount > 0 || readFailed ? "error" : undefined
         );
@@ -823,7 +823,7 @@ export function AddMaterialButton({
               <div>
               <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 <span>Who can view this file?</span>
-                <InfoHint text="Freyr AI uses every uploaded file — this choice only controls who can open it." />
+                <InfoHint text="Freyr AI reads every file you upload. This choice only controls who can open it." />
                 {!accessLevel && (
                   <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:#B02020] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                     Required

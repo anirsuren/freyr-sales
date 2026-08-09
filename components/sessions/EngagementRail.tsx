@@ -78,7 +78,7 @@ export function EngagementRail({
       <div className="p-4 border-b border-border-light">
         <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
           Engagement
-          <InfoHint text="The timeline of every touch with this contact: calls, emails, meetings. The full history is below; log a new one only when something actually happens." />
+          <InfoHint text="Every call, email and meeting with this contact. The full history is below. Only log a new one when something actually happened." />
         </h2>
       </div>
 

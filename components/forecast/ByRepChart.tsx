@@ -105,7 +105,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
       <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
         <div className="flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">By rep</h2>
-          <InfoHint text="Every teammate's realistic (weighted) quarter forecast. Click a rep for their full breakdown." />
+          <InfoHint text="What each teammate realistically expects to close this quarter. Click a name for the full breakdown." />
           {yourRank > 0 && (
             <span className="ml-1.5 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-light text-blue-primary">
               You&apos;re #{yourRank} of {reps.length}

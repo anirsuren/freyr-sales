@@ -292,7 +292,7 @@ export function EditMaterialButton({
           {/* Say what this dialog does NOT do, so nobody hunts for it. */}
           <p className="text-[11.5px] leading-relaxed text-text-tertiary">
             To swap the file itself, remove this material and upload the new
-            version — the assistant re-reads it on the way in.
+            version, the assistant re-reads it on the way in.
           </p>
 
           <div className="flex justify-end gap-2 pt-1">

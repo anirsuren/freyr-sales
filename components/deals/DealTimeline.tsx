@@ -190,7 +190,7 @@ export function DealTimeline({
         <div>
           <div className="flex items-center gap-1.5">
             <h2 className="text-[15px] font-semibold text-text-primary">Deal stage</h2>
-            <InfoHint text="The four steps every deal walks, in order. Filled steps already happened and show the date; outlined steps are still ahead. The run between two dots is how long the deal held the first of them, measured between the dates of the touches that moved it." />
+            <InfoHint text="Every deal moves through these four steps in order. A filled dot already happened and shows its date. An empty dot is still ahead. The number between two dots is how many days the deal sat on the first one." />
           </div>
           <p className="mt-0.5 text-[11px] text-text-tertiary">
             How far this deal has got, how long each step held it, and what&apos;s

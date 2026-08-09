@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { DateField } from "@/components/ui/DateField";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -261,8 +262,8 @@ export function OfferingActivities({
 
       {versions.length === 0 ? (
         <p className="mt-2 text-[12px] text-text-tertiary">
-          No activity recorded yet. Add the first one — a lead, an opportunity,
-          a pilot — and it becomes the current activity.
+          No activity recorded yet. Add the first one, a lead, an opportunity,
+          a pilot, and it becomes the current activity.
         </p>
       ) : (
         /* A TABLE, NOT A STACK OF CARDS. Suren, Aug 9: "this is not the way
@@ -299,7 +300,7 @@ export function OfferingActivities({
                     </td>
                     <td className="min-w-[220px] py-2.5 pr-3">
                       <p className="text-[12.5px] leading-snug text-text-primary">
-                        {version.activity_description || "—"}
+                        {version.activity_description || "No details"}
                       </p>
                       {version.comments && (
                         <p className="mt-0.5 text-[11.5px] leading-snug text-text-tertiary">
@@ -317,15 +318,15 @@ export function OfferingActivities({
                       )}
                     </td>
                     <td className="py-2.5 pr-3 text-[12px] text-text-secondary tnum">
-                      {started ? formatDate(started) : "—"}
+                      {started ? formatDate(started) : "Not set"}
                     </td>
                     <td className="py-2.5 pr-3 text-[12px] text-text-secondary tnum">
-                      {version.end_date ? formatDate(version.end_date) : "—"}
+                      {version.end_date ? formatDate(version.end_date) : "Not set"}
                     </td>
                     <td className="py-2.5 pr-3 text-right text-[12px] font-semibold text-text-primary tnum">
                       {version.dollar_value > 0
                         ? money(version.dollar_value, version.currency)
-                        : "—"}
+                        : "Not set"}
                     </td>
                     <td className="py-2.5 pr-2 text-center">
                       <input
@@ -417,7 +418,7 @@ export function OfferingActivities({
             <div>
               <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                 Status
-                <InfoHint text="The date this status was reached is recorded for you, and stays editable." />
+                <InfoHint text="We record the date this status was reached. You can still change it." />
               </label>
               <ColorSelect
                 value={status}
@@ -443,7 +444,7 @@ export function OfferingActivities({
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Comments
-              <InfoHint text="Anything worth remembering — who you met, what they asked for, what happens next." />
+              <InfoHint text="Anything worth remembering: who you met, what they asked for, what happens next." />
             </label>
             <textarea
               value={comments}
@@ -458,33 +459,37 @@ export function OfferingActivities({
               I want to start a lead initiation activity and I want to finish
               the end activity by this time." End is optional — something still
               running has no end yet. */}
-          <div className="grid gap-4 sm:grid-cols-4">
-            <div>
+          {/* TWO PER ROW, NEVER FOUR. Four fields in a dialog this narrow left
+              each one about 90px wide, and ColorSelect's 170px floor pushed the
+              currency picker straight over its neighbour (Anir, Aug 9: "look at
+              the fucking bottom line"). `min-w-0` on every cell is what lets a
+              grid child actually shrink to its column. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
               <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                 Start date
-                <InfoHint text="The day this activity starts. Put a date in the future for something planned but not started — it shows as Planned until that day." />
+                <InfoHint text="The day this activity starts. Pick a future date for something planned but not started yet. It shows as Planned until that day." />
               </label>
-              <input
-                type="date"
+              <DateField
                 value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                className={FIELD}
+                onChange={setStartDate}
+                ariaLabel="Start date"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                 End date
                 <InfoHint text="When you expect it to finish, or when it did. Leave it empty while the activity is still running." />
               </label>
-              <input
-                type="date"
+              <DateField
                 value={endDate}
                 min={startDate || undefined}
-                onChange={(event) => setEndDate(event.target.value)}
-                className={FIELD}
+                onChange={setEndDate}
+                placeholder="Optional"
+                ariaLabel="End date"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
                 Value
               </label>
@@ -498,7 +503,7 @@ export function OfferingActivities({
                 className={`${FIELD} tnum`}
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
                 Currency
               </label>
@@ -510,6 +515,8 @@ export function OfferingActivities({
                 options={CURRENCY_OPTIONS}
                 ariaLabel="Currency"
                 collapsible={false}
+                minWidth={0}
+                className="w-full"
               />
             </div>
           </div>

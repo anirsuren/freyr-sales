@@ -101,7 +101,7 @@ export function CustomerDigitalComponents({
           <h2 className="flex items-center gap-2 text-[16px] font-semibold text-text-primary">
             <Boxes size={16} strokeWidth={2} className="text-blue-primary" />
             Digital components
-            <InfoHint text="The Freya software this customer runs, and the version they are on. Connect a component here and its versions and features live in FDL Components." />
+            <InfoHint text="The Freya software this customer runs, and which version. Connect one here and you can open its versions and features in FDL Components." />
           </h2>
           <p className="mt-0.5 text-[12.5px] text-text-secondary">
             Everything this customer runs today, and which version of each.
@@ -128,9 +128,7 @@ export function CustomerDigitalComponents({
             No components connected yet.
           </p>
           <p className="mx-auto mt-1 max-w-[460px] text-[12.5px] text-text-secondary">
-            Connect the modules and agents this customer runs, and record which
-            version each one is on — that is what the account team reads before
-            a renewal conversation.
+            Connect the modules and agents this customer runs, and record the version each one is on. This is what the account team reads before a renewal conversation.
           </p>
         </div>
       ) : (

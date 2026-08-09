@@ -113,7 +113,7 @@ export function ExpandedChartControl({
   const openLabel =
     triggerLabel === "Open chart"
       ? `Open ${title} chart`
-      : `${triggerLabel} — open ${title} chart`;
+      : `${triggerLabel}, open ${title} chart`;
 
   function toggle(key: string) {
     setVisibleKeys((current) => {

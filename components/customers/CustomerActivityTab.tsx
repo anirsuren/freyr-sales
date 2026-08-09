@@ -122,7 +122,7 @@ export function CustomerActivityTab({
           <div>
             <h2 className="flex items-center gap-2 text-[16px] font-semibold text-text-primary">
               Offering activity
-              <InfoHint text="The five activities from the sales workbook — Lead, Opportunity, Pilot, Contract, Delivery — each with a status of Initiated, Under progress or Completed. One activity per offering is the current one, and that is what the heat map reads." />
+              <InfoHint text="There are five kinds of activity: Lead, Opportunity, Pilot, Contract and Delivery. Each one is either Initiated, Under progress or Completed. One activity per offering is marked Current, and that is the one the heat map reads." />
             </h2>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">
               {total > 0
@@ -148,7 +148,7 @@ export function CustomerActivityTab({
               Nothing logged for this account yet.
             </p>
             <p className="mx-auto mt-1 max-w-[420px] text-[12.5px] text-text-secondary">
-              Pick the offering you are selling and record where it stands — a
+              Pick the offering you are selling and record where it stands, a
               first conversation is a Lead, a paid trial is a Pilot. You can log
               one that has not happened yet by dating it in the future.
             </p>
@@ -213,8 +213,8 @@ export function CustomerActivityTab({
         title="Which offering is this activity for?"
       >
         <p className="mb-3 text-[12.5px] text-text-secondary">
-          An activity is always about one offering. Pick it and the Lead /
-          Opportunity / Pilot / Contract / Delivery editor opens underneath.
+          Every activity belongs to one offering. Pick the offering and the
+          editor opens below it.
         </p>
         <ScrollHint className="max-h-80">
           <ul className="space-y-1.5">

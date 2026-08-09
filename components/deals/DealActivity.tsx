@@ -171,7 +171,7 @@ function ActivityHeading({ count }: { count: number }) {
             Every call, email and note logged on this deal
           </p>
         </div>
-        <InfoHint text="Each touch is coloured by the stage it moved the deal to, so this history and the stage tracker at the top of the page tell one story." />
+        <InfoHint text="Each touch is coloured by the stage it moved the deal into. So this list and the tracker at the top of the page tell the same story." />
       </div>
       {count > 0 && (
         <span className="shrink-0 rounded-full bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary tnum">

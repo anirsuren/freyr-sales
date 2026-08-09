@@ -166,7 +166,7 @@ export function buildKnowledgeBase(
         title: m.label,
         href: `/offerings/${o.id}`,
         text: [
-          `${m.label} — a ${m.kind} for ${o.offering_name}`,
+          `${m.label}, a ${m.kind} for ${o.offering_name}`,
           materialJourneyStages(m).length &&
             `Journey stages: ${materialJourneyStages(m).join(", ")}`,
           m.accessLevel && `Who can see it: ${m.accessLevel}`,

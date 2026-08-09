@@ -264,7 +264,7 @@ export default async function ReportsPage() {
         <EmptyState
           icon={ReceiptText}
           title="No offering revenue yet"
-          description="As reps log the revenue on the offerings each customer uses (on the customer's Offerings tab), it rolls up here: total revenue, licenses, customers, renewals, and what's in progress."
+          description="Reps log revenue on each customer's Offerings tab. It rolls up here: total revenue, licenses, customers, renewals, and what is still in progress."
         />
       ) : (
         <>

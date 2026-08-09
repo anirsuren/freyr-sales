@@ -468,7 +468,7 @@ export async function POST(req: NextRequest) {
       if (!hits.length) return "";
       return (
         "\n\nFREYR'S OWN KNOWLEDGE (offerings catalogue and the contents of " +
-        "uploaded sales material — quote it when it answers the question. Name " +
+        "uploaded sales material. Quote it when it answers the question. Name " +
         "normal documents, but keep sources labelled 'Private AI training material' " +
         "anonymous):\n" +
         knowledgeBlock(hits, sourceDateWindowForQuestion(message))
@@ -842,7 +842,7 @@ const AGENT_TOOLS: AgentToolDef[] = [
   {
     name: "search_offerings",
     description:
-      "Search Freyr's own offerings catalogue AND THE FULL TEXT OF EVERY UPLOADED FILE — decks, one-pagers, demo transcripts, spreadsheets — alongside each offering's description, capabilities, availability, markets, customer types and contacts. Use for ANY question about what Freyr sells, what a document says, or the materials behind an offering. Search more than once with different wording if the first search misses.",
+      "Search Freyr's own offerings catalogue AND THE FULL TEXT OF EVERY UPLOADED FILE (decks, one-pagers, demo transcripts, spreadsheets) alongside each offering's description, capabilities, availability, markets, customer types and contacts. Use for ANY question about what Freyr sells, what a document says, or the materials behind an offering. Search more than once with different wording if the first search misses.",
     input_schema: {
       type: "object",
       properties: {

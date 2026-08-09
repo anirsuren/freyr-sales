@@ -1137,7 +1137,7 @@ export function MaterialsSection({
                           className="pl-0.5 text-[10px] font-semibold tracking-[0.04em] text-text-tertiary"
                           title={
                             fileType === "LINK"
-                              ? `Opens on ${materialLinkHost(material) ?? "another site"} — a hosted link, not an uploaded file`
+                              ? `Opens on ${materialLinkHost(material) ?? "another site"}, a hosted link, not an uploaded file`
                               : `${fileType} file`
                           }
                         >

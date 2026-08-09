@@ -294,7 +294,7 @@ export default async function ForecastPage() {
             <h2 className="text-[15px] font-semibold text-text-primary">
               Quota attainment
             </h2>
-            <InfoHint text="The solid blue is your realistic (committed) forecast; the lighter blue behind it is the optimistic ceiling. The further they stretch to the right, the closer you are to target." />
+            <InfoHint text="Solid blue is what you realistically expect to close. Light blue behind it is the best case. The further right they reach, the closer you are to target." />
           </span>
           <span className="text-[13px] text-text-secondary tnum">
             {commitPct}% committed · {bestPct}% best case
@@ -339,7 +339,7 @@ export default async function ForecastPage() {
           <div className="xl:pr-5 flex flex-col">
             <div className="flex items-center gap-1.5 mb-1">
               <h2 className="text-[15px] font-semibold text-text-primary">By stage</h2>
-              <InfoHint text="Your pipeline by step of the process. The light column is the full value; the solid fill is the weighted contribution: value trimmed by each step's odds of closing." />
+              <InfoHint text="Your pipeline broken down by step. The light column is the full value. The solid part is that value cut down by how likely each step is to close." />
             </div>
             <div className="flex items-center gap-4 mb-3 text-[11px] text-text-tertiary">
               <span className="inline-flex items-center gap-1.5">
@@ -521,7 +521,7 @@ export default async function ForecastPage() {
               <h2 className="text-[15px] font-semibold text-text-primary">
                 Where your commit comes from
               </h2>
-              <InfoHint text="Your weighted commit sliced two ways: by the funnel stage it sits in, and by the offering being sold. Closed-lost deals (0% odds) drop out." />
+              <InfoHint text="Your realistic forecast, split two ways: by the stage it sits in, and by what is being sold. Lost deals are left out." />
             </div>
             <p className="text-[11px] text-text-tertiary mb-3">
               The same committed number, sliced two ways
@@ -678,7 +678,7 @@ export default async function ForecastPage() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h2 className="text-[15px] font-semibold text-text-primary">Deal drivers</h2>
-                <InfoHint text="The open opportunities contributing the most probability-adjusted revenue to this quarter's forecast." />
+                <InfoHint text="The open deals adding the most to this quarter's forecast, once the odds are applied." />
               </div>
               <p className="mt-0.5 text-[11px] text-text-tertiary">
                 Highest weighted contribution first
@@ -857,7 +857,7 @@ export default async function ForecastPage() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h2 className="text-[15px] font-semibold text-text-primary">Forecast signals</h2>
-                <InfoHint text="A compact health check of coverage, confidence, late-stage strength, and concentration risk. Higher coverage and confidence are better; high concentration means too much depends on too few deals." />
+                <InfoHint text="A quick health check on your quarter. High coverage and high confidence are good. High concentration is bad: it means too much rides on too few deals." />
               </div>
               <p className="text-[10.5px] text-text-tertiary">What needs managing now</p>
             </div>

@@ -352,7 +352,14 @@ export function FdlComponentDetail({
   }
 
   // ---- compare -----------------------------------------------------------
-  const [compareIds, setCompareIds] = useState<string[]>([]);
+  // ARRIVE ON A FILLED TABLE, not on an instruction. An empty card with a row
+  // of grey pills gave no clue that they were the control (Anir, Aug 9: "it's
+  // kind of unclear what I'm supposed to do"). The two newest versions are the
+  // comparison anyone wants first, so it starts there and the pills read as
+  // what they are: a selection you can change.
+  const [compareIds, setCompareIds] = useState<string[]>(() =>
+    releases.slice(-2).map((r) => r.id)
+  );
   const compareReleases = releases.filter((r) => compareIds.includes(r.id));
   const compareRows = useMemo(
     () =>
@@ -371,7 +378,7 @@ export function FdlComponentDetail({
       )
       .join("")}</table>`;
     downloadDocument(
-      `${component.name} — ${release.version} feature sheet`,
+      `${component.name}, ${release.version} feature sheet`,
       `${component.type} · ${release.date ? formatDate(release.date) : "date not set"} · ${rows.length} features`,
       table,
       `${slug(component.name)}-${slug(release.version)}-feature-sheet.doc`
@@ -388,14 +395,14 @@ export function FdlComponentDetail({
             .map(
               (r) =>
                 `<td class="${f.versionIds.includes(r.id) ? "yes" : "no"}">${
-                  f.versionIds.includes(r.id) ? "✓" : "—"
+                  f.versionIds.includes(r.id) ? "Yes" : "No"
                 }</td>`
             )
             .join("")}</tr>`
       )
       .join("")}</table>`;
     downloadDocument(
-      `${component.name} — version comparison`,
+      `${component.name}, version comparison`,
       `${component.type} · comparing ${compareReleases.map((r) => r.version).join(" vs ")}`,
       table,
       `${slug(component.name)}-comparison.doc`
@@ -612,7 +619,7 @@ export function FdlComponentDetail({
         <div className="flex items-center justify-between gap-4">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <Rocket size={15} strokeWidth={2} className="text-blue-primary" /> Versions
-            <InfoHint text="Every version this component has shipped or has planned. The checkmark marks the current one — the version sellers quote." />
+            <InfoHint text="Every version this component has shipped or has planned. The check mark shows the current one, the version sellers quote." />
           </h2>
           {canEdit && (
             <Button onClick={() => setAddingVersion(true)}>
@@ -863,7 +870,7 @@ export function FdlComponentDetail({
         <div className="flex items-center justify-between gap-4">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <ListChecks size={15} strokeWidth={2} className="text-blue-primary" /> Features
-            <InfoHint text="Add a feature once, then tick which versions carry it. This mapping powers the comparison and the downloadable sheets." />
+            <InfoHint text="Add a feature once, then tick the versions that have it. That is what fills the comparison table and the sheets you download." />
           </h2>
           {canEdit && (
             <Button variant="secondary" onClick={() => openFeatureModal()} disabled={releases.length === 0}>
@@ -874,7 +881,7 @@ export function FdlComponentDetail({
         {component.features.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-secondary">
             {releases.length === 0
-              ? "Add a version first — features are ticked against versions."
+              ? "Add a version first. Features are ticked against versions."
               : "No features listed yet. Add the first feature, then tick which versions carry it."}
           </p>
         ) : (
@@ -988,7 +995,7 @@ export function FdlComponentDetail({
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <Building2 size={15} strokeWidth={2} className="text-blue-primary" />
             Customers running this
-            <InfoHint text="Every customer connected to this component and the version they are on. The same record the customer's own page writes — reached from this side too." />
+            <InfoHint text="Every customer using this component, and which version they are on. It is the same record their own page shows, just reached from this side." />
           </h2>
           {canEdit && unconnected.length > 0 && (
             <Button
@@ -1052,26 +1059,36 @@ export function FdlComponentDetail({
         <section className={CARD}>
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <GitCompareArrows size={15} strokeWidth={2} className="text-blue-primary" /> Compare versions
-            <InfoHint text="Pick two or more versions — only the features present in at least one of them are shown, side by side." />
+            <InfoHint text="Pick two or more versions. You get the features side by side, and only the ones at least one of those versions has." />
           </h2>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <p className="mt-1 text-[12.5px] text-text-secondary">
+            Tap a version to add it to the table below. Tap it again to take it
+            out.
+          </p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
             {releases.map((release) => {
               const active = compareIds.includes(release.id);
               return (
                 <button
                   key={release.id}
                   type="button"
+                  aria-pressed={active}
                   onClick={() =>
                     setCompareIds((prev) =>
                       active ? prev.filter((x) => x !== release.id) : [...prev, release.id]
                     )
                   }
-                  className={`cursor-pointer rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
                     active
                       ? "border-blue-primary bg-blue-light text-blue-primary"
-                      : "border-border-light text-text-secondary hover:border-blue-subtle"
+                      : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40"
                   }`}
                 >
+                  {active ? (
+                    <Check size={12} strokeWidth={2.8} />
+                  ) : (
+                    <Plus size={12} strokeWidth={2.4} />
+                  )}
                   {release.version}
                 </button>
               );
@@ -1116,8 +1133,8 @@ export function FdlComponentDetail({
               </div>
             </>
           ) : (
-            <p className="mt-3 text-[12.5px] text-text-secondary">
-              Pick at least two versions to compare.
+            <p className="mt-3 rounded-lg border border-dashed border-border bg-blue-light/30 px-3 py-2.5 text-[12.5px] text-text-secondary">
+              Pick one more version and the table appears here.
             </p>
           )}
         </section>
@@ -1221,7 +1238,7 @@ export function FdlComponentDetail({
                 ? "Enter a version to continue."
                 : duplicateVersion
                   ? "That version already exists."
-                  : "Ready to add — tick its features in the table after."}
+                  : "Ready to add. Tick its features in the table after."}
             </p>
             <div className="flex shrink-0 gap-2">
               <Button type="button" variant="secondary" onClick={() => setAddingVersion(false)} disabled={busy}>
@@ -1338,7 +1355,7 @@ export function FdlComponentDetail({
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Feature ID
-              <InfoHint text="Generated for you and unique inside this component. Nobody has to think of one, and two features can never collide." />
+              <InfoHint text="We make this ID for you, and it is unique inside this component. Nobody has to think one up, and two features can never clash." />
             </label>
             <p className="rounded-lg border border-border-light bg-surface px-3 py-2 text-[13px] font-semibold text-text-secondary tnum">
               {featFid || nextFeatureId()}
@@ -1350,7 +1367,7 @@ export function FdlComponentDetail({
               value={featDesc}
               onChange={(event) => setFeatDesc(event.target.value)}
               rows={6}
-              placeholder="What it does. A paragraph is fine — this is what goes into the customer's feature sheet."
+              placeholder="What it does. A paragraph is fine. This is what goes into the customer's feature sheet."
               className={`${FIELD} resize-y`}
             />
           </div>

@@ -37,7 +37,7 @@ export function PreviewBanner({
     <div className="flex items-center justify-center gap-3 bg-blue-primary px-4 py-1.5 text-[12.5px] font-medium text-white">
       <Eye size={14} strokeWidth={2} className="shrink-0" />
       <span>
-        Viewing as <strong className="font-bold">{label(role)}</strong> — your
+        Viewing as <strong className="font-bold">{label(role)}</strong>, your
         real role is {label(realRole)}, so some controls are hidden.
       </span>
       <button

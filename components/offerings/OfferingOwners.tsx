@@ -407,7 +407,7 @@ export function OfferingOwners({
                   </span>
                 </span>
               </OwnerHoverCard>
-              <Tooltip label="Offering Owner — can edit this offering" side="top">
+              <Tooltip label="Offering Owner: can edit this offering" side="top">
                 <span
                   className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#6D28D9]"
                 >

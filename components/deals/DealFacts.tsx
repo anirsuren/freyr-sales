@@ -90,7 +90,7 @@ export function DealFacts({
           <h2 className="text-[15px] font-semibold text-text-primary">
             Key facts
           </h2>
-          <InfoHint text="Who is running this deal, which account it belongs to, when it opened and when it was last touched. Everything here is a fact about the record: the money and the odds live in the snapshot above." />
+          <InfoHint text="The plain facts: who owns this deal, which account it is for, when it opened, and when someone last touched it. The money and the odds are in the snapshot above." />
         </div>
         <p className="mt-0.5 text-[11px] text-text-tertiary">
           Who owns it, where it sits, and how recently it moved
@@ -158,7 +158,7 @@ export function DealFacts({
           <div className="flex items-start justify-between gap-2">
             <span className={`${EYEBROW} inline-flex items-center gap-1`}>
               Deal opened
-              <InfoHint text="When this deal was created. The snapshot counts days on the stage it is on now; this is the whole run, start to today." />
+              <InfoHint text="The day this deal was created. The snapshot counts days on the stage it is on now. This counts the whole run, start to today." />
             </span>
             <Tile color={MEASURE} Icon={CalendarPlus} />
           </div>

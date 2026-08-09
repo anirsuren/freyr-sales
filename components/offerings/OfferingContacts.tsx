@@ -46,7 +46,7 @@ const ROLE_OPTIONS: ColorOption[] = [
   // "there should be an option to add another rule, like custom").
   // "Custom role…" named the mechanism, not the choice ("custom role doesn't
   // mean anything" — Anir). This says what happens next: you type it in.
-  { value: CUSTOM_ROLE, label: "Something else — type it in", color: "#0F766E", icon: Pencil },
+  { value: CUSTOM_ROLE, label: "Something else, type it in", color: "#0F766E", icon: Pencil },
 ];
 
 /**

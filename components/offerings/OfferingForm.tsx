@@ -1769,7 +1769,7 @@ export function OfferingForm({
               <div className="space-y-4">
                 <p className="text-[12.5px] leading-relaxed text-text-secondary">
                   {addingCap === "section"
-                    ? "A heading groups the services under it on the offering page — use it when the list is long enough to need sections."
+                    ? "A heading groups the services under it on the offering page. Use it when the list is long enough to need sections."
                     : "One thing Freyr actually does inside this offering. Each one becomes its own card on the offering page, so a rep can point at it in a conversation."}
                 </p>
                 {addingCap === "section" ? (
@@ -2389,7 +2389,7 @@ export function OfferingForm({
             title={
               hasOfferingChanges
                 ? undefined
-                : "Nothing has changed yet — edit a field and this turns on."
+                : "Nothing has changed yet. Edit a field and this turns on."
             }
           >
             {isEdit ? "Save changes" : "Save offering"}

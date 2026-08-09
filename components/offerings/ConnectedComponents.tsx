@@ -88,7 +88,7 @@ export function ConnectedComponents({
             Components in this offering
           </h2>
           <p className="mt-0.5 text-[12.5px] text-text-secondary">
-            An offering is a package — these are the software pieces inside it.
+            An offering is a package, these are the software pieces inside it.
             Each keeps its own versions and features.
           </p>
         </div>
@@ -116,7 +116,7 @@ export function ConnectedComponents({
             {canEdit ? (
               <>
                 {" "}
-                — or create one first in{" "}
+               , or create one first in{" "}
                 <Link href="/components" className="font-medium text-blue-primary hover:underline">
                   FDL Components
                 </Link>

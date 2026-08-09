@@ -356,7 +356,7 @@ function fromPdf(buf: Buffer): string {
             maxOutputLength: MAX_PDF_STREAM_BYTES,
           }).toString("latin1");
         } catch {
-          text = null; // encrypted or a non-text stream — skip it
+          text = null; // encrypted or a non-text stream, skip it
         }
       }
     } else {

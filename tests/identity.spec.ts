@@ -381,14 +381,14 @@ test.describe("verified signed identities", () => {
       await page.goto("/agent");
       await expect(
         page.getByRole("heading", {
-          name: `Hey ${identity.firstName} — what do you want to work on?`,
+          name: `Hey ${identity.firstName}: what do you want to work on?`,
         })
       ).toBeVisible();
 
       await page.goto("/dashboard");
       await page.getByRole("button", { name: "Open your agent" }).click();
       await expect(
-        page.getByText(new RegExp(`^Hi ${identity.firstName} —`))
+        page.getByText(new RegExp(`^Hi ${identity.firstName}\\b`))
       ).toBeVisible();
     });
   }

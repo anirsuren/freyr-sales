@@ -365,7 +365,7 @@ export function RecordingsWorkspace() {
               <span className="text-[10px] font-bold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-blue-light text-blue-primary">
                 Sample
               </span>
-              <InfoHint text="These are sample calls so you can explore the coaching features. Upload a recording or connect your dialer (top-right) to analyze your real ones." />
+              <InfoHint text="These calls are samples, so you can try the coaching tools. Upload a recording or connect your dialer, top right, to use your real ones." />
             </span>
             <ColorSelect
               ariaLabel="Sort recordings"

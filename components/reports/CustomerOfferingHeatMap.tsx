@@ -209,7 +209,7 @@ function cellLabel(
   resolved: ReturnType<typeof resolveHeatMapCell>
 ): string {
   const engagement = resolved.engagement;
-  if (!resolved.activity) return "—";
+  if (!resolved.activity) return "None";
   if (mode === "activity")
     return CUSTOMER_OFFERING_ACTIVITIES[resolved.activity].short;
   if (mode === "dollar_value")
@@ -218,10 +218,10 @@ function cellLabel(
           engagement.dollar_value,
           engagement.currency || "USD"
         )
-      : "—";
+      : "None";
   return engagement?.potential_close_date
     ? formatDate(engagement.potential_close_date)
-    : "—";
+    : "None";
 }
 
 function replaceEngagementVersions(
@@ -1100,7 +1100,7 @@ export function CustomerOfferingHeatMap({
                       const passes = cellPassesFilters(customer, offering);
                       const label = passes
                         ? cellLabel(displayMode, resolved)
-                        : "—";
+                        : "None";
                       const isBaseline =
                         activity === "lead" && !resolved.hasHistory;
                       const categorical = displayMode === "activity";
@@ -1170,7 +1170,7 @@ export function CustomerOfferingHeatMap({
                               </span>
                             ) : (
                               <span className="text-[10px] text-text-tertiary">
-                                —
+                                None
                               </span>
                             )}
                             {resolved.hasHistory && (
@@ -1287,14 +1287,14 @@ export function CustomerOfferingHeatMap({
                       version.dollar_value,
                       version.currency || "USD"
                     )
-                  : "—";
+                  : "None";
                 const dateSummary = version.potential_close_date
                   ? `Close ${formatDate(version.potential_close_date)}`
                   : version.start_date && version.end_date
                     ? `${formatDate(version.start_date)} – ${formatDate(version.end_date)}`
                     : version.start_date
                       ? `From ${formatDate(version.start_date)}`
-                      : "—";
+                      : "None";
                 return (
                   <section
                     key={version.id}

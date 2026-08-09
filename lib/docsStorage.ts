@@ -175,7 +175,7 @@ async function callDocs<T>(path: string, payload: unknown): Promise<T> {
     body: JSON.stringify(payload),
   });
   if (res.status === 401) {
-    cached = null; // expired — next call re-mints
+    cached = null; // expired, next call re-mints
     throw new Error("Docs API unauthorized");
   }
   const json = await res.json();

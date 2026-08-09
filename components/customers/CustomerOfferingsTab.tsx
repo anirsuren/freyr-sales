@@ -1029,7 +1029,7 @@ export function CustomerOfferingsTab({
         <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
           <span className="inline-flex items-center gap-1">
             Segment
-            <InfoHint text="This account's segment: its industry and company size (e.g. Biologics, mid-size). It decides which of your offerings apply, shown below. Change it if the account was classified wrong." />
+            <InfoHint text="What kind of company this is: its industry and its size, like Biologics or mid-size. It decides which offerings apply to them, listed below. Change it if it was classified wrong." />
           </span>
           <ColorSelect
             ariaLabel="Change customer segment"

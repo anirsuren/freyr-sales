@@ -141,7 +141,7 @@ export default async function TeamPage() {
       <div className="space-y-5">
         <PageHeader
           title="Team"
-          subtitle="Everyone in the workspace — pipeline numbers fill in as deals are logged."
+          subtitle="Everyone in the workspace. Pipeline numbers fill in as deals are logged."
         />
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {rollup.map((tile) => (

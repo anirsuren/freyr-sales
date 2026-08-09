@@ -140,7 +140,7 @@ export function FdlComponentsBrowser({
           aligned with the title… so much gap"). */}
       <PageHeader
         title="FDL Components"
-        subtitle="Freya Digital components — the software pieces an offering is made of. Each keeps its own versions and features."
+        subtitle="Freya Digital components, the software pieces an offering is made of. Each keeps its own versions and features."
         action={components.length > 0 ? newButton : undefined}
       />
       {components.length > 0 && (
@@ -192,8 +192,8 @@ export function FdlComponentsBrowser({
             No components yet.
           </p>
           <p className="mx-auto mt-1 max-w-[440px] text-[12.5px] text-text-secondary">
-            A component is one piece of software — a module, an agent, a
-            platform — with its own versions and features. Create the first
+            A component is one piece of software, a module, an agent, a
+            platform, with its own versions and features. Create the first
             one, then connect it to the offerings that include it.
           </p>
           {canEdit && <div className="mt-4 flex justify-center">{newButton}</div>}
@@ -282,7 +282,7 @@ export function FdlComponentsBrowser({
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Component name
-              <InfoHint text="What this piece of software is called — for example Register Module or PI Agent." />
+              <InfoHint text="What this piece of software is called, for example Register Module or PI Agent." />
             </label>
             <input
               autoFocus

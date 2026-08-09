@@ -571,9 +571,7 @@ export function OfferingReports({
               </span>
             </h2>
             <p className="mt-0.5 text-[12px] text-text-tertiary">
-              What each account pays, what kind of revenue it is, how many seats
-              they hold, how many contracts are live, and when the next one is up.
-              Click a row to open the account.
+              What each account pays and what kind of revenue it is. Plus their seats, their live contracts, and when the next one is up. Click a row to open the account.
             </p>
           </div>
           <Layers size={17} strokeWidth={1.8} className="shrink-0 text-blue-primary" />
@@ -597,7 +595,7 @@ export function OfferingReports({
               {customerSummaries.length === 0 && (
                 <tr>
                   <td colSpan={99} className="px-5 py-8 text-center text-[12.5px] text-text-tertiary">
-                    No accounts use {offeringName} yet — the first customer marked
+                    No accounts use {offeringName} yet, the first customer marked
                     as in use starts this table.
                   </td>
                 </tr>
@@ -914,7 +912,7 @@ export function OfferingReports({
               {report.customers.length === 0 && (
                 <tr>
                   <td colSpan={99} className="px-5 py-8 text-center text-[12.5px] text-text-tertiary">
-                    No commercial lines recorded yet — each contract, license and
+                    No commercial lines recorded yet, each contract, license and
                     service agreement lands here as it is added.
                   </td>
                 </tr>

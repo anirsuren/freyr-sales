@@ -5,13 +5,13 @@ import { crc32, deflateRawSync } from "zlib";
 const PORT = Number(process.env.PORT || 3001);
 const BASE = `http://127.0.0.1:${PORT}`;
 
-test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
-  test("01 — root redirects to dashboard", async ({ page }) => {
+test.describe("Freyr Sales Intelligence Platform: Full Verification", () => {
+  test("01: root redirects to dashboard", async ({ page }) => {
     await page.goto(BASE);
     await expect(page).toHaveURL(/dashboard/);
   });
 
-  test("02 — dashboard loads with mock data", async ({ page }) => {
+  test("02: dashboard loads with mock data", async ({ page }) => {
     const errors: string[] = [];
     page.on("console", (msg) => {
       if (msg.type() === "error") errors.push(msg.text());
@@ -24,7 +24,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(errors.filter((e) => !e.includes("favicon"))).toHaveLength(0);
   });
 
-  test("03 — sidebar navigation renders and highlights active item", async ({
+  test("03: sidebar navigation renders and highlights active item", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -35,7 +35,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/pipeline/);
   });
 
-  test("04 — intake form renders all required fields", async ({ page }) => {
+  test("04: intake form renders all required fields", async ({ page }) => {
     await page.goto(`${BASE}/intake`);
     await expect(
       page.locator('input[name="companyName"], input[placeholder*="company" i]')
@@ -56,7 +56,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("05 — intake form submits and shows loading progress page", async ({
+  test("05: intake form submits and shows loading progress page", async ({
     page,
   }) => {
     await page.goto(`${BASE}/intake`);
@@ -93,7 +93,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("06 — session results page renders both columns", async ({ page }) => {
+  test("06: session results page renders both columns", async ({ page }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
     await expect(page.locator("text=BioNex Therapeutics").first()).toBeVisible();
     await expect(page.locator("text=Dr. Patricia Mayhew").first()).toBeVisible();
@@ -102,7 +102,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator("text=Cold Call Script")).toBeVisible();
   });
 
-  test("07 — pitch tabs switch content correctly", async ({ page }) => {
+  test("07: pitch tabs switch content correctly", async ({ page }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
     await page.getByRole("tab", { name: "Intro Email" }).click();
     await expect(page.locator("text=/subject/i").first()).toBeVisible();
@@ -141,7 +141,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("08 — copy button exists on each pitch tab", async ({ page }) => {
+  test("08: copy button exists on each pitch tab", async ({ page }) => {
     // Force the same non-secure conditions as the current HTTP AWS address.
     // The selection fallback must work even when Clipboard.writeText cannot.
     await page.addInitScript(() => {
@@ -166,7 +166,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(copy).toBeVisible();
   });
 
-  test("09 — engagement rail logs an interaction", async ({ page }) => {
+  test("09: engagement rail logs an interaction", async ({ page }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
     // Logging is opt-in now — expand the collapsed panel first
     await page.getByRole("button", { name: "Log an interaction" }).click();
@@ -187,7 +187,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("10 — customers list page renders with cards", async ({ page }) => {
+  test("10: customers list page renders with cards", async ({ page }) => {
     await page.goto(`${BASE}/customers`);
     // list is paginated newest-first; search to surface a known seeded account
     await page.getByPlaceholder("Search customers…").fill("BioNex");
@@ -201,7 +201,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("11 — customer detail page renders correctly", async ({ page }) => {
+  test("11: customer detail page renders correctly", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     await expect(page.locator("text=BioNex Therapeutics").first()).toBeVisible();
     await expect(page.locator("text=Dr. Patricia Mayhew").first()).toBeVisible();
@@ -215,7 +215,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator('button:has-text("Refresh research")')).toBeVisible();
   });
 
-  test("12 — contact detail page renders correctly", async ({ page }) => {
+  test("12: contact detail page renders correctly", async ({ page }) => {
     await page.goto(`${BASE}/contacts/cont-001`);
     await expect(page.locator("text=Dr. Patricia Mayhew")).toBeVisible();
     await expect(page.locator("text=VP Regulatory Affairs").first()).toBeVisible();
@@ -223,7 +223,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Regulatory Strategy").first()).toBeVisible();
   });
 
-  test("13 — admin page shows KB status and re-crawl button", async ({
+  test("13: admin page shows KB status and re-crawl button", async ({
     page,
   }) => {
     await page.goto(`${BASE}/admin`);
@@ -240,7 +240,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("14 — design spec: primary blue is #0071E3 not default Tailwind blue", async ({
+  test("14: design spec: primary blue is #0071E3 not default Tailwind blue", async ({
     page,
   }) => {
     // The New Session CTA moved off the sidebar and onto /sessions (Jul 27).
@@ -253,7 +253,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(bgColor).toBe("rgb(0, 113, 227)");
   });
 
-  test("15 — design spec: page background is white not gray", async ({
+  test("15: design spec: page background is white not gray", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -264,7 +264,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(bg).toBe("rgb(255, 255, 255)");
   });
 
-  test("16 — no console errors on any main page", async ({ page }) => {
+  test("16: no console errors on any main page", async ({ page }) => {
     const pages = ["/dashboard", "/intake", "/customers", "/admin"];
     for (const path of pages) {
       const errors: string[] = [];
@@ -281,7 +281,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("17 — mock session exists and is accessible via direct URL", async ({
+  test("17: mock session exists and is accessible via direct URL", async ({
     page,
   }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
@@ -289,7 +289,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator("text=BioNex Therapeutics").first()).toBeVisible();
   });
 
-  test("18 — loading page shows step progression with mock pipeline", async ({
+  test("18: loading page shows step progression with mock pipeline", async ({
     page,
   }) => {
     await page.goto(`${BASE}/sessions/sess-001/loading`);
@@ -302,7 +302,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   // ---- Enterprise polish-pass conformance ----
 
-  test("19 — consistent app shell: 240px sidebar + top bar on every page", async ({
+  test("19: consistent app shell: 240px sidebar + top bar on every page", async ({
     page,
   }) => {
     for (const path of ["/dashboard", "/customers", "/admin"]) {
@@ -317,7 +317,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("20 — no warm/pink/lavender background tint on dashboard", async ({
+  test("20: no warm/pink/lavender background tint on dashboard", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -344,7 +344,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(pink).toHaveLength(0);
   });
 
-  test("21 — inputs show a blue focus ring", async ({ page }) => {
+  test("21: inputs show a blue focus ring", async ({ page }) => {
     await page.goto(`${BASE}/intake`);
     const input = page.locator('input[name="companyName"]');
     await input.focus();
@@ -356,7 +356,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(shadow).toContain("0, 113, 227");
   });
 
-  test("22 — table rows stay compact and badges never wrap", async ({
+  test("22: table rows stay compact and badges never wrap", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -375,7 +375,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("23 — pipeline board renders stages and deals", async ({ page }) => {
+  test("23: pipeline board renders stages and deals", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
     await expect(page.locator("text=Qualified").first()).toBeVisible();
     await expect(page.locator("text=Meeting Booked").first()).toBeVisible();
@@ -383,14 +383,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator("text=Cortexa Biopharma").first()).toBeVisible();
   });
 
-  test("24 — dashboard links to the full analytics workspace", async ({ page }) => {
+  test("24: dashboard links to the full analytics workspace", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("link", { name: "Analytics", exact: true }).click();
     await expect(page.locator("text=Conversion Funnel")).toBeVisible();
     await expect(page.locator("text=Pipeline by Stage")).toBeVisible();
   });
 
-  test("25 — global search API returns records", async ({ request }) => {
+  test("25: global search API returns records", async ({ request }) => {
     const res = await request.get(`${BASE}/api/search?q=bionex`);
     const data = await res.json();
     expect(data.results.length).toBeGreaterThan(0);
@@ -399,7 +399,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeTruthy();
   });
 
-  test("26 — recordings workspace + call coach renders", async ({ page }) => {
+  test("26: recordings workspace + call coach renders", async ({ page }) => {
     await page.goto(`${BASE}/recordings`);
     await expect(page.getByText("Call Coach")).toBeVisible();
     await expect(page.getByText("Key Moments")).toBeVisible();
@@ -408,14 +408,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Call quality")).toBeVisible();
   });
 
-  test("27 — analytics page renders charts + leaderboard", async ({ page }) => {
+  test("27: analytics page renders charts + leaderboard", async ({ page }) => {
     await page.goto(`${BASE}/analytics`);
     await expect(page.getByText("Pipeline growth")).toBeVisible();
     await expect(page.getByText("Conversion Funnel")).toBeVisible();
     await expect(page.getByText("Rep performance")).toBeVisible();
   });
 
-  test("28 — Analytics in the sidebar; Recordings in the account menu", async ({
+  test("28: Analytics in the sidebar; Recordings in the account menu", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -427,7 +427,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/recordings/);
   });
 
-  test("29 — deal detail page renders with stage, value, KB version", async ({
+  test("29: deal detail page renders with stage, value, KB version", async ({
     page,
   }) => {
     await page.goto(`${BASE}/deals/sess-001`);
@@ -441,7 +441,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("30 — pitch workspace: objections + account-brief tabs, save/export", async ({
+  test("30: pitch workspace: objections + account-brief tabs, save/export", async ({
     page,
   }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
@@ -456,7 +456,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Industry").first()).toBeVisible();
   });
 
-  test("31 — service catalog: searchable + who-it's-for + add", async ({
+  test("31: service catalog: searchable + who-it's-for + add", async ({
     page,
   }) => {
     await page.goto(`${BASE}/services`);
@@ -468,12 +468,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Labeling/).first()).toBeVisible();
   });
 
-  test("32 — admin shows crawled pages list", async ({ page }) => {
+  test("32: admin shows crawled pages list", async ({ page }) => {
     await page.goto(`${BASE}/admin`);
     await expect(page.getByText(/Crawled Pages/)).toBeVisible();
   });
 
-  test("33 — settings tabs: profile, team, notifications, integrations", async ({
+  test("33: settings tabs: profile, team, notifications, integrations", async ({
     page,
   }) => {
     // Settings now opens on the Workspace section with titled+subtitled tabs
@@ -494,14 +494,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Anthropic/).first()).toBeVisible();
   });
 
-  test("34 — per-route page titles", async ({ page }) => {
+  test("34: per-route page titles", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     await expect(page).toHaveTitle(/Dashboard/);
     await page.goto(`${BASE}/pipeline`);
     await expect(page).toHaveTitle(/Pipeline/);
   });
 
-  test("35 — confirm modal guards a destructive delete", async ({ page }) => {
+  test("35: confirm modal guards a destructive delete", async ({ page }) => {
     await page.goto(`${BASE}/services`);
     await page.getByRole("button", { name: "Delete service" }).first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -510,7 +510,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("dialog")).toBeHidden();
   });
 
-  test("36 — contact detail: quick actions, persona, multi-thread", async ({
+  test("36: contact detail: quick actions, persona, multi-thread", async ({
     page,
   }) => {
     await page.goto(`${BASE}/contacts/cont-001`);
@@ -522,7 +522,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Who else you know here")).toBeVisible();
   });
 
-  test("37 — dashboard date-range selector scopes the view", async ({
+  test("37: dashboard date-range selector scopes the view", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -538,14 +538,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("38 — dashboard pipeline chart shows a quota line", async ({ page }) => {
+  test("38: dashboard pipeline chart shows a quota line", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     // The goal line's chip reads "Quarter quota · $3.0M" (labels carry their
     // amount now — no bare "Quota" text remains on the dashboard).
     await expect(page.getByText(/Quarter quota/).first()).toBeVisible();
   });
 
-  test("39 — creating starts on the owning page, not a global New menu", async ({
+  test("39: creating starts on the owning page, not a global New menu", async ({
     page,
   }) => {
     // The global "+ New" menu is gone. Creating things now starts from the
@@ -561,7 +561,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("40 — pipeline: add a deal manually from the board", async ({
+  test("40: pipeline: add a deal manually from the board", async ({
     page,
   }) => {
     await page.goto(`${BASE}/pipeline`);
@@ -574,7 +574,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("41 — pipeline: inline-edit a deal value", async ({ page }) => {
+  test("41: pipeline: inline-edit a deal value", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
     await page.getByRole("button", { name: "Edit deal value" }).first().click();
     const input = page.getByRole("textbox", { name: "Deal value" });
@@ -583,7 +583,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("$999K").first()).toBeVisible();
   });
 
-  test("42 — pipeline: bulk select + move cards", async ({ page }) => {
+  test("42: pipeline: bulk select + move cards", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
     await page.getByRole("button", { name: "Select", exact: true }).click();
     await page.getByRole("button", { name: "Select deal" }).first().click();
@@ -592,7 +592,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.getByRole("button", { name: "Move", exact: true }).click();
   });
 
-  test("43 — dashboard always shows period-over-period change (no toggle)", async ({
+  test("43: dashboard always shows period-over-period change (no toggle)", async ({
     page,
   }) => {
     // #118 dropped the "Change"/"vs prev" toggle — the delta is information a
@@ -602,7 +602,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByTestId("kpi-delta").first()).toBeVisible();
   });
 
-  test("44 — dashboard: customize which KPIs show", async ({ page }) => {
+  test("44: dashboard: customize which KPIs show", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("button", { name: "Customize" }).click();
     await expect(
@@ -614,7 +614,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(item).toHaveAttribute("aria-checked", "false");
   });
 
-  test("45 — dashboard: weekly digest preview modal", async ({ page }) => {
+  test("45: dashboard: weekly digest preview modal", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("button", { name: "More dashboard actions" }).click();
     await page.getByRole("button", { name: "Email me a summary" }).click();
@@ -623,7 +623,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("button", { name: "Send now" })).toBeVisible();
   });
 
-  test("46 — account: assign owner + set competitor", async ({ page }) => {
+  test("46: account: assign owner + set competitor", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     // Owner is a custom avatar dropdown (#95), not a native <select> — open it
     // and pick the teammate from the listbox.
@@ -639,7 +639,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Veeva")).toBeVisible();
   });
 
-  test("47 — account: add a note", async ({ page }) => {
+  test("47: account: add a note", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     await page.locator("main").getByRole("tab", { name: "Notes" }).click();
     const text = `QBR scheduled ${Date.now()}`;
@@ -651,7 +651,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(text)).toBeVisible();
   });
 
-  test("48 — customers list: pagination + total count", async ({ page }) => {
+  test("48: customers list: pagination + total count", async ({ page }) => {
     await page.goto(`${BASE}/customers`);
     await expect(page.getByText(/of \d+ accounts/)).toBeVisible();
     // 12 seeded accounts fill one page at the default 12/page — drop to 8/page
@@ -664,7 +664,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Page 2 of/)).toBeVisible();
   });
 
-  test("49 — session: send to CRM / push to sequence (after approval)", async ({
+  test("49: session: send to CRM / push to sequence (after approval)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
@@ -686,7 +686,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("50 — session: pitch version history modal", async ({ page }) => {
+  test("50: session: pitch version history modal", async ({ page }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
     // History now lives in the ⋯ More menu (kept the action row to one line)
     await page.getByRole("button", { name: "More actions" }).click();
@@ -701,7 +701,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible({ timeout: 20_000 });
   });
 
-  test("51 — session: duplicate creates a new session", async ({ page }) => {
+  test("51: session: duplicate creates a new session", async ({ page }) => {
     await page.goto(`${BASE}/sessions/sess-001`);
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Duplicate session" }).click();
@@ -709,14 +709,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/sessions\//);
   });
 
-  test("52 — recordings: talk-to-listen ratio meter", async ({ page }) => {
+  test("52: recordings: talk-to-listen ratio meter", async ({ page }) => {
     await page.goto(`${BASE}/recordings`);
     await expect(page.getByText("Talk ratio")).toBeVisible();
     await expect(page.getByText("Rep talking")).toBeVisible();
     await expect(page.getByText("Prospect talking")).toBeVisible();
   });
 
-  test("53 — recordings: pin a timestamped coaching comment", async ({
+  test("53: recordings: pin a timestamped coaching comment", async ({
     page,
   }) => {
     await page.goto(`${BASE}/recordings`);
@@ -727,7 +727,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(text)).toBeVisible();
   });
 
-  test("54 — recordings: upload / connect dialer modal", async ({ page }) => {
+  test("54: recordings: upload / connect dialer modal", async ({ page }) => {
     await page.goto(`${BASE}/recordings`);
     await page.getByRole("button", { name: "Add recording" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -735,7 +735,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("button", { name: "Aircall" })).toBeVisible();
   });
 
-  test("55 — intake: auto-detect company + contact from URLs", async ({
+  test("55: intake: auto-detect company + contact from URLs", async ({
     page,
   }) => {
     await page.goto(`${BASE}/intake`);
@@ -747,7 +747,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator('input[name="contactName"]')).toHaveValue("Jane Doe");
   });
 
-  test("56 — intake: recent prospects prefill the form", async ({ page }) => {
+  test("56: intake: recent prospects prefill the form", async ({ page }) => {
     await page.goto(`${BASE}/intake`);
     await expect(page.getByText("Recent prospects")).toBeVisible();
     await page.getByRole("button", { name: /Lumen Therapeutics/ }).click();
@@ -756,7 +756,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     );
   });
 
-  test("57 — intake: bulk paste-a-list queue", async ({ page }) => {
+  test("57: intake: bulk paste-a-list queue", async ({ page }) => {
     await page.goto(`${BASE}/intake`);
     await page.getByRole("button", { name: "Paste a list" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -768,7 +768,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Queued 2/)).toBeVisible();
   });
 
-  test("58 — pipeline: team vs my-deals view switch", async ({ page }) => {
+  test("58: pipeline: team vs my-deals view switch", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
     const myBtn = page.getByRole("button", { name: "My deals" });
     const teamBtn = page.getByRole("button", { name: "Team", exact: true });
@@ -779,7 +779,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(teamBtn).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("59 — pipeline: deal limits + fixed stage order", async ({ page }) => {
+  test("59: pipeline: deal limits + fixed stage order", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
     const limit = page.getByLabel("Deal limit for Prospect");
     await expect(limit).toBeVisible();
@@ -790,7 +790,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Drop deals here")).toHaveCount(0);
   });
 
-  test("60 — sidebar collapse persists across reload", async ({ page }) => {
+  test("60: sidebar collapse persists across reload", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("button", { name: "Collapse sidebar" }).click();
     await expect(
@@ -802,7 +802,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("61 — account: multiple deals per account + add deal", async ({
+  test("61: account: multiple deals per account + add deal", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-001`);
@@ -815,19 +815,19 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(name, { exact: true })).toBeVisible();
   });
 
-  test("62 — account: refresh research shows a diff", async ({ page }) => {
+  test("62: account: refresh research shows a diff", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     await page.getByRole("button", { name: "Refresh research" }).click();
     await expect(page.getByText("Research refreshed")).toBeVisible();
     await expect(page.getByText("Employee count")).toBeVisible();
   });
 
-  test("63 — settings has no fabricated billing surface", async ({ page }) => {
+  test("63: settings has no fabricated billing surface", async ({ page }) => {
     await page.goto(`${BASE}/settings`);
     await expect(page.locator("main").getByRole("tab", { name: "Billing", exact: true })).toHaveCount(0);
   });
 
-  test("64 — dark mode toggle themes the app and persists", async ({ page }) => {
+  test("64: dark mode toggle themes the app and persists", async ({ page }) => {
     // Appearance control lives on the Settings PROFILE tab (the settings page
     // itself now opens on the Workspace section).
     await page.goto(`${BASE}/settings?tab=profile`);
@@ -857,7 +857,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
       .toBe(true);
   });
 
-  test("65 — a11y: skip link, main landmark, chart labels, tab roles", async ({
+  test("65: a11y: skip link, main landmark, chart labels, tab roles", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -878,7 +878,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveAttribute("aria-selected", "true");
   });
 
-  test("66 — global activity feed renders + filters", async ({ page }) => {
+  test("66: global activity feed renders + filters", async ({ page }) => {
     await page.goto(`${BASE}/activity`);
     await expect(
       page.getByRole("heading", { name: "Activity", level: 1 })
@@ -894,14 +894,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await all.click();
   });
 
-  test("67 — keyboard shortcuts help modal", async ({ page }) => {
+  test("67: keyboard shortcuts help modal", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByText(/Open command palette/)).toBeVisible();
   });
 
-  test("68 — compliance approval gates CRM send (V2)", async ({ page }) => {
+  test("68: compliance approval gates CRM send (V2)", async ({ page }) => {
     // start from a fresh duplicate so the review state is a clean "draft"
     await page.goto(`${BASE}/sessions/sess-001`);
     await page.getByRole("button", { name: "More actions" }).click();
@@ -927,7 +927,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("69 — tasks inbox renders", async ({ page }) => {
+  test("69: tasks inbox renders", async ({ page }) => {
     await page.goto(`${BASE}/tasks`);
     await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Work queue" })).toBeVisible();
@@ -936,7 +936,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("button", { name: /Follow-ups/ })).toBeVisible();
   });
 
-  test("70 — sequences cadence library + enrollments (V2)", async ({ page }) => {
+  test("70: sequences cadence library + enrollments (V2)", async ({ page }) => {
     await page.goto(`${BASE}/sequences`);
     await expect(page.getByRole("heading", { name: "Sequences" })).toBeVisible();
     await expect(page.getByText("Accounts enrolled")).toBeVisible();
@@ -967,7 +967,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(builder.getByLabel("Step 1 day")).toHaveValue("0");
   });
 
-  test("71 — settings: CRM two-way sync card (V2)", async ({ page }) => {
+  test("71: settings: CRM two-way sync card (V2)", async ({ page }) => {
     await page.goto(`${BASE}/settings`);
     await page.locator("main").getByRole("tab", { name: "Integrations" }).click();
     // Separator-agnostic: UI copy dropped its em dashes ("CRM sync. HubSpot"),
@@ -979,7 +979,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/CRM synced/)).toBeVisible();
   });
 
-  test("72 — settings access: honest policy, no self-service roles (V2)", async ({ page }) => {
+  test("72: settings access: honest policy, no self-service roles (V2)", async ({ page }) => {
     await page.goto(`${BASE}/settings`);
     await page.locator("main").getByRole("tab", { name: "Access" }).click();
     await expect(page.getByRole("heading", { name: "Invite-only workspace" })).toBeVisible();
@@ -1006,7 +1006,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Whoever owns that offering/)).toBeVisible();
   });
 
-  test("73 — pipeline: saved views (V2)", async ({ page }) => {
+  test("73: pipeline: saved views (V2)", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
     await page.getByRole("button", { name: "Views" }).click();
     await expect(page.getByRole("menu", { name: "Saved views" })).toBeVisible();
@@ -1024,7 +1024,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("74 — compose & send email, gated on approval (V3)", async ({ page }) => {
+  test("74: compose & send email, gated on approval (V3)", async ({ page }) => {
     // fresh duplicate = clean draft
     await page.goto(`${BASE}/sessions/sess-001`);
     await page.getByRole("button", { name: "More actions" }).click();
@@ -1050,7 +1050,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Email sent to/)).toBeVisible();
   });
 
-  test("75 — printable account report (V3)", async ({ page }) => {
+  test("75: printable account report (V3)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001/report`);
     await expect(page.getByText(/Account Report/)).toBeVisible();
     await expect(
@@ -1062,7 +1062,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator('nav[aria-label="Primary"]')).toHaveCount(0);
   });
 
-  test("76 — dashboard hides the setup checklist once the workspace is in use (V3)", async ({ page }) => {
+  test("76: dashboard hides the setup checklist once the workspace is in use (V3)", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening), Anir/ })).toBeVisible();
     // The agent's "What needs your attention" queue was pulled off the
@@ -1075,7 +1075,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Get started with Freyr")).toHaveCount(0);
   });
 
-  test("77 — analytics: per-rep drill-down + date range (V3)", async ({ page }) => {
+  test("77: analytics: per-rep drill-down + date range (V3)", async ({ page }) => {
     await page.goto(`${BASE}/analytics`);
     await expect(page.getByText("Rep performance")).toBeVisible();
     // drill into a rep
@@ -1086,7 +1086,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/range=30d/);
   });
 
-  test("78 — responsive: mobile sidebar drawer (V3)", async ({ page }) => {
+  test("78: responsive: mobile sidebar drawer (V3)", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(`${BASE}/dashboard`);
     // hamburger appears on mobile
@@ -1099,7 +1099,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(nav).toBeInViewport();
   });
 
-  test("79 — notifications center: filter + mark all read (V4)", async ({
+  test("79: notifications center: filter + mark all read (V4)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/notifications`);
@@ -1118,7 +1118,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("You're all caught up")).toBeVisible();
   });
 
-  test("80 — bell opens real notifications + view all (V4)", async ({ page }) => {
+  test("80: bell opens real notifications + view all (V4)", async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
     await page.getByRole("button", { name: "Notifications" }).click();
     const viewAll = page.getByText("View all notifications");
@@ -1127,7 +1127,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/notifications/);
   });
 
-  test("81 — mobile: session 3-pane collapses to the workspace (V4)", async ({
+  test("81: mobile: session 3-pane collapses to the workspace (V4)", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 800 });
@@ -1140,7 +1140,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeHidden();
   });
 
-  test("82 — contacts: bulk select + export selected (V4)", async ({ page }) => {
+  test("82: contacts: bulk select + export selected (V4)", async ({ page }) => {
     await page.goto(`${BASE}/contacts`);
     await page.getByRole("button", { name: "Select", exact: true }).click();
     // Redesigned bar (Jul 25): quiet card, actions appear only once something
@@ -1152,7 +1152,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("83 — customers: bulk select + assign owner (V4)", async ({ page }) => {
+  test("83: customers: bulk select + assign owner (V4)", async ({ page }) => {
     await page.goto(`${BASE}/customers`);
     await page.getByRole("button", { name: "Select", exact: true }).click();
     await page.getByRole("button", { name: /^Select / }).first().click();
@@ -1162,14 +1162,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Assigned \d+ account/)).toBeVisible();
   });
 
-  test("84 — settings: email send channel listed (V4)", async ({ page }) => {
+  test("84: settings: email send channel listed (V4)", async ({ page }) => {
     await page.goto(`${BASE}/settings`);
     await page.locator("main").getByRole("tab", { name: "Integrations" }).click();
     // Separator-agnostic — the send channel is still named with its provider.
     await expect(page.getByText(/Email\W+Resend \/ SMTP send channel/)).toBeVisible();
   });
 
-  test("85 — customers: account health column + sort (V5)", async ({ page }) => {
+  test("85: customers: account health column + sort (V5)", async ({ page }) => {
     await page.goto(`${BASE}/customers`);
     await page.getByRole("button", { name: "Table view" }).click();
     await expect(page.getByText("Health", { exact: true })).toBeVisible();
@@ -1184,7 +1184,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("86 — account detail shows a health score (V5)", async ({ page }) => {
+  test("86: account detail shows a health score (V5)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     await expect(page.getByText("Account snapshot")).toBeVisible();
     await expect(
@@ -1192,14 +1192,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("89 — account health trend + factor breakdown (V5)", async ({ page }) => {
+  test("89: account health trend + factor breakdown (V5)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     await expect(page.getByText("Account snapshot")).toBeVisible();
     await expect(page.getByText("Why")).toBeVisible();
     await expect(page.getByText(/pts · 4 wk/)).toBeVisible();
   });
 
-  test("87 — dashboard Needs-Attention is health-driven (V5)", async ({
+  test("87: dashboard Needs-Attention is health-driven (V5)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -1207,7 +1207,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/At risk|Watch/).first()).toBeVisible();
   });
 
-  test("88 — customers: filter by health band (V5)", async ({ page }) => {
+  test("88: customers: filter by health band (V5)", async ({ page }) => {
     await page.goto(`${BASE}/customers`);
     await page.getByRole("button", { name: "Table view" }).click();
     // health filter is now a colour-coded ColorSelect, not a native <select>
@@ -1217,7 +1217,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/of \d+ accounts/)).toBeVisible();
   });
 
-  test("90 — forecast page: quota attainment + breakdowns (V6)", async ({
+  test("90: forecast page: quota attainment + breakdowns (V6)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/forecast`);
@@ -1232,20 +1232,20 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("heading", { name: "By rep" })).toBeVisible();
   });
 
-  test("91 — pipeline deal-velocity insights strip (V6)", async ({ page }) => {
+  test("91: pipeline deal-velocity insights strip (V6)", async ({ page }) => {
     await page.goto(`${BASE}/pipeline`);
     await expect(page.getByText("Weighted forecast")).toBeVisible();
     await expect(page.getByText("Avg idle")).toBeVisible();
     await expect(page.getByText("Stalled (14d+)")).toBeVisible();
   });
 
-  test("92 — full search results page (V6)", async ({ page }) => {
+  test("92: full search results page (V6)", async ({ page }) => {
     await page.goto(`${BASE}/search?q=bio`);
     await expect(page.getByRole("heading", { name: "Search" })).toBeVisible();
     await expect(page.getByText("BioNex Therapeutics").first()).toBeVisible();
   });
 
-  test("93 — recently-viewed populates after a visit (V6)", async ({ page }) => {
+  test("93: recently-viewed populates after a visit (V6)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-001`);
     await page.waitForTimeout(400); // let the visit tracker write localStorage
     await page.goto(`${BASE}/search`);
@@ -1253,7 +1253,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("BioNex Therapeutics").first()).toBeVisible();
   });
 
-  test("94 — AI agent console: next-best-actions + goal bar (V7)", async ({
+  test("94: AI agent console: next-best-actions + goal bar (V7)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/plan`);
@@ -1267,7 +1267,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Plan for/)).toBeVisible();
   });
 
-  test("95 — agent 'draft it for me' one-click (V7)", async ({ page }) => {
+  test("95: agent 'draft it for me' one-click (V7)", async ({ page }) => {
     await page.goto(`${BASE}/agent/inbox`);
     const handle = page
       .getByRole("button", { name: /Draft it for me/ })
@@ -1278,7 +1278,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Agent draft\W+ready for your review/)).toBeVisible();
   });
 
-  test("96 — account detail carries no agent section (V7→removed Jul 27)", async ({ page }) => {
+  test("96: account detail carries no agent section (V7→removed Jul 27)", async ({ page }) => {
     await page.goto(`${BASE}/customers/cust-002`);
     // The "Let the agent work" entry point was removed — it named no outcome,
     // so nobody pressed it (Anir, Jul 25). The section still has to be here,
@@ -1291,7 +1291,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("97 — Draft it for me opens the full draft editor (V7)", async ({
+  test("97: Draft it for me opens the full draft editor (V7)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/inbox`);
@@ -1304,7 +1304,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("98 — agent autopilot works the queue + reports (V7)", async ({ page }) => {
+  test("98: agent autopilot works the queue + reports (V7)", async ({ page }) => {
     await page.goto(`${BASE}/agent/inbox`);
     await expect(
       page.getByRole("button", { name: "Run autopilot" })
@@ -1314,7 +1314,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Waiting on you \d+/)).toBeVisible();
   });
 
-  test("99 — agent goal → visible plan (V8)", async ({ page }) => {
+  test("99: agent goal → visible plan (V8)", async ({ page }) => {
     await page.goto(`${BASE}/agent/plan`);
     await page
       .getByPlaceholder(/Tell the agent a goal/)
@@ -1326,7 +1326,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("100 — agent run history records each run with step detail (V9)", async ({
+  test("100: agent run history records each run with step detail (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/plan`);
@@ -1352,7 +1352,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("101 — the account page carries no agent chat (V8→removed Jul 27)", async ({
+  test("101: the account page carries no agent chat (V8→removed Jul 27)", async ({
     page,
   }) => {
     // Standing rule: the ONLY agent surfaces left in the app are the chat
@@ -1367,7 +1367,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("102 — agent runs API returns persisted runs with steps (V9)", async ({
+  test("102: agent runs API returns persisted runs with steps (V9)", async ({
     request,
   }) => {
     const res = await request.get(`${BASE}/api/agent/runs`);
@@ -1381,7 +1381,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(run.steps[0].label).toBeTruthy();
   });
 
-  test("103 — dashboard carries no agent attention queue (V9→removed Jul 27)", async ({
+  test("103: dashboard carries no agent attention queue (V9→removed Jul 27)", async ({
     page,
   }) => {
     // Anir: "remove the agent notifications about each deal on every single
@@ -1392,7 +1392,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("104 — the account page carries no agent run history (V9→removed Jul 27)", async ({
+  test("104: the account page carries no agent run history (V9→removed Jul 27)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-004`);
@@ -1400,7 +1400,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Agent briefing")).toHaveCount(0);
   });
 
-  test.skip("104b — run replay (retired with the account run history)", async ({
+  test.skip("104b: run replay (retired with the account run history)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-004`);
@@ -1417,12 +1417,12 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Re-ran the play/)).toBeVisible();
   });
 
-  test("105 — deal detail carries no per-deal agent card (V9→removed Jul 27)", async ({
+  test("105: deal detail carries no per-deal agent card (V9→removed Jul 27)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/deals/sess-005`);
     await expect(
-      page.getByText("Agent — next best action for this deal")
+      page.getByText("Agent: next best action for this deal")
     ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: /Let the agent work/ })
@@ -1431,7 +1431,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Pre-call brief")).toHaveCount(0);
   });
 
-  test("106 — undo reverts an auto-handled agent run (V9)", async ({ page }) => {
+  test("106: undo reverts an auto-handled agent run (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/inbox`);
     await page.getByRole("button", { name: "Run autopilot" }).click();
     await expect(page.getByText(/Drafted \d+/)).toBeVisible();
@@ -1448,7 +1448,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Reverted/).first()).toBeVisible();
   });
 
-  test("107 — agent goal templates expand into a plan (V9)", async ({ page }) => {
+  test("107: agent goal templates expand into a plan (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/plan`);
     await expect(page.getByText("Goal templates")).toBeVisible();
     await page
@@ -1460,7 +1460,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("108 — pipeline carries no agent banner or per-card nags (V9→removed Jul 27)", async ({ page }) => {
+  test("108: pipeline carries no agent banner or per-card nags (V9→removed Jul 27)", async ({ page }) => {
     // Anir: "no one's gonna click these buttons… remove the agent stuff."
     await page.goto(`${BASE}/pipeline`);
     await expect(page.getByText(/deals are cooling/)).toHaveCount(0);
@@ -1471,7 +1471,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Deal limit").first()).toBeVisible();
   });
 
-  test("109 — goal plan is executable end to end (V9)", async ({ page }) => {
+  test("109: goal plan is executable end to end (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/plan`);
     // "Work the whole pipeline" always has work (handle and/or approve), so the
     // plan is genuinely executable regardless of what earlier tests consumed.
@@ -1491,7 +1491,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("110 — contact detail carries no agent card (V9→removed Jul 27)", async ({
+  test("110: contact detail carries no agent card (V9→removed Jul 27)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/contacts/cont-001`);
@@ -1500,7 +1500,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("How to engage")).toBeVisible();
   });
 
-  test("111 — agent inbox splits approval vs auto-handle (V9)", async ({
+  test("111: agent inbox splits approval vs auto-handle (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/inbox`);
@@ -1515,7 +1515,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("112 — console links to the agent inbox (V9)", async ({ page }) => {
+  test("112: console links to the agent inbox (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/plan`);
     const card = page.getByRole("link", { name: /waiting for your approval/ });
     await expect(card).toBeVisible();
@@ -1526,7 +1526,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("113 — inbox bulk approve clears compliance in one pass (V9)", async ({
+  test("113: inbox bulk approve clears compliance in one pass (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/inbox`);
@@ -1541,7 +1541,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("114 — inbox bulk send delivers approved pitches (V9)", async ({
+  test("114: inbox bulk send delivers approved pitches (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/inbox`);
@@ -1555,7 +1555,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("115 — agent enrolls accounts into a sequence (V9)", async ({ page }) => {
+  test("115: agent enrolls accounts into a sequence (V9)", async ({ page }) => {
     await page.goto(`${BASE}/sequences`);
     // the agent banner offers to enroll stalled accounts not in a cadence
     const enrollBtn = page.getByRole("button", { name: /Enroll \d+/ });
@@ -1570,7 +1570,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("116 — agent advances an enrolled account through the cadence (V9)", async ({
+  test("116: agent advances an enrolled account through the cadence (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/sequences`);
@@ -1584,7 +1584,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/advanced/i).first()).toBeVisible();
   });
 
-  test("117 — agent runs a cadence end to end (enroll + advance) (V9)", async ({
+  test("117: agent runs a cadence end to end (enroll + advance) (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/sequences`);
@@ -1608,7 +1608,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("118 — inbox bulk actions are click-only, never a stray keypress (V9)", async ({ page }) => {
+  test("118: inbox bulk actions are click-only, never a stray keypress (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/inbox`);
     if (await page.getByRole("button", { name: /Approve all/ }).count()) {
       // a bare keypress must do NOTHING (it used to mass-approve)
@@ -1628,7 +1628,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("119 — ⌘K command palette exposes agent commands (V9)", async ({
+  test("119: ⌘K command palette exposes agent commands (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -1644,7 +1644,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/agent(\?|$)/);
   });
 
-  test("120 — palette goal deep-link auto-runs a plan (V9)", async ({ page }) => {
+  test("120: palette goal deep-link auto-runs a plan (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/plan?goal=${encodeURIComponent("Re-engage stalled accounts")}`);
     await expect(page.getByText(/Plan for/)).toBeVisible();
     await expect(
@@ -1652,7 +1652,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("121 — agent digest briefing on the console (V9)", async ({ page }) => {
+  test("121: agent digest briefing on the console (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/plan`);
     await expect(page.getByText("Agent digest")).toBeVisible();
     await expect(
@@ -1662,7 +1662,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Watch list")).toBeVisible();
   });
 
-  test("122 — palette arrow-key nav + Enter runs the selected command (V9)", async ({
+  test("122: palette arrow-key nav + Enter runs the selected command (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -1677,7 +1677,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/agent(\?|$)/);
   });
 
-  test("123 — agent preferences card persists a toggle (V9)", async ({ page }) => {
+  test("123: agent preferences card persists a toggle (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/settings`);
     await expect(page.getByText("Agent preferences")).toBeVisible();
     await page
@@ -1686,7 +1686,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/preferences saved/i)).toBeVisible();
   });
 
-  test("124 — autopilot respects the focus-industry preference (V9)", async ({
+  test("124: autopilot respects the focus-industry preference (V9)", async ({
     request,
   }) => {
     // an industry no account has → every action is out of focus and escalated
@@ -1707,7 +1707,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("125 — focus-industry filters the whole recommendation queue (V9)", async ({
+  test("125: focus-industry filters the whole recommendation queue (V9)", async ({
     request,
   }) => {
     // an industry no account has → the inbox queue empties everywhere
@@ -1722,7 +1722,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("126 — inbox shows the focus-industry lens (V9)", async ({ page }) => {
+  test("126: inbox shows the focus-industry lens (V9)", async ({ page }) => {
     await page.request.put(`${BASE}/api/agent/prefs`, {
       data: { focus_industry: "Pharmaceutical" },
     });
@@ -1735,7 +1735,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("127 — 'my accounts' lens narrows the recommendation queue (V9)", async ({
+  test("127: 'my accounts' lens narrows the recommendation queue (V9)", async ({
     request,
   }) => {
     await request.put(`${BASE}/api/agent/prefs`, {
@@ -1751,7 +1751,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await request.put(`${BASE}/api/agent/prefs`, { data: { only_mine: false } });
   });
 
-  test("128 — agent preferences: 'my accounts' toggle persists (V9)", async ({
+  test("128: agent preferences: 'my accounts' toggle persists (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/settings`);
@@ -1764,7 +1764,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("129 — ask route answers grounded in context, key-ready (V9)", async ({
+  test("129: ask route answers grounded in context, key-ready (V9)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/ask`, {
@@ -1787,7 +1787,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(["mock", "claude"]).toContain(data.source);
   });
 
-  test("130 — account chat route is Claude-ready (V9)", async ({ request }) => {
+  test("130: account chat route is Claude-ready (V9)", async ({ request }) => {
     // The per-account chat DRAWER was removed on Jul 27 (agent surfaces are
     // confined to the dock and the /agent pages), but the route it called still
     // backs the dock, so its Claude-readiness is still worth pinning.
@@ -1805,7 +1805,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(["mock", "claude"]).toContain(data.source);
   });
 
-  test("131 — plan-steps route drafts a plan, key-ready (V9)", async ({
+  test("131: plan-steps route drafts a plan, key-ready (V9)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/plan-steps`, {
@@ -1817,7 +1817,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(["mock", "claude"]).toContain(data.source);
   });
 
-  test("132 — one-tap lens preset on the agent preferences (V9)", async ({
+  test("132: one-tap lens preset on the agent preferences (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/settings`);
@@ -1834,7 +1834,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("133 — agent home is framed as a human-led assistant (V9)", async ({
+  test("133: agent home is framed as a human-led assistant (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/plan`);
@@ -1845,7 +1845,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Deterministic/)).toHaveCount(0);
   });
 
-  test("134 — agent digest is sendable (key-ready narration) (V9)", async ({
+  test("134: agent digest is sendable (key-ready narration) (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/plan`);
@@ -1853,7 +1853,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Digest sent to you/i)).toBeVisible({ timeout: 15000 });
   });
 
-  test("135 — agent draft route returns reviewable outreach (V9)", async ({
+  test("135: agent draft route returns reviewable outreach (V9)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/draft`, {
@@ -1865,7 +1865,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(["mock", "claude"]).toContain(data.source);
   });
 
-  test("136 — the drafted email arrives ready for review (V9)", async ({
+  test("136: the drafted email arrives ready for review (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/inbox`);
@@ -1878,7 +1878,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByLabel("Draft body")).toBeVisible();
   });
 
-  test("137 — rep can edit the agent's draft before send (V9)", async ({
+  test("137: rep can edit the agent's draft before send (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/inbox`);
@@ -1889,7 +1889,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(bodyEl).toHaveValue("Edited body ABC123");
   });
 
-  test("138 — top-right account menu opens with working links (V9)", async ({
+  test("138: top-right account menu opens with working links (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -1917,7 +1917,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/settings/);
   });
 
-  test("139 — rewrite gives the rep a different draft (V9)", async ({ page }) => {
+  test("139: rewrite gives the rep a different draft (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/inbox`);
     await page.getByRole("button", { name: "Draft it for me" }).first().click();
     const bodyEl = page.getByLabel("Draft body");
@@ -1927,7 +1927,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(bodyEl).not.toHaveValue(first, { timeout: 8000 });
   });
 
-  test("140 — draft variants are distinct (V9)", async ({ request }) => {
+  test("140: draft variants are distinct (V9)", async ({ request }) => {
     const v0 = await (
       await request.post(`${BASE}/api/agent/draft`, {
         data: { customerId: "cust-001", variant: 0 },
@@ -1942,7 +1942,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(v1.body).not.toBe(v0.body);
   });
 
-  test("141 — draft tone changes the email (V9)", async ({ request }) => {
+  test("141: draft tone changes the email (V9)", async ({ request }) => {
     const formal = await (
       await request.post(`${BASE}/api/agent/draft`, {
         data: { customerId: "cust-001", tone: "formal" },
@@ -1957,7 +1957,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(formal.body).toMatch(/Dear|Kind regards/);
   });
 
-  test("142 — tone chips restyle the draft in the editor (V9)", async ({
+  test("142: tone chips restyle the draft in the editor (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/inbox`);
@@ -1970,7 +1970,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("143 — default-tone preference drives the draft (V9)", async ({
+  test("143: default-tone preference drives the draft (V9)", async ({
     request,
   }) => {
     await request.put(`${BASE}/api/agent/prefs`, {
@@ -1988,7 +1988,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("144 — default draft tone is settable in preferences (V9)", async ({
+  test("144: default draft tone is settable in preferences (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/settings`);
@@ -1999,7 +1999,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("145 — scheduled autopilot surfaces a due run + runs it (V9)", async ({
+  test("145: scheduled autopilot surfaces a due run + runs it (V9)", async ({
     page,
   }) => {
     await page.request.put(`${BASE}/api/agent/prefs`, {
@@ -2016,7 +2016,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("146 — autopilot schedule is settable in preferences (V9)", async ({
+  test("146: autopilot schedule is settable in preferences (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/settings`);
@@ -2027,7 +2027,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("147 — scheduled digest surfaces a due briefing + sends it (V9)", async ({
+  test("147: scheduled digest surfaces a due briefing + sends it (V9)", async ({
     page,
   }) => {
     await page.request.put(`${BASE}/api/agent/prefs`, {
@@ -2045,7 +2045,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("148 — digest schedule is settable in preferences (V9)", async ({
+  test("148: digest schedule is settable in preferences (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/settings`);
@@ -2056,7 +2056,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("149 — draft snippet library API (list + create) (V9)", async ({
+  test("149: draft snippet library API (list + create) (V9)", async ({
     request,
   }) => {
     const list = await (await request.get(`${BASE}/api/agent/snippets`)).json();
@@ -2071,7 +2071,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(created.snippet.title).toBeTruthy();
   });
 
-  test("150 — save + insert a snippet in the editor (V9)", async ({ page }) => {
+  test("150: save + insert a snippet in the editor (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/inbox`);
     await page.getByRole("button", { name: "Draft it for me" }).first().click();
     const bodyEl = page.getByLabel("Draft body");
@@ -2087,7 +2087,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(bodyEl).not.toHaveValue(before, { timeout: 8000 });
   });
 
-  test("152 — agent weekly review rolls up the week (V9)", async ({ page }) => {
+  test("152: agent weekly review rolls up the week (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/review`);
     await expect(
       page.getByRole("heading", { name: "Weekly review" })
@@ -2101,7 +2101,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Agent actions")).toBeVisible();
   });
 
-  test("153 — console links to the weekly review (V9)", async ({ page }) => {
+  test("153: console links to the weekly review (V9)", async ({ page }) => {
     await page.goto(`${BASE}/agent/plan`);
     await page
       .getByRole("link", { name: /Weekly review/ })
@@ -2109,7 +2109,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/agent\/review/);
   });
 
-  test("151 — snippet library lists + deletes snippets (V9)", async ({
+  test("151: snippet library lists + deletes snippets (V9)", async ({
     page,
   }) => {
     // create a known snippet (title distinct from subject) for determinism
@@ -2128,7 +2128,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Snippet deleted/i)).toBeVisible();
   });
 
-  test("156 — per-account agent chat persists (API) (V9)", async ({
+  test("156: per-account agent chat persists (API) (V9)", async ({
     request,
   }) => {
     const cid = "cust-005";
@@ -2156,7 +2156,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeTruthy();
   });
 
-  test("157 — account chat thread persists between reads (V9)", async ({
+  test("157: account chat thread persists between reads (V9)", async ({
     request,
   }) => {
     // The per-account agent drawer was removed on Jul 27 — agent surfaces are
@@ -2181,7 +2181,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(again.messages.length).toBe(first.messages.length);
   });
 
-  test("158 — account chat thread can be cleared (V9)", async ({ request }) => {
+  test("158: account chat thread can be cleared (V9)", async ({ request }) => {
     const cid = "cust-006";
     await request.post(`${BASE}/api/agent/chat`, {
       data: {
@@ -2208,7 +2208,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.messages.length).toBe(0);
   });
 
-  test("159 — snippet usage count increments on use (V9)", async ({
+  test("159: snippet usage count increments on use (V9)", async ({
     request,
   }) => {
     const created = await (
@@ -2224,7 +2224,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(found.uses).toBe(1);
   });
 
-  test("161 — snippet library search filters (V9)", async ({ page, request }) => {
+  test("161: snippet library search filters (V9)", async ({ page, request }) => {
     // ensure >3 snippets incl. a unique title so the search box shows
     for (const t of ["ZebraSnippet", "Alpha one", "Beta two", "Gamma three"]) {
       await request.post(`${BASE}/api/agent/snippets`, {
@@ -2237,7 +2237,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Alpha one")).toHaveCount(0);
   });
 
-  test("160 — clearing an account chat empties the thread (V9)", async ({
+  test("160: clearing an account chat empties the thread (V9)", async ({
     request,
   }) => {
     // The per-account agent drawer was removed on Jul 27 — agent surfaces are
@@ -2260,7 +2260,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(cleared.messages.length).toBe(0);
   });
 
-  test("155 — weekly review is exportable (print + share) (V9)", async ({
+  test("155: weekly review is exportable (print + share) (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/review`);
@@ -2271,7 +2271,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Weekly review shared/i)).toBeVisible();
   });
 
-  test("154 — snippet can be renamed in the library (V9)", async ({ page }) => {
+  test("154: snippet can be renamed in the library (V9)", async ({ page }) => {
     await page.request.post(`${BASE}/api/agent/snippets`, {
       data: { title: "RenameTest", subject: "sub body", body: "x" },
     });
@@ -2287,7 +2287,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("RenameTest Updated")).toBeVisible();
   });
 
-  test("162 — agent run detail page deep-links a full step timeline (V9)", async ({
+  test("162: agent run detail page deep-links a full step timeline (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/runs/run-seed-001`);
@@ -2310,7 +2310,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("163 — 'Open run' from history navigates to the run detail (V9)", async ({
+  test("163: 'Open run' from history navigates to the run detail (V9)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/plan`);
@@ -2322,7 +2322,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("164 — run detail surfaces the timeline entries it logged (V9 #52)", async ({
+  test("164: run detail surfaces the timeline entries it logged (V9 #52)", async ({
     page,
     request,
   }) => {
@@ -2347,7 +2347,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Logged by Freyr Agent").first()).toBeVisible();
   });
 
-  test("165 — agent run history filters by kind (V9 #53)", async ({
+  test("165: agent run history filters by kind (V9 #53)", async ({
     page,
     request,
   }) => {
@@ -2371,7 +2371,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("166 — weekly review groups agent activity by account (V9 #55)", async ({
+  test("166: weekly review groups agent activity by account (V9 #55)", async ({
     page,
     request,
   }) => {
@@ -2389,7 +2389,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("167 — run detail page can re-run a play and undo a run (V9 #54)", async ({
+  test("167: run detail page can re-run a play and undo a run (V9 #54)", async ({
     page,
     request,
   }) => {
@@ -2418,7 +2418,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/This run was reverted/)).toBeVisible();
   });
 
-  test("168 — agent impact leaderboard ranks worked accounts (V9 #57)", async ({
+  test("168: agent impact leaderboard ranks worked accounts (V9 #57)", async ({
     page,
     request,
   }) => {
@@ -2441,7 +2441,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("169 — account rail carries no agent outcome summary (V9 #56→removed Jul 27)", async ({
+  test("169: account rail carries no agent outcome summary (V9 #56→removed Jul 27)", async ({
     page,
   }) => {
     // cust-004 has a seeded agent run this week.
@@ -2449,7 +2449,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("This week:")).toHaveCount(0);
   });
 
-  test("170 — agent impact page has a working time-window toggle (V9 #58)", async ({
+  test("170: agent impact page has a working time-window toggle (V9 #58)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/impact`);
@@ -2462,7 +2462,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Runs all time")).toBeVisible();
   });
 
-  test("171 — agent impact page charts runs over time (V9 #59)", async ({
+  test("171: agent impact page charts runs over time (V9 #59)", async ({
     page,
     request,
   }) => {
@@ -2476,7 +2476,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("img", { name: /Bar chart:/ })).toBeVisible();
   });
 
-  test("172 — goal plan preview is a non-mutating dry run (V9 #62)", async ({
+  test("172: goal plan preview is a non-mutating dry run (V9 #62)", async ({
     request,
   }) => {
     const before = (await (await request.get(`${BASE}/api/agent/runs`)).json())
@@ -2497,7 +2497,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(after).toBe(before);
   });
 
-  test("173 — goal bar surfaces the plan preview before executing (V9 #62)", async ({
+  test("173: goal bar surfaces the plan preview before executing (V9 #62)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/plan`);
@@ -2511,7 +2511,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("174 — partial plan execution handles only the selected actions (V9 #63)", async ({
+  test("174: partial plan execution handles only the selected actions (V9 #63)", async ({
     request,
   }) => {
     const goal = "Find the highest-leverage moves across my pipeline";
@@ -2533,7 +2533,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(edata.skipped).toBe(ids.length - sel.length);
   });
 
-  test("175 — rep can deselect a plan action in the preview (V9 #63)", async ({
+  test("175: rep can deselect a plan action in the preview (V9 #63)", async ({
     page,
   }) => {
     // Mock the preview so the deselection mechanic is tested deterministically,
@@ -2574,7 +2574,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("176 — inbox can approve or decline a pitch in review (V9 #65)", async ({
+  test("176: inbox can approve or decline a pitch in review (V9 #65)", async ({
     page,
     request,
   }) => {
@@ -2609,7 +2609,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("177 — declining can be cancelled without sending back (V9 #66)", async ({
+  test("177: declining can be cancelled without sending back (V9 #66)", async ({
     page,
     request,
   }) => {
@@ -2633,7 +2633,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("178 — rework can be re-submitted for review in one click (V9 #68)", async ({
+  test("178: rework can be re-submitted for review in one click (V9 #68)", async ({
     page,
     request,
   }) => {
@@ -2661,7 +2661,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("179 — sent-back pitches count toward the inbox total (V9 #69)", async ({
+  test("179: sent-back pitches count toward the inbox total (V9 #69)", async ({
     request,
   }) => {
     await request.put(`${BASE}/api/agent/prefs`, {
@@ -2683,7 +2683,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(after.needsApproval).toBe(before.needsApproval - 1);
   });
 
-  test("180 — agent account briefing synthesizes a research read (V9 #71)", async ({
+  test("180: agent account briefing synthesizes a research read (V9 #71)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/briefing`, {
@@ -2707,7 +2707,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.narrative.length).toBeGreaterThan(20);
   });
 
-  test("181 — account overview shows the agent briefing (V9 #71)", async ({
+  test("181: account overview shows the agent briefing (V9 #71)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-004`);
@@ -2717,7 +2717,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/^Recommended:/)).toHaveCount(0);
   });
 
-  test("182 — deal detail shows a pre-call briefing (V9 #73)", async ({
+  test("182: deal detail shows a pre-call briefing (V9 #73)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/deals/sess-001`);
@@ -2728,7 +2728,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/^Recommended:/)).toHaveCount(0);
   });
 
-  test("183 — the account page carries no briefing card (V9 #72→removed Jul 27)", async ({
+  test("183: the account page carries no briefing card (V9 #72→removed Jul 27)", async ({
     page,
   }) => {
     // The re-brief / copy-briefing controls went with the card itself: agent
@@ -2743,7 +2743,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("184 — high-value guardrail escalates big accounts (V9 #75)", async ({
+  test("184: high-value guardrail escalates big accounts (V9 #75)", async ({
     request,
   }) => {
     const goal = "Find the highest-leverage moves across my pipeline";
@@ -2780,7 +2780,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("185 — high-value guardrail is settable in preferences (V9 #75)", async ({
+  test("185: high-value guardrail is settable in preferences (V9 #75)", async ({
     page,
     request,
   }) => {
@@ -2807,7 +2807,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("186 — plan preview reports the value-ceiling hold count (V9 #76)", async ({
+  test("186: plan preview reports the value-ceiling hold count (V9 #76)", async ({
     request,
   }) => {
     const goal = "Find the highest-leverage moves across my pipeline";
@@ -2835,7 +2835,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(on.heldForValue).toBe(off.willHandle.length - on.willHandle.length);
   });
 
-  test("187 — autopilot report flags value-ceiling holds (V9 #76)", async ({
+  test("187: autopilot report flags value-ceiling holds (V9 #76)", async ({
     page,
   }) => {
     // Mock the autopilot result so the banner is tested deterministically.
@@ -2858,7 +2858,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/\$250K/).first()).toBeVisible();
   });
 
-  test("188 — contact detail shows a pre-call briefing (V9 #74)", async ({
+  test("188: contact detail shows a pre-call briefing (V9 #74)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/contacts/cont-001`);
@@ -2866,7 +2866,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/^Recommended:/)).toHaveCount(0);
   });
 
-  test("189 — a plan steer is recorded on the run (V9 #64)", async ({
+  test("189: a plan steer is recorded on the run (V9 #64)", async ({
     request,
   }) => {
     const steer = "mention our new FDA fast-track service";
@@ -2885,7 +2885,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(plan.summary).toContain(steer);
   });
 
-  test("190 — the goal plan offers a draft steer before executing (V9 #64)", async ({
+  test("190: the goal plan offers a draft steer before executing (V9 #64)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent/plan`);
@@ -2898,7 +2898,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("191 — dashboard controls are real, not mock (export + view all)", async ({
+  test("191: dashboard controls are real, not mock (export + view all)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -2914,7 +2914,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/sessions/);
   });
 
-  test("192 — agent is a chat that answers a grounded question (V10)", async ({
+  test("192: agent is a chat that answers a grounded question (V10)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent`);
@@ -2931,7 +2931,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("193 — agent chat composer sends a typed message (V10)", async ({
+  test("193: agent chat composer sends a typed message (V10)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent`);
@@ -2948,7 +2948,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("194 — chat refines a draft using conversation context (V10)", async ({
+  test("194: chat refines a draft using conversation context (V10)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -2970,7 +2970,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).toMatch(/tighten|shorter|quick call|subject/);
   });
 
-  test("195 — agent actually SAVES a draft (real action, not just talk) (V11)", async ({
+  test("195: agent actually SAVES a draft (real action, not just talk) (V11)", async ({
     request,
   }) => {
     const save = await request.post(`${BASE}/api/agent/converse`, {
@@ -2981,7 +2981,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
           { role: "user", text: "draft an email to Helix Biologics" },
           {
             role: "agent",
-            text: "Here's a draft for Helix Biologics — review before it goes out:\n\nSubject: A quick idea for your upcoming milestones\n\nHi there, Freyr helps clinical-stage teams hit FDA/EMA timelines. Worth a 20-minute call?\n\nBest,\nSarah",
+            text: "Here's a draft for Helix Biologics: review before it goes out:\n\nSubject: A quick idea for your upcoming milestones\n\nHi there, Freyr helps clinical-stage teams hit FDA/EMA timelines. Worth a 20-minute call?\n\nBest,\nSarah",
           },
         ],
       },
@@ -3000,7 +3000,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(rd.reply.toLowerCase()).toContain("saved a draft");
   });
 
-  test("196 — agent sets a real follow-up reminder (V11)", async ({
+  test("196: agent sets a real follow-up reminder (V11)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3013,7 +3013,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).toContain("helix");
   });
 
-  test("197 — agent logs a call as a real touch (V11)", async ({ request }) => {
+  test("197: agent logs a call as a real touch (V11)", async ({ request }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
       data: { mock: true, message: "log a call with Helix Biologics", history: [] },
     });
@@ -3023,7 +3023,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).toMatch(/logged/);
   });
 
-  test("198 — agent doesn't give the same canned line twice (V11)", async ({
+  test("198: agent doesn't give the same canned line twice (V11)", async ({
     request,
   }) => {
     const first = await request.post(`${BASE}/api/agent/converse`, {
@@ -3045,7 +3045,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(r2.trim()).not.toBe(r1.trim());
   });
 
-  test("199 — agent pulls up a real, account-tailored pitch (V11)", async ({
+  test("199: agent pulls up a real, account-tailored pitch (V11)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3060,7 +3060,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).toContain("subject:");
   });
 
-  test("200 — agent NAMES pending pitches instead of blanking (V12)", async ({
+  test("200: agent NAMES pending pitches instead of blanking (V12)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3075,7 +3075,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).toMatch(/pitch|approv|waiting|all clear/);
   });
 
-  test("201 — agent parses a written-number follow-up date (V13)", async ({
+  test("201: agent parses a written-number follow-up date (V13)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3091,7 +3091,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).toContain("in 2 weeks");
   });
 
-  test("202 — agent logs a touch reported in passing, but not a future one (V13)", async ({
+  test("202: agent logs a touch reported in passing, but not a future one (V13)", async ({
     request,
   }) => {
     // Reported in passing (no word "log") → logged.
@@ -3109,7 +3109,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(b.did).not.toBe("log_touch");
   });
 
-  test("203 — agent sets a follow-up on an explicit calendar date (V13)", async ({
+  test("203: agent sets a follow-up on an explicit calendar date (V13)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3125,7 +3125,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).toContain("jun 30");
   });
 
-  test("204 — agent refuses to send on the rep's behalf, human-led (V13)", async ({
+  test("204: agent refuses to send on the rep's behalf, human-led (V13)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3144,7 +3144,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.did).not.toBe("save_draft");
   });
 
-  test("205 — agent flags an unknown account instead of ignoring it (V13)", async ({
+  test("205: agent flags an unknown account instead of ignoring it (V13)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3161,7 +3161,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(e.reply.toLowerCase()).toMatch(/draft|subject/);
   });
 
-  test("206 — agent drafts for a described account, not just a named one (V13)", async ({
+  test("206: agent drafts for a described account, not just a named one (V13)", async ({
     request,
   }) => {
     // Criterion targeting ("a cooling account", "my biggest deal") must resolve to
@@ -3175,7 +3175,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).not.toMatch(/which account is it for/);
   });
 
-  test("207 — agent sets a follow-up on a described account (V13)", async ({
+  test("207: agent sets a follow-up on a described account (V13)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3187,7 +3187,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).not.toMatch(/who should i set/);
   });
 
-  test("208 — chat action reply deep-links to the account (V13)", async ({
+  test("208: chat action reply deep-links to the account (V13)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent`);
@@ -3201,7 +3201,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible({ timeout: 12000 });
   });
 
-  test("209 — answer lists deep-link the accounts they name (V13)", async ({
+  test("209: answer lists deep-link the accounts they name (V13)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3212,7 +3212,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply).toMatch(/\]\(\/customers\//);
   });
 
-  test("210 — fallback brain answers 'which is most urgent' with the single top item (V13)", async ({
+  test("210: fallback brain answers 'which is most urgent' with the single top item (V13)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3224,7 +3224,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply.toLowerCase()).not.toContain("here's where i'd start");
   });
 
-  test("212 — agent summary endpoint returns the rep's workload (V13)", async ({
+  test("212: agent summary endpoint returns the rep's workload (V13)", async ({
     request,
   }) => {
     const res = await request.get(`${BASE}/api/agent/summary`);
@@ -3236,7 +3236,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(typeof d.openValueLabel).toBe("string");
   });
 
-  test("211 — fallback brain drafts for 'that one' using conversation context (V13)", async ({
+  test("211: fallback brain drafts for 'that one' using conversation context (V13)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3245,7 +3245,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
         message: "ok draft something for that one",
         history: [
           { role: "user", text: "tell me about Helix Biologics" },
-          { role: "agent", text: "Helix Biologics — healthy health..." },
+          { role: "agent", text: "Helix Biologics: healthy health..." },
         ],
       },
     });
@@ -3269,14 +3269,14 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     { role: "user", text: "Which accounts are at-risk?" },
     {
       role: "agent",
-      text: "4 accounts are at-risk:\n• Northwind Biosciences — $125K open\n• Meridian Pharmaceuticals — $0 open\n• Indavel Pharma — $0 open\n• BioNex Therapeutics — $250K open\n\nWant me to draft re-engagement for the top one?",
+      text: "4 accounts are at-risk:\n• Northwind Biosciences: $125K open\n• Meridian Pharmaceuticals: $0 open\n• Indavel Pharma: $0 open\n• BioNex Therapeutics: $250K open\n\nWant me to draft re-engagement for the top one?",
     },
   ];
   const oneAcctHist = (name: string) => [
     { role: "user", text: `tell me about ${name}` },
     {
       role: "agent",
-      text: `${name} — healthy health (78/100). 1 open deal worth $250K.`,
+      text: `${name}: healthy health (78/100). 1 open deal worth $250K.`,
     },
   ];
 
@@ -3304,7 +3304,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   ];
 
   for (const [n, message, history, expectName] of followupCases) {
-    test(`${n} — agent follow-up summarizes "${message}" (V14)`, async ({
+    test(`${n}: agent follow-up summarizes "${message}" (V14)`, async ({
       request,
     }) => {
       const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3320,7 +3320,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // 233–234 — routing guardrails: broadening the detail intent must NOT steal
   // pipeline / at-risk-list questions and turn them into a single-account
   // summary. These pin the boundary the V14 fix had to respect.
-  test("233 — 'pipeline worth' still answers pipeline, not an account summary (V14)", async ({
+  test("233: 'pipeline worth' still answers pipeline, not an account summary (V14)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3331,7 +3331,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(reply).not.toMatch(SUMMARY_RE);
   });
 
-  test("234 — 'which accounts are at-risk' still lists, not a single summary (V14)", async ({
+  test("234: 'which accounts are at-risk' still lists, not a single summary (V14)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3347,7 +3347,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // SUREN-VIDEO-REVIEW.md): new nav item, visualization, filtering, detail with
   // sales materials, entry, and customer-type/market definitions.
   // -------------------------------------------------------------------------
-  test("235 — Offerings is in the nav and the repository renders (V15)", async ({
+  test("235: Offerings is in the nav and the repository renders (V15)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -3387,7 +3387,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(statusChip).toHaveCount(0);
   });
 
-  test("236 — Offerings search filters the visualization (V15)", async ({
+  test("236: Offerings search filters the visualization (V15)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
@@ -3396,7 +3396,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Freya.Label")).toHaveCount(0);
   });
 
-  test("237 — Offering detail shows availability, types, markets, materials (V15)", async ({
+  test("237: Offering detail shows availability, types, markets, materials (V15)", async ({
     page,
   }) => {
     // of-001 (Freya.Register) carries availability, all customer types, all
@@ -3421,7 +3421,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("238 — Customer types page shows the definitions, grouped by family (V15)", async ({
+  test("238: Customer types page shows the definitions, grouped by family (V15)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings/customer-types`);
@@ -3440,7 +3440,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Under $500M").first()).toBeVisible();
   });
 
-  test("239 — Offerings API: list is seeded and create works (V15)", async ({
+  test("239: Offerings API: list is seeded and create works (V15)", async ({
     request,
   }) => {
     const list = await request.get(`${BASE}/api/offerings`);
@@ -3453,7 +3453,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
     const created = await request.post(`${BASE}/api/offerings`, {
       data: {
-        offering_name: "QA — Test Offering",
+        offering_name: "QA: Test Offering",
         offering_type: "Freya Fusion (Module)",
         customer_type_ids: ["ct-pharma-l"],
         market_ids: ["mkt-usa"],
@@ -3461,10 +3461,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
     const cd = await created.json();
     expect(cd.ok).toBe(true);
-    expect(cd.offering.offering_name).toBe("QA — Test Offering");
+    expect(cd.offering.offering_name).toBe("QA: Test Offering");
   });
 
-  test("240 — Customer-types & markets APIs return the seeded reference data (V15)", async ({
+  test("240: Customer-types & markets APIs return the seeded reference data (V15)", async ({
     request,
   }) => {
     const ct = await (await request.get(`${BASE}/api/customer-types`)).json();
@@ -3552,7 +3552,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await request.delete(`${BASE}/api/offerings/${id}/owners`);
   }
 
-  test("241 — an existing offering can be edited (maintainable repository) (V16)", async ({
+  test("241: an existing offering can be edited (maintainable repository) (V16)", async ({
     page,
     request,
   }) => {
@@ -3582,7 +3582,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.offering.materials[0].id).toBeTruthy();
   });
 
-  test("242 — market/type chips deep-link into a filtered offerings view (V16)", async ({
+  test("242: market/type chips deep-link into a filtered offerings view (V16)", async ({
     page,
   }) => {
     // A ?market= deep link pre-filters the list to that market.
@@ -3600,7 +3600,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/market=mkt-japan/);
   });
 
-  test("243 — the offering header carries no Duplicate action (V17)", async ({
+  test("243: the offering header carries no Duplicate action (V17)", async ({
     page,
     request,
   }) => {
@@ -3617,7 +3617,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, "of-001");
   });
 
-  test("244 — the unmapped worklist filters to offerings still awaiting details (V17)", async ({
+  test("244: the unmapped worklist filters to offerings still awaiting details (V17)", async ({
     page,
   }) => {
     // The "X awaiting details" counter was REMOVED from the stat card (Saras,
@@ -3640,7 +3640,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("245 — an offering can be deleted from the edit screen (V18)", async ({
+  test("245: an offering can be deleted from the edit screen (V18)", async ({
     page,
     request,
   }) => {
@@ -3661,7 +3661,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(after.status()).toBe(404);
   });
 
-  test("246 — a market can be added and removed (V18)", async ({
+  test("246: a market can be added and removed (V18)", async ({
     page,
     request,
   }) => {
@@ -3680,7 +3680,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(mk.markets.some((m: any) => m.id === mid)).toBe(false);
   });
 
-  test("247 — the offerings view exports to CSV (V19)", async ({ page }) => {
+  test("247: the offerings view exports to CSV (V19)", async ({ page }) => {
     await page.goto(`${BASE}/offerings`);
     const [download] = await Promise.all([
       page.waitForEvent("download"),
@@ -3713,7 +3713,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // Grounded, read-only lookups (no fuzzy account matching); runs in the
   // deterministic path so production gets it without a key.
   // -------------------------------------------------------------------------
-  test("248 — agent gives an offerings overview (V20)", async ({ request }) => {
+  test("248: agent gives an offerings overview (V20)", async ({ request }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
       data: { mock: true, message: "what offerings do we have?" },
     });
@@ -3727,7 +3727,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(bullets).toBe(stated);
   });
 
-  test("249 — agent describes a specific offering with a deep link (V20)", async ({
+  test("249: agent describes a specific offering with a deep link (V20)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3739,7 +3739,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply).toMatch(/\/offerings\/of-/);
   });
 
-  test("250 — agent lists offerings by market (V20)", async ({ request }) => {
+  test("250: agent lists offerings by market (V20)", async ({ request }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
       data: { mock: true, message: "which offerings are available in Europe?" },
     });
@@ -3750,7 +3750,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.reply).toContain("Freya.Register");
   });
 
-  test("251 — offerings answers don't hijack normal pipeline questions (V20)", async ({
+  test("251: offerings answers don't hijack normal pipeline questions (V20)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/agent/converse`, {
@@ -3763,7 +3763,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect((d.reply || "").length).toBeGreaterThan(0);
   });
 
-  test("252 — agent empty state surfaces the offerings starter (V20)", async ({
+  test("252: agent empty state surfaces the offerings starter (V20)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/agent`);
@@ -3778,7 +3778,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible({ timeout: 12000 });
   });
 
-  test("253 — offerings are findable in global search (V20)", async ({
+  test("253: offerings are findable in global search (V20)", async ({
     request,
   }) => {
     const r = await (
@@ -3794,7 +3794,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(r2.results.some((x: any) => x.type === "Customer")).toBe(true);
   });
 
-  test("254 — agent answers offerings by availability (V21)", async ({
+  test("254: agent answers offerings by availability (V21)", async ({
     request,
   }) => {
     const now = await (
@@ -3814,7 +3814,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(soon.reply.toLowerCase()).toContain("coming up");
   });
 
-  test("255 — agent answers offerings by sales material (V22)", async ({
+  test("255: agent answers offerings by sales material (V22)", async ({
     request,
   }) => {
     const vid = await (
@@ -3834,7 +3834,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(mat.reply.toLowerCase()).toContain("sales materials");
   });
 
-  test("256 — offerings sort is deep-linkable (V23)", async ({ page }) => {
+  test("256: offerings sort is deep-linkable (V23)", async ({ page }) => {
     // Sort is the app-wide colour-coded dropdown now (a button, not a native
     // <select>) — the deep-link contract is the same, asserted via its label.
     const sortBtn = page.getByRole("button", { name: "Sort offerings" });
@@ -3847,7 +3847,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(sortBtn).toContainText("Recommended");
   });
 
-  test("257 — offering detail shows completeness status at a glance (V24)", async ({
+  test("257: offering detail shows completeness status at a glance (V24)", async ({
     page,
     request,
   }) => {
@@ -3865,7 +3865,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await request.delete(`${BASE}/api/offerings/${id}`); // cleanup
   });
 
-  test("258 — Categories stat deep-links to the categories manager (V49)", async ({
+  test("258: Categories stat deep-links to the categories manager (V49)", async ({
     page,
   }) => {
     // Suren's Jun 27 shift: markets come off the front, categories take their
@@ -3884,7 +3884,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.locator("#markets")).toBeVisible();
   });
 
-  test("259 — agent offerings suggestions never dead-end (V26)", async ({
+  test("259: agent offerings suggestions never dead-end (V26)", async ({
     request,
   }) => {
     const overview = await (
@@ -3907,7 +3907,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("260 — bad links land on a branded 404 (V27)", async ({ page }) => {
+  test("260: bad links land on a branded 404 (V27)", async ({ page }) => {
     // Detail routes stream via loading.tsx, so notFound() renders the branded
     // page with a 200 (same as customers/contacts) — what matters is that the
     // user sees the branded not-found content and a way back, not Next's bare
@@ -3922,7 +3922,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("261 — new-offering form focuses the name field on empty submit (V28)", async ({
+  test("261: new-offering form focuses the name field on empty submit (V28)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
@@ -3939,7 +3939,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeFocused();
   });
 
-  test("262 — half-filled material row blocks save instead of vanishing (V29)", async ({
+  test("262: half-filled material row blocks save instead of vanishing (V29)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
@@ -3967,7 +3967,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Add a link for/i)).toBeVisible();
   });
 
-  test("263 — bare-domain material links get an https scheme (V30)", async ({
+  test("263: bare-domain material links get an https scheme (V30)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
@@ -3998,7 +3998,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("264 — re-adding a customer type refines it, never duplicates (V31)", async ({
+  test("264: re-adding a customer type refines it, never duplicates (V31)", async ({
     request,
   }) => {
     const before = (
@@ -4042,7 +4042,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("265 — removing an in-use market asks first (V32)", async ({ page }) => {
+  test("265: removing an in-use market asks first (V32)", async ({ page }) => {
     await page.goto(`${BASE}/offerings/customer-types`);
     // Europe is mapped to offerings → X opens an inline confirm, nothing deleted
     await page.getByRole("button", { name: "Remove Europe" }).click();
@@ -4055,7 +4055,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(markets.some((m: any) => m.name === "Europe")).toBe(true);
   });
 
-  test("266 — offerings search reaches markets and customer types (V33)", async ({
+  test("266: offerings search reaches markets and customer types (V33)", async ({
     page,
   }) => {
     // "Europe" isn't in any offering name/type/description — only as a mapped
@@ -4071,7 +4071,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/No offerings match .*zzznope/)).toBeVisible();
   });
 
-  test("267 — global search finds offerings by mapped market (V34)", async ({
+  test("267: global search finds offerings by mapped market (V34)", async ({
     request,
   }) => {
     // "Europe" only appears as a mapped market, so offering hits prove global
@@ -4084,7 +4084,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(helix.results.some((x: any) => x.type === "Customer")).toBe(true);
   });
 
-  test("268 — the edit screen opens straight onto the offering's name (V35)", async ({
+  test("268: the edit screen opens straight onto the offering's name (V35)", async ({
     page,
     request,
   }) => {
@@ -4101,7 +4101,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, "of-003");
   });
 
-  test("269 — add-type panel says update, not add, for an existing pair (V36)", async ({
+  test("269: add-type panel says update, not add, for an existing pair (V36)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings/customer-types`);
@@ -4116,7 +4116,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // 270–273 — Suren's Jun 25 video #2: offering type as a managed master list,
   // an offering-type filter, and customer type as the primary card qualifier.
   // -------------------------------------------------------------------------
-  test("270 — Offering types master list renders (V37)", async ({ page }) => {
+  test("270: Offering types master list renders (V37)", async ({ page }) => {
     await page.goto(`${BASE}/offerings/offering-types`);
     await expect(
       page.getByRole("heading", { name: "Offering types", exact: true })
@@ -4134,7 +4134,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("271 — Offering types API: seeded list and create (V37)", async ({
+  test("271: Offering types API: seeded list and create (V37)", async ({
     request,
   }) => {
     const list = await (
@@ -4149,16 +4149,16 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBe(true);
     const created = await (
       await request.post(`${BASE}/api/offering-types`, {
-        data: { name: "QA — Offering Type", description: "QA desc" },
+        data: { name: "QA: Offering Type", description: "QA desc" },
       })
     ).json();
     expect(created.ok).toBe(true);
-    expect(created.offeringType.name).toBe("QA — Offering Type");
+    expect(created.offeringType.name).toBe("QA: Offering Type");
     // leave no junk behind for later tests
     await request.delete(`${BASE}/api/offering-types/${created.offeringType.id}`);
   });
 
-  test("272 — offerings can be filtered by offering type (V37)", async ({
+  test("272: offerings can be filtered by offering type (V37)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
@@ -4177,7 +4177,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Publishing", { exact: true })).toBeVisible();
   });
 
-  test("273 — cards lead with the offering name, details below (V38)", async ({
+  test("273: cards lead with the offering name, details below (V38)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
@@ -4196,7 +4196,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // 274–277 — Suren's Jun 26 video #3: availability pick list + comments rename,
   // and admin vs sales (view-only) user roles.
   // -------------------------------------------------------------------------
-  test("274 — availability is a pick list; future renamed to comments (V39)", async ({
+  test("274: availability is a pick list; future renamed to comments (V39)", async ({
     page,
     request,
   }) => {
@@ -4223,7 +4223,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, "of-003");
   });
 
-  test("275 — an OWNER sees the edit controls; an admin who owns nothing does not (V40)", async ({
+  test("275: an OWNER sees the edit controls; an admin who owns nothing does not (V40)", async ({
     page,
     request,
   }) => {
@@ -4252,7 +4252,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, "of-003");
   });
 
-  test("276 — sales user is view-only across the module (V40)", async ({
+  test("276: sales user is view-only across the module (V40)", async ({
     page,
     context,
   }) => {
@@ -4281,7 +4281,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("277 — sales cannot write via the API (V40)", async ({ request }) => {
+  test("277: sales cannot write via the API (V40)", async ({ request }) => {
     const res = await request.post(`${BASE}/api/offerings`, {
       headers: { Cookie: "freyr_as_role=sales" },
       data: { offering_name: "Should Be Blocked" },
@@ -4289,7 +4289,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(res.status()).toBe(403);
   });
 
-  test("278 — service offerings are seeded with their delivery POCs (V41)", async ({
+  test("278: service offerings are seeded with their delivery POCs (V41)", async ({
     page,
     request,
   }) => {
@@ -4328,7 +4328,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("279 — agent answers service-delivery POC questions (V42)", async ({
+  test("279: agent answers service-delivery POC questions (V42)", async ({
     request,
   }) => {
     // A specific offering's answer names its data POC.
@@ -4355,7 +4355,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // 280–282 — Suren's live meeting + Digital Sales and Marketing.xlsx:
   // early adopters, the new material types, and offering-type descriptions.
   // -------------------------------------------------------------------------
-  test("280 — offerings carry an offering category from Suren's sheet (V49)", async ({
+  test("280: offerings carry an offering category from Suren's sheet (V49)", async ({
     page,
     request,
   }) => {
@@ -4384,7 +4384,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("281 — offerings support the new material types (V43)", async ({
+  test("281: offerings support the new material types (V43)", async ({
     page,
   }) => {
     // of-012 carries a Competition material.
@@ -4396,7 +4396,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Case study").first()).toBeVisible();
   });
 
-  test("282 — offering types carry their descriptions from the sheet (V43)", async ({
+  test("282: offering types carry their descriptions from the sheet (V43)", async ({
     page,
     request,
   }) => {
@@ -4410,7 +4410,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/system of record/i).first()).toBeVisible();
   });
 
-  test("283 — offerings have a tile / grid view toggle (V44)", async ({
+  test("283: offerings have a tile / grid view toggle (V44)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
@@ -4436,7 +4436,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // Suren's Jun 27 grouping: offerings group under a category, and picking a
   // category shows just its offerings ("if I pick Global Regulatory Intelligence
   // I see these offerings").
-  test("284 — the category filter shows only that category's offerings (V49)", async ({
+  test("284: the category filter shows only that category's offerings (V49)", async ({
     page,
   }) => {
     // Deep-link into the Global Regulatory Intelligence category.
@@ -4451,7 +4451,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("285 — the offering categories manager lists Suren's categories (V49)", async ({
+  test("285: the offering categories manager lists Suren's categories (V49)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings/offering-categories`);
@@ -4469,7 +4469,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Assign an owner/i).first()).toBeVisible();
   });
 
-  test("286 — agent answers offering-category questions (V49)", async ({
+  test("286: agent answers offering-category questions (V49)", async ({
     request,
   }) => {
     // "what's in <category>" lists its offerings
@@ -4502,7 +4502,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   // --- Loop pass: AI-native Publishing, report parity, view-only completeness ---
 
-  test("287 — Publishing is typed as the one AI-native service (V46)", async ({
+  test("287: Publishing is typed as the one AI-native service (V46)", async ({
     page,
     request,
   }) => {
@@ -4517,7 +4517,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Publishing", { exact: true })).toBeVisible();
   });
 
-  test("288 — offerings import from Suren's Excel sheet (V49)", async ({
+  test("288: offerings import from Suren's Excel sheet (V49)", async ({
     page,
     request,
   }) => {
@@ -4543,7 +4543,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(plan.early_adopters).toBeUndefined();
   });
 
-  test("289 — every account card carries a status chip, never an empty gap (V46)", async ({
+  test("289: every account card carries a status chip, never an empty gap (V46)", async ({
     page,
   }) => {
     // The fix guarantees a card always shows a status chip: the logged outcome
@@ -4570,7 +4570,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("290 — empty offering sections are view-only friendly for sales (V46)", async ({
+  test("290: empty offering sections are view-only friendly for sales (V46)", async ({
     page,
     context,
   }) => {
@@ -4587,7 +4587,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("291 — the service catalog is view-only for sales users (V46)", async ({
+  test("291: the service catalog is view-only for sales users (V46)", async ({
     page,
     context,
   }) => {
@@ -4611,7 +4611,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // --- Loop pass: cleaner "who it's for", and the offering↔customer link made
   // live in the agent (briefing + Ask-the-agent). ---
 
-  test("292 — an offering for every segment reads 'All customer types' (V47)", async ({
+  test("292: an offering for every segment reads 'All customer types' (V47)", async ({
     page,
   }) => {
     // of-001 (Freya.Register) applies to all 9 customer types, so the card
@@ -4625,7 +4625,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toHaveCount(0);
   });
 
-  test("293 — the offering detail surfaces its category as an object (V49)", async ({
+  test("293: the offering detail surfaces its category as an object (V49)", async ({
     page,
   }) => {
     // The category is a first-class object on the offering: its description + a
@@ -4641,7 +4641,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(seeAll).toHaveAttribute("href", "/offerings?cat=oc-gri");
   });
 
-  test("294 — the offering form has an offering-category dropdown (V49)", async ({
+  test("294: the offering form has an offering-category dropdown (V49)", async ({
     page,
     request,
   }) => {
@@ -4660,7 +4660,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, "of-001");
   });
 
-  test("295 — a blank offering description shows the type's, clearly labelled (V47)", async ({
+  test("295: a blank offering description shows the type's, clearly labelled (V47)", async ({
     page,
   }) => {
     // of-001 has no own description yet, so the page shows the offering type's
@@ -4674,7 +4674,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // --- Loop pass: Excel-export completeness (Suren works in spreadsheets) + a
   // report-owner consistency fix. ---
 
-  test("296 — the forecast page exports a board-ready CSV (V48)", async ({
+  test("296: the forecast page exports a board-ready CSV (V48)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/forecast`);
@@ -4690,7 +4690,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(csv).toContain("Rep,Open,Weighted,% of quota");
   });
 
-  test("297 — the contacts export includes email (V48)", async ({ page }) => {
+  test("297: the contacts export includes email (V48)", async ({ page }) => {
     await page.goto(`${BASE}/contacts`);
     const [download] = await Promise.all([
       page.waitForEvent("download"),
@@ -4702,7 +4702,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(csv).toMatch(/@/);
   });
 
-  test("298 — the customers export includes health (V48)", async ({ page }) => {
+  test("298: the customers export includes health (V48)", async ({ page }) => {
     await page.goto(`${BASE}/customers`);
     const [download] = await Promise.all([
       page.waitForEvent("download"),
@@ -4712,7 +4712,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(csv.split("\n")[0]).toContain("Health");
   });
 
-  test("299 — the offerings export fills Description from the type when blank (V48)", async ({
+  test("299: the offerings export fills Description from the type when blank (V48)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings`);
@@ -4726,7 +4726,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(csv).toContain("system of record and external data");
   });
 
-  test("300 — the account report shows an effective owner, never 'Unassigned' (V48)", async ({
+  test("300: the account report shows an effective owner, never 'Unassigned' (V48)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-004/report`);
@@ -4738,7 +4738,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
 
   // --- Loop pass: offerings-first surfacing (Suren's "offerings is module #1"). ---
 
-  test("301 — global search advertises offerings, and the nav leads with them (V49)", async ({
+  test("301: global search advertises offerings, and the nav leads with them (V49)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -4760,7 +4760,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // --- Loop pass: offering-name hygiene (the Excel import had left stray double
   // spaces and inconsistent agent-bundle spacing — Suren judges his #1 module by
   // glance, so guard against them creeping back). ---
-  test("302 — offering names are clean and consistent (V50)", async ({
+  test("302: offering names are clean and consistent (V50)", async ({
     request,
   }) => {
     const data = await (await request.get(`${BASE}/api/offerings`)).json();
@@ -4797,7 +4797,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     return (await res.json()) as { source?: string; reply: string };
   }
 
-  test("303 — the agent lists an offering's actual materials, by type (V51)", async ({
+  test("303: the agent lists an offering's actual materials, by type (V51)", async ({
     request,
   }) => {
     // "what materials" names the items, not just "3 sales materials"
@@ -4816,7 +4816,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(noComp.reply).toMatch(/no competition/i);
   });
 
-  test("304 — the agent answers per-offering market availability (V51)", async ({
+  test("304: the agent answers per-offering market availability (V51)", async ({
     request,
   }) => {
     // Freya.Register is sold GLOBALLY (change request 11), so a question about
@@ -4832,7 +4832,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(china.reply).toContain("China");
   });
 
-  test("305 — the catalog answers newer material-type questions (V51)", async ({
+  test("305: the catalog answers newer material-type questions (V51)", async ({
     request,
   }) => {
     // competition is a material type now — "which offerings have competition?"
@@ -4846,7 +4846,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // AI-native / agentic distinction + the markets and customer-type master
   // lists), instead of falling back to the generic overview / pipeline brain. ---
 
-  test("306 — the agent filters offerings by type (AI-native / agentic) (V52)", async ({
+  test("306: the agent filters offerings by type (AI-native / agentic) (V52)", async ({
     request,
   }) => {
     const ai = await ask(request, "which offerings are AI native?");
@@ -4858,7 +4858,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(agents.reply).toContain("Freya.Register + Pia + Mia");
   });
 
-  test("307 — the agent lists the markets we sell in (V52)", async ({
+  test("307: the agent lists the markets we sell in (V52)", async ({
     request,
   }) => {
     const r = await ask(request, "what markets do we sell in?");
@@ -4868,7 +4868,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("308 — the agent lists the customer types, by family (V52)", async ({
+  test("308: the agent lists the customer types, by family (V52)", async ({
     request,
   }) => {
     const r = await ask(request, "what customer types are there?");
@@ -4900,7 +4900,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     return ((await res.json()).answer || "") as string;
   }
 
-  test("309 — Ask-the-agent routes who/owner/competition correctly (V53)", async ({
+  test("309: Ask-the-agent routes who/owner/competition correctly (V53)", async ({
     request,
   }) => {
     // "who should I talk to?" used to match "should" → generic next step; now
@@ -4916,7 +4916,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     );
   });
 
-  test("310 — Ask-the-agent points draft requests to the action surface (V53)", async ({
+  test("310: Ask-the-agent points draft requests to the action surface (V53)", async ({
     request,
   }) => {
     const a = await askAccount(request, "draft an email to them");
@@ -4924,7 +4924,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(a).toMatch(/approve|review/i);
   });
 
-  test("311 — the agent answers 'how many markets' (V53)", async ({
+  test("311: the agent answers 'how many markets' (V53)", async ({
     request,
   }) => {
     const r = await ask(request, "how many markets are there?");
@@ -4936,7 +4936,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // model: offering, customer, contact) — answer about a person by name, and
   // resolve a named contact to their account for actions. ---
 
-  test("312 — the agent answers about a contact by name (V54)", async ({
+  test("312: the agent answers about a contact by name (V54)", async ({
     request,
   }) => {
     const r = await ask(request, "what should I know about Dr. Lena Vogt?");
@@ -4951,7 +4951,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(off.source).toBe("offerings");
   });
 
-  test("313 — naming a contact for an action resolves their account (V54)", async ({
+  test("313: naming a contact for an action resolves their account (V54)", async ({
     request,
   }) => {
     // "draft an email to Dr. Lena Vogt" used to ask "which account?"; now it
@@ -4971,7 +4971,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // an account against the offerings customer-type definitions and proposes
   // type / ownership / revenue; once qualified, the applicable offerings show. ---
 
-  test("314 — analyze API qualifies an account against the type definitions (V49)", async ({
+  test("314: analyze API qualifies an account against the type definitions (V49)", async ({
     request,
   }) => {
     const res = await request.post(`${BASE}/api/customers/cust-004/analyze`);
@@ -4989,7 +4989,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.analysis.customer_type_id).toBeTruthy();
   });
 
-  test("315 — approving the analysis persists the customer profile (V49)", async ({
+  test("315: approving the analysis persists the customer profile (V49)", async ({
     request,
   }) => {
     const res = await request.patch(`${BASE}/api/customers/cust-005`, {
@@ -5008,7 +5008,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(d.customer.analyzed_at).toBeTruthy();
   });
 
-  test("316 — a qualified customer shows its profile + applicable offerings (V49)", async ({
+  test("316: a qualified customer shows its profile + applicable offerings (V49)", async ({
     page,
     request,
   }) => {
@@ -5032,7 +5032,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("317 — an un-analyzed customer offers the Analyze action (V49)", async ({
+  test("317: an un-analyzed customer offers the Analyze action (V49)", async ({
     page,
   }) => {
     // cust-002 (Indavel) is not analyzed → a slim prompt (not an empty card)
@@ -5046,7 +5046,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("318 — customers page dropped the size filter, kept bulk select (V49)", async ({
+  test("318: customers page dropped the size filter, kept bulk select (V49)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers`);
@@ -5065,7 +5065,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("319 — a customer's New session button deep-links a prefilled intake (V50)", async ({
+  test("319: a customer's New session button deep-links a prefilled intake (V50)", async ({
     page,
   }) => {
     // One-click "start a pitch for this account" — the header button carries the
@@ -5092,7 +5092,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // sales materials inline — split into "already using" vs. what's left to
   // sell. The rep never has to leave the customer page. ---
 
-  test("320 — an unclassified customer can be classified from the Offerings tab (V55)", async ({
+  test("320: an unclassified customer can be classified from the Offerings tab (V55)", async ({
     page,
     request,
   }) => {
@@ -5118,7 +5118,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByTestId("cust-offering-of-001")).toBeVisible(); // Freya.Register applies
   });
 
-  test("321 — a classified customer shows applicable offerings with materials, split by adoption (V55)", async ({
+  test("321: a classified customer shows applicable offerings with materials, split by adoption (V55)", async ({
     page,
   }) => {
     // Helix (cust-004) is seeded classified (Pharmaceutical - Large) and
@@ -5152,7 +5152,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("POC: Aditi Kalia")).toBeVisible();
   });
 
-  test("322 — marking an offering as already-using moves it out of the pitch list (V55)", async ({
+  test("322: marking an offering as already-using moves it out of the pitch list (V55)", async ({
     page,
     request,
   }) => {
@@ -5186,7 +5186,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // inherits their customer's applicable offerings with role-keyword matches
   // flagged; on-demand LinkedIn/email drafts; campaigns; voice-agent queue. ---
 
-  test("323 — a contact inherits applicable offerings with role matches flagged (V56)", async ({
+  test("323: a contact inherits applicable offerings with role matches flagged (V56)", async ({
     page,
   }) => {
     // Lena Vogt (cont-004) @ Helix — classified Pharmaceutical - Large.
@@ -5204,7 +5204,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(outreach.getByRole("button", { name: /AI voice/ })).toBeVisible();
   });
 
-  test("324 — on-demand LinkedIn draft is offering-grounded and char-budgeted (V56)", async ({
+  test("324: on-demand LinkedIn draft is offering-grounded and char-budgeted (V56)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/contacts/cont-004`);
@@ -5224,7 +5224,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Nothing sends from here/)).toBeVisible();
   });
 
-  test("325 — a campaign drafts content, takes recipients, and queues honestly (V56)", async ({
+  test("325: a campaign drafts content, takes recipients, and queues honestly (V56)", async ({
     page,
     request,
   }) => {
@@ -5249,7 +5249,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/1 recipient/).first()).toBeVisible();
   });
 
-  test("326 — bulk voice-agent runs queue per offering category (V56)", async ({
+  test("326: bulk voice-agent runs queue per offering category (V56)", async ({
     request,
   }) => {
     const res = await (
@@ -5262,7 +5262,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).json();
     expect(res.ok).toBe(true);
     expect(res.queued).toBe(2);
-    expect(res.called).toBe(0); // mock mode / no phone number yet — honest
+    expect(res.called).toBe(0); // mock mode / no phone number yet: honest
     expect(res.status.phoneConnected).toBe(false);
     const list = await (await request.get(`${BASE}/api/voice/queue`)).json();
     expect(list.queue.length).toBeGreaterThanOrEqual(2);
@@ -5272,7 +5272,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   // --- Anir's rep-lens audit (Jul 3): select-all + inline voice run (no
   // popup), the voice command center, and campaign progress at a glance. ---
 
-  test("327 — contacts: Select all + run the voice agent inline (V57)", async ({
+  test("327: contacts: Select all + run the voice agent inline (V57)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/contacts`);
@@ -5288,7 +5288,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/Queued 11 calls/)).toBeVisible();
   });
 
-  test("328 — the voice command center shows agents, queue and honest status (V57)", async ({
+  test("328: the voice command center shows agents, queue and honest status (V57)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/voice`);
@@ -5321,7 +5321,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("329 — campaign cards link to a visual detail page (V58)", async ({
+  test("329: campaign cards link to a visual detail page (V58)", async ({
     page,
   }) => {
     // QA Blast (queued, 1 recipient) exists from test 325.
@@ -5343,7 +5343,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByLabel("Campaign name")).toBeVisible();
   });
-  test("330 — no Ask Agent banner, tab or drawer on the account page (V59→removed Jul 27)", async ({
+  test("330: no Ask Agent banner, tab or drawer on the account page (V59→removed Jul 27)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-002`);
@@ -5365,7 +5365,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
   });
 
-  test("331 — seeded campaign shows real engagement graphs (V59)", async ({
+  test("331: seeded campaign shows real engagement graphs (V59)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/campaigns`);
@@ -5384,7 +5384,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText(/reply rate/).first()).toBeVisible();
   });
 
-  test("332 — voice page charts outcomes from the sample calls (V59)", async ({
+  test("332: voice page charts outcomes from the sample calls (V59)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/voice`);
@@ -5400,7 +5400,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Follow-up").first()).toBeVisible();
   });
 
-  test("333 — overview leads About → Company profile in the flow (V59)", async ({
+  test("333: overview leads About → Company profile in the flow (V59)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/customers/cust-004`);
@@ -5412,7 +5412,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Account snapshot")).toBeVisible();
     await expect(page.getByText("Why")).toBeVisible();
   });
-  test("334 — voice team: named personas, clickable → their own page (V60)", async ({
+  test("334: voice team: named personas, clickable → their own page (V60)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/voice`);
@@ -5440,7 +5440,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Marcus Thorne").first()).toBeVisible();
   });
 
-  test("334b — voice outcome chart exposes sales detail on hover", async ({ page }) => {
+  test("334b: voice outcome chart exposes sales detail on hover", async ({ page }) => {
     await page.goto(`${BASE}/voice/agents/maya-regulatory-affairs`);
 
     const chart = page.getByRole("img", {
@@ -5477,7 +5477,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBe(true);
   });
 
-  test("335 — campaign cards are fully clickable (V60)", async ({ page }) => {
+  test("335: campaign cards are fully clickable (V60)", async ({ page }) => {
     await page.goto(`${BASE}/campaigns`);
     // the whole card is the link — no hunting for a View button
     await page
@@ -5489,7 +5489,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeVisible();
   });
 
-  test("336 — campaign engagement has a line chart with metric toggles (V60)", async ({
+  test("336: campaign engagement has a line chart with metric toggles (V60)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/campaigns/camp-seed-001`);
@@ -5502,7 +5502,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await opened.click();
     await expect(opened).toHaveAttribute("aria-pressed", "false");
   });
-  test("337 — submitting for review shows up on the Sessions list (V61)", async ({
+  test("337: submitting for review shows up on the Sessions list (V61)", async ({
     page,
   }) => {
     // fresh duplicate → the gate explains itself in draft state
@@ -5524,7 +5524,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Review", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("In review").first()).toBeVisible();
   });
-  test("338 — saves survive navigating away and back (V61)", async ({
+  test("338: saves survive navigating away and back (V61)", async ({
     page,
   }) => {
     // The exact class of bug Anir hit: mutate → client-nav elsewhere → return.
@@ -5544,10 +5544,10 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await page.getByRole("button", { name: "Add note" }).click();
     await page
       .getByPlaceholder("Internal context…")
-      .fill("Persistence check note — must survive navigation.");
+      .fill("Persistence check note: must survive navigation.");
     await page.getByRole("button", { name: "Save note" }).click();
     await expect(
-      page.getByText("Persistence check note — must survive navigation.").first()
+      page.getByText("Persistence check note: must survive navigation.").first()
     ).toBeVisible();
 
     // leave via client-side nav, then come back
@@ -5559,11 +5559,11 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Veeva QA").first()).toBeVisible();
     await page.getByRole("tab", { name: "Notes" }).click();
     await expect(
-      page.getByText("Persistence check note — must survive navigation.").first()
+      page.getByText("Persistence check note: must survive navigation.").first()
     ).toBeVisible();
   });
 
-  test("339 — an in-use offering can capture revenue lines (V62)", async ({
+  test("339: an in-use offering can capture revenue lines (V62)", async ({
     page,
   }) => {
     // Helix (cust-004) is classified with offerings already in use.
@@ -5603,7 +5603,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("340 — offering Reports tab rolls revenue up across customers (V62)", async ({
+  test("340: offering Reports tab rolls revenue up across customers (V62)", async ({
     page,
   }) => {
     // Freya.Register (of-001) is used by Helix + Meridian in the seed.
@@ -5619,7 +5619,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Meridian Pharmaceuticals").first()).toBeVisible();
   });
 
-  test("341 — the Reports page rolls revenue up across the portfolio (V63)", async ({
+  test("341: the Reports page rolls revenue up across the portfolio (V63)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/reports`);
@@ -5642,7 +5642,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page).toHaveURL(/\/reports/);
   });
 
-  test("342 — customer intelligence tabs keep charts, context, and entity imagery (V64)", async ({
+  test("342: customer intelligence tabs keep charts, context, and entity imagery (V64)", async ({
     page,
     request,
   }) => {
@@ -5675,7 +5675,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Logged by Walter Hensley")).toBeVisible();
   });
 
-  test("343 — dashboard metrics and priority rows explain their data on hover (V64)", async ({
+  test("343: dashboard metrics and priority rows explain their data on hover (V64)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/dashboard`);
@@ -5712,7 +5712,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(chartTip.getByText("Records at this point")).toBeVisible();
   });
 
-  test("344 — campaign audience stacks fan out into named record links (V64)", async ({
+  test("344: campaign audience stacks fan out into named record links (V64)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/campaigns`);
@@ -5755,7 +5755,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByRole("tooltip").last()).toContainText(/campaign recipient/);
   });
 
-  test("345 — contact call history searches transcript text instead of chart cards (V65)", async ({
+  test("345: contact call history searches transcript text instead of chart cards (V65)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/voice/contact/cont-008`);
@@ -5774,7 +5774,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("1 match")).toBeVisible();
   });
 
-  test("346 — campaign engagement tooltip stays beside the chart (V66)", async ({
+  test("346: campaign engagement tooltip stays beside the chart (V66)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/campaigns`);
@@ -5800,7 +5800,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBe(true);
   });
 
-  test("346b — shared donut tooltips never cover the chart", async ({ page }) => {
+  test("346b: shared donut tooltips never cover the chart", async ({ page }) => {
     const pagesWithDonuts: { path: string; name: RegExp }[] = [
       { path: "/dashboard", name: /Donut chart:/ },
       { path: "/forecast", name: /Donut chart:/ },
@@ -5846,7 +5846,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("347 — rep pipeline segments show sales context without breaking row expansion (V67)", async ({
+  test("347: rep pipeline segments show sales context without breaking row expansion (V67)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/analytics`);
@@ -5877,7 +5877,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(page.getByText("Pipeline value by stage").first()).toBeVisible();
   });
 
-  test("348 — sequence cadence stays on one horizontally scrollable row (V68)", async ({
+  test("348: sequence cadence stays on one horizontally scrollable row (V68)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/sequences`);
@@ -5909,7 +5909,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await expect(steps.last()).toBeInViewport();
   });
 
-  test("349 — offering report uses a compact commercial breakdown (V69)", async ({
+  test("349: offering report uses a compact commercial breakdown (V69)", async ({
     page,
   }) => {
     await page.goto(`${BASE}/offerings/of-001?tab=reports`);
@@ -5942,7 +5942,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(box!.height).toBeLessThan(360);
   });
 
-  test("350 — every offering has its own icon, and the icon catalogue cannot drift", async () => {
+  test("350: every offering has its own icon, and the icon catalogue cannot drift", async () => {
     // Icons are assigned by POSITION in lib/offeringCatalogue.ts, not by a hash
     // of the name, because a hash cannot guarantee uniqueness and demonstrably
     // repeated glyphs across the set (Anir, Jul 28: "no two icons should be the
@@ -5992,7 +5992,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     ).toBeGreaterThanOrEqual(seeded.length)
   });
 
-  test("351 — ownership is granted by an admin, never self-served", async ({
+  test("351: ownership is granted by an admin, never self-served", async ({
     request,
   }) => {
     // Ownership is a record against the signed-in ACCOUNT, not a name that
@@ -6049,7 +6049,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     });
   });
 
-  test("352 — a pending request grants nothing until it is approved", async () => {
+  test("352: a pending request grants nothing until it is approved", async () => {
     // The permission check must read `status`, not merely the presence of a row.
     // A member who files a request would otherwise gain write access the moment
     // they asked for it.
@@ -6078,7 +6078,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     expect(isOfferingOwner({ owners: [] }, "member-1")).toBe(false);
   });
 
-  test("353 — every offering's Reports tab shows a real book, never a labelled sample", async ({
+  test("353: every offering's Reports tab shows a real book, never a labelled sample", async ({
     page,
     request,
   }) => {
@@ -6119,7 +6119,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     }
   });
 
-  test("354 — an uploaded file is READ, and the assistant answers from its contents (V52)", async ({
+  test("354: an uploaded file is READ, and the assistant answers from its contents (V52)", async ({
     request,
   }) => {
     // The whole reason uploads exist rather than links (Wajeed, Jul 29: "the AI
@@ -6184,7 +6184,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, id);
   });
 
-  test("355 — agent-training uploads are hidden from sales, not from the agent (V52)", async ({
+  test("355: agent-training uploads are hidden from sales, not from the agent (V52)", async ({
     page,
     request,
   }) => {
@@ -6232,7 +6232,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
     await disown(request, id);
   });
 
-  test("356 — Global is one market that answers every market (V52)", async ({
+  test("356: Global is one market that answers every market (V52)", async ({
     request,
   }) => {
     // Change request 11: Freya.Register's five regional chips became one
@@ -6251,7 +6251,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   });
 
 
-  test("357 — a material can be EDITED after upload, not just added and deleted (V52)", async ({
+  test("357: a material can be EDITED after upload, not just added and deleted (V52)", async ({
     page,
     request,
   }) => {
@@ -6295,7 +6295,7 @@ test.describe("Freyr Sales Intelligence Platform — Full Verification", () => {
   });
 
 
-  test("358 — every uploaded offering file teaches the assistant (change log 16)", async ({
+  test("358: every uploaded offering file teaches the assistant (change log 16)", async ({
     request,
   }) => {
     // The change log superseded the old opt-out: visibility remains a separate

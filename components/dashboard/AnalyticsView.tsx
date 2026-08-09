@@ -204,7 +204,7 @@ export function AnalyticsView({
             </span>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
               Qualified rate
-              <InfoHint text="Of the deals you've actively worked (past the first-contact step), the share that reached Qualified or further: a quick read on how often effort turns into progress. (Not a closed-won rate, this pipeline tracks up to Meeting Booked.)" />
+              <InfoHint text="Out of the deals you actually worked on, this is how many reached Qualified or further. It shows how often your effort moves a deal forward. It is not a win rate." />
             </p>
             <p className="text-[13px] text-text-tertiary mt-1 max-w-[140px]">
               Qualified or further, of all worked deals
@@ -240,7 +240,7 @@ export function AnalyticsView({
           <div className="mb-4 flex items-start justify-between gap-3">
             <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
               Pipeline by Stage
-              <InfoHint text="Where your open dollars sit across the steps of your process. Click a stage to see the deals in it: including who you closed and lost." />
+              <InfoHint text="Where your open money sits across the steps. Click a stage to see the deals in it, including the ones you won and lost." />
             </h2>
             <ExpandedChartModal
               title="Pipeline by Stage"
@@ -340,7 +340,7 @@ export function AnalyticsView({
           <div className="mb-4 flex items-start justify-between gap-3">
             <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
               Outcome Mix
-              <InfoHint text="What your logged touches led to. Click any outcome to see exactly who: who's interested, who's not, who booked a meeting." />
+              <InfoHint text="What happened after your calls and emails. Click any outcome to see exactly who: who is interested, who is not, who booked a meeting." />
             </h2>
             <ExpandedChartModal
               title="Outcome Mix"
@@ -599,7 +599,7 @@ export function AnalyticsView({
           <div className="mb-4 flex items-start justify-between gap-3">
             <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
               Weighted Forecast by Stage
-              <InfoHint text="Each stage's open value multiplied by its odds of closing: the realistic pipeline, not the headline number." />
+              <InfoHint text="Each stage's open value, cut down by how likely it is to close. This is the realistic number, not the headline one." />
             </h2>
             <ExpandedChartModal
               title="Weighted Forecast by Stage"
@@ -639,7 +639,7 @@ export function AnalyticsView({
           <div className="mb-4 flex items-start justify-between gap-3">
             <h2 className="flex items-center gap-1.5 text-[17px] font-semibold text-text-primary">
               Average Deal Size by Stage
-              <InfoHint text="The average open-deal value at each step: where the bigger deals sit in your process. Each bar is an average, so the deals listed on hover add up to the stage total shown there, not to the bar." />
+              <InfoHint text="The average size of an open deal at each step, so you can see where the bigger deals sit. These are averages, so the deals listed on hover will not add up to the bar." />
             </h2>
             <ExpandedChartModal
               title="Average Deal Size by Stage"
