@@ -23,8 +23,6 @@ import {
   Filter,
   History,
   Link2,
-  Link2Off,
-  PauseCircle,
   Package,
   Plus,
   Search,
@@ -81,38 +79,25 @@ type SelectedCell = {
 };
 
 const ACTIVITY_ICONS: Record<CustomerOfferingActivity, LucideIcon> = {
-  to_pitch: Send,
-  initial_discussions: Activity,
-  product_demonstration: Sparkles,
-  pilot: Target,
-  trial: CircleDot,
+  lead: Send,
   opportunity: Target,
-  proposal: FileCheck2,
-  under_contract: Clock3,
-  contract_signature: FileCheck2,
-  contract_signed: CheckCircle2,
-  need_to_deliver: CircleDot,
-  implementation: Sparkles,
-  implemented: CheckCircle2,
-  on_hold: PauseCircle,
+  pilot: CircleDot,
+  contract: FileCheck2,
+  delivery: Sparkles,
 };
 
 const STATUS_ICONS: Record<CustomerOfferingStatus, LucideIcon> = {
-  not_started: Clock3,
-  in_progress: Activity,
-  submitted: Send,
-  in_review: FileCheck2,
-  approved: CheckCircle2,
+  initiated: Clock3,
+  under_progress: Activity,
   completed: CheckCircle2,
-  blocked: PauseCircle,
-  lost: Link2Off,
 };
 
+
 const DISPLAY_OPTIONS: ColorOption[] = [
-  { value: "activity", label: "Activity", color: "#0071E3", icon: Activity },
+  { value: "activity", label: "Show the activity", color: "#0071E3", icon: Activity },
   {
     value: "dollar_value",
-    label: "Dollar value",
+    label: "Show dollar value",
     color: "#C2410C",
     icon: BadgeDollarSign,
   },
@@ -120,7 +105,7 @@ const DISPLAY_OPTIONS: ColorOption[] = [
     value: "potential_close_date",
     // Renamed from "Potential closure" (Anir, Aug 8: "instead of potential
     // closure say key dates for the heatmap dropdown").
-    label: "Key dates",
+    label: "Show key dates",
     color: "#7C3AED",
     icon: CalendarClock,
   },
@@ -417,10 +402,10 @@ export function CustomerOfferingHeatMap({
       for (const offering of offerings) {
         const resolved = resolveHeatMapCell(customer, offering);
         if (resolved.activity) counts[resolved.activity] += 1;
-        if (resolved.activity && resolved.activity !== "to_pitch") active += 1;
+        if (resolved.activity && resolved.activity !== "lead") active += 1;
         if (resolved.engagement?.dollar_value)
           value += resolved.engagement.dollar_value;
-        if (resolved.activity && resolved.activity !== "to_pitch") covered += 1;
+        if (resolved.activity && resolved.activity !== "lead") covered += 1;
       }
     }
     const total = customers.length * offerings.length;
@@ -453,12 +438,12 @@ export function CustomerOfferingHeatMap({
           id: uid(),
           version: nextEngagementVersion(customer, offering.id),
           linked: true,
-          activity: resolved.activity || "to_pitch",
+          activity: resolved.activity || "lead",
           activity_description:
             resolved.engagement?.activity_description || null,
           status:
             resolved.status ||
-            defaultStatusForActivity(resolved.activity || "to_pitch"),
+            defaultStatusForActivity(resolved.activity || "lead"),
           dollar_value: resolved.engagement?.dollar_value || 0,
           currency: resolved.engagement?.currency || "USD",
           start_date: resolved.engagement?.start_date || null,
@@ -625,9 +610,9 @@ export function CustomerOfferingHeatMap({
         selectedOffering.id
       ),
       linked: !selectedHistory.some((version) => version.linked),
-      activity: "initial_discussions",
+      activity: "lead",
       activity_description: null,
-      status: defaultStatusForActivity("initial_discussions"),
+      status: defaultStatusForActivity("lead"),
       dollar_value: 0,
       currency: draft.currency || "USD",
       start_date: null,
@@ -1117,7 +1102,7 @@ export function CustomerOfferingHeatMap({
                         ? cellLabel(displayMode, resolved)
                         : "—";
                       const isBaseline =
-                        activity === "to_pitch" && !resolved.hasHistory;
+                        activity === "lead" && !resolved.hasHistory;
                       const categorical = displayMode === "activity";
                       const showLabel =
                         passes && (!categorical || !isBaseline);

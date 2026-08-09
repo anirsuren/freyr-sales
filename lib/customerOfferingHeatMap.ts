@@ -7,109 +7,137 @@ import type {
   OfferingUsage,
 } from "./types";
 
+/**
+ * THE FIVE ACTIVITIES a customer-offering moves through, from Suren's
+ * Activities sheet (Aug 8). One colour each, distinct enough that a wall of
+ * heat-map cells reads as a journey at a glance.
+ */
 export const CUSTOMER_OFFERING_ACTIVITIES: Record<
   CustomerOfferingActivity,
   { label: string; short: string; color: string; text: string }
 > = {
-  to_pitch: {
-    label: "To pitch",
-    short: "To pitch",
-    color: "#DC4C4C",
-    text: "#FFFFFF",
-  },
-  initial_discussions: {
-    label: "Initial discussions",
-    short: "Initial talks",
-    color: "#EF6C57",
-    text: "#FFFFFF",
-  },
-  product_demonstration: {
-    label: "Product demonstration",
-    short: "Demo",
-    color: "#F28E3B",
-    text: "#2F1A00",
-  },
-  pilot: {
-    label: "Pilot",
-    short: "Pilot",
-    color: "#E9A52F",
-    text: "#2F2100",
-  },
-  trial: {
-    label: "Trial",
-    short: "Trial",
-    color: "#D9B92F",
-    text: "#292300",
-  },
+  lead: { label: "Lead", short: "Lead", color: "#0071E3", text: "#FFFFFF" },
   opportunity: {
     label: "Opportunity",
     short: "Opportunity",
-    color: "#F47A45",
+    color: "#7C3AED",
     text: "#FFFFFF",
   },
-  proposal: {
-    label: "Proposal",
-    short: "Proposal",
-    color: "#F5A742",
-    text: "#3B2500",
-  },
-  under_contract: {
-    label: "Under contract",
-    short: "Contracting",
-    color: "#F2C14E",
-    text: "#332600",
-  },
-  contract_signature: {
-    label: "Contract signature",
-    short: "Signature",
-    color: "#B9D85E",
-    text: "#1E2A00",
-  },
-  contract_signed: {
-    label: "Contract signed",
-    short: "Signed",
-    color: "#D8E98A",
-    text: "#263000",
-  },
-  need_to_deliver: {
-    label: "Need to deliver",
-    short: "To deliver",
-    color: "#A7D86F",
-    text: "#173000",
-  },
-  implementation: {
-    label: "Implementation",
-    short: "Implementing",
-    color: "#65C4A3",
-    text: "#063B2C",
-  },
-  implemented: {
-    label: "Implemented",
-    short: "Implemented",
-    color: "#3F91B4",
+  pilot: { label: "Pilot", short: "Pilot", color: "#0E7490", text: "#FFFFFF" },
+  contract: {
+    label: "Contract",
+    short: "Contract",
+    color: "#C2410C",
     text: "#FFFFFF",
   },
-  on_hold: {
-    label: "On hold",
-    short: "On hold",
-    color: "#8B5CF6",
+  delivery: {
+    label: "Delivery",
+    short: "Delivery",
+    color: "#1A7A35",
     text: "#FFFFFF",
   },
 };
 
+/** And exactly three statuses. */
 export const CUSTOMER_OFFERING_STATUSES: Record<
   CustomerOfferingStatus,
   { label: string; color: string }
 > = {
-  not_started: { label: "Not started", color: "#DC4C4C" },
-  in_progress: { label: "In progress", color: "#F47A45" },
-  submitted: { label: "Submitted", color: "#F5A742" },
-  in_review: { label: "In review", color: "#F2C14E" },
-  approved: { label: "Approved", color: "#A7D86F" },
-  completed: { label: "Completed", color: "#3F91B4" },
-  blocked: { label: "Blocked", color: "#8B5CF6" },
-  lost: { label: "Lost", color: "#C2410C" },
+  initiated: { label: "Initiated", color: "#0071E3" },
+  under_progress: { label: "Under progress", color: "#C2410C" },
+  completed: { label: "Completed", color: "#1A7A35" },
 };
+
+/**
+ * THE OLD VOCABULARY, TRANSLATED. Fourteen activities and eight statuses
+ * collapse into the sheet's five and three: the legend Freyr used to keep
+ * ("To pitch", "Under contract", "Implemented") was really an activity and a
+ * status said as one word. Anything already stored — or typed into an API
+ * call by an older client — is read through this on the way in.
+ */
+const LEGACY_ACTIVITY: Record<string, CustomerOfferingActivity> = {
+  to_pitch: "lead",
+  initial_discussions: "lead",
+  opportunity: "opportunity",
+  product_demonstration: "opportunity",
+  proposal: "opportunity",
+  pilot: "pilot",
+  trial: "pilot",
+  under_contract: "contract",
+  contract_signature: "contract",
+  contract_signed: "contract",
+  need_to_deliver: "delivery",
+  implementation: "delivery",
+  implemented: "delivery",
+  on_hold: "opportunity",
+};
+
+const LEGACY_STATUS: Record<string, CustomerOfferingStatus> = {
+  not_started: "initiated",
+  in_progress: "under_progress",
+  submitted: "under_progress",
+  in_review: "under_progress",
+  approved: "completed",
+  completed: "completed",
+  blocked: "under_progress",
+  lost: "completed",
+};
+
+/** The activity+status a retired legend word becomes. */
+const LEGACY_PAIR: Record<
+  string,
+  { activity: CustomerOfferingActivity; status: CustomerOfferingStatus }
+> = {
+  to_pitch: { activity: "lead", status: "initiated" },
+  initial_discussions: { activity: "lead", status: "under_progress" },
+  opportunity: { activity: "opportunity", status: "initiated" },
+  product_demonstration: { activity: "opportunity", status: "under_progress" },
+  proposal: { activity: "opportunity", status: "under_progress" },
+  pilot: { activity: "pilot", status: "under_progress" },
+  trial: { activity: "pilot", status: "under_progress" },
+  under_contract: { activity: "contract", status: "under_progress" },
+  contract_signature: { activity: "contract", status: "under_progress" },
+  contract_signed: { activity: "contract", status: "completed" },
+  need_to_deliver: { activity: "delivery", status: "initiated" },
+  implementation: { activity: "delivery", status: "under_progress" },
+  implemented: { activity: "delivery", status: "completed" },
+};
+
+export function normalizeActivity(value: unknown): CustomerOfferingActivity {
+  const key = String(value || "");
+  if (key in CUSTOMER_OFFERING_ACTIVITIES) {
+    return key as CustomerOfferingActivity;
+  }
+  return LEGACY_ACTIVITY[key] || "lead";
+}
+
+export function normalizeStatus(value: unknown): CustomerOfferingStatus {
+  const key = String(value || "");
+  if (key in CUSTOMER_OFFERING_STATUSES) {
+    return key as CustomerOfferingStatus;
+  }
+  return LEGACY_STATUS[key] || "initiated";
+}
+
+/** Read a legend word from Freyr's own sheet ("Implementation in progress")
+ *  as the activity + status pair it always meant. */
+export function activityPairFromLegend(label: string): {
+  activity: CustomerOfferingActivity;
+  status: CustomerOfferingStatus;
+} | null {
+  const key = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (LEGACY_PAIR[key]) return LEGACY_PAIR[key];
+  if (key.includes("implementation_in_progress"))
+    return { activity: "delivery", status: "under_progress" };
+  if (key.includes("project_initiated"))
+    return { activity: "delivery", status: "initiated" };
+  if (key.includes("annual_contract"))
+    return { activity: "contract", status: "completed" };
+  return null;
+}
 
 export const CUSTOMER_OFFERING_ACTIVITY_ORDER =
   Object.keys(CUSTOMER_OFFERING_ACTIVITIES) as CustomerOfferingActivity[];
@@ -152,39 +180,29 @@ function dealMatchesOffering(deal: AccountDeal, offering: HeatMapOffering) {
 
 function dealActivity(stage: string): CustomerOfferingActivity {
   const normalizedStage = normalized(stage);
-  if (normalizedStage.includes("demo")) return "product_demonstration";
-  if (normalizedStage.includes("pilot")) return "pilot";
-  if (normalizedStage.includes("trial")) return "trial";
-  if (normalizedStage.includes("proposal")) return "proposal";
+  if (normalizedStage.includes("pilot") || normalizedStage.includes("trial"))
+    return "pilot";
   if (
-    normalizedStage.includes("signature") ||
-    normalizedStage.includes("signing")
+    normalizedStage.includes("implement") ||
+    normalizedStage.includes("deliver") ||
+    normalizedStage.includes("closed won")
   ) {
-    return "contract_signature";
+    return "delivery";
   }
   if (
     normalizedStage.includes("contract") ||
-    normalizedStage.includes("negotiat")
-  ) {
-    return "under_contract";
-  }
-  if (
-    normalizedStage.includes("closed won") ||
+    normalizedStage.includes("negotiat") ||
+    normalizedStage.includes("signature") ||
     normalizedStage.includes("signed")
   ) {
-    return "contract_signed";
+    return "contract";
   }
   if (
-    normalizedStage.includes("implement") ||
-    normalizedStage.includes("deliver")
+    normalizedStage.includes("prospect") ||
+    normalizedStage.includes("lead") ||
+    normalizedStage.includes("pitch")
   ) {
-    return "implementation";
-  }
-  if (
-    normalizedStage.includes("closed lost") ||
-    normalizedStage.includes("hold")
-  ) {
-    return "on_hold";
+    return "lead";
   }
   return "opportunity";
 }
@@ -192,16 +210,8 @@ function dealActivity(stage: string): CustomerOfferingActivity {
 export function defaultStatusForActivity(
   activity: CustomerOfferingActivity
 ): CustomerOfferingStatus {
-  if (activity === "to_pitch") return "not_started";
-  if (activity === "proposal") return "submitted";
-  if (
-    activity === "contract_signed" ||
-    activity === "implemented"
-  ) {
-    return "completed";
-  }
-  if (activity === "on_hold") return "blocked";
-  return "in_progress";
+  // A newly recorded activity has been started, nothing more.
+  return activity === "delivery" ? "under_progress" : "initiated";
 }
 
 export function usageForOffering(
@@ -246,10 +256,9 @@ function derivedFromDeal(
     linked: true,
     activity,
     activity_description: deal.next_step || deal.notes || deal.name || null,
-    status:
-      normalized(deal.stage).includes("closed lost")
-        ? "lost"
-        : defaultStatusForActivity(activity),
+    status: normalized(deal.stage).includes("closed")
+      ? "completed"
+      : defaultStatusForActivity(activity),
     dollar_value: Math.max(0, Number(deal.value) || 0),
     currency: "USD",
     start_date: deal.created_at?.slice(0, 10) || null,
@@ -284,7 +293,7 @@ function derivedFromUsage(
     id: `derived-usage-${customer.id}-${offering.id}`,
     version: 1,
     linked: true,
-    activity: "implemented",
+    activity: "delivery",
     activity_description:
       lines.find((line) => line.description)?.description ||
       "Offering is in use by this customer.",
@@ -373,8 +382,10 @@ export function withDemoHeatMapActivity(
   customers: Customer[],
   offerings: HeatMapOffering[]
 ): Customer[] {
+  // Every activity but the very first: a demo wall wants movement, not a
+  // column of untouched leads.
   const activeActivities = CUSTOMER_OFFERING_ACTIVITY_ORDER.filter(
-    (activity) => activity !== "to_pitch"
+    (activity) => activity !== "lead"
   );
   const day = 86_400_000;
   const today = new Date();
@@ -426,16 +437,10 @@ export function withDemoHeatMapActivity(
         start_date: start.toISOString().slice(0, 10),
         end_date: end.toISOString().slice(0, 10),
         potential_close_date: end.toISOString().slice(0, 10),
-        opportunity_ids:
-          activity === "opportunity" ? [`opp-${id}`] : [],
-        proposal_ids:
-          activity === "proposal" ? [`proposal-${id}`] : [],
+        opportunity_ids: activity === "opportunity" ? [`opp-${id}`] : [],
+        proposal_ids: activity === "opportunity" ? [`proposal-${id}`] : [],
         contract_ids:
-          activity === "under_contract" ||
-          activity === "contract_signature" ||
-          activity === "contract_signed" ||
-          activity === "implementation" ||
-          activity === "implemented"
+          activity === "contract" || activity === "delivery"
             ? [`contract-${id}`]
             : [],
         created_at: start.toISOString(),

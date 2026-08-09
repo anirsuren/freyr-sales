@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { OfferingActivities } from "@/components/customers/OfferingActivities";
 import { Avatar } from "@/components/ui/Avatar";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -28,7 +29,12 @@ import {
   asJourneyStage,
   asMaterialKind,
 } from "@/lib/offeringMaterials";
-import type { OfferingUsage, OfferingRevenueLine, RevenueType } from "@/lib/types";
+import type {
+  CustomerOfferingEngagementVersion,
+  OfferingUsage,
+  OfferingRevenueLine,
+  RevenueType,
+} from "@/lib/types";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 
 // One colour + glyph per revenue type — the same accents the offering report's
@@ -534,6 +540,44 @@ export function CustomerOfferingsTab({
   const linesForOffering = (id: string) =>
     usageState.find((u) => u.offering_id === id)?.revenue_lines || [];
 
+  const activitiesForOffering = (id: string) =>
+    usageState.find((u) => u.offering_id === id)?.engagement_versions || [];
+
+  /** Save this offering's activity history. The heat map reads the one marked
+   *  current, so this is where its cells actually come from. */
+  async function saveActivities(
+    offeringId: string,
+    versions: CustomerOfferingEngagementVersion[]
+  ) {
+    const existing = usageState.find((u) => u.offering_id === offeringId);
+    const next = usageState.filter((u) => u.offering_id !== offeringId);
+    if (versions.length || existing?.revenue_lines?.length) {
+      next.push({
+        offering_id: offeringId,
+        revenue_lines: existing?.revenue_lines || [],
+        engagement_versions: versions,
+        engagement_draft: existing?.engagement_draft ?? null,
+      });
+    }
+    setUsageState(next);
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ offering_usage: next }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast("Activity saved.");
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't save the activity.", "error");
+      }
+    } catch {
+      toast("Couldn't save the activity.", "error");
+    }
+  }
+
   // Replace the revenue lines for one offering, persist the whole map.
   async function saveLines(offeringId: string, lines: OfferingRevenueLine[]) {
     const next = usageState.filter((u) => u.offering_id !== offeringId);
@@ -728,6 +772,16 @@ export function CustomerOfferingsTab({
         <RevenueSection
           lines={linesForOffering(o.id)}
           onSave={(lines) => saveLines(o.id, lines)}
+        />
+      )}
+
+      {/* ACTIVITIES LIVE WHERE THE OFFERING DOES (Suren, Aug 8): the customer
+          gets an offering, and the activity history for that offering sits
+          right under it — with one row marked current for the heat map. */}
+      {using && expanded && (
+        <OfferingActivities
+          versions={activitiesForOffering(o.id)}
+          onSave={(versions) => void saveActivities(o.id, versions)}
         />
       )}
 

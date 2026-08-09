@@ -20,6 +20,8 @@ import {
   CUSTOMER_OFFERING_ACTIVITY_ORDER,
   CUSTOMER_OFFERING_STATUS_ORDER,
   defaultStatusForActivity,
+  normalizeActivity,
+  normalizeStatus,
 } from "@/lib/customerOfferingHeatMap";
 
 export const dynamic = "force-dynamic";
@@ -36,13 +38,32 @@ const CUSTOMER_OFFERING_CURRENCIES = [
   "MXN",
 ];
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
 function sanitizeEngagementVersion(version: any, linked = false) {
-  const activity = CUSTOMER_OFFERING_ACTIVITY_ORDER.includes(version?.activity)
-    ? version.activity
-    : "to_pitch";
+  // Legacy words ("to_pitch", "under_contract") are read as the activity +
+  // status pair they always meant, so an older client can never write a value
+  // the app no longer knows.
+  const activity = normalizeActivity(version?.activity);
   const status = CUSTOMER_OFFERING_STATUS_ORDER.includes(version?.status)
     ? version.status
-    : defaultStatusForActivity(activity);
+    : normalizeStatus(version?.status ?? defaultStatusForActivity(activity));
+  const today = new Date().toISOString().slice(0, 10);
+  const priorDates = (version?.status_dates || {}) as Record<string, unknown>;
+  const day = (value: unknown) =>
+    typeof value === "string" && ISO_DAY.test(value) ? value : undefined;
+  // EVERY STATUS REMEMBERS THE DAY IT WAS REACHED (Suren: "if it says
+  // initiated, when did the initiated date? Under progress what date it
+  // is?"). Reaching a status stamps today unless a date is already recorded —
+  // so it fills itself in, and stays editable afterwards.
+  const status_dates = {
+    initiated: day(priorDates.initiated) ?? today,
+    under_progress:
+      day(priorDates.under_progress) ??
+      (status === "under_progress" || status === "completed" ? today : null),
+    completed:
+      day(priorDates.completed) ?? (status === "completed" ? today : null),
+  };
   const list = (value: unknown) =>
     Array.isArray(value)
       ? value
@@ -61,7 +82,11 @@ function sanitizeEngagementVersion(version: any, linked = false) {
     activity_description: version?.activity_description
       ? String(version.activity_description).trim().slice(0, 2000) || null
       : null,
+    comments: version?.comments
+      ? String(version.comments).trim().slice(0, 2000) || null
+      : null,
     status,
+    status_dates,
     dollar_value: Math.max(
       0,
       Math.round(Number(version?.dollar_value) || 0)

@@ -1187,6 +1187,13 @@ declare global {
   var __FREYR_OFFERINGS_STORE__: OfferingsStore | undefined;
   // eslint-disable-next-line no-var
   var __FREYR_LIVE_OFFERINGS_STORE__: OfferingsStore | undefined;
+  /** The showroom's own catalogue — a SEPARATE document, so nothing done in
+   *  Mock can ever reach Real (Anir, Aug 8: "mock mode is just purely for
+   *  looks… do not ever fuck with real mode"). */
+  // eslint-disable-next-line no-var
+  var __FREYR_MOCK_OFFERINGS_STORE__: OfferingsStore | undefined;
+  // eslint-disable-next-line no-var
+  var __FREYR_OFFERINGS_MOCK_REV__: string | undefined;
   // eslint-disable-next-line no-var
   var __FREYR_OFFERINGS_INIT__: Promise<void> | undefined;
   /** `updated_at` of the catalog revision this process currently holds. */
@@ -1204,14 +1211,8 @@ declare global {
 
 function seed(): OfferingsStore {
   const offerings = seedOfferings();
-  // Demo connections for the showroom: Freya.Register is a package of its
-  // module and its agent; Freya.Intelligence carries the intelligence feed
-  // (Suren's own example: "freya dot register will have 2 components, one is
-  // register module and register agent").
-  const register = offerings.find((o) => o.id === "of-001");
-  if (register) register.component_ids = ["fdl-001", "fdl-002"];
-  const intelligence = offerings.find((o) => o.id === "of-002");
-  if (intelligence) intelligence.component_ids = ["fdl-003"];
+  // Showroom packages are generated per offering by demoComponentsForOffering
+  // at read time, so every offering has components — not just two.
   return {
     customerTypes: seedCustomerTypes(),
     markets: seedMarkets(),
@@ -1226,53 +1227,277 @@ function seed(): OfferingsStore {
 
 /** Demo FDL components for the mock showroom — enough versions and mapped
  *  features that the comparison matrix and feature sheets demo themselves. */
+/**
+ * THE SHOWROOM'S FDL CATALOGUE — deliberately full (Anir, Aug 8: "in the fake
+ * mode it has to be as if there's a ton of shit for every single thing… more
+ * fake data so i can see what this thing will look like"). Fourteen
+ * components across all three types, each with a real-looking version history
+ * and a feature grid mapped across those versions, so every surface — cards,
+ * the version list, the feature matrix, the comparison, the downloads —
+ * demonstrates itself. Generated deterministically: same catalogue every
+ * load, no random drift between renders.
+ */
 function seedFdlComponents(): FdlComponent[] {
-  return [
+  const BLUEPRINTS: {
+    name: string;
+    type: FdlComponentType;
+    versions: [string, string, "released" | "next"][];
+    features: string[];
+  }[] = [
     {
-      id: "fdl-001",
       name: "Register Module",
       type: "Module",
-      releases: [
-        { id: "fdl-001-v1", version: "V1", date: "2026-03-10", status: "released" },
-        { id: "fdl-001-v2", version: "V2", date: "2026-06-20", status: "released", current: true },
-        { id: "fdl-001-v21", version: "V2.1", date: "2026-10-01", status: "next" },
+      versions: [
+        ["V1.0", "2025-09-15", "released"],
+        ["V1.4", "2026-01-20", "released"],
+        ["V2.0", "2026-06-20", "released"],
+        ["V2.1", "2026-10-01", "next"],
       ],
       features: [
-        { id: "fdl-001-f1", name: "Product registration tracking", description: "Every product's registration status, by market, in one place.", versionIds: ["fdl-001-v1", "fdl-001-v2", "fdl-001-v21"] },
-        { id: "fdl-001-f2", name: "Health-authority submission calendar", description: "Upcoming submissions and renewals with owner and due date.", versionIds: ["fdl-001-v1", "fdl-001-v2", "fdl-001-v21"] },
-        { id: "fdl-001-f3", name: "Change-control workflow", description: "Route a product change through review and approval before filing.", versionIds: ["fdl-001-v2", "fdl-001-v21"] },
-        { id: "fdl-001-f4", name: "Bulk import from Excel", description: "Load an existing registration book in one pass.", versionIds: ["fdl-001-v2", "fdl-001-v21"] },
-        { id: "fdl-001-f5", name: "Audit-ready activity log", description: "Who changed what, when — exportable for inspections.", versionIds: ["fdl-001-v2", "fdl-001-v21"] },
-        { id: "fdl-001-f6", name: "Automated post-approval variations", description: "Draft variation packages from the recorded change.", versionIds: ["fdl-001-v21"] },
+        "Product registration tracking across every market",
+        "Health-authority submission calendar with owners and due dates",
+        "Change-control workflow with review and approval",
+        "Bulk import from an existing registration book",
+        "Audit-ready activity log, exportable for inspections",
+        "Automated post-approval variation packages",
+        "Market-by-market renewal reminders",
       ],
     },
     {
-      id: "fdl-002",
       name: "PI Agent",
       type: "Agent",
-      releases: [
-        { id: "fdl-002-v1", version: "V1", date: "2026-06-01", status: "released", current: true },
-        { id: "fdl-002-v11", version: "V1.1", date: "2026-09-15", status: "next" },
+      versions: [
+        ["V1.0", "2026-06-01", "released"],
+        ["V1.1", "2026-09-15", "next"],
       ],
       features: [
-        { id: "fdl-002-f1", name: "Answers product-information questions", description: "Grounded in approved product information only.", versionIds: ["fdl-002-v1", "fdl-002-v11"] },
-        { id: "fdl-002-f2", name: "Drafts label updates for review", description: "Proposes the edit; a human approves it.", versionIds: ["fdl-002-v1", "fdl-002-v11"] },
-        { id: "fdl-002-f3", name: "Flags conflicting product data across markets", description: "Spots when two markets state different strengths or storage conditions.", versionIds: ["fdl-002-v11"] },
+        "Answers product-information questions from approved sources only",
+        "Drafts label updates for a human to approve",
+        "Flags conflicting product data across markets",
+        "Cites the source document for every answer",
       ],
     },
     {
-      id: "fdl-003",
       name: "Intelligence Feed",
       type: "Module",
-      releases: [
-        { id: "fdl-003-v1", version: "V1", date: "2026-04-02", status: "released", current: true },
+      versions: [
+        ["V1.0", "2026-04-02", "released"],
+        ["V1.2", "2026-08-11", "released"],
+        ["V2.0", "2026-11-30", "next"],
       ],
       features: [
-        { id: "fdl-003-f1", name: "Daily regulatory-change digest", description: "What changed in each market since yesterday.", versionIds: ["fdl-003-v1"] },
-        { id: "fdl-003-f2", name: "Impact tagging by market and product line", description: "Each change tagged with who at the customer should care.", versionIds: ["fdl-003-v1"] },
+        "Daily regulatory-change digest by market",
+        "Impact tagging by market and product line",
+        "Saved watchlists per therapeutic area",
+        "Weekly summary email to the regulatory team",
+        "Change-to-product impact scoring",
+      ],
+    },
+    {
+      name: "Submissions Module",
+      type: "Module",
+      versions: [
+        ["V2.6", "2025-11-10", "released"],
+        ["V2.9", "2026-05-18", "released"],
+        ["V3.2", "2026-09-30", "next"],
+      ],
+      features: [
+        "eCTD dossier assembly and validation",
+        "Publishing checks before a sequence is sent",
+        "Submission tracking through to acknowledgement",
+        "Lifecycle sequence numbering per market",
+        "Gateway status with retry handling",
+        "Archive of every submitted sequence",
+      ],
+    },
+    {
+      name: "Labelling Module",
+      type: "Module",
+      versions: [
+        ["V3.0", "2025-12-05", "released"],
+        ["V4.0", "2026-07-14", "released"],
+      ],
+      features: [
+        "Core data sheet with market deviations",
+        "Side-by-side label comparison between versions",
+        "Translation workflow with reviewer sign-off",
+        "Label change impact on registered markets",
+        "Artwork hand-off with a locked reference",
+      ],
+    },
+    {
+      name: "Artwork Module",
+      type: "Module",
+      versions: [
+        ["V1.2", "2026-02-25", "released"],
+        ["V1.4", "2026-11-05", "next"],
+      ],
+      features: [
+        "Artwork proofing with annotated review rounds",
+        "Print-ready pack generation",
+        "Version history against the approved label",
+        "Supplier hand-off with a change summary",
+      ],
+    },
+    {
+      name: "Docs Module",
+      type: "Module",
+      versions: [
+        ["V4.0", "2025-10-01", "released"],
+        ["V5.0", "2026-03-22", "released"],
+        ["V8.0", "2026-10-20", "next"],
+      ],
+      features: [
+        "Controlled document storage with versioning",
+        "Review and approval routing with e-signature",
+        "Retention rules by document class",
+        "Full-text search across the archive",
+        "Read-and-understood tracking",
+      ],
+    },
+    {
+      name: "RIA.Chat",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-03-08", "released"],
+        ["V1.3", "2026-07-19", "released"],
+        ["V2.0", "2026-12-01", "next"],
+      ],
+      features: [
+        "Conversational answers grounded in the regulatory library",
+        "Follow-up questions that keep the thread's context",
+        "Source citations on every answer",
+        "Escalation to a named regulatory owner",
+        "Answer history saved to the account",
+      ],
+    },
+    {
+      name: "RIA.Product Impact",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-05-06", "released"],
+        ["V1.2", "2026-10-14", "next"],
+      ],
+      features: [
+        "Maps a regulatory change to affected products",
+        "Ranks impact by market and revenue exposure",
+        "Drafts the assessment note for review",
+        "Feeds the change-control workflow directly",
+      ],
+    },
+    {
+      name: "RIA.Submission Impact",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-06-30", "released"],
+        ["V1.1", "2026-11-18", "next"],
+      ],
+      features: [
+        "Flags in-flight submissions touched by a change",
+        "Suggests the sequence that needs re-work",
+        "Estimates the delay a change introduces",
+      ],
+    },
+    {
+      name: "VIA",
+      type: "Agent",
+      versions: [
+        ["V1.0", "2026-04-28", "released"],
+        ["V1.5", "2026-09-09", "released"],
+      ],
+      features: [
+        "Reads a variation package and checks completeness",
+        "Suggests the right variation category",
+        "Prepares the market-specific cover letter",
+        "Tracks the variation to approval",
+      ],
+    },
+    {
+      name: "CAN (Classify and Analyse)",
+      type: "Agent",
+      versions: [["V1.0", "2026-08-01", "released"]],
+      features: [
+        "Classifies incoming regulatory documents",
+        "Extracts the obligations inside each one",
+        "Routes each obligation to an owner",
+      ],
+    },
+    {
+      name: "Freya Fusion Platform",
+      type: "Platform",
+      versions: [
+        ["V6.0", "2025-08-20", "released"],
+        ["V7.0", "2026-02-10", "released"],
+        ["V8.0", "2026-08-05", "released"],
+        ["V9.0", "2026-12-15", "next"],
+      ],
+      features: [
+        "Single sign-on across every Freya module",
+        "Shared product and registration data model",
+        "Role-based access down to the market level",
+        "Audit trail across all modules",
+        "Open API for customer systems",
+        "Configurable dashboards per role",
+        "Multi-tenant hosting with regional data residency",
+      ],
+    },
+    {
+      name: "Data Hub",
+      type: "Platform",
+      versions: [
+        ["V2.0", "2026-01-15", "released"],
+        ["V3.0", "2026-07-01", "released"],
+        ["V3.4", "2026-11-25", "next"],
+      ],
+      features: [
+        "IDMP-ready master data for products and substances",
+        "Reference data governance with approval flow",
+        "Connectors to ERP and quality systems",
+        "Data quality scoring with exception queues",
+        "Historical snapshots for audits",
       ],
     },
   ];
+
+  return BLUEPRINTS.map((blueprint, index) => {
+    const id = `fdl-demo-${String(index + 1).padStart(3, "0")}`;
+    const releases: FdlRelease[] = blueprint.versions.map(
+      ([version, date, status], position) => ({
+        id: `${id}-r${position + 1}`,
+        version,
+        date,
+        status,
+        // The newest RELEASED version is what a seller quotes.
+        current:
+          status === "released" &&
+          !blueprint.versions
+            .slice(position + 1)
+            .some(([, , later]) => later === "released"),
+      })
+    );
+    const releasedIds = releases
+      .filter((release) => release.status === "released")
+      .map((release) => release.id);
+    const allIds = releases.map((release) => release.id);
+    const features: FdlFeature[] = blueprint.features.map((name, position) => {
+      // Older features exist everywhere; later ones arrive with later
+      // versions, so the comparison matrix has something real to show.
+      const introducedAt = Math.min(
+        Math.floor(position / 2),
+        Math.max(0, allIds.length - 1)
+      );
+      return {
+        id: `${id}-f${position + 1}`,
+        fid: `F-${String(index + 1).padStart(2, "0")}${String(position + 1).padStart(2, "0")}`,
+        name,
+        description: undefined,
+        versionIds: allIds.slice(introducedAt),
+      };
+    });
+    // A component with no released version yet would read as broken.
+    if (!releasedIds.length && releases[0]) releases[0].status = "released";
+    return { id, name: blueprint.name, type: blueprint.type, releases, features };
+  });
 }
 
 const store: OfferingsStore = globalThis.__FREYR_OFFERINGS_STORE__ ?? seed();
@@ -1456,10 +1681,32 @@ const DEFAULT_DEMO_ROADMAP_THEME: DemoRoadmapTheme = {
 };
 
 /** Which demo components each showroom offering is a package of. */
-const DEMO_COMPONENT_CONNECTIONS: Record<string, string[]> = {
-  "of-001": ["fdl-001", "fdl-002"],
-  "of-002": ["fdl-003"],
-};
+/**
+ * WHICH DEMO COMPONENTS EACH SHOWROOM OFFERING IS A PACKAGE OF. Spread across
+ * the catalogue so the Components tab is populated wherever a reviewer lands,
+ * and derived from the offering's own index so every offering gets a
+ * plausible bundle rather than a handful of lucky ones.
+ */
+const DEMO_COMPONENT_IDS = [
+  "fdl-demo-001", "fdl-demo-002", "fdl-demo-003", "fdl-demo-004",
+  "fdl-demo-005", "fdl-demo-006", "fdl-demo-007", "fdl-demo-008",
+  "fdl-demo-009", "fdl-demo-010", "fdl-demo-011", "fdl-demo-012",
+  "fdl-demo-013", "fdl-demo-014",
+];
+
+function demoComponentsForOffering(offeringId: string): string[] {
+  const number = Number(offeringId.match(/\d+/)?.[0] || 1);
+  // Two or three components each: the platform, one module, sometimes an
+  // agent — the shape Suren described for a real package.
+  const first = DEMO_COMPONENT_IDS[number % DEMO_COMPONENT_IDS.length];
+  const second =
+    DEMO_COMPONENT_IDS[(number * 3 + 1) % DEMO_COMPONENT_IDS.length];
+  const third = DEMO_COMPONENT_IDS[(number * 5 + 2) % DEMO_COMPONENT_IDS.length];
+  return Array.from(
+    new Set(number % 3 === 0 ? [first, second, third] : [first, second])
+  );
+}
+
 
 function demoRoadmapForOffering(offering: Offering): OfferingRelease[] {
   const number = Number(offering.id.match(/\d+/)?.[0] || 1);
@@ -1559,8 +1806,7 @@ function withVisibleMaterials(off: Offering): Offering {
       materialFolders: Array.from(new Set(canonicalFolders)),
       releases: demoRoadmapForOffering(off),
       // The showroom's demo component connections, unless real ones exist.
-      component_ids:
-        off.component_ids ?? DEMO_COMPONENT_CONNECTIONS[off.id] ?? [],
+      component_ids: off.component_ids ?? demoComponentsForOffering(off.id),
     };
   }
   if (!off.materials?.length)
@@ -1576,6 +1822,9 @@ function withVisibleMaterials(off: Offering): Offering {
 const liveStore: OfferingsStore =
   globalThis.__FREYR_LIVE_OFFERINGS_STORE__ ?? seed();
 globalThis.__FREYR_LIVE_OFFERINGS_STORE__ = liveStore;
+const mockStore: OfferingsStore =
+  globalThis.__FREYR_MOCK_OFFERINGS_STORE__ ?? seed();
+globalThis.__FREYR_MOCK_OFFERINGS_STORE__ = mockStore;
 // Back-fill collections added in a later build onto a store that an earlier build
 // already created (matters only for dev HMR; prod always starts fresh).
 if (!store.offeringTypes) store.offeringTypes = seedOfferingTypes();
@@ -1811,8 +2060,14 @@ healOfferings(liveStore);
 // made in one view silently vanished in the other. The offerings catalog is
 // approved Freyr master data plus real uploaded assets — never demo content —
 // so both views read and write the same persisted store.
+/**
+ * WHICH CATALOGUE THIS REQUEST IS LOOKING AT. Real mode reads and writes the
+ * production document; Mock reads and writes its own. They are two rows in
+ * the same table, never the same object, so a demo edit cannot land in the
+ * real catalogue (Anir, Aug 8).
+ */
 function activeStore(): OfferingsStore {
-  return liveStore;
+  return getDataMode() === "live" ? liveStore : mockStore;
 }
 
 function replaceStore(target: OfferingsStore, source: OfferingsStore) {
@@ -1869,23 +2124,24 @@ function hasCatalogueDatabase(): boolean {
 // one FREYR_WORKSPACE_ID; converting the app to multi-workspace hosting must
 // first add a workspace column/key rather than reusing this singleton adapter.
 export async function persistLiveOfferings(): Promise<void> {
-  // A local mock server may READ the shared catalogue for faithful review, but
-  // it must never write into production. Deployed mock mode is the actual
-  // in-progress workspace and therefore persists owner/material changes.
-  if (getDataMode() !== "live" && process.env.NODE_ENV !== "production") return;
+  // ONE FUNCTION, TWO ROWS. "default" is the real catalogue; "mock" is the
+  // showroom. A mock server persisting is now correct rather than dangerous,
+  // because it can only ever write the mock row.
+  const live = getDataMode() === "live";
   if (!hasCatalogueDatabase()) {
     throw new Error("Live offering changes require the configured Supabase database.");
   }
   const stamp = new Date().toISOString();
   const { error } = await catalogClient().from("offering_catalog_state").upsert({
-    id: "default",
-    catalog: structuredClone(liveStore),
+    id: live ? "default" : "mock",
+    catalog: structuredClone(live ? liveStore : mockStore),
     updated_at: stamp,
   });
   if (error) throw new Error(`Could not persist the offering catalog: ${error.message}`);
   // We are now, by definition, holding the newest revision — remember it so
   // the staleness check below doesn't immediately re-read our own write.
-  globalThis.__FREYR_OFFERINGS_REV__ = stamp;
+  if (live) globalThis.__FREYR_OFFERINGS_REV__ = stamp;
+  else globalThis.__FREYR_OFFERINGS_MOCK_REV__ = stamp;
   globalThis.__FREYR_OFFERINGS_CHECKED__ = Date.now();
 }
 
@@ -1899,6 +2155,35 @@ export async function initializeLiveOfferings(): Promise<void> {
         .eq("id", "default")
         .maybeSingle();
       if (error) throw new Error(`Could not load the offering catalog: ${error.message}`);
+      // THE SHOWROOM IS DURABLE TOO. Its row is loaded here and created on
+      // first boot if it has never existed, so demo edits survive a restart
+      // and every reviewer sees the same showroom. persistLiveOfferings()
+      // cannot be used for that: at boot there is no request, so the data
+      // mode is unknowable — this writes the mock row explicitly.
+      try {
+        const mockRow = await catalogClient()
+          .from("offering_catalog_state")
+          .select("catalog, updated_at")
+          .eq("id", "mock")
+          .maybeSingle();
+        if (isOfferingsStore(mockRow.data?.catalog)) {
+          replaceStore(mockStore, mockRow.data.catalog);
+          healOfferings(mockStore);
+          globalThis.__FREYR_OFFERINGS_MOCK_REV__ =
+            mockRow.data.updated_at ?? undefined;
+        } else {
+          const stamp = new Date().toISOString();
+          await catalogClient().from("offering_catalog_state").upsert({
+            id: "mock",
+            catalog: structuredClone(mockStore),
+            updated_at: stamp,
+          });
+          globalThis.__FREYR_OFFERINGS_MOCK_REV__ = stamp;
+        }
+      } catch {
+        // A showroom that cannot load is not a reason to fail the app: mock
+        // falls back to the in-memory seed, which is already a full catalogue.
+      }
       globalThis.__FREYR_OFFERINGS_REV__ = data?.updated_at ?? undefined;
       globalThis.__FREYR_OFFERINGS_CHECKED__ = Date.now();
       if (isOfferingsStore(data?.catalog)) {
@@ -1974,6 +2259,27 @@ async function refreshStaleCatalog(): Promise<void> {
   if (Date.now() - checked < CATALOG_FRESH_MS) return;
   globalThis.__FREYR_OFFERINGS_CHECKED__ = Date.now();
   try {
+    // The showroom is checked on the same tick as the real catalogue, so a
+    // demo change made on one container shows up on the others too.
+    void (async () => {
+      const mockRow = await catalogClient()
+        .from("offering_catalog_state")
+        .select("catalog, updated_at")
+        .eq("id", "mock")
+        .maybeSingle();
+      const mockRev = mockRow.data?.updated_at as string | undefined;
+      if (
+        mockRev &&
+        mockRev !== globalThis.__FREYR_OFFERINGS_MOCK_REV__ &&
+        !globalThis.__FREYR_OFFERINGS_WRITING__ &&
+        isOfferingsStore(mockRow.data?.catalog)
+      ) {
+        replaceStore(mockStore, mockRow.data.catalog);
+        healOfferings(mockStore);
+        globalThis.__FREYR_OFFERINGS_MOCK_REV__ = mockRev;
+      }
+    })().catch(() => undefined);
+
     const { data } = await catalogClient()
       .from("offering_catalog_state")
       .select("updated_at")
@@ -2504,12 +2810,7 @@ function fdlList(): FdlComponent[] {
 }
 
 export function listFdlComponents(): FdlComponent[] {
-  const list = fdlList();
-  // Mock is the showroom: with nothing stored yet it presents the demo set,
-  // read-time only — nothing is written (Anir, Aug 8: "mock mode is just
-  // purely for looks. Just make sure real mode works").
-  if (list.length === 0 && getDataMode() !== "live") return seedFdlComponents();
-  return list;
+  return fdlList();
 }
 
 export function getFdlComponent(id: string): FdlComponent | null {

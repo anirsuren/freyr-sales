@@ -93,31 +93,25 @@ export interface Customer {
 // offering, but only the version with `linked: true` is shown in the matrix.
 // Old versions stay in the record when they are unlinked so the report never
 // loses the activity trail.
+/**
+ * THE FIVE ACTIVITIES, from Suren's Activities sheet (Aug 8). The catalogue
+ * used to carry fourteen shades of the same journey — "you have too many
+ * activities here… those are the only activities that should come" — and the
+ * old legend (To pitch, Under contract, Implemented…) now reads as an
+ * activity plus a status instead of its own entry.
+ */
 export type CustomerOfferingActivity =
-  | "to_pitch"
-  | "initial_discussions"
-  | "product_demonstration"
-  | "pilot"
-  | "trial"
+  | "lead"
   | "opportunity"
-  | "proposal"
-  | "under_contract"
-  | "contract_signature"
-  | "contract_signed"
-  | "need_to_deliver"
-  | "implementation"
-  | "implemented"
-  | "on_hold";
+  | "pilot"
+  | "contract"
+  | "delivery";
 
+/** And exactly three statuses, same sheet. */
 export type CustomerOfferingStatus =
-  | "not_started"
-  | "in_progress"
-  | "submitted"
-  | "in_review"
-  | "approved"
-  | "completed"
-  | "blocked"
-  | "lost";
+  | "initiated"
+  | "under_progress"
+  | "completed";
 
 export type CustomerOfferingCurrency =
   | "USD"
@@ -140,13 +134,25 @@ export type CustomerOfferingCurrency =
   | "BRL"
   | "MXN";
 
+/** When each status was reached — stamped as the status moves, editable after
+ *  (Suren: "if it says initiated, when did the initiated date? Under progress
+ *  what date it is? Completed if it is…"). */
+export interface CustomerOfferingStatusDates {
+  initiated?: string | null;
+  under_progress?: string | null;
+  completed?: string | null;
+}
+
 export interface CustomerOfferingEngagementVersion {
   id: string;
   version: number;
   linked: boolean;
   activity: CustomerOfferingActivity;
   activity_description: string | null;
+  /** Free notes about this specific activity ("I am meeting this customer…"). */
+  comments?: string | null;
   status: CustomerOfferingStatus;
+  status_dates?: CustomerOfferingStatusDates;
   dollar_value: number;
   /** Optional for backward compatibility; records created before currency
    * selection existed are USD. */
