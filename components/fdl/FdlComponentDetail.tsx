@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
@@ -1075,14 +1076,33 @@ export function FdlComponentDetail({
       {/* -------------------------------------------------------- compare */}
       {releases.length >= 2 && component.features.length > 0 && (
         <section className={CARD}>
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-            <GitCompareArrows size={15} strokeWidth={2} className="text-blue-primary" /> Compare versions
-            <InfoHint text="Pick two or more versions. You get the features side by side, and only the ones at least one of those versions has." />
-          </h2>
-          <p className="mt-1 text-[12.5px] text-text-secondary">
-            Tap a version to add it to the table below. Tap it again to take it
-            out.
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                <GitCompareArrows size={15} strokeWidth={2} className="text-blue-primary" /> Compare versions
+                <InfoHint text="Pick two or more versions. You get the features side by side, and only the ones at least one of those versions has." />
+              </h2>
+              <p className="mt-1 text-[12.5px] text-text-secondary">
+                Tap a version to add it to the table below. Tap it again to take
+                it out.
+              </p>
+            </div>
+            {/* TOP RIGHT, ICON ONLY (Anir, Aug 9). Below the table it sat at
+                the end of a scroll and the word only repeated the card's own
+                title. The label lives in the tooltip and the a11y name. */}
+            {compareRows.length > 0 && (
+              <Tooltip label="Download this comparison">
+                <button
+                  type="button"
+                  aria-label="Download this comparison"
+                  onClick={downloadComparison}
+                  className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                >
+                  <Download size={15} strokeWidth={2} />
+                </button>
+              </Tooltip>
+            )}
+          </div>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {releases.map((release) => {
               const active = compareIds.includes(release.id);
@@ -1112,7 +1132,16 @@ export function FdlComponentDetail({
               );
             })}
           </div>
-          {compareReleases.length >= 2 ? (
+          {compareReleases.length >= 2 && compareRows.length === 0 ? (
+            /* Two versions picked and neither carries a single feature. The
+               table used to render its header over nothing, which reads as a
+               bug rather than as an answer. */
+            <p className="mt-3 rounded-lg border border-dashed border-border bg-blue-light/30 px-3 py-2.5 text-[12.5px] text-text-secondary">
+              Neither {compareReleases.map((r) => r.version).join(" nor ")} has
+              any feature ticked yet, so there is nothing to compare. Tick a
+              version on a feature above and it appears here.
+            </p>
+          ) : compareReleases.length >= 2 ? (
             <>
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[420px] text-left">
@@ -1143,11 +1172,6 @@ export function FdlComponentDetail({
                     ))}
                   </tbody>
                 </table>
-              </div>
-              <div className="mt-3 flex justify-end">
-                <Button variant="secondary" onClick={downloadComparison}>
-                  <Download size={14} strokeWidth={2} /> Download comparison
-                </Button>
               </div>
             </>
           ) : (
