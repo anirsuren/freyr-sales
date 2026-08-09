@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   Activity as ActivityIcon,
+  CalendarClock,
   CheckCircle2,
   CircleDot,
   Clock3,
@@ -108,6 +109,13 @@ function uid() {
   return `eng-${Date.now().toString(36)}${Math.floor(Math.random() * 1e5).toString(36)}`;
 }
 
+/** Not started yet: its start date is still in the future. */
+function planned(version: CustomerOfferingEngagementVersion): boolean {
+  const start = version.status_dates?.initiated || version.start_date;
+  if (!start) return false;
+  return start > new Date().toISOString().slice(0, 10);
+}
+
 function ActivityChip({ activity }: { activity: CustomerOfferingActivity }) {
   const meta = CUSTOMER_OFFERING_ACTIVITIES[activity];
   const Icon = ACTIVITY_ICONS[activity];
@@ -154,6 +162,10 @@ export function OfferingActivities({
   const [description, setDescription] = useState("");
   const [comments, setComments] = useState("");
   const [amount, setAmount] = useState("");
+  /** When this activity starts. A date in the future means it has not
+   *  happened yet — Suren, Aug 8: "can I also add activity that has not
+   *  happened yet?" No fourth status: the date says it. */
+  const [startDate, setStartDate] = useState("");
   const [currency, setCurrency] = useState<CustomerOfferingCurrency>("USD");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
@@ -167,21 +179,27 @@ export function OfferingActivities({
     setDescription(version?.activity_description ?? "");
     setComments(version?.comments ?? "");
     setAmount(version?.dollar_value ? String(version.dollar_value) : "");
+    setStartDate(
+      version?.status_dates?.initiated ||
+        version?.start_date ||
+        new Date().toISOString().slice(0, 10)
+    );
     setCurrency(version?.currency ?? "USD");
   }
 
   function save() {
     const today = new Date().toISOString().slice(0, 10);
+    const chosen = startDate || today;
     const existing = versions.find((v) => v.id === editing);
     const prior = existing?.status_dates || {};
     // The date each status was reached fills itself in the moment the status
     // gets there, and keeps whatever was already recorded.
     const status_dates = {
-      initiated: prior.initiated ?? today,
+      initiated: chosen,
       under_progress:
         prior.under_progress ??
-        (status === "under_progress" || status === "completed" ? today : null),
-      completed: prior.completed ?? (status === "completed" ? today : null),
+        (status === "under_progress" || status === "completed" ? chosen : null),
+      completed: prior.completed ?? (status === "completed" ? chosen : null),
     };
     const now = new Date().toISOString();
     const record: CustomerOfferingEngagementVersion = {
@@ -199,7 +217,7 @@ export function OfferingActivities({
       status_dates,
       dollar_value: Math.max(0, Math.round(Number(amount) || 0)),
       currency,
-      start_date: existing?.start_date ?? status_dates.initiated ?? null,
+      start_date: chosen,
       end_date: existing?.end_date ?? null,
       potential_close_date: existing?.potential_close_date ?? null,
       opportunity_ids: existing?.opportunity_ids ?? [],
@@ -265,7 +283,13 @@ export function OfferingActivities({
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <ActivityChip activity={version.activity} />
-                  <StatusChip status={version.status} />
+                  {planned(version) ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
+                      <CalendarClock size={11} strokeWidth={2.2} /> Planned
+                    </span>
+                  ) : (
+                    <StatusChip status={version.status} />
+                  )}
                   {reached && (
                     <span className="text-[11.5px] text-text-tertiary tnum">
                       {formatDate(reached)}
@@ -415,7 +439,19 @@ export function OfferingActivities({
               className={`${FIELD} resize-y`}
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
+                When
+                <InfoHint text="The day this activity starts. Put a date in the future for something planned but not started — it shows as Planned until that day." />
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+                className={FIELD}
+              />
+            </div>
             <div>
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
                 Value

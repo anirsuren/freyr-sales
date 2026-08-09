@@ -8,6 +8,8 @@ import {
   Check,
   CircleCheck,
   Clock,
+  Building2,
+  ChevronRight,
   Download,
   GitCompareArrows,
   ListChecks,
@@ -23,9 +25,13 @@ import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
+
+/** An imported row whose sheet cell had a date but no version number. */
+const MONTH_ONLY = /^[A-Za-z]{3}'\d{2}$/;
 import type { FdlComponent, FdlFeature, FdlRelease } from "@/lib/offerings";
 import { FdlTypeChip, fdlCurrentVersion } from "@/components/fdl/FdlComponentsBrowser";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
 /**
  * ONE COMPONENT, THE WHOLE STORY — Suren's model (Aug 8, via Anir): "first
@@ -70,14 +76,24 @@ function downloadDocument(title: string, subtitle: string, tableHtml: string, fi
   URL.revokeObjectURL(url);
 }
 
+export type ComponentCustomer = {
+  id: string;
+  name: string;
+  releaseId: string | null;
+  nextReleaseId: string | null;
+  connected: boolean;
+};
+
 export function FdlComponentDetail({
   component,
   homes,
   canEdit,
+  customers = [],
 }: {
   component: FdlComponent;
   homes: { id: string; name: string }[];
   canEdit: boolean;
+  customers?: ComponentCustomer[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -101,6 +117,61 @@ export function FdlComponentDetail({
     } catch (caught) {
       toast(caught instanceof Error ? caught.message : "Could not save.", "error");
       return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Which version row is expanded — its features, its customers, its
+   *  download (Suren, Aug 8: "if I have to see all one version's features,
+   *  how do I download? Here also, for version 4, when it clicks, give those
+   *  features for version 4 and then download"). */
+  const [openVersion, setOpenVersion] = useState<string | null>(null);
+  const [addingCustomers, setAddingCustomers] = useState(false);
+  const [pickedCustomers, setPickedCustomers] = useState<string[]>([]);
+
+  const connected = customers.filter((customer) => customer.connected);
+  const unconnected = customers.filter((customer) => !customer.connected);
+  function customersOnVersion(releaseId: string) {
+    return connected.filter((customer) => customer.releaseId === releaseId);
+  }
+
+  /** Connect customers straight from the component — the same record the
+   *  customer page writes, reached from this side (Suren: "if I want to add a
+   *  customer, I want to add a customer from the component also"). */
+  async function connectCustomers() {
+    if (!pickedCustomers.length) return;
+    setBusy(true);
+    const current = component.releases.find((release) => release.current);
+    try {
+      for (const customerId of pickedCustomers) {
+        const existing = customers.find((item) => item.id === customerId);
+        const res = await fetch(`/api/customers/${customerId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            digital_components: [
+              ...(existing?.connected ? [] : []),
+              { component_id: component.id, release_id: current?.id ?? null },
+            ],
+            addDigitalComponent: true,
+          }),
+        });
+        if (!res.ok) throw new Error("Could not connect that customer.");
+      }
+      toast(
+        pickedCustomers.length === 1
+          ? "Customer connected."
+          : `${pickedCustomers.length} customers connected.`
+      );
+      setAddingCustomers(false);
+      setPickedCustomers([]);
+      router.refresh();
+    } catch (caught) {
+      toast(
+        caught instanceof Error ? caught.message : "Could not connect that.",
+        "error"
+      );
     } finally {
       setBusy(false);
     }
@@ -339,8 +410,32 @@ export function FdlComponentDetail({
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-border-light">
-            {releases.map((release) => (
-              <li key={release.id} className="flex items-center gap-3 py-2.5">
+            {releases.map((release) => {
+              const versionFeatures = component.features.filter((feature) =>
+                feature.versionIds.includes(release.id)
+              );
+              const versionCustomers = customersOnVersion(release.id);
+              const open = openVersion === release.id;
+              return (
+              <li key={release.id} className="py-2.5">
+                <div className="flex items-center gap-3">
+                {/* THE WHOLE ROW OPENS THE VERSION — what is in it and who is
+                    on it, with its own download. The comparison card is for
+                    comparing; reading one version belongs here (Suren, Aug 8:
+                    "for version 4, when it clicks, give those features for
+                    version 4 and then download"). */}
+                <button
+                  type="button"
+                  onClick={() => setOpenVersion(open ? null : release.id)}
+                  aria-expanded={open}
+                  aria-label={`${open ? "Hide" : "Show"} what is in ${release.version}`}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                >
+                <ChevronRight
+                  size={14}
+                  strokeWidth={2.2}
+                  className={`shrink-0 text-text-tertiary transition-transform ${open ? "rotate-90 text-blue-primary" : ""}`}
+                />
                 {release.status === "released" ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#1A7A35]">
                     <CircleCheck size={11} strokeWidth={2.2} /> Released
@@ -352,20 +447,26 @@ export function FdlComponentDetail({
                 )}
                 <span className="min-w-0">
                   <span className="block text-[13.5px] font-semibold leading-tight text-text-primary">
-                    {/^[A-Za-z]{3}'\d{2}$/.test(release.version)
+                    {MONTH_ONLY.test(release.version)
                       ? "No version number recorded"
                       : release.version}
                   </span>
                   <span className="block text-[11.5px] text-text-tertiary tnum">
                     {release.date ? formatDate(release.date) : "Date not set"}
-                    {" · "}
-                    {component.features.filter((f) => f.versionIds.includes(release.id)).length}{" "}
-                    {component.features.filter((f) => f.versionIds.includes(release.id)).length === 1
-                      ? "feature"
-                      : "features"}
+                    {" \u00b7 "}
+                    {versionFeatures.length}{" "}
+                    {versionFeatures.length === 1 ? "feature" : "features"}
+                    {versionCustomers.length > 0 && (
+                      <>
+                        {" \u00b7 "}
+                        {versionCustomers.length}{" "}
+                        {versionCustomers.length === 1 ? "customer" : "customers"}
+                      </>
+                    )}
                   </span>
                 </span>
-                <span className="ml-auto flex items-center gap-1.5">
+                </button>
+                <span className="ml-auto flex shrink-0 items-center gap-1.5">
                   {release.current ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-primary px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.03em] text-white">
                       <Check size={10} strokeWidth={3} /> Current
@@ -383,17 +484,15 @@ export function FdlComponentDetail({
                       </button>
                     )
                   )}
-                  {release.status === "released" && (
-                    <button
-                      type="button"
-                      title="Download this version's feature sheet"
-                      aria-label={`Download ${release.version} feature sheet`}
-                      onClick={() => downloadVersionSheet(release)}
-                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                    >
-                      <Download size={13} strokeWidth={2} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    title={`Download the ${release.version} feature sheet`}
+                    aria-label={`Download the ${release.version} feature sheet`}
+                    onClick={() => downloadVersionSheet(release)}
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                  >
+                    <Download size={13} strokeWidth={2} />
+                  </button>
                   {canEdit &&
                     (confirmReleaseDelete === release.id ? (
                       <span className="flex items-center gap-1">
@@ -424,8 +523,79 @@ export function FdlComponentDetail({
                       </button>
                     ))}
                 </span>
+                </div>
+
+                {open && (
+                  <div className="menu-in mt-3 grid gap-4 rounded-xl border border-border-light bg-surface/40 p-4 md:grid-cols-2">
+                    <div>
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                        What is in {release.version}
+                      </p>
+                      {versionFeatures.length === 0 ? (
+                        <p className="text-[12px] text-text-secondary">
+                          No features are ticked for this version yet.
+                        </p>
+                      ) : (
+                        <ul className="space-y-1.5">
+                          {versionFeatures.map((feature) => (
+                            <li
+                              key={feature.id}
+                              className="flex items-start gap-1.5 text-[12.5px] leading-snug text-text-secondary"
+                            >
+                              <Check
+                                size={12}
+                                strokeWidth={2.6}
+                                className="mt-[3px] shrink-0 text-[color:#1A7A35]"
+                              />
+                              <span>
+                                {feature.fid && (
+                                  <span className="mr-1 font-semibold text-text-primary tnum">
+                                    {feature.fid}
+                                  </span>
+                                )}
+                                {feature.name}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <Button
+                        variant="secondary"
+                        className="mt-3"
+                        onClick={() => downloadVersionSheet(release)}
+                      >
+                        <Download size={14} strokeWidth={2} /> Download {release.version}
+                      </Button>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                        Customers on {release.version}
+                      </p>
+                      {versionCustomers.length === 0 ? (
+                        <p className="text-[12px] text-text-secondary">
+                          Nobody is recorded on this version yet.
+                        </p>
+                      ) : (
+                        <ul className="space-y-1.5">
+                          {versionCustomers.map((customer) => (
+                            <li key={customer.id}>
+                              <Link
+                                href={`/customers/${customer.id}?tab=components`}
+                                className="inline-flex items-center gap-2 text-[12.5px] font-medium text-text-primary hover:text-blue-primary"
+                              >
+                                <Building2 size={12} strokeWidth={2} className="text-text-tertiary" />
+                                {customer.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </section>
@@ -545,6 +715,71 @@ export function FdlComponentDetail({
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* ------------------------------------------------------ customers */}
+      <section className={CARD}>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+            <Building2 size={15} strokeWidth={2} className="text-blue-primary" />
+            Customers running this
+            <InfoHint text="Every customer connected to this component and the version they are on. The same record the customer's own page writes — reached from this side too." />
+          </h2>
+          {canEdit && unconnected.length > 0 && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setPickedCustomers([]);
+                setAddingCustomers(true);
+              }}
+              disabled={busy}
+            >
+              <Plus size={14} strokeWidth={2.2} /> Add customer
+            </Button>
+          )}
+        </div>
+        {connected.length === 0 ? (
+          <p className="mt-3 text-[12.5px] text-text-secondary">
+            No customer is recorded on this component yet. Add one here, or
+            connect it from the customer&apos;s own Digital components tab.
+          </p>
+        ) : (
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {connected.map((customer) => {
+              const release = component.releases.find(
+                (item) => item.id === customer.releaseId
+              );
+              const next = component.releases.find(
+                (item) => item.id === customer.nextReleaseId
+              );
+              return (
+                <li key={customer.id}>
+                  <Link
+                    href={`/customers/${customer.id}?tab=components`}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border-light px-3 py-2 transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <CompanyLogo name={customer.name} className="h-6 w-6 shrink-0" />
+                      <span className="min-w-0 text-[13px] font-medium text-text-primary">
+                        {customer.name}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block text-[12px] font-semibold text-text-primary">
+                        {release ? release.version : "Version not recorded"}
+                      </span>
+                      {next && (
+                        <span className="block text-[11px] text-text-tertiary">
+                          moving to {next.version}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
 
@@ -732,6 +967,79 @@ export function FdlComponentDetail({
                 <Plus size={14} strokeWidth={2.2} /> Add version
               </Button>
             </div>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={addingCustomers}
+        onClose={() => setAddingCustomers(false)}
+        title={`Add a customer to ${component.name}`}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void connectCustomers();
+          }}
+          className="space-y-4"
+        >
+          <p className="text-[12.5px] text-text-secondary">
+            They will be recorded on{" "}
+            {component.releases.find((release) => release.current)?.version ||
+              "the current version"}
+            . Change the version on the customer&apos;s own page or here in the
+            list afterwards.
+          </p>
+          <ul className="max-h-72 space-y-1.5 overflow-y-auto">
+            {unconnected.map((customer) => {
+              const active = pickedCustomers.includes(customer.id);
+              return (
+                <li key={customer.id}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPickedCustomers((prev) =>
+                        active
+                          ? prev.filter((x) => x !== customer.id)
+                          : [...prev, customer.id]
+                      )
+                    }
+                    className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                      active
+                        ? "border-blue-primary bg-blue-light/50"
+                        : "border-border-light hover:border-blue-subtle"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                        active
+                          ? "border-blue-primary bg-blue-primary text-white"
+                          : "border-border"
+                      }`}
+                    >
+                      {active && <Check size={12} strokeWidth={3} />}
+                    </span>
+                    <CompanyLogo name={customer.name} className="h-6 w-6 shrink-0" />
+                    <span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">
+                      {customer.name}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setAddingCustomers(false)}
+              disabled={busy}
+            >
+              <X size={14} strokeWidth={2} /> Cancel
+            </Button>
+            <Button type="submit" disabled={!pickedCustomers.length} loading={busy}>
+              <Plus size={14} strokeWidth={2.2} /> Add customer
+            </Button>
           </div>
         </form>
       </Modal>
