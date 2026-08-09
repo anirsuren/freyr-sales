@@ -94,7 +94,12 @@ export function PersonHoverCard({
   ];
 
   return (
+    // WHO OWNS THIS IS AN IDENTITY LOOKUP, NOT A PREVIEW. A full second is
+    // right for a rich content popup you deliberately hover; it is wrong for
+    // reading a name off a face, which you do while scanning (Anir, Aug 9:
+    // "I need to see, in 0.25 seconds, who the fucking owner is").
     <HoverCard
+      delayMs={0}
       side="top"
       width={296}
       className="inline-flex"

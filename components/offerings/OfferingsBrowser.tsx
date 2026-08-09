@@ -695,7 +695,11 @@ export function OfferingsBrowser({
                 label column removes the variance entirely: every card has the
                 same skeleton whatever the text length, and the colour + icon
                 rule survives on the value. */}
-            <dl className="grid grid-cols-[34px_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1.5">
+            {/* 54px, not 34: "Owner" with its crown is the widest label of the three,
+                and at 34 the first avatar overlapped the word (Anir, Aug 9: "the
+                profile picture is literally intersecting"). One column width for
+                all three rows is the whole point of the grid. */}
+            <dl className="grid grid-cols-[54px_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1.5">
               <dt className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-text-tertiary">
                 Type
               </dt>
