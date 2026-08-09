@@ -9,8 +9,10 @@ import {
   ChevronRight,
   CircleCheck,
   Clock,
+  Download,
   Layers,
   LayoutGrid,
+  Trash2,
   Package,
   Table2,
   Unplug,
@@ -26,6 +28,7 @@ import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { downloadDocx } from "@/lib/docx";
 import { useToast } from "@/components/ui/Toast";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 
@@ -96,6 +99,59 @@ export function FdlComponentsBrowser({
   const [name, setName] = useState("");
   const [type, setType] = useState<FdlComponentType>("Module");
   const [busy, setBusy] = useState(false);
+  /** Which row is asking "are you sure" about deleting itself. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  /** The component's feature list as a real .docx, without opening it first. */
+  function downloadFeatureSheet(component: FdlComponent) {
+    const current = fdlCurrentVersion(component);
+    downloadDocx(
+      `${component.name.replace(/[^A-Za-z0-9._-]+/g, "-")}-features.docx`,
+      component.name,
+      current
+        ? `${component.type} · current version ${current} · ${component.features.length} features`
+        : `${component.type} · no version recorded yet · ${component.features.length} features`,
+      {
+        headers: ["ID", "Feature", "In versions"],
+        rows: component.features.map((feature) => ({
+          cells: [
+            feature.fid || "",
+            feature.name,
+            feature.versionIds.length === component.releases.length
+              ? "Every version"
+              : component.releases
+                  .filter((r) => feature.versionIds.includes(r.id))
+                  .map((r) => r.version)
+                  .join(", ") || "None yet",
+          ],
+          note: feature.description || undefined,
+          noteAt: 1,
+        })),
+      }
+    );
+    toast(`${component.name} feature sheet downloaded.`);
+  }
+
+  async function removeComponent(component: FdlComponent) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/fdl-components/${component.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok)
+        throw new Error((await res.json()).error || "Could not delete it.");
+      toast(`${component.name} deleted.`);
+      setConfirmDelete(null);
+      router.refresh();
+    } catch (caught) {
+      toast(
+        caught instanceof Error ? caught.message : "Could not delete it.",
+        "error"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   // FOURTEEN COMPONENTS ALREADY, AND MORE COMING. Offerings and Customers both
   // open with a search; this page made you read the grid (Anir, Aug 9: "we
   // probably need a search bar on the [FDL] fold, just saying").
@@ -445,8 +501,8 @@ export function FdlComponentsBrowser({
                         costs the row its rhythm. */}
                     <th className="w-[9%] px-4 py-2.5">Versions</th>
                     <th className="w-[9%] px-4 py-2.5">Features</th>
-                    <th className="w-[22%] px-4 py-2.5">In offerings</th>
-                    <th className="w-[7%] px-4 py-2.5 text-right">Actions</th>
+                    <th className="w-[17%] px-4 py-2.5">In offerings</th>
+                    <th className="w-[12%] px-4 py-2.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="stagger">
@@ -531,13 +587,59 @@ export function FdlComponentsBrowser({
                             a last column here with some actions"). Open is what
                             the row already does on click; naming it gives the
                             table a deliberate end instead of trailing off. */}
-                        <td className="px-4 py-2.5 text-right">
-                          <span className="inline-flex items-center gap-1">
+                        {/* THREE THINGS YOU CAN DO WITHOUT LEAVING THE ROW
+                            (Anir, Aug 9: "that's not enough actions, bro, at
+                            least two or three actions"). Open, take the feature
+                            sheet, or remove it. Every one of them is something
+                            the detail page already does; this just saves the
+                            trip. */}
+                        <td
+                          className="px-4 py-2.5 text-right"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <span className="inline-flex items-center justify-end gap-1">
+                            <Tooltip label="Download the feature sheet">
+                              <button
+                                type="button"
+                                aria-label={`Download the ${component.name} feature sheet`}
+                                onClick={() => downloadFeatureSheet(component)}
+                                disabled={component.features.length === 0}
+                                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                <Download size={14} strokeWidth={2} />
+                              </button>
+                            </Tooltip>
+                            {canEdit &&
+                              (confirmDelete === component.id ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void removeComponent(component)}
+                                  disabled={busy}
+                                  className="cursor-pointer whitespace-nowrap rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
+                                >
+                                  Delete?
+                                </button>
+                              ) : (
+                                <Tooltip label="Delete this component">
+                                  <button
+                                    type="button"
+                                    aria-label={`Delete ${component.name}`}
+                                    onClick={() => setConfirmDelete(component.id)}
+                                    // Red at rest, not only on hover: delete is
+                                    // the one action here you cannot undo, so it
+                                    // should read as dangerous before you reach
+                                    // it (Anir, Aug 9: "the delete button should
+                                    // be red, obviously").
+                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                                  >
+                                    <Trash2 size={14} strokeWidth={2} />
+                                  </button>
+                                </Tooltip>
+                              ))}
                             <Tooltip label={`Open ${component.name}`}>
                               <Link
                                 href={`/components/${component.id}`}
                                 aria-label={`Open ${component.name}`}
-                                onClick={(event) => event.stopPropagation()}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                               >
                                 <ChevronRight size={15} strokeWidth={2.2} />

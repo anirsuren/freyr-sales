@@ -1,9 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
-import { Phone, Mail, MapPin, Globe2, ArrowRight, LayoutGrid, Search, Table2 } from "lucide-react";
+import {
+  ArrowDownAZ,
+  ArrowRight,
+  CalendarDays,
+  CircleSlash,
+  Globe,
+  Globe2,
+  Layers,
+  LayoutGrid,
+  Mail,
+  MapPin,
+  Phone,
+  Search,
+  ShieldCheck,
+  Table2,
+  TrendingUp,
+  User,
+  UserCog,
+  Users,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { PresenceDot } from "@/components/presence/PresenceDot";
@@ -393,6 +413,13 @@ function ActivityTrendInspector({ rep }: { rep: RosterRep }) {
 }
 
 export function TeamRoster({ reps }: { reps: RosterRep[] }) {
+  // FOUR WAYS TO NARROW THE FLOOR (Anir, Aug 9: "have some filters here to
+  // look better, like three or four filters maybe"). Every one reads a field
+  // the row already prints, so nothing here can disagree with what you see.
+  const [roleFilter, setRoleFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState<string[]>([]);
+  const [pipelineFilter, setPipelineFilter] = useState("");
+  const [sortBy, setSortBy] = useState("pipeline");
   const [view, setView] = useStoredView<"table" | "grid">(
     "freyr.team.view",
     "table",
@@ -414,6 +441,27 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
           (r.title || "").toLowerCase().includes(q)
       )
     : reps;
+
+  const regions = Array.from(new Set(reps.map((r) => r.region).filter(Boolean))).sort(
+    (a, b) => a.localeCompare(b)
+  );
+
+  const visible = [...shown]
+    .filter((r) => !roleFilter || r.role === roleFilter)
+    .filter((r) => regionFilter.length === 0 || regionFilter.includes(r.region))
+    .filter((r) =>
+      pipelineFilter === "with"
+        ? r.openValue > 0
+        : pipelineFilter === "without"
+          ? r.openValue <= 0
+          : true
+    )
+    .sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "deals") return b.openCount - a.openCount;
+      if (sortBy === "meetings") return b.meetings - a.meetings;
+      return b.openValue - a.openValue;
+    });
 
   return (
     <Card data-tour="team-roster" className="p-0 overflow-hidden">
@@ -448,9 +496,66 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               className="w-full rounded-md border border-border bg-white py-1.5 pl-8 pr-2.5 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
             />
           </label>
-          {query.trim() && (
+          <ColorSelect
+            value={roleFilter}
+            onChange={setRoleFilter}
+            ariaLabel="Filter by role"
+            dense
+            collapsible={false}
+            className="w-[132px] shrink-0"
+            options={[
+              { value: "", label: "All roles", color: "#0071E3", icon: Users },
+              { value: "Admin", label: "Admin", color: "#6D28D9", icon: ShieldCheck },
+              { value: "Manager", label: "Manager", color: "#0071E3", icon: UserCog },
+              { value: "Rep", label: "Rep", color: "#0F766E", icon: User },
+            ]}
+          />
+          <MultiColorSelect
+            values={regionFilter}
+            onChange={setRegionFilter}
+            allLabel="All regions"
+            allIcon={Globe}
+            ariaLabel="Filter by region"
+            dense
+            collapsible={false}
+            width={150}
+            options={regions.map((region) => ({
+              value: region,
+              label: region,
+              color: "#0891B2",
+              icon: Globe,
+            }))}
+          />
+          <ColorSelect
+            value={pipelineFilter}
+            onChange={setPipelineFilter}
+            ariaLabel="Filter by pipeline"
+            dense
+            collapsible={false}
+            className="w-[152px] shrink-0"
+            options={[
+              { value: "", label: "Any pipeline", color: "#0071E3", icon: Layers },
+              { value: "with", label: "Holding pipeline", color: "#1A7A35", icon: TrendingUp },
+              { value: "without", label: "Nothing open", color: "#B4318F", icon: CircleSlash },
+            ]}
+          />
+          <ColorSelect
+            value={sortBy}
+            onChange={setSortBy}
+            ariaLabel="Sort the floor"
+            dense
+            collapsible={false}
+            className="w-[150px] shrink-0"
+            options={[
+              { value: "pipeline", label: "Open pipeline", color: "#1A7A35", icon: TrendingUp },
+              { value: "deals", label: "Open deals", color: "#0071E3", icon: Layers },
+              { value: "meetings", label: "Meetings", color: "#6D28D9", icon: CalendarDays },
+              { value: "name", label: "Name", color: "#0891B2", icon: ArrowDownAZ },
+            ]}
+          />
+          {visible.length !== reps.length && (
             <span className="text-[12px] text-text-secondary tnum">
-              {shown.length} of {reps.length}
+              {visible.length} of {reps.length}
             </span>
           )}
           <div className="ml-auto flex border border-border rounded-md overflow-hidden shrink-0">
@@ -482,7 +587,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
           `tab-panel` is the app's own view-switch animation: it lifts 6px AND
           fades, and it's the class the customer tabs already use. */}
       <div key={view}>
-      {shown.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="px-5 py-10 text-center text-[13px] text-text-secondary">
           Nobody on the floor matches{" "}
           <span className="font-semibold text-text-primary">
@@ -492,7 +597,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
         </p>
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4 stagger">
-          {shown.map((r) => {
+          {visible.map((r) => {
             const rc = ROLE_COLOR[r.role];
             const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
             const ac = attainColor(pct);
@@ -677,7 +782,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
-              {shown.map((r) => {
+              {visible.map((r) => {
                 const rc = ROLE_COLOR[r.role];
                 const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
                 const ac = attainColor(pct);
