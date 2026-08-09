@@ -92,32 +92,23 @@ function CustomerDots({
   people,
   max = 6,
   note,
+  size = 28,
 }: {
   people: { id: string; name: string }[];
   max?: number;
   note?: (person: { id: string; name: string }) => string | undefined;
+  /** Mark diameter in px. The version row runs bigger than a table cell. */
+  size?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
-  // HALF A SECOND BEFORE IT FANS (Anir, Aug 9: "for this it should be one
-  // second delay... I mean 0.5 second delay"). Opening on contact meant the row
-  // rearranged itself under a cursor that was only passing through. Closing
-  // stays instant, so leaving never feels sticky.
-  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelOpen = () => {
-    if (openTimer.current) {
-      clearTimeout(openTimer.current);
-      openTimer.current = null;
-    }
-  };
-  useEffect(() => cancelOpen, []);
-  const openSoon = () => {
-    cancelOpen();
-    openTimer.current = setTimeout(() => setExpanded(true), 500);
-  };
-  const closeNow = () => {
-    cancelOpen();
-    setExpanded(false);
-  };
+  // THE FAN IS INSTANT, THE CARD IS NOT (Anir, Aug 9: "you can make this
+  // instant... but when I hover over the logo you can make that 0.25-second
+  // delay"). Separating the marks is layout, and layout should answer the
+  // cursor immediately; opening a card over the page is a commitment, so each
+  // logo's own card waits a quarter second. Reserving the open width means the
+  // instant spread still moves nothing around it.
+  const openSoon = () => setExpanded(true);
+  const closeNow = () => setExpanded(false);
   if (people.length === 0)
     return (
       <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary">
@@ -134,7 +125,7 @@ function CustomerDots({
   // open width at rest costs a little empty space and buys a table that never
   // moves under the cursor.
   const marks = visible.length + (hidden > 0 ? 1 : 0);
-  const openWidth = marks > 0 ? 28 + (marks - 1) * 32 : 0;
+  const openWidth = marks > 0 ? size + (marks - 1) * (size + 4) : 0;
   return (
     <span
       className="inline-flex items-center rounded-lg px-1 py-0.5 transition-colors duration-200 hover:bg-surface focus-within:bg-surface"
@@ -159,6 +150,7 @@ function CustomerDots({
           <HoverCard
             width={230}
             anchor="trigger"
+            delayMs={0}
             content={
               <div className="flex items-center gap-2.5">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-light bg-white">
@@ -177,8 +169,11 @@ function CustomerDots({
               </div>
             }
           >
-            <span className="flex h-7 w-7 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-white transition-transform duration-150 hover:scale-110">
-              <CompanyLogo name={person.name} className="h-5 w-5 object-contain" />
+            <span
+              className="flex cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-white transition-transform duration-150 hover:scale-110"
+              style={{ width: size, height: size }}
+            >
+              <CompanyLogo name={person.name} className="h-[72%] w-[72%] object-contain" />
             </span>
           </HoverCard>
         </span>
@@ -195,6 +190,7 @@ function CustomerDots({
           <HoverCard
             width={230}
             anchor="trigger"
+            delayMs={0}
             content={
               <div>
                 <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
@@ -218,7 +214,10 @@ function CustomerDots({
               </div>
             }
           >
-            <span className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-surface text-[10.5px] font-bold text-text-secondary ring-2 ring-white transition-transform duration-150 hover:scale-110 tnum">
+            <span
+              className="flex cursor-pointer items-center justify-center rounded-full bg-surface text-[11px] font-bold text-text-secondary ring-2 ring-white transition-transform duration-150 hover:scale-110 tnum"
+              style={{ width: size, height: size }}
+            >
               +{hidden}
             </span>
           </HoverCard>
@@ -1003,15 +1002,39 @@ export function FdlComponentDetail({
               return (
                 <div
                   key={release.id}
+                  /* THE CURRENT VERSION IS THE ROW, NOT A BADGE ON IT (Anir,
+                     Aug 9: "which version is making it more clear which one's
+                     the current version? ... there's so much stuff now that
+                     even the tag that says Current doesn't even show up
+                     properly"). One blue pill among a date chip, a feature
+                     chip, five logos, a bar and a sentence is a needle in its
+                     own haystack. A tinted face and a blue ring make the whole
+                     row the answer, readable before a single word is. */
                   className={`entry-card relative overflow-hidden pl-[3px] transition-shadow ${
                     open ? "shadow-[0_6px_20px_rgba(16,24,40,0.08)]" : ""
+                  } ${
+                    release.current
+                      ? "border-blue-primary ring-1 ring-blue-primary"
+                      : ""
                   }`}
+                  /* Inline, because .entry-card sets its own background and a
+                     utility class loses that fight. */
+                  style={
+                    release.current
+                      ? {
+                          background: "rgba(232,241,251,0.55)",
+                          borderColor: "#0071E3",
+                        }
+                      : undefined
+                  }
                 >
                   {/* The rail says released-or-planned before a word is read. */}
                   <span
                     aria-hidden="true"
-                    className="absolute inset-y-0 left-0 w-[3px]"
-                    style={{ background: accent }}
+                    className={`absolute inset-y-0 left-0 ${
+                      release.current ? "w-[6px]" : "w-[3px]"
+                    }`}
+                    style={{ background: release.current ? "#0071E3" : accent }}
                   />
                   <div className="flex items-center gap-3 px-3.5 py-3">
                     {/* THE WHOLE ROW OPENS THE VERSION — what is in it and who
@@ -1055,8 +1078,8 @@ export function FdlComponentDetail({
                             {shipped ? "Released" : "Expected"}
                           </span>
                           {release.current && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-primary px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.03em] text-white">
-                              <Check size={10} strokeWidth={3} /> Current
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-primary px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-[0.04em] text-white shadow-[0_2px_8px_rgba(0,113,227,0.35)]">
+                              <Check size={12} strokeWidth={3.2} /> Current version
                             </span>
                           )}
                         </span>
@@ -1121,11 +1144,22 @@ export function FdlComponentDetail({
                               {versionFeatures.length === 1 ? "feature" : "features"}
                             </span>
                           </HoverCard>
-                          <CustomerDots
-                            people={versionCustomers}
-                            note={() => `On ${release.version}`}
-                          />
                         </span>
+                      </span>
+                      {/* THE LOGOS MOVE UP AND GROW (Anir, Aug 9: "the company
+                          logos, move it so that it's bigger and it's in line
+                          instead of on the bottom"). Tucked among the date and
+                          feature chips they read as one more chip; on the main
+                          line at 34px they read as the accounts they are. Five
+                          then +N, so the row's length never depends on how many
+                          customers a version happens to have. */}
+                      <span className="ml-4 hidden shrink-0 items-center lg:flex">
+                        <CustomerDots
+                          people={versionCustomers}
+                          max={5}
+                          size={34}
+                          note={() => `On ${release.version}`}
+                        />
                       </span>
                       {/* THE BAR IS A FIXED 72px, NOT A STRETCH (Anir, Aug 9:
                           "it's just too big, each one should be a set amount
@@ -1139,24 +1173,7 @@ export function FdlComponentDetail({
                         {/* THE BAR RIDES WITH THE VERSION (Anir, Aug 9: "the
                             progress bar should go right after"). Pinned to the
                             far edge it belonged to nothing you were reading. */}
-                        {connected.length > 0 && (
-                          <span className="flex shrink-0 items-center gap-2">
-                            <span className="h-1.5 w-[72px] overflow-hidden rounded-full bg-surface">
-                              <span
-                                className="block h-full rounded-full transition-[width] duration-500"
-                                style={{
-                                  width: `${Math.round(
-                                    (versionCustomers.length / connected.length) * 100
-                                  )}%`,
-                                  background: accent,
-                                }}
-                              />
-                            </span>
-                            <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary tnum">
-                              {versionCustomers.length} of {connected.length} on this
-                            </span>
-                          </span>
-                        )}
+
                         {/* SOMETHING WORTH READING, NEVER "NOTHING NEW" (Anir,
                             Aug 9: "I don't understand the point of seeing
                             nothing new, include some other thing there"). When
@@ -1201,6 +1218,116 @@ export function FdlComponentDetail({
                             )}
                           </span>
                         </span>
+                        {/* THE BAR MOVES RIGHT AND EXPLAINS ITSELF (Anir, Aug 9:
+                            "you're gonna move the progress bar to the right"
+                            and "when I hover over this bar, I probably should
+                            see something like which three out of the seven...
+                            think like a mega-detailed version"). A stub reading
+                            "3 of 7" gave the count and withheld the only part a
+                            seller can act on, which is WHO. */}
+                        {connected.length > 0 && (
+                          <HoverCard
+                            width={360}
+                            anchor="trigger"
+                            delayMs={0}
+                            content={
+                              <div>
+                                <p className="text-[12.5px] font-semibold text-text-primary">
+                                  {versionCustomers.length} of {connected.length} on{" "}
+                                  {release.version}
+                                </p>
+                                <span className="mt-2 flex h-3 overflow-hidden rounded-full bg-surface">
+                                  <span
+                                    className="block h-full"
+                                    style={{
+                                      width: `${Math.round(
+                                        (versionCustomers.length / connected.length) *
+                                          100
+                                      )}%`,
+                                      background: accent,
+                                    }}
+                                  />
+                                </span>
+                                <p className="mt-2.5 text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  On this version
+                                </p>
+                                {versionCustomers.length === 0 ? (
+                                  <p className="mt-1 text-[11.5px] text-text-secondary">
+                                    Nobody yet.
+                                  </p>
+                                ) : (
+                                  <ul className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
+                                    {versionCustomers.map((customer) => (
+                                      <li
+                                        key={customer.id}
+                                        className="flex items-center gap-1.5"
+                                      >
+                                        <CompanyLogo
+                                          name={customer.name}
+                                          className="h-4 w-4 shrink-0 object-contain"
+                                        />
+                                        <span className="truncate text-[11.5px] text-text-primary">
+                                          {customer.name}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {connected.length - versionCustomers.length > 0 && (
+                                  <div className="mt-2.5 border-t border-border-light pt-2">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                      On something else
+                                    </p>
+                                    <ul className="mt-1 space-y-1">
+                                      {connected
+                                        .filter((c) => c.releaseId !== release.id)
+                                        .slice(0, 6)
+                                        .map((customer) => {
+                                          const theirs = releases.find(
+                                            (r) => r.id === customer.releaseId
+                                          );
+                                          return (
+                                            <li
+                                              key={customer.id}
+                                              className="flex items-center gap-1.5 text-[11.5px]"
+                                            >
+                                              <CompanyLogo
+                                                name={customer.name}
+                                                className="h-4 w-4 shrink-0 object-contain"
+                                              />
+                                              <span className="truncate text-text-primary">
+                                                {customer.name}
+                                              </span>
+                                              <span className="ml-auto shrink-0 text-text-tertiary tnum">
+                                                {theirs ? theirs.version : "No version"}
+                                              </span>
+                                            </li>
+                                          );
+                                        })}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            }
+                          >
+                            <span className="flex shrink-0 cursor-pointer items-center gap-2">
+                              <span className="h-1.5 w-[72px] overflow-hidden rounded-full bg-surface">
+                                <span
+                                  className="block h-full rounded-full transition-[width] duration-500"
+                                  style={{
+                                    width: `${Math.round(
+                                      (versionCustomers.length / connected.length) * 100
+                                    )}%`,
+                                    background: accent,
+                                  }}
+                                />
+                              </span>
+                              <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary tnum">
+                                {versionCustomers.length} of {connected.length} on this
+                              </span>
+                            </span>
+                          </HoverCard>
+                        )}
                       </span>
                     </button>
                     <span className="ml-auto flex shrink-0 items-center gap-1.5">

@@ -249,40 +249,54 @@ function OwnerRows({
   if (granted.length === 0) return null;
   return (
     <>
-      {/* The crown rides with the word — the same mark the Owner filter wears,
-          so "who owns this" reads the same in the toolbar and on the card
-          (Anir, Aug 7). It only prints once, against the first name. */}
-      {/* THE LABEL SITS ON THE NAME, not below it. The rest of the grid aligns
-          on the text baseline, but this row's baseline is dragged down by an
-          18px avatar and its padding, so "Owner" landed lower than the name it
-          labels (Anir, Aug 9: "its not even aligned properly, the owner name
-          with 'owner'"). Pinning the label to the top and giving it the exact
-          height of one owner line centres the two on each other, whatever the
-          name length and however many owners there are. */}
-      <dt className="flex h-[22px] items-center gap-1 self-start text-[9.5px] font-bold uppercase tracking-[0.07em] text-[color:#6D28D9]">
+      {/* ONE LINE, WHATEVER THE COUNT (Anir, Aug 9: "if there are like ten
+          owners, how is this gonna look? Genuinely, I still don't like the way
+          it looks").
+
+          A name-per-line column meant an offering with ten owners grew a card
+          ten rows taller than the one beside it, wrecking the grid's symmetry,
+          and even at two owners the label sat in a tall empty column that read
+          as a mistake. Faces overlap instead, the way they already do on the
+          campaigns page and on a component's customers, so the row is exactly
+          one line tall at one owner or at twenty, and hovering any face names
+          that person.
+
+          A single owner keeps their name in plain text: one face with no name
+          would be a puzzle, and one name never threatens the layout. */}
+      <dt className="flex h-[26px] items-center gap-1 self-start text-[9.5px] font-bold uppercase tracking-[0.07em] text-[color:#6D28D9]">
         <Crown size={10} strokeWidth={2.6} aria-hidden="true" />
         Owner
       </dt>
-      <dd className="min-w-0 self-start">
-        {/* One name per line. Wrapping mid-row is what made two owners look
-            different from one; a column looks the same at any name length. */}
-        <span className="flex min-w-0 flex-col gap-1">
-          {granted.map((o) => (
-            <PersonHoverCard
-              key={o.memberId}
-              name={o.name}
-              role={o.role || "Owns this offering"}
-              context={offeringName}
-            >
-              <span className="hover-yield inline-flex min-w-0 items-center gap-1.5 self-start rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
-                <Avatar name={o.name} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
-                <span className="min-w-0 break-words text-[11.5px] font-semibold leading-snug text-text-primary">
-                  {o.name}
-                </span>
+      <dd className="flex min-h-[26px] min-w-0 items-center self-start">
+        {granted.length === 1 ? (
+          <PersonHoverCard
+            name={granted[0].name}
+            role={granted[0].role || "Owns this offering"}
+            context={offeringName}
+          >
+            <span className="hover-yield inline-flex min-w-0 items-center gap-1.5 rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
+              <Avatar
+                name={granted[0].name}
+                className="h-[20px] w-[20px] shrink-0 text-[7px]"
+              />
+              <span className="min-w-0 break-words text-[11.5px] font-semibold leading-snug text-text-primary">
+                {granted[0].name}
               </span>
-            </PersonHoverCard>
-          ))}
-        </span>
+            </span>
+          </PersonHoverCard>
+        ) : (
+          <span className="hover-yield inline-flex min-w-0">
+            <PersonFan
+              people={granted.map((o) => ({
+                name: o.name,
+                role: o.role || "Owns this offering",
+                context: offeringName,
+              }))}
+              avatarClassName="h-[22px] w-[22px] text-[8px]"
+              max={6}
+            />
+          </span>
+        )}
       </dd>
     </>
   );

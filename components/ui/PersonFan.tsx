@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
+import { HoverCard } from "@/components/ui/HoverCard";
 
 export type FanPerson = {
   name: string;
@@ -84,9 +85,41 @@ export function PersonFan({
         </span>
       ))}
       {hidden > 0 && (
-        <span className="ml-1.5 whitespace-nowrap text-[11px] font-medium text-text-tertiary">
-          +{hidden}
-        </span>
+        /* THE OVERFLOW NAMES ITSELF (Anir, Aug 9: "when I hover over +1, it has
+           to say what it is, like a pop-up"). A bare +4 was the one mark in the
+           row you could not ask a question of. */
+        <HoverCard
+          width={220}
+          anchor="trigger"
+          content={
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                {hidden} more
+              </p>
+              <ul className="space-y-1.5">
+                {people.slice(max).map((p) => (
+                  <li key={p.name} className="flex items-center gap-2">
+                    <Avatar name={p.name} className="h-5 w-5 shrink-0 text-[7px]" />
+                    <span className="min-w-0">
+                      <span className="block text-[12.5px] font-medium text-text-primary">
+                        {p.name}
+                      </span>
+                      {p.role && (
+                        <span className="block text-[11px] text-text-secondary">
+                          {p.role}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          }
+        >
+          <span className="ml-1.5 cursor-pointer whitespace-nowrap text-[11px] font-medium text-text-tertiary transition-colors hover:text-blue-primary">
+            +{hidden}
+          </span>
+        </HoverCard>
       )}
     </span>
   );
