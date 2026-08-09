@@ -97,6 +97,20 @@ const TABS = [
   { key: "activity", label: "Activity" },
 ];
 
+/**
+ * WHAT A REAL ACCOUNT SHOWS TODAY. Suren, walking through Opella (Aug 9): "I
+ * don't want to see overview analytics nothing — I will see digital components
+ * and activity." Offerings comes off too, because an offering now arrives
+ * through the activity you log against it: "in the activity itself there is an
+ * offering activity and all the offering activities come here, I don't want to
+ * see the offerings here."
+ *
+ * Nothing is deleted. Mock mode keeps every tab — that is what "remove" means
+ * from him (Anir, Aug 9: "if he says remove, it's still gonna be on Mock-mode").
+ * These come back in real mode as each one earns its place.
+ */
+const REAL_MODE_TABS = new Set(["components", "activity"]);
+
 const NOTE_KINDS = [
   { key: "call" as const, label: "Call", icon: Phone },
   { key: "email" as const, label: "Email", icon: Mail },
@@ -188,7 +202,9 @@ export function CustomerTabs({
   const defaultDealOwner = includeDemoTeam
     ? customer.owner || currentUser.name
     : currentUser.name;
-  const [tab, setTabState] = useState("overview");
+  // Real mode opens on Digital components — Overview is not rendered there, so
+  // seeding the state with it would flash an empty panel before the effect runs.
+  const [tab, setTabState] = useState(includeDemoTeam ? "overview" : "components");
   // Persist the active tab in the URL (?tab=) so it's always clear which tab
   // you're on AND browser-back from a deal/session returns to the SAME tab, not
   // Overview (Suren, Jul 8). replaceState keeps tab-switches out of history.
@@ -208,7 +224,12 @@ export function CustomerTabs({
     try {
       const wanted = new URLSearchParams(window.location.search).get("tab");
       if (wanted === "ask") window.dispatchEvent(new CustomEvent("freyr:ask-agent"));
-      else if (wanted && TABS.some((t) => t.key === wanted)) setTab(wanted);
+      else if (
+        wanted &&
+        TABS.some((t) => t.key === wanted) &&
+        (includeDemoTeam || REAL_MODE_TABS.has(wanted))
+      )
+        setTab(wanted);
     } catch {}
   }, []);
   // editable account fields (#55 owner, #59 competitor, #60 notes/attachments).
@@ -267,8 +288,12 @@ export function CustomerTabs({
     try {
       wanted = new URLSearchParams(window.location.search).get("tab");
     } catch {}
+    const visible = (key: string | null) =>
+      !!key &&
+      TABS.some((t) => t.key === key) &&
+      (includeDemoTeam || REAL_MODE_TABS.has(key));
     setTabState(
-      wanted && TABS.some((t) => t.key === wanted) ? wanted : "overview"
+      visible(wanted) ? (wanted as string) : includeDemoTeam ? "overview" : "components"
     );
     setOwner(customer.owner || ownerFor(customer));
     setCompetitor(customer.competitor || "");
@@ -650,7 +675,9 @@ export function CustomerTabs({
           aria-label="Account sections"
           className="flex gap-8 border-b border-border-light mb-6"
         >
-          {TABS.map((t) => (
+          {TABS.filter(
+            (t) => includeDemoTeam || REAL_MODE_TABS.has(t.key)
+          ).map((t) => (
             <button
               key={t.key}
               role="tab"

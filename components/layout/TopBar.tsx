@@ -113,10 +113,17 @@ export function TopBar({
         body: JSON.stringify({ mode }),
       });
       if (r.ok) {
-        // Re-render the same screen in the selected mode. Released pages such
-        // as Reports should not throw the user back to a mode-specific home
-        // while they are comparing real and sample data.
-        window.location.reload();
+        // A RECORD ONLY EXISTS IN ONE MODE. Reloading the same URL is right for
+        // a list or a dashboard — you want to see the other mode's version of
+        // the screen you are on — but a detail page is keyed by an id that the
+        // other store has never heard of: a real customer is a UUID, a sample
+        // one is "cust-001". Reloading there rendered the not-found page, so
+        // flipping the switch looked like the app breaking (Anir, Aug 9: "it
+        // kept saying that there was some error and that the page doesn't
+        // exist"). Land on the module's list instead, which exists in both.
+        const segments = window.location.pathname.split("/").filter(Boolean);
+        window.location.href =
+          segments.length > 1 ? `/${segments[0]}` : window.location.pathname;
         return;
       }
     } catch {}

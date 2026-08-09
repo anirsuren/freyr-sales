@@ -166,6 +166,7 @@ export function OfferingActivities({
    *  happened yet — Suren, Aug 8: "can I also add activity that has not
    *  happened yet?" No fourth status: the date says it. */
   const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [currency, setCurrency] = useState<CustomerOfferingCurrency>("USD");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
@@ -184,6 +185,7 @@ export function OfferingActivities({
         version?.start_date ||
         new Date().toISOString().slice(0, 10)
     );
+    setEndDate(version?.end_date ?? "");
     setCurrency(version?.currency ?? "USD");
   }
 
@@ -218,7 +220,7 @@ export function OfferingActivities({
       dollar_value: Math.max(0, Math.round(Number(amount) || 0)),
       currency,
       start_date: chosen,
-      end_date: existing?.end_date ?? null,
+      end_date: endDate || null,
       potential_close_date: existing?.potential_close_date ?? null,
       opportunity_ids: existing?.opportunity_ids ?? [],
       proposal_ids: existing?.proposal_ids ?? [],
@@ -263,102 +265,114 @@ export function OfferingActivities({
           a pilot — and it becomes the current activity.
         </p>
       ) : (
-        <ul className="mt-2.5 space-y-2">
-          {ordered.map((version) => {
-            const dates = version.status_dates || {};
-            const reached =
-              version.status === "completed"
-                ? dates.completed
-                : version.status === "under_progress"
-                  ? dates.under_progress
-                  : dates.initiated;
-            return (
-              <li
-                key={version.id}
-                className={`rounded-lg border px-3 py-2.5 transition-colors ${
-                  version.linked
-                    ? "border-blue-subtle bg-blue-light/40"
-                    : "border-border-light bg-white"
-                }`}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <ActivityChip activity={version.activity} />
-                  {planned(version) ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
-                      <CalendarClock size={11} strokeWidth={2.2} /> Planned
-                    </span>
-                  ) : (
-                    <StatusChip status={version.status} />
-                  )}
-                  {reached && (
-                    <span className="text-[11.5px] text-text-tertiary tnum">
-                      {formatDate(reached)}
-                    </span>
-                  )}
-                  {version.dollar_value > 0 && (
-                    <span className="text-[11.5px] font-semibold text-text-primary tnum">
-                      {money(version.dollar_value, version.currency)}
-                    </span>
-                  )}
-                  <span className="ml-auto flex items-center gap-1.5">
-                    <label
-                      className="flex cursor-pointer items-center gap-1.5 text-[11.5px] font-medium text-text-secondary"
-                      title="Show this activity in the heat map"
-                    >
+        /* A TABLE, NOT A STACK OF CARDS. Suren, Aug 9: "this is not the way
+           they will consume it… activity has to be a table, columns have to
+           show up — activity name, details, status, start date, end date. I
+           want them to use the table nature." */
+        <div className="mt-2.5 overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-border-light text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                <th className="py-2 pr-3 font-bold">Activity</th>
+                <th className="py-2 pr-3 font-bold">Details</th>
+                <th className="py-2 pr-3 font-bold">Status</th>
+                <th className="py-2 pr-3 font-bold">Start</th>
+                <th className="py-2 pr-3 font-bold">End</th>
+                <th className="py-2 pr-3 text-right font-bold">Value</th>
+                <th className="py-2 pr-2 text-center font-bold">Current</th>
+                <th className="py-2 font-bold" />
+              </tr>
+            </thead>
+            <tbody>
+              {ordered.map((version) => {
+                const dates = version.status_dates || {};
+                const started = version.start_date || dates.initiated || null;
+                return (
+                  <tr
+                    key={version.id}
+                    className={`border-b border-border-light align-top last:border-0 ${
+                      version.linked ? "bg-blue-light/40" : ""
+                    }`}
+                  >
+                    <td className="py-2.5 pr-3">
+                      <ActivityChip activity={version.activity} />
+                    </td>
+                    <td className="min-w-[220px] py-2.5 pr-3">
+                      <p className="text-[12.5px] leading-snug text-text-primary">
+                        {version.activity_description || "—"}
+                      </p>
+                      {version.comments && (
+                        <p className="mt-0.5 text-[11.5px] leading-snug text-text-tertiary">
+                          {version.comments}
+                        </p>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      {planned(version) ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
+                          <CalendarClock size={11} strokeWidth={2.2} /> Planned
+                        </span>
+                      ) : (
+                        <StatusChip status={version.status} />
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-3 text-[12px] text-text-secondary tnum">
+                      {started ? formatDate(started) : "—"}
+                    </td>
+                    <td className="py-2.5 pr-3 text-[12px] text-text-secondary tnum">
+                      {version.end_date ? formatDate(version.end_date) : "—"}
+                    </td>
+                    <td className="py-2.5 pr-3 text-right text-[12px] font-semibold text-text-primary tnum">
+                      {version.dollar_value > 0
+                        ? money(version.dollar_value, version.currency)
+                        : "—"}
+                    </td>
+                    <td className="py-2.5 pr-2 text-center">
                       <input
                         type="radio"
                         checked={!!version.linked}
                         onChange={() => makeCurrent(version.id)}
+                        aria-label={`Make this the current activity`}
+                        title="Show this activity in the heat map"
                         className="h-3.5 w-3.5 cursor-pointer accent-blue-primary"
                       />
-                      Current
-                    </label>
-                    <button
-                      type="button"
-                      aria-label="Edit this activity"
-                      onClick={() => openEditor(version)}
-                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                    >
-                      <Pencil size={13} strokeWidth={2} />
-                    </button>
-                    {confirmDelete === version.id ? (
-                      <button
-                        type="button"
-                        onClick={() => remove(version.id)}
-                        className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                      >
-                        Remove?
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        aria-label="Remove this activity"
-                        onClick={() => setConfirmDelete(version.id)}
-                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
-                      >
-                        <Trash2 size={13} strokeWidth={2} />
-                      </button>
-                    )}
-                  </span>
-                </div>
-                {(version.activity_description || version.comments) && (
-                  <div className="mt-1.5 space-y-0.5 pl-0.5">
-                    {version.activity_description && (
-                      <p className="text-[12px] leading-snug text-text-secondary">
-                        {version.activity_description}
-                      </p>
-                    )}
-                    {version.comments && (
-                      <p className="text-[11.5px] leading-snug text-text-tertiary">
-                        {version.comments}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                    </td>
+                    <td className="py-2.5">
+                      <span className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          aria-label="Edit this activity"
+                          onClick={() => openEditor(version)}
+                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                        >
+                          <Pencil size={13} strokeWidth={2} />
+                        </button>
+                        {confirmDelete === version.id ? (
+                          <button
+                            type="button"
+                            onClick={() => remove(version.id)}
+                            className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
+                          >
+                            Remove?
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label="Remove this activity"
+                            onClick={() => setConfirmDelete(version.id)}
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                          >
+                            <Trash2 size={13} strokeWidth={2} />
+                          </button>
+                        )}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {current && (
@@ -439,16 +453,34 @@ export function OfferingActivities({
               className={`${FIELD} resize-y`}
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          {/* AN ACTIVITY RUNS BETWEEN TWO DATES, not on one. Suren, Aug 9:
+              "instead of saying when… can we have a start date and an ending?
+              I want to start a lead initiation activity and I want to finish
+              the end activity by this time." End is optional — something still
+              running has no end yet. */}
+          <div className="grid gap-4 sm:grid-cols-4">
             <div>
               <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
-                When
+                Start date
                 <InfoHint text="The day this activity starts. Put a date in the future for something planned but not started — it shows as Planned until that day." />
               </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
+                className={FIELD}
+              />
+            </div>
+            <div>
+              <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
+                End date
+                <InfoHint text="When you expect it to finish, or when it did. Leave it empty while the activity is still running." />
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(event) => setEndDate(event.target.value)}
                 className={FIELD}
               />
             </div>
