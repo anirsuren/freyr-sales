@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/layout/PageHeader";
 import {
   initializeLiveOfferings,
   listFdlComponents,
@@ -27,10 +26,6 @@ export default async function FdlComponentsPage() {
   const canEdit = await canManageOfferings();
   return (
     <div className="px-6 py-6">
-      <PageHeader
-        title="FDL Components"
-        subtitle="Freya Digital components — the software pieces an offering is made of. Each keeps its own versions and features."
-      />
       <FdlComponentsBrowser
         components={components}
         usedIn={usedIn}

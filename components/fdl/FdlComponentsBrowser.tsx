@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -115,7 +116,15 @@ export function FdlComponentsBrowser({
   );
 
   return (
-    <section className="mt-5">
+    <section>
+      {/* The create button lives IN the title row, exactly like the Offerings
+          page header (Anir, Aug 8: "the new FDL component line should be
+          aligned with the title… so much gap"). */}
+      <PageHeader
+        title="FDL Components"
+        subtitle="Freya Digital components — the software pieces an offering is made of. Each keeps its own versions and features."
+        action={components.length > 0 ? newButton : undefined}
+      />
       {components.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-white px-6 py-10 text-center">
           <Boxes size={22} strokeWidth={1.8} className="mx-auto text-blue-primary" />
@@ -131,7 +140,6 @@ export function FdlComponentsBrowser({
         </div>
       ) : (
         <>
-          <div className="mb-3 flex items-center justify-end">{newButton}</div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 stagger">
             {components.map((component) => {
               const current = fdlCurrentVersion(component);
