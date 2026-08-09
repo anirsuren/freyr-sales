@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -266,7 +266,7 @@ function SummaryRow({
   onDrop,
   onDragEnd,
   dragging,
-  dropTarget,
+  flipKey,
 }: {
   title: string;
   meta?: string;
@@ -280,10 +280,12 @@ function SummaryRow({
   onDrop?: (event: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd?: () => void;
   dragging?: boolean;
-  dropTarget?: boolean;
+  /** Stable identity so the row can be animated from its old slot to its new one. */
+  flipKey?: string;
 }) {
   return (
     <div
+      data-flip-key={flipKey}
       draggable={!!onDragStart}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
@@ -292,9 +294,7 @@ function SummaryRow({
       className={`flex items-center gap-3 rounded-xl border bg-white px-3.5 py-2.5 transition-[border-color,box-shadow,opacity] ${
         dragging
           ? "border-blue-primary opacity-60 shadow-[0_6px_18px_rgba(16,24,40,0.10)]"
-          : dropTarget
-            ? "border-blue-primary shadow-[0_0_0_3px_rgba(0,113,227,0.12)]"
-            : "border-border-light"
+          : "border-border-light"
       }`}
     >
       {/* DRAG TO REORDER. An owner types the history in whatever order it
@@ -354,28 +354,80 @@ function SummaryRow({
 }
 
 /**
- * Reorder-by-drag for any roadmap list. Returns the props a SummaryRow needs.
- * Kept deliberately plain — HTML5 drag events, no library — because these
- * lists are short and the rows are already single-purpose cards.
+ * Reorder-by-drag for a roadmap list. The rows move UNDER the cursor as you
+ * drag — the neighbour you are passing slides out of the way and the list is
+ * already in its new order by the time you let go (Anir, Aug 8: "it doesn't
+ * show me the shuffle when I move something. It should show the other things
+ * shuffling next to it… when I let go it's very abrupt").
+ *
+ * Two pieces make that work:
+ *   1. `dragover` on a different row applies the move immediately instead of
+ *      waiting for `drop`, so there is no snap at the end.
+ *   2. Every displaced row is animated from where it WAS to where it now is
+ *      (measure, invert, play), so the shuffle is something you can watch
+ *      rather than a jump between two frames.
+ *
+ * Row identity comes from object identity: reordering splices the same objects
+ * around, so a row keeps its key across the move and can be animated.
  */
-function useRowReorder<T>(rows: T[], onChange: (next: T[]) => void) {
+const ROW_IDS = new WeakMap<object, string>();
+let rowIdSeq = 0;
+function rowId(row: object): string {
+  let id = ROW_IDS.get(row);
+  if (!id) {
+    id = `row-${(rowIdSeq += 1)}`;
+    ROW_IDS.set(row, id);
+  }
+  return id;
+}
+
+function useRowReorder<T extends object>(rows: T[], onChange: (next: T[]) => void) {
+  const listRef = useRef<HTMLDivElement>(null);
   // The drag source lives in a REF, not in state. `dragover` fires on the very
   // next frame after `dragstart`, before React has re-rendered, so a state-held
-  // source still reads null there — preventDefault never runs, the browser
-  // treats the row as an invalid drop target, and `drop` never fires at all.
-  // The ref is what makes the drop land; the state copy only drives the
-  // highlight.
+  // source still reads null there — preventDefault never runs and the browser
+  // treats the row as an invalid drop target.
   const fromRef = useRef<number | null>(null);
   const [from, setFrom] = useState<number | null>(null);
-  const [over, setOver] = useState<number | null>(null);
+  const beforeRef = useRef<Map<string, number>>(new Map());
+
+  function measure() {
+    const map = new Map<string, number>();
+    listRef.current
+      ?.querySelectorAll<HTMLElement>("[data-flip-key]")
+      .forEach((el) => {
+        if (el.dataset.flipKey) map.set(el.dataset.flipKey, el.getBoundingClientRect().top);
+      });
+    beforeRef.current = map;
+  }
+
+  // Runs after every commit; only does anything when a move was just measured.
+  useLayoutEffect(() => {
+    const before = beforeRef.current;
+    if (!before.size) return;
+    beforeRef.current = new Map();
+    listRef.current
+      ?.querySelectorAll<HTMLElement>("[data-flip-key]")
+      .forEach((el) => {
+        const wasTop = el.dataset.flipKey ? before.get(el.dataset.flipKey) : undefined;
+        if (wasTop === undefined) return;
+        const delta = wasTop - el.getBoundingClientRect().top;
+        if (!delta) return;
+        el.animate(
+          [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
+          { duration: 190, easing: "cubic-bezier(0.2, 0, 0, 1)" }
+        );
+      });
+  });
+
   const reset = () => {
     fromRef.current = null;
     setFrom(null);
-    setOver(null);
   };
-  return (index: number) => ({
+
+  const rowProps = (index: number) => ({
+    flipKey: rowId(rows[index]),
     dragging: from === index,
-    dropTarget: over === index && from !== null && from !== index,
     onDragStart: (event: React.DragEvent<HTMLDivElement>) => {
       fromRef.current = index;
       setFrom(index);
@@ -384,26 +436,29 @@ function useRowReorder<T>(rows: T[], onChange: (next: T[]) => void) {
       event.dataTransfer.setData("text/plain", String(index));
     },
     onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
-      if (fromRef.current === null) return;
+      const source = fromRef.current;
+      if (source === null) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
-      if (over !== index) setOver(index);
-    },
-    onDrop: (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      const source = fromRef.current;
-      if (source === null || source === index) {
-        reset();
-        return;
-      }
+      if (source === index) return;
+      measure();
       const next = [...rows];
       const [moved] = next.splice(source, 1);
       next.splice(index, 0, moved);
+      // The dragged row now lives here, so the next hop is measured from it.
+      fromRef.current = index;
+      setFrom(index);
       onChange(next);
+    },
+    // The list is already in its final order — letting go only ends the drag.
+    onDrop: (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
       reset();
     },
     onDragEnd: reset,
   });
+
+  return { listRef, rowProps };
 }
 
 /** One dialog shape for every roadmap list: title, fields, Cancel + Save. */
@@ -470,7 +525,6 @@ function RoadmapModuleEditor({
 }) {
   // -1 = adding a new one; null = dialog closed.
   const [editing, setEditing] = useState<number | null>(null);
-  const reorder = useRowReorder(rows, onChange);
   const [draft, setDraft] = useState<OfferingRoadmapModuleRow>(BLANK_MODULE);
 
   const openNew = () => {
@@ -524,7 +578,6 @@ function RoadmapModuleEditor({
             }
             onEdit={() => openRow(index)}
             onRemove={() => onChange(rows.filter((_, i) => i !== index))}
-            {...reorder(index)}
             removeLabel={`Remove ${row.module || `module ${index + 1}`}`}
           />
         ))
@@ -604,7 +657,6 @@ function RoadmapComparisonEditor({
   onCurrentLabel: (value: string) => void;
 }) {
   const [editing, setEditing] = useState<number | null>(null);
-  const reorder = useRowReorder(rows, onChange);
   const [draft, setDraft] = useState<OfferingRoadmapComparisonRow>(BLANK_COMPARISON);
 
   const openNew = () => {
@@ -683,7 +735,6 @@ function RoadmapComparisonEditor({
             }
             onEdit={() => openRow(index)}
             onRemove={() => onChange(rows.filter((_, i) => i !== index))}
-            {...reorder(index)}
             removeLabel={`Remove ${row.area || `comparison row ${index + 1}`}`}
           />
         ))
@@ -744,7 +795,7 @@ function RoadmapHistoryEditor({
   onChange: (rows: OfferingRoadmapHistoryRow[]) => void;
 }) {
   const [editing, setEditing] = useState<number | null>(null);
-  const reorder = useRowReorder(rows, onChange);
+  const { listRef, rowProps } = useRowReorder(rows, onChange);
   const [draft, setDraft] = useState<OfferingRoadmapHistoryRow>(BLANK_HISTORY);
 
   const openNew = () => {
@@ -784,22 +835,27 @@ function RoadmapHistoryEditor({
       {rows.length === 0 ? (
         <EmptyRowButton label="Add the first release period" onClick={openNew} />
       ) : (
-        rows.map((row, index) => (
-          <SummaryRow
-            key={index}
-            title={row.period || "Untitled period"}
-            meta={
-              row.summary.length
-                ? `${row.summary.length} note${row.summary.length === 1 ? "" : "s"}`
-                : undefined
-            }
-            detail={row.summary.join(" · ") || "No release notes yet"}
-            onEdit={() => openRow(index)}
-            onRemove={() => onChange(rows.filter((_, i) => i !== index))}
-            {...reorder(index)}
-            removeLabel={`Remove ${row.period || `period ${index + 1}`}`}
-          />
-        ))
+        // Keyed by row identity, not position — an index key would make React
+        // rewrite the text of the rows in place, so nothing would appear to
+        // move and there would be nothing to animate.
+        <div ref={listRef} className="space-y-2">
+          {rows.map((row, index) => (
+            <SummaryRow
+              key={rowId(row)}
+              title={row.period || "Untitled period"}
+              meta={
+                row.summary.length
+                  ? `${row.summary.length} note${row.summary.length === 1 ? "" : "s"}`
+                  : undefined
+              }
+              detail={row.summary.join(" · ") || "No release notes yet"}
+              onEdit={() => openRow(index)}
+              onRemove={() => onChange(rows.filter((_, i) => i !== index))}
+              {...rowProps(index)}
+              removeLabel={`Remove ${row.period || `period ${index + 1}`}`}
+            />
+          ))}
+        </div>
       )}
 
       <RowDialog

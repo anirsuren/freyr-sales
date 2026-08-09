@@ -9,6 +9,7 @@ import {
   CircleCheck,
   Clock,
   Building2,
+  CalendarDays,
   ChevronRight,
   Download,
   GitCompareArrows,
@@ -409,194 +410,226 @@ export function FdlComponentDetail({
             No versions yet. Add the first one, then list its features below.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-border-light">
+          // ONE CARD PER VERSION. A divided list of text rows made every
+          // version look like the same sentence repeated, with the open panel
+          // a flat grey box hanging under it (Anir, Aug 8: "revamp this… it
+          // just looks really ugly"). Each version is now its own card with a
+          // status-coloured rail, the number as the headline, and its facts as
+          // chips — so you can tell the released one from the planned one
+          // without reading.
+          <div className="mt-3.5 space-y-2.5">
             {releases.map((release) => {
               const versionFeatures = component.features.filter((feature) =>
                 feature.versionIds.includes(release.id)
               );
               const versionCustomers = customersOnVersion(release.id);
               const open = openVersion === release.id;
+              const shipped = release.status === "released";
+              const accent = shipped ? "#1A7A35" : "#6D28D9";
               return (
-              <li key={release.id} className="py-2.5">
-                <div className="flex items-center gap-3">
-                {/* THE WHOLE ROW OPENS THE VERSION — what is in it and who is
-                    on it, with its own download. The comparison card is for
-                    comparing; reading one version belongs here (Suren, Aug 8:
-                    "for version 4, when it clicks, give those features for
-                    version 4 and then download"). */}
-                <button
-                  type="button"
-                  onClick={() => setOpenVersion(open ? null : release.id)}
-                  aria-expanded={open}
-                  aria-label={`${open ? "Hide" : "Show"} what is in ${release.version}`}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                <div
+                  key={release.id}
+                  className={`entry-card relative overflow-hidden pl-[3px] transition-shadow ${
+                    open ? "shadow-[0_6px_20px_rgba(16,24,40,0.08)]" : ""
+                  }`}
                 >
-                <ChevronRight
-                  size={14}
-                  strokeWidth={2.2}
-                  className={`shrink-0 text-text-tertiary transition-transform ${open ? "rotate-90 text-blue-primary" : ""}`}
-                />
-                {release.status === "released" ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#1A7A35]">
-                    <CircleCheck size={11} strokeWidth={2.2} /> Released
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
-                    <Clock size={11} strokeWidth={2.2} /> Expected
-                  </span>
-                )}
-                <span className="min-w-0">
-                  <span className="block text-[13.5px] font-semibold leading-tight text-text-primary">
-                    {MONTH_ONLY.test(release.version)
-                      ? "No version number recorded"
-                      : release.version}
-                  </span>
-                  <span className="block text-[11.5px] text-text-tertiary tnum">
-                    {release.date ? formatDate(release.date) : "Date not set"}
-                    {" \u00b7 "}
-                    {versionFeatures.length}{" "}
-                    {versionFeatures.length === 1 ? "feature" : "features"}
-                    {versionCustomers.length > 0 && (
-                      <>
-                        {" \u00b7 "}
-                        {versionCustomers.length}{" "}
-                        {versionCustomers.length === 1 ? "customer" : "customers"}
-                      </>
-                    )}
-                  </span>
-                </span>
-                </button>
-                <span className="ml-auto flex shrink-0 items-center gap-1.5">
-                  {release.current ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-primary px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.03em] text-white">
-                      <Check size={10} strokeWidth={3} /> Current
-                    </span>
-                  ) : (
-                    canEdit &&
-                    release.status === "released" && (
-                      <button
-                        type="button"
-                        onClick={() => void markCurrent(release.id)}
-                        disabled={busy}
-                        className="cursor-pointer rounded-lg border border-border-light px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                      >
-                        Mark current
-                      </button>
-                    )
-                  )}
-                  <button
-                    type="button"
-                    title={`Download the ${release.version} feature sheet`}
-                    aria-label={`Download the ${release.version} feature sheet`}
-                    onClick={() => downloadVersionSheet(release)}
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                  >
-                    <Download size={13} strokeWidth={2} />
-                  </button>
-                  {canEdit &&
-                    (confirmReleaseDelete === release.id ? (
-                      <span className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => void removeRelease(release.id)}
-                          className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                        >
-                          Remove?
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Keep this version"
-                          onClick={() => setConfirmReleaseDelete(null)}
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
-                        >
-                          <X size={13} strokeWidth={2} />
-                        </button>
+                  {/* The rail says released-or-planned before a word is read. */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 left-0 w-[3px]"
+                    style={{ background: accent }}
+                  />
+                  <div className="flex items-center gap-3 px-3.5 py-3">
+                    {/* THE WHOLE ROW OPENS THE VERSION — what is in it and who
+                        is on it, with its own download (Suren, Aug 8: "for
+                        version 4, when it clicks, give those features for
+                        version 4 and then download"). */}
+                    <button
+                      type="button"
+                      onClick={() => setOpenVersion(open ? null : release.id)}
+                      aria-expanded={open}
+                      aria-label={`${open ? "Hide" : "Show"} what is in ${release.version}`}
+                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                    >
+                      <ChevronRight
+                        size={15}
+                        strokeWidth={2.2}
+                        className={`shrink-0 text-text-tertiary transition-transform ${
+                          open ? "rotate-90 text-blue-primary" : ""
+                        }`}
+                      />
+                      <span className="min-w-0">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-[16px] font-semibold leading-tight tracking-[-0.01em] text-text-primary">
+                            {MONTH_ONLY.test(release.version)
+                              ? "No version number recorded"
+                              : release.version}
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            style={{
+                              color: accent,
+                              background: `${accent}14`,
+                              border: `1px solid ${accent}40`,
+                            }}
+                          >
+                            {shipped ? (
+                              <CircleCheck size={11} strokeWidth={2.2} />
+                            ) : (
+                              <Clock size={11} strokeWidth={2.2} />
+                            )}
+                            {shipped ? "Released" : "Expected"}
+                          </span>
+                          {release.current && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-primary px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.03em] text-white">
+                              <Check size={10} strokeWidth={3} /> Current
+                            </span>
+                          )}
+                        </span>
+                        {/* Facts as chips, not a run-on grey sentence. */}
+                        <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
+                            <CalendarDays size={11} strokeWidth={2} className="text-text-tertiary" />
+                            {release.date ? formatDate(release.date) : "Date not set"}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
+                            <ListChecks size={11} strokeWidth={2} className="text-text-tertiary" />
+                            {versionFeatures.length}{" "}
+                            {versionFeatures.length === 1 ? "feature" : "features"}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
+                            <Building2 size={11} strokeWidth={2} className="text-text-tertiary" />
+                            {versionCustomers.length}{" "}
+                            {versionCustomers.length === 1 ? "customer" : "customers"}
+                          </span>
+                        </span>
                       </span>
-                    ) : (
+                    </button>
+                    <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                      {!release.current && canEdit && shipped && (
+                        <button
+                          type="button"
+                          onClick={() => void markCurrent(release.id)}
+                          disabled={busy}
+                          className="cursor-pointer rounded-lg border border-border-light px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                        >
+                          Mark current
+                        </button>
+                      )}
                       <button
                         type="button"
-                        aria-label={`Remove ${release.version}`}
-                        onClick={() => setConfirmReleaseDelete(release.id)}
-                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
-                      >
-                        <Trash2 size={13} strokeWidth={2} />
-                      </button>
-                    ))}
-                </span>
-                </div>
-
-                {open && (
-                  <div className="menu-in mt-3 grid gap-4 rounded-xl border border-border-light bg-surface/40 p-4 md:grid-cols-2">
-                    <div>
-                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                        What is in {release.version}
-                      </p>
-                      {versionFeatures.length === 0 ? (
-                        <p className="text-[12px] text-text-secondary">
-                          No features are ticked for this version yet.
-                        </p>
-                      ) : (
-                        <ul className="space-y-1.5">
-                          {versionFeatures.map((feature) => (
-                            <li
-                              key={feature.id}
-                              className="flex items-start gap-1.5 text-[12.5px] leading-snug text-text-secondary"
-                            >
-                              <Check
-                                size={12}
-                                strokeWidth={2.6}
-                                className="mt-[3px] shrink-0 text-[color:#1A7A35]"
-                              />
-                              <span>
-                                {feature.fid && (
-                                  <span className="mr-1 font-semibold text-text-primary tnum">
-                                    {feature.fid}
-                                  </span>
-                                )}
-                                {feature.name}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <Button
-                        variant="secondary"
-                        className="mt-3"
+                        title={`Download the ${release.version} feature sheet`}
+                        aria-label={`Download the ${release.version} feature sheet`}
                         onClick={() => downloadVersionSheet(release)}
+                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                       >
-                        <Download size={14} strokeWidth={2} /> Download {release.version}
-                      </Button>
-                    </div>
-                    <div>
-                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                        Customers on {release.version}
-                      </p>
-                      {versionCustomers.length === 0 ? (
-                        <p className="text-[12px] text-text-secondary">
-                          Nobody is recorded on this version yet.
-                        </p>
-                      ) : (
-                        <ul className="space-y-1.5">
-                          {versionCustomers.map((customer) => (
-                            <li key={customer.id}>
-                              <Link
-                                href={`/customers/${customer.id}?tab=components`}
-                                className="inline-flex items-center gap-2 text-[12.5px] font-medium text-text-primary hover:text-blue-primary"
-                              >
-                                <Building2 size={12} strokeWidth={2} className="text-text-tertiary" />
-                                {customer.name}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+                        <Download size={14} strokeWidth={2} />
+                      </button>
+                      {canEdit &&
+                        (confirmReleaseDelete === release.id ? (
+                          <span className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void removeRelease(release.id)}
+                              className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
+                            >
+                              Remove?
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Keep this version"
+                              onClick={() => setConfirmReleaseDelete(null)}
+                              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
+                            >
+                              <X size={13} strokeWidth={2} />
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={`Remove ${release.version}`}
+                            onClick={() => setConfirmReleaseDelete(release.id)}
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                          >
+                            <Trash2 size={14} strokeWidth={2} />
+                          </button>
+                        ))}
+                    </span>
                   </div>
-                )}
-              </li>
+
+                  {open && (
+                    <div className="menu-in border-t border-border-light bg-surface/50 px-3.5 py-3.5">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {/* Two equal white panels. The old layout put the
+                            button under a short list and left the other half
+                            empty, so the two halves never looked related. */}
+                        <div className="rounded-xl border border-border-light bg-white p-3.5">
+                          <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            <ListChecks size={12} strokeWidth={2.2} className="text-blue-primary" />
+                            What is in {release.version}
+                          </p>
+                          {versionFeatures.length === 0 ? (
+                            <p className="text-[12.5px] text-text-secondary">
+                              No features are ticked for this version yet.
+                            </p>
+                          ) : (
+                            <ul className="space-y-1.5">
+                              {versionFeatures.map((feature) => (
+                                <li
+                                  key={feature.id}
+                                  className="flex items-start gap-2 text-[12.5px] leading-snug text-text-secondary"
+                                >
+                                  <Check
+                                    size={12}
+                                    strokeWidth={2.6}
+                                    className="mt-[3px] shrink-0 text-[color:#1A7A35]"
+                                  />
+                                  <span>
+                                    {feature.fid && (
+                                      <span className="mr-1 font-semibold text-text-primary tnum">
+                                        {feature.fid}
+                                      </span>
+                                    )}
+                                    {feature.name}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        <div className="rounded-xl border border-border-light bg-white p-3.5">
+                          <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            <Building2 size={12} strokeWidth={2.2} className="text-blue-primary" />
+                            Customers on {release.version}
+                          </p>
+                          {versionCustomers.length === 0 ? (
+                            <p className="text-[12.5px] text-text-secondary">
+                              Nobody is recorded on this version yet. Connect it
+                              from a customer&apos;s Digital components tab.
+                            </p>
+                          ) : (
+                            <ul className="space-y-1">
+                              {versionCustomers.map((customer) => (
+                                <li key={customer.id}>
+                                  <Link
+                                    href={`/customers/${customer.id}?tab=components`}
+                                    className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-[12.5px] font-medium text-text-primary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                                  >
+                                    <CompanyLogo name={customer.name} className="h-5 w-5 shrink-0" />
+                                    {customer.name}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
       </section>
 

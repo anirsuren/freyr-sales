@@ -83,6 +83,10 @@ function seed(): MockStore {
         "Mid-size clinical-stage biopharma, ~450 employees, Series D, 3 Phase 2 compounds + 1 NDA-ready. Focus on biologics for oncology and autoimmune. Working across FDA and EMA.",
       created_at: new Date("2025-11-15").toISOString(),
       last_enriched_at: new Date("2025-11-15").toISOString(),
+      customer_type: "Biologics - Mid size",
+      ownership: "Private",
+      revenue: "$1.4B",
+      analyzed_at: new Date("2025-11-15").toISOString(),
     },
     {
       id: "cust-002",
@@ -95,6 +99,10 @@ function seed(): MockStore {
         "Small generic pharma company, ~80 employees, focused on ANDA filings for US market entry. First-time FDA submitter.",
       created_at: new Date("2025-12-01").toISOString(),
       last_enriched_at: new Date("2025-12-01").toISOString(),
+      customer_type: "Pharmaceutical - Small",
+      ownership: "Private",
+      revenue: "$180M",
+      analyzed_at: new Date("2025-12-01").toISOString(),
     },
   ];
 
@@ -362,19 +370,116 @@ function seed(): MockStore {
 
   // Fan the generated book out per account so each customer carries its own
   // `offering_usage`, which is where the reports read from.
-  const generatedUsage = new Map<string, { offering_id: string; revenue_lines: unknown[] }[]>();
+  const generatedUsage = new Map<
+    string,
+    { offering_id: string; revenue_lines: unknown[]; engagement_versions: unknown[] }[]
+  >();
+
+  /**
+   * A believable activity history for one account on one offering — two or
+   * three activities down Suren's ladder with the latest marked current, so
+   * the customer's Offerings tab and the heat map both have something real to
+   * read in Mock (Anir, Aug 8: mock must look full).
+   */
+  function demoActivities(customerId: string, offeringId: string) {
+    let h = 0;
+    const key = `${customerId}:${offeringId}`;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    const roll = (n: number) => (h = (h * 1103515245 + 12345) >>> 0) % n;
+    const LADDER = ["lead", "opportunity", "pilot", "contract", "delivery"] as const;
+    const reached = 1 + roll(LADDER.length); // 1..5 activities deep
+    const day = (back: number) => {
+      const d = new Date(NOW);
+      d.setUTCDate(d.getUTCDate() - back);
+      return d.toISOString().slice(0, 10);
+    };
+    const NOTE: Record<string, string> = {
+      lead: "First conversation with the regulatory team.",
+      opportunity: "Scoped the markets and the data they hold today.",
+      pilot: "Pilot running on two markets with their own products.",
+      contract: "Commercials agreed; legal reviewing the order form.",
+      delivery: "Rolled out to the regulatory team and in daily use.",
+    };
+    return LADDER.slice(0, reached).map((activity, index) => {
+      const last = index === reached - 1;
+      const started = day((reached - index) * 45 + roll(20));
+      const status = last
+        ? (["initiated", "under_progress", "under_progress"] as const)[roll(3)]
+        : ("completed" as const);
+      return {
+        id: `eng-${offeringId}-${customerId}-${index + 1}`,
+        version: index + 1,
+        // Exactly one current activity per customer-offering: the newest.
+        linked: last,
+        activity,
+        activity_description: NOTE[activity],
+        comments: last ? "Next step agreed with their regulatory lead." : null,
+        status,
+        status_dates: {
+          initiated: started,
+          under_progress:
+            status === "initiated" ? null : day((reached - index) * 45 - 10),
+          completed: status === "completed" ? day((reached - index) * 30) : null,
+        },
+        dollar_value: last ? (2 + roll(9)) * 25000 : 0,
+        currency: "USD" as const,
+        start_date: started,
+        end_date: null,
+        potential_close_date: null,
+        opportunity_ids: [],
+        proposal_ids: [],
+        contract_ids: [],
+        created_at: new Date(NOW).toISOString(),
+        updated_at: new Date(NOW).toISOString(),
+      };
+    });
+  }
+
   for (const offeringId of DEMO_OFFERING_IDS) {
     for (const row of seedCommercials(offeringId)) {
       const list = generatedUsage.get(row.customerId) || [];
-      list.push({ offering_id: row.offeringId, revenue_lines: row.revenue_lines });
+      list.push({
+        offering_id: row.offeringId,
+        revenue_lines: row.revenue_lines,
+        engagement_versions: demoActivities(row.customerId, row.offeringId),
+      });
       generatedUsage.set(row.customerId, list);
     }
   }
+
+  // EVERY DEMO ACCOUNT IS CLASSIFIED. An unclassified customer opens its
+  // Offerings tab on the "What type of customer is this?" picker with nothing
+  // behind it, so eleven of the twelve showrooms read as empty (Anir, Aug 8:
+  // "in the fake mode it has to be as if there's a ton of shit for every
+  // single thing"). Derived from the industry + size already on the spec, so
+  // the value always matches a row in the customer-type master list.
+  const FAMILY: Record<string, string> = {
+    Pharmaceutical: "Pharmaceutical",
+    Biotechnology: "Biologics",
+    "Medical Device": "Medical Devices",
+    "Medical Devices": "Medical Devices",
+    "Consumer Health": "Consumer Products",
+  };
+  const SIZE_NAME: Record<string, string> = {
+    small: "Small",
+    mid: "Mid size",
+    large: "Large",
+  };
+  const REVENUE: Record<string, string> = {
+    small: "$180M",
+    mid: "$1.4B",
+    large: "$9.6B",
+  };
 
   for (const s of specs) {
     const cid = `cust-${s.id}`;
     const ctid = `cont-${s.id}`;
     const sid = `sess-${s.id}`;
+    const derivedType =
+      s.ctype ||
+      `${FAMILY[s.industry] || "Pharmaceutical"} - ${
+        SIZE_NAME[s.size] || "Mid size"
+      }`;
     customers.push({
       id: cid,
       company_name: s.company,
@@ -385,21 +490,21 @@ function seed(): MockStore {
       enrichment_summary: s.csum,
       created_at: iso(s.days + 30),
       last_enriched_at: iso(s.days),
-      ...(s.ctype
-        ? {
-            customer_type: s.ctype,
-            ownership: s.own || null,
-            revenue: s.rev || null,
-            analyzed_at: iso(s.days),
-            offerings_in_use: s.inUse || [],
-          }
-        : s.inUse
-        ? { offerings_in_use: s.inUse }
-        : {}),
+      customer_type: derivedType,
+      ownership: s.own || (s.size === "small" ? "Private" : "Public"),
+      revenue: s.rev || REVENUE[s.size] || "$1.4B",
+      analyzed_at: iso(s.days),
       // Hand-written usage wins; the generated book fills in the rest so no
-      // offering's report is empty in the demo.
+      // offering's report is empty in the demo. Hand-written rows that predate
+      // the activity model get the same generated ladder, so no in-use card
+      // sits on "Activities (0)".
       offering_usage: [
-        ...(s.usage || []),
+        ...(s.usage || []).map((u) => ({
+          ...u,
+          engagement_versions: u.engagement_versions?.length
+            ? u.engagement_versions
+            : demoActivities(cid, u.offering_id),
+        })),
         ...((generatedUsage.get(cid) || []).filter(
           (g) => !(s.usage || []).some((u) => u.offering_id === g.offering_id)
         ) as typeof s.usage extends undefined ? never[] : NonNullable<typeof s.usage>),
@@ -576,7 +681,7 @@ function seed(): MockStore {
 // seed. Bump SCHEMA_VERSION whenever the seed shape changes to auto-reseed.
 // Bumped Aug 8: showroom accounts now carry a digital_components estate, so
 // a snapshot written before that must be reseeded rather than loaded.
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 5;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

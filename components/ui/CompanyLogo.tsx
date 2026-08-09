@@ -51,6 +51,30 @@ const LOGOS: Record<string, string> = {
   "meridian pharmaceuticals": "/logos/meridian-pharmaceuticals.png",
   "northwind biosciences": "/logos/northwind-biosciences.png",
   "orion vaccines": "/logos/orion-vaccines.png",
+
+  // THE REAL ACCOUNTS WEAR THEIR OWN BRANDS. These sixteen are actual Freyr
+  // customers, not showroom fiction, so a generated initials tile was standing
+  // in for a logo anyone in the building would recognise (Anir, Aug 8: "go pull
+  // actual logos since these are real companies"). Fetched from each company's
+  // own site and committed, so nothing is loaded from a third party at runtime.
+  // Galderma, Opella and Gideon are still on the generated mark — no logo could
+  // be resolved for them and guessing at which company a name refers to is not
+  // something to do with a real account.
+  curateq: "/logos/real/curateq.png",
+  gilead: "/logos/real/gilead.png",
+  gsk: "/logos/real/gsk.png",
+  incyte: "/logos/real/incyte.png",
+  "j&j medtech": "/logos/real/j-j-medtech.png",
+  kenvue: "/logos/real/kenvue.png",
+  novartis: "/logos/real/novartis.png",
+  // The joint account carries the Novartis mark; Cognizant is the partner.
+  "novartis + cognizant": "/logos/real/novartis.png",
+  cognizant: "/logos/real/cognizant.png",
+  otsuka: "/logos/real/otsuka.png",
+  "pierre fabre": "/logos/real/pierre-fabre.png",
+  takeda: "/logos/real/takeda.png",
+  vertex: "/logos/real/vertex.png",
+  zydus: "/logos/real/zydus.png",
 };
 
 function logoFor(name: string): string | null {

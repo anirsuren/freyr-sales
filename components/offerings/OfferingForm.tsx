@@ -40,6 +40,7 @@ import {
 import { hasOfferingEditChanges } from "@/lib/offeringEditDirty";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import type {
   CustomerType,
@@ -469,6 +470,14 @@ function RichBriefEditor({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const internalValueRef = useRef(value);
+  // window.prompt() is the same system dialog as confirm() — it says
+  // "localhost says" and belongs to no product (Anir, Aug 8: "it should be a
+  // coded pop-up, not this stupid Chrome pop-up"). Opening a real modal moves
+  // focus out of the contenteditable, so the selection is saved first and
+  // restored before execCommand runs.
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const savedRange = useRef<Range | null>(null);
 
   useEffect(() => {
     if (!ref.current || value === internalValueRef.current) return;
@@ -496,8 +505,12 @@ function RichBriefEditor({
       outdent: "outdent", clear: "removeFormat",
     };
     if (kind === "link") {
-      const href = window.prompt("Paste a link");
-      if (href && /^https?:\/\//i.test(href)) document.execCommand("createLink", false, href);
+      const selection = window.getSelection();
+      savedRange.current =
+        selection && selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+      setLinkUrl("");
+      setLinkOpen(true);
+      return;
     } else if (kind === "heading" || kind === "subheading") {
       document.execCommand("formatBlock", false, kind === "heading" ? "h2" : "h3");
     } else if (command[kind]) {
@@ -587,6 +600,48 @@ function RichBriefEditor({
           className="min-h-[260px] w-full bg-white px-4 py-3 text-[14px] leading-relaxed text-text-primary outline-none [&_a]:text-blue-primary [&_a]:underline [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6"
         />
       </div>
+
+      <Modal open={linkOpen} onClose={() => setLinkOpen(false)} title="Add a link">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            const href = linkUrl.trim();
+            setLinkOpen(false);
+            if (!/^https?:\/\//i.test(href)) return;
+            // Put the caret back where it was before the modal took focus.
+            const selection = window.getSelection();
+            if (savedRange.current && selection) {
+              selection.removeAllRanges();
+              selection.addRange(savedRange.current);
+            }
+            ref.current?.focus();
+            document.execCommand("createLink", false, href);
+            emitFromEditor();
+          }}
+        >
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            Link address
+          </label>
+          <input
+            autoFocus
+            value={linkUrl}
+            onChange={(event) => setLinkUrl(event.target.value)}
+            placeholder="https://www.freyrsolutions.com/…"
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary outline-none transition-colors focus:border-blue-primary"
+          />
+          <p className="mt-1.5 text-[12px] text-text-tertiary">
+            The selected words become the link. Must start with http:// or https://.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setLinkOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!/^https?:\/\//i.test(linkUrl.trim())}>
+              <Link2 size={14} strokeWidth={2.2} /> Add link
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
@@ -907,6 +962,7 @@ export function OfferingForm({
   // A structured brief renders as service cards on Overview, so open the same
   // card-shaped editor by default. Plain prose still opens as a document.
   const [pasteMode, setPasteMode] = useState(seeded.rows.length === 0);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const [pasted, setPasted] = useState(
     composeDescription(seeded.intro, seeded.rows)
   );
@@ -1091,21 +1147,21 @@ export function OfferingForm({
     return () => window.removeEventListener("beforeunload", warn);
   }, []);
 
-  // Cancel is a discard. Say so out loud when there is something to discard.
+  // Cancel is a discard. Say so out loud when there is something to discard —
+  // in the app's own dialog, not the browser's "localhost says" box (Anir,
+  // Aug 8: "it should be like a center-screen pop-up… it shouldn't do this
+  // ever").
+  function discardAndLeave() {
+    unsavedRef.current = false;
+    router.push(isEdit ? `/offerings/${offeringId}` : "/offerings");
+  }
+
   function leaveForm() {
-    const back = isEdit ? `/offerings/${offeringId}` : "/offerings";
-    if (
-      hasOfferingChanges &&
-      !window.confirm(
-        isEdit
-          ? "Leave without saving? The changes you made on this page will be lost."
-          : "Leave without saving? This offering has not been created yet."
-      )
-    ) {
+    if (hasOfferingChanges) {
+      setConfirmLeave(true);
       return;
     }
-    unsavedRef.current = false;
-    router.push(back);
+    discardAndLeave();
   }
 
   function toggle(list: string[], id: string) {
@@ -1224,6 +1280,20 @@ export function OfferingForm({
     // edge with a third of the screen empty beside it (Anir, Jul 28: "I don't
     // know why everything is aligned to the left").
     <div className="w-full space-y-4">
+      <ConfirmDialog
+        open={confirmLeave}
+        onClose={() => setConfirmLeave(false)}
+        onConfirm={discardAndLeave}
+        title="Leave without saving?"
+        body={
+          isEdit
+            ? "The changes you made on this page will be lost."
+            : "This offering has not been created yet, so nothing will be saved."
+        }
+        detail="Everything you typed since the last save goes away. There is no undo."
+        confirmLabel="Discard changes"
+      />
+
       {/* ------------------------------------------------------ the basics */}
       <FormSection
         icon={Package}
@@ -1231,7 +1301,11 @@ export function OfferingForm({
         hint="What this offering is called, where it sits in the catalog, and who owns it."
         defaultOpen
       >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* All three basics on one row. Two 2-up grids left the category
+            stranded on its own line with half the card empty beside it (Anir,
+            Aug 8: "have all three of these on the same line… make it look
+            symmetrical"). */}
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className={LABEL}>Offering type</label>
             {/* A colour+icon picker like every other dropdown in the app. It
@@ -1264,8 +1338,6 @@ export function OfferingForm({
               placeholder="e.g. Freya.Register"
             />
           </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className={LABEL}>Offering category</label>
             {/* The last raw <select> in this form. It rendered as the
@@ -2023,20 +2095,17 @@ export function OfferingForm({
             you left it. Under five materials it never scrolls at all. */}
         <div
           className={cn(
-            "space-y-2",
+            "space-y-3.5",
             materials.length > 4 &&
-              "material-scroll max-h-[460px] overflow-y-auto rounded-xl border border-border-light bg-white p-2"
+              "material-scroll max-h-[460px] overflow-y-auto rounded-xl border border-border-light bg-surface p-3"
           )}
         >
         {materials.map((m, i) => {
           const MaterialIcon = MATERIAL_ICON[m.kind] || Package;
           const linkedMaterial = /^https?:\/\//i.test(m.url);
           return (
-            <div
-              key={i}
-              className="rounded-xl border border-border-light bg-[var(--surface)] p-3.5"
-            >
-              <div className="mb-3 flex items-center gap-2.5">
+            <div key={i} className="entry-card p-3.5">
+              <div className="entry-card__head -mx-3.5 mb-3.5 flex items-center gap-2.5 px-3.5 pb-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
                   <MaterialIcon size={16} strokeWidth={1.9} />
                 </span>

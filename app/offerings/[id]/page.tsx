@@ -272,62 +272,15 @@ export default async function OfferingDetailPage({
       </Link>
 
       {/* Header: identity on the left, primary actions on the right */}
-      <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-3 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
-            <OfferingIcon
-              name={o.offering_name}
-              category={o.offering_category}
-              className="w-11 h-11 shrink-0"
-            />
-            {o.offering_name}
-          </h1>
-          {/* All tags on one line (Anir: single line to save space) */}
-          <div className="flex flex-wrap items-center gap-2 mt-2.5">
-            {o.offering_category && (
-              <Link
-                href={`/offerings?cat=${o.offeringCategory?.id ?? ""}`}
-                className="inline-flex items-center gap-1 text-[12px] font-medium text-blue-primary bg-blue-light rounded-full px-2.5 py-1 hover:bg-blue-subtle/60 transition-colors"
-              >
-                <Layers size={12} strokeWidth={1.9} />
-                {o.offering_category}
-              </Link>
-            )}
-            {o.offering_type && (() => {
-              const typeIndex = listOfferingTypes().findIndex(
-                (t) => t.name === o.offering_type
-              );
-              const typeColor =
-                typeIndex >= 0
-                  ? FILTER_PALETTE[(typeIndex + 3) % FILTER_PALETTE.length]
-                  : "#0071E3";
-              return (
-                <span
-                  className="semantic-color-pill inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1"
-                  style={
-                    {
-                      "--semantic-color": typeColor,
-                      "--semantic-bg": `${typeColor}14`,
-                    } as CSSProperties
-                  }
-                >
-                  {/* No leading dot. The pill is already the type's colour,
-                      so the bullet restated the hue and nothing else (Anir,
-                      Aug 7, on the same dots in the list view: "remove these
-                      bullet points, they are not needed"). */}
-                  {o.offering_type}
-                </span>
-              );
-            })()}
-            <AvailabilityPill value={o.current_availability} />
-            {!isMapped && (
-              <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-tertiary bg-surface border border-border-light rounded-full px-2.5 py-1">
-                <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
-                Awaiting details
-              </span>
-            )}
-          </div>
-        </div>
+      <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <h1 className="flex min-w-0 items-center gap-3 text-[30px] font-semibold tracking-[-0.02em] text-text-primary leading-tight">
+          <OfferingIcon
+            name={o.offering_name}
+            category={o.offering_category}
+            className="w-11 h-11 shrink-0"
+          />
+          {o.offering_name}
+        </h1>
 
         {/* All actions on one line (Anir: single line to save space) —
             OfferingActions keeps its two + the admin buttons as `extra`. */}
@@ -349,11 +302,16 @@ export default async function OfferingDetailPage({
                 {/* Duplicate is gone (Suren, Jul 27: "the duplicate button is
                     useless"). Editing is the only admin action left up here. */}
                 {admin ? (
+                  /* Icon only: a fourth worded button made the row read as a
+                     wall (Anir, Aug 8). Editing is an admin's occasional
+                     action, not the headline one. */
                   <Link
                     href={`/offerings/${o.id}/edit`}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-medium rounded-md px-3 py-2 bg-white border border-border-light text-text-primary hover:bg-surface hover:border-blue-subtle transition-colors"
+                    title="Edit this offering"
+                    aria-label="Edit this offering"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
                   >
-                    <Pencil size={14} strokeWidth={1.8} /> Edit offering
+                    <Pencil size={15} strokeWidth={1.9} />
                   </Link>
                 ) : null}
               </>
@@ -361,6 +319,53 @@ export default async function OfferingDetailPage({
           />
         </div>
       </div>
+      {/* The tags own their own line. Sharing the row with the four
+          actions left roughly 400px, so "Available now" kept falling to
+          a row by itself (Anir, Aug 8). Full width, one line. */}
+      <div className="rise-in flex flex-wrap items-center gap-2 mt-3">
+          {o.offering_category && (
+            <Link
+              href={`/offerings?cat=${o.offeringCategory?.id ?? ""}`}
+              className="inline-flex items-center gap-1 text-[12px] font-medium text-blue-primary bg-blue-light rounded-full px-2.5 py-1 hover:bg-blue-subtle/60 transition-colors"
+            >
+              <Layers size={12} strokeWidth={1.9} />
+              {o.offering_category}
+            </Link>
+          )}
+          {o.offering_type && (() => {
+            const typeIndex = listOfferingTypes().findIndex(
+              (t) => t.name === o.offering_type
+            );
+            const typeColor =
+              typeIndex >= 0
+                ? FILTER_PALETTE[(typeIndex + 3) % FILTER_PALETTE.length]
+                : "#0071E3";
+            return (
+              <span
+                className="semantic-color-pill inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1"
+                style={
+                  {
+                    "--semantic-color": typeColor,
+                    "--semantic-bg": `${typeColor}14`,
+                  } as CSSProperties
+                }
+              >
+                {/* No leading dot. The pill is already the type's colour,
+                    so the bullet restated the hue and nothing else (Anir,
+                    Aug 7, on the same dots in the list view: "remove these
+                    bullet points, they are not needed"). */}
+                {o.offering_type}
+              </span>
+            );
+          })()}
+          <AvailabilityPill value={o.current_availability} />
+          {!isMapped && (
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-tertiary bg-surface border border-border-light rounded-full px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
+              Awaiting details
+            </span>
+          )}
+        </div>
 
       {/* Reports remains implemented but hidden until real customer data makes
           the tab useful, per change-log item 28. */}

@@ -777,8 +777,11 @@ export function CustomerOfferingsTab({
 
       {/* ACTIVITIES LIVE WHERE THE OFFERING DOES (Suren, Aug 8): the customer
           gets an offering, and the activity history for that offering sits
-          right under it — with one row marked current for the heat map. */}
-      {using && expanded && (
+          right under it — with one row marked current for the heat map.
+          NOT behind the card's expander: in-use cards start collapsed, so
+          the Add activity button was invisible until you happened to open one
+          (Anir, Aug 8: "I still cannot see a button to add an activity"). */}
+      {using && (
         <OfferingActivities
           versions={activitiesForOffering(o.id)}
           onSave={(versions) => void saveActivities(o.id, versions)}

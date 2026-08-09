@@ -35,11 +35,16 @@ export function isReleased(href: string, dataMode: DataMode): boolean {
 // and working, it was simply still behind this gate — so releasing it is the
 // feature. It answers grounded in the offerings catalogue itself (see
 // lib/knowledgeBase), which is exactly the content real mode carries.
-// Customers and Reports stay in mock mode while the sales pilot is focused on
-// Offerings. Saras (Aug 4) asked for both modules to be hidden temporarily so
-// pilot users are never sent into unfinished/empty destinations. Removing the
-// prefixes here hides their sidebar items AND blocks direct URLs in live mode;
-// mock mode still exposes the full product for review.
+// CUSTOMERS SHIPS WITH THE REAL ACCOUNTS (Anir, Aug 8: "if those are real
+// customers, I think we can add the customers page… since those are real
+// customers, let's add the customers page"). Sixteen real Freyr accounts are in
+// the live workspace and already reachable from FDL Components, so hiding the
+// module only meant there was no way to open one. This reverses Saras's Aug 4
+// request to hide it temporarily — she asked for that when the module was
+// empty, and Anir owns the call.
+//
+// Reports stays in mock mode: it aggregates revenue across customers and there
+// is no revenue recorded yet, so it would open on zeroes.
 const RELEASED_MODULE_PREFIXES = [
   "/offerings",
   // FDL Components travels with Offerings — offerings are packages of these
@@ -49,6 +54,7 @@ const RELEASED_MODULE_PREFIXES = [
   // The Team page ships with honest zeros: real workspace members as the
   // roster, every pipeline number 0 until deals exist (Anir, Aug 6).
   "/team",
+  "/customers",
   // ONLY the per-rep profile pages travel with Team — clicking a teammate
   // must open them, not bounce to Offerings. The /analytics module root
   // stays unreleased and hidden from navigation.
