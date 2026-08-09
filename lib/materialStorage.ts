@@ -45,12 +45,35 @@ const MATERIAL_UPLOAD_MIME: Record<string, string[]> = {
   csv: ["text/csv", "application/vnd.ms-excel", "text/plain"], zip: ["application/zip", "application/x-zip-compressed", "application/octet-stream"],
 };
 
+/**
+ * Pictures. Deliberately NOT part of MATERIAL_UPLOAD_MIME: a sales material is
+ * a deck or a document, and widening that list would change what the materials
+ * uploader accepts, which nobody asked for. Feature attachments opt in through
+ * `allowImages` (Suren, Aug 9: "if they can add some document or an image").
+ */
+const IMAGE_UPLOAD_MIME: Record<string, string[]> = {
+  png: ["image/png"],
+  jpg: ["image/jpeg"],
+  jpeg: ["image/jpeg"],
+  gif: ["image/gif"],
+  webp: ["image/webp"],
+  svg: ["image/svg+xml"],
+  heic: ["image/heic", "image/heif", "application/octet-stream"],
+  avif: ["image/avif"],
+};
+
 /** Validate the filename extension and browser-declared MIME together. */
-export function validateMaterialUpload(filename: string, contentType: string): string | null {
+export function validateMaterialUpload(
+  filename: string,
+  contentType: string,
+  options?: { allowImages?: boolean }
+): string | null {
   const cleanName = filename.trim();
   if (!cleanName || /[\0\r\n]/.test(cleanName)) return "Choose a valid file name.";
   const extension = (cleanName.split(".").pop() || "").toLowerCase();
-  const allowed = MATERIAL_UPLOAD_MIME[extension];
+  const allowed =
+    MATERIAL_UPLOAD_MIME[extension] ??
+    (options?.allowImages ? IMAGE_UPLOAD_MIME[extension] : undefined);
   if (!allowed) return `.${extension || "unknown"} files are not supported.`;
   const mime = (contentType || "application/octet-stream").toLowerCase().split(";", 1)[0].trim();
   if (!allowed.some((candidate) => candidate.endsWith("/") ? mime.startsWith(candidate) : mime === candidate))
@@ -118,14 +141,15 @@ async function ensureBucket(): Promise<void> {
 export async function uploadMaterialFile(
   offeringId: string,
   file: File,
-  uploadedBy?: string
+  uploadedBy?: string,
+  options?: { allowImages?: boolean }
 ): Promise<{
   url: string;
   kind: MaterialFormat;
   filename: string;
   docsPath?: string;
 }> {
-  const validationError = validateMaterialUpload(file.name, file.type);
+  const validationError = validateMaterialUpload(file.name, file.type, options);
   if (validationError) throw new Error(validationError);
   // FREYA.DOCS FIRST. Sameer's docs-storage API is where Freyr wants sales
   // material to live (call of Jul 29), so when it is configured it wins and

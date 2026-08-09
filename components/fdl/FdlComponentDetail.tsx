@@ -12,9 +12,11 @@ import {
   CalendarDays,
   ChevronRight,
   Download,
+  FileText,
   GitCompareArrows,
   ListChecks,
   Minus,
+  Paperclip,
   Pencil,
   Plus,
   Rocket,
@@ -32,7 +34,12 @@ import { downloadDocx } from "@/lib/docx";
 
 /** An imported row whose sheet cell had a date but no version number. */
 const MONTH_ONLY = /^[A-Za-z]{3}'\d{2}$/;
-import type { FdlComponent, FdlFeature, FdlRelease } from "@/lib/offerings";
+import type {
+  FdlComponent,
+  FdlFeature,
+  FdlFeatureAttachment,
+  FdlRelease,
+} from "@/lib/offerings";
 import { FdlTypeChip, fdlCurrentVersion } from "@/components/fdl/FdlComponentsBrowser";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -294,7 +301,36 @@ export function FdlComponentDetail({
   const [featFid, setFeatFid] = useState("");
   const [featDesc, setFeatDesc] = useState("");
   const [featVersions, setFeatVersions] = useState<string[]>([]);
+  const [featFiles, setFeatFiles] = useState<FdlFeatureAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [confirmFeatureDelete, setConfirmFeatureDelete] = useState<string | null>(null);
+
+  /** Send the picked files to storage, then hold the returned URLs on the
+   *  form until Save writes them onto the feature. */
+  async function attachFiles(files: FileList | null) {
+    if (!files || !files.length) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files).slice(0, 5)) {
+        const body = new FormData();
+        body.append("file", file);
+        const res = await fetch(`/api/fdl-components/${component.id}/upload`, {
+          method: "POST",
+          body,
+        });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error || "Could not upload that file.");
+        setFeatFiles((prev) => [...prev, payload.attachment]);
+      }
+    } catch (caught) {
+      toast(
+        caught instanceof Error ? caught.message : "Could not upload that file.",
+        "error"
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function openFeatureModal(feature?: FdlFeature) {
     setFeatureModal(feature ? feature.id : "");
@@ -302,6 +338,7 @@ export function FdlComponentDetail({
     setFeatFid(feature?.fid ?? "");
     setFeatDesc(feature?.description ?? "");
     setFeatVersions(feature?.versionIds ?? releases.map((r) => r.id));
+    setFeatFiles(feature?.attachments ?? []);
   }
 
   /** The next free F-00n for this component. Sequential, never reused. */
@@ -324,6 +361,7 @@ export function FdlComponentDetail({
       name: featName.trim(),
       description: featDesc.trim() || undefined,
       versionIds: featVersions,
+      attachments: featFiles.length ? featFiles : undefined,
     };
     const next =
       featureModal === ""
@@ -511,6 +549,52 @@ export function FdlComponentDetail({
             <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-text-primary">
               {readingFeature.description || "No description written yet."}
             </p>
+
+            {/* Images render here rather than as a link, because the point of
+                attaching a screenshot is to look at it. */}
+            {(readingFeature.attachments ?? []).length > 0 && (
+              <div>
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  Attached
+                </p>
+                <ul className="space-y-2">
+                  {(readingFeature.attachments ?? []).map((file) => (
+                    <li key={file.id}>
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group/a block rounded-lg border border-border-light p-2 transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
+                      >
+                        {file.kind === "image" ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={file.url}
+                              alt={file.name}
+                              className="max-h-64 w-full rounded object-contain"
+                            />
+                            <span className="mt-1.5 block text-[12px] text-text-secondary group-hover/a:text-blue-primary">
+                              {file.name}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-blue-light text-blue-primary">
+                              <FileText size={14} strokeWidth={2} />
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-text-primary group-hover/a:text-blue-primary">
+                              {file.name}
+                            </span>
+                          </span>
+                        )}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setReadingFeature(null)}>
                 Close
@@ -968,6 +1052,15 @@ export function FdlComponentDetail({
                           <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-text-secondary">
                             {feature.description}
                           </p>
+                        )}
+                        {(feature.attachments ?? []).length > 0 && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-border-light px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
+                            <Paperclip size={10} strokeWidth={2.4} />
+                            {(feature.attachments ?? []).length}{" "}
+                            {(feature.attachments ?? []).length === 1
+                              ? "file"
+                              : "files"}
+                          </span>
                         )}
                       </button>
                     </td>
@@ -1469,6 +1562,72 @@ export function FdlComponentDetail({
               })}
             </div>
           </div>
+          {/* A SPEC OR A SCREENSHOT, PINNED TO THE FEATURE (Suren, Aug 9:
+              "if they can add some document or an image, can you allow it to
+              add?"). Uploads land in the same managed storage as a sales
+              material and attach on Save with everything else. */}
+          <div>
+            <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
+              Documents and images
+              <InfoHint text="Attach a spec, a screenshot or a mock-up. Anyone who can open this component can open the file." />
+            </label>
+            {featFiles.length > 0 && (
+              <ul className="mb-2 space-y-1.5">
+                {featFiles.map((file) => (
+                  <li
+                    key={file.id}
+                    className="flex items-center gap-2 rounded-lg border border-border-light px-2.5 py-1.5"
+                  >
+                    {file.kind === "image" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={file.url}
+                        alt=""
+                        className="h-8 w-8 shrink-0 rounded object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-blue-light text-blue-primary">
+                        <FileText size={14} strokeWidth={2} />
+                      </span>
+                    )}
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-text-primary hover:text-blue-primary"
+                    >
+                      {file.name}
+                    </a>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${file.name}`}
+                      onClick={() =>
+                        setFeatFiles((prev) => prev.filter((f) => f.id !== file.id))
+                      }
+                      className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
+                    >
+                      <X size={13} strokeWidth={2} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary">
+              <Paperclip size={13} strokeWidth={2.2} />
+              {uploading ? "Uploading…" : "Add a document or image"}
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                disabled={uploading}
+                onChange={(event) => {
+                  void attachFiles(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setFeatureModal(null)} disabled={busy}>
               <X size={14} strokeWidth={2} /> Cancel

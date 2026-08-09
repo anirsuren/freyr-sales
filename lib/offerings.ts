@@ -193,6 +193,21 @@ export interface FdlRelease {
   /** Exactly one release per component should carry this — the version sellers quote today. */
   current?: boolean;
 }
+/**
+ * A file pinned to a feature: a spec, a screenshot, a mock-up. Suren, Aug 9:
+ * "for all these features, if they can add some document or an image, can you
+ * allow it to add?" The bytes go through the same managed storage as a sales
+ * material, so there is one upload path in the product, not two.
+ */
+export interface FdlFeatureAttachment {
+  id: string;
+  /** The filename as uploaded, shown as the link text. */
+  name: string;
+  url: string;
+  /** "image" renders inline; anything else opens in a new tab. */
+  kind: "image" | "document";
+}
+
 export interface FdlFeature {
   id: string;
   /** The sheet's human feature ID (Fid column) — shown wherever the feature is. */
@@ -201,6 +216,7 @@ export interface FdlFeature {
   description?: string;
   /** FdlRelease ids this feature is available in — the feature↔version mapping. */
   versionIds: string[];
+  attachments?: FdlFeatureAttachment[];
 }
 export interface FdlComponent {
   id: string;

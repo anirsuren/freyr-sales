@@ -12,6 +12,13 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 
+/**
+ * The ONLY shape a feature attachment URL may take: the relative download
+ * route both storage backends hand back from lib/materialStorage. Anchored at
+ * both ends so a crafted prefix or suffix cannot smuggle another target in.
+ */
+const ATTACHMENT_URL = /^\/api\/offerings\/[A-Za-z0-9_-]+\/materials\/download\?path=[^"'\s]*$/;
+
 export const dynamic = "force-dynamic";
 
 const COMPONENT_TYPES: FdlComponentType[] = ["Module", "Agent", "Platform"];
@@ -74,6 +81,30 @@ function sanitize(
               (v): v is string => typeof v === "string" && releaseIds.has(v)
             )
           : [],
+        // Files pinned to the feature. The URL must be one our own upload
+        // route produced. Both storage backends return the same relative
+        // download path, so anything else — an absolute URL, a protocol-
+        // relative one, a different route — is dropped rather than stored.
+        // Without this, anyone able to PATCH a component could park an
+        // external link on a feature and have colleagues click it believing
+        // it was a Freyr document.
+        attachments: Array.isArray(f?.attachments)
+          ? f.attachments
+              .slice(0, 10)
+              .map((a) => ({
+                id:
+                  typeof a?.id === "string" && a.id
+                    ? a.id.slice(0, 60)
+                    : rid("att"),
+                name: String(a?.name ?? "File").trim().slice(0, 160),
+                url:
+                  typeof a?.url === "string" && ATTACHMENT_URL.test(a.url)
+                    ? a.url.slice(0, 2000)
+                    : "",
+                kind: a?.kind === "image" ? ("image" as const) : ("document" as const),
+              }))
+              .filter((a) => a.url)
+          : undefined,
       }))
       .filter((f) => f.name);
   } else if (next.releases) {
