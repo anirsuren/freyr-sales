@@ -554,7 +554,12 @@ export function CustomersBrowser({
           width-animated input, so its left edge jumped left on focus. */}
       <SearchPriority
         query={query}
-        className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
+        // rise-in, because the toolbar was the one strip that just appeared
+        // while the header above and the cards below lifted in (Anir, Aug 9:
+        // "the filter with the row and search bar doesn't animate with the
+        // rest of the page... it looks like it's an issue on the customers
+        // page too").
+        className="rise-in mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
       >
           <PrioritySearchInput
             grow

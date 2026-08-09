@@ -203,7 +203,7 @@ export function FdlComponentsBrowser({
         action={components.length > 0 ? newButton : undefined}
       />
       {components.length > 0 && (
-        <div className="rise-in mb-5 flex flex-wrap items-center gap-2">
+        <div className="rise-in mb-4 flex flex-wrap items-center gap-2">
           <label className="relative min-w-0 flex-1 sm:max-w-[340px]">
             <Search
               size={15}

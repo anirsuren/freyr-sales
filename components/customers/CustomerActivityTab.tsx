@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Package, X } from "lucide-react";
+import { ChevronRight, Plus, Package, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -48,6 +48,17 @@ export function CustomerActivityTab({
   const router = useRouter();
   const { toast } = useToast();
   const [state, setState] = useState<OfferingUsage[]>(usage);
+  /** Offerings the reader has folded shut. Open is the default, because a
+   *  collapsed-by-default list hides the thing the tab exists to show. */
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  function toggleOffering(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
   const [picking, setPicking] = useState(false);
 
   const byId = new Map(offerings.map((o) => [o.id, o]));
@@ -168,9 +179,31 @@ export function CustomerActivityTab({
               )
               .map((u) => {
                 const offering = byId.get(u.offering_id)!;
+                const logged = (u.engagement_versions || []).length;
+                const open = !collapsed.has(u.offering_id);
                 return (
                   <div key={u.offering_id} className="entry-card p-4">
-                    <div className="entry-card__head -mx-4 mb-3.5 flex items-center gap-2.5 px-4 pb-3">
+                    {/* EACH OFFERING FOLDS (Anir, Aug 9: "since they're grouped
+                        by offering, let's have drop-downs for each of them").
+                        An account on eight offerings was eight stacked tables
+                        you had to scroll past to reach the one you came for.
+                        The header is the control, so the whole strip is the hit
+                        target, and the count stays visible while it is shut. */}
+                    <button
+                      type="button"
+                      onClick={() => toggleOffering(u.offering_id)}
+                      aria-expanded={open}
+                      className={`entry-card__head -mx-4 flex w-[calc(100%+2rem)] cursor-pointer items-center gap-2.5 px-4 text-left transition-colors hover:bg-surface/60 ${
+                        open ? "mb-3.5 pb-3" : "pb-0"
+                      }`}
+                    >
+                      <ChevronRight
+                        size={15}
+                        strokeWidth={2.2}
+                        className={`shrink-0 text-text-tertiary transition-transform duration-200 ${
+                          open ? "rotate-90" : ""
+                        }`}
+                      />
                       <OfferingIcon name={offering.name} className="h-8 w-8 shrink-0" />
                       <span className="min-w-0">
                         <span className="block text-[14px] font-semibold text-text-primary">
@@ -182,11 +215,18 @@ export function CustomerActivityTab({
                           </span>
                         )}
                       </span>
-                    </div>
-                    <OfferingActivities
-                      versions={u.engagement_versions || []}
-                      onSave={(versions) => void save(u.offering_id, versions)}
-                    />
+                      <span className="ml-auto shrink-0 whitespace-nowrap text-[11.5px] font-semibold text-text-secondary tnum">
+                        {logged} {logged === 1 ? "activity" : "activities"}
+                      </span>
+                    </button>
+                    {open && (
+                      <div className="tab-panel">
+                        <OfferingActivities
+                          versions={u.engagement_versions || []}
+                          onSave={(versions) => void save(u.offering_id, versions)}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}

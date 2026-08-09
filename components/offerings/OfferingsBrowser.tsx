@@ -1107,7 +1107,7 @@ export function OfferingsBrowser({
           `flex-1`, so it simply absorbs the width they release. */}
       <SearchPriority
         query={q}
-        className="rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-nowrap items-center gap-2.5"
+        className="rise-in rounded-xl border border-border-light bg-[var(--surface)] p-2.5 mb-4 flex flex-nowrap items-center gap-2.5"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <PrioritySearchInput
@@ -1383,7 +1383,11 @@ export function OfferingsBrowser({
           many offerings are showing up when you click that… always show the
           number of offerings, even when no filter"). */}
       {offerings.length > 0 && (
-        <p className="-mt-1 mb-3 text-[12.5px] text-text-secondary">
+        /* Same size and rhythm as the Customers count line, which is the one
+           he holds up as right. The -mt-1 pulled it against the toolbar and
+           mb-3 left less air below than above, which is the "odd amount of
+           space below the search bar". */
+        <p className="mb-4 text-[13px] text-text-secondary">
           Showing{" "}
           <span className="font-semibold text-text-primary tnum">
             {sorted.length}

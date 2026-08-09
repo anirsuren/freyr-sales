@@ -25,7 +25,12 @@ export default async function FdlComponentsPage() {
   }
   const canEdit = await canManageOfferings();
   return (
-    <div className="px-6 py-6">
+    <div>
+      {/* No page-level padding: the app shell already wraps every page in p-8,
+          so adding px-6 py-6 here stacked a second inset and pushed this
+          page's header below every other page's (Anir, Aug 9: "there's so much
+          space at the top... whatever you have on the offerings page is good,
+          that's how every other page should be mimicked"). */}
       <FdlComponentsBrowser
         components={components}
         usedIn={usedIn}
