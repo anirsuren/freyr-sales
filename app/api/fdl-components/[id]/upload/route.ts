@@ -63,12 +63,20 @@ export async function POST(
     const saved = await uploadMaterialFile(`fdl-${id}`, file, me.name, {
       allowImages: true,
     });
+    // uploadMaterialFile builds an OFFERINGS download URL from the id it is
+    // given, and `fdl-<id>` is not an offering, so that URL 404s on read.
+    // Point at this component's own file route instead, deriving the object
+    // path from what storage actually wrote.
+    const path =
+      saved.docsPath ||
+      new URL(saved.url, "http://x").searchParams.get("path") ||
+      "";
     return NextResponse.json({
       ok: true,
       attachment: {
         id: `att-${Date.now().toString(36)}`,
         name: saved.filename || file.name,
-        url: saved.url,
+        url: `/api/fdl-components/${id}/files?path=${encodeURIComponent(path)}`,
         kind: IMAGE.test(file.name) ? "image" : "document",
       },
     });

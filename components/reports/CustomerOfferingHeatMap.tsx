@@ -124,14 +124,36 @@ const DISPLAY_OPTIONS: ColorOption[] = [
   },
 ];
 
-const ACTIVITY_OPTIONS: ColorOption[] = [
-  ...CUSTOMER_OFFERING_ACTIVITY_ORDER.map((value) => ({
+/**
+ * The activity filter, built with live counts in the labels.
+ *
+ * There used to be a second row of chips under the toolbar doing the same job.
+ * It ate a full row, and its selected ring was being clipped by the scroller
+ * it sat in (Anir, Aug 9: "fix selectors its getting covered and i dont like
+ * how its taking up space maybe put it with the dropdowns as a dropdown").
+ * Now that the dropdown is multi-select it IS that control, so the chips are
+ * gone and their counts ride in the option labels instead.
+ */
+/** The same five activities with no counts, for the cell editor: a count of
+ *  how many OTHER accounts are at this stage is noise when you are setting
+ *  the stage for one of them. */
+const ACTIVITY_EDIT_OPTIONS: ColorOption[] = CUSTOMER_OFFERING_ACTIVITY_ORDER.map(
+  (value) => ({
     value,
     label: CUSTOMER_OFFERING_ACTIVITIES[value].label,
     color: CUSTOMER_OFFERING_ACTIVITIES[value].color,
     icon: ACTIVITY_ICONS[value],
-  })),
-];
+  })
+);
+
+function activityOptions(counts: Record<CustomerOfferingActivity, number>): ColorOption[] {
+  return CUSTOMER_OFFERING_ACTIVITY_ORDER.map((value) => ({
+    value,
+    label: `${CUSTOMER_OFFERING_ACTIVITIES[value].label} (${counts[value] ?? 0})`,
+    color: CUSTOMER_OFFERING_ACTIVITIES[value].color,
+    icon: ACTIVITY_ICONS[value],
+  }));
+}
 
 const STATUS_OPTIONS: ColorOption[] = [
   ...CUSTOMER_OFFERING_STATUS_ORDER.map((value) => ({
@@ -994,7 +1016,7 @@ export function CustomerOfferingHeatMap({
           <MultiColorSelect
             values={activityFilter}
             onChange={setActivityFilter}
-            options={ACTIVITY_OPTIONS}
+            options={activityOptions(summary.counts)}
             allLabel="All activities"
             allIcon={Filter}
             ariaLabel="Filter by activity"
@@ -1010,65 +1032,6 @@ export function CustomerOfferingHeatMap({
             minWidth={155}
           />
         </SearchPriority>
-        <div className="mt-2 border-t border-border-light pt-2">
-          <div className="heat-map-stage-scroll flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-2">
-            {CUSTOMER_OFFERING_ACTIVITY_ORDER.map((activity) => {
-              const meta = CUSTOMER_OFFERING_ACTIVITIES[activity];
-              const LegendIcon = ACTIVITY_ICONS[activity];
-              const selectedActivity = activityFilter.includes(activity);
-              return (
-                <button
-                  key={activity}
-                  type="button"
-                  aria-pressed={selectedActivity}
-                  title={`Filter to ${meta.label}`}
-                  onClick={() =>
-                    setActivityFilter((current) =>
-                      current.includes(activity)
-                        ? current.filter((a) => a !== activity)
-                        : [...current, activity]
-                    )
-                  }
-                  className={cn(
-                    "heat-map-stage-filter inline-flex min-w-0 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[10.5px] font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,box-shadow] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary",
-                    selectedActivity &&
-                      "ring-2 ring-blue-primary/70 ring-offset-1"
-                  )}
-                  style={
-                    {
-                      "--stage-color": meta.color,
-                      "--stage-border": selectedActivity
-                        ? meta.color
-                        : `${meta.color}55`,
-                      "--stage-background": selectedActivity
-                        ? `${meta.color}1F`
-                        : `${meta.color}0D`,
-                      "--stage-background-dark": selectedActivity
-                        ? `color-mix(in srgb, ${meta.color} 32%, #1c1c1e)`
-                        : `color-mix(in srgb, ${meta.color} 18%, #1c1c1e)`,
-                    } as CSSProperties
-                  }
-                >
-                  <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                    style={{
-                      background: meta.color,
-                      color: meta.text,
-                    }}
-                  >
-                    <LegendIcon size={11} strokeWidth={2.2} />
-                  </span>
-                  <span>{meta.short}</span>
-                  <span
-                    className="heat-map-stage-count rounded-full px-1.5 py-0.5 text-[9.5px] font-bold leading-none tnum"
-                  >
-                    {summary.counts[activity]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </Card>
 
       <Card className="overflow-hidden p-0">
@@ -1516,7 +1479,7 @@ export function CustomerOfferingHeatMap({
                         : current
                     );
                   }}
-                  options={ACTIVITY_OPTIONS.slice(1)}
+                  options={ACTIVITY_EDIT_OPTIONS}
                   ariaLabel="Activity"
                   minWidth={220}
                   className="w-full"

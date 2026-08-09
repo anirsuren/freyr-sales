@@ -14,12 +14,14 @@ import {
   Download,
   FileText,
   GitCompareArrows,
+  LayoutGrid,
   ListChecks,
   Minus,
   Paperclip,
   Pencil,
   Plus,
   Rocket,
+  Table2,
   Trash2,
   X,
 } from "lucide-react";
@@ -95,6 +97,12 @@ export function FdlComponentDetail({
   const [busy, setBusy] = useState(false);
   const [addingOffering, setAddingOffering] = useState(false);
   const [readingFeature, setReadingFeature] = useState<FdlFeature | null>(null);
+  /** OPEN IT WITHOUT DOWNLOADING IT (Anir, Aug 9: "I should be able to open it
+   *  without downloading it"). Images and PDFs render right here; storage
+   *  already serves them Content-Disposition: inline, so nothing hits the
+   *  downloads folder. A format the browser cannot draw says so plainly
+   *  instead of silently starting a download. */
+  const [previewing, setPreviewing] = useState<FdlFeatureAttachment | null>(null);
   const [pickedOfferings, setPickedOfferings] = useState<string[]>([]);
 
   /** Add or remove this component on each offering the tick state changed. */
@@ -179,6 +187,11 @@ export function FdlComponentDetail({
       else next.add(id);
       return next;
     });
+  /** Cards or rows for "Customers running this", the same choice the sales
+   *  floor offers (Anir, Aug 9: "make it look something like this, like a
+   *  team's page, or maybe make it customizable... both these options"). */
+  const [customerView, setCustomerView] = useState<"grid" | "table">("grid");
+
   const [addingCustomers, setAddingCustomers] = useState(false);
   const [pickedCustomers, setPickedCustomers] = useState<string[]>([]);
   /**
@@ -510,6 +523,58 @@ export function FdlComponentDetail({
           Aug 9: "from the FDL component do you have an option to add offering?
           No you don't — you should be able to add which offerings this goes
           through"). Same list, same connection, either direction. */}
+      {/* THE FILE, IN THE APP. */}
+      <Modal
+        open={!!previewing}
+        onClose={() => setPreviewing(null)}
+        title={previewing?.name || "Attachment"}
+      >
+        {previewing && (
+          <div className="space-y-3">
+            {previewing.kind === "image" ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={previewing.url}
+                alt={previewing.name}
+                className="max-h-[70vh] w-full rounded-lg border border-border-light object-contain"
+              />
+            ) : /\.pdf$/i.test(previewing.name) ? (
+              <iframe
+                src={previewing.url}
+                title={previewing.name}
+                className="h-[70vh] w-full rounded-lg border border-border-light"
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed border-border bg-blue-light/25 px-4 py-8 text-center">
+                <span className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+                  <FileText size={20} strokeWidth={1.8} />
+                </span>
+                <p className="text-[13.5px] font-semibold text-text-primary">
+                  This kind of file cannot be shown in the browser.
+                </p>
+                <p className="mx-auto mt-1 max-w-[380px] text-[12.5px] text-text-secondary">
+                  Word documents and spreadsheets have to open in their own app.
+                  Images and PDFs preview right here.
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setPreviewing(null)}>
+                <X size={14} strokeWidth={2} /> Close
+              </Button>
+              <a
+                href={previewing.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-primary/90"
+              >
+                <Download size={14} strokeWidth={2} /> Open the file
+              </a>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <Modal
         open={!!readingFeature}
         onClose={() => setReadingFeature(null)}
@@ -560,11 +625,10 @@ export function FdlComponentDetail({
                 <ul className="space-y-2">
                   {(readingFeature.attachments ?? []).map((file) => (
                     <li key={file.id}>
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="group/a block rounded-lg border border-border-light p-2 transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
+                      <button
+                        type="button"
+                        onClick={() => setPreviewing(file)}
+                        className="group/a block w-full cursor-pointer rounded-lg border border-border-light p-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
                       >
                         {file.kind === "image" ? (
                           <>
@@ -588,7 +652,7 @@ export function FdlComponentDetail({
                             </span>
                           </span>
                         )}
-                      </a>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -1128,41 +1192,141 @@ export function FdlComponentDetail({
             connect it from the customer&apos;s own Digital components tab.
           </p>
         ) : (
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            {connected.map((customer) => {
-              const release = component.releases.find(
-                (item) => item.id === customer.releaseId
-              );
-              const next = component.releases.find(
-                (item) => item.id === customer.nextReleaseId
-              );
-              return (
-                <li key={customer.id}>
-                  <Link
-                    href={`/customers/${customer.id}?tab=components`}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border-light px-3 py-2 transition-colors hover:border-blue-subtle hover:bg-blue-light/30"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <CompanyLogo name={customer.name} className="h-6 w-6 shrink-0" />
-                      <span className="min-w-0 text-[13px] font-medium text-text-primary">
-                        {customer.name}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block text-[12px] font-semibold text-text-primary">
-                        {release ? release.version : "Version not recorded"}
-                      </span>
-                      {next && (
-                        <span className="block text-[11px] text-text-tertiary">
-                          moving to {next.version}
+          <>
+            {/* CARDS OR ROWS, like the sales floor (Anir, Aug 9: "make it
+                look something like this, like a team's page... both these
+                options"). Four cards across: the old two-wide rows spent most
+                of their width on the gap between the name and the version. */}
+            <div className="mt-3 flex justify-end">
+              <div className="flex shrink-0 overflow-hidden rounded-md border border-border">
+                <button
+                  type="button"
+                  onClick={() => setCustomerView("grid")}
+                  aria-label="Card view"
+                  title="Card view"
+                  aria-pressed={customerView === "grid"}
+                  className={`cursor-pointer p-2 transition-colors ${
+                    customerView === "grid"
+                      ? "bg-blue-light text-blue-primary"
+                      : "text-text-secondary hover:bg-surface"
+                  }`}
+                >
+                  <LayoutGrid size={16} strokeWidth={1.6} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomerView("table")}
+                  aria-label="Table view"
+                  title="Table view"
+                  aria-pressed={customerView === "table"}
+                  className={`cursor-pointer border-l border-border p-2 transition-colors ${
+                    customerView === "table"
+                      ? "bg-blue-light text-blue-primary"
+                      : "text-text-secondary hover:bg-surface"
+                  }`}
+                >
+                  <Table2 size={16} strokeWidth={1.6} />
+                </button>
+              </div>
+            </div>
+
+            {customerView === "grid" ? (
+              <ul className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {connected.map((customer) => {
+                  const release = component.releases.find(
+                    (item) => item.id === customer.releaseId
+                  );
+                  const next = component.releases.find(
+                    (item) => item.id === customer.nextReleaseId
+                  );
+                  return (
+                    <li key={customer.id}>
+                      <Link
+                        href={`/customers/${customer.id}?tab=components`}
+                        className="tab-panel flex h-full flex-col rounded-xl border border-border-light p-3.5 transition-colors hover:border-blue-subtle hover:bg-blue-light/25"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <CompanyLogo
+                            name={customer.name}
+                            className="h-9 w-9 shrink-0"
+                          />
+                          <span className="min-w-0 text-[13.5px] font-semibold leading-tight text-text-primary">
+                            {customer.name}
+                          </span>
                         </span>
-                      )}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                        <span className="mt-3 block border-t border-border-light pt-2.5">
+                          <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            Current version
+                          </span>
+                          <span className="mt-0.5 block text-[15px] font-bold leading-none text-text-primary tnum">
+                            {release ? release.version : "Not set yet"}
+                          </span>
+                          <span className="mt-1.5 block text-[11.5px] leading-tight text-text-tertiary">
+                            {next ? `Next: ${next.version}` : "No next version planned"}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="mt-2.5 overflow-x-auto">
+                <table className="w-full min-w-[420px] text-left">
+                  <thead>
+                    <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      <th className="py-2 pr-4">Customer</th>
+                      <th className="py-2 pr-4">Current version</th>
+                      <th className="py-2 pr-4">Next version</th>
+                      <th className="py-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light">
+                    {connected.map((customer) => {
+                      const release = component.releases.find(
+                        (item) => item.id === customer.releaseId
+                      );
+                      const next = component.releases.find(
+                        (item) => item.id === customer.nextReleaseId
+                      );
+                      return (
+                        <tr
+                          key={customer.id}
+                          className="group transition-colors hover:bg-blue-light/25"
+                        >
+                          <td className="py-2.5 pr-4">
+                            <Link
+                              href={`/customers/${customer.id}?tab=components`}
+                              className="flex items-center gap-2.5 text-[13px] font-semibold text-text-primary group-hover:text-blue-primary"
+                            >
+                              <CompanyLogo
+                                name={customer.name}
+                                className="h-7 w-7 shrink-0"
+                              />
+                              {customer.name}
+                            </Link>
+                          </td>
+                          <td className="py-2.5 pr-4 text-[12.5px] font-semibold text-text-primary tnum">
+                            {release ? release.version : "Not set yet"}
+                          </td>
+                          <td className="py-2.5 pr-4 text-[12.5px] text-text-secondary tnum">
+                            {next ? next.version : "Not planned"}
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <ChevronRight
+                              size={15}
+                              strokeWidth={2}
+                              className="inline text-text-tertiary transition-colors group-hover:text-blue-primary"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </section>
 

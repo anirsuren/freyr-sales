@@ -13,11 +13,12 @@ import {
 import { canManageOfferings } from "@/lib/role";
 
 /**
- * The ONLY shape a feature attachment URL may take: the relative download
- * route both storage backends hand back from lib/materialStorage. Anchored at
- * both ends so a crafted prefix or suffix cannot smuggle another target in.
+ * The ONLY shape a feature attachment URL may take: this component's own file
+ * route. Anchored at both ends so a crafted prefix or suffix cannot smuggle
+ * another target in, and that route re-checks the path belongs to the
+ * component before it streams a byte.
  */
-const ATTACHMENT_URL = /^\/api\/offerings\/[A-Za-z0-9_-]+\/materials\/download\?path=[^"'\s]*$/;
+const ATTACHMENT_URL = /^\/api\/fdl-components\/[A-Za-z0-9_-]+\/files\?path=[^"'\s]*$/;
 
 export const dynamic = "force-dynamic";
 
