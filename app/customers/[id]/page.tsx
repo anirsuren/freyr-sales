@@ -8,6 +8,8 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ReEnrichButton } from "@/components/customers/ReEnrichButton";
 import { NewSessionButton } from "@/components/sessions/NewSessionButton";
 import { CustomerTabs } from "@/components/customers/CustomerTabs";
+import { initializeLiveOfferings, listFdlComponents } from "@/lib/offerings";
+import { canManageOfferings } from "@/lib/role";
 import { RecordView } from "@/components/RecordView";
 import {
   listCustomerTypes,
@@ -109,6 +111,11 @@ export default async function CustomerDetailPage({
     .filter((o) => inUseIds.has(o.id))
     .map(toTabOffering);
 
+  // The Freya software this customer runs, for the Digital components tab.
+  await initializeLiveOfferings().catch(() => undefined);
+  const fdlComponents = listFdlComponents();
+  const canEditComponents = await canManageOfferings();
+
   return (
     <div>
       <RecordView
@@ -182,6 +189,8 @@ export default async function CustomerDetailPage({
           applicable: applicableRich,
           inUse: inUseRich,
         }}
+        fdlComponents={fdlComponents}
+        canEditComponents={canEditComponents}
       />
     </div>
   );

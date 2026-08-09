@@ -1,0 +1,388 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Boxes, Check, Link2, Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import { InfoHint } from "@/components/ui/InfoHint";
+import { Modal } from "@/components/ui/Modal";
+import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { useToast } from "@/components/ui/Toast";
+import {
+  FdlTypeChip,
+  fdlCurrentVersion,
+} from "@/components/fdl/FdlComponentsBrowser";
+import type { CustomerComponentLink } from "@/lib/types";
+import type { FdlComponent } from "@/lib/offerings";
+import { formatDate } from "@/lib/utils";
+import { CircleCheck, Clock, Rocket } from "lucide-react";
+
+/**
+ * WHAT SOFTWARE THIS CUSTOMER ACTUALLY RUNS (Suren, Aug 8, via Anir): "from a
+ * customer side you should be able to connect customer to all components —
+ * which release of the version of the component they are connecting. So any
+ * time when I look at what are all the software components the customer has,
+ * I click on the customer, I'm looking at this page."
+ *
+ * A component is connected with the version they are LIVE on, and optionally
+ * the version they are moving to next — the two columns Freyr keeps in the
+ * workbook. Everything is pinned by id, so a component renamed or re-versioned
+ * in FDL Components stays correct here.
+ */
+export function CustomerDigitalComponents({
+  customerId,
+  links,
+  components,
+  canEdit,
+}: {
+  customerId: string;
+  links: CustomerComponentLink[];
+  components: FdlComponent[];
+  canEdit: boolean;
+}) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [state, setState] = useState<CustomerComponentLink[]>(links);
+  const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+
+  const byId = new Map(components.map((component) => [component.id, component]));
+  const connectedIds = new Set(state.map((link) => link.component_id));
+  const available = components.filter(
+    (component) => !connectedIds.has(component.id)
+  );
+
+  async function save(next: CustomerComponentLink[], done: string) {
+    setState(next);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ digital_components: next }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast(done);
+        router.refresh();
+      } else {
+        toast(data.error || "Couldn't save that.", "error");
+      }
+    } catch {
+      toast("Couldn't save that.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function versionOptions(component: FdlComponent): ColorOption[] {
+    return [
+      { value: "", label: "Version not recorded", color: "#0071E3", icon: Clock },
+      ...component.releases.map((release) => ({
+        value: release.id,
+        label:
+          release.status === "released"
+            ? `${release.version} · released`
+            : `${release.version} · expected`,
+        color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+        icon: release.status === "released" ? CircleCheck : Clock,
+      })),
+    ];
+  }
+
+  return (
+    <section>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="flex items-center gap-2 text-[16px] font-semibold text-text-primary">
+            <Boxes size={16} strokeWidth={2} className="text-blue-primary" />
+            Digital components
+            <InfoHint text="The Freya software this customer runs, and the version they are on. Connect a component here and its versions and features live in FDL Components." />
+          </h2>
+          <p className="mt-0.5 text-[12.5px] text-text-secondary">
+            Everything this customer runs today, and which version of each.
+          </p>
+        </div>
+        {canEdit && (
+          <Button
+            variant="secondary"
+            className="shrink-0"
+            disabled={busy}
+            onClick={() => {
+              setPicked([]);
+              setPicking(true);
+            }}
+          >
+            <Link2 size={14} strokeWidth={2.2} /> Connect component
+          </Button>
+        )}
+      </div>
+
+      {state.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-border bg-white px-6 py-8 text-center">
+          <p className="text-[13.5px] font-semibold text-text-primary">
+            No components connected yet.
+          </p>
+          <p className="mx-auto mt-1 max-w-[460px] text-[12.5px] text-text-secondary">
+            Connect the modules and agents this customer runs, and record which
+            version each one is on — that is what the account team reads before
+            a renewal conversation.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 stagger">
+          {state.map((link) => {
+            const component = byId.get(link.component_id);
+            if (!component) return null;
+            const live = component.releases.find(
+              (release) => release.id === link.release_id
+            );
+            const next = component.releases.find(
+              (release) => release.id === link.next_release_id
+            );
+            const latest = fdlCurrentVersion(component);
+            const behind = !!live && !!latest && live.version !== latest;
+            return (
+              <div
+                key={link.component_id}
+                className="group relative rounded-xl border border-border-light bg-white p-4 shadow-card transition-all hover:border-blue-subtle hover:shadow-lg"
+              >
+                <div className="flex items-start justify-between gap-3 pr-8">
+                  <Link
+                    href={`/components/${component.id}`}
+                    className="flex min-w-0 items-center gap-2.5"
+                  >
+                    <OfferingIcon
+                      name={component.name}
+                      className="h-8 w-8 shrink-0"
+                    />
+                    <p className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary">
+                      {component.name}
+                    </p>
+                  </Link>
+                  <FdlTypeChip type={component.type} />
+                </div>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Running version
+                    </p>
+                    {canEdit ? (
+                      <ColorSelect
+                        value={link.release_id || ""}
+                        onChange={(value) =>
+                          void save(
+                            state.map((item) =>
+                              item.component_id === link.component_id
+                                ? { ...item, release_id: value || null }
+                                : item
+                            ),
+                            "Version saved."
+                          )
+                        }
+                        options={versionOptions(component)}
+                        ariaLabel={`Version of ${component.name}`}
+                        collapsible={false}
+                        dense
+                      />
+                    ) : (
+                      <p className="text-[13px] font-semibold text-text-primary">
+                        {live ? live.version : "Not recorded"}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Moving to next
+                    </p>
+                    {canEdit ? (
+                      <ColorSelect
+                        value={link.next_release_id || ""}
+                        onChange={(value) =>
+                          void save(
+                            state.map((item) =>
+                              item.component_id === link.component_id
+                                ? { ...item, next_release_id: value || null }
+                                : item
+                            ),
+                            "Next version saved."
+                          )
+                        }
+                        options={versionOptions(component)}
+                        ariaLabel={`Next version for ${component.name}`}
+                        collapsible={false}
+                        dense
+                      />
+                    ) : (
+                      <p className="text-[13px] font-semibold text-text-primary">
+                        {next ? next.version : "Not planned"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <p className="mt-2.5 flex flex-wrap items-center gap-2 text-[11.5px] text-text-tertiary">
+                  {live?.date && <span className="tnum">Live since {formatDate(live.date)}</span>}
+                  {behind && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(194,65,12,0.25)] bg-[rgba(194,65,12,0.08)] px-2 py-0.5 font-semibold text-[color:#C2410C]">
+                      <Rocket size={10} strokeWidth={2.4} /> {latest} is out
+                    </span>
+                  )}
+                </p>
+
+                {canEdit &&
+                  (confirmRemove === link.component_id ? (
+                    <span className="absolute right-3 top-3 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmRemove(null);
+                          void save(
+                            state.filter(
+                              (item) => item.component_id !== link.component_id
+                            ),
+                            `${component.name} removed.`
+                          );
+                        }}
+                        className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
+                      >
+                        Remove?
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Keep it"
+                        onClick={() => setConfirmRemove(null)}
+                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
+                      >
+                        <X size={12} strokeWidth={2} />
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${component.name}`}
+                      title="This customer no longer runs it"
+                      onClick={() => setConfirmRemove(link.component_id)}
+                      className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary opacity-0 transition-opacity hover:bg-error/10 hover:text-error group-hover:opacity-100"
+                    >
+                      <X size={13} strokeWidth={2} />
+                    </button>
+                  ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Modal
+        open={picking}
+        onClose={() => setPicking(false)}
+        title="Connect components"
+      >
+        {available.length === 0 ? (
+          <div>
+            <p className="text-[13px] text-text-secondary">
+              Every component is already connected to this customer. New ones
+              are created in{" "}
+              <Link
+                href="/components"
+                className="font-medium text-blue-primary hover:underline"
+              >
+                FDL Components
+              </Link>
+              .
+            </p>
+            <div className="mt-4 flex justify-end">
+              <Button variant="secondary" onClick={() => setPicking(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!picked.length) return;
+              const additions: CustomerComponentLink[] = picked.map((id) => {
+                const component = byId.get(id);
+                // Default to the version they would be sold today; the row is
+                // editable the moment it lands.
+                const current = component?.releases.find((r) => r.current);
+                return {
+                  component_id: id,
+                  release_id: current?.id ?? null,
+                  next_release_id: null,
+                };
+              });
+              await save(
+                [...state, ...additions],
+                picked.length === 1
+                  ? "Component connected."
+                  : `${picked.length} components connected.`
+              );
+              setPicking(false);
+            }}
+            className="space-y-4"
+          >
+            <ul className="max-h-72 space-y-1.5 overflow-y-auto">
+              {available.map((component) => {
+                const active = picked.includes(component.id);
+                return (
+                  <li key={component.id}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPicked((prev) =>
+                          active
+                            ? prev.filter((x) => x !== component.id)
+                            : [...prev, component.id]
+                        )
+                      }
+                      className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                        active
+                          ? "border-blue-primary bg-blue-light/50"
+                          : "border-border-light hover:border-blue-subtle"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                          active
+                            ? "border-blue-primary bg-blue-primary text-white"
+                            : "border-border"
+                        }`}
+                      >
+                        {active && <Check size={12} strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">
+                        {component.name}
+                      </span>
+                      <FdlTypeChip type={component.type} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setPicking(false)}
+                disabled={busy}
+              >
+                <X size={14} strokeWidth={2} /> Cancel
+              </Button>
+              <Button type="submit" disabled={!picked.length} loading={busy}>
+                <Plus size={14} strokeWidth={2.2} /> Connect
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+    </section>
+  );
+}

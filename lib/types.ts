@@ -86,6 +86,22 @@ export interface Customer {
   // it (annual / project / service / license), the amount, dates, licenses.
   // Feeds the offering's "Reports" tab (revenue cumulated across customers).
   offering_usage?: OfferingUsage[] | null;
+  /** The FDL components this customer actually runs, and which version of
+   *  each (Suren, Aug 8: "from a customer side you should be able to connect
+   *  customer to all components — which release of the version of the
+   *  component they are connecting… so any time I look at what software
+   *  components the customer has, I click on the customer"). */
+  digital_components?: CustomerComponentLink[] | null;
+}
+
+/** One component a customer runs, pinned to the version they are on. */
+export interface CustomerComponentLink {
+  component_id: string;
+  /** FdlRelease id they are live on. Null when nobody has recorded it yet. */
+  release_id?: string | null;
+  /** The version they are expected to move to next, when it is agreed. */
+  next_release_id?: string | null;
+  notes?: string | null;
 }
 
 // The customer × offering heat map keeps the commercial journey separate from

@@ -17,7 +17,6 @@ import type {
   Customer,
 } from "@/lib/types";
 import {
-  CUSTOMER_OFFERING_ACTIVITY_ORDER,
   CUSTOMER_OFFERING_STATUS_ORDER,
   defaultStatusForActivity,
   normalizeActivity,
@@ -218,6 +217,31 @@ export async function PATCH(
   }
   // Commercial detail per in-use offering: revenue
   // lines keyed by offering. Sanitized so bad input can't corrupt the store.
+  // The Freya software this customer runs, pinned by component + release id.
+  if (Array.isArray(body.digital_components)) {
+    patch.digital_components = (body.digital_components as unknown[])
+      .slice(0, 200)
+      .map((raw) => {
+        const item = (raw || {}) as Record<string, unknown>;
+        const id = String(item.component_id || "").trim().slice(0, 120);
+        if (!id) return null;
+        const idOrNull = (value: unknown) =>
+          typeof value === "string" && value.trim()
+            ? value.trim().slice(0, 120)
+            : null;
+        return {
+          component_id: id,
+          release_id: idOrNull(item.release_id),
+          next_release_id: idOrNull(item.next_release_id),
+          notes:
+            typeof item.notes === "string" && item.notes.trim()
+              ? item.notes.trim().slice(0, 1000)
+              : null,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => !!item);
+  }
+
   if (Array.isArray(body.offering_usage)) {
     const RT = ["annual", "project", "annual_service", "license"];
     patch.offering_usage = body.offering_usage

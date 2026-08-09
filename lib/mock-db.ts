@@ -49,6 +49,26 @@ declare global {
   var __FREYR_MOCK_STORE__: MockStore | undefined;
 }
 
+/**
+ * Which FDL components a showroom account runs, and on which version.
+ * Deterministic from the account number so the demo never shuffles, and
+ * pinned to the demo component/release ids seeded in lib/offerings.
+ */
+function demoComponentLinks(accountId: string) {
+  const n = Number(accountId.replace(/\D/g, "")) || 1;
+  const pick = (offset: number) =>
+    `fdl-demo-${String(((n * 3 + offset) % 14) + 1).padStart(3, "0")}`;
+  const ids = Array.from(new Set([pick(0), pick(5), pick(9), ...(n % 2 ? [pick(11)] : [])]));
+  return ids.map((component_id, index) => ({
+    component_id,
+    // Most accounts sit on the version before the current one — which is what
+    // makes the "a newer version is out" nudge worth having.
+    release_id: `${component_id}-r${(n + index) % 2 === 0 ? 1 : 2}`,
+    next_release_id: (n + index) % 3 === 0 ? `${component_id}-r3` : null,
+    notes: null,
+  }));
+}
+
 function seed(): MockStore {
   const customers: Customer[] = [
     {
@@ -390,6 +410,11 @@ function seed(): MockStore {
           ...(generatedUsage.get(cid) || []).map((g) => g.offering_id),
         ])
       ),
+      // THE SHOWROOM'S SOFTWARE ESTATE. Every demo account runs three or four
+      // FDL components on real versions, so the Digital components tab is
+      // populated wherever a reviewer lands (Anir, Aug 8: "in the fake mode
+      // it has to be as if there's a ton of shit for every single thing").
+      digital_components: demoComponentLinks(s.id),
     });
     contacts.push({
       id: ctid,
@@ -518,6 +543,14 @@ function seed(): MockStore {
     },
   ];
 
+  // Every showroom account — hand-written or generated — runs a software
+  // estate, so the Digital components tab is never empty in Mock.
+  for (const customer of customers) {
+    if (!customer.digital_components?.length) {
+      customer.digital_components = demoComponentLinks(customer.id);
+    }
+  }
+
   return {
     customers,
     contacts,
@@ -541,7 +574,9 @@ function seed(): MockStore {
 // doesn't treat it as a source change (which would loop the dev server), and
 // it's DISABLED under the test flag so the Playwright suite always sees a fresh
 // seed. Bump SCHEMA_VERSION whenever the seed shape changes to auto-reseed.
-const SCHEMA_VERSION = 2;
+// Bumped Aug 8: showroom accounts now carry a digital_components estate, so
+// a snapshot written before that must be reseeded rather than loaded.
+const SCHEMA_VERSION = 3;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

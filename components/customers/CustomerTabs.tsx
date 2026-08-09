@@ -28,6 +28,7 @@ import {
   CustomerOfferingsTab,
   type TabOffering,
 } from "@/components/customers/CustomerOfferingsTab";
+import { CustomerDigitalComponents } from "@/components/customers/CustomerDigitalComponents";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
@@ -79,6 +80,7 @@ import type {
   AccountAttachment,
   AccountDeal,
 } from "@/lib/types";
+import type { FdlComponent } from "@/lib/offerings";
 
 // "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
 // it's reachable from every tab without hiding the account (Anir, Jul 3).
@@ -86,6 +88,7 @@ const TABS = [
   { key: "overview", label: "Overview" },
   { key: "analytics", label: "Analytics" },
   { key: "offerings", label: "Offerings" },
+  { key: "components", label: "Digital components" },
   { key: "contacts", label: "Contacts" },
   { key: "deals", label: "Deals" },
   { key: "sessions", label: "Sessions" },
@@ -157,6 +160,8 @@ export function CustomerTabs({
   sessions,
   interactions,
   offeringsCatalog,
+  fdlComponents = [],
+  canEditComponents = false,
   includeDemoTeam,
 }: {
   customer: Customer;
@@ -167,6 +172,8 @@ export function CustomerTabs({
   // Customer⇄offering link (Suren, Jul 3): the master-list type options + the
   // offerings applicable to this customer's type + the ones already in use,
   // serialized by the server page for the Offerings tab.
+  fdlComponents?: FdlComponent[];
+  canEditComponents?: boolean;
   offeringsCatalog?: {
     typeOptions: string[];
     applicable: TabOffering[];
@@ -1336,6 +1343,15 @@ export function CustomerTabs({
               );
             })()}
           </div>
+        )}
+
+        {tab === "components" && (
+          <CustomerDigitalComponents
+            customerId={customer.id}
+            links={customer.digital_components || []}
+            components={fdlComponents}
+            canEdit={canEditComponents}
+          />
         )}
 
         {tab === "offerings" && offeringsCatalog && (
