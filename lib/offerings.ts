@@ -2099,10 +2099,35 @@ function healOfferings(s: OfferingsStore): boolean {
     // `poc` cell → real contact rows, so the sheet's people are kept.
     if (!o.contacts) o.contacts = contactsFromPoc(o);
   }
+  // SHOWROOM FEATURES GET THEIR DESCRIPTION BACK. The demo components were
+  // persisted before descriptions existed, and a persisted row always beats a
+  // fresh seed, so the Features table, the drill-in and the downloadable sheet
+  // all rendered a blank description column for good (Anir, Aug 9: "everything
+  // in mock mode needs to have data"). Only `fdl-demo-*` ids are touched, only
+  // when the field is genuinely empty, and the text is deterministic, so this
+  // can never overwrite something a person wrote or reach a real component.
+  for (const component of s.fdlComponents ?? []) {
+    if (!component.id.startsWith("fdl-demo-")) continue;
+    const firstVersion = component.releases[0]?.version ?? "V1.0";
+    for (const feature of component.features) {
+      if (feature.description && feature.description.trim()) continue;
+      feature.description = demoFeatureDescription(
+        feature.name,
+        component.name,
+        firstVersion
+      );
+    }
+  }
   return catalogChanged;
 }
 healOfferings(store);
 healOfferings(liveStore);
+// mockStore was missing from this list. It is the store `activeStore()` hands
+// back in Mock mode, so every back-fill above reached the two stores nobody
+// reads and skipped the one the demo actually renders from. It was only ever
+// healed on a Supabase restore, which is why a field added after the mock row
+// was written stayed empty until something happened to re-hydrate it.
+healOfferings(mockStore);
 
 // ONE offerings catalog, always — the mode switch is about which MODULES are
 // finished, not about which data is real (Anir, Jul 27: "if I add or delete a

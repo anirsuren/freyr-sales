@@ -385,6 +385,41 @@ export function FdlComponentDetail({
     );
   }
 
+  /**
+   * THE WHOLE COMPONENT AS ONE DOCUMENT. A version sheet covers one release
+   * and the comparison covers the two you picked, so the thing Suren actually
+   * described had no button at all (Aug 8: "the idea is to give the customer a
+   * Word document of the entire features and feature description"). Every
+   * feature, its description, and a tick per version, in one file.
+   */
+  function downloadAllFeatures() {
+    const table = `<table><tr><th>ID</th><th>Feature</th><th>Description</th>${releases
+      .map((r) => `<th>${r.version}${r.current ? " (current)" : ""}</th>`)
+      .join("")}</tr>${component.features
+      .map(
+        (f) =>
+          `<tr><td>${f.fid ?? ""}</td><td><strong>${f.name}</strong></td><td class="desc">${
+            f.description ?? ""
+          }</td>${releases
+            .map(
+              (r) =>
+                `<td class="${f.versionIds.includes(r.id) ? "yes" : "no"}">${
+                  f.versionIds.includes(r.id) ? "Yes" : "No"
+                }</td>`
+            )
+            .join("")}</tr>`
+      )
+      .join("")}</table>`;
+    downloadDocument(
+      `${component.name}, all features`,
+      `${component.type} · ${component.features.length} features across ${
+        releases.length === 1 ? "1 version" : `${releases.length} versions`
+      }${current ? ` · current version ${current}` : ""}`,
+      table,
+      `${slug(component.name)}-all-features.doc`
+    );
+  }
+
   function downloadComparison() {
     const table = `<table><tr><th>Feature</th>${compareReleases
       .map((r) => `<th>${r.version}</th>`)
@@ -872,11 +907,18 @@ export function FdlComponentDetail({
             <ListChecks size={15} strokeWidth={2} className="text-blue-primary" /> Features
             <InfoHint text="Add a feature once, then tick the versions that have it. That is what fills the comparison table and the sheets you download." />
           </h2>
-          {canEdit && (
-            <Button variant="secondary" onClick={() => openFeatureModal()} disabled={releases.length === 0}>
-              <Plus size={14} strokeWidth={2.2} /> Add feature
-            </Button>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {component.features.length > 0 && (
+              <Button variant="secondary" onClick={downloadAllFeatures}>
+                <Download size={14} strokeWidth={2} /> Download features
+              </Button>
+            )}
+            {canEdit && (
+              <Button variant="secondary" onClick={() => openFeatureModal()} disabled={releases.length === 0}>
+                <Plus size={14} strokeWidth={2.2} /> Add feature
+              </Button>
+            )}
+          </div>
         </div>
         {component.features.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-secondary">
