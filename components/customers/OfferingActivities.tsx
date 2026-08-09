@@ -259,37 +259,24 @@ export function OfferingActivities({
   }
 
   return (
-    <div className="mt-1">
-      {/* NO SECOND HEADING (Anir, Aug 9: "this is so redundant, you don't need
-          anything, you can just start with the column immediately, just have
-          the table start immediately underneath the offering"). The offering
-          strip above already names the group and prints the count, so an
-          ACTIVITIES (1) band underneath it said the same thing twice and
-          pushed the first row down a whole row's height. */}
-      <div className="flex items-center justify-end gap-3">
-        {/* A WHITE PLUS ON A BLUE SQUARE (Anir, Aug 9: "add activity should be
-            just the white plus with the blue square, keep it simple"). It is
-            the same mark the components page uses, so on every page a plus
-            means add and always looks the same. */}
-        <Tooltip label="Add activity">
-          <button
-            type="button"
-            aria-label="Add activity"
-            onClick={() => openEditor()}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95"
-          >
-            <Plus size={15} strokeWidth={2.6} />
-          </button>
-        </Tooltip>
-      </div>
-
+    <div>
+      {/* NOTHING BETWEEN THE OFFERING AND ITS COLUMNS (Anir, Aug 9: "you can
+          just start with the column immediately… have the table start
+          immediately underneath the offering", then "fix all that space").
+          Two things used to sit in that gap: an ACTIVITIES (1) band that
+          repeated the strip above it, and a full-width row holding nothing but
+          a right-aligned + — a whole row's height spent on one button, which
+          is what left the card looking half empty. The heading is gone and the
+          + now lives in the table's own action column, directly above the
+          per-row pencils, so adding and editing share one lane and the first
+          activity sits right under the offering name. */}
       {versions.length === 0 ? (
         /* NOT A SUGGESTION (Anir, Aug 9: "make it more clear they have to add
            an activity here, it shouldn't be optional"). Grey body text read as
            a note you could scroll past. Without an activity this offering is
            invisible on the heat map and in every report, so the empty state
            now says that plainly and puts the button inside it. */
-        <div className="mt-2.5 rounded-xl border border-dashed border-[rgba(180,49,143,0.4)] bg-[rgba(180,49,143,0.04)] px-4 py-4 text-center">
+        <div className="rounded-xl border border-dashed border-[rgba(180,49,143,0.4)] bg-[rgba(180,49,143,0.04)] px-4 py-4 text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.12)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.05em] text-[color:#B4318F]">
             <CircleAlert size={12} strokeWidth={2.4} /> Needed
           </span>
@@ -312,7 +299,7 @@ export function OfferingActivities({
            they will consume it… activity has to be a table, columns have to
            show up — activity name, details, status, start date, end date. I
            want them to use the table nature." */
-        <div className="mt-2.5 overflow-x-auto">
+        <div className="overflow-x-auto">
           {/* The min-width only has to be wide enough that no chip wraps; past that
              it invents a scrollbar for a table that already fits (Anir, Aug 9:
              "it looks like you don't even need the horizontal scroll on the
@@ -326,7 +313,24 @@ export function OfferingActivities({
                 <th className="w-[184px] py-2 pr-3 font-bold">Dates</th>
                 <th className="w-[104px] py-2 pr-3 text-right font-bold">Value</th>
                 <th className="w-[140px] py-2 pr-2 font-bold">Current</th>
-                <th className="w-[76px] py-2 font-bold" />
+                <th className="w-[76px] py-1 font-bold">
+                  {/* A WHITE PLUS ON A BLUE SQUARE (Anir, Aug 9: "add activity
+                      should be just the white plus with the blue square, keep
+                      it simple") — now sitting in the column that already owns
+                      the row actions, so it costs no vertical space at all. */}
+                  <span className="flex justify-start">
+                    <Tooltip label="Add activity">
+                      <button
+                        type="button"
+                        aria-label="Add activity"
+                        onClick={() => openEditor()}
+                        className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95"
+                      >
+                        <Plus size={14} strokeWidth={2.6} />
+                      </button>
+                    </Tooltip>
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>

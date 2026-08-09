@@ -12,8 +12,8 @@ import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { useToast } from "@/components/ui/Toast";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import {
-  versionTone,
   VersionPill,
+  withV,
   FdlTypeChip,
   fdlCurrentVersion,
 } from "@/components/fdl/FdlComponentsBrowser";
@@ -109,10 +109,10 @@ export function CustomerDigitalComponents({
     // rendered as an ellipsis. The status already has its own colour and glyph
     // in the option, so repeating it in words bought nothing.
     return [
-      { value: "", label: "Not recorded", color: "#0071E3", icon: Clock },
+      { value: "", label: "None yet", color: "#0071E3", icon: Clock },
       ...component.releases.map((release) => ({
         value: release.id,
-        label: release.version,
+        label: withV(release.version),
         color: release.status === "released" ? "#1A7A35" : "#6D28D9",
         icon: release.status === "released" ? CircleCheck : Clock,
       })),
@@ -217,29 +217,24 @@ export function CustomerDigitalComponents({
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5">
                       {live ? (
-                        <span
-                          className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11.5px] font-semibold tnum"
-                          style={{
-                            color: versionTone(live).color,
-                            borderColor: versionTone(live).border,
-                            background: versionTone(live).bg,
-                          }}
-                        >
-                          {live.version}
-                        </span>
+                        <VersionPill
+                          version={live.version}
+                          status={live.status}
+                          current={live.current}
+                        />
                       ) : (
                         <span className="text-[12.5px] text-text-tertiary">
-                          Not recorded
+                          None yet
                         </span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] text-text-secondary">
                       {link.release_status === "released"
-                        ? "Released to them"
+                        ? "Released"
                         : link.release_status === "expected"
-                          ? "Expected by them"
+                          ? "Expected"
                           : (
-                            <span className="text-text-tertiary">Not set yet</span>
+                            <span className="text-text-tertiary">Not set</span>
                           )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5">
@@ -299,7 +294,7 @@ export function CustomerDigitalComponents({
                     this component. */}
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   <div className="min-w-0">
-                    <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    <p className="mb-1 flex min-h-[26px] items-center gap-1.5 text-[10px] font-semibold uppercase leading-[1.25] tracking-[0.05em] text-text-tertiary">
                       Current version
                       <InfoHint text="The version of this software the customer is on right now." />
                     </p>
@@ -325,12 +320,12 @@ export function CustomerDigitalComponents({
                       />
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
-                        {live ? live.version : "Not set yet"}
+                        {live ? withV(live.version) : "None yet"}
                       </p>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    <p className="mb-1 flex min-h-[26px] items-center gap-1.5 text-[10px] font-semibold uppercase leading-[1.25] tracking-[0.05em] text-text-tertiary">
                       Version status
                       <InfoHint text="Released means we have given them this version. Expected means they are waiting for it." />
                     </p>
@@ -354,16 +349,16 @@ export function CustomerDigitalComponents({
                           )
                         }
                         options={[
-                          { value: "", label: "Not set yet", color: "#0071E3", icon: Clock },
+                          { value: "", label: "Not set", color: "#0071E3", icon: Clock },
                           {
                             value: "released",
-                            label: "Released to them",
+                            label: "Released",
                             color: "#1A7A35",
                             icon: CircleCheck,
                           },
                           {
                             value: "expected",
-                            label: "Expected by them",
+                            label: "Expected",
                             color: "#6D28D9",
                             icon: Clock,
                           },
@@ -377,15 +372,15 @@ export function CustomerDigitalComponents({
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
                         {link.release_status === "released"
-                          ? "Released to them"
+                          ? "Released"
                           : link.release_status === "expected"
-                            ? "Expected by them"
-                            : "Not set yet"}
+                            ? "Expected"
+                            : "Not set"}
                       </p>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    <p className="mb-1 flex min-h-[26px] items-center gap-1.5 text-[10px] font-semibold uppercase leading-[1.25] tracking-[0.05em] text-text-tertiary">
                       Next version
                       <InfoHint text="The version they move to after this one. Leave it empty if nothing is planned." />
                     </p>
@@ -411,7 +406,7 @@ export function CustomerDigitalComponents({
                       />
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
-                        {next ? next.version : "Not set yet"}
+                        {next ? withV(next.version) : "None yet"}
                       </p>
                     )}
                   </div>

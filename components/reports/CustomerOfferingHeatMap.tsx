@@ -24,6 +24,8 @@ import {
   History,
   Link2,
   Package,
+  Pin,
+  PinOff,
   Plus,
   Search,
   Send,
@@ -62,6 +64,7 @@ import {
   type HeatMapOffering,
 } from "@/lib/customerOfferingHeatMap";
 import { formatMoney } from "@/lib/pipeline";
+import { useStoredView } from "@/lib/useStoredView";
 import type {
   Customer,
   CustomerOfferingActivity,
@@ -97,6 +100,31 @@ const STATUS_ICONS: Record<CustomerOfferingStatus, LucideIcon> = {
   completed: CheckCircle2,
 };
 
+
+/**
+ * WHAT STAYS PUT WHILE YOU SCROLL (Anir, Aug 9: "there should be an option to
+ * like pin the row headers and the column headers if i want").
+ *
+ * A matrix this wide is unreadable once either header leaves the screen — you
+ * are looking at a coloured cell with no idea which customer or which offering
+ * it belongs to. Both headers were already marked sticky, but only the
+ * customer column actually held: the offering row was sticky against a box
+ * that never scrolled vertically, so it did nothing. Pinning the top now gives
+ * the matrix its own bounded scroll area, which is the only way a header row
+ * can outlast the rows beneath it.
+ *
+ * It is a choice rather than a rule because pinning costs screen height, and on
+ * a short list you would rather have the rows.
+ */
+type PinMode = "both" | "customers" | "offerings" | "none";
+const PIN_MODES: readonly PinMode[] = ["both", "customers", "offerings", "none"];
+
+const PIN_OPTIONS: ColorOption[] = [
+  { value: "both", label: "Pin both headers", color: "#0071E3", icon: Pin },
+  { value: "customers", label: "Pin customers only", color: "#0891B2", icon: Pin },
+  { value: "offerings", label: "Pin offerings only", color: "#7C3AED", icon: Pin },
+  { value: "none", label: "Pin nothing", color: "#6B6B70", icon: PinOff },
+];
 
 const DISPLAY_OPTIONS: ColorOption[] = [
   { value: "activity", label: "Show the activity", color: "#0071E3", icon: Activity },
@@ -291,6 +319,13 @@ export function CustomerOfferingHeatMap({
   const { toast } = useToast();
   const [customers, setCustomers] = useState(initialCustomers);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("activity");
+  const [pinMode, setPinMode] = useStoredView<PinMode>(
+    "freyr.heatmap.pin",
+    "both",
+    PIN_MODES
+  );
+  const pinCustomers = pinMode === "both" || pinMode === "customers";
+  const pinOfferings = pinMode === "both" || pinMode === "offerings";
   /**
    * PICK AS MANY AS YOU WANT. These were single-select, so asking for
    * "opportunity and contract" was impossible: choosing one dropped the other
@@ -1013,6 +1048,13 @@ export function CustomerOfferingHeatMap({
             ariaLabel="Cell display"
             minWidth={150}
           />
+          <ColorSelect
+            value={pinMode}
+            onChange={(value) => setPinMode(value as PinMode)}
+            options={PIN_OPTIONS}
+            ariaLabel="Which headers stay on screen while you scroll"
+            minWidth={168}
+          />
           <MultiColorSelect
             values={activityFilter}
             onChange={setActivityFilter}
@@ -1049,16 +1091,35 @@ export function CustomerOfferingHeatMap({
             </p>
           </div>
         ) : (
-          <div className="heat-map-scroll min-h-[420px] overflow-x-auto pb-1.5">
+          <div
+            className={cn(
+              "heat-map-scroll min-h-[420px] overflow-auto pb-1.5",
+              // A pinned offering row needs something to outlast: give the
+              // matrix its own scroll area so the header can stay while the
+              // rows move under it. Unpinned, the table grows and the page
+              // scrolls exactly as it always did.
+              pinOfferings && "max-h-[70vh]"
+            )}
+          >
             <table
               className="table-fixed border-separate border-spacing-0 text-left"
               style={{
                 width: 220 + matrixOfferings.length * 156,
               }}
             >
-              <thead className="sticky top-0 z-20">
+              <thead>
                 <tr>
-                  <th className="sticky left-0 z-30 w-[220px] border-b border-r border-border bg-surface px-4 py-3">
+                  <th
+                    className={cn(
+                      "w-[220px] border-b border-r border-border bg-surface px-4 py-3",
+                      // The corner belongs to both headers, so it sticks in
+                      // whichever directions they do — and outranks them, or
+                      // the customer names would slide underneath it.
+                      (pinCustomers || pinOfferings) && "sticky z-30",
+                      pinCustomers && "left-0",
+                      pinOfferings && "top-0"
+                    )}
+                  >
                     <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
                       Customer
                     </span>
@@ -1066,7 +1127,10 @@ export function CustomerOfferingHeatMap({
                   {matrixOfferings.map((offering) => (
                     <th
                       key={offering.id}
-                      className="h-[78px] w-[156px] border-b border-r border-border bg-surface px-2.5 py-2"
+                      className={cn(
+                        "h-[78px] w-[156px] border-b border-r border-border bg-surface px-2.5 py-2",
+                        pinOfferings && "sticky top-0 z-20"
+                      )}
                     >
                       <Link
                         href={`/offerings/${offering.id}`}
@@ -1090,7 +1154,12 @@ export function CustomerOfferingHeatMap({
               <tbody>
                 {matrixCustomers.map((customer) => (
                   <tr key={customer.id}>
-                    <th className="sticky left-0 z-10 w-[220px] border-b border-r border-border bg-white px-3.5 py-2">
+                    <th
+                      className={cn(
+                        "w-[220px] border-b border-r border-border bg-white px-3.5 py-2",
+                        pinCustomers && "sticky left-0 z-10"
+                      )}
+                    >
                       <div className="flex items-center gap-2.5">
                         <CompanyLogo
                           name={customer.company_name}
