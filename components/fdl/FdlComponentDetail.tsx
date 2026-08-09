@@ -27,6 +27,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
+import { downloadDocx } from "@/lib/docx";
 
 /** An imported row whose sheet cell had a date but no version number. */
 const MONTH_ONLY = /^[A-Za-z]{3}'\d{2}$/;
@@ -54,33 +55,6 @@ function orderedReleases(component: FdlComponent): FdlRelease[] {
   return [...component.releases].sort((a, b) =>
     (a.date || "9999").localeCompare(b.date || "9999")
   );
-}
-
-/** A self-contained printable HTML document (save or print to PDF). */
-function downloadDocument(title: string, subtitle: string, tableHtml: string, filename: string) {
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1d1d1f;margin:40px auto;max-width:900px;padding:0 24px}
-  h1{font-size:22px;margin:0}p.sub{color:#6e6e73;font-size:13px;margin:6px 0 24px}
-  table{border-collapse:collapse;width:100%;font-size:13px}
-  th,td{border:1px solid #e5e5ea;padding:8px 10px;text-align:left;vertical-align:top}
-  th{background:#f5f7fa;font-weight:600}
-  .yes{color:#1a7a35;font-weight:700}.no{color:#b8b8bd}
-  .desc{color:#6e6e73;font-size:12px}
-  footer{margin-top:24px;color:#6e6e73;font-size:11px}
-  </style></head><body><h1>${title}</h1><p class="sub">${subtitle}</p>${tableHtml}
-  <footer>Generated from Freyr Sales Intelligence.</footer></body></html>`;
-  // A WORD DOCUMENT, NOT A WEB PAGE. Suren, Aug 9: "the idea is to give the
-  // customer a Word document of the entire features and feature description."
-  // Word opens HTML natively when it arrives as application/msword with a .doc
-  // extension, so this stays dependency-free and still lands as an editable
-  // document the account team can put their own cover note on.
-  const blob = new Blob(["\ufeff", html], { type: "application/msword" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export type ComponentCustomer = {
@@ -143,6 +117,22 @@ export function FdlComponentDetail({
   }
   const releases = orderedReleases(component);
   const current = fdlCurrentVersion(component);
+  /** Which version the Features table is showing. Defaults to the current one. */
+  const [shownVersionId, setShownVersionId] = useState<string>(
+    () =>
+      component.releases.find((r) => r.current)?.id ??
+      orderedReleases(component)[orderedReleases(component).length - 1]?.id ??
+      ""
+  );
+
+  const shownRelease =
+    releases.find((r) => r.id === shownVersionId) ??
+    releases.find((r) => r.current) ??
+    releases[releases.length - 1] ??
+    null;
+  const shownFeatures = shownRelease
+    ? component.features.filter((f) => f.versionIds.includes(shownRelease.id))
+    : [];
 
   async function patch(data: Record<string, unknown>, done: string) {
     setBusy(true);
@@ -183,6 +173,24 @@ export function FdlComponentDetail({
     });
   const [addingCustomers, setAddingCustomers] = useState(false);
   const [pickedCustomers, setPickedCustomers] = useState<string[]>([]);
+  /**
+   * WHICH VERSION THE NEW CUSTOMER LANDS ON. It used to be hard-wired to the
+   * current release, so adding someone while reading V1.04 filed them under
+   * V1.05 with no way to say otherwise (Suren, Aug 9: "it put me in 1.05... I
+   * need to add to 1.04. It's not doing that"). Opening the dialog from a
+   * version row pre-picks that version; the header button starts on current.
+   */
+  const [addingRelease, setAddingRelease] = useState<string>("");
+  function openAddCustomers(releaseId?: string) {
+    setPickedCustomers([]);
+    setAddingRelease(
+      releaseId ??
+        component.releases.find((release) => release.current)?.id ??
+        component.releases[component.releases.length - 1]?.id ??
+        ""
+    );
+    setAddingCustomers(true);
+  }
 
   const connected = customers.filter((customer) => customer.connected);
   const unconnected = customers.filter((customer) => !customer.connected);
@@ -196,7 +204,6 @@ export function FdlComponentDetail({
   async function connectCustomers() {
     if (!pickedCustomers.length) return;
     setBusy(true);
-    const current = component.releases.find((release) => release.current);
     try {
       for (const customerId of pickedCustomers) {
         const existing = customers.find((item) => item.id === customerId);
@@ -206,7 +213,7 @@ export function FdlComponentDetail({
           body: JSON.stringify({
             digital_components: [
               ...(existing?.connected ? [] : []),
-              { component_id: component.id, release_id: current?.id ?? null },
+              { component_id: component.id, release_id: addingRelease || null },
             ],
             addDigitalComponent: true,
           }),
@@ -325,24 +332,6 @@ export function FdlComponentDetail({
       setFeatureModal(null);
   }
 
-  async function toggleMapping(feature: FdlFeature, releaseId: string) {
-    const has = feature.versionIds.includes(releaseId);
-    const next = component.features.map((f) =>
-      f.id === feature.id
-        ? {
-            ...f,
-            versionIds: has
-              ? f.versionIds.filter((v) => v !== releaseId)
-              : [...f.versionIds, releaseId],
-          }
-        : f
-    );
-    await patch(
-      { features: next },
-      has ? "Removed from that version." : "Added to that version."
-    );
-  }
-
   async function removeFeature(id: string) {
     setConfirmFeatureDelete(null);
     await patch(
@@ -371,76 +360,40 @@ export function FdlComponentDetail({
 
   function downloadVersionSheet(release: FdlRelease) {
     const rows = component.features.filter((f) => f.versionIds.includes(release.id));
-    const table = `<table><tr><th>ID</th><th>Feature</th><th>Description</th></tr>${rows
-      .map(
-        (f) =>
-          `<tr><td>${f.fid ?? ""}</td><td><strong>${f.name}</strong></td><td class="desc">${f.description ?? ""}</td></tr>`
-      )
-      .join("")}</table>`;
-    downloadDocument(
-      `${component.name}, ${release.version} feature sheet`,
-      `${component.type} · ${release.date ? formatDate(release.date) : "date not set"} · ${rows.length} features`,
-      table,
-      `${slug(component.name)}-${slug(release.version)}-feature-sheet.doc`
-    );
-  }
-
-  /**
-   * THE WHOLE COMPONENT AS ONE DOCUMENT. A version sheet covers one release
-   * and the comparison covers the two you picked, so the thing Suren actually
-   * described had no button at all (Aug 8: "the idea is to give the customer a
-   * Word document of the entire features and feature description"). Every
-   * feature, its description, and a tick per version, in one file.
-   */
-  function downloadAllFeatures() {
-    const table = `<table><tr><th>ID</th><th>Feature</th><th>Description</th>${releases
-      .map((r) => `<th>${r.version}${r.current ? " (current)" : ""}</th>`)
-      .join("")}</tr>${component.features
-      .map(
-        (f) =>
-          `<tr><td>${f.fid ?? ""}</td><td><strong>${f.name}</strong></td><td class="desc">${
-            f.description ?? ""
-          }</td>${releases
-            .map(
-              (r) =>
-                `<td class="${f.versionIds.includes(r.id) ? "yes" : "no"}">${
-                  f.versionIds.includes(r.id) ? "Yes" : "No"
-                }</td>`
-            )
-            .join("")}</tr>`
-      )
-      .join("")}</table>`;
-    downloadDocument(
-      `${component.name}, all features`,
-      `${component.type} · ${component.features.length} features across ${
-        releases.length === 1 ? "1 version" : `${releases.length} versions`
-      }${current ? ` · current version ${current}` : ""}`,
-      table,
-      `${slug(component.name)}-all-features.doc`
+    downloadDocx(
+      `${slug(component.name)}-${slug(release.version)}-features.docx`,
+      `${component.name} ${release.version}: features`,
+      `${component.type} · ${
+        release.date ? formatDate(release.date) : "date not set"
+      } · ${rows.length} ${rows.length === 1 ? "feature" : "features"}`,
+      {
+        headers: ["ID", "Feature and what it does"],
+        rows: rows.map((f) => ({
+          cells: [f.fid ?? "", f.name],
+          note: f.description ?? undefined,
+          noteAt: 1,
+        })),
+      }
     );
   }
 
   function downloadComparison() {
-    const table = `<table><tr><th>Feature</th>${compareReleases
-      .map((r) => `<th>${r.version}</th>`)
-      .join("")}</tr>${compareRows
-      .map(
-        (f) =>
-          `<tr><td><strong>${f.name}</strong><div class="desc">${f.description ?? ""}</div></td>${compareReleases
-            .map(
-              (r) =>
-                `<td class="${f.versionIds.includes(r.id) ? "yes" : "no"}">${
-                  f.versionIds.includes(r.id) ? "Yes" : "No"
-                }</td>`
-            )
-            .join("")}</tr>`
-      )
-      .join("")}</table>`;
-    downloadDocument(
-      `${component.name}, version comparison`,
-      `${component.type} · comparing ${compareReleases.map((r) => r.version).join(" vs ")}`,
-      table,
-      `${slug(component.name)}-comparison.doc`
+    downloadDocx(
+      `${slug(component.name)}-comparison.docx`,
+      `${component.name}: version comparison`,
+      `${component.type} · ${compareReleases.map((r) => r.version).join(" vs ")}`,
+      {
+        headers: ["Feature", ...compareReleases.map((r) => r.version)],
+        rows: compareRows.map((f) => ({
+          cells: [
+            f.name,
+            ...compareReleases.map((r) =>
+              f.versionIds.includes(r.id) ? "Yes" : "No"
+            ),
+          ],
+          note: f.description ?? undefined,
+        })),
+      }
     );
   }
 
@@ -869,8 +822,7 @@ export function FdlComponentDetail({
                           </p>
                           {versionCustomers.length === 0 ? (
                             <p className="text-[12.5px] text-text-secondary">
-                              Nobody is recorded on this version yet. Connect it
-                              from a customer&apos;s Digital components tab.
+                              Nobody is recorded on this version yet.
                             </p>
                           ) : (
                             <ScrollHint className="max-h-[220px] pr-1">
@@ -889,6 +841,20 @@ export function FdlComponentDetail({
                             </ul>
                             </ScrollHint>
                           )}
+                          {/* Add them ONTO THE VERSION you are reading. This is
+                              where Suren was standing when the header button
+                              filed his customer under the current release
+                              instead of this one. */}
+                          {canEdit && unconnected.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => openAddCustomers(release.id)}
+                              className="mt-2.5 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary"
+                            >
+                              <Plus size={13} strokeWidth={2.4} />
+                              Add a customer on {release.version}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -905,12 +871,12 @@ export function FdlComponentDetail({
         <div className="flex items-center justify-between gap-4">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
             <ListChecks size={15} strokeWidth={2} className="text-blue-primary" /> Features
-            <InfoHint text="Add a feature once, then tick the versions that have it. That is what fills the comparison table and the sheets you download." />
+            <InfoHint text="What is in one version. Pick the version above the table. To compare two versions side by side, use the Compare versions card lower down." />
           </h2>
           <div className="flex shrink-0 items-center gap-2">
-            {component.features.length > 0 && (
-              <Button variant="secondary" onClick={downloadAllFeatures}>
-                <Download size={14} strokeWidth={2} /> Download features
+            {shownFeatures.length > 0 && shownRelease && (
+              <Button variant="secondary" onClick={() => downloadVersionSheet(shownRelease)}>
+                <Download size={14} strokeWidth={2} /> Download {shownRelease.version}
               </Button>
             )}
             {canEdit && (
@@ -920,31 +886,70 @@ export function FdlComponentDetail({
             )}
           </div>
         </div>
+
+        {/* ONE VERSION, NOT A MATRIX. A tick column per version turned this
+            into a second comparison table sitting above the real one (Suren,
+            Aug 9: "I already have a comparison table... why the heck are you
+            showing me this here? Keep one version comparison and give me, in
+            the first one, which version I want to see the features"). Picking
+            the version here also answers "I don't know which version of the
+            feature I'm downloading" — the button names it. */}
+        {releases.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <span className="text-[12.5px] text-text-secondary">
+              Showing what is in
+            </span>
+            {releases.map((release) => {
+              const picked = release.id === shownVersionId;
+              return (
+                <button
+                  key={release.id}
+                  type="button"
+                  aria-pressed={picked}
+                  onClick={() => setShownVersionId(release.id)}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
+                    picked
+                      ? "border-blue-primary bg-blue-light text-blue-primary"
+                      : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40"
+                  }`}
+                >
+                  {picked && <Check size={12} strokeWidth={2.8} />}
+                  {release.version}
+                  {release.current && (
+                    <span className="text-[10px] font-bold uppercase tracking-[0.04em] opacity-70">
+                      current
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {component.features.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-secondary">
             {releases.length === 0
               ? "Add a version first. Features are ticked against versions."
               : "No features listed yet. Add the first feature, then tick which versions carry it."}
           </p>
+        ) : shownFeatures.length === 0 ? (
+          <p className="mt-3 text-[12.5px] text-text-secondary">
+            Nothing is ticked for {shownRelease?.version ?? "this version"} yet.
+            Open a feature and tick this version, or pick another version above.
+          </p>
         ) : (
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left">
+            <table className="w-full min-w-[420px] text-left">
               <thead>
                 <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                   <th className="py-2 pr-4">Feature</th>
-                  {releases.map((r) => (
-                    <th key={r.id} className="px-2 py-2 text-center whitespace-nowrap">
-                      {r.version}
-                      {r.current && <Check size={10} strokeWidth={3} className="ml-0.5 inline text-blue-primary" />}
-                    </th>
-                  ))}
                   {canEdit && <th className="py-2" />}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
-                {component.features.map((feature) => (
+                {shownFeatures.map((feature) => (
                   <tr key={feature.id}>
-                    <td className="max-w-[340px] py-2.5 pr-4">
+                    <td className="py-2.5 pr-4">
                       <button
                         type="button"
                         onClick={() => setReadingFeature(feature)}
@@ -965,32 +970,6 @@ export function FdlComponentDetail({
                         )}
                       </button>
                     </td>
-                    {releases.map((release) => {
-                      const has = feature.versionIds.includes(release.id);
-                      return (
-                        <td key={release.id} className="px-2 py-2.5 text-center">
-                          {canEdit ? (
-                            <button
-                              type="button"
-                              disabled={busy}
-                              aria-label={`${feature.name} in ${release.version}: ${has ? "yes" : "no"}`}
-                              onClick={() => void toggleMapping(feature, release.id)}
-                              className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border transition-colors ${
-                                has
-                                  ? "border-[rgba(26,122,53,0.35)] bg-[rgba(26,122,53,0.1)] text-[color:#1A7A35]"
-                                  : "border-border-light text-text-tertiary hover:border-blue-subtle"
-                              }`}
-                            >
-                              {has ? <Check size={13} strokeWidth={2.6} /> : <Minus size={12} strokeWidth={2} />}
-                            </button>
-                          ) : has ? (
-                            <Check size={14} strokeWidth={2.6} className="inline text-[color:#1A7A35]" />
-                          ) : (
-                            <Minus size={12} strokeWidth={2} className="inline text-text-tertiary" />
-                          )}
-                        </td>
-                      );
-                    })}
                     {canEdit && (
                       <td className="py-2.5 pl-2">
                         <span className="flex items-center justify-end gap-1">
@@ -1042,10 +1021,7 @@ export function FdlComponentDetail({
           {canEdit && unconnected.length > 0 && (
             <Button
               variant="secondary"
-              onClick={() => {
-                setPickedCustomers([]);
-                setAddingCustomers(true);
-              }}
+              onClick={() => openAddCustomers()}
               disabled={busy}
             >
               <Plus size={14} strokeWidth={2.2} /> Add customer
@@ -1306,13 +1282,40 @@ export function FdlComponentDetail({
           }}
           className="space-y-4"
         >
-          <p className="text-[12.5px] text-text-secondary">
-            They will be recorded on{" "}
-            {component.releases.find((release) => release.current)?.version ||
-              "the current version"}
-            . Change the version on the customer&apos;s own page or here in the
-            list afterwards.
-          </p>
+          <div>
+            <p className="mb-1.5 text-[12.5px] font-semibold text-text-primary">
+              Which version are they on?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {releases.map((release) => {
+                const picked = addingRelease === release.id;
+                return (
+                  <button
+                    key={release.id}
+                    type="button"
+                    aria-pressed={picked}
+                    onClick={() => setAddingRelease(release.id)}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
+                      picked
+                        ? "border-blue-primary bg-blue-light text-blue-primary"
+                        : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40"
+                    }`}
+                  >
+                    {picked && <Check size={12} strokeWidth={2.8} />}
+                    {release.version}
+                    {release.current && (
+                      <span className="text-[10px] font-bold uppercase tracking-[0.04em] opacity-70">
+                        current
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-[12px] text-text-secondary">
+              You can change this later on their own page.
+            </p>
+          </div>
           <ScrollHint className="max-h-72">
           <ul className="space-y-1.5">
             {unconnected.map((customer) => {

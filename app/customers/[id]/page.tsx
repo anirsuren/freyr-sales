@@ -188,6 +188,14 @@ export default async function CustomerDetailPage({
           typeOptions: customerTypes.map((t) => t.name),
           applicable: applicableRich,
           inUse: inUseRich,
+          // THE WHOLE CATALOGUE, for the places that must not be filtered.
+          // "Applicable" is derived from the account's classification, so a
+          // customer added a minute ago matches nothing and both lists above
+          // are empty. That is fine for a recommendation panel and fatal for
+          // the activity picker, which had no offering to pick and no way to
+          // add one (Suren, Aug 9: "where is the offering? how do I add the
+          // offering? it does not allow me to add the offering at all").
+          all: allOfferings.map(toTabOffering),
         }}
         fdlComponents={fdlComponents}
         canEditComponents={canEditComponents}

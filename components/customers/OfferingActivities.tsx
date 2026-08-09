@@ -117,7 +117,7 @@ function planned(version: CustomerOfferingEngagementVersion): boolean {
   return start > new Date().toISOString().slice(0, 10);
 }
 
-function ActivityChip({ activity }: { activity: CustomerOfferingActivity }) {
+export function ActivityChip({ activity }: { activity: CustomerOfferingActivity }) {
   const meta = CUSTOMER_OFFERING_ACTIVITIES[activity];
   const Icon = ACTIVITY_ICONS[activity];
   return (
@@ -131,7 +131,7 @@ function ActivityChip({ activity }: { activity: CustomerOfferingActivity }) {
   );
 }
 
-function StatusChip({ status }: { status: CustomerOfferingStatus }) {
+export function StatusChip({ status }: { status: CustomerOfferingStatus }) {
   const meta = CUSTOMER_OFFERING_STATUSES[status];
   const Icon = STATUS_ICONS[status];
   return (

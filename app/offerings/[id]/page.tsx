@@ -53,6 +53,10 @@ import {
 import { FILTER_PALETTE } from "@/components/offerings/filterPalette";
 import { canViewNextCustomerVersion } from "@/lib/roadmapAccess";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
+import {
+  OfferingCustomers,
+  type OfferingCustomerRow,
+} from "@/components/offerings/OfferingCustomers";
 
 export const dynamic = "force-dynamic";
 
@@ -103,12 +107,50 @@ export default async function OfferingDetailPage({
       ? "reports"
       : query?.tab === "materials"
         ? "materials"
-        : query?.tab === "components" ||
-            query?.tab === "roadmap" ||
-            query?.tab === "releases"
-          ? "components"
-          : "overview";
+        : query?.tab === "customers"
+          ? "customers"
+          : query?.tab === "components" ||
+              query?.tab === "roadmap" ||
+              query?.tab === "releases"
+            ? "components"
+            : "overview";
   const allCustomers = await getDb().customers.list();
+
+  // WHO IS ON THIS OFFERING (Suren, Aug 9: "in the offering angle, I want to
+  // also know all the customers of this offering"). An account counts if the
+  // offering is recorded in use OR it has any activity logged against it, so
+  // a Lead shows up here before anything is signed. "Which release is going
+  // on" is per component, read off the same digital_components record the
+  // customer page and the component page both write.
+  const componentNames = new Map(allComponents.map((c) => [c.id, c.name]));
+  const offeringComponentIds = new Set(o.component_ids ?? []);
+  const offeringCustomers: OfferingCustomerRow[] = allCustomers
+    .map((customer) => {
+      const usage = (customer.offering_usage || []).find(
+        (u) => u.offering_id === raw.id
+      );
+      const inUse = (customer.offerings_in_use || []).includes(raw.id);
+      const engagements = usage?.engagement_versions || [];
+      if (!inUse && engagements.length === 0) return null;
+      const versions = (customer.digital_components || [])
+        .filter((link) => offeringComponentIds.has(link.component_id))
+        .map((link) => {
+          const component = allComponents.find((c) => c.id === link.component_id);
+          const release = component?.releases.find((r) => r.id === link.release_id);
+          return {
+            component: componentNames.get(link.component_id) || "Component",
+            version: release?.version ?? null,
+          };
+        });
+      return {
+        id: customer.id,
+        name: customer.company_name,
+        current: engagements.find((v) => v.linked) || null,
+        versions,
+      };
+    })
+    .filter((row): row is OfferingCustomerRow => row !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Contract lines for this offering, nearest expiry first — the rail's
   // second card.
@@ -397,6 +439,14 @@ export default async function OfferingDetailPage({
             label: `Components (${(o.component_ids ?? []).length})`,
             href: `/offerings/${o.id}?tab=components`,
           },
+          {
+            key: "customers",
+            label:
+              offeringCustomers.length > 0
+                ? `Customers (${offeringCustomers.length})`
+                : "Customers",
+            href: `/offerings/${o.id}?tab=customers`,
+          },
           ...(showReports
             ? [
                 {
@@ -436,6 +486,11 @@ export default async function OfferingDetailPage({
             offering={o}
             admin={admin}
             preferenceOwnerId={me.memberId || me.id}
+          />
+        ) : tab === "customers" ? (
+          <OfferingCustomers
+            rows={offeringCustomers}
+            offeringName={o.offering_name}
           />
         ) : tab === "reports" ? (
           <OfferingReports report={report} offeringName={o.offering_name} />

@@ -169,8 +169,9 @@ export function CustomerDigitalComponents({
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <div className="min-w-0">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      Running version
+                    <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Current version
+                      <InfoHint text="The version of this software the customer is on right now." />
                     </p>
                     {canEdit ? (
                       <ColorSelect
@@ -194,13 +195,14 @@ export function CustomerDigitalComponents({
                       />
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
-                        {live ? live.version : "Not recorded"}
+                        {live ? live.version : "Not set yet"}
                       </p>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      Status
+                    <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Version status
+                      <InfoHint text="Released means we have given them this version. Expected means they are waiting for it." />
                     </p>
                     {canEdit ? (
                       <ColorSelect
@@ -222,7 +224,7 @@ export function CustomerDigitalComponents({
                           )
                         }
                         options={[
-                          { value: "", label: "Not recorded", color: "#0071E3", icon: Clock },
+                          { value: "", label: "Not set yet", color: "#0071E3", icon: Clock },
                           {
                             value: "released",
                             label: "Released to them",
@@ -248,14 +250,15 @@ export function CustomerDigitalComponents({
                           ? "Released to them"
                           : link.release_status === "expected"
                             ? "Expected by them"
-                            : "Not recorded"}
+                            : "Not set yet"}
                       </p>
                     )}
                   </div>
                   </div>
                   <div className="mt-2 min-w-0">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      Moving to next
+                    <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Next version
+                      <InfoHint text="The version they move to after this one. Leave it empty if nothing is planned." />
                     </p>
                     {canEdit ? (
                       <ColorSelect
@@ -279,7 +282,7 @@ export function CustomerDigitalComponents({
                       />
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
-                        {next ? next.version : "Not planned"}
+                        {next ? next.version : "Not set yet"}
                       </p>
                     )}
                   </div>

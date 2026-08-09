@@ -193,6 +193,8 @@ export function CustomerTabs({
     typeOptions: string[];
     applicable: TabOffering[];
     inUse: TabOffering[];
+    /** Every offering in the catalogue, unfiltered by classification. */
+    all?: TabOffering[];
   };
 }) {
   const { toast } = useToast();
@@ -2064,9 +2066,17 @@ export function CustomerTabs({
           <CustomerActivityTab
             customerId={customer.id}
             usage={customer.offering_usage || []}
+            /* EVERY offering, in-use ones first. A Lead is by definition
+               something they do not use yet, and "applicable" needs the
+               account to be classified first, so filtering here left a brand
+               new customer with an empty picker and no way out. */
             offerings={[
               ...(offeringsCatalog?.inUse || []),
-              ...(offeringsCatalog?.applicable || []).filter(
+              ...(
+                offeringsCatalog?.all ||
+                offeringsCatalog?.applicable ||
+                []
+              ).filter(
                 (o) => !(offeringsCatalog?.inUse || []).some((u) => u.id === o.id)
               ),
             ].map((o) => ({

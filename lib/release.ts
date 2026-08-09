@@ -55,6 +55,14 @@ const RELEASED_MODULE_PREFIXES = [
   // roster, every pipeline number 0 until deals exist (Anir, Aug 6).
   "/team",
   "/customers",
+  // REPORTS SHIPS WITH THE REAL ACCOUNTS (Suren, Aug 9, via Anir: "you want
+  // the reports module in the real mode, correct, with the data from the
+  // spreadsheet, with all this data"). It reads getDb(), so in real mode it
+  // reports on the real customers and their real offering activity, and the
+  // customer-by-offering matrix underneath it is the "everything together"
+  // view he was looking for. Nothing here invents numbers: an account with no
+  // activity logged shows as empty rather than as a guess.
+  "/reports",
   // ONLY the per-rep profile pages travel with Team — clicking a teammate
   // must open them, not bounce to Offerings. The /analytics module root
   // stays unreleased and hidden from navigation.
