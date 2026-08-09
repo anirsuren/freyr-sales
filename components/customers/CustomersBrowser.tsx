@@ -495,12 +495,17 @@ export function CustomersBrowser({
       {/* Title left, the two ways an account ENTERS the system right (Anir,
           Jul 30: "people should want to either import or add a customer, so
           that should be there"). */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+      {/* Same geometry and the same lift as the shared PageHeader that
+          Offerings and FDL Components use — this block predates it and had
+          drifted on subtitle size and bottom margin (Anir, Aug 9: "make sure
+          that the header, the subheader and the button are in the same place
+          so it's consistent"). */}
+      <div className="rise-in flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6">
         <div className="min-w-0">
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
             Customers
           </h1>
-          <p className="text-[14px] text-text-secondary mt-0.5">
+          <p className="text-[13px] text-text-secondary mt-1">
             Every company in your pipeline.
           </p>
         </div>

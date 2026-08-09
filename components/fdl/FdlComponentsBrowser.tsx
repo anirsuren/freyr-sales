@@ -11,12 +11,14 @@ import {
   Clock,
   Layers,
   Plus,
+  Search,
   Server,
   X,
 } from "lucide-react";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
@@ -85,6 +87,11 @@ export function FdlComponentsBrowser({
   const [name, setName] = useState("");
   const [type, setType] = useState<FdlComponentType>("Module");
   const [busy, setBusy] = useState(false);
+  // FOURTEEN COMPONENTS ALREADY, AND MORE COMING. Offerings and Customers both
+  // open with a search; this page made you read the grid (Anir, Aug 9: "we
+  // probably need a search bar on the [FDL] fold, just saying").
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   async function create() {
     if (!name.trim()) return;
@@ -115,6 +122,17 @@ export function FdlComponentsBrowser({
     </Button>
   );
 
+  const q = query.trim().toLowerCase();
+  const shown = components.filter(
+    (component) =>
+      (!typeFilter || component.type === typeFilter) &&
+      (!q ||
+        component.name.toLowerCase().includes(q) ||
+        component.type.toLowerCase().includes(q) ||
+        component.releases.some((r) => r.version.toLowerCase().includes(q)) ||
+        component.features.some((f) => f.name.toLowerCase().includes(q)))
+  );
+
   return (
     <section>
       {/* The create button lives IN the title row, exactly like the Offerings
@@ -125,6 +143,48 @@ export function FdlComponentsBrowser({
         subtitle="Freya Digital components — the software pieces an offering is made of. Each keeps its own versions and features."
         action={components.length > 0 ? newButton : undefined}
       />
+      {components.length > 0 && (
+        <div className="rise-in mb-5 flex flex-wrap items-center gap-2">
+          <label className="relative min-w-0 flex-1 sm:max-w-[340px]">
+            <Search
+              size={15}
+              strokeWidth={2}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+            />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search components…"
+              aria-label="Search components"
+              className="w-full rounded-lg border border-border-light bg-white py-2 pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
+            />
+          </label>
+          <ColorSelect
+            value={typeFilter}
+            onChange={setTypeFilter}
+            ariaLabel="Filter by component type"
+            dense
+            collapsible={false}
+            className="w-[160px] shrink-0"
+            options={[
+              { value: "", label: "All types", color: "#0071E3", icon: Boxes },
+              ...(["Module", "Agent", "Platform"] as FdlComponentType[]).map((t) => ({
+                value: t,
+                label: t,
+                color: FDL_TYPE_META[t].color,
+                icon: FDL_TYPE_META[t].Icon,
+              })),
+            ]}
+          />
+          <span className="ml-auto text-[12.5px] text-text-secondary tnum">
+            {shown.length === components.length
+              ? `${components.length} components`
+              : `${shown.length} of ${components.length}`}
+          </span>
+        </div>
+      )}
+
       {components.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-white px-6 py-10 text-center">
           <Boxes size={22} strokeWidth={1.8} className="mx-auto text-blue-primary" />
@@ -141,7 +201,7 @@ export function FdlComponentsBrowser({
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 stagger">
-            {components.map((component) => {
+            {shown.map((component) => {
               const current = fdlCurrentVersion(component);
               const homes = usedIn[component.id] ?? [];
               return (

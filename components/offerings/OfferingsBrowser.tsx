@@ -232,7 +232,7 @@ export type OfferingCommerce = {
 // owner, just like it shows the point of contact"). A text chip that said "You
 // own this" named nobody and showed nothing. Your own row still marks itself,
 // because "can I edit this?" is the question the card is answering.
-function OwnerStrip({
+function OwnerRows({
   owners,
   offeringName,
 }: {
@@ -248,42 +248,36 @@ function OwnerStrip({
   const granted = (owners || []).filter((o) => o.status === "owner");
   if (granted.length === 0) return null;
   return (
-    <div
-      role="group"
-      aria-label={`Owner: ${granted.map((o) => o.name).join(", ")}`}
-      className="relative z-10 flex min-w-0 items-center gap-2"
-    >
-      {/* The crown rides with the word. It is the same mark the Owner filter
-          wears, so "who owns this" reads the same way in the toolbar and on
-          the card (Anir, Aug 7: "put the crown icon next to the text that
-          says the owner"). */}
-      <span className="person-row-label person-row-label--owner shrink-0 gap-1">
+    <>
+      {/* The crown rides with the word — the same mark the Owner filter wears,
+          so "who owns this" reads the same in the toolbar and on the card
+          (Anir, Aug 7). It only prints once, against the first name. */}
+      <dt className="flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-[0.07em] text-[color:#6D28D9]">
         <Crown size={10} strokeWidth={2.6} aria-hidden="true" />
         Owner
-      </span>
-      {/* The NAME is on the card, not behind a hover. A face alone made you
-          mouse over every tile to learn who owns what (Anir, Aug 7: "instead
-          of the owner icons popping up, can we have their names directly
-          showing up"). The hover card still opens on the row for the rest of
-          the person — role, email, Teams. */}
-      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        {granted.map((o) => (
-          <PersonHoverCard
-            key={o.memberId}
-            name={o.name}
-            role={o.role || "Owns this offering"}
-            context={offeringName}
-          >
-            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-0.5 transition-colors hover:bg-surface">
-              <Avatar name={o.name} className="h-6 w-6 text-[8px]" />
-              <span className="truncate text-[12px] font-semibold text-text-primary">
-                {o.name}
+      </dt>
+      <dd className="min-w-0">
+        {/* One name per line. Wrapping mid-row is what made two owners look
+            different from one; a column looks the same at any name length. */}
+        <span className="flex min-w-0 flex-col gap-1">
+          {granted.map((o) => (
+            <PersonHoverCard
+              key={o.memberId}
+              name={o.name}
+              role={o.role || "Owns this offering"}
+              context={offeringName}
+            >
+              <span className="inline-flex min-w-0 items-center gap-1.5 self-start rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
+                <Avatar name={o.name} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
+                <span className="min-w-0 break-words text-[11.5px] font-semibold leading-snug text-text-primary">
+                  {o.name}
+                </span>
               </span>
-            </span>
-          </PersonHoverCard>
-        ))}
-      </span>
-    </div>
+            </PersonHoverCard>
+          ))}
+        </span>
+      </dd>
+    </>
   );
 }
 
@@ -737,12 +731,16 @@ export function OfferingsBrowser({
                     : "Not set"}
                 </span>
               </dd>
+
+              {/* OWNER IS A THIRD ROW OF THE SAME GRID, not a strip below it.
+                  Standing outside the label column, one owner sat inline and
+                  two long names wrapped, so no two cards agreed (Anir, Aug 9:
+                  "sometimes it's on the next line, sometimes it's on the first
+                  line — there has to be a set way, just like you did for the
+                  type and the for"). Now the label column is fixed and the
+                  names stack under one another however long they are. */}
+              <OwnerRows owners={o.owners} offeringName={o.offering_name} />
             </dl>
-            {/* Service-delivery POC(s), hover a face for who's there + a
-                Teams line to them (Suren: "if there's multiple, make it look
-                like the campaigns page so when I hover over it I can see
-                who's there"). */}
-            <OwnerStrip owners={o.owners} offeringName={o.offering_name} />
             {/* POC is off the card (Anir, Aug 7: "you can remove the POC
                 aspect"). Owner is the person a rep needs from a tile; the
                 delivery contact belongs on the offering itself. */}

@@ -632,7 +632,7 @@ export function PitchWorkspace({
                   <Lock size={13} strokeWidth={1.9} className="text-text-tertiary" />
                 )}
                 Send to CRM
-                <ChevronDown size={14} strokeWidth={2} className="opacity-80" />
+                <ChevronDown size={14} strokeWidth={2} className="menu-in opacity-80" />
               </button>
               {crmOpen && (
                 <>
@@ -671,7 +671,7 @@ export function PitchWorkspace({
               </button>
               {moreOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
+                  <div className="menu-in fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
                   <div
                     role="menu"
                     aria-label="More actions"
