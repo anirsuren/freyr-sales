@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 
@@ -434,9 +435,18 @@ export function FdlComponentsBrowser({
                     <th className="w-[26%] px-5 py-2.5">Component</th>
                     <th className="w-[12%] px-4 py-2.5">Type</th>
                     <th className="w-[16%] px-4 py-2.5">Current version</th>
-                    <th className="w-[10%] px-4 py-2.5 text-right">Versions</th>
-                    <th className="w-[10%] px-4 py-2.5 text-right">Features</th>
-                    <th className="w-[26%] px-4 py-2.5">In offerings</th>
+                    {/* ONE ALIGNMENT FOR THE WHOLE TABLE (Anir, Aug 9: "why
+                        does it start with component, type and current version
+                        where the column is in line with the data point, and
+                        then it switches?"). Three left-aligned columns followed
+                        by two right-aligned ones made the eye re-anchor
+                        halfway across a row for no reason: these counts are
+                        single digits, so right-aligning them buys nothing and
+                        costs the row its rhythm. */}
+                    <th className="w-[9%] px-4 py-2.5">Versions</th>
+                    <th className="w-[9%] px-4 py-2.5">Features</th>
+                    <th className="w-[22%] px-4 py-2.5">In offerings</th>
+                    <th className="w-[7%] px-4 py-2.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="stagger">
@@ -489,10 +499,10 @@ export function FdlComponentsBrowser({
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2.5 text-right text-[12.5px] text-text-secondary tnum">
+                        <td className="px-4 py-2.5 text-[12.5px] text-text-secondary tnum">
                           {component.releases.length}
                         </td>
-                        <td className="px-4 py-2.5 text-right text-[12.5px] text-text-secondary tnum">
+                        <td className="px-4 py-2.5 text-[12.5px] text-text-secondary tnum">
                           {component.features.length}
                         </td>
                         <td className="px-4 py-2.5">
@@ -516,6 +526,24 @@ export function FdlComponentsBrowser({
                               ))}
                             </span>
                           )}
+                        </td>
+                        {/* SOMETHING TO DO FROM THE ROW (Anir, Aug 9: "we need
+                            a last column here with some actions"). Open is what
+                            the row already does on click; naming it gives the
+                            table a deliberate end instead of trailing off. */}
+                        <td className="px-4 py-2.5 text-right">
+                          <span className="inline-flex items-center gap-1">
+                            <Tooltip label={`Open ${component.name}`}>
+                              <Link
+                                href={`/components/${component.id}`}
+                                aria-label={`Open ${component.name}`}
+                                onClick={(event) => event.stopPropagation()}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                              >
+                                <ChevronRight size={15} strokeWidth={2.2} />
+                              </Link>
+                            </Tooltip>
+                          </span>
                         </td>
                       </tr>
                     );
