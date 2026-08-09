@@ -19,7 +19,7 @@ import {
   Server,
   X,
 } from "lucide-react";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import { OfferingIcon, ServiceTag, offeringMark } from "@/components/ui/OfferingIcon";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
@@ -56,17 +56,6 @@ export const FDL_TYPE_META: Record<
 /** The sentinel for "belongs to no offering", which is a real answer here and
  *  not the absence of one. */
 const UNCONNECTED = "\u0000none";
-
-/** Identity hues for offering names. Status colours (red/amber/green) are
- *  reserved for meaning, so they are deliberately absent. */
-const OFFERING_HUES = [
-  "#0071E3",
-  "#6D28D9",
-  "#0E7490",
-  "#B4318F",
-  "#4338CA",
-  "#0F766E",
-];
 
 export function FdlTypeChip({ type }: { type: FdlComponentType }) {
   const meta = FDL_TYPE_META[type];
@@ -257,12 +246,20 @@ export function FdlComponentsBrowser({
             collapsible={false}
             width={186}
             options={[
-              ...offeringNames.map((name, i) => ({
-                value: name,
-                label: name,
-                color: OFFERING_HUES[i % OFFERING_HUES.length],
-                icon: Package,
-              })),
+              // The SAME hue and glyph the offering wears everywhere else
+              // (Anir, Aug 9: "make sure to have the right colors for each
+              // offering"). offeringMark is the one place that decides an
+              // offering's identity, so the filter, the chips in the table and
+              // the tiles on /offerings can never drift apart.
+              ...offeringNames.map((name) => {
+                const mark = offeringMark(name);
+                return {
+                  value: name,
+                  label: name,
+                  color: mark.color,
+                  icon: mark.icon,
+                };
+              }),
               {
                 value: UNCONNECTED,
                 label: "Not in an offering yet",
@@ -400,11 +397,26 @@ export function FdlComponentsBrowser({
                       {component.features.length}{" "}
                       {component.features.length === 1 ? "feature" : "features"}
                     </p>
-                    <p className="text-[11.5px] text-text-tertiary">
-                      {homes.length > 0
-                        ? `In: ${homes.join(", ")}`
-                        : "Not connected to an offering yet."}
-                    </p>
+                    {/* The offerings this component ships in, each wearing its
+                        own mark rather than a grey "In: Freya.Register" run-on
+                        (Anir, Aug 9: "same thing here on each FDL component in
+                        the tiles view"). Same ServiceTag as the table, so a
+                        component reads the same whichever view you are in. */}
+                    {homes.length > 0 ? (
+                      <span className="flex flex-wrap items-center gap-1">
+                        {homes.map((home) => (
+                          <ServiceTag
+                            key={home}
+                            name={home}
+                            className="text-[11px]"
+                          />
+                        ))}
+                      </span>
+                    ) : (
+                      <p className="text-[11.5px] text-text-tertiary">
+                        Not connected to an offering yet.
+                      </p>
+                    )}
                   </div>
                 </Link>
               );
@@ -489,19 +501,18 @@ export function FdlComponentsBrowser({
                               Not connected yet
                             </span>
                           ) : (
+                            /* ServiceTag is how an offering names itself
+                               everywhere in the app: its own hue, its own
+                               glyph. A row of identical grey pills with the
+                               same blue box told you nothing about WHICH
+                               offering you were looking at. */
                             <span className="flex flex-wrap gap-1">
                               {homes.map((home) => (
-                                <span
+                                <ServiceTag
                                   key={home}
-                                  className="inline-flex items-center gap-1 rounded-full border border-border-light px-2 py-0.5 text-[11px] text-text-secondary"
-                                >
-                                  <Package
-                                    size={10}
-                                    strokeWidth={2.2}
-                                    className="text-blue-primary"
-                                  />
-                                  {home}
-                                </span>
+                                  name={home}
+                                  className="text-[11px]"
+                                />
                               ))}
                             </span>
                           )}
