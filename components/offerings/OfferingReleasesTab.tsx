@@ -1653,9 +1653,6 @@ export function OfferingReleasesTab({
             />
 
             <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border-light bg-white py-4">
-              <Button type="button" variant="secondary" onClick={closeRoadmapEditor} disabled={busy}>
-                Cancel
-              </Button>
               <Button type="submit" loading={busy}>
                 Save roadmap
               </Button>
@@ -1861,14 +1858,6 @@ export function OfferingReleasesTab({
                       : "Ready to add to the version history."}
             </p>
             <div className="flex shrink-0 justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={closeAddModal}
-                disabled={busy}
-              >
-              <X size={14} strokeWidth={2} /> Cancel
-              </Button>
               <Button type="submit" disabled={!canAdd} loading={busy}>
                 <Plus size={14} strokeWidth={2.2} />
                 Add version

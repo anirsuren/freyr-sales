@@ -292,9 +292,6 @@ export function CustomerActivityTab({
           </ul>
         </ScrollHint>
         <div className="mt-4 flex justify-end">
-          <Button variant="secondary" onClick={() => setPicking(false)}>
-            <X size={14} strokeWidth={2} /> Cancel
-          </Button>
         </div>
       </Modal>
     </div>

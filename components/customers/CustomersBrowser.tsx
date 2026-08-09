@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -612,25 +613,7 @@ export function CustomersBrowser({
               color: "#0071E3",
             }))}
           />
-          {/* Already icon-only — nothing to shed, so it just holds its ground. */}
-          <div className="flex border border-border rounded-md overflow-hidden">
-            <button
-              onClick={() => setView("grid")}
-              aria-label="Grid view"
-              title="Grid view"
-              className={cn("p-2 transition-colors", view === "grid" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
-            >
-              <LayoutGrid size={16} strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => setView("table")}
-              aria-label="Table view"
-              title="Table view"
-              className={cn("p-2 border-l border-border transition-colors", view === "table" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
-            >
-              <Table2 size={16} strokeWidth={1.5} />
-            </button>
-          </div>
+          <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
           <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
             <button
               onClick={() => {

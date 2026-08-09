@@ -1138,9 +1138,6 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">
-          <Button variant="secondary" onClick={() => setShowAdd(false)}>
-            Cancel
-          </Button>
           <Button onClick={submitAdd} disabled={!addForm.company.trim()}>
             Add to board
           </Button>
@@ -1164,9 +1161,6 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           className={inputCls}
         />
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="secondary" onClick={() => setShowSaveView(false)}>
-            Cancel
-          </Button>
           <Button onClick={saveView} disabled={!viewName.trim()}>
             Save view
           </Button>

@@ -634,9 +634,6 @@ function RichBriefEditor({
             The selected words become the link. Must start with http:// or https://.
           </p>
           <div className="mt-5 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setLinkOpen(false)}>
-              Cancel
-            </Button>
             <Button type="submit" disabled={!/^https?:\/\//i.test(linkUrl.trim())}>
               <Link2 size={14} strokeWidth={2.2} /> Add link
             </Button>
@@ -1811,7 +1808,7 @@ export function OfferingForm({
                     </div>
                   </div>
                 )}
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end">
                   <Button variant="secondary" onClick={() => setAddingCap(null)}>
                     Done
                   </Button>

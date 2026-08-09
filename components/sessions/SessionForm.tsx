@@ -400,11 +400,6 @@ export function SessionForm({
         <Button type="submit" disabled={!isValid}>
           {submitLabel}
         </Button>
-        {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
       </div>
     </form>
   );

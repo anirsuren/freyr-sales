@@ -1990,13 +1990,6 @@ export function CustomerTabs({
               </div>
               <div className="flex justify-end gap-2 mt-5">
                 <Button
-                  variant="secondary"
-                  onClick={() => setNoteModalOpen(false)}
-                  className="px-4 py-2 text-[13px]"
-                >
-                  Cancel
-                </Button>
-                <Button
                   onClick={async () => {
                     await addNote();
                     setNoteModalOpen(false);
@@ -2453,12 +2446,6 @@ export function CustomerTabs({
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
-                    variant="secondary"
-                    onClick={() => setShowDeal(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
                     onClick={addDeal}
                     loading={busy}
                     disabled={!dealForm.name.trim()}
@@ -2564,13 +2551,6 @@ export function CustomerTabs({
             </Field>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
-            <Button
-              variant="secondary"
-              onClick={closeContactModal}
-              disabled={contactBusy}
-            >
-              Cancel
-            </Button>
             <Button
               onClick={addContact}
               loading={contactBusy}

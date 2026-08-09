@@ -296,9 +296,6 @@ export function EditMaterialButton({
           </p>
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
             {hasChanges && (
               <Button onClick={save} disabled={busy || !folder || !journeyStages.length}>
                 {busy ? "Saving…" : "Save changes"}

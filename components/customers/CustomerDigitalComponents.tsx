@@ -10,7 +10,9 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { useToast } from "@/components/ui/Toast";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import {
+  versionTone,
   FdlTypeChip,
   fdlCurrentVersion,
 } from "@/components/fdl/FdlComponentsBrowser";
@@ -148,19 +150,12 @@ export function CustomerDigitalComponents({
           </Button>
         )}
         {state.length > 0 && (
-          <button
-            type="button"
-            onClick={() => chooseView(view === "cards" ? "table" : "cards")}
-            aria-label={view === "cards" ? "Switch to table view" : "Switch to card view"}
-            title={view === "cards" ? "Switch to table view" : "Switch to card view"}
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-          >
-            {view === "cards" ? (
-              <Table2 size={15} strokeWidth={2} />
-            ) : (
-              <LayoutGrid size={15} strokeWidth={2} />
-            )}
-          </button>
+          <ViewSelect
+            value={view}
+            onChange={chooseView}
+            tileValue="cards"
+            tableValue="table"
+          />
         )}
         </div>
       </div>
@@ -217,9 +212,20 @@ export function CustomerDigitalComponents({
                     <td className="px-3 py-2.5">
                       <FdlTypeChip type={component.type} />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold text-text-primary tnum">
-                      {live ? live.version : (
-                        <span className="font-normal text-text-tertiary">
+                    <td className="whitespace-nowrap px-3 py-2.5">
+                      {live ? (
+                        <span
+                          className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11.5px] font-semibold tnum"
+                          style={{
+                            color: versionTone(live).color,
+                            borderColor: versionTone(live).border,
+                            background: versionTone(live).bg,
+                          }}
+                        >
+                          {live.version}
+                        </span>
+                      ) : (
+                        <span className="text-[12.5px] text-text-tertiary">
                           Not recorded
                         </span>
                       )}
@@ -559,15 +565,7 @@ export function CustomerDigitalComponents({
                 );
               })}
             </ul>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setPicking(false)}
-                disabled={busy}
-              >
-                <X size={14} strokeWidth={2} /> Cancel
-              </Button>
+            <div className="flex justify-end">
               <Button type="submit" disabled={!picked.length} loading={busy}>
                 <Plus size={14} strokeWidth={2.2} /> Connect
               </Button>

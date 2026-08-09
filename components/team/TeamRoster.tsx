@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { PrioritySearchInput } from "@/components/ui/SearchPriority";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import {
@@ -481,21 +483,18 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
           Ranked by open pipeline. Message on Teams or call, click a rep for their full analytics.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <label className="relative min-w-0 flex-1 sm:max-w-[280px]">
-            <Search
-              size={14}
-              strokeWidth={2}
-              aria-hidden="true"
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
-            />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search the floor…"
-              aria-label="Search the sales floor"
-              className="w-full rounded-md border border-border bg-white py-1.5 pl-8 pr-2.5 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
-            />
-          </label>
+          {/* The shared search box, so this one focuses and behaves like every
+              other search in the app (Anir, Aug 9: "do the same animation for
+              the search bar as you do on the other things"). It was a raw
+              input, which is why it sat still while the others responded. */}
+          <PrioritySearchInput
+            grow
+            className="flex-1 sm:max-w-[280px]"
+            value={query}
+            onChange={setQuery}
+            placeholder="Search the floor…"
+            ariaLabel="Search the sales floor"
+          />
           <ColorSelect
             value={roleFilter}
             onChange={setRoleFilter}
@@ -558,24 +557,14 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               {visible.length} of {reps.length}
             </span>
           )}
-          <div className="ml-auto flex border border-border rounded-md overflow-hidden shrink-0">
-            <button
-              onClick={() => setView("grid")}
-              aria-label="Grid view"
-              title="Grid view"
-              className={cn("p-2 transition-colors", view === "grid" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
-            >
-              <LayoutGrid size={16} strokeWidth={1.6} />
-            </button>
-            <button
-              onClick={() => setView("table")}
-              aria-label="Table view"
-              title="Table view"
-              className={cn("p-2 border-l border-border transition-colors", view === "table" ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface")}
-            >
-              <Table2 size={16} strokeWidth={1.6} />
-            </button>
-          </div>
+          <span className="ml-auto">
+            <ViewSelect
+              value={view}
+              onChange={setView}
+              tileValue="grid"
+              tableValue="table"
+            />
+          </span>
         </div>
       </div>
 

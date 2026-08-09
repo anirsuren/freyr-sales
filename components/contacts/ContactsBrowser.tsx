@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownAZ, Building2, Users } from "lucide-react";
@@ -229,41 +230,14 @@ export function ContactsBrowser({
             ]}
           />
           {/* Grid ↔ list view (Suren: "we need a grid view on this or whatever
-              the other view is"). */}
-          <div className="inline-flex items-center rounded-md border border-border overflow-hidden">
-            <PriorityTooltip label="Grid view">
-              <button
-                onClick={() => setLayout("grid")}
-                aria-label="Grid view"
-                aria-pressed={layout === "grid"}
-                className={cn(
-                  "inline-flex items-center text-[13px] font-medium px-2.5 py-2 transition-colors",
-                  layout === "grid"
-                    ? "bg-blue-light text-blue-primary"
-                    : "text-text-secondary hover:bg-surface"
-                )}
-              >
-                <LayoutGrid size={15} strokeWidth={1.8} />
-                <PriorityLabel gap="ml-1.5">Grid</PriorityLabel>
-              </button>
-            </PriorityTooltip>
-            <PriorityTooltip label="List view">
-              <button
-                onClick={() => setLayout("list")}
-                aria-label="List view"
-                aria-pressed={layout === "list"}
-                className={cn(
-                  "inline-flex items-center text-[13px] font-medium px-2.5 py-2 border-l border-border transition-colors",
-                  layout === "list"
-                    ? "bg-blue-light text-blue-primary"
-                    : "text-text-secondary hover:bg-surface"
-                )}
-              >
-                <List size={15} strokeWidth={1.8} />
-                <PriorityLabel gap="ml-1.5">List</PriorityLabel>
-              </button>
-            </PriorityTooltip>
-          </div>
+              the other view is"), as the one shared dropdown. */}
+          <ViewSelect
+            value={layout}
+            onChange={setLayout}
+            tileValue="grid"
+            tableValue="list"
+            tableLabel="List"
+          />
           <PriorityTooltip label={selectMode ? "Done selecting" : "Select contacts"}>
             <button
               onClick={() => {

@@ -30,6 +30,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { downloadDocx } from "@/lib/docx";
 import { useToast } from "@/components/ui/Toast";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 
 /** One chip style per component type — color AND icon, never gray. */
@@ -70,6 +71,74 @@ export function FdlTypeChip({ type }: { type: FdlComponentType }) {
     >
       <meta.Icon size={11} strokeWidth={2.2} />
       {type}
+    </span>
+  );
+}
+
+/**
+ * ONE COLOUR RULE FOR A VERSION, EVERYWHERE IT APPEARS (Anir, Aug 9: "if it's
+ * released, it's green; if it's the current version, it's blue; if it's
+ * expected, it's purple. It's all throughout the app, everywhere that the
+ * current version is there, just make sure it's consistent").
+ *
+ * Current wins over released, because a version that is both is first of all
+ * the one being sold. These are status colours doing status work, which is the
+ * one job they are reserved for.
+ */
+export type VersionTone = { color: string; bg: string; border: string; label: string };
+
+export function versionTone(release: {
+  status?: "released" | "next";
+  current?: boolean;
+}): VersionTone {
+  if (release.current)
+    return {
+      color: "#0071E3",
+      bg: "rgba(0,113,227,0.10)",
+      border: "rgba(0,113,227,0.28)",
+      label: "Current",
+    };
+  if (release.status === "next")
+    return {
+      color: "#6D28D9",
+      bg: "rgba(124,58,237,0.10)",
+      border: "rgba(124,58,237,0.28)",
+      label: "Expected",
+    };
+  return {
+    color: "#1A7A35",
+    bg: "rgba(26,122,53,0.10)",
+    border: "rgba(26,122,53,0.28)",
+    label: "Released",
+  };
+}
+
+/**
+ * A VERSION NUMBER, ANYWHERE IT IS PRINTED (Anir, Aug 9: "everywhere you
+ * mention the version number, any sort of version, it has to be there,
+ * color-coded with the tag with the pill shape"). One component so the rule
+ * cannot drift again: green released, blue current, purple expected.
+ */
+export function VersionPill({
+  version,
+  status,
+  current,
+  className,
+}: {
+  version: string;
+  status?: "released" | "next";
+  current?: boolean;
+  className?: string;
+}) {
+  const tone = versionTone({ status, current });
+  return (
+    <span
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11.5px] font-semibold tnum ${
+        className ?? ""
+      }`}
+      style={{ color: tone.color, borderColor: tone.border, background: tone.bg }}
+    >
+      {version}
     </span>
   );
 }
@@ -362,19 +431,12 @@ export function FdlComponentsBrowser({
           {/* One button, same as Offerings: the icon shows where the click
               takes you rather than spending double the width on a segmented
               control. */}
-          <button
-            type="button"
-            onClick={() => chooseView(view === "tile" ? "table" : "tile")}
-            aria-label={view === "tile" ? "Switch to table view" : "Switch to tile view"}
-            title={view === "tile" ? "Switch to table view" : "Switch to tile view"}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-          >
-            {view === "tile" ? (
-              <Table2 size={15} strokeWidth={2} />
-            ) : (
-              <LayoutGrid size={15} strokeWidth={2} />
-            )}
-          </button>
+          <ViewSelect
+            value={view}
+            onChange={chooseView}
+            tileValue="tile"
+            tableValue="table"
+          />
         </div>
       )}
 
@@ -546,7 +608,16 @@ export function FdlComponentsBrowser({
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5">
                           {current ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#1A7A35]">
+                            // The quoted version IS the current one, so it wears
+                            // the current-version blue, not released green.
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                              style={{
+                                color: versionTone({ current: true }).color,
+                                borderColor: versionTone({ current: true }).border,
+                                background: versionTone({ current: true }).bg,
+                              }}
+                            >
                               <CircleCheck size={11} strokeWidth={2.2} /> {current}
                             </span>
                           ) : (
@@ -705,10 +776,7 @@ export function FdlComponentsBrowser({
               })}
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setAdding(false)} disabled={busy}>
-              <X size={14} strokeWidth={2} /> Cancel
-            </Button>
+          <div className="flex justify-end">
             <Button type="submit" disabled={!name.trim()} loading={busy}>
               <Plus size={14} strokeWidth={2.2} /> Create component
             </Button>

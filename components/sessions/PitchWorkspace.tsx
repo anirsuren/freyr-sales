@@ -1054,9 +1054,6 @@ export function PitchWorkspace({
           )}
         </div>
         <div className="flex justify-end gap-2 mt-5">
-          <Button variant="secondary" onClick={() => setComposeOpen(false)}>
-            Cancel
-          </Button>
           <Button
             onClick={sendEmail}
             loading={sendingEmail}

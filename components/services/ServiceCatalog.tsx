@@ -147,7 +147,6 @@ export function ServiceCatalog({
             </div>
             <div className="flex gap-2">
               <Button onClick={add} loading={busy} disabled={!form.name}>Save service</Button>
-              <Button variant="secondary" onClick={() => setAdding(false)}>Cancel</Button>
             </div>
           </div>
         </Card>
@@ -258,9 +257,6 @@ function EditForm({
             <Check size={16} strokeWidth={2} /> Save
           </Button>
         )}
-        <Button variant="secondary" onClick={onCancel} className="gap-1.5">
-          <X size={16} strokeWidth={2} /> Cancel
-        </Button>
       </div>
     </div>
   );

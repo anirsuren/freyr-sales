@@ -26,6 +26,7 @@ import { Card } from "@/components/ui/Card";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { PersonFan } from "@/components/ui/PersonFan";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -1358,19 +1359,12 @@ export function OfferingsBrowser({
               tiles or the list view one thing so it saves some space, so the
               go-to-market status shows up entirely"). The icon shows where
               the click takes you, and the label says it out loud. */}
-          <button
-            type="button"
-            onClick={() => setView(view === "tile" ? "grid" : "tile")}
-            aria-label={view === "tile" ? "Switch to list view" : "Switch to tile view"}
-            title={view === "tile" ? "Switch to list view" : "Switch to tile view"}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-          >
-            {view === "tile" ? (
-              <Table2 size={15} strokeWidth={2} />
-            ) : (
-              <LayoutGrid size={15} strokeWidth={2} />
-            )}
-          </button>
+          <ViewSelect
+            value={view}
+            onChange={setView}
+            tileValue="tile"
+            tableValue="grid"
+          />
           {/* Export is off the toolbar until there is a catalogue worth
               exporting (Anir, Aug 7: "remove the download button for now,
               we only have one offering that's ready"). exportCsv still

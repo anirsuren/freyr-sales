@@ -977,10 +977,8 @@ export function SequencesView({
           <div className="mt-5 flex items-center justify-between border-t border-border-light pt-4">
             <p className="text-[10.5px] text-text-tertiary">Step {editorStage} of 4 · {EDITOR_STEPS[editorStage - 1].helper}</p>
             <div className="flex gap-2">
-              {editorStage > (editingId ? 2 : 1) ? (
+              {editorStage > (editingId ? 2 : 1) && (
                 <Button variant="secondary" onClick={() => setEditorStage((stage) => Math.max(1, stage - 1) as 1 | 2 | 3 | 4)}><ChevronLeft size={14} /> Back</Button>
-              ) : (
-                <Button variant="secondary" onClick={() => setEditorOpen(false)}>Cancel</Button>
               )}
               {editorStage < 4 ? (
                 <Button onClick={continueEditor} disabled={editorStage === 1 && !templateChoice}>Continue <ChevronRight size={14} /></Button>

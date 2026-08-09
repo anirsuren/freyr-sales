@@ -462,7 +462,6 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
             )}
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="secondary" onClick={closeFeedback} disabled={busy}>Cancel</Button>
             <Button onClick={submit} disabled={busy || !title.trim() || !description.trim()} loading={busy}><Send size={14} /> Send feedback</Button>
           </div>
         </div>

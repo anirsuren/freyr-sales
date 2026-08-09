@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -49,8 +50,13 @@ import type {
   FdlFeatureAttachment,
   FdlRelease,
 } from "@/lib/offerings";
-import { FdlTypeChip, fdlCurrentVersion } from "@/components/fdl/FdlComponentsBrowser";
-import { OfferingIcon } from "@/components/ui/OfferingIcon";
+import {
+  FdlTypeChip,
+  fdlCurrentVersion,
+  VersionPill,
+  versionTone,
+} from "@/components/fdl/FdlComponentsBrowser";
+import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 
@@ -722,23 +728,22 @@ export function FdlComponentDetail({
             </button>
           )}
         </div>
-        <p className="mt-1 text-[12.5px] text-text-secondary">
-          {homes.length > 0 ? (
-            <>
-              Part of{" "}
-              {homes.map((h, i) => (
-                <span key={h.id}>
-                  {i > 0 && ", "}
-                  <Link href={`/offerings/${h.id}`} className="font-medium text-blue-primary hover:underline">
-                    {h.name}
-                  </Link>
-                </span>
-              ))}
-              .
-            </>
-          ) : (
-            "Not connected to an offering yet."
-          )}
+        {/* THE OFFERING WEARS ITS OWN MARK, AND THE ACTION LOOKS LIKE ONE
+            (Anir, Aug 9: "that part that says Freya.Register should be in a
+            pill with the icon... the Add to an Offering button, I don't even
+            know what that's supposed to do, but I'm assuming it's important.
+            That doesn't look good right now"). A blue word in a grey sentence
+            beside another blue word gave a link and a button the same
+            appearance, so neither read as what it was. */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <span className="text-[12.5px] text-text-secondary">
+            {homes.length > 0 ? "Part of" : "Not connected to an offering yet."}
+          </span>
+          {homes.map((h) => (
+            <Link key={h.id} href={`/offerings/${h.id}`} className="min-w-0">
+              <ServiceTag name={h.name} className="text-[12px]" />
+            </Link>
+          ))}
           {canEdit && (
             <button
               type="button"
@@ -748,12 +753,14 @@ export function FdlComponentDetail({
                 );
                 setAddingOffering(true);
               }}
-              className="ml-1.5 cursor-pointer font-semibold text-blue-primary hover:underline"
+              title="Put this component inside an offering, so it sells as part of that package"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary"
             >
+              <Plus size={12} strokeWidth={2.4} />
               Add to an offering
             </button>
           )}
-        </p>
+        </div>
       </div>
 
       {/* CONNECTING FROM THIS SIDE. The link existed only from the offering,
@@ -796,7 +803,7 @@ export function FdlComponentDetail({
                 </p>
               </div>
             )}
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end">
               <Button variant="secondary" onClick={() => setPreviewing(null)}>
                 <X size={14} strokeWidth={2} /> Close
               </Button>
@@ -897,7 +904,7 @@ export function FdlComponentDetail({
               </div>
             )}
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end">
               <Button variant="secondary" onClick={() => setReadingFeature(null)}>
                 Close
               </Button>
@@ -973,16 +980,22 @@ export function FdlComponentDetail({
               })}
             </ul>
           </ScrollHint>
-          <div className="flex justify-end gap-2">
+          {/* SAVE ONLY LIGHTS UP IF SOMETHING CHANGED (Anir, Aug 9: "the save
+              button should only show up if I actually did anything, it should
+              be grayed out and I shouldn't be able to press it"). Comparing the
+              ticks against what is already connected is the same comparison
+              the submit handler makes, so the button can never be pressable
+              when there is nothing to write. */}
+          <div className="flex justify-end">
             <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setAddingOffering(false)}
-              disabled={busy}
+              type="submit"
+              loading={busy}
+              disabled={
+                !offerings.some(
+                  (o) => o.connected !== pickedOfferings.includes(o.id)
+                )
+              }
             >
-              <X size={14} strokeWidth={2} /> Cancel
-            </Button>
-            <Button type="submit" loading={busy}>
               <Plus size={14} strokeWidth={2.2} /> Save
             </Button>
           </div>
@@ -1421,7 +1434,12 @@ export function FdlComponentDetail({
                         <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
                           <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <ListChecks size={12} strokeWidth={2.2} className="text-blue-primary" />
-                            What is in {release.version}
+                            What is in{" "}
+                            <VersionPill
+                              version={release.version}
+                              status={release.status}
+                              current={release.current}
+                            />
                             <span className="ml-auto font-bold tnum">
                               {versionFeatures.length}
                             </span>
@@ -1460,7 +1478,12 @@ export function FdlComponentDetail({
                         <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
                           <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <Building2 size={12} strokeWidth={2.2} className="text-blue-primary" />
-                            Customers on {release.version}
+                            Customers on{" "}
+                            <VersionPill
+                              version={release.version}
+                              status={release.status}
+                              current={release.current}
+                            />
                             <span className="ml-auto font-bold tnum">
                               {versionCustomers.length}
                             </span>
@@ -1516,7 +1539,13 @@ export function FdlComponentDetail({
                                         </span>
                                         <span className="flex flex-wrap items-center gap-x-1.5 text-[10.5px] text-text-tertiary">
                                           <span className="whitespace-nowrap">
-                                            On {release.version}
+                                            On{" "}
+                                            <VersionPill
+                                              version={release.version}
+                                              status={release.status}
+                                              current={release.current}
+                                              className="px-1.5 py-0 text-[10px]"
+                                            />
                                           </span>
                                           <span aria-hidden="true">·</span>
                                           <span className="whitespace-nowrap">
@@ -1556,7 +1585,12 @@ export function FdlComponentDetail({
                         <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
                           <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <Paperclip size={12} strokeWidth={2.2} className="text-blue-primary" />
-                            Files in {release.version}
+                            Files in{" "}
+                            <VersionPill
+                              version={release.version}
+                              status={release.status}
+                              current={release.current}
+                            />
                             <span className="ml-auto font-bold tnum">
                               {versionAttachments.length}
                             </span>
@@ -1667,11 +1701,14 @@ export function FdlComponentDetail({
             the version here also answers "I don't know which version of the
             feature I'm downloading" — the button names it. */}
         {releases.length > 0 && (
-          /* The picker sits ON the heading line's shoulder, not a paragraph
-             below it (Anir, Aug 9: "there's a lot of space above features and
-             then below features and then above the dropdown"). */
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="text-[12.5px] text-text-secondary">
+          /* ON THE HEADING LINE, NOT UNDER IT (Anir, Aug 9: "a lot of space
+             here... look at where the table starts and where the top of the
+             container is, literally half of it is going away. I would probably
+             say the current version next to the features button"). A heading
+             row, then a picker row, then the table header was three stacked
+             bands before a single feature appeared. */
+          <div className="-mt-9 mb-1 flex flex-wrap items-center gap-2 pr-14">
+            <span className="ml-[112px] text-[12.5px] text-text-secondary">
               Showing what is in
             </span>
             <MultiColorSelect
@@ -1995,36 +2032,12 @@ export function FdlComponentDetail({
               />
             )}
             {connected.length > 0 && (
-              <div className="flex shrink-0 overflow-hidden rounded-md border border-border">
-                <button
-                  type="button"
-                  onClick={() => setCustomerView("grid")}
-                  aria-label="Card view"
-                  title="Card view"
-                  aria-pressed={customerView === "grid"}
-                  className={`cursor-pointer p-2 transition-colors ${
-                    customerView === "grid"
-                      ? "bg-blue-light text-blue-primary"
-                      : "text-text-secondary hover:bg-surface"
-                  }`}
-                >
-                  <LayoutGrid size={16} strokeWidth={1.6} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCustomerView("table")}
-                  aria-label="Table view"
-                  title="Table view"
-                  aria-pressed={customerView === "table"}
-                  className={`cursor-pointer border-l border-border p-2 transition-colors ${
-                    customerView === "table"
-                      ? "bg-blue-light text-blue-primary"
-                      : "text-text-secondary hover:bg-surface"
-                  }`}
-                >
-                  <Table2 size={16} strokeWidth={1.6} />
-                </button>
-              </div>
+              <ViewSelect
+                value={customerView}
+                onChange={setCustomerView}
+                tileValue="grid"
+                tableValue="table"
+              />
             )}
             {canEdit && unconnected.length > 0 && (
               <Tooltip label="Add a customer">
@@ -2171,9 +2184,30 @@ export function FdlComponentDetail({
                             </Link>
                           </td>
                           <td className="py-3 pr-4">
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-border-light px-2.5 py-1 text-[12px] font-semibold text-text-primary tnum">
-                              {release ? release.version : "Not set yet"}
-                            </span>
+                            {release ? (
+                              (() => {
+                                // Status, not identity: green released, blue
+                                // current, purple expected — the same rule as
+                                // every other place a version is printed.
+                                const tone = versionTone(release);
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] font-semibold tnum"
+                                    style={{
+                                      color: tone.color,
+                                      borderColor: tone.border,
+                                      background: tone.bg,
+                                    }}
+                                  >
+                                    {release.version}
+                                  </span>
+                                );
+                              })()
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light px-2.5 py-1 text-[12px] text-text-tertiary">
+                                Not set yet
+                              </span>
+                            )}
                           </td>
                           <td className="whitespace-nowrap py-3 pr-4 text-[12.5px] text-text-secondary tnum">
                             {next ? next.version : "Not planned"}
@@ -2443,10 +2477,7 @@ export function FdlComponentDetail({
             onChange={(event) => setNameDraft(event.target.value)}
             className={FIELD}
           />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setRenaming(false)} disabled={busy}>
-              <X size={14} strokeWidth={2} /> Cancel
-            </Button>
+          <div className="flex justify-end">
             <Button type="submit" disabled={!nameDraft.trim()} loading={busy}>
               <Pencil size={14} strokeWidth={2} /> Save name
             </Button>
@@ -2528,9 +2559,6 @@ export function FdlComponentDetail({
                   : "Ready to add. Tick its features in the table after."}
             </p>
             <div className="flex shrink-0 gap-2">
-              <Button type="button" variant="secondary" onClick={() => setAddingVersion(false)} disabled={busy}>
-                <X size={14} strokeWidth={2} /> Cancel
-              </Button>
               <Button type="submit" disabled={!canAddVersion} loading={busy}>
                 <Plus size={14} strokeWidth={2.2} /> Add version
               </Button>
@@ -2608,15 +2636,7 @@ export function FdlComponentDetail({
             })}
           </ul>
           </ScrollHint>
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setAddingCustomers(false)}
-              disabled={busy}
-            >
-              <X size={14} strokeWidth={2} /> Cancel
-            </Button>
+          <div className="flex justify-end">
             <Button type="submit" disabled={!pickedCustomers.length} loading={busy}>
               <Plus size={14} strokeWidth={2.2} /> Add customer
             </Button>

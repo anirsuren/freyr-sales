@@ -177,10 +177,7 @@ export function ConfirmModal({
       <p className="text-[14px] text-text-secondary leading-relaxed mb-5">
         {message}
       </p>
-      <div className="flex justify-end gap-2">
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
-        </Button>
+      <div className="flex justify-end">
         <Button variant="destructive" onClick={onConfirm} loading={loading}>
           {confirmLabel}
         </Button>
