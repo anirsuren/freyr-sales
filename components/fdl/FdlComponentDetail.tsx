@@ -112,6 +112,7 @@ export function FdlComponentDetail({
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const [addingOffering, setAddingOffering] = useState(false);
+  const [readingFeature, setReadingFeature] = useState<FdlFeature | null>(null);
   const [pickedOfferings, setPickedOfferings] = useState<string[]>([]);
 
   /** Add or remove this component on each offering the tick state changed. */
@@ -476,6 +477,65 @@ export function FdlComponentDetail({
           No you don't — you should be able to add which offerings this goes
           through"). Same list, same connection, either direction. */}
       <Modal
+        open={!!readingFeature}
+        onClose={() => setReadingFeature(null)}
+        title={readingFeature?.name || "Feature"}
+      >
+        {readingFeature && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {readingFeature.fid && (
+                <span className="inline-flex rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1.5 py-0.5 text-[11px] font-bold tracking-[0.03em] text-[color:#0040A0] tnum">
+                  {readingFeature.fid}
+                </span>
+              )}
+              {releases
+                .filter((release) => readingFeature.versionIds.includes(release.id))
+                .map((release) => (
+                  <span
+                    key={release.id}
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                    style={{
+                      color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+                      background:
+                        release.status === "released"
+                          ? "rgba(26,122,53,0.08)"
+                          : "rgba(124,58,237,0.08)",
+                    }}
+                  >
+                    {release.status === "released" ? (
+                      <CircleCheck size={11} strokeWidth={2.2} />
+                    ) : (
+                      <Clock size={11} strokeWidth={2.2} />
+                    )}
+                    {release.version}
+                  </span>
+                ))}
+            </div>
+            <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-text-primary">
+              {readingFeature.description || "No description written yet."}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setReadingFeature(null)}>
+                Close
+              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => {
+                    const target = readingFeature;
+                    setReadingFeature(null);
+                    openFeatureModal(target);
+                  }}
+                >
+                  <Pencil size={14} strokeWidth={2} /> Edit
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
         open={addingOffering}
         onClose={() => setAddingOffering(false)}
         title={`Which offerings include ${component.name}?`}
@@ -836,19 +896,25 @@ export function FdlComponentDetail({
                 {component.features.map((feature) => (
                   <tr key={feature.id}>
                     <td className="max-w-[340px] py-2.5 pr-4">
-                      <p className="text-[13px] font-semibold text-text-primary">
-                        {feature.fid && (
-                          <span className="mr-1.5 inline-flex rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1 py-0.5 align-middle text-[10px] font-bold tracking-[0.03em] text-[color:#0040A0] tnum">
-                            {feature.fid}
-                          </span>
-                        )}
-                        {feature.name}
-                      </p>
-                      {feature.description && (
-                        <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
-                          {feature.description}
+                      <button
+                        type="button"
+                        onClick={() => setReadingFeature(feature)}
+                        className="group/f w-full cursor-pointer text-left"
+                      >
+                        <p className="text-[13px] font-semibold text-text-primary group-hover/f:text-blue-primary">
+                          {feature.fid && (
+                            <span className="mr-1.5 inline-flex rounded border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-1 py-0.5 align-middle text-[10px] font-bold tracking-[0.03em] text-[color:#0040A0] tnum">
+                              {feature.fid}
+                            </span>
+                          )}
+                          {feature.name}
                         </p>
-                      )}
+                        {feature.description && (
+                          <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-text-secondary">
+                            {feature.description}
+                          </p>
+                        )}
+                      </button>
                     </td>
                     {releases.map((release) => {
                       const has = feature.versionIds.includes(release.id);

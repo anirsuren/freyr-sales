@@ -1245,6 +1245,42 @@ function seed(): OfferingsStore {
  * demonstrates itself. Generated deterministically: same catalogue every
  * load, no random drift between renders.
  */
+/**
+ * A believable paragraph for a showroom feature. Deterministic from the feature
+ * name, so the demo never shuffles between reloads, and written in the voice a
+ * regulatory team would actually use — this text is what the generated feature
+ * sheet hands a customer.
+ */
+function demoFeatureDescription(
+  feature: string,
+  component: string,
+  firstVersion: string
+): string {
+  const lead = feature.replace(/\.$/, "");
+  const openers = [
+    `${lead} is handled inside ${component}, so the regulatory team works from one record instead of reconciling spreadsheets between markets.`,
+    `${component} covers ${lead.toLowerCase()} end to end, keeping the source data and the submitted output in step.`,
+    `Teams use ${component} for ${lead.toLowerCase()} without leaving the system of record, which is what keeps the audit trail intact.`,
+  ];
+  const middles = [
+    "Every change is versioned and attributable, so an inspector can be shown who altered what and when.",
+    "Validation runs as the data is entered rather than at submission, which is where most avoidable queries come from.",
+    "The same record feeds downstream dossiers, so a correction made once does not have to be made again in five places.",
+  ];
+  const closers = [
+    `Available from ${firstVersion} onward and covered by the standard Freyr implementation.`,
+    `Configurable per market, with the defaults set during onboarding.`,
+    `Included in the base module — no separate licence.`,
+  ];
+  let h = 0;
+  for (const ch of feature) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return [
+    openers[h % openers.length],
+    middles[(h >>> 3) % middles.length],
+    closers[(h >>> 6) % closers.length],
+  ].join(" ");
+}
+
 function seedFdlComponents(): FdlComponent[] {
   const BLUEPRINTS: {
     name: string;
@@ -1487,6 +1523,7 @@ function seedFdlComponents(): FdlComponent[] {
       .filter((release) => release.status === "released")
       .map((release) => release.id);
     const allIds = releases.map((release) => release.id);
+    const version1 = releases[0]?.version ?? "V1.0";
     const features: FdlFeature[] = blueprint.features.map((name, position) => {
       // Older features exist everywhere; later ones arrive with later
       // versions, so the comparison matrix has something real to show.
@@ -1498,7 +1535,13 @@ function seedFdlComponents(): FdlComponent[] {
         id: `${id}-f${position + 1}`,
         fid: `F-${String(index + 1).padStart(2, "0")}${String(position + 1).padStart(2, "0")}`,
         name,
-        description: undefined,
+        // EVERY SHOWROOM FEATURE READS LIKE A REAL ONE. Left undefined, the
+        // feature sheet and the drill-in were blank, so the demo could not show
+        // what the module is for (Anir, Aug 9: "everything in mock mode needs
+        // to have data so they see what it looks like eventually — obviously in
+        // real mode they fill it in themselves"). Composed from the feature and
+        // its component so it stays plausible, never copied onto a real record.
+        description: demoFeatureDescription(name, blueprint.name, version1),
         versionIds: allIds.slice(introducedAt),
       };
     });

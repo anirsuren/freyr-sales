@@ -169,8 +169,8 @@ export function CustomerDigitalComponents({
                   <FdlTypeChip type={component.type} />
                 </div>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="min-w-0">
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                       Running version
                     </p>
@@ -191,6 +191,8 @@ export function CustomerDigitalComponents({
                         ariaLabel={`Version of ${component.name}`}
                         collapsible={false}
                         dense
+                        minWidth={0}
+                        className="w-full"
                       />
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
@@ -198,7 +200,7 @@ export function CustomerDigitalComponents({
                       </p>
                     )}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                       Status
                     </p>
@@ -239,6 +241,8 @@ export function CustomerDigitalComponents({
                         ariaLabel={`Is ${component.name} released to this customer`}
                         collapsible={false}
                         dense
+                        minWidth={0}
+                        className="w-full"
                       />
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
@@ -250,7 +254,8 @@ export function CustomerDigitalComponents({
                       </p>
                     )}
                   </div>
-                  <div>
+                  </div>
+                  <div className="mt-2 min-w-0">
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                       Moving to next
                     </p>
@@ -271,6 +276,8 @@ export function CustomerDigitalComponents({
                         ariaLabel={`Next version for ${component.name}`}
                         collapsible={false}
                         dense
+                        minWidth={0}
+                        className="w-full"
                       />
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
@@ -278,7 +285,6 @@ export function CustomerDigitalComponents({
                       </p>
                     )}
                   </div>
-                </div>
 
                 <p className="mt-2.5 flex flex-wrap items-center gap-2 text-[11.5px] text-text-tertiary">
                   {live?.date && <span className="tnum">Live since {formatDate(live.date)}</span>}

@@ -24,7 +24,14 @@ export default async function FdlComponentPage({
   // to start from the previous thing." Arriving from an offering or a customer
   // carries that origin in ?from=; only same-site paths are honoured.
   const { from } = await searchParams;
-  const backTo = from && /^\/[A-Za-z0-9/_?=&%-]*$/.test(from) ? from : null;
+  // Same-site paths only. A leading "//" is a protocol-relative URL — "//evil"
+  // passes a naive "starts with /" check and sends the reader off the site, so
+  // it is rejected explicitly.
+  const backTo =
+    from && from.startsWith("/") && !from.startsWith("//") &&
+    /^\/[A-Za-z0-9/_?=&%-]*$/.test(from)
+      ? from
+      : null;
   const component = getFdlComponent(id);
   if (!component) notFound();
   const homes = listOfferings()
