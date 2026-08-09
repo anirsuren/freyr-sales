@@ -41,6 +41,7 @@ import { hasOfferingEditChanges } from "@/lib/offeringEditDirty";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import type {
   CustomerType,
@@ -2093,13 +2094,15 @@ export function OfferingForm({
             can scroll through"). Capped at roughly four rows so the section
             reads as one block you scroll, and everything after it stays where
             you left it. Under five materials it never scrolls at all. */}
-        <div
+        <ScrollHint
+          count={materials.length}
+          label="more below"
           className={cn(
-            "space-y-3.5",
             materials.length > 4 &&
-              "material-scroll max-h-[460px] overflow-y-auto rounded-xl border border-border-light bg-surface p-3"
+              "material-scroll max-h-[460px] rounded-xl border border-border-light bg-surface p-3"
           )}
         >
+        <div className="space-y-3.5">
         {materials.map((m, i) => {
           const MaterialIcon = MATERIAL_ICON[m.kind] || Package;
           const linkedMaterial = /^https?:\/\//i.test(m.url);
@@ -2210,12 +2213,7 @@ export function OfferingForm({
           );
         })}
         </div>
-        {materials.length > 4 && (
-          <p className="text-[11.5px] text-text-tertiary">
-            <span className="tnum font-semibold">{materials.length}</span>{" "}
-            materials — scroll inside the box above to reach them all.
-          </p>
-        )}
+        </ScrollHint>
       </FormSection>
 
       {/* Add material: a real dialog with one field per line, instead of a

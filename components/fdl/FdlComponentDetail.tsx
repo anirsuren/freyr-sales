@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
 
@@ -1023,7 +1024,8 @@ export function FdlComponentDetail({
             . Change the version on the customer&apos;s own page or here in the
             list afterwards.
           </p>
-          <ul className="max-h-72 space-y-1.5 overflow-y-auto">
+          <ScrollHint count={unconnected.length} label="more" className="max-h-72">
+          <ul className="space-y-1.5">
             {unconnected.map((customer) => {
               const active = pickedCustomers.includes(customer.id);
               return (
@@ -1061,6 +1063,7 @@ export function FdlComponentDetail({
               );
             })}
           </ul>
+          </ScrollHint>
           <div className="flex justify-end gap-2">
             <Button
               type="button"

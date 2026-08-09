@@ -57,10 +57,11 @@ const LOGOS: Record<string, string> = {
   // in for a logo anyone in the building would recognise (Anir, Aug 8: "go pull
   // actual logos since these are real companies"). Fetched from each company's
   // own site and committed, so nothing is loaded from a third party at runtime.
-  // Galderma, Opella and Gideon are still on the generated mark — no logo could
-  // be resolved for them and guessing at which company a name refers to is not
-  // something to do with a real account.
-  curateq: "/logos/real/curateq.png",
+  // Sources are the companies' own logo files on Wikipedia, rendered at 960px —
+  // favicons were the first attempt and they upscaled to mush (Anir, Aug 8:
+  // "these are fucking cheap-ass logos"). CuraTeQ, Pierre Fabre, Zydus and
+  // Gideon keep the generated mark: no logo file exists for them and guessing
+  // at which company a name refers to is not something to do to a real account.
   gilead: "/logos/real/gilead.png",
   gsk: "/logos/real/gsk.png",
   incyte: "/logos/real/incyte.png",
@@ -71,10 +72,10 @@ const LOGOS: Record<string, string> = {
   "novartis + cognizant": "/logos/real/novartis.png",
   cognizant: "/logos/real/cognizant.png",
   otsuka: "/logos/real/otsuka.png",
-  "pierre fabre": "/logos/real/pierre-fabre.png",
   takeda: "/logos/real/takeda.png",
   vertex: "/logos/real/vertex.png",
-  zydus: "/logos/real/zydus.png",
+  galderma: "/logos/real/galderma.png",
+  opella: "/logos/real/opella.png",
 };
 
 function logoFor(name: string): string | null {
@@ -102,12 +103,22 @@ export function CompanyLogo({
   const resolved = src || logoFor(name);
 
   if (resolved) {
+    // A real company wordmark is wide (Novartis is 960x145), so object-cover
+    // crops it down to two letters. Contained on a white tile it reads as the
+    // brand it is; the square generated marks below keep cover.
+    const wordmark = resolved.startsWith("/logos/real/");
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={resolved}
         alt={name}
-        className={cn("object-cover rounded-xl shrink-0", className)}
+        className={cn(
+          "rounded-xl shrink-0",
+          wordmark
+            ? "border border-border-light bg-white object-contain p-[9%]"
+            : "object-cover",
+          className
+        )}
       />
     );
   }

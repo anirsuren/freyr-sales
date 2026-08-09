@@ -1362,3 +1362,16 @@ input {
 .entry-card__head {
   border-bottom: 1px solid var(--border-light);
 }
+
+/* The chevron on a ScrollHint pill nudges downward — a still arrow reads as
+   decoration, a moving one reads as an instruction. */
+@keyframes bounce-hint {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
+}
+.animate-bounce-hint {
+  animation: bounce-hint 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-bounce-hint { animation: none; }
+}
