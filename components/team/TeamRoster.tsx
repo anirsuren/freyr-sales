@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Phone, Mail, MapPin, Globe2, ArrowRight, LayoutGrid, Table2 } from "lucide-react";
+import { Phone, Mail, MapPin, Globe2, ArrowRight, LayoutGrid, Search, Table2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { PresenceDot } from "@/components/presence/PresenceDot";
@@ -393,6 +393,22 @@ function ActivityTrendInspector({ rep }: { rep: RosterRep }) {
 
 export function TeamRoster({ reps }: { reps: RosterRep[] }) {
   const [view, setView] = useState<"table" | "grid">("table");
+  // FIND A PERSON WITHOUT READING THE FLOOR. Eight names fit on a screen; a
+  // real sales org does not, and every other list in the app opens with a
+  // search (Anir, Aug 9: "there should be a search bar for the sales floor. I
+  // literally said that"). Name, email and role, because "who is the manager"
+  // is as common a question as "where is Priyanka".
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? reps.filter(
+        (r) =>
+          r.name.toLowerCase().includes(q) ||
+          (r.email || "").toLowerCase().includes(q) ||
+          (r.role || "").toLowerCase().includes(q) ||
+          (r.title || "").toLowerCase().includes(q)
+      )
+    : reps;
 
   return (
     <Card data-tour="team-roster" className="p-0 overflow-hidden">
@@ -406,6 +422,22 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             Ranked by open pipeline. Message on Teams or call, click a rep for their full analytics.
           </p>
         </div>
+        <div className="flex items-center gap-2 shrink-0">
+        <label className="relative">
+          <Search
+            size={14}
+            strokeWidth={2}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+          />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search the floor…"
+            aria-label="Search the sales floor"
+            className="w-[190px] rounded-md border border-border bg-white py-1.5 pl-8 pr-2.5 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
+          />
+        </label>
         <div className="flex border border-border rounded-md overflow-hidden shrink-0">
           <button
             onClick={() => setView("grid")}
@@ -424,6 +456,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             <Table2 size={16} strokeWidth={1.6} />
           </button>
         </div>
+        </div>
       </div>
 
       {/* key=view re-mounts the panel so switching grid↔table animates. It used
@@ -434,9 +467,17 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
           `tab-panel` is the app's own view-switch animation: it lifts 6px AND
           fades, and it's the class the customer tabs already use. */}
       <div key={view}>
-      {view === "grid" ? (
+      {shown.length === 0 ? (
+        <p className="px-5 py-10 text-center text-[13px] text-text-secondary">
+          Nobody on the floor matches{" "}
+          <span className="font-semibold text-text-primary">
+            &ldquo;{query.trim()}&rdquo;
+          </span>
+          .
+        </p>
+      ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4 stagger">
-          {reps.map((r) => {
+          {shown.map((r) => {
             const rc = ROLE_COLOR[r.role];
             const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
             const ac = attainColor(pct);
@@ -621,7 +662,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
-              {reps.map((r) => {
+              {shown.map((r) => {
                 const rc = ROLE_COLOR[r.role];
                 const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
                 const ac = attainColor(pct);

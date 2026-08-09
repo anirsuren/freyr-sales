@@ -84,6 +84,21 @@ html.dark body {
 .dark .bg-surface {
   background-color: #26262a !important;
 }
+/* A RING THAT MEANS "CUT ME OUT OF THE CARD", NOT "DRAW A WHITE LINE".
+   Presence dots, timeline nodes and badge overlays punch themselves out of the
+   surface behind them with a ring the colour of that surface — which was
+   hardcoded to white, so in dark mode every one of them drew a bright halo on
+   a near-black card (Anir, Aug 9: "these white lines are kind of disgusting, I
+   don't like that on dark mode"). Re-skinned here with the rest of the
+   structural utilities rather than in seven components. Opacity variants
+   (border-white/20 and friends) are different class names and stay untouched —
+   those sit on blue or photographic backgrounds on purpose. */
+.dark .ring-white {
+  --tw-ring-color: #1c1c1e !important;
+}
+.dark .border-white {
+  border-color: #1c1c1e !important;
+}
 .dark .text-text-primary {
   color: #f5f5f7 !important;
 }
