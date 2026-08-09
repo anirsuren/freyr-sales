@@ -34,7 +34,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
+import {
+  ColorSelect,
+  MultiColorSelect,
+  type ColorOption,
+} from "@/components/ui/ColorSelect";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Field, Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -71,7 +75,8 @@ import { cn, formatDate } from "@/lib/utils";
 type DisplayMode =
   | "activity"
   | "dollar_value"
-  | "potential_close_date";
+  | "start_date"
+  | "end_date";
 
 type SelectedCell = {
   customerId: string;
@@ -101,18 +106,25 @@ const DISPLAY_OPTIONS: ColorOption[] = [
     color: "#C2410C",
     icon: BadgeDollarSign,
   },
+  // "Key dates" was one option covering two different questions, and it read
+  // as jargon (Suren, Aug 9: "don't say key dates. I think start date and end
+  // date, start date activity and end date activity"). Two plain options now,
+  // each printing exactly one date.
   {
-    value: "potential_close_date",
-    // Renamed from "Potential closure" (Anir, Aug 8: "instead of potential
-    // closure say key dates for the heatmap dropdown").
-    label: "Show key dates",
+    value: "start_date",
+    label: "Show the start date",
     color: "#7C3AED",
+    icon: CalendarClock,
+  },
+  {
+    value: "end_date",
+    label: "Show the end date",
+    color: "#0F766E",
     icon: CalendarClock,
   },
 ];
 
 const ACTIVITY_OPTIONS: ColorOption[] = [
-  { value: "", label: "All activities", color: "#0071E3", icon: Filter },
   ...CUSTOMER_OFFERING_ACTIVITY_ORDER.map((value) => ({
     value,
     label: CUSTOMER_OFFERING_ACTIVITIES[value].label,
@@ -122,7 +134,6 @@ const ACTIVITY_OPTIONS: ColorOption[] = [
 ];
 
 const STATUS_OPTIONS: ColorOption[] = [
-  { value: "", label: "All statuses", color: "#0071E3", icon: Filter },
   ...CUSTOMER_OFFERING_STATUS_ORDER.map((value) => ({
     value,
     label: CUSTOMER_OFFERING_STATUSES[value].label,
@@ -219,9 +230,13 @@ function cellLabel(
           engagement.currency || "USD"
         )
       : "None";
-  return engagement?.potential_close_date
-    ? formatDate(engagement.potential_close_date)
-    : "None";
+  if (mode === "start_date") {
+    const start = engagement?.status_dates?.initiated || engagement?.start_date;
+    return start ? formatDate(start) : "None";
+  }
+  // The end date a person actually recorded. The old close-date guess is not
+  // the same thing and is not substituted in when the field is empty.
+  return engagement?.end_date ? formatDate(engagement.end_date) : "None";
 }
 
 function replaceEngagementVersions(
@@ -254,8 +269,19 @@ export function CustomerOfferingHeatMap({
   const { toast } = useToast();
   const [customers, setCustomers] = useState(initialCustomers);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("activity");
-  const [activityFilter, setActivityFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  /**
+   * PICK AS MANY AS YOU WANT. These were single-select, so asking for
+   * "opportunity and contract" was impossible: choosing one dropped the other
+   * (Suren, Aug 9: "if I pick only opportunity and contract, it should show
+   * both... it should be multi-select"). Empty array means no restriction,
+   * which is what "All activities" / "All statuses" reads as.
+   *
+   * The display dropdown beside them stays single-select on purpose: a cell
+   * can only print one thing ("this is the only thing that is there, which is
+   * a single select").
+   */
+  const [activityFilter, setActivityFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<SelectedCell | null>(null);
   const [draft, setDraft] =
@@ -356,13 +382,22 @@ export function CustomerOfferingHeatMap({
   }, [customers, offerings, query]);
 
   const matrixOfferings = useMemo(() => {
-    if (!activityFilter && !statusFilter) return searchFiltered.offerings;
+    if (!activityFilter.length && !statusFilter.length)
+      return searchFiltered.offerings;
 
     return searchFiltered.offerings.filter((offering) =>
       searchFiltered.customers.some((customer) => {
         const resolved = resolveHeatMapCell(customer, offering);
-        if (activityFilter && resolved.activity !== activityFilter) return false;
-        if (statusFilter && resolved.status !== statusFilter) return false;
+        if (
+          activityFilter.length &&
+          (!resolved.activity || !activityFilter.includes(resolved.activity))
+        )
+          return false;
+        if (
+          statusFilter.length &&
+          (!resolved.status || !statusFilter.includes(resolved.status))
+        )
+          return false;
         return true;
       })
     );
@@ -374,13 +409,22 @@ export function CustomerOfferingHeatMap({
   ]);
 
   const matrixCustomers = useMemo(() => {
-    if (!activityFilter && !statusFilter) return searchFiltered.customers;
+    if (!activityFilter.length && !statusFilter.length)
+      return searchFiltered.customers;
 
     return searchFiltered.customers.filter((customer) =>
       matrixOfferings.some((offering) => {
         const resolved = resolveHeatMapCell(customer, offering);
-        if (activityFilter && resolved.activity !== activityFilter) return false;
-        if (statusFilter && resolved.status !== statusFilter) return false;
+        if (
+          activityFilter.length &&
+          (!resolved.activity || !activityFilter.includes(resolved.activity))
+        )
+          return false;
+        if (
+          statusFilter.length &&
+          (!resolved.status || !statusFilter.includes(resolved.status))
+        )
+          return false;
         return true;
       })
     );
@@ -419,8 +463,16 @@ export function CustomerOfferingHeatMap({
 
   function cellPassesFilters(customer: Customer, offering: HeatMapOffering) {
     const resolved = resolveHeatMapCell(customer, offering);
-    if (activityFilter && resolved.activity !== activityFilter) return false;
-    if (statusFilter && resolved.status !== statusFilter) return false;
+    if (
+      activityFilter.length &&
+      (!resolved.activity || !activityFilter.includes(resolved.activity))
+    )
+      return false;
+    if (
+      statusFilter.length &&
+      (!resolved.status || !statusFilter.includes(resolved.status))
+    )
+      return false;
     return true;
   }
 
@@ -939,17 +991,21 @@ export function CustomerOfferingHeatMap({
             ariaLabel="Cell display"
             minWidth={150}
           />
-          <ColorSelect
-            value={activityFilter}
+          <MultiColorSelect
+            values={activityFilter}
             onChange={setActivityFilter}
             options={ACTIVITY_OPTIONS}
+            allLabel="All activities"
+            allIcon={Filter}
             ariaLabel="Filter by activity"
             minWidth={165}
           />
-          <ColorSelect
-            value={statusFilter}
+          <MultiColorSelect
+            values={statusFilter}
             onChange={setStatusFilter}
             options={STATUS_OPTIONS}
+            allLabel="All statuses"
+            allIcon={Filter}
             ariaLabel="Filter by status"
             minWidth={155}
           />
@@ -959,7 +1015,7 @@ export function CustomerOfferingHeatMap({
             {CUSTOMER_OFFERING_ACTIVITY_ORDER.map((activity) => {
               const meta = CUSTOMER_OFFERING_ACTIVITIES[activity];
               const LegendIcon = ACTIVITY_ICONS[activity];
-              const selectedActivity = activityFilter === activity;
+              const selectedActivity = activityFilter.includes(activity);
               return (
                 <button
                   key={activity}
@@ -968,7 +1024,9 @@ export function CustomerOfferingHeatMap({
                   title={`Filter to ${meta.label}`}
                   onClick={() =>
                     setActivityFilter((current) =>
-                      current === activity ? "" : activity
+                      current.includes(activity)
+                        ? current.filter((a) => a !== activity)
+                        : [...current, activity]
                     )
                   }
                   className={cn(
@@ -1019,10 +1077,10 @@ export function CustomerOfferingHeatMap({
           <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
             <Search size={28} strokeWidth={1.5} className="text-text-tertiary" />
             <h2 className="mt-3 text-[15px] font-semibold text-text-primary">
-              Nothing matches {activityFilter || statusFilter ? "those filters" : "that search"}
+              Nothing matches {activityFilter.length || statusFilter.length ? "those filters" : "that search"}
             </h2>
             <p className="mt-1 text-[12px] text-text-tertiary">
-              {activityFilter || statusFilter
+              {activityFilter.length || statusFilter.length
                 ? "Choose another activity or status to update the matrix."
                 : "Search by customer, offering name, or offering category."}
             </p>
