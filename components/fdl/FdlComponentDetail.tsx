@@ -45,6 +45,7 @@ import type {
 import { FdlTypeChip, fdlCurrentVersion } from "@/components/fdl/FdlComponentsBrowser";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { HoverCard } from "@/components/ui/HoverCard";
 
 /**
  * ONE COMPONENT, THE WHOLE STORY — Suren's model (Aug 8, via Anir): "first
@@ -1088,10 +1089,13 @@ export function FdlComponentDetail({
           </p>
         ) : (
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[420px] text-left">
+            <table className="w-full min-w-[720px] text-left">
               <thead>
                 <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                   <th className="py-2 pr-4">Feature</th>
+                  <th className="py-2 pr-4">In versions</th>
+                  <th className="py-2 pr-4">Customers on it</th>
+                  <th className="py-2 pr-4">Files</th>
                   {canEdit && <th className="py-2" />}
                 </tr>
               </thead>
@@ -1117,16 +1121,119 @@ export function FdlComponentDetail({
                             {feature.description}
                           </p>
                         )}
-                        {(feature.attachments ?? []).length > 0 && (
-                          <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-border-light px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
-                            <Paperclip size={10} strokeWidth={2.4} />
-                            {(feature.attachments ?? []).length}{" "}
-                            {(feature.attachments ?? []).length === 1
-                              ? "file"
-                              : "files"}
+                      </button>
+                    </td>
+                    {/* THE ROW EARNS ITS WIDTH. A name on the left and two
+                        icons a thousand pixels away (Anir, Aug 9: "I don't
+                        like how far the name is from the icons... for each
+                        feature, fill in that space"). Every column here is
+                        read off data we already hold: no invented metric. */}
+                    <td className="py-2.5 pr-4">
+                      <span className="flex flex-wrap gap-1">
+                        {releases
+                          .filter((r) => feature.versionIds.includes(r.id))
+                          .map((r) => (
+                            <span
+                              key={r.id}
+                              className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold tnum ${
+                                r.current
+                                  ? "border-blue-primary bg-blue-light text-blue-primary"
+                                  : "border-border-light text-text-secondary"
+                              }`}
+                            >
+                              {r.version}
+                            </span>
+                          ))}
+                        {feature.versionIds.length === 0 && (
+                          <span className="text-[11.5px] text-text-tertiary">
+                            No version ticked
                           </span>
                         )}
-                      </button>
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      {(() => {
+                        // Accounts sitting on a version that carries this
+                        // feature. It answers "who actually has this?", which
+                        // is the question a seller asks about a feature.
+                        const on = connected.filter(
+                          (c) =>
+                            c.releaseId && feature.versionIds.includes(c.releaseId)
+                        );
+                        if (on.length === 0)
+                          return (
+                            <span className="text-[11.5px] text-text-tertiary">
+                              Nobody yet
+                            </span>
+                          );
+                        return (
+                          /* LOGOS SIDE BY SIDE, NOT STACKED. Overlapping them
+                             clipped every wordmark into an unreadable smear
+                             (Anir, Aug 9: "I don't know if the logo should
+                             show up properly"). Hovering names them, the same
+                             way every other row in the app reveals its detail. */
+                          <HoverCard
+                            width={260}
+                            anchor="cursor"
+                            content={
+                              <div>
+                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                  On a version with this feature
+                                </p>
+                                <ul className="space-y-1.5">
+                                  {on.map((c) => {
+                                    const rel = component.releases.find(
+                                      (r) => r.id === c.releaseId
+                                    );
+                                    return (
+                                      <li
+                                        key={c.id}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <CompanyLogo
+                                          name={c.name}
+                                          className="h-5 w-5 shrink-0"
+                                        />
+                                        <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-text-primary">
+                                          {c.name}
+                                        </span>
+                                        <span className="shrink-0 text-[11.5px] font-semibold text-text-secondary tnum">
+                                          {rel?.version ?? ""}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            }
+                          >
+                            <span className="flex cursor-default items-center gap-1.5">
+                              <span className="flex items-center gap-1">
+                                {on.slice(0, 3).map((c) => (
+                                  <CompanyLogo
+                                    key={c.id}
+                                    name={c.name}
+                                    className="h-5 w-5 shrink-0"
+                                  />
+                                ))}
+                              </span>
+                              <span className="text-[12px] font-semibold text-text-primary tnum">
+                                {on.length}
+                              </span>
+                            </span>
+                          </HoverCard>
+                        );
+                      })()}
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      {(feature.attachments ?? []).length > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-text-secondary">
+                          <Paperclip size={11} strokeWidth={2.4} />
+                          {(feature.attachments ?? []).length}
+                        </span>
+                      ) : (
+                        <span className="text-[11.5px] text-text-tertiary">None</span>
+                      )}
                     </td>
                     {canEdit && (
                       <td className="py-2.5 pl-2">
@@ -1176,28 +1283,12 @@ export function FdlComponentDetail({
             Customers running this
             <InfoHint text="Every customer using this component, and which version they are on. It is the same record their own page shows, just reached from this side." />
           </h2>
-          {canEdit && unconnected.length > 0 && (
-            <Button
-              variant="secondary"
-              onClick={() => openAddCustomers()}
-              disabled={busy}
-            >
-              <Plus size={14} strokeWidth={2.2} /> Add customer
-            </Button>
-          )}
-        </div>
-        {connected.length === 0 ? (
-          <p className="mt-3 text-[12.5px] text-text-secondary">
-            No customer is recorded on this component yet. Add one here, or
-            connect it from the customer&apos;s own Digital components tab.
-          </p>
-        ) : (
-          <>
-            {/* CARDS OR ROWS, like the sales floor (Anir, Aug 9: "make it
-                look something like this, like a team's page... both these
-                options"). Four cards across: the old two-wide rows spent most
-                of their width on the gap between the name and the version. */}
-            <div className="mt-3 flex justify-end">
+          {/* ONE LINE: how you look at the list, then the one action on it
+              (Anir, Aug 9: "the tile or row thing should be in line with the
+              add customer button and the add customer button can just be a
+              white + with a blue square"). */}
+          <div className="flex shrink-0 items-center gap-2">
+            {connected.length > 0 && (
               <div className="flex shrink-0 overflow-hidden rounded-md border border-border">
                 <button
                   type="button"
@@ -1228,10 +1319,35 @@ export function FdlComponentDetail({
                   <Table2 size={16} strokeWidth={1.6} />
                 </button>
               </div>
-            </div>
-
+            )}
+            {canEdit && unconnected.length > 0 && (
+              <Tooltip label="Add a customer">
+                <button
+                  type="button"
+                  aria-label="Add a customer"
+                  onClick={() => openAddCustomers()}
+                  disabled={busy}
+                  className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-colors hover:bg-blue-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus size={17} strokeWidth={2.4} />
+                </button>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+        {connected.length === 0 ? (
+          <p className="mt-3 text-[12.5px] text-text-secondary">
+            No customer is recorded on this component yet. Add one here, or
+            connect it from the customer&apos;s own Digital components tab.
+          </p>
+        ) : (
+          <>
+            {/* CARDS OR ROWS, like the sales floor (Anir, Aug 9: "make it
+                look something like this, like a team's page... both these
+                options"). Four cards across: the old two-wide rows spent most
+                of their width on the gap between the name and the version. */}
             {customerView === "grid" ? (
-              <ul className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {connected.map((customer) => {
                   const release = component.releases.find(
                     (item) => item.id === customer.releaseId
@@ -1271,7 +1387,7 @@ export function FdlComponentDetail({
                 })}
               </ul>
             ) : (
-              <div className="mt-2.5 overflow-x-auto">
+              <div className="mt-3 overflow-x-auto">
                 <table className="w-full min-w-[420px] text-left">
                   <thead>
                     <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
