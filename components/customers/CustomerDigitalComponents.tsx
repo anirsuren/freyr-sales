@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import {
   versionTone,
+  VersionPill,
   FdlTypeChip,
   fdlCurrentVersion,
 } from "@/components/fdl/FdlComponentsBrowser";
@@ -102,14 +103,16 @@ export function CustomerDigitalComponents({
   }
 
   function versionOptions(component: FdlComponent): ColorOption[] {
+    // SHORT LABELS, BECAUSE THE CARD IS NARROW (Anir, Aug 9: "it can't all be
+    // dot dot dot, that's a problem"). Three pickers side by side in a
+    // half-width card left about eleven characters each, so every one of them
+    // rendered as an ellipsis. The status already has its own colour and glyph
+    // in the option, so repeating it in words bought nothing.
     return [
-      { value: "", label: "Version not recorded", color: "#0071E3", icon: Clock },
+      { value: "", label: "Not recorded", color: "#0071E3", icon: Clock },
       ...component.releases.map((release) => ({
         value: release.id,
-        label:
-          release.status === "released"
-            ? `${release.version} · released`
-            : `${release.version} · expected`,
+        label: release.version,
         color: release.status === "released" ? "#1A7A35" : "#6D28D9",
         icon: release.status === "released" ? CircleCheck : Clock,
       })),
@@ -239,9 +242,11 @@ export function CustomerDigitalComponents({
                             <span className="text-text-tertiary">Not set yet</span>
                           )}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] text-text-secondary tnum">
-                      {next ? next.version : (
-                        <span className="text-text-tertiary">Not planned</span>
+                    <td className="whitespace-nowrap px-3 py-2.5">
+                      {next ? (
+                        <VersionPill version={next.version} status={next.status} current={next.current} />
+                      ) : (
+                        <span className="text-[12.5px] text-text-tertiary">Not planned</span>
                       )}
                     </td>
                   </tr>

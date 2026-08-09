@@ -55,6 +55,7 @@ import {
   fdlCurrentVersion,
   VersionPill,
   versionTone,
+  withV,
 } from "@/components/fdl/FdlComponentsBrowser";
 import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -397,7 +398,7 @@ export function FdlComponentDetail({
    */
   const versionOptions: ColorOption[] = releases.map((release) => ({
     value: release.id,
-    label: release.current ? `${release.version} (current)` : release.version,
+    label: release.current ? `${withV(release.version)} (current)` : withV(release.version),
     color: release.status === "released" ? "#1A7A35" : "#6D28D9",
     icon: release.status === "released" ? CircleCheck : Clock,
   }));
@@ -486,6 +487,20 @@ export function FdlComponentDetail({
       setVersion("");
       setDate("");
     }
+  }
+
+  /** Flip a version between Released and Expected. */
+  async function setReleaseStatus(id: string, status: "released" | "next") {
+    await patch(
+      {
+        releases: component.releases.map((r) =>
+          r.id === id
+            ? { ...r, status, current: status === "next" ? false : r.current }
+            : r
+        ),
+      },
+      status === "released" ? "Marked as released." : "Moved back to expected."
+    );
   }
 
   async function markCurrent(id: string) {
@@ -657,7 +672,7 @@ export function FdlComponentDetail({
     const rows = component.features.filter((f) => f.versionIds.includes(release.id));
     downloadDocx(
       `${slug(component.name)}-${slug(release.version)}-features.docx`,
-      `${component.name} ${release.version}: features`,
+      `${component.name} ${withV(release.version)}: features`,
       `${component.type} · ${
         release.date ? formatDate(release.date) : "date not set"
       } · ${rows.length} ${rows.length === 1 ? "feature" : "features"}`,
@@ -852,7 +867,7 @@ export function FdlComponentDetail({
                     ) : (
                       <Clock size={11} strokeWidth={2.2} />
                     )}
-                    {release.version}
+                    {withV(release.version)}
                   </span>
                 ))}
             </div>
@@ -1106,7 +1121,7 @@ export function FdlComponentDetail({
                       type="button"
                       onClick={() => toggleVersion(release.id)}
                       aria-expanded={open}
-                      aria-label={`${open ? "Hide" : "Show"} what is in ${release.version}`}
+                      aria-label={`${open ? "Hide" : "Show"} what is in ${withV(release.version)}`}
                       className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
                     >
                       <ChevronRight
@@ -1160,7 +1175,7 @@ export function FdlComponentDetail({
                             content={
                               <div>
                                 <p className="text-[12px] font-semibold text-text-primary">
-                                  In {release.version}
+                                  In {withV(release.version)}
                                 </p>
                                 {versionFeatures.length === 0 ? (
                                   <p className="mt-1 text-[11.5px] text-text-secondary">
@@ -1224,7 +1239,7 @@ export function FdlComponentDetail({
                           people={versionCustomers}
                           max={5}
                           size={34}
-                          note={() => `On ${release.version}`}
+                          note={() => `On ${withV(release.version)}`}
                         />
                         <span className="mt-0.5 pl-1 text-[10.5px] font-medium text-text-tertiary tnum">
                           {versionCustomers.length}{" "}
@@ -1268,7 +1283,7 @@ export function FdlComponentDetail({
                               <div>
                                 <p className="text-[12.5px] font-semibold text-text-primary">
                                   {versionCustomers.length} of {connected.length} on{" "}
-                                  {release.version}
+                                  {withV(release.version)}
                                 </p>
                                 <span className="mt-2 flex h-3 overflow-hidden rounded-full bg-surface">
                                   <span
@@ -1370,20 +1385,41 @@ export function FdlComponentDetail({
                       </span>
                     </button>
                     <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                      {/* SAYING A VERSION HAS SHIPPED (Anir, Aug 9: "if I want
+                          to say that this is the version that's current or
+                          released, how do I do that? ... there should be an
+                          edit button or something"). Mark current only ever
+                          appeared on an already-released version, so a version
+                          still marked Expected had no way to become either. */}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => void setReleaseStatus(release.id, shipped ? "next" : "released")}
+                          disabled={busy}
+                          title={
+                            shipped
+                              ? "Move this back to Expected"
+                              : "Mark this version as Released"
+                          }
+                          className="cursor-pointer whitespace-nowrap rounded-lg border border-border-light px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                        >
+                          {shipped ? "Mark expected" : "Mark released"}
+                        </button>
+                      )}
                       {!release.current && canEdit && shipped && (
                         <button
                           type="button"
                           onClick={() => void markCurrent(release.id)}
                           disabled={busy}
-                          className="cursor-pointer rounded-lg border border-border-light px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                          className="cursor-pointer whitespace-nowrap rounded-lg border border-border-light px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
                         >
                           Mark current
                         </button>
                       )}
                       <button
                         type="button"
-                        title={`Download the ${release.version} feature sheet`}
-                        aria-label={`Download the ${release.version} feature sheet`}
+                        title={`Download the ${withV(release.version)} feature sheet`}
+                        aria-label={`Download the ${withV(release.version)} feature sheet`}
                         onClick={() => downloadVersionSheet(release)}
                         className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                       >
@@ -1596,17 +1632,31 @@ export function FdlComponentDetail({
                             </span>
                             {/* Same blue plus as Add customer beside it, so on
                                 this panel a plus always means add. */}
-                            {canEdit && versionFeatures.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => setFilesForRelease(release.id)}
-                                disabled={uploading}
-                                title={`Add a file to ${release.version}`}
-                                aria-label={`Add a file to ${release.version}`}
-                                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+                            {/* THE BUTTON IS ALWAYS THERE, AND SAYS WHY WHEN IT
+                                CANNOT WORK (Anir, Aug 9: "you have to clearly
+                                say why you're not letting me have a file here...
+                                show the button, grey it out if you need to, and
+                                then when I hover over it, it'll tell me why").
+                                Hiding it made a missing capability look like a
+                                missing feature. */}
+                            {canEdit && (
+                              <Tooltip
+                                label={
+                                  versionFeatures.length === 0
+                                    ? "Add a feature to this version first. Files pin to a feature, not to the version itself, so there is nothing here to attach one to yet."
+                                    : `Add a file to ${withV(release.version)}`
+                                }
                               >
-                                <Plus size={13} strokeWidth={2.6} />
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setFilesForRelease(release.id)}
+                                  disabled={uploading || versionFeatures.length === 0}
+                                  aria-label={`Add a file to ${withV(release.version)}`}
+                                  className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:bg-border disabled:text-text-tertiary"
+                                >
+                                  <Plus size={13} strokeWidth={2.6} />
+                                </button>
+                              </Tooltip>
                             )}
                           </p>
                           {versionAttachments.length === 0 ? (
@@ -2199,7 +2249,7 @@ export function FdlComponentDetail({
                                       background: tone.bg,
                                     }}
                                   >
-                                    {release.version}
+                                    {withV(release.version)}
                                   </span>
                                 );
                               })()
@@ -2720,7 +2770,7 @@ export function FdlComponentDetail({
                     }`}
                   >
                     {active && <Check size={11} strokeWidth={2.6} className="mr-1 inline" />}
-                    {release.version}
+                    {withV(release.version)}
                   </button>
                 );
               })}

@@ -259,12 +259,14 @@ export function OfferingActivities({
   }
 
   return (
-    <div className="mt-4 border-t border-border-light pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-          Activities ({versions.length})
-          <InfoHint text="Every activity this customer has been through on this offering. The one marked Current is what the heat map shows." />
-        </p>
+    <div className="mt-1">
+      {/* NO SECOND HEADING (Anir, Aug 9: "this is so redundant, you don't need
+          anything, you can just start with the column immediately, just have
+          the table start immediately underneath the offering"). The offering
+          strip above already names the group and prints the count, so an
+          ACTIVITIES (1) band underneath it said the same thing twice and
+          pushed the first row down a whole row's height. */}
+      <div className="flex items-center justify-end gap-3">
         {/* A WHITE PLUS ON A BLUE SQUARE (Anir, Aug 9: "add activity should be
             just the white plus with the blue square, keep it simple"). It is
             the same mark the components page uses, so on every page a plus

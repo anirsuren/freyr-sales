@@ -119,6 +119,14 @@ export function versionTone(release: {
  * color-coded with the tag with the pill shape"). One component so the rule
  * cannot drift again: green released, blue current, purple expected.
  */
+/** A version always reads with its V, whatever was typed (Anir, Aug 9: "it's
+ *  always gonna start with V, cuz it's a version... just hardcode that in"). */
+export function withV(version: string) {
+  const v = String(version || "").trim();
+  if (!v) return v;
+  return /^v/i.test(v) ? `V${v.slice(1)}` : `V${v}`;
+}
+
 export function VersionPill({
   version,
   status,
@@ -138,7 +146,7 @@ export function VersionPill({
       }`}
       style={{ color: tone.color, borderColor: tone.border, background: tone.bg }}
     >
-      {version}
+      {withV(version)}
     </span>
   );
 }
@@ -500,7 +508,7 @@ export function FdlComponentsBrowser({
                   <div className="flex flex-wrap items-center gap-1.5">
                     {current ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#1A7A35]">
-                        <CircleCheck size={11} strokeWidth={2.2} /> Current {current}
+                        <CircleCheck size={11} strokeWidth={2.2} /> Current {withV(current)}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
@@ -618,7 +626,7 @@ export function FdlComponentsBrowser({
                                 background: versionTone({ current: true }).bg,
                               }}
                             >
-                              <CircleCheck size={11} strokeWidth={2.2} /> {current}
+                              <CircleCheck size={11} strokeWidth={2.2} /> {withV(current)}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
