@@ -10,7 +10,7 @@ import { AgentDock } from "@/components/agent/AgentDock";
 import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
 import type { DataMode } from "@/lib/dataMode";
 import { isOfferingsOnly, isReleased, isReleasedPath } from "@/lib/release";
-import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
+import { HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
 import {
@@ -76,7 +76,7 @@ export function AppShell({
   // hover-card components, via one root CSS variable.
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--freyr-hover-delay", `${HOVER_DELAY_MS}ms`);
+    root.style.setProperty("--freyr-hover-delay", `${HOVER_HINT_DELAY_MS}ms`);
     root.dataset.hoverPopups = "on";
   }, []);
 

@@ -223,7 +223,10 @@ function tipIsLong(items?: TipItem[]): boolean {
  *  that setting, straight up 0.5 seconds. End of story on every single page").
  *  Charts used to open at 0ms on the theory that pointing at a data point is
  *  deliberate, which made every pass of the cursor across a chart flash a card. */
-export const CHART_TIP_OPEN_MS = 500;
+// Superseded Aug 8: graph tips join the fast quarter-second tier ("for the
+// graph too, I would make it 0.25 seconds. Everything is either 1 second or
+// 0.25 seconds").
+export const CHART_TIP_OPEN_MS = 250;
 
 function useChartHover() {
   const [hover, setHover] = useState<number | null>(null);

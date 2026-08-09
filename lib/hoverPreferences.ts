@@ -14,3 +14,13 @@
  * more — this constant is the entire policy.
  */
 export const HOVER_DELAY_MS = 1000;
+
+/**
+ * THE FAST TIER. Two delays exist in this app and only two (Anir, Aug 8:
+ * "everything is either 1 second or 0.25 seconds. You have to choose"):
+ * content popups wait the full second above; anything that EXPLAINS — the ⓘ
+ * help hints, tooltips, graph tips — opens in a quarter second, because
+ * someone hovering a question mark is asking a question ("they obviously
+ * need to know what it is. They can't wait").
+ */
+export const HOVER_HINT_DELAY_MS = 250;

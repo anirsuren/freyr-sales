@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
+import { HOVER_DELAY_MS, HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
 
 // A hover popover that STAYS OPEN while the cursor is over the popover itself
 // (Suren: "when I hover onto the pop-up it shouldn't disappear"), and that can
@@ -120,10 +120,10 @@ export function HoverCard({
   }
 
   function show() {
-    // Graphs (delayMs 0) open instantly; every other popup waits the app-wide
-    // second. There is no user toggle any more — the Settings card is gone
-    // (Anir, Aug 8: "Remove the setting. We don't need the fucking setting").
-    const delay = delayOverride === 0 ? 0 : HOVER_DELAY_MS;
+    // Two tiers only (Anir, Aug 8: "everything is either 1 second or 0.25
+    // seconds"): graph surfaces (delayMs 0) get the fast quarter-second, every
+    // other popup waits the full second. No user toggle exists any more.
+    const delay = delayOverride === 0 ? HOVER_HINT_DELAY_MS : HOVER_DELAY_MS;
     if (hideTimer.current) clearTimeout(hideTimer.current);
     if (showTimer.current) clearTimeout(showTimer.current);
     showTimer.current = setTimeout(place, delay);

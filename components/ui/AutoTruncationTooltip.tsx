@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
+import { HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
 
 type Popup = {
   text: string;
@@ -71,7 +71,7 @@ export function AutoTruncationTooltip() {
           y: below ? rect.bottom + 8 : rect.top - 8,
           below,
         });
-      }, HOVER_DELAY_MS);
+      }, HOVER_HINT_DELAY_MS);
     };
 
     const onHoverIn = (event: Event) => {

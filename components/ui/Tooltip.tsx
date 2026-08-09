@@ -11,7 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { GLOSSARY } from "@/lib/glossary";
-import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
+import { HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
 
 type Anchor = {
   left: number;
@@ -76,7 +76,9 @@ export function Tooltip({
 
   const show = (immediate = false) => {
     clearTimer();
-    const delay = immediate || delayMs === 0 ? 0 : HOVER_DELAY_MS;
+    // Tooltips are the fast tier: a hint someone hovers is a question being
+    // asked (Anir, Aug 8: "it should be 0.25 seconds... they can't wait").
+    const delay = immediate ? 0 : HOVER_HINT_DELAY_MS;
     timerRef.current = setTimeout(captureAnchor, delay);
   };
 
