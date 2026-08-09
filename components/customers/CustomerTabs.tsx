@@ -41,6 +41,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
+import { CustomerActivityTab } from "@/components/customers/CustomerActivityTab";
 import {
   CustomerDealRow,
   type CustomerDealRowData,
@@ -2025,11 +2026,34 @@ export function CustomerTabs({
           </div>
         )}
 
+        {/* THE FIVE ACTIVITIES LIVE HERE. Suren opened this tab looking for
+            Lead / Opportunity / Pilot / Contract / Delivery and found the
+            interaction log — a different thing wearing the same word — while
+            the only way to log one was buried in a card on the Offerings tab
+            (Anir, Aug 9: "he went to this page and he expected me to have it
+            so that I could create a new activity"). The interaction log is
+            still here, below, under its own name. */}
         {tab === "activity" && (
-          <InteractionTimeline
-            interactions={interactions}
-            contactNames={Object.fromEntries(contacts.map((contact) => [contact.id, contact.full_name]))}
-          />
+          <CustomerActivityTab
+            customerId={customer.id}
+            usage={customer.offering_usage || []}
+            offerings={[
+              ...(offeringsCatalog?.inUse || []),
+              ...(offeringsCatalog?.applicable || []).filter(
+                (o) => !(offeringsCatalog?.inUse || []).some((u) => u.id === o.id)
+              ),
+            ].map((o) => ({
+              id: o.id,
+              name: o.name,
+              category: o.category ?? null,
+            }))}
+            canEdit
+          >
+            <InteractionTimeline
+              interactions={interactions}
+              contactNames={Object.fromEntries(contacts.map((contact) => [contact.id, contact.full_name]))}
+            />
+          </CustomerActivityTab>
         )}
         </div>
       </div>

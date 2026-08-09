@@ -281,6 +281,24 @@ export async function resolveWorkspaceAccess(user: AuthenticatedUser): Promise<R
         : null;
   }
 
+  // A LOCAL DEBUG SESSION MUST NEVER MINT A REAL MEMBER. The unauthenticated
+  // dev harness fabricates an identity carrying Anir's company address, which
+  // walked straight into domain auto-join below and inserted a second "Anir
+  // Suren" into the shared directory — two of him on the Team page, from a
+  // laptop (Anir, Aug 9: "why the fuck are there always two of me?"). The
+  // bypass exists to render pages, never to write membership.
+  if (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE) {
+    return existing
+      ? {
+          status: "approved",
+          workspaceId: workspace,
+          userId: existing.id,
+          role: existing.app_role,
+          displayName: existing.display_name,
+        }
+      : { status: "pending", workspaceId: workspace };
+  }
+
   const bootstrapOwner = isBootstrapOwner(user);
   // Company-domain auto-join (Suren): a colleague signing in with a VERIFIED
   // company email already belongs here — the domain itself is the invitation.
