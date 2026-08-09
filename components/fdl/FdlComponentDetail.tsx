@@ -69,7 +69,12 @@ function downloadDocument(title: string, subtitle: string, tableHtml: string, fi
   footer{margin-top:24px;color:#6e6e73;font-size:11px}
   </style></head><body><h1>${title}</h1><p class="sub">${subtitle}</p>${tableHtml}
   <footer>Generated from Freyr Sales Intelligence.</footer></body></html>`;
-  const blob = new Blob([html], { type: "text/html" });
+  // A WORD DOCUMENT, NOT A WEB PAGE. Suren, Aug 9: "the idea is to give the
+  // customer a Word document of the entire features and feature description."
+  // Word opens HTML natively when it arrives as application/msword with a .doc
+  // extension, so this stays dependency-free and still lands as an editable
+  // document the account team can put their own cover note on.
+  const blob = new Blob(["\ufeff", html], { type: "application/msword" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -91,15 +96,50 @@ export function FdlComponentDetail({
   homes,
   canEdit,
   customers = [],
+  backTo,
+  offerings = [],
 }: {
   component: FdlComponent;
   homes: { id: string; name: string }[];
   canEdit: boolean;
   customers?: ComponentCustomer[];
+  /** Where the reader came from, so back returns there. */
+  backTo?: string | null;
+  /** Every offering, so this component can be added to one from here. */
+  offerings?: { id: string; name: string; connected: boolean }[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
+  const [addingOffering, setAddingOffering] = useState(false);
+  const [pickedOfferings, setPickedOfferings] = useState<string[]>([]);
+
+  /** Add or remove this component on each offering the tick state changed. */
+  async function connectOfferings() {
+    setBusy(true);
+    try {
+      const changed = offerings.filter(
+        (o) => o.connected !== pickedOfferings.includes(o.id)
+      );
+      for (const offering of changed) {
+        const res = await fetch(`/api/offerings/${offering.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ addComponentId: component.id, connected: !offering.connected }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error || "Could not save.");
+      }
+      toast(
+        changed.length === 1 ? "Offering updated." : `${changed.length} offerings updated.`
+      );
+      setAddingOffering(false);
+      router.refresh();
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Could not save.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
   const releases = orderedReleases(component);
   const current = fdlCurrentVersion(component);
 
@@ -255,11 +295,23 @@ export function FdlComponentDetail({
     setFeatVersions(feature?.versionIds ?? releases.map((r) => r.id));
   }
 
+  /** The next free F-00n for this component. Sequential, never reused. */
+  function nextFeatureId(): string {
+    const taken = new Set(
+      component.features.map((f) => (f.fid || "").toUpperCase())
+    );
+    for (let n = 1; n < 10000; n += 1) {
+      const candidate = `F-${String(n).padStart(3, "0")}`;
+      if (!taken.has(candidate)) return candidate;
+    }
+    return `F-${Date.now()}`;
+  }
+
   async function saveFeature() {
     if (!featName.trim()) return;
     const record: FdlFeature = {
       id: featureModal || `feat-${Math.random().toString(36).slice(2, 9)}`,
-      fid: featFid.trim() || undefined,
+      fid: featFid.trim() || nextFeatureId(),
       name: featName.trim(),
       description: featDesc.trim() || undefined,
       versionIds: featVersions,
@@ -311,17 +363,17 @@ export function FdlComponentDetail({
 
   function downloadVersionSheet(release: FdlRelease) {
     const rows = component.features.filter((f) => f.versionIds.includes(release.id));
-    const table = `<table><tr><th>Feature</th><th>Description</th></tr>${rows
+    const table = `<table><tr><th>ID</th><th>Feature</th><th>Description</th></tr>${rows
       .map(
         (f) =>
-          `<tr><td><strong>${f.name}</strong></td><td class="desc">${f.description ?? ""}</td></tr>`
+          `<tr><td>${f.fid ?? ""}</td><td><strong>${f.name}</strong></td><td class="desc">${f.description ?? ""}</td></tr>`
       )
       .join("")}</table>`;
     downloadDocument(
       `${component.name} — ${release.version} feature sheet`,
       `${component.type} · ${release.date ? formatDate(release.date) : "date not set"} · ${rows.length} features`,
       table,
-      `${slug(component.name)}-${slug(release.version)}-feature-sheet.html`
+      `${slug(component.name)}-${slug(release.version)}-feature-sheet.doc`
     );
   }
 
@@ -345,7 +397,7 @@ export function FdlComponentDetail({
       `${component.name} — version comparison`,
       `${component.type} · comparing ${compareReleases.map((r) => r.version).join(" vs ")}`,
       table,
-      `${slug(component.name)}-comparison.html`
+      `${slug(component.name)}-comparison.doc`
     );
   }
 
@@ -399,10 +451,101 @@ export function FdlComponentDetail({
               .
             </>
           ) : (
-            "Not connected to an offering yet — connect it from the offering's Components tab."
+            "Not connected to an offering yet."
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                setPickedOfferings(
+                  offerings.filter((o) => o.connected).map((o) => o.id)
+                );
+                setAddingOffering(true);
+              }}
+              className="ml-1.5 cursor-pointer font-semibold text-blue-primary hover:underline"
+            >
+              Add to an offering
+            </button>
           )}
         </p>
       </div>
+
+      {/* CONNECTING FROM THIS SIDE. The link existed only from the offering,
+          so an owner sitting on a component had to go and find it (Suren,
+          Aug 9: "from the FDL component do you have an option to add offering?
+          No you don't — you should be able to add which offerings this goes
+          through"). Same list, same connection, either direction. */}
+      <Modal
+        open={addingOffering}
+        onClose={() => setAddingOffering(false)}
+        title={`Which offerings include ${component.name}?`}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void connectOfferings();
+          }}
+          className="space-y-4"
+        >
+          <p className="text-[12.5px] text-text-secondary">
+            Tick every offering this component is part of. Which version each
+            one covers is set on the offering itself.
+          </p>
+          <ScrollHint className="max-h-72">
+            <ul className="space-y-1.5">
+              {offerings.map((offering) => {
+                const active = pickedOfferings.includes(offering.id);
+                return (
+                  <li key={offering.id}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPickedOfferings((prev) =>
+                          active
+                            ? prev.filter((x) => x !== offering.id)
+                            : [...prev, offering.id]
+                        )
+                      }
+                      className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                        active
+                          ? "border-blue-primary bg-blue-light/50"
+                          : "border-border-light hover:border-blue-subtle"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                          active
+                            ? "border-blue-primary bg-blue-primary text-white"
+                            : "border-border"
+                        }`}
+                      >
+                        {active && <Check size={12} strokeWidth={3} />}
+                      </span>
+                      <OfferingIcon name={offering.name} className="h-7 w-7 shrink-0" />
+                      <span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">
+                        {offering.name}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </ScrollHint>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setAddingOffering(false)}
+              disabled={busy}
+            >
+              <X size={14} strokeWidth={2} /> Cancel
+            </Button>
+            <Button type="submit" loading={busy}>
+              <Plus size={14} strokeWidth={2.2} /> Save
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ------------------------------------------------------- versions */}
       <section className={CARD}>
@@ -571,7 +714,7 @@ export function FdlComponentDetail({
 
                   {open && (
                     <div className="menu-in border-t border-border-light bg-surface/50 px-3.5 py-3.5">
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="grid items-start gap-3 md:grid-cols-2">
                         {/* Two equal white panels. The old layout put the
                             button under a short list and left the other half
                             empty, so the two halves never looked related. */}
@@ -579,12 +722,16 @@ export function FdlComponentDetail({
                           <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <ListChecks size={12} strokeWidth={2.2} className="text-blue-primary" />
                             What is in {release.version}
+                            <span className="ml-auto font-bold tnum">
+                              {versionFeatures.length}
+                            </span>
                           </p>
                           {versionFeatures.length === 0 ? (
                             <p className="text-[12.5px] text-text-secondary">
                               No features are ticked for this version yet.
                             </p>
                           ) : (
+                            <ScrollHint className="max-h-[220px] pr-1">
                             <ul className="space-y-1.5">
                               {versionFeatures.map((feature) => (
                                 <li
@@ -607,12 +754,16 @@ export function FdlComponentDetail({
                                 </li>
                               ))}
                             </ul>
+                            </ScrollHint>
                           )}
                         </div>
                         <div className="rounded-xl border border-border-light bg-white p-3.5">
                           <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <Building2 size={12} strokeWidth={2.2} className="text-blue-primary" />
                             Customers on {release.version}
+                            <span className="ml-auto font-bold tnum">
+                              {versionCustomers.length}
+                            </span>
                           </p>
                           {versionCustomers.length === 0 ? (
                             <p className="text-[12.5px] text-text-secondary">
@@ -620,6 +771,7 @@ export function FdlComponentDetail({
                               from a customer&apos;s Digital components tab.
                             </p>
                           ) : (
+                            <ScrollHint className="max-h-[220px] pr-1">
                             <ul className="space-y-1">
                               {versionCustomers.map((customer) => (
                                 <li key={customer.id}>
@@ -633,6 +785,7 @@ export function FdlComponentDetail({
                                 </li>
                               ))}
                             </ul>
+                            </ScrollHint>
                           )}
                         </div>
                       </div>
@@ -1119,22 +1272,19 @@ export function FdlComponentDetail({
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Feature ID
-              <InfoHint text="The short ID from the feature sheet (Fid). Optional." />
+              <InfoHint text="Generated for you and unique inside this component. Nobody has to think of one, and two features can never collide." />
             </label>
-            <input
-              value={featFid}
-              onChange={(event) => setFeatFid(event.target.value)}
-              placeholder="F-001"
-              className={FIELD}
-            />
+            <p className="rounded-lg border border-border-light bg-surface px-3 py-2 text-[13px] font-semibold text-text-secondary tnum">
+              {featFid || nextFeatureId()}
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-[12px] font-medium text-text-primary">Description</label>
             <textarea
               value={featDesc}
               onChange={(event) => setFeatDesc(event.target.value)}
-              rows={2}
-              placeholder="What it does, in one or two sentences."
+              rows={6}
+              placeholder="What it does. A paragraph is fine — this is what goes into the customer's feature sheet."
               className={`${FIELD} resize-y`}
             />
           </div>

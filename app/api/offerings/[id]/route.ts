@@ -93,6 +93,20 @@ export async function PATCH(
   const existing = getOffering(id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!(await canEditOffering(existing))) return FORBIDDEN;
+  // ADD OR REMOVE ONE COMPONENT, from the component's own page. Sending the
+  // whole component_ids array from there would mean the component page has to
+  // know every other component on the offering, which it does not; this asks
+  // for one change and the server does the merge.
+  if (typeof body.addComponentId === "string") {
+    const componentId = body.addComponentId.trim().slice(0, 120);
+    const connect = body.connected !== false;
+    const current = existing.component_ids ?? [];
+    body.component_ids = connect
+      ? Array.from(new Set([...current, componentId]))
+      : current.filter((x) => x !== componentId);
+    delete body.addComponentId;
+    delete body.connected;
+  }
   const people = await listAssignablePeople();
   if (getDataMode() === "live" && body.poc !== undefined) {
     const selected = accountBackedPeopleForPoc(String(body.poc || ""), people);

@@ -12,16 +12,32 @@ export const dynamic = "force-dynamic";
 
 export default async function FdlComponentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   await initializeLiveOfferings().catch(() => undefined);
   const { id } = await params;
+  // WHERE "BACK" SHOULD GO. Suren, Aug 9: "you should have a back button —
+  // the moment I click on it it should go back to the thing, now again I have
+  // to start from the previous thing." Arriving from an offering or a customer
+  // carries that origin in ?from=; only same-site paths are honoured.
+  const { from } = await searchParams;
+  const backTo = from && /^\/[A-Za-z0-9/_?=&%-]*$/.test(from) ? from : null;
   const component = getFdlComponent(id);
   if (!component) notFound();
   const homes = listOfferings()
     .filter((offering) => offering.component_ids?.includes(id))
     .map((offering) => ({ id: offering.id, name: offering.offering_name }));
+  // The reverse connection. Suren, Aug 9: "from the FDL component, do you have
+  // an option to add offering? No, you don't — you should be able to say which
+  // offerings this component goes through."
+  const offerings = listOfferings().map((offering) => ({
+    id: offering.id,
+    name: offering.offering_name,
+    connected: !!offering.component_ids?.includes(id),
+  }));
   const canEdit = await canManageOfferings();
 
   // WHO RUNS THIS COMPONENT, AND ON WHICH VERSION (Suren, Aug 8: "if I go to
@@ -48,6 +64,8 @@ export default async function FdlComponentPage({
         homes={homes}
         canEdit={canEdit}
         customers={customers}
+        backTo={backTo}
+        offerings={offerings}
       />
     </div>
   );

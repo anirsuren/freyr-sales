@@ -153,7 +153,9 @@ export function CustomerDigitalComponents({
               >
                 <div className="flex items-start justify-between gap-3 pr-8">
                   <Link
-                    href={`/components/${component.id}`}
+                    href={`/components/${component.id}?from=${encodeURIComponent(
+                      `/customers/${customerId}?tab=components`
+                    )}`}
                     className="flex min-w-0 items-center gap-2.5"
                   >
                     <OfferingIcon
@@ -167,7 +169,7 @@ export function CustomerDigitalComponents({
                   <FdlTypeChip type={component.type} />
                 </div>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   <div>
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                       Running version
@@ -193,6 +195,58 @@ export function CustomerDigitalComponents({
                     ) : (
                       <p className="text-[13px] font-semibold text-text-primary">
                         {live ? live.version : "Not recorded"}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Status
+                    </p>
+                    {canEdit ? (
+                      <ColorSelect
+                        value={link.release_status || ""}
+                        onChange={(value) =>
+                          void save(
+                            state.map((item) =>
+                              item.component_id === link.component_id
+                                ? {
+                                    ...item,
+                                    release_status:
+                                      value === "released" || value === "expected"
+                                        ? value
+                                        : null,
+                                  }
+                                : item
+                            ),
+                            "Status saved."
+                          )
+                        }
+                        options={[
+                          { value: "", label: "Not recorded", color: "#0071E3", icon: Clock },
+                          {
+                            value: "released",
+                            label: "Released to them",
+                            color: "#1A7A35",
+                            icon: CircleCheck,
+                          },
+                          {
+                            value: "expected",
+                            label: "Expected by them",
+                            color: "#6D28D9",
+                            icon: Clock,
+                          },
+                        ]}
+                        ariaLabel={`Is ${component.name} released to this customer`}
+                        collapsible={false}
+                        dense
+                      />
+                    ) : (
+                      <p className="text-[13px] font-semibold text-text-primary">
+                        {link.release_status === "released"
+                          ? "Released to them"
+                          : link.release_status === "expected"
+                            ? "Expected by them"
+                            : "Not recorded"}
                       </p>
                     )}
                   </div>
@@ -308,17 +362,16 @@ export function CustomerDigitalComponents({
             onSubmit={async (event) => {
               event.preventDefault();
               if (!picked.length) return;
-              const additions: CustomerComponentLink[] = picked.map((id) => {
-                const component = byId.get(id);
-                // Default to the version they would be sold today; the row is
-                // editable the moment it lands.
-                const current = component?.releases.find((r) => r.current);
-                return {
-                  component_id: id,
-                  release_id: current?.id ?? null,
-                  next_release_id: null,
-                };
-              });
+              // NO GUESSED VERSION. It used to default to whatever was current,
+              // which is a claim about the customer nobody made (Suren, Aug 9:
+              // "how did you pick version 1.04 automatically?"). The row lands
+              // blank and asks.
+              const additions: CustomerComponentLink[] = picked.map((id) => ({
+                component_id: id,
+                release_id: null,
+                next_release_id: null,
+                release_status: null,
+              }));
               await save(
                 [...state, ...additions],
                 picked.length === 1

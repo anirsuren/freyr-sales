@@ -122,6 +122,14 @@ export interface Offering {
   releases?: OfferingRelease[];
   /** FDL components connected to this offering — the software the package contains. */
   component_ids?: string[];
+  /**
+   * WHICH VERSION OF EACH COMPONENT THIS OFFERING COVERS, keyed by component
+   * id. Suren, Aug 9: "where is the version number? You need to say which
+   * version is applicable for this offering." Kept beside component_ids rather
+   * than folded into it so an existing catalogue row stays readable — an entry
+   * missing here simply means nobody has pinned a version yet.
+   */
+  component_versions?: Record<string, string | null>;
   /** Structured roadmap copy supplied by the Offering Owner. This preserves
    *  module tables, the current-vs-previous comparison, release history, and
    *  the restricted next-version table without flattening them into generic

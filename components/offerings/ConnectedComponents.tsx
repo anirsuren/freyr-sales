@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Boxes, Check, Link2, Plus, X } from "lucide-react";
+import { Boxes, Check, CircleCheck, Clock, Link2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import type { FdlComponent } from "@/lib/offerings";
 import {
   FdlTypeChip,
@@ -25,11 +26,14 @@ export function ConnectedComponents({
   offeringId,
   connected,
   all,
+  versions = {},
   canEdit,
 }: {
   offeringId: string;
   connected: FdlComponent[];
   all: FdlComponent[];
+  /** componentId → the release id this offering covers. */
+  versions?: Record<string, string | null>;
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -43,12 +47,25 @@ export function ConnectedComponents({
   const available = all.filter((c) => !connectedIds.has(c.id));
 
   async function saveIds(ids: string[], done: string) {
+    return savePatch({ component_ids: ids }, done);
+  }
+
+  /** WHICH VERSION THIS OFFERING COVERS. Suren, Aug 9: "you need to say which
+   *  version is applicable for this offering." */
+  async function saveVersion(componentId: string, releaseId: string) {
+    return savePatch(
+      { component_versions: { ...versions, [componentId]: releaseId || null } },
+      "Version saved."
+    );
+  }
+
+  async function savePatch(body: Record<string, unknown>, done: string) {
     setBusy(true);
     try {
       const res = await fetch(`/api/offerings/${offeringId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ component_ids: ids }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Could not save.");
       toast(done);
@@ -119,7 +136,12 @@ export function ConnectedComponents({
                 key={component.id}
                 className="group relative rounded-xl border border-border-light bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg"
               >
-                <Link href={`/components/${component.id}`} className="block">
+                <Link
+                  href={`/components/${component.id}?from=${encodeURIComponent(
+                    `/offerings/${offeringId}?tab=components`
+                  )}`}
+                  className="block"
+                >
                   <div className="flex items-start justify-between gap-3 pr-8">
                     <span className="flex min-w-0 items-center gap-2.5">
                       <OfferingIcon name={component.name} className="h-8 w-8 shrink-0" />
@@ -139,6 +161,42 @@ export function ConnectedComponents({
                     {component.features.length === 1 ? "feature" : "features"}
                   </p>
                 </Link>
+
+                {/* WHICH VERSION THIS OFFERING SELLS. Naming the component was
+                    only half the answer — an offering scoped to V1 is a
+                    different promise from one scoped to V2 (Suren, Aug 9). */}
+                <div className="mt-3">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    Version this offering covers
+                  </p>
+                  {canEdit ? (
+                    <ColorSelect
+                      value={versions[component.id] || ""}
+                      onChange={(value) => void saveVersion(component.id, value)}
+                      options={[
+                        { value: "", label: "Not pinned", color: "#0071E3", icon: Clock },
+                        ...component.releases.map((release) => ({
+                          value: release.id,
+                          label:
+                            release.status === "released"
+                              ? `${release.version} · released`
+                              : `${release.version} · expected`,
+                          color: release.status === "released" ? "#1A7A35" : "#6D28D9",
+                          icon: release.status === "released" ? CircleCheck : Clock,
+                        })),
+                      ]}
+                      ariaLabel={`Version of ${component.name} this offering covers`}
+                      collapsible={false}
+                      dense
+                    />
+                  ) : (
+                    <p className="text-[13px] font-semibold text-text-primary">
+                      {component.releases.find((r) => r.id === versions[component.id])
+                        ?.version || "Not pinned"}
+                    </p>
+                  )}
+                </div>
+
                 {canEdit &&
                   (confirmDisconnect === component.id ? (
                     <span className="absolute right-3 top-3 flex items-center gap-1">

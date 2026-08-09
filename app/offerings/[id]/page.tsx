@@ -444,6 +444,7 @@ export default async function OfferingDetailPage({
             offeringId={o.id}
             connected={connectedComponents}
             all={allComponents}
+            versions={o.component_versions ?? {}}
             canEdit={admin}
           />
         ) : (

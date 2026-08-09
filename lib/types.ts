@@ -101,6 +101,15 @@ export interface CustomerComponentLink {
   release_id?: string | null;
   /** The version they are expected to move to next, when it is agreed. */
   next_release_id?: string | null;
+  /**
+   * WHETHER THAT VERSION IS ACTUALLY THEIRS YET. Suren, Aug 9: "end of the day
+   * the software may be already given to the customer, or the customer is
+   * expecting but I have not given it to them. If it's a potential lead I just
+   * want to say this is the version they would like… a version people have to
+   * work towards." A version carries its own status (has Freyr shipped it at
+   * all); this is the separate fact of whether it has reached THIS customer.
+   */
+  release_status?: "released" | "expected" | null;
   notes?: string | null;
 }
 

@@ -259,6 +259,10 @@ export async function PATCH(
           component_id: id,
           release_id: idOrNull(item.release_id),
           next_release_id: idOrNull(item.next_release_id),
+          release_status:
+            item.release_status === "released" || item.release_status === "expected"
+              ? (item.release_status as "released" | "expected")
+              : null,
           notes:
             typeof item.notes === "string" && item.notes.trim()
               ? item.notes.trim().slice(0, 1000)

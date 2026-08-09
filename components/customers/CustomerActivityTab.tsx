@@ -121,7 +121,7 @@ export function CustomerActivityTab({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="flex items-center gap-2 text-[16px] font-semibold text-text-primary">
-              Sales activity
+              Offering activity
               <InfoHint text="The five activities from the sales workbook — Lead, Opportunity, Pilot, Contract, Delivery — each with a status of Initiated, Under progress or Completed. One activity per offering is the current one, and that is what the heat map reads." />
             </h2>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">
