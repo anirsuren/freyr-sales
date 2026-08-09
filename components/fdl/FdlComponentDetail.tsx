@@ -343,18 +343,27 @@ export function FdlComponentDetail({
               <li key={release.id} className="flex items-center gap-3 py-2.5">
                 {release.status === "released" ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#1A7A35]">
-                    <CircleCheck size={11} strokeWidth={2.2} /> {release.version}
+                    <CircleCheck size={11} strokeWidth={2.2} /> Released
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
-                    <Clock size={11} strokeWidth={2.2} /> {release.version} · expected
+                    <Clock size={11} strokeWidth={2.2} /> Expected
                   </span>
                 )}
-                <span className="text-[12px] text-text-tertiary tnum">
-                  {release.date ? formatDate(release.date) : "date not set"}
-                </span>
-                <span className="text-[12px] text-text-tertiary">
-                  · {component.features.filter((f) => f.versionIds.includes(release.id)).length} features
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-semibold leading-tight text-text-primary">
+                    {/^[A-Za-z]{3}'\d{2}$/.test(release.version)
+                      ? "No version number recorded"
+                      : release.version}
+                  </span>
+                  <span className="block text-[11.5px] text-text-tertiary tnum">
+                    {release.date ? formatDate(release.date) : "Date not set"}
+                    {" · "}
+                    {component.features.filter((f) => f.versionIds.includes(release.id)).length}{" "}
+                    {component.features.filter((f) => f.versionIds.includes(release.id)).length === 1
+                      ? "feature"
+                      : "features"}
+                  </span>
                 </span>
                 <span className="ml-auto flex items-center gap-1.5">
                   {release.current ? (
