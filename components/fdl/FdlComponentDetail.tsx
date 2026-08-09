@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -98,6 +98,26 @@ function CustomerDots({
   note?: (person: { id: string; name: string }) => string | undefined;
 }) {
   const [expanded, setExpanded] = useState(false);
+  // HALF A SECOND BEFORE IT FANS (Anir, Aug 9: "for this it should be one
+  // second delay... I mean 0.5 second delay"). Opening on contact meant the row
+  // rearranged itself under a cursor that was only passing through. Closing
+  // stays instant, so leaving never feels sticky.
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelOpen = () => {
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  };
+  useEffect(() => cancelOpen, []);
+  const openSoon = () => {
+    cancelOpen();
+    openTimer.current = setTimeout(() => setExpanded(true), 500);
+  };
+  const closeNow = () => {
+    cancelOpen();
+    setExpanded(false);
+  };
   if (people.length === 0)
     return (
       <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary">
@@ -107,15 +127,24 @@ function CustomerDots({
     );
   const visible = people.slice(0, max);
   const hidden = people.length - visible.length;
+  // THE ROW RESERVES ITS OPEN WIDTH EVEN WHEN CLOSED (Anir, Aug 9: "I don't
+  // like how the table column moves with it"). Fanning changes each mark's
+  // margin from -8px to +4px, so an expanding group grew ~12px per logo and
+  // shoved the whole column sideways while you were reading it. Holding the
+  // open width at rest costs a little empty space and buys a table that never
+  // moves under the cursor.
+  const marks = visible.length + (hidden > 0 ? 1 : 0);
+  const openWidth = marks > 0 ? 28 + (marks - 1) * 32 : 0;
   return (
     <span
       className="inline-flex items-center rounded-lg px-1 py-0.5 transition-colors duration-200 hover:bg-surface focus-within:bg-surface"
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
+      style={{ minWidth: openWidth + 8 }}
+      onMouseEnter={openSoon}
+      onMouseLeave={closeNow}
       onFocusCapture={() => setExpanded(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-          setExpanded(false);
+          closeNow();
       }}
     >
       {visible.map((person, i) => (
@@ -148,18 +177,51 @@ function CustomerDots({
               </div>
             }
           >
-            <span className="flex h-7 w-7 cursor-default items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-white transition-transform duration-150 hover:scale-110">
+            <span className="flex h-7 w-7 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-white transition-transform duration-150 hover:scale-110">
               <CompanyLogo name={person.name} className="h-5 w-5 object-contain" />
             </span>
           </HoverCard>
         </span>
       ))}
       {hidden > 0 && (
+        /* THE OVERFLOW CHIP ANSWERS A QUESTION TOO (Anir, Aug 9: "when I hover
+           over +1, it has to say what it is, like a pop-up, and also the + is
+           getting covered"). Last in DOM order meant lowest z-index, so the
+           circle to its left painted over the plus sign. */
         <span
-          className="relative inline-flex h-7 w-7 items-center justify-center rounded-full bg-surface text-[10.5px] font-bold text-text-secondary ring-2 ring-white transition-[margin] duration-200 ease-out tnum"
-          style={{ marginLeft: expanded ? 4 : -8 }}
+          className="relative inline-flex transition-[margin] duration-200 ease-out"
+          style={{ marginLeft: expanded ? 4 : -8, zIndex: visible.length + 1 }}
         >
-          +{hidden}
+          <HoverCard
+            width={230}
+            anchor="trigger"
+            content={
+              <div>
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  {hidden} more
+                </p>
+                <ul className="space-y-1.5">
+                  {people.slice(max).map((person) => (
+                    <li key={person.id} className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-light bg-white">
+                        <CompanyLogo
+                          name={person.name}
+                          className="h-3.5 w-3.5 object-contain"
+                        />
+                      </span>
+                      <span className="min-w-0 text-[12.5px] text-text-primary">
+                        {person.name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            }
+          >
+            <span className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-surface text-[10.5px] font-bold text-text-secondary ring-2 ring-white transition-transform duration-150 hover:scale-110 tnum">
+              +{hidden}
+            </span>
+          </HoverCard>
         </span>
       )}
     </span>
@@ -473,7 +535,12 @@ export function FdlComponentDetail({
     setFeatName(feature?.name ?? "");
     setFeatFid(feature?.fid ?? "");
     setFeatDesc(feature?.description ?? "");
-    setFeatVersions(feature?.versionIds ?? releases.map((r) => r.id));
+    // A NEW FEATURE PICKS ITS OWN VERSIONS (Anir, Aug 9: "they have to actually
+    // choose which versions, it shouldn't be automatically choosing all of
+    // them"). Pre-ticking every release meant the default answer was "it has
+    // always been in everything", which is almost never true and silently
+    // became the record. Editing still opens on whatever the feature has.
+    setFeatVersions(feature?.versionIds ?? []);
     setFeatFiles(feature?.attachments ?? []);
   }
 
@@ -490,7 +557,7 @@ export function FdlComponentDetail({
   }
 
   async function saveFeature() {
-    if (!featName.trim()) return;
+    if (!featName.trim() || featVersions.length === 0) return;
     const record: FdlFeature = {
       id: featureModal || `feat-${Math.random().toString(36).slice(2, 9)}`,
       fid: featFid.trim() || nextFeatureId(),
@@ -915,6 +982,21 @@ export function FdlComponentDetail({
                   )
                 : versionFeatures;
               const versionCustomers = customersOnVersion(release.id);
+              // Accounts sitting on a version OLDER than this one. Unlike
+              // "nothing new" this is a number that changes and that a seller
+              // can do something about.
+              const versionAttachments = versionFeatures.flatMap((feature) =>
+                (feature.attachments ?? []).map((file) => ({
+                  file,
+                  feature: feature.name,
+                }))
+              );
+              const behindCount = connected.filter((customer) => {
+                const theirIndex = releases.findIndex(
+                  (r) => r.id === customer.releaseId
+                );
+                return theirIndex > -1 && theirIndex < releaseIndex;
+              }).length;
               const open = openVersions.has(release.id);
               const shipped = release.status === "released";
               const accent = shipped ? "#1A7A35" : "#6D28D9";
@@ -1054,10 +1136,34 @@ export function FdlComponentDetail({
                           the row. The reclaimed space carries what actually
                           changed in this version. */}
                       <span className="ml-4 hidden min-w-0 flex-1 items-center gap-3 lg:flex">
-                        {/* Always a sentence, never a blank. "Nothing new"
-                            is itself the answer a seller needs when a customer
-                            asks whether an upgrade is worth scheduling. */}
-                        <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary">
+                        {/* THE BAR RIDES WITH THE VERSION (Anir, Aug 9: "the
+                            progress bar should go right after"). Pinned to the
+                            far edge it belonged to nothing you were reading. */}
+                        {connected.length > 0 && (
+                          <span className="flex shrink-0 items-center gap-2">
+                            <span className="h-1.5 w-[72px] overflow-hidden rounded-full bg-surface">
+                              <span
+                                className="block h-full rounded-full transition-[width] duration-500"
+                                style={{
+                                  width: `${Math.round(
+                                    (versionCustomers.length / connected.length) * 100
+                                  )}%`,
+                                  background: accent,
+                                }}
+                              />
+                            </span>
+                            <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary tnum">
+                              {versionCustomers.length} of {connected.length} on this
+                            </span>
+                          </span>
+                        )}
+                        {/* SOMETHING WORTH READING, NEVER "NOTHING NEW" (Anir,
+                            Aug 9: "I don't understand the point of seeing
+                            nothing new, include some other thing there"). When
+                            a version adds no feature of its own, the useful
+                            fact is how many accounts are still behind it, which
+                            is a number a seller can act on. */}
+                        <span className="ml-auto flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary">
                           <Sparkles
                             size={11}
                             strokeWidth={2.2}
@@ -1072,36 +1178,29 @@ export function FdlComponentDetail({
                                 </span>
                                 {addedHere.map((f) => f.name).join(", ")}
                               </>
-                            ) : versionFeatures.length === 0 ? (
-                              "No features listed on this version yet"
-                            ) : (
+                            ) : behindCount > 0 ? (
                               <>
                                 <span className="font-semibold text-text-primary">
-                                  Nothing new:{" "}
-                                </span>
-                                same features as {previous?.version}
+                                  {behindCount} on an older build
+                                </span>{" "}
+                                could move up to this
                               </>
+                            ) : versionFeatures.length > 0 ? (
+                              <>
+                                <span className="font-semibold text-text-primary">
+                                  Carries{" "}
+                                </span>
+                                {versionFeatures.length}{" "}
+                                {versionFeatures.length === 1
+                                  ? "feature"
+                                  : "features"}{" "}
+                                from {previous?.version ?? "launch"}
+                              </>
+                            ) : (
+                              "No features listed on this version yet"
                             )}
                           </span>
                         </span>
-                        {connected.length > 0 && (
-                          <span className="ml-auto flex shrink-0 items-center gap-2">
-                            <span className="h-1.5 w-[72px] overflow-hidden rounded-full bg-surface">
-                              <span
-                                className="block h-full rounded-full transition-[width] duration-500"
-                                style={{
-                                  width: `${Math.round(
-                                    (versionCustomers.length / connected.length) * 100
-                                  )}%`,
-                                  background: accent,
-                                }}
-                              />
-                            </span>
-                            <span className="text-[11px] font-semibold text-text-secondary tnum">
-                              {versionCustomers.length} of {connected.length} on this
-                            </span>
-                          </span>
-                        )}
                       </span>
                     </button>
                     <span className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -1158,11 +1257,15 @@ export function FdlComponentDetail({
 
                   {open && (
                     <div className="menu-in border-t border-border-light bg-surface/50 px-3.5 py-3.5">
-                      <div className="grid items-start gap-3 md:grid-cols-2">
-                        {/* Two equal white panels. The old layout put the
-                            button under a short list and left the other half
-                            empty, so the two halves never looked related. */}
-                        <div className="rounded-xl border border-border-light bg-white p-3.5">
+                      {/* THREE PANELS, EQUAL HEIGHT (Anir, Aug 9: "there's a
+                          lot of empty space here, like above features and then
+                          below features... if there's an image or something, it
+                          should show up for each version"). Two panels left a
+                          short list stranded beside a tall one; a third column
+                          takes the width AND answers the question the panel
+                          could not: what is actually attached to this release. */}
+                      <div className="grid items-stretch gap-3 md:grid-cols-3">
+                        <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
                           <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <ListChecks size={12} strokeWidth={2.2} className="text-blue-primary" />
                             What is in {release.version}
@@ -1201,48 +1304,150 @@ export function FdlComponentDetail({
                             </ScrollHint>
                           )}
                         </div>
-                        <div className="rounded-xl border border-border-light bg-white p-3.5">
+                        <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
                           <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <Building2 size={12} strokeWidth={2.2} className="text-blue-primary" />
                             Customers on {release.version}
                             <span className="ml-auto font-bold tnum">
                               {versionCustomers.length}
                             </span>
+                            {/* THE PLUS SITS WITH THE HEADING (Anir, Aug 9:
+                                "the add customer thing should be at the top
+                                right, it should just be a blue plus, simple").
+                                A full-width dashed button under the list read
+                                as another row in it. */}
+                            {canEdit && unconnected.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => openAddCustomers(release.id)}
+                                title={`Add a customer on ${release.version}`}
+                                aria-label={`Add a customer on ${release.version}`}
+                                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95"
+                              >
+                                <Plus size={13} strokeWidth={2.6} />
+                              </button>
+                            )}
                           </p>
                           {versionCustomers.length === 0 ? (
                             <p className="text-[12.5px] text-text-secondary">
                               Nobody is recorded on this version yet.
                             </p>
                           ) : (
-                            <ScrollHint className="max-h-[220px] pr-1">
+                            <ScrollHint className="max-h-[240px] pr-1">
                             <ul className="space-y-1">
-                              {versionCustomers.map((customer) => (
-                                <li key={customer.id}>
-                                  <Link
-                                    href={`/customers/${customer.id}?tab=components`}
-                                    className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-[12.5px] font-medium text-text-primary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                                  >
-                                    <CompanyLogo name={customer.name} className="h-5 w-5 shrink-0" />
-                                    {customer.name}
-                                  </Link>
-                                </li>
-                              ))}
+                              {versionCustomers.map((customer) => {
+                                // THREE MORE FACTS PER ROW (Anir, Aug 9: "give
+                                // me three other data points on that row to take
+                                // up some space, it's okay to make the row
+                                // thicker"). A logo and a name alone made the
+                                // panel a list of links; these say where the
+                                // account actually stands on this component.
+                                const theirNext = releases.find(
+                                  (r) => r.id === customer.nextReleaseId
+                                );
+                                const newest = releases[releases.length - 1];
+                                const isLatest = newest?.id === release.id;
+                                return (
+                                  <li key={customer.id}>
+                                    <Link
+                                      href={`/customers/${customer.id}?tab=components`}
+                                      className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-blue-light"
+                                    >
+                                      <CompanyLogo
+                                        name={customer.name}
+                                        className="h-6 w-6 shrink-0"
+                                      />
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                                          {customer.name}
+                                        </span>
+                                        <span className="flex flex-wrap items-center gap-x-1.5 text-[10.5px] text-text-tertiary">
+                                          <span className="whitespace-nowrap">
+                                            On {release.version}
+                                          </span>
+                                          <span aria-hidden="true">·</span>
+                                          <span className="whitespace-nowrap">
+                                            {theirNext
+                                              ? `Moving to ${theirNext.version}`
+                                              : "No move planned"}
+                                          </span>
+                                        </span>
+                                      </span>
+                                      <span
+                                        className="shrink-0 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.03em]"
+                                        style={
+                                          isLatest
+                                            ? {
+                                                color: "#1A7A35",
+                                                background: "rgba(26,122,53,0.1)",
+                                              }
+                                            : {
+                                                color: "#B4318F",
+                                                background: "rgba(180,49,143,0.1)",
+                                              }
+                                        }
+                                      >
+                                        {isLatest ? "Newest" : "Behind"}
+                                      </span>
+                                    </Link>
+                                  </li>
+                                );
+                              })}
                             </ul>
                             </ScrollHint>
                           )}
-                          {/* Add them ONTO THE VERSION you are reading. This is
-                              where Suren was standing when the header button
-                              filed his customer under the current release
-                              instead of this one. */}
-                          {canEdit && unconnected.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => openAddCustomers(release.id)}
-                              className="mt-2.5 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary"
-                            >
-                              <Plus size={13} strokeWidth={2.4} />
-                              Add a customer on {release.version}
-                            </button>
+                        </div>
+                        {/* WHAT IS ATTACHED TO THIS RELEASE. Files live on
+                            features, so a version's paperwork is the union of
+                            the files on the features it carries. */}
+                        <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
+                          <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            <Paperclip size={12} strokeWidth={2.2} className="text-blue-primary" />
+                            Files in {release.version}
+                            <span className="ml-auto font-bold tnum">
+                              {versionAttachments.length}
+                            </span>
+                          </p>
+                          {versionAttachments.length === 0 ? (
+                            <p className="text-[12.5px] text-text-secondary">
+                              No document or picture is attached to anything in
+                              this version yet.
+                            </p>
+                          ) : (
+                            <ScrollHint className="max-h-[240px] pr-1">
+                              <ul className="grid grid-cols-2 gap-2">
+                                {versionAttachments.map(({ file, feature }) => (
+                                  <li key={file.id}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewing(file)}
+                                      title={`${file.name} — on ${feature}`}
+                                      className="w-full cursor-pointer overflow-hidden rounded-lg border border-border-light text-left transition-colors hover:border-blue-subtle"
+                                    >
+                                      {file.kind === "image" ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                          src={file.url}
+                                          alt={file.name}
+                                          className="h-16 w-full bg-surface object-cover"
+                                        />
+                                      ) : (
+                                        <span className="flex h-16 w-full items-center justify-center bg-surface">
+                                          <FileText
+                                            size={18}
+                                            strokeWidth={1.8}
+                                            className="text-text-tertiary"
+                                          />
+                                        </span>
+                                      )}
+                                      <span className="block truncate px-1.5 py-1 text-[10.5px] text-text-secondary">
+                                        {file.name}
+                                      </span>
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </ScrollHint>
                           )}
                         </div>
                       </div>
@@ -1295,7 +1500,10 @@ export function FdlComponentDetail({
             the version here also answers "I don't know which version of the
             feature I'm downloading" — the button names it. */}
         {releases.length > 0 && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          /* The picker sits ON the heading line's shoulder, not a paragraph
+             below it (Anir, Aug 9: "there's a lot of space above features and
+             then below features and then above the dropdown"). */
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className="text-[12.5px] text-text-secondary">
               Showing what is in
             </span>
@@ -1400,18 +1608,34 @@ export function FdlComponentDetail({
                               : `${inThem.length} of ${releases.length} versions`;
                         return (
                           <HoverCard
-                            width={230}
+                            width={inThem.length > 8 ? 340 : inThem.length > 4 ? 260 : 230}
                             anchor="trigger"
                             content={
                               <div>
                                 <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                                   In these versions
                                 </p>
-                                <ul className="space-y-1">
+                                {/* COLUMNS, AND THE TAG RIDES THE NUMBER (Anir,
+                                    Aug 9: "I can't really tell which version is
+                                    current, I think it's too far... it should be
+                                    right after the version number instead of on
+                                    the right side all the way there, and then
+                                    maybe have like 3 columns"). Flung to the far
+                                    edge, the marker made you track across dead
+                                    space to find the one version that matters. */}
+                                <ul
+                                  className={`grid gap-x-3 gap-y-1 ${
+                                    inThem.length > 8
+                                      ? "grid-cols-3"
+                                      : inThem.length > 4
+                                        ? "grid-cols-2"
+                                        : "grid-cols-1"
+                                  }`}
+                                >
                                   {inThem.map((r) => (
                                     <li
                                       key={r.id}
-                                      className="flex items-center gap-2 text-[12.5px] text-text-primary"
+                                      className="flex items-center gap-1.5 text-[12.5px] text-text-primary"
                                     >
                                       <Check
                                         size={12}
@@ -1420,8 +1644,9 @@ export function FdlComponentDetail({
                                       />
                                       <span className="tnum">{r.version}</span>
                                       {r.current && (
-                                        <span className="ml-auto text-[10px] font-bold uppercase tracking-[0.04em] text-blue-primary">
-                                          current
+                                        <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-blue-primary px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-[0.03em] text-white">
+                                          <Check size={8} strokeWidth={3.4} />
+                                          Now
                                         </span>
                                       )}
                                     </li>
@@ -1649,11 +1874,19 @@ export function FdlComponentDetail({
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full min-w-[420px] text-left">
                   <thead>
-                    <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      <th className="py-2 pr-4">Customer</th>
-                      <th className="py-2 pr-4">Current version</th>
-                      <th className="py-2 pr-4">Next version</th>
-                      <th className="py-2 pr-4">Upgrade status</th>
+                    {/* TWO MORE COLUMNS, BECAUSE FOUR LEFT GAPS (Anir, Aug 9:
+                        "there's a lot of empty space, I don't know what you're
+                        doing on the top left"). What they run and what they'd
+                        gain by moving are the two facts a seller opens this
+                        table for, and both are arithmetic on data already on
+                        the page, so neither can disagree with it. */}
+                    <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
+                      <th className="w-[26%] py-2 pr-4">Customer</th>
+                      <th className="w-[15%] py-2 pr-4">Current version</th>
+                      <th className="w-[13%] py-2 pr-4">Next version</th>
+                      <th className="w-[13%] py-2 pr-4">Features</th>
+                      <th className="w-[16%] py-2 pr-4">Gains on upgrade</th>
+                      <th className="w-[15%] py-2 pr-4">Upgrade status</th>
                       <th className="py-2" />
                     </tr>
                   </thead>
@@ -1674,6 +1907,23 @@ export function FdlComponentDetail({
                       const currentIndex = releases.findIndex((r) => r.current);
                       const behind =
                         here >= 0 && currentIndex >= 0 ? currentIndex - here : null;
+                      // What their build carries, and what the current release
+                      // has that theirs does not.
+                      const allFeatureCount = component.features.length;
+                      const theirFeatures = release
+                        ? component.features.filter((f) =>
+                            f.versionIds.includes(release.id)
+                          ).length
+                        : 0;
+                      const currentRelease = releases[currentIndex];
+                      const gains =
+                        release && currentRelease && currentIndex > here
+                          ? component.features.filter(
+                              (f) =>
+                                f.versionIds.includes(currentRelease.id) &&
+                                !f.versionIds.includes(release.id)
+                            ).length
+                          : 0;
                       return (
                         <tr
                           key={customer.id}
@@ -1703,8 +1953,32 @@ export function FdlComponentDetail({
                               {release ? release.version : "Not set yet"}
                             </span>
                           </td>
-                          <td className="py-3 pr-4 text-[12.5px] text-text-secondary tnum">
+                          <td className="whitespace-nowrap py-3 pr-4 text-[12.5px] text-text-secondary tnum">
                             {next ? next.version : "Not planned"}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-[12.5px] text-text-secondary tnum">
+                            {release ? (
+                              <>
+                                {theirFeatures}{" "}
+                                <span className="text-text-tertiary">
+                                  of {allFeatureCount}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-text-tertiary">Not known</span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-[12.5px] tnum">
+                            {gains > 0 ? (
+                              <span className="font-semibold text-[color:#B4318F]">
+                                +{gains}{" "}
+                                {gains === 1 ? "feature" : "features"}
+                              </span>
+                            ) : (
+                              <span className="text-text-tertiary">
+                                Nothing waiting
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 pr-4">
                             {behind === null ? (
@@ -1826,8 +2100,20 @@ export function FdlComponentDetail({
                   <tbody className="divide-y divide-border-light">
                     {compareRows.map((feature) => (
                       <tr key={feature.id}>
+                        {/* THE ID TRAVELS WITH THE FEATURE (Anir, Aug 9: "put
+                            version id here"). Every other list on this page
+                            leads with F-001, so a comparison that dropped it
+                            was the one place you could not tie a row back to
+                            the sheet you downloaded. */}
                         <td className="sticky left-0 z-10 min-w-[220px] bg-white py-2.5 pr-4 text-[13px] font-medium text-text-primary">
-                          {feature.name}
+                          <span className="flex items-center gap-1.5">
+                            {feature.fid && (
+                              <span className="shrink-0 rounded border border-blue-subtle bg-blue-light px-1.5 py-[1px] text-[10.5px] font-bold text-blue-primary tnum">
+                                {feature.fid}
+                              </span>
+                            )}
+                            {feature.name}
+                          </span>
                         </td>
                         {compareReleases.map((release) => (
                           <td key={release.id} className="px-2 py-2.5 text-center">
@@ -2094,8 +2380,17 @@ export function FdlComponentDetail({
             />
           </div>
           <div>
-            <label className="mb-1 block text-[12px] font-medium text-text-primary">
+            <label className="mb-1 flex flex-wrap items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Available in which versions?
+              {featVersions.length === 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.12)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#B4318F]">
+                  Pick at least one
+                </span>
+              ) : (
+                <span className="text-[11.5px] font-normal text-text-secondary tnum">
+                  {featVersions.length} of {releases.length} picked
+                </span>
+              )}
             </label>
             <div className="flex flex-wrap gap-2">
               {releases.map((release) => {

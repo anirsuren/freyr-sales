@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { DateField } from "@/components/ui/DateField";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { Modal } from "@/components/ui/Modal";
 import {
   CUSTOMER_OFFERING_ACTIVITIES,
@@ -125,7 +126,7 @@ export function ActivityChip({ activity }: { activity: CustomerOfferingActivity 
   const Icon = ACTIVITY_ICONS[activity];
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+      className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
       style={{ background: meta.color, color: meta.text }}
     >
       <Icon size={11} strokeWidth={2.4} />
@@ -139,7 +140,13 @@ export function StatusChip({ status }: { status: CustomerOfferingStatus }) {
   const Icon = STATUS_ICONS[status];
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+      // whitespace-nowrap because "Under progress" was folding onto a second
+      // line inside a narrow column and dragging the whole row taller than its
+      // neighbours (Anir, Aug 9: "the status should appear on one line no
+      // matter what"). The table scrolls sideways instead, which he confirmed
+      // is fine: "you can scroll within this thing, it's okay to scroll
+      // horizontally".
+      className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold"
       style={{
         color: meta.color,
         borderColor: `${meta.color}40`,
@@ -258,9 +265,20 @@ export function OfferingActivities({
           Activities ({versions.length})
           <InfoHint text="Every activity this customer has been through on this offering. The one marked Current is what the heat map shows." />
         </p>
-        <Button variant="secondary" onClick={() => openEditor()}>
-          <Plus size={13} strokeWidth={2.2} /> Add activity
-        </Button>
+        {/* A WHITE PLUS ON A BLUE SQUARE (Anir, Aug 9: "add activity should be
+            just the white plus with the blue square, keep it simple"). It is
+            the same mark the components page uses, so on every page a plus
+            means add and always looks the same. */}
+        <Tooltip label="Add activity">
+          <button
+            type="button"
+            aria-label="Add activity"
+            onClick={() => openEditor()}
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95"
+          >
+            <Plus size={15} strokeWidth={2.6} />
+          </button>
+        </Tooltip>
       </div>
 
       {versions.length === 0 ? (
@@ -293,15 +311,19 @@ export function OfferingActivities({
            show up — activity name, details, status, start date, end date. I
            want them to use the table nature." */
         <div className="mt-2.5 overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-left">
+          {/* The min-width only has to be wide enough that no chip wraps; past that
+             it invents a scrollbar for a table that already fits (Anir, Aug 9:
+             "it looks like you don't even need the horizontal scroll on the
+             table, you're fitting it properly"). */}
+          <table className="w-full min-w-[720px] border-collapse text-left">
             <thead>
               <tr className="border-b border-border-light text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
                 <th className="w-[132px] py-2 pr-3 font-bold">Activity</th>
                 <th className="py-2 pr-3 font-bold">Details</th>
-                <th className="w-[116px] py-2 pr-3 font-bold">Status</th>
+                <th className="w-[136px] py-2 pr-3 font-bold">Status</th>
                 <th className="w-[184px] py-2 pr-3 font-bold">Dates</th>
                 <th className="w-[104px] py-2 pr-3 text-right font-bold">Value</th>
-                <th className="w-[124px] py-2 pr-2 font-bold">Current</th>
+                <th className="w-[140px] py-2 pr-2 font-bold">Current</th>
                 <th className="w-[76px] py-2 font-bold" />
               </tr>
             </thead>
@@ -331,7 +353,7 @@ export function OfferingActivities({
                     </td>
                     <td className="py-2.5 pr-3">
                       {planned(version) ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9]">
                           <CalendarClock size={11} strokeWidth={2.2} /> Planned
                         </span>
                       ) : (
@@ -382,7 +404,11 @@ export function OfferingActivities({
                           type="button"
                           onClick={() => makeCurrent(version.id)}
                           title="Show this activity in the heat map"
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border-light px-2 py-0.5 text-[10.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                          // whitespace-nowrap: "Make current" was breaking
+                          // across two lines and making its row taller than the
+                          // one above it (Anir, Aug 9: "the make current button
+                          // is bad, it can't be on 2 lines").
+                          className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-border-light px-2 py-0.5 text-[10.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
                         >
                           <Circle size={10} strokeWidth={2.4} /> Make current
                         </button>

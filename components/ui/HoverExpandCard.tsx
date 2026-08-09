@@ -52,7 +52,7 @@ export function HoverExpandCard({
     // min-h-full: when the wrapper is stretched by a grid row, the resting
     // card face fills the cell so neighbouring cards stay equal-height
     // (Suren's symmetry rule). Growth on hover is unaffected — it's a minimum.
-    "absolute inset-x-0 top-0 min-h-full bg-white border border-border-light rounded-xl p-5 shadow-card origin-top transition-[transform,box-shadow,border-color] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]",
+    "hover-expand-face absolute inset-x-0 top-0 min-h-full bg-white border border-border-light rounded-xl p-5 shadow-card origin-top transition-[transform,box-shadow,border-color] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]",
     stretchSummary ? "flex flex-col" : "block",
     // Press-down on click: navigation from these cards had no feedback at
     // all — snapping back to 1.0 reads as nothing (Anir, Jul 25: "there's no
@@ -68,11 +68,11 @@ export function HoverExpandCard({
       {/* grid-rows 0fr → 1fr animates the reveal without a fixed max-height */}
       {(
         <div
-          className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]"
+          className="hover-expand-reveal grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-200 ease-out delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]"
         >
           <div className="overflow-hidden min-h-0">
             <div
-              className="pt-4 mt-4 border-t border-border-light opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]"
+              className="hover-expand-extra pt-4 mt-4 border-t border-border-light opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-0 group-hover:[transition-delay:var(--hover-expand-delay)]"
             >
               {extra}
             </div>
@@ -88,7 +88,7 @@ export function HoverExpandCard({
     // top (z-index only competes within a cell, and each card sits in its own
     // `relative` wrapper). This keeps the pop-out on top of every neighbour.
     <div
-      className={cn("group relative hover:z-30", className)}
+      className={cn("hover-expand group relative hover:z-30", className)}
       style={hoverDelayStyle}
     >
       {/* The real, visible card comes FIRST in DOM so any `.first()` selector

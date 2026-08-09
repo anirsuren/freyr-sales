@@ -1369,3 +1369,28 @@ input {
 @media (prefers-reduced-motion: reduce) {
   .animate-bounce-hint { animation: none; }
 }
+
+/* A SMALLER HOVER TARGET OWNS THE POINTER.
+   Hovering a person inside an offering card fired the card's own pop-out at
+   the same time as the person's card, so two things moved under one cursor and
+   the person's card was immediately covered by the growing tile (Anir, Aug 9:
+   "when I hover over the person's name, it shouldn't trigger the hover
+   animation for the offering").
+
+   Anything marked .hover-yield suppresses the surrounding HoverExpandCard for
+   as long as it is hovered. :has() reads the child's state on the ancestor,
+   which is the only way to express "the parent is hovered BUT a child claimed
+   it" in CSS. !important because the effects it cancels are group-hover
+   utilities on the same elements. */
+.hover-expand:has(.hover-yield:hover) .hover-expand-face {
+  transform: none !important;
+  z-index: auto !important;
+  border-color: var(--border-light) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+.hover-expand:has(.hover-yield:hover) .hover-expand-reveal {
+  grid-template-rows: 0fr !important;
+}
+.hover-expand:has(.hover-yield:hover) .hover-expand-extra {
+  opacity: 0 !important;
+}

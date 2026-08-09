@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Boxes, Check, Link2, Plus, X } from "lucide-react";
+import { Boxes, Check, LayoutGrid, Link2, Plus, Table2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -45,6 +45,26 @@ export function CustomerDigitalComponents({
   const router = useRouter();
   const { toast } = useToast();
   const [state, setState] = useState<CustomerComponentLink[]>(links);
+  // TILES OR ROWS, the same choice the components list offers (Anir, Aug 9:
+  // "again, here I would like a table row view thing"). Cards are for reading
+  // one component; the table is for scanning which of ten are behind.
+  const [view, setView] = useState<"cards" | "table">("cards");
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("freyr.customerComponents.view");
+      if (saved === "table" || saved === "cards") setView(saved);
+    } catch {
+      /* private mode keeps cards */
+    }
+  }, []);
+  function chooseView(next: "cards" | "table") {
+    setView(next);
+    try {
+      window.localStorage.setItem("freyr.customerComponents.view", next);
+    } catch {
+      /* nothing to remember */
+    }
+  }
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -120,6 +140,21 @@ export function CustomerDigitalComponents({
             <Link2 size={14} strokeWidth={2.2} /> Connect component
           </Button>
         )}
+        {state.length > 0 && (
+          <button
+            type="button"
+            onClick={() => chooseView(view === "cards" ? "table" : "cards")}
+            aria-label={view === "cards" ? "Switch to table view" : "Switch to card view"}
+            title={view === "cards" ? "Switch to table view" : "Switch to card view"}
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+          >
+            {view === "cards" ? (
+              <Table2 size={15} strokeWidth={2} />
+            ) : (
+              <LayoutGrid size={15} strokeWidth={2} />
+            )}
+          </button>
+        )}
       </div>
 
       {state.length === 0 ? (
@@ -132,6 +167,76 @@ export function CustomerDigitalComponents({
           </p>
         </div>
       ) : (
+        view === "table" ? (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-border-light bg-white">
+          <table className="w-full min-w-[680px] text-left">
+            <thead>
+              <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
+                <th className="w-[30%] px-4 py-2.5">Component</th>
+                <th className="w-[14%] px-3 py-2.5">Type</th>
+                <th className="w-[18%] px-3 py-2.5">Current version</th>
+                <th className="w-[20%] px-3 py-2.5">Version status</th>
+                <th className="w-[18%] px-3 py-2.5">Next version</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light stagger">
+              {state.map((link) => {
+                const component = byId.get(link.component_id);
+                if (!component) return null;
+                const live = component.releases.find(
+                  (release) => release.id === link.release_id
+                );
+                const next = component.releases.find(
+                  (release) => release.id === link.next_release_id
+                );
+                return (
+                  <tr
+                    key={link.component_id}
+                    className="group transition-colors hover:bg-blue-light/25"
+                  >
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/components/${component.id}`}
+                        className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold text-text-primary group-hover:text-blue-primary"
+                      >
+                        <OfferingIcon
+                          name={component.name}
+                          className="h-7 w-7 shrink-0"
+                        />
+                        {component.name}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <FdlTypeChip type={component.type} />
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold text-text-primary tnum">
+                      {live ? live.version : (
+                        <span className="font-normal text-text-tertiary">
+                          Not recorded
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] text-text-secondary">
+                      {link.release_status === "released"
+                        ? "Released to them"
+                        : link.release_status === "expected"
+                          ? "Expected by them"
+                          : (
+                            <span className="text-text-tertiary">Not set yet</span>
+                          )}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] text-text-secondary tnum">
+                      {next ? next.version : (
+                        <span className="text-text-tertiary">Not planned</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        ) : (
         <div className="mt-4 grid gap-3 md:grid-cols-2 stagger">
           {state.map((link) => {
             const component = byId.get(link.component_id);
@@ -167,7 +272,13 @@ export function CustomerDigitalComponents({
                   <FdlTypeChip type={component.type} />
                 </div>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {/* THREE FIELDS, ONE ROW (Anir, Aug 9: "I don't like those
+                    drop-downs, there are two drop-downs and then one drop-down,
+                    it's very confusing"). Two-up then one-wide made the third
+                    field look like it belonged to something else, when all
+                    three answer the same question: where is this account on
+                    this component. */}
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   <div className="min-w-0">
                     <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                       Current version
@@ -254,8 +365,7 @@ export function CustomerDigitalComponents({
                       </p>
                     )}
                   </div>
-                  </div>
-                  <div className="mt-2 min-w-0">
+                  <div className="min-w-0">
                     <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                       Next version
                       <InfoHint text="The version they move to after this one. Leave it empty if nothing is planned." />
@@ -286,6 +396,7 @@ export function CustomerDigitalComponents({
                       </p>
                     )}
                   </div>
+                </div>
 
                 <p className="mt-2.5 flex flex-wrap items-center gap-2 text-[11.5px] text-text-tertiary">
                   {live?.date && <span className="tnum">Live since {formatDate(live.date)}</span>}
@@ -338,6 +449,7 @@ export function CustomerDigitalComponents({
             );
           })}
         </div>
+        )
       )}
 
       <Modal

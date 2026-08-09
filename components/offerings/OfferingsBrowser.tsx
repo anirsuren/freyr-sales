@@ -274,7 +274,7 @@ function OwnerRows({
               role={o.role || "Owns this offering"}
               context={offeringName}
             >
-              <span className="inline-flex min-w-0 items-center gap-1.5 self-start rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
+              <span className="hover-yield inline-flex min-w-0 items-center gap-1.5 self-start rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
                 <Avatar name={o.name} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                 <span className="min-w-0 break-words text-[11.5px] font-semibold leading-snug text-text-primary">
                   {o.name}
