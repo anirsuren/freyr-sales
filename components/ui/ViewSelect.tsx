@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, Table2 } from "lucide-react";
+import { LayoutGrid, Table2, type LucideIcon } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 
 /**
@@ -29,6 +29,8 @@ export function ViewSelect<T extends string>({
   tableValue,
   tileLabel = "Tiles",
   tableLabel = "Rows",
+  tileIcon: TileIcon = LayoutGrid,
+  tableIcon: TableIcon = Table2,
   className,
 }: {
   value: T;
@@ -39,6 +41,12 @@ export function ViewSelect<T extends string>({
   tableValue: T;
   tileLabel?: string;
   tableLabel?: string;
+  /** Swap the glyphs when the two destinations are not tiles and rows — a
+   *  list-versus-timeline pair, say. The control keeps its exact shape and
+   *  size, so it still reads as the one view switch the app uses everywhere;
+   *  only what it depicts changes. */
+  tileIcon?: LucideIcon;
+  tableIcon?: LucideIcon;
   className?: string;
 }) {
   const half =
@@ -62,7 +70,7 @@ export function ViewSelect<T extends string>({
           aria-pressed={value === tileValue}
           className={`${half} ${value === tileValue ? on : off}`}
         >
-          <LayoutGrid size={15} strokeWidth={1.9} />
+          <TileIcon size={15} strokeWidth={1.9} />
         </button>
       </Tooltip>
       <Tooltip label={tableLabel}>
@@ -75,7 +83,7 @@ export function ViewSelect<T extends string>({
             value === tableValue ? on : off
           }`}
         >
-          <Table2 size={15} strokeWidth={1.9} />
+          <TableIcon size={15} strokeWidth={1.9} />
         </button>
       </Tooltip>
     </div>

@@ -6,6 +6,8 @@ import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  GanttChartSquare,
+  Rows3,
   ArrowLeft,
   Check,
   CircleCheck,
@@ -59,6 +61,7 @@ import {
 } from "@/components/fdl/FdlComponentsBrowser";
 import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
+import { VersionTimeline } from "@/components/fdl/VersionTimeline";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 
@@ -280,6 +283,13 @@ export function FdlComponentDetail({
   // and the layout choice is remembered under its own key so it does not
   // disturb the components list behind the modal.
   const [offeringQuery, setOfferingQuery] = useState("");
+  // THE VERSIONS AS A LIST OR AS A TIMELINE (Anir, Aug 10). The list answers
+  // "what exists", the timeline answers "when" — same records, two questions.
+  const [versionsView, setVersionsView] = useStoredView<"list" | "timeline">(
+    "freyr.fdl.versions.view",
+    "list",
+    ["list", "timeline"]
+  );
   const [offeringPickerView, setOfferingPickerView] = useStoredView<
     "tiles" | "rows"
   >("freyr.fdl.offeringPicker.view", "rows", ["tiles", "rows"]);
@@ -1124,16 +1134,49 @@ export function FdlComponentDetail({
             <Rocket size={15} strokeWidth={2} className="text-blue-primary" /> Versions
             <InfoHint text="Every version this component has shipped or has planned. The check mark shows the current one, the version sellers quote." />
           </h2>
-          {canEdit && (
-            <Button onClick={() => setAddingVersion(true)}>
-              <Plus size={14} strokeWidth={2.2} /> Add version
-            </Button>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {canEdit && (
+              <Button onClick={() => setAddingVersion(true)}>
+                <Plus size={14} strokeWidth={2.2} /> Add version
+              </Button>
+            )}
+            {releases.length > 0 && (
+              <ViewSelect
+                value={versionsView}
+                onChange={setVersionsView}
+                tileValue="list"
+                tableValue="timeline"
+                tileLabel="List"
+                tableLabel="Timeline"
+                tileIcon={Rows3}
+                tableIcon={GanttChartSquare}
+              />
+            )}
+          </div>
         </div>
         {releases.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-secondary">
             No versions yet. Add the first one, then list its features below.
           </p>
+        ) : versionsView === "timeline" ? (
+          /* The same records on a rail. Clicking a marker drops you back into
+             the list with that version open, so the timeline is a way in
+             rather than a dead end. */
+          <VersionTimeline
+            releases={releases.map((release) => ({
+              ...release,
+              customers: customersOnVersion(release.id).map((c) => ({
+                name: c.name,
+              })),
+              featureCount: component.features.filter((f) =>
+                f.versionIds.includes(release.id)
+              ).length,
+            }))}
+            onOpen={(releaseId) => {
+              setVersionsView("list");
+              setOpenVersions(new Set([releaseId]));
+            }}
+          />
         ) : (
           // ONE CARD PER VERSION. A divided list of text rows made every
           // version look like the same sentence repeated, with the open panel
