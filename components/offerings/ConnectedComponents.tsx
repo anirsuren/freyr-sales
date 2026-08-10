@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Boxes, Check, CircleCheck, Clock, LayoutGrid, Link2, Plus, Table2, X } from "lucide-react";
+import { Boxes, Check, CircleCheck, Clock, Link2, Plus, Unlink, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -13,7 +13,8 @@ import type { FdlComponent } from "@/lib/offerings";
 import {
   FdlTypeChip,
   fdlCurrentVersion,
-  versionTone,
+  VersionPill,
+  withV,
 } from "@/components/fdl/FdlComponentsBrowser";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { useStoredView } from "@/lib/useStoredView";
@@ -57,6 +58,18 @@ export function ConnectedComponents({
 
   async function saveIds(ids: string[], done: string) {
     return savePatch({ component_ids: ids }, done);
+  }
+
+  /** TAKING A COMPONENT OUT OF THE PACKAGE (Anir, Aug 10: "can you also add the
+   *  option for an Offering Owner to disconnect a component?"). It only edits
+   *  this offering's list — the component itself, with its versions, features
+   *  and customers, is untouched and stays in FDL Components, because the same
+   *  component may well sit inside other offerings. */
+  async function disconnect(component: FdlComponent) {
+    return saveIds(
+      connected.filter((c) => c.id !== component.id).map((c) => c.id),
+      `${component.name} disconnected from this offering.`
+    );
   }
 
   /** WHICH VERSION THIS OFFERING COVERS. Suren, Aug 9: "you need to say which
@@ -157,13 +170,13 @@ export function ConnectedComponents({
           <table className="w-full min-w-[720px] text-left">
             <thead>
               <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
-                <th className="w-[28%] px-4 py-2.5">Component</th>
-                <th className="w-[12%] px-3 py-2.5">Type</th>
-                <th className="w-[16%] px-3 py-2.5">Current version</th>
+                <th className="w-[26%] px-4 py-2.5">Component</th>
+                <th className="w-[11%] px-3 py-2.5">Type</th>
+                <th className="w-[14%] px-3 py-2.5">Current version</th>
                 <th className="w-[9%] px-3 py-2.5">Versions</th>
                 <th className="w-[9%] px-3 py-2.5">Features</th>
-                <th className="w-[22%] px-3 py-2.5">Version covered</th>
-                <th className="w-[4%] px-3 py-2.5" />
+                <th className="w-[21%] px-3 py-2.5">Version covered</th>
+                <th className="w-[10%] px-3 py-2.5 text-right">Remove</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
@@ -190,16 +203,7 @@ export function ConnectedComponents({
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5">
                       {current ? (
-                        <span
-                          className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11.5px] font-semibold tnum"
-                          style={{
-                            color: versionTone({ current: true }).color,
-                            borderColor: versionTone({ current: true }).border,
-                            background: versionTone({ current: true }).bg,
-                          }}
-                        >
-                          {current}
-                        </span>
+                        <VersionPill version={current} current />
                       ) : (
                         <span className="text-[12.5px] text-text-tertiary">
                           Not recorded
@@ -221,10 +225,7 @@ export function ConnectedComponents({
                             { value: "", label: "Not pinned", color: "#0071E3", icon: Clock },
                             ...component.releases.map((release) => ({
                               value: release.id,
-                              label:
-                                release.status === "released"
-                                  ? `${release.version} · released`
-                                  : `${release.version} · expected`,
+                              label: withV(release.version),
                               color: release.status === "released" ? "#1A7A35" : "#6D28D9",
                               icon: release.status === "released" ? CircleCheck : Clock,
                             })),
@@ -237,31 +238,50 @@ export function ConnectedComponents({
                         />
                       ) : (
                         <span className="text-[12.5px] text-text-secondary">
-                          {component.releases.find(
-                            (r) => r.id === versions[component.id]
-                          )?.version || "Not pinned"}
+                          {(() => {
+                            const pinned = component.releases.find(
+                              (r) => r.id === versions[component.id]
+                            );
+                            return pinned ? withV(pinned.version) : "Not pinned";
+                          })()}
                         </span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      {canEdit && (
-                        <button
-                          type="button"
-                          aria-label={`Disconnect ${component.name}`}
-                          title="Disconnect from this offering"
-                          onClick={() =>
-                            void saveIds(
-                              connected
-                                .filter((c) => c.id !== component.id)
-                                .map((c) => c.id),
-                              `${component.name} disconnected.`
-                            )
-                          }
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary opacity-0 transition-opacity hover:bg-error/10 hover:text-error group-hover:opacity-100"
-                        >
-                          <X size={13} strokeWidth={2} />
-                        </button>
-                      )}
+                      {canEdit &&
+                        (confirmDisconnect === component.id ? (
+                          <span className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void disconnect(component).then(() =>
+                                  setConfirmDisconnect(null)
+                                )
+                              }
+                              className="cursor-pointer whitespace-nowrap rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
+                            >
+                              Disconnect?
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Keep it connected"
+                              onClick={() => setConfirmDisconnect(null)}
+                              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
+                            >
+                              <X size={12} strokeWidth={2} />
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={`Disconnect ${component.name}`}
+                            title="Disconnect from this offering"
+                            onClick={() => setConfirmDisconnect(component.id)}
+                            className="ml-auto flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                          >
+                            <Unlink size={13} strokeWidth={2} />
+                          </button>
+                        ))}
                     </td>
                   </tr>
                 );
@@ -294,7 +314,9 @@ export function ConnectedComponents({
                     <FdlTypeChip type={component.type} />
                   </div>
                   <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                    {current ? `Current version ${current}` : "No version recorded yet"}
+                    {current
+                      ? `Current version ${withV(current)}`
+                      : "No version recorded yet"}
                     {" · "}
                     {component.releases.length}{" "}
                     {component.releases.length === 1 ? "version" : "versions"}
@@ -319,10 +341,7 @@ export function ConnectedComponents({
                         { value: "", label: "Not pinned", color: "#0071E3", icon: Clock },
                         ...component.releases.map((release) => ({
                           value: release.id,
-                          label:
-                            release.status === "released"
-                              ? `${release.version} · released`
-                              : `${release.version} · expected`,
+                          label: withV(release.version),
                           color: release.status === "released" ? "#1A7A35" : "#6D28D9",
                           icon: release.status === "released" ? CircleCheck : Clock,
                         })),
@@ -333,22 +352,25 @@ export function ConnectedComponents({
                     />
                   ) : (
                     <p className="text-[13px] font-semibold text-text-primary">
-                      {component.releases.find((r) => r.id === versions[component.id])
-                        ?.version || "Not pinned"}
+                      {(() => {
+                        const pinned = component.releases.find(
+                          (r) => r.id === versions[component.id]
+                        );
+                        return pinned ? withV(pinned.version) : "Not pinned";
+                      })()}
                     </p>
                   )}
                 </div>
 
                 {canEdit &&
                   (confirmDisconnect === component.id ? (
-                    <span className="absolute right-3 top-3 flex items-center gap-1">
+                    <span className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-lg bg-white px-1 py-0.5 shadow-[0_2px_10px_rgba(0,0,0,0.10)]">
                       <button
                         type="button"
                         onClick={() =>
-                          void saveIds(
-                            connected.filter((c) => c.id !== component.id).map((c) => c.id),
-                            `${component.name} disconnected.`
-                          ).then(() => setConfirmDisconnect(null))
+                          void disconnect(component).then(() =>
+                            setConfirmDisconnect(null)
+                          )
                         }
                         className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
                       >
@@ -369,9 +391,9 @@ export function ConnectedComponents({
                       aria-label={`Disconnect ${component.name}`}
                       title="Disconnect from this offering"
                       onClick={() => setConfirmDisconnect(component.id)}
-                      className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary opacity-0 transition-opacity hover:bg-error/10 hover:text-error group-hover:opacity-100"
+                      className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                     >
-                      <X size={13} strokeWidth={2} />
+                      <Unlink size={13} strokeWidth={2} />
                     </button>
                   ))}
               </div>
