@@ -58,6 +58,7 @@ import {
   withV,
 } from "@/components/fdl/FdlComponentsBrowser";
 import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
+import { PrioritySearchInput } from "@/components/ui/SearchPriority";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 
@@ -272,6 +273,16 @@ export function FdlComponentDetail({
    *  instead of silently starting a download. */
   const [previewing, setPreviewing] = useState<FdlFeatureAttachment | null>(null);
   const [pickedOfferings, setPickedOfferings] = useState<string[]>([]);
+  // THE PICKER IS A LIST LIKE ANY OTHER (Anir, Aug 10: "there should be a
+  // search bar here. Also, again, I need a way to see either row view or tiles
+  // view"). Thirty-one offerings behind a scroll box meant hunting for the one
+  // you came to tick. Same two controls every other list in the app carries,
+  // and the layout choice is remembered under its own key so it does not
+  // disturb the components list behind the modal.
+  const [offeringQuery, setOfferingQuery] = useState("");
+  const [offeringPickerView, setOfferingPickerView] = useStoredView<
+    "tiles" | "rows"
+  >("freyr.fdl.offeringPicker.view", "rows", ["tiles", "rows"]);
 
   /** Add or remove this component on each offering the tick state changed. */
   async function connectOfferings() {
@@ -726,7 +737,7 @@ export function FdlComponentDetail({
           <FdlTypeChip type={component.type} />
           {current && (
             <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(0,113,227,0.25)] bg-[rgba(0,113,227,0.08)] px-2.5 py-0.5 text-[11.5px] font-semibold text-[color:#0040A0]">
-              <Rocket size={11} strokeWidth={2.2} /> Current {current}
+              <Rocket size={11} strokeWidth={2.2} /> Current {withV(current)}
             </span>
           )}
           {canEdit && (
@@ -766,6 +777,9 @@ export function FdlComponentDetail({
                 setPickedOfferings(
                   offerings.filter((o) => o.connected).map((o) => o.id)
                 );
+                // A stale search from last time would open the picker already
+                // hiding most of the catalogue.
+                setOfferingQuery("");
                 setAddingOffering(true);
               }}
               title="Put this component inside an offering, so it sells as part of that package"
@@ -955,46 +969,132 @@ export function FdlComponentDetail({
             Tick every offering this component is part of. Which version each
             one covers is set on the offering itself.
           </p>
-          <ScrollHint className="max-h-72">
-            <ul className="space-y-1.5">
-              {offerings.map((offering) => {
-                const active = pickedOfferings.includes(offering.id);
-                return (
-                  <li key={offering.id}>
-                    <button
-                      type="button"
-                      onClick={() =>
+          <div className="flex items-center gap-2">
+            <PrioritySearchInput
+              grow
+              className="min-w-0 flex-1"
+              value={offeringQuery}
+              onChange={setOfferingQuery}
+              placeholder="Search offerings"
+              ariaLabel="Search offerings"
+              inputClassName="h-9 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none transition-[border-color,box-shadow] focus:border-blue-primary focus:shadow-input-focus"
+              iconClassName="left-3"
+              iconSize={15}
+            />
+            <ViewSelect
+              value={offeringPickerView}
+              onChange={setOfferingPickerView}
+              tileValue="tiles"
+              tableValue="rows"
+            />
+          </div>
+          {(() => {
+            const q = offeringQuery.trim().toLowerCase();
+            const shown = q
+              ? offerings.filter((o) => o.name.toLowerCase().includes(q))
+              : offerings;
+            // A tick you cannot see is a tick you will undo by accident, so a
+            // search that hides an already-ticked offering says so rather than
+            // quietly leaving it out of view.
+            const hiddenPicked = pickedOfferings.filter(
+              (id) => !shown.some((o) => o.id === id)
+            ).length;
+            if (shown.length === 0) {
+              return (
+                <p className="rounded-lg border border-dashed border-border-light px-4 py-6 text-center text-[12.5px] text-text-tertiary">
+                  No offering matches “{offeringQuery.trim()}”.
+                </p>
+              );
+            }
+            const tiles = offeringPickerView === "tiles";
+            return (
+              <>
+                <ScrollHint className="max-h-72">
+                  <ul
+                    className={
+                      tiles
+                        ? "grid grid-cols-2 items-stretch gap-2"
+                        : "space-y-1.5"
+                    }
+                  >
+                    {shown.map((offering) => {
+                      const active = pickedOfferings.includes(offering.id);
+                      const toggle = () =>
                         setPickedOfferings((prev) =>
                           active
                             ? prev.filter((x) => x !== offering.id)
                             : [...prev, offering.id]
-                        )
-                      }
-                      className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
-                        active
-                          ? "border-blue-primary bg-blue-light/50"
-                          : "border-border-light hover:border-blue-subtle"
-                      }`}
-                    >
-                      <span
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                          active
-                            ? "border-blue-primary bg-blue-primary text-white"
-                            : "border-border"
-                        }`}
-                      >
-                        {active && <Check size={12} strokeWidth={3} />}
-                      </span>
-                      <OfferingIcon name={offering.name} className="h-7 w-7 shrink-0" />
-                      <span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">
-                        {offering.name}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </ScrollHint>
+                        );
+                      const box = (
+                        <span
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                            active
+                              ? "border-blue-primary bg-blue-primary text-white"
+                              : "border-border"
+                          }`}
+                        >
+                          {active && <Check size={12} strokeWidth={3} />}
+                        </span>
+                      );
+                      return (
+                        <li key={offering.id} className={tiles ? "h-full" : undefined}>
+                          <button
+                            type="button"
+                            onClick={toggle}
+                            aria-pressed={active}
+                            className={`cursor-pointer rounded-lg border transition-colors ${
+                              active
+                                ? "border-blue-primary bg-blue-light/50"
+                                : "border-border-light hover:border-blue-subtle"
+                            } ${
+                              tiles
+                                ? // min-h keeps a one-line name the same height
+                                  // as a three-line one, so the grid stays even.
+                                  "relative flex h-full min-h-[112px] w-full flex-col items-center justify-center gap-2 px-3 py-3.5 text-center"
+                                : "flex w-full items-center gap-3 px-3 py-2 text-left"
+                            }`}
+                          >
+                            {tiles ? (
+                              <>
+                                <span className="absolute left-2.5 top-2.5">
+                                  {box}
+                                </span>
+                                <OfferingIcon
+                                  name={offering.name}
+                                  className="h-9 w-9 shrink-0"
+                                />
+                                <span className="line-clamp-3 text-[12px] font-medium leading-snug text-text-primary">
+                                  {offering.name}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                {box}
+                                <OfferingIcon
+                                  name={offering.name}
+                                  className="h-7 w-7 shrink-0"
+                                />
+                                <span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">
+                                  {offering.name}
+                                </span>
+                              </>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </ScrollHint>
+                {hiddenPicked > 0 && (
+                  <p className="text-[11.5px] text-text-tertiary">
+                    {hiddenPicked} ticked{" "}
+                    {hiddenPicked === 1 ? "offering is" : "offerings are"} hidden
+                    by this search. Clearing it will still save them.
+                  </p>
+                )}
+              </>
+            );
+          })()}
           {/* SAVE ONLY LIGHTS UP IF SOMETHING CHANGED (Anir, Aug 9: "the save
               button should only show up if I actually did anything, it should
               be grayed out and I shouldn't be able to press it"). Comparing the
@@ -1136,7 +1236,7 @@ export function FdlComponentDetail({
                           <span className="text-[16px] font-semibold leading-tight tracking-[-0.01em] text-text-primary">
                             {MONTH_ONLY.test(release.version)
                               ? "No version number recorded"
-                              : release.version}
+                              : withV(release.version)}
                           </span>
                           <span
                             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -1447,7 +1547,7 @@ export function FdlComponentDetail({
                         ) : (
                           <button
                             type="button"
-                            aria-label={`Remove ${release.version}`}
+                            aria-label={`Remove ${withV(release.version)}`}
                             onClick={() => setConfirmReleaseDelete(release.id)}
                             className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                           >
@@ -1532,8 +1632,8 @@ export function FdlComponentDetail({
                               <button
                                 type="button"
                                 onClick={() => openAddCustomers(release.id)}
-                                title={`Add a customer on ${release.version}`}
-                                aria-label={`Add a customer on ${release.version}`}
+                                title={`Add a customer on ${withV(release.version)}`}
+                                aria-label={`Add a customer on ${withV(release.version)}`}
                                 className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95"
                               >
                                 <Plus size={13} strokeWidth={2.6} />
@@ -1586,7 +1686,7 @@ export function FdlComponentDetail({
                                           <span aria-hidden="true">·</span>
                                           <span className="whitespace-nowrap">
                                             {theirNext
-                                              ? `Moving to ${theirNext.version}`
+                                              ? `Moving to ${withV(theirNext.version)}`
                                               : "No move planned"}
                                           </span>
                                         </span>
@@ -1858,7 +1958,7 @@ export function FdlComponentDetail({
                           inThem.length === releases.length
                             ? "Every version"
                             : onward
-                              ? `From ${inThem[0].version} onward`
+                              ? `From ${withV(inThem[0].version)} onward`
                               : `${inThem.length} of ${releases.length} versions`;
                         return (
                           <HoverCard
@@ -1896,7 +1996,7 @@ export function FdlComponentDetail({
                                         strokeWidth={2.6}
                                         className="shrink-0 text-[color:#1A7A35]"
                                       />
-                                      <span className="tnum">{r.version}</span>
+                                      <span className="tnum">{withV(r.version)}</span>
                                       {r.current && (
                                         <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-blue-primary px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-[0.03em] text-white">
                                           <Check size={8} strokeWidth={3.4} />
@@ -1945,7 +2045,7 @@ export function FdlComponentDetail({
                               const rel = component.releases.find(
                                 (r) => r.id === c?.releaseId
                               );
-                              return rel ? `On ${rel.version}` : undefined;
+                              return rel ? `On ${withV(rel.version)}` : undefined;
                             }}
                           />
                         );
@@ -2144,10 +2244,10 @@ export function FdlComponentDetail({
                             Current version
                           </span>
                           <span className="mt-0.5 block text-[15px] font-bold leading-none text-text-primary tnum">
-                            {release ? release.version : "Not set yet"}
+                            {release ? withV(release.version) : "Not set yet"}
                           </span>
                           <span className="mt-1.5 block text-[11.5px] leading-tight text-text-tertiary">
-                            {next ? `Next: ${next.version}` : "No next version planned"}
+                            {next ? `Next: ${withV(next.version)}` : "No next version planned"}
                           </span>
                         </span>
                       </Link>
@@ -2332,7 +2432,7 @@ export function FdlComponentDetail({
               <p className="mt-1 text-[12.5px] text-text-secondary">
                 {compareReleases.length >= 2
                   ? `Comparing ${compareReleases
-                      .map((r) => r.version)
+                      .map((r) => withV(r.version))
                       .join(" vs ")}.`
                   : "Pick two or more versions to see them side by side."}
               </p>
@@ -2398,7 +2498,7 @@ export function FdlComponentDetail({
                           key={r.id}
                           className="w-[120px] min-w-[120px] px-2 py-2 text-center whitespace-nowrap"
                         >
-                          {r.version}
+                          {withV(r.version)}
                         </th>
                       ))}
                     </tr>
