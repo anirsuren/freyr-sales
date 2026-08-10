@@ -267,7 +267,12 @@ export function ConnectedComponents({
                         it: take the feature sheet, take it out of this
                         package, or open it. */}
                     <td className="px-3 py-2.5 text-right">
-                      <span className="inline-flex items-center justify-end gap-1">
+                      {/* -mr-1.5 is optical alignment, not a nudge: the last
+                          glyph sits ~6px inside its own 28px hit area, so a
+                          header aligned to the box edge reads as overhanging
+                          (Anir, Aug 10: "why is the actions header aligned like
+                          that"). This lines the glyph up with the heading. */}
+                      <span className="-mr-1.5 inline-flex items-center justify-end gap-1">
                         <Tooltip label="Download the feature sheet">
                           <button
                             type="button"
