@@ -3,14 +3,27 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Boxes, Check, CircleCheck, Clock, Link2, Plus, Unlink, X } from "lucide-react";
+import {
+  Boxes,
+  Check,
+  ChevronRight,
+  CircleCheck,
+  Clock,
+  Download,
+  Link2,
+  Plus,
+  Unlink,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import type { FdlComponent } from "@/lib/offerings";
 import {
+  downloadFeatureSheet,
   FdlTypeChip,
   fdlCurrentVersion,
   VersionPill,
@@ -175,8 +188,8 @@ export function ConnectedComponents({
                 <th className="w-[14%] px-3 py-2.5">Current version</th>
                 <th className="w-[9%] px-3 py-2.5">Versions</th>
                 <th className="w-[9%] px-3 py-2.5">Features</th>
-                <th className="w-[21%] px-3 py-2.5">Version covered</th>
-                <th className="w-[10%] px-3 py-2.5 text-right">Remove</th>
+                <th className="w-[18%] px-3 py-2.5">Version covered</th>
+                <th className="w-[13%] px-3 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
@@ -247,41 +260,78 @@ export function ConnectedComponents({
                         </span>
                       )}
                     </td>
+                    {/* THREE ACTIONS, NOT ONE (Anir, Aug 10: "the last column
+                        here should be actions, and it should have two or three
+                        actions"). The same three the components directory
+                        offers, so the row behaves the same wherever you meet
+                        it: take the feature sheet, take it out of this
+                        package, or open it. */}
                     <td className="px-3 py-2.5 text-right">
-                      {canEdit &&
-                        (confirmDisconnect === component.id ? (
-                          <span className="flex items-center justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void disconnect(component).then(() =>
-                                  setConfirmDisconnect(null)
-                                )
-                              }
-                              className="cursor-pointer whitespace-nowrap rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                            >
-                              Disconnect?
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Keep it connected"
-                              onClick={() => setConfirmDisconnect(null)}
-                              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
-                            >
-                              <X size={12} strokeWidth={2} />
-                            </button>
-                          </span>
-                        ) : (
+                      <span className="inline-flex items-center justify-end gap-1">
+                        <Tooltip label="Download the feature sheet">
                           <button
                             type="button"
-                            aria-label={`Disconnect ${component.name}`}
-                            title="Disconnect from this offering"
-                            onClick={() => setConfirmDisconnect(component.id)}
-                            className="ml-auto flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                            aria-label={`Download the ${component.name} feature sheet`}
+                            onClick={() => {
+                              downloadFeatureSheet(component);
+                              toast(`${component.name} feature sheet downloaded.`);
+                            }}
+                            disabled={component.features.length === 0}
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            <Unlink size={13} strokeWidth={2} />
+                            <Download size={14} strokeWidth={2} />
                           </button>
-                        ))}
+                        </Tooltip>
+                        {canEdit &&
+                          (confirmDisconnect === component.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void disconnect(component).then(() =>
+                                    setConfirmDisconnect(null)
+                                  )
+                                }
+                                className="cursor-pointer whitespace-nowrap rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
+                              >
+                                Disconnect?
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Keep it connected"
+                                onClick={() => setConfirmDisconnect(null)}
+                                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
+                              >
+                                <X size={12} strokeWidth={2} />
+                              </button>
+                            </>
+                          ) : (
+                            <Tooltip label="Take it out of this offering">
+                              <button
+                                type="button"
+                                aria-label={`Disconnect ${component.name}`}
+                                onClick={() => setConfirmDisconnect(component.id)}
+                                // Red at rest: this one changes what the
+                                // package contains, so it should read as
+                                // consequential before you reach it.
+                                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                              >
+                                <Unlink size={14} strokeWidth={2} />
+                              </button>
+                            </Tooltip>
+                          ))}
+                        <Tooltip label={`Open ${component.name}`}>
+                          <Link
+                            href={`/components/${component.id}?from=${encodeURIComponent(
+                              `/offerings/${offeringId}?tab=components`
+                            )}`}
+                            aria-label={`Open ${component.name}`}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                          >
+                            <ChevronRight size={15} strokeWidth={2.2} />
+                          </Link>
+                        </Tooltip>
+                      </span>
                     </td>
                   </tr>
                 );

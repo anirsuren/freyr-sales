@@ -29,6 +29,7 @@ import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { downloadDocx } from "@/lib/docx";
+import { withV } from "@/lib/version";
 import { useToast } from "@/components/ui/Toast";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
@@ -121,10 +122,39 @@ export function versionTone(release: {
  */
 /** A version always reads with its V, whatever was typed (Anir, Aug 9: "it's
  *  always gonna start with V, cuz it's a version... just hardcode that in"). */
-export function withV(version: string) {
-  const v = String(version || "").trim();
-  if (!v) return v;
-  return /^v/i.test(v) ? `V${v.slice(1)}` : `V${v}`;
+export { withV };
+
+/**
+ * A COMPONENT'S FEATURE LIST AS A REAL .docx, without opening it first.
+ * Shared, because the same action now sits in two tables — the components
+ * directory and an offering's Components tab — and a second copy would drift.
+ */
+export function downloadFeatureSheet(component: FdlComponent) {
+  const current = fdlCurrentVersion(component);
+  downloadDocx(
+    `${component.name.replace(/[^A-Za-z0-9._-]+/g, "-")}-features.docx`,
+    component.name,
+    current
+      ? `${component.type} · current version ${withV(current)} · ${component.features.length} features`
+      : `${component.type} · no version recorded yet · ${component.features.length} features`,
+    {
+      headers: ["ID", "Feature", "In versions"],
+      rows: component.features.map((feature) => ({
+        cells: [
+          feature.fid || "",
+          feature.name,
+          feature.versionIds.length === component.releases.length
+            ? "Every version"
+            : component.releases
+                .filter((r) => feature.versionIds.includes(r.id))
+                .map((r) => withV(r.version))
+                .join(", ") || "None yet",
+        ],
+        note: feature.description || undefined,
+        noteAt: 1,
+      })),
+    }
+  );
 }
 
 export function VersionPill({
@@ -178,36 +208,6 @@ export function FdlComponentsBrowser({
   const [busy, setBusy] = useState(false);
   /** Which row is asking "are you sure" about deleting itself. */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-
-  /** The component's feature list as a real .docx, without opening it first. */
-  function downloadFeatureSheet(component: FdlComponent) {
-    const current = fdlCurrentVersion(component);
-    downloadDocx(
-      `${component.name.replace(/[^A-Za-z0-9._-]+/g, "-")}-features.docx`,
-      component.name,
-      current
-        ? `${component.type} · current version ${current} · ${component.features.length} features`
-        : `${component.type} · no version recorded yet · ${component.features.length} features`,
-      {
-        headers: ["ID", "Feature", "In versions"],
-        rows: component.features.map((feature) => ({
-          cells: [
-            feature.fid || "",
-            feature.name,
-            feature.versionIds.length === component.releases.length
-              ? "Every version"
-              : component.releases
-                  .filter((r) => feature.versionIds.includes(r.id))
-                  .map((r) => r.version)
-                  .join(", ") || "None yet",
-          ],
-          note: feature.description || undefined,
-          noteAt: 1,
-        })),
-      }
-    );
-    toast(`${component.name} feature sheet downloaded.`);
-  }
 
   async function removeComponent(component: FdlComponent) {
     setBusy(true);
@@ -681,7 +681,10 @@ export function FdlComponentsBrowser({
                               <button
                                 type="button"
                                 aria-label={`Download the ${component.name} feature sheet`}
-                                onClick={() => downloadFeatureSheet(component)}
+                                onClick={() => {
+                                  downloadFeatureSheet(component);
+                                  toast(`${component.name} feature sheet downloaded.`);
+                                }}
                                 disabled={component.features.length === 0}
                                 className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-40"
                               >
