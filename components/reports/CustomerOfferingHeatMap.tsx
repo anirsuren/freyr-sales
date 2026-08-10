@@ -340,6 +340,14 @@ export function CustomerOfferingHeatMap({
   const [activityFilter, setActivityFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  /* CROSSHAIR (Anir, Aug 10: "when I hover here, make it easier to see which
+     square is in which column in which row. Do some cool highlight effect").
+     Hovering a cell lights its whole row and whole column as two soft beams
+     that intersect at the cursor, and both headers answer the question the
+     beams are asking: THIS customer, THIS offering. */
+  const [cross, setCross] = useState<{ row: string; col: string } | null>(
+    null
+  );
   const [selected, setSelected] = useState<SelectedCell | null>(null);
   const [draft, setDraft] =
     useState<CustomerOfferingEngagementVersion | null>(null);
@@ -1102,6 +1110,7 @@ export function CustomerOfferingHeatMap({
             )}
           >
             <table
+              onMouseLeave={() => setCross(null)}
               className="table-fixed border-separate border-spacing-0 text-left"
               style={{
                 width: 220 + matrixOfferings.length * 156,
@@ -1128,7 +1137,8 @@ export function CustomerOfferingHeatMap({
                     <th
                       key={offering.id}
                       className={cn(
-                        "h-[78px] w-[156px] border-b border-r border-border bg-surface px-2.5 py-2",
+                        "h-[78px] w-[156px] border-b border-r border-border px-2.5 py-2 transition-colors duration-150",
+                        cross?.col === offering.id ? "bg-blue-light" : "bg-surface",
                         pinOfferings && "sticky top-0 z-20"
                       )}
                     >
@@ -1141,7 +1151,14 @@ export function CustomerOfferingHeatMap({
                           name={offering.name}
                           className="h-5 w-5 shrink-0 rounded-md transition-transform group-hover:scale-105"
                         />
-                        <p className="flex h-[26px] w-full items-start justify-center overflow-hidden text-[10.5px] font-semibold leading-[1.2] text-text-primary group-hover:text-primary">
+                        <p
+                          className={cn(
+                            "flex h-[26px] w-full items-start justify-center overflow-hidden text-[10.5px] font-semibold leading-[1.2] transition-colors duration-150 group-hover:text-primary",
+                            cross?.col === offering.id
+                              ? "text-blue-primary"
+                              : "text-text-primary"
+                          )}
+                        >
                           <span className="line-clamp-2">
                             {offering.name}
                           </span>
@@ -1156,7 +1173,8 @@ export function CustomerOfferingHeatMap({
                   <tr key={customer.id}>
                     <th
                       className={cn(
-                        "w-[220px] border-b border-r border-border bg-white px-3.5 py-2",
+                        "w-[220px] border-b border-r border-border px-3.5 py-2 transition-colors duration-150",
+                        cross?.row === customer.id ? "bg-blue-light" : "bg-white",
                         pinCustomers && "sticky left-0 z-10"
                       )}
                     >
@@ -1167,7 +1185,12 @@ export function CustomerOfferingHeatMap({
                         />
                         <div className="min-w-0">
                           <p
-                            className="truncate text-[12px] font-semibold text-text-primary"
+                            className={cn(
+                              "truncate text-[12px] font-semibold transition-colors duration-150",
+                              cross?.row === customer.id
+                                ? "text-blue-primary"
+                                : "text-text-primary"
+                            )}
                             title={customer.company_name}
                           >
                             {customer.company_name}
@@ -1208,6 +1231,9 @@ export function CustomerOfferingHeatMap({
                           <button
                             type="button"
                             onClick={() => openCell(customer, offering)}
+                            onMouseEnter={() =>
+                              setCross({ row: customer.id, col: offering.id })
+                            }
                             title={`${customer.company_name} × ${offering.name}: ${
                               activity
                                 ? CUSTOMER_OFFERING_ACTIVITIES[activity].label
@@ -1270,6 +1296,28 @@ export function CustomerOfferingHeatMap({
                                 className="absolute right-1.5 shrink-0 opacity-65"
                               />
                             )}
+                            {/* The beam: always mounted, opacity-toggled, so
+                                it GLIDES between cells instead of blinking.
+                                It lies over coloured cells too — a beam that
+                                skipped them would read as broken — and goes
+                                quiet on the hovered cell itself, whose inset
+                                ring already says "you are here". */}
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute inset-0 bg-blue-primary/[0.07] transition-opacity duration-150"
+                              style={{
+                                opacity:
+                                  cross &&
+                                  (cross.row === customer.id ||
+                                    cross.col === offering.id) &&
+                                  !(
+                                    cross.row === customer.id &&
+                                    cross.col === offering.id
+                                  )
+                                    ? 1
+                                    : 0,
+                              }}
+                            />
                           </button>
                         </td>
                       );
