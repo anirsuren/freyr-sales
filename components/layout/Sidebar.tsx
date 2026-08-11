@@ -25,6 +25,7 @@ import {
   PanelLeftOpen,
   LucideIcon,
   Boxes,
+  Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -60,6 +61,7 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/analytics", label: "Analytics", icon: ChartColumnBig },
   { href: "/reports", label: "Reports", icon: FileBarChart },
+  { href: "/performance", label: "Performance", icon: Gauge },
   { href: "/market-intel", label: "Market Intel", icon: Radar },
   { href: "/activity", label: "Activity", icon: Rss },
 ];

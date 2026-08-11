@@ -67,6 +67,11 @@ const RELEASED_MODULE_PREFIXES = [
   // must open them, not bounce to Offerings. The /analytics module root
   // stays unreleased and hidden from navigation.
   "/analytics/reps",
+  // PERFORMANCE MANAGEMENT ships with the real goal master (Suren, Aug 11:
+  // his goals.xlsx entered as the master list; "do it"). Real mode carries
+  // his goal types and goals with no invented numbers — targets and actuals
+  // stay empty until the team fills them.
+  "/performance",
   // MARKET INTELLIGENCE ships as a DESIGN MOCKUP with sample data (Anir,
   // Aug 10, from Anant's ask; "do this in both real mode and mock mode, I'm
   // wiring it up actually today anyway"). Every page labels itself as a
