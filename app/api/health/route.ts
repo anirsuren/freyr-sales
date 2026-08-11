@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { armMarketIntelSelfRefresh } from "@/lib/marketIntelCron";
 import { claudeStatus } from "@/lib/claude";
 import { getDb } from "@/lib/db";
 import { getServiceStatus } from "@/lib/env";
@@ -10,6 +11,9 @@ import { configuredAuthOrigin } from "@/lib/authOrigin";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Health checks hit this constantly, so the self-refresh timer is armed
+  // seconds after every boot without touching the edge-compiled boot hook.
+  armMarketIntelSelfRefresh();
   const started = Date.now();
   const dataMode = getDataMode();
   const authMode = process.env.AUTH_MODE;
