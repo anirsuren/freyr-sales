@@ -46,6 +46,7 @@ import { Field, Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Textarea } from "@/components/ui/Textarea";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import {
   PrioritySearchInput,
@@ -103,28 +104,14 @@ const STATUS_ICONS: Record<CustomerOfferingStatus, LucideIcon> = {
 
 /**
  * WHAT STAYS PUT WHILE YOU SCROLL (Anir, Aug 9: "there should be an option to
- * like pin the row headers and the column headers if i want").
- *
- * A matrix this wide is unreadable once either header leaves the screen — you
- * are looking at a coloured cell with no idea which customer or which offering
- * it belongs to. Both headers were already marked sticky, but only the
- * customer column actually held: the offering row was sticky against a box
- * that never scrolled vertically, so it did nothing. Pinning the top now gives
- * the matrix its own bounded scroll area, which is the only way a header row
- * can outlast the rows beneath it.
- *
- * It is a choice rather than a rule because pinning costs screen height, and on
- * a short list you would rather have the rows.
+ * like pin the row headers and the column headers if i want"). First built as
+ * a toolbar dropdown; he threw that out (Aug 10: "this should not be a
+ * drop-down. This has to be something on the row and in the column... it's
+ * not a filter, right?") — and he is right: pinning is a property of the
+ * headers, so the controls live in the CORNER CELL where the two headers
+ * meet, one chip per axis, like freeze handles on a sheet.
  */
-type PinMode = "both" | "customers" | "offerings" | "none";
-const PIN_MODES: readonly PinMode[] = ["both", "customers", "offerings", "none"];
-
-const PIN_OPTIONS: ColorOption[] = [
-  { value: "both", label: "Pin both headers", color: "#0071E3", icon: Pin },
-  { value: "customers", label: "Pin customers only", color: "#0891B2", icon: Pin },
-  { value: "offerings", label: "Pin offerings only", color: "#7C3AED", icon: Pin },
-  { value: "none", label: "Pin nothing", color: "#6B6B70", icon: PinOff },
-];
+const PIN_STATES = ["on", "off"] as const;
 
 const DISPLAY_OPTIONS: ColorOption[] = [
   { value: "activity", label: "Show the activity", color: "#0071E3", icon: Activity },
@@ -319,13 +306,14 @@ export function CustomerOfferingHeatMap({
   const { toast } = useToast();
   const [customers, setCustomers] = useState(initialCustomers);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("activity");
-  const [pinMode, setPinMode] = useStoredView<PinMode>(
-    "freyr.heatmap.pin",
-    "both",
-    PIN_MODES
-  );
-  const pinCustomers = pinMode === "both" || pinMode === "customers";
-  const pinOfferings = pinMode === "both" || pinMode === "offerings";
+  const [pinCustomersState, setPinCustomersState] = useStoredView<
+    "on" | "off"
+  >("freyr.heatmap.pin.customers", "on", PIN_STATES);
+  const [pinOfferingsState, setPinOfferingsState] = useStoredView<
+    "on" | "off"
+  >("freyr.heatmap.pin.offerings", "on", PIN_STATES);
+  const pinCustomers = pinCustomersState === "on";
+  const pinOfferings = pinOfferingsState === "on";
   /**
    * PICK AS MANY AS YOU WANT. These were single-select, so asking for
    * "opportunity and contract" was impossible: choosing one dropped the other
@@ -1056,13 +1044,6 @@ export function CustomerOfferingHeatMap({
             ariaLabel="Cell display"
             minWidth={150}
           />
-          <ColorSelect
-            value={pinMode}
-            onChange={(value) => setPinMode(value as PinMode)}
-            options={PIN_OPTIONS}
-            ariaLabel="Which headers stay on screen while you scroll"
-            minWidth={168}
-          />
           <MultiColorSelect
             values={activityFilter}
             onChange={setActivityFilter}
@@ -1131,6 +1112,51 @@ export function CustomerOfferingHeatMap({
                   >
                     <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
                       Customer
+                    </span>
+                    <span className="mt-1.5 flex items-center gap-1">
+                      {(
+                        [
+                          {
+                            label: "Customers",
+                            on: pinCustomers,
+                            flip: () =>
+                              setPinCustomersState(pinCustomers ? "off" : "on"),
+                            hint: pinCustomers
+                              ? "Customer names stay put while you scroll sideways. Click to unpin."
+                              : "Pin the customer column so names stay while you scroll sideways.",
+                          },
+                          {
+                            label: "Offerings",
+                            on: pinOfferings,
+                            flip: () =>
+                              setPinOfferingsState(pinOfferings ? "off" : "on"),
+                            hint: pinOfferings
+                              ? "Offering names stay put while you scroll down. Click to unpin."
+                              : "Pin the offering row so names stay while you scroll down.",
+                          },
+                        ] as const
+                      ).map((axis) => (
+                        <Tooltip key={axis.label} label={axis.hint}>
+                          <button
+                            type="button"
+                            aria-pressed={axis.on}
+                            onClick={axis.flip}
+                            className={cn(
+                              "flex cursor-pointer items-center gap-1 rounded-full border px-1.5 py-[3px] text-[9.5px] font-semibold transition-colors",
+                              axis.on
+                                ? "border-blue-subtle bg-blue-light text-blue-primary"
+                                : "border-border-light bg-white text-text-tertiary hover:border-blue-subtle hover:text-text-secondary"
+                            )}
+                          >
+                            {axis.on ? (
+                              <Pin size={9} strokeWidth={2.4} />
+                            ) : (
+                              <PinOff size={9} strokeWidth={2.4} />
+                            )}
+                            {axis.label}
+                          </button>
+                        </Tooltip>
+                      ))}
                     </span>
                   </th>
                   {matrixOfferings.map((offering) => (
