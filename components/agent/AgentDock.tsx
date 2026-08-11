@@ -112,6 +112,26 @@ function loadConversations(key: string): Convo[] {
   }
 }
 
+/** A conversation is only worth RESUMING the day it was last touched (Anir,
+ *  Aug 10: "you can't have a chat from months ago. If it's the next day, when
+ *  I click that button, it should automatically just create a new chat").
+ *  Yesterday's thread stays in the history list — it just never ambushes the
+ *  rep as the already-open chat, which is how a heat-map answer from another
+ *  day was greeting him on Customers. */
+function touchedToday(convo: Convo | undefined | null): boolean {
+  if (!convo) return false;
+  const last =
+    convo.updated || convo.messages[convo.messages.length - 1]?.ts || 0;
+  if (!last) return false;
+  const then = new Date(last);
+  const now = new Date();
+  return (
+    then.getFullYear() === now.getFullYear() &&
+    then.getMonth() === now.getMonth() &&
+    then.getDate() === now.getDate()
+  );
+}
+
 function mergeConversations(...lists: Convo[][]): Convo[] {
   const byId = new Map<string, Convo>();
   for (const list of lists) {
@@ -448,11 +468,14 @@ export function AgentDock({
       migratedDock
     );
     const savedActiveId = localStorage.getItem(activeDockStorageKey);
-    const initialActiveId = browserHistory.some(
+    const savedActive = browserHistory.find(
       (conversation) => conversation.id === savedActiveId
-    )
+    );
+    // Fresh-today or a fresh chat. Falling back to "most recent whatever its
+    // age" is what used to resurrect stale threads.
+    const initialActiveId = touchedToday(savedActive)
       ? savedActiveId
-      : browserHistory[0]?.id ?? null;
+      : null;
     setConvos(browserHistory);
     setActiveId(initialActiveId);
     setHydratedStorageKey(conversationStorageKey);
@@ -483,7 +506,7 @@ export function AgentDock({
             setActiveId((currentId) =>
               merged.some((conversation) => conversation.id === currentId)
                 ? currentId
-                : merged[0]?.id ?? null
+                : null
             );
           }
           return merged;
