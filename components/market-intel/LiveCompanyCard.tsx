@@ -40,6 +40,7 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
 }
 

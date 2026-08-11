@@ -22,6 +22,7 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
 }
 
@@ -239,6 +240,7 @@ export function TrackedPeopleList({
                     {new Date(open.addedAt).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
+                      year: "numeric",
                     })}
                   </span>
                   {open.followerCount != null && (
