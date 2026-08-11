@@ -67,6 +67,11 @@ const RELEASED_MODULE_PREFIXES = [
   // must open them, not bounce to Offerings. The /analytics module root
   // stays unreleased and hidden from navigation.
   "/analytics/reps",
+  // MARKET INTELLIGENCE ships as a DESIGN MOCKUP with sample data (Anir,
+  // Aug 10, from Anant's ask; "do this in both real mode and mock mode, I'm
+  // wiring it up actually today anyway"). Every page labels itself as a
+  // sample-data preview until the real feeds land.
+  "/market-intel",
 ] as const;
 
 // Pages that are not a MODULE and therefore survive the gate: signing in,

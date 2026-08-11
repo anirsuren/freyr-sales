@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Radar,
   LayoutDashboard,
   CalendarClock,
   Columns3,
@@ -59,6 +60,7 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/analytics", label: "Analytics", icon: ChartColumnBig },
   { href: "/reports", label: "Reports", icon: FileBarChart },
+  { href: "/market-intel", label: "Market Intel", icon: Radar },
   { href: "/activity", label: "Activity", icon: Rss },
 ];
 
