@@ -28,7 +28,9 @@ const RUN_CAP_USD = 4.5;
 const TARGETED_CAP_USD = 0.6;
 const POST_LIMIT = 10;
 const NEWS_LIMIT = 10;
-const PERSON_POST_LIMIT = 10;
+// Each pull re-bills the latest N posts whether or not they are new, so the
+// person limit stays small: 133 tracked people at 5 posts is ~$3.30 a run.
+const PERSON_POST_LIMIT = 5;
 const KEEP_POSTS = 60;
 const KEEP_NEWS = 40;
 
@@ -306,14 +308,21 @@ export async function runMarketIntelRefresh(options?: {
       ? tracking.people
       : [];
 
+    // Least-recently-synced first: when the dollar cap cuts a run short, the
+    // tail that missed out goes to the FRONT of tomorrow's run instead of
+    // being the same starved tail forever.
+    const lastSync = (id: string, map: Record<string, { fetchedAt?: string }>) =>
+      Date.parse(map[id]?.fetchedAt ?? "") || 0;
     const sources: CompanySource[] = [
       ...COMPANY_SOURCES,
       ...trackedCompanies
         .filter((c) => !COMPANY_SOURCES.some((s) => s.id === c.id))
         .map(trackedToSource),
-    ].filter(
-      (s) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(s.id)
-    );
+    ]
+      .filter(
+        (s) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(s.id)
+      )
+      .sort((a, b) => lastSync(a.id, feed.companies) - lastSync(b.id, feed.companies));
 
     for (const source of sources) {
       if (spent > RUN_CAP_USD) break;
@@ -345,7 +354,12 @@ export async function runMarketIntelRefresh(options?: {
       await writeRow(FEED_ROW, feed);
     }
 
-    for (const person of trackedPeople) {
+    const peopleQueue = [...trackedPeople].sort(
+      (a, b) =>
+        (Date.parse(feed.people[a.id]?.fetchedAt ?? "") || 0) -
+        (Date.parse(feed.people[b.id]?.fetchedAt ?? "") || 0)
+    );
+    for (const person of peopleQueue) {
       if (spent > RUN_CAP_USD) break;
       if (!person.linkedinUrl) continue;
       const existing = feed.people[person.id];
