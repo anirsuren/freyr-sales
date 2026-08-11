@@ -348,73 +348,8 @@ export function OfferingCompetition({
                       </ul>
                     )}
 
-                    {materialFor === row.id ? (
-                      <div className="mt-3 rounded-lg border border-blue-subtle bg-[rgba(0,113,227,0.03)] p-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <ColorSelect
-                            value={mKind}
-                            onChange={(v) => setMKind(v as CompetitionMaterialKind)}
-                            ariaLabel="Material type"
-                            minWidth={140}
-                            dense
-                            options={(
-                              Object.keys(KIND_META) as CompetitionMaterialKind[]
-                            ).map((kind) => ({
-                              value: kind,
-                              label:
-                                kind === "file"
-                                  ? "Document link"
-                                  : `${KIND_META[kind].label}${kind === "link" ? "" : " note"}`,
-                              color: KIND_META[kind].color,
-                              icon: KIND_META[kind].icon,
-                            }))}
-                          />
-                          <input
-                            value={mLabel}
-                            onChange={(e) => setMLabel(e.target.value)}
-                            placeholder='Name it, e.g. "2026 list pricing"'
-                            className="h-[34px] min-w-[200px] flex-1 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
-                          />
-                        </div>
-                        {needsUrl ? (
-                          <input
-                            value={mUrl}
-                            onChange={(e) => setMUrl(e.target.value)}
-                            placeholder={
-                              mKind === "file"
-                                ? "Paste the document's link (Teams, SharePoint, Drive…)"
-                                : "https://…"
-                            }
-                            className="mt-2 h-[34px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
-                          />
-                        ) : (
-                          <textarea
-                            value={mText}
-                            onChange={(e) => setMText(e.target.value)}
-                            placeholder="The note itself: what the team should know."
-                            rows={3}
-                            className="mt-2 w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-blue-subtle"
-                          />
-                        )}
-                        <div className="mt-2 flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => addMaterial(row.id)}
-                            className="cursor-pointer rounded-full bg-blue-primary px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
-                          >
-                            Save material
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMaterialFor(null)}
-                            className="cursor-pointer rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:bg-surface"
-                          >
-                            <X size={13} strokeWidth={2.4} className="inline" /> Close
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
+                    {(
+
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         {live ? (
                           <button
@@ -455,6 +390,74 @@ export function OfferingCompetition({
           })}
         </div>
       )}
+
+      <Modal
+        open={materialFor !== null}
+        onClose={() => setMaterialFor(null)}
+        title={(() => {
+          const row = rows.find((r) => r.id === materialFor);
+          return row ? `Add material — ${row.company} ${row.product}` : "Add material";
+        })()}
+      >
+        <p className="text-[12.5px] leading-relaxed text-text-secondary">
+          Drop in what the team learned: a pricing note, what the product is,
+          a link, or a document&apos;s link. It lands on this competitor for
+          everyone.
+        </p>
+        <div className="mt-3 space-y-3">
+          <ColorSelect
+            value={mKind}
+            onChange={(v) => setMKind(v as CompetitionMaterialKind)}
+            ariaLabel="Material type"
+            minWidth={200}
+            options={(
+              Object.keys(KIND_META) as CompetitionMaterialKind[]
+            ).map((kind) => ({
+              value: kind,
+              label:
+                kind === "file"
+                  ? "Document link"
+                  : `${KIND_META[kind].label}${kind === "link" ? "" : " note"}`,
+              color: KIND_META[kind].color,
+              icon: KIND_META[kind].icon,
+            }))}
+          />
+          <input
+            value={mLabel}
+            onChange={(e) => setMLabel(e.target.value)}
+            placeholder='Name it, e.g. "2026 list pricing"'
+            className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+          />
+          {needsUrl ? (
+            <input
+              value={mUrl}
+              onChange={(e) => setMUrl(e.target.value)}
+              placeholder={
+                mKind === "file"
+                  ? "Paste the document's link (Teams, SharePoint, Drive…)"
+                  : "https://…"
+              }
+              className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+            />
+          ) : (
+            <textarea
+              value={mText}
+              onChange={(e) => setMText(e.target.value)}
+              placeholder="The note itself: what the team should know."
+              rows={4}
+              className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-blue-subtle"
+            />
+          )}
+          <button
+            type="button"
+            disabled={busy || !mLabel.trim()}
+            onClick={() => materialFor && addMaterial(materialFor)}
+            className="w-full cursor-pointer rounded-full bg-blue-primary py-2.5 text-[13.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+          >
+            {busy ? "Saving…" : "Save material"}
+          </button>
+        </div>
+      </Modal>
 
       <Modal
         open={adding}
