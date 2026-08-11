@@ -1,22 +1,16 @@
-import Link from "next/link";
 import {
   Building2,
-  Hourglass,
   type LucideIcon,
   Newspaper,
   Radar,
   Swords,
-  TrendingDown,
-  TrendingUp,
-  Users,
 } from "lucide-react";
 import { StatTile } from "@/components/ui/StatTile";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
-import { Sparkline } from "@/components/charts/Charts";
-import { LiveCompanyCard } from "@/components/market-intel/LiveCompanyCard";
+import type { CardPerson } from "@/components/market-intel/LiveCompanyCard";
+import { LiveCompanyGrid } from "@/components/market-intel/LiveCompanyGrid";
 import { MiTabs } from "@/components/market-intel/MiTabs";
-import { RefreshClock } from "@/components/market-intel/NextRefresh";
+import { RefreshChip } from "@/components/market-intel/NextRefresh";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
 import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import {
@@ -70,7 +64,17 @@ export function LiveMarketIntelDashboard({
     0
   );
 
-  const latestNewsOf = (b: LiveBriefing) => b.news[0];
+  // Followed people per company, worn as a facepile on each card.
+  const peopleByCompany: Record<string, CardPerson[]> = {};
+  for (const person of tracking.people) {
+    (peopleByCompany[person.companyId] ??= []).push({
+      id: person.id,
+      name: person.name,
+      role: person.role,
+      photoUrl: person.photoUrl,
+      posts: feed.people[person.id]?.posts.length ?? 0,
+    });
+  }
 
   return (
     <div>
@@ -78,13 +82,7 @@ export function LiveMarketIntelDashboard({
         active={group === "competitor" ? "competitors" : "customers"}
         action={
           <span className="flex flex-wrap items-center gap-2.5">
-            <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
-              <span className="inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
-              <span>
-                Twice a day
-                <RefreshClock updatedAt={feed.updatedAt} />
-              </span>
-            </span>
+            <RefreshChip updatedAt={feed.updatedAt} />
             <TrackCompanyButton group={group} />
           </span>
         }
@@ -118,68 +116,12 @@ export function LiveMarketIntelDashboard({
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 stagger">
-        {briefings.map((briefing) => (
-          <LiveCompanyCard key={briefing.id} briefing={briefing} />
-        ))}
-
-        {pending.map((company) => {
-          const peopleCount = tracking.people.filter(
-            (p) => p.companyId === company.id
-          ).length;
-          return (
-            <Link
-              key={company.id}
-              href={`/market-intel/${company.id}`}
-              className="group block rounded-xl border border-border-light bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-2.5">
-                  <CompanyLogo
-                    name={company.name}
-                    className="h-9 w-9 shrink-0"
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[14.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                      {company.name}
-                    </span>
-                    <span className="block truncate text-[11.5px] text-text-tertiary">
-                      {company.industry || "Tracked company"}
-                    </span>
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:#0071E3]">
-                  New
-                </span>
-              </div>
-              <div className="mt-3 flex h-9 items-center justify-center rounded-md border border-dashed border-border-light text-[10.5px] font-medium text-text-tertiary">
-                Collecting the first weeks of activity
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
-                  <Users size={10.5} strokeWidth={2.2} />
-                  {peopleCount} {peopleCount === 1 ? "person" : "people"} followed
-                </span>
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#B4318F]">
-                  <Swords size={10.5} strokeWidth={2.2} />
-                  {company.competitors.length}{" "}
-                  {company.competitors.length === 1
-                    ? "competitor"
-                    : "competitors"}
-                </span>
-              </div>
-              <p className="mt-3 flex items-center gap-1.5 border-t border-border-light pt-2.5 text-[12px] leading-snug text-text-secondary">
-                <Hourglass
-                  size={12}
-                  strokeWidth={2.2}
-                  className="shrink-0 text-blue-primary"
-                />
-                First briefing lands on the next refresh.
-              </p>
-            </Link>
-          );
-        })}
-      </section>
+      <LiveCompanyGrid
+        briefings={briefings}
+        pending={pending}
+        people={peopleByCompany}
+        group={group}
+      />
 
       <div className="mt-6">
         <WatchlistMarquee

@@ -32,6 +32,10 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import {
+  PrioritySearchInput,
+  SearchPriority,
+} from "@/components/ui/SearchPriority";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Sparkline } from "@/components/charts/Charts";
 import { MiLogo } from "@/components/market-intel/MiLogo";
@@ -101,13 +105,23 @@ export function LiveCompanyBriefing({
   // "A lot of these post a lot... you can always just filter it" (Aug 11
   // call): the feed keeps 90 days, the chips narrow the window.
   const [range, setRange] = useState<"1" | "7" | "30" | "90">("90");
+  const [query, setQuery] = useState("");
 
   const up = (briefing.momentumPct ?? 0) >= 0;
   const cutoff = Date.now() - Number(range) * 86_400_000;
   const inRange = (iso: string | null) => !iso || Date.parse(iso) > cutoff;
-  const posts = briefing.posts.filter((p) => inRange(p.date));
-  const news = briefing.news.filter((n) => inRange(n.published));
-  const signals = briefing.signals.filter((s) => inRange(s.date));
+  const q = query.trim().toLowerCase();
+  const hit = (...parts: (string | null | undefined)[]) =>
+    !q || parts.some((part) => part?.toLowerCase().includes(q));
+  const posts = briefing.posts.filter(
+    (p) => inRange(p.date) && hit(p.text, p.by?.name, p.by?.role)
+  );
+  const news = briefing.news.filter(
+    (n) => inRange(n.published) && hit(n.title, n.summary, n.source)
+  );
+  const signals = briefing.signals.filter(
+    (s) => inRange(s.date) && hit(s.title, s.sourceLabel, s.why)
+  );
   // Signals are detected inside these same posts and articles, so Everything
   // counts each item once rather than repeating it as its own signal card.
   const feedCount = posts.length + news.length;
@@ -270,6 +284,12 @@ export function LiveCompanyBriefing({
     );
   };
 
+  const TABLE_TAG = {
+    post: { color: "#0071E3" },
+    news: { color: "#0F766E" },
+    signal: { color: "#7C3AED" },
+  } as const;
+
   type FeedItem =
     | { kind: "post"; date: string | null; post: LiveBriefing["posts"][number] }
     | { kind: "news"; date: string | null; news: LiveBriefing["news"][number] };
@@ -283,6 +303,44 @@ export function LiveCompanyBriefing({
     lens === "all"
       ? merged
       : merged.filter((i) => (lens === "linkedin" ? i.kind === "post" : i.kind === "news"));
+
+  /** The table layout works on every lens: one row per item, whatever it is. */
+  type TableRow = {
+    kind: "post" | "news" | "signal";
+    tag: string;
+    what: string;
+    sub?: string | null;
+    when: string | null;
+    url: string;
+  };
+  const tableRows: TableRow[] =
+    lens === "signals"
+      ? signals.map((signal) => ({
+          kind: "signal" as const,
+          tag: SIGNAL_META[signal.kind].label,
+          what: signal.title,
+          sub: signal.why,
+          when: signal.date,
+          url: signal.url,
+        }))
+      : shown.map((item) =>
+          item.kind === "post"
+            ? {
+                kind: "post" as const,
+                tag: item.post.by?.name ?? briefing.name,
+                what: item.post.text,
+                when: item.post.date,
+                url: item.post.url,
+              }
+            : {
+                kind: "news" as const,
+                tag: item.news.source,
+                what: item.news.title,
+                sub: item.news.summary,
+                when: item.news.published,
+                url: item.news.url,
+              }
+        );
 
   return (
     <div>
@@ -353,33 +411,35 @@ export function LiveCompanyBriefing({
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            {lenses.map((l) => {
-              const LIcon = l.icon;
-              const active = lens === l.key;
-              return (
-                <button
-                  key={l.key}
-                  type="button"
-                  onClick={() => setLens(l.key)}
-                  aria-pressed={active}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
-                    active
-                      ? "border-transparent text-white"
-                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-                  )}
-                  style={active ? { background: l.color } : undefined}
-                >
-                  <LIcon size={13} strokeWidth={2.2} />
-                  {l.label}
-                  <span className={cn("tnum", active ? "opacity-80" : "text-text-tertiary")}>
-                    {l.count}
-                  </span>
-                </button>
-              );
-            })}
+          <SearchPriority
+            query={query}
+            className="mb-3 flex flex-wrap items-center gap-1.5"
+          >
+            <PrioritySearchInput
+              grow
+              className="flex-1"
+              value={query}
+              onChange={setQuery}
+              placeholder="Search this briefing…"
+              ariaLabel="Search this briefing"
+              iconSize={13}
+              iconClassName="left-3"
+              inputClassName="h-[34px] w-full rounded-full border border-border-light bg-white pl-8 pr-3 text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-subtle"
+            />
             <span className="ml-auto flex items-center gap-2">
+              <ColorSelect
+                value={lens}
+                onChange={(v) => setLens(v as Lens)}
+                ariaLabel="What to show"
+                minWidth={172}
+                dense
+                options={lenses.map((l) => ({
+                  value: l.key,
+                  label: `${l.label} (${l.count})`,
+                  icon: l.icon,
+                  color: l.color,
+                }))}
+              />
               <ColorSelect
                 value={range}
                 onChange={(v) => setRange(v as typeof range)}
@@ -393,11 +453,10 @@ export function LiveCompanyBriefing({
                   { value: "90", label: "Past 3 months", color: "#0F766E", icon: History },
                 ]}
               />
-            {lens === "news" && (
               <ColorSelect
                 value={newsView}
                 onChange={(v) => chooseNewsView(v as NewsView)}
-                ariaLabel="News layout"
+                ariaLabel="Layout"
                 minWidth={116}
                 dense
                 options={[
@@ -406,30 +465,19 @@ export function LiveCompanyBriefing({
                   { value: "table", label: "Table", icon: Table2, color: "#0F766E" },
                 ]}
               />
-            )}
             </span>
-          </div>
+          </SearchPriority>
 
           <div
-            key={`${lens}${lens === "news" ? `-${newsView}` : ""}-${range}`}
+            key={`${lens}-${newsView}-${range}`}
             className={cn(
               "tab-panel",
-              lens === "news" && newsView === "tiles"
+              newsView === "tiles"
                 ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2"
                 : "space-y-2.5"
             )}
           >
-            {lens === "signals" ? (
-              signals.length === 0 ? (
-                <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
-                  Nothing detected in the current window. Signals are spotted
-                  automatically in new posts and articles: leadership changes,
-                  regulatory moves, deals, expansion and hiring.
-                </Card>
-              ) : (
-                signals.map((signal, index) => signalCard(signal, `s-${index}`))
-              )
-            ) : lens === "news" && newsView === "table" ? (
+            {newsView === "table" ? (
               <Card className="overflow-x-auto p-0">
                 <table className="min-w-[560px] w-full">
                   <thead>
@@ -449,35 +497,48 @@ export function LiveCompanyBriefing({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light">
-                    {news.map((item, index) => (
+                    {tableRows.map((row, index) => (
                       <tr key={index} className="transition-colors hover:bg-surface">
                         <td className="px-4 py-3 align-top">
-                          <span className="flex w-max items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
-                            <Newspaper size={10.5} strokeWidth={2.2} />
-                            {item.source}
+                          <span
+                            className="flex w-max max-w-[180px] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
+                            style={{
+                              color: TABLE_TAG[row.kind].color,
+                              background: `${TABLE_TAG[row.kind].color}14`,
+                            }}
+                          >
+                            {row.kind === "post" ? (
+                              <LinkedInIcon size={10.5} />
+                            ) : row.kind === "news" ? (
+                              <Newspaper size={10.5} strokeWidth={2.2} />
+                            ) : (
+                              <Radar size={10.5} strokeWidth={2.2} />
+                            )}
+                            {row.tag}
                           </span>
                         </td>
                         <td className="px-4 py-3 align-top">
-                          <p className="text-[13px] font-semibold leading-snug text-text-primary">
-                            {item.title}
+                          <p className="overflow-hidden text-[13px] font-semibold leading-snug text-text-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                            {row.what}
                           </p>
-                          {item.summary && (
-                            <p className="mt-0.5 text-[12px] leading-snug text-text-secondary">
-                              {item.summary}
+                          {row.sub && (
+                            <p className="mt-0.5 overflow-hidden text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                              {row.sub}
                             </p>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 align-top text-[12px] text-text-secondary">
-                          {fmtDate(item.published)}
+                          {fmtDate(row.when)}
                         </td>
                         <td className="px-4 py-3 text-right align-top">
                           <a
-                            href={item.url}
+                            href={row.url}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
                           >
-                            Read <ExternalLink size={11} strokeWidth={2.2} />
+                            {row.kind === "post" ? "Open" : "Read"}{" "}
+                            <ExternalLink size={11} strokeWidth={2.2} />
                           </a>
                         </td>
                       </tr>
@@ -485,6 +546,16 @@ export function LiveCompanyBriefing({
                   </tbody>
                 </table>
               </Card>
+            ) : lens === "signals" ? (
+              signals.length === 0 ? (
+                <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
+                  Nothing detected in the current window. Signals are spotted
+                  automatically in new posts and articles: leadership changes,
+                  regulatory moves, deals, expansion and hiring.
+                </Card>
+              ) : (
+                signals.map((signal, index) => signalCard(signal, `s-${index}`))
+              )
             ) : lens === "news" && newsView === "tiles" ? (
               news.map((item, index) => (
                 <Card key={index} className="flex flex-col p-4">
@@ -620,7 +691,7 @@ export function LiveCompanyBriefing({
       <p className="mt-5 text-[11px] text-text-tertiary">
         Live data from public LinkedIn pages and Google News. Signals are
         detected automatically from those items and link to their source. The
-        feed refreshes itself about once a day.
+        feed refreshes itself twice a day.
       </p>
     </div>
   );

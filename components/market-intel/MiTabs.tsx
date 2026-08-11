@@ -123,7 +123,8 @@ export function MiTabs({
 
   return (
     <>
-      <div className="rise-in relative z-40 mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="rise-in relative z-40 mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div ref={anchorRef} className="relative">
           <button
             type="button"
@@ -150,10 +151,6 @@ export function MiTabs({
               />
             )}
           </button>
-          <p className="mt-1 max-w-[640px] text-[13px] text-text-secondary">
-            {current.subtitle}
-          </p>
-
           {open && (
             <div
               role="menu"
@@ -201,6 +198,10 @@ export function MiTabs({
           )}
         </div>
         {action && <div className="shrink-0">{action}</div>}
+        </div>
+        <p className="mt-1 text-[13px] text-text-secondary">
+          {current.subtitle}
+        </p>
       </div>
       {switching ? <MiContentSkeleton /> : children}
     </>

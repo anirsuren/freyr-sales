@@ -24,7 +24,7 @@ import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import { LiveMarketIntelDashboard } from "@/components/market-intel/LiveDashboard";
 import { MiTabs } from "@/components/market-intel/MiTabs";
 import { MnaTracker } from "@/components/market-intel/MnaTracker";
-import { RefreshClock } from "@/components/market-intel/NextRefresh";
+import { RefreshChip } from "@/components/market-intel/NextRefresh";
 import { getDataMode } from "@/lib/dataMode";
 import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
@@ -84,13 +84,7 @@ export default async function MarketIntelPage({
             <MiTabs
               active="market"
               action={
-                <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
-                  <span className="inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
-                  <span>
-                    Twice a day
-                    <RefreshClock updatedAt={feed.updatedAt} />
-                  </span>
-                </span>
+                <RefreshChip updatedAt={feed.updatedAt} />
               }
             >
               <MnaTracker board={feed.mna ?? null} />

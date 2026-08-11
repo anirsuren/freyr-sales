@@ -15,6 +15,10 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import {
+  PrioritySearchInput,
+  SearchPriority,
+} from "@/components/ui/SearchPriority";
 import type { MnaBoard, MnaItem } from "@/lib/marketIntelFeed";
 
 /**
@@ -48,12 +52,19 @@ function fmtDate(iso: string | null): string {
 export function MnaTracker({ board }: { board: MnaBoard | null }) {
   const [status, setStatus] = useState<"all" | "announced" | "completed">("all");
   const [division, setDivision] = useState<"all" | MnaItem["division"]>("all");
+  const [query, setQuery] = useState("");
 
   const items = board?.items ?? [];
+  const q = query.trim().toLowerCase();
   const shown = items.filter(
     (deal) =>
       (status === "all" || deal.status === status) &&
-      (division === "all" || deal.division === division)
+      (division === "all" || deal.division === division) &&
+      (!q ||
+        [deal.acquirer, deal.target, deal.summary, deal.sourceLabel]
+          .join(" ")
+          .toLowerCase()
+          .includes(q))
   );
   const announced = items.filter((d) => d.status === "announced").length;
   const completed = items.length - announced;
@@ -70,7 +81,10 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
         </span>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <SearchPriority
+        query={query}
+        className="mb-4 flex flex-wrap items-center gap-2"
+      >
         <span className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-4 py-2">
           <span className="text-[12px] font-medium text-text-secondary">
             <span className="tnum text-[16px] font-bold text-text-primary">
@@ -87,6 +101,14 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
         </span>
 
         <span className="ml-auto flex flex-wrap items-center gap-2">
+          <PrioritySearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Search deals…"
+            ariaLabel="Search deals"
+            width={170}
+            expandedWidth={260}
+          />
           <ColorSelect
             value={status}
             onChange={(v) => setStatus(v as typeof status)}
@@ -111,13 +133,13 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
             ]}
           />
         </span>
-      </div>
+      </SearchPriority>
 
       {shown.length === 0 ? (
         <Card className="p-8 text-center text-[13px] leading-relaxed text-text-secondary">
           {items.length === 0
             ? "The tracker fills with real deals on the next refresh."
-            : "No deals match those filters."}
+            : "No deals match that search and filter."}
         </Card>
       ) : (
         <div className="space-y-3 stagger">

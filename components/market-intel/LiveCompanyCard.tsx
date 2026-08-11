@@ -10,6 +10,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Sparkline } from "@/components/charts/Charts";
+import { Avatar } from "@/components/ui/Avatar";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { MiLogo } from "@/components/market-intel/MiLogo";
@@ -25,6 +26,15 @@ import type { LiveBriefing } from "@/lib/marketIntelFeed";
 
 const ROTATE_MS = 5000;
 
+/** A followed person, as worn on the card's facepile. */
+export type CardPerson = {
+  id: string;
+  name: string;
+  role: string;
+  photoUrl?: string;
+  posts: number;
+};
+
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-US", {
@@ -33,7 +43,13 @@ function fmtDate(iso: string | null): string {
   });
 }
 
-export function LiveCompanyCard({ briefing }: { briefing: LiveBriefing }) {
+export function LiveCompanyCard({
+  briefing,
+  people,
+}: {
+  briefing: LiveBriefing;
+  people?: CardPerson[];
+}) {
   const up = (briefing.momentumPct ?? 0) >= 0;
   const stories = briefing.news.slice(0, 5);
   const [index, setIndex] = useState(0);
@@ -183,10 +199,49 @@ export function LiveCompanyCard({ briefing }: { briefing: LiveBriefing }) {
         </div>
       )}
 
-      <p className="mt-2 flex items-center gap-1.5 text-[10.5px] font-medium text-text-tertiary">
+      <div className="mt-2 flex items-center gap-1.5 text-[10.5px] font-medium text-text-tertiary">
         <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#1A7A35]" />
         Updated {briefing.updatedLabel}
-      </p>
+        {people && people.length > 0 && (
+          <span className="ml-auto flex items-center pl-1">
+            {people.slice(0, 5).map((person) => (
+              <span key={person.id} className="group/face relative -ml-1.5 first:ml-0">
+                <Avatar
+                  name={person.name}
+                  src={person.photoUrl}
+                  className="h-6 w-6 text-[9px] ring-2 ring-white transition-transform group-hover/face:-translate-y-0.5"
+                />
+                <span className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-[210px] origin-bottom-right scale-90 rounded-xl border border-border-light bg-white p-3 text-left opacity-0 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.22)] transition-all duration-200 group-hover/face:scale-100 group-hover/face:opacity-100">
+                  <span className="flex items-center gap-2.5">
+                    <Avatar
+                      name={person.name}
+                      src={person.photoUrl}
+                      className="h-10 w-10 shrink-0 text-[13px]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                        {person.name}
+                      </span>
+                      <span className="block overflow-hidden text-[11px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                        {person.role}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3] tnum">
+                    <LinkedInIcon size={9.5} />
+                    {person.posts} {person.posts === 1 ? "post" : "posts"} collected
+                  </span>
+                </span>
+              </span>
+            ))}
+            {people.length > 5 && (
+              <span className="tnum -ml-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-surface text-[9.5px] font-bold text-text-secondary ring-2 ring-white">
+                +{people.length - 5}
+              </span>
+            )}
+          </span>
+        )}
+      </div>
     </>
   );
 
