@@ -61,6 +61,7 @@ import {
 } from "@/components/fdl/FdlComponentsBrowser";
 import { OfferingIcon, ServiceTag } from "@/components/ui/OfferingIcon";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
+import { CustomerDots } from "@/components/fdl/CustomerDots";
 import { VersionTimeline } from "@/components/fdl/VersionTimeline";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
@@ -100,145 +101,6 @@ function orderedReleases(component: FdlComponent): FdlRelease[] {
  * of the row snapping to a new layout. Reversed z-index on expand keeps the
  * leftmost mark on top as it travels, which is what reads as a fan.
  */
-function CustomerDots({
-  people,
-  max = 6,
-  note,
-  size = 28,
-}: {
-  people: { id: string; name: string }[];
-  max?: number;
-  note?: (person: { id: string; name: string }) => string | undefined;
-  /** Mark diameter in px. The version row runs bigger than a table cell. */
-  size?: number;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  // THE FAN IS INSTANT, THE CARD IS NOT (Anir, Aug 9: "you can make this
-  // instant... but when I hover over the logo you can make that 0.25-second
-  // delay"). Separating the marks is layout, and layout should answer the
-  // cursor immediately; opening a card over the page is a commitment, so each
-  // logo's own card waits a quarter second. Reserving the open width means the
-  // instant spread still moves nothing around it.
-  const openSoon = () => setExpanded(true);
-  const closeNow = () => setExpanded(false);
-  if (people.length === 0)
-    return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary">
-        <Building2 size={11} strokeWidth={2} className="text-text-tertiary" />
-        Nobody yet
-      </span>
-    );
-  const visible = people.slice(0, max);
-  const hidden = people.length - visible.length;
-  // THE ROW RESERVES ITS OPEN WIDTH EVEN WHEN CLOSED (Anir, Aug 9: "I don't
-  // like how the table column moves with it"). Fanning changes each mark's
-  // margin from -8px to +4px, so an expanding group grew ~12px per logo and
-  // shoved the whole column sideways while you were reading it. Holding the
-  // open width at rest costs a little empty space and buys a table that never
-  // moves under the cursor.
-  const marks = visible.length + (hidden > 0 ? 1 : 0);
-  const openWidth = marks > 0 ? size + (marks - 1) * (size + 4) : 0;
-  return (
-    <span
-      className="inline-flex items-center rounded-lg px-1 py-0.5 transition-colors duration-200 hover:bg-surface focus-within:bg-surface"
-      style={{ minWidth: openWidth + 8 }}
-      onMouseEnter={openSoon}
-      onMouseLeave={closeNow}
-      onFocusCapture={() => setExpanded(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-          closeNow();
-      }}
-    >
-      {visible.map((person, i) => (
-        <span
-          key={person.id}
-          className="relative inline-flex transition-[margin,transform] duration-200 ease-out"
-          style={{
-            marginLeft: i === 0 ? 0 : expanded ? 4 : -8,
-            zIndex: expanded ? visible.length - i : i + 1,
-          }}
-        >
-          <HoverCard
-            width={230}
-            anchor="trigger"
-            delayMs={0}
-            content={
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-light bg-white">
-                  <CompanyLogo name={person.name} className="h-6 w-6 object-contain" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-text-primary">
-                    {person.name}
-                  </span>
-                  {note?.(person) && (
-                    <span className="block text-[11.5px] text-text-secondary">
-                      {note(person)}
-                    </span>
-                  )}
-                </span>
-              </div>
-            }
-          >
-            <span
-              className="flex cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-white transition-transform duration-150 hover:scale-110"
-              style={{ width: size, height: size }}
-            >
-              <CompanyLogo name={person.name} className="h-[72%] w-[72%] object-contain" />
-            </span>
-          </HoverCard>
-        </span>
-      ))}
-      {hidden > 0 && (
-        /* THE OVERFLOW CHIP ANSWERS A QUESTION TOO (Anir, Aug 9: "when I hover
-           over +1, it has to say what it is, like a pop-up, and also the + is
-           getting covered"). Last in DOM order meant lowest z-index, so the
-           circle to its left painted over the plus sign. */
-        <span
-          className="relative inline-flex transition-[margin] duration-200 ease-out"
-          style={{ marginLeft: expanded ? 4 : -8, zIndex: visible.length + 1 }}
-        >
-          <HoverCard
-            width={230}
-            anchor="trigger"
-            delayMs={0}
-            content={
-              <div>
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                  {hidden} more
-                </p>
-                <ul className="space-y-1.5">
-                  {people.slice(max).map((person) => (
-                    <li key={person.id} className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-light bg-white">
-                        <CompanyLogo
-                          name={person.name}
-                          className="h-3.5 w-3.5 object-contain"
-                        />
-                      </span>
-                      <span className="min-w-0 text-[12.5px] text-text-primary">
-                        {person.name}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            }
-          >
-            <span
-              className="flex cursor-pointer items-center justify-center rounded-full bg-surface text-[11px] font-bold text-text-secondary ring-2 ring-white transition-transform duration-150 hover:scale-110 tnum"
-              style={{ width: size, height: size }}
-            >
-              +{hidden}
-            </span>
-          </HoverCard>
-        </span>
-      )}
-    </span>
-  );
-}
-
 export type ComponentCustomer = {
   id: string;
   name: string;
@@ -1158,26 +1020,37 @@ export function FdlComponentDetail({
           <p className="mt-3 text-[12.5px] text-text-secondary">
             No versions yet. Add the first one, then list its features below.
           </p>
-        ) : versionsView === "timeline" ? (
-          /* The same records on a rail. Clicking a marker drops you back into
-             the list with that version open, so the timeline is a way in
-             rather than a dead end. */
+        ) : (
+          /* ONE REGION FOR BOTH VIEWS, keyed so switching animates in with the
+             house tab transition (Anir, Aug 10: "I don't like the animations
+             between the timeline and the list view"). In timeline mode the
+             cards do not disappear — the map below simply filters to the
+             versions you have opened, so clicking a pill unfolds that
+             version's FULL panel under the stage ("whatever was there in the
+             dropdown, that shit has to still show up on the timeline view").
+             Clicking the same pill again folds it away. */
+          <div key={versionsView} className="tab-panel">
+          {versionsView === "timeline" && (
           <VersionTimeline
             releases={releases.map((release) => ({
               ...release,
               customers: customersOnVersion(release.id).map((c) => ({
+                id: c.id,
                 name: c.name,
               })),
               featureCount: component.features.filter((f) =>
                 f.versionIds.includes(release.id)
               ).length,
             }))}
-            onOpen={(releaseId) => {
-              setVersionsView("list");
-              setOpenVersions(new Set([releaseId]));
-            }}
+            selectedIds={[...openVersions]}
+            onOpen={(releaseId) =>
+              setOpenVersions((prev) =>
+                prev.has(releaseId) ? new Set() : new Set([releaseId])
+              )
+            }
           />
-        ) : (
+          )}
+          {(
           // ONE CARD PER VERSION. A divided list of text rows made every
           // version look like the same sentence repeated, with the open panel
           // a flat grey box hanging under it (Anir, Aug 8: "revamp this… it
@@ -1185,8 +1058,23 @@ export function FdlComponentDetail({
           // status-coloured rail, the number as the headline, and its facts as
           // chips — so you can tell the released one from the planned one
           // without reading.
-          <div className="mt-3.5 space-y-2.5">
-            {releases.map((release, releaseIndex) => {
+          <div
+            className={`mt-3.5 space-y-2.5${
+              versionsView === "timeline" ? " tab-panel" : ""
+            }`}
+            key={
+              versionsView === "timeline"
+                ? `sel:${[...openVersions].sort().join("|") || "none"}`
+                : "list"
+            }
+          >
+            {(versionsView === "list"
+              ? releases
+              : releases.filter((r) => openVersions.has(r.id))
+            ).map((release) => {
+              const releaseIndex = releases.findIndex(
+                (x) => x.id === release.id
+              );
               const versionFeatures = component.features.filter((feature) =>
                 feature.versionIds.includes(release.id)
               );
@@ -1850,6 +1738,8 @@ export function FdlComponentDetail({
                 </div>
               );
             })}
+          </div>
+          )}
           </div>
         )}
       </section>

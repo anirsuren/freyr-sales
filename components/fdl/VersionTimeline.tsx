@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2 } from "lucide-react";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { CustomerDots } from "@/components/fdl/CustomerDots";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { withV } from "@/lib/version";
 import type { FdlRelease } from "@/lib/offerings";
@@ -103,7 +103,7 @@ function tickLabel(unit: TickUnit, ms: number): string {
 
 export type TimelineRelease = FdlRelease & {
   /** Faces to sit under the marker — the accounts running this version. */
-  customers?: { name: string }[];
+  customers?: { id: string; name: string }[];
   featureCount?: number;
 };
 
@@ -124,10 +124,14 @@ function pillWidth(version: string) {
 export function VersionTimeline({
   releases,
   onOpen,
+  selectedIds = [],
 }: {
   releases: TimelineRelease[];
-  /** Clicking a marker opens that version in the list view. */
+  /** Clicking a marker unfolds that version's full panel under the stage;
+   *  clicking it again folds the panel away. */
   onOpen?: (releaseId: string) => void;
+  /** Versions whose panel is open — their pills wear a ring. */
+  selectedIds?: string[];
 }) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -465,6 +469,7 @@ export function VersionTimeline({
             const facesMax = roomy ? 4 : 2;
             const faces = release.customers ?? [];
             const isHot = hovered === release.id;
+            const isSelected = selectedIds.includes(release.id);
             return (
               <div key={release.id}>
                 {ghostWidth > 1 && (
@@ -515,6 +520,7 @@ export function VersionTimeline({
                 />
                 <button
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() => onOpen?.(release.id)}
                   onMouseEnter={() => setHovered(release.id)}
                   onMouseLeave={() => setHovered(null)}
@@ -533,9 +539,11 @@ export function VersionTimeline({
                     style={{
                       background: tone.dot,
                       transform: isHot ? "translateY(-2px) scale(1.06)" : "none",
-                      boxShadow: isHot
-                        ? `0 8px 20px -6px ${tone.dot}`
-                        : "0 1px 2px rgba(16,24,40,0.10)",
+                      boxShadow: isSelected
+                        ? `0 0 0 2px var(--white), 0 0 0 4px ${tone.dot}`
+                        : isHot
+                          ? `0 8px 20px -6px ${tone.dot}`
+                          : "0 1px 2px rgba(16,24,40,0.10)",
                     }}
                   >
                     {withV(release.version)}
@@ -568,25 +576,28 @@ export function VersionTimeline({
                     })}
                   </span>
                 )}
+                {/* THE FAN, same mechanic as everywhere else (Anir, Aug 10:
+                    "when I hover over the company, it'll do the thing"). It
+                    keeps pointer events — dragging still works from on top of
+                    it, because pointerdown bubbles to the stage — and its
+                    cards portal out, so the stage's overflow-hidden cannot
+                    clip them. */}
                 {faces.length > 0 && (
                   <span
-                    className="pointer-events-none absolute z-20 flex -translate-x-1/2 items-center"
-                    style={{ left: x, top: FACES_TOP }}
+                    className="absolute z-30 -translate-x-1/2"
+                    style={{ left: x, top: FACES_TOP - 5 }}
                   >
-                    {faces.slice(0, facesMax).map((c, i) => (
-                      <span
-                        key={c.name}
-                        className="inline-flex rounded-full ring-2 ring-[color:var(--white)]"
-                        style={{ marginLeft: i === 0 ? 0 : -6 }}
-                      >
-                        <CompanyLogo name={c.name} className="h-5 w-5" />
-                      </span>
-                    ))}
-                    {faces.length > facesMax && (
-                      <span className="ml-1 text-[9.5px] font-semibold text-text-tertiary">
-                        +{faces.length - facesMax}
-                      </span>
-                    )}
+                    <CustomerDots
+                      people={faces}
+                      max={facesMax}
+                      size={22}
+                      reserveOpenWidth={false}
+                      note={() =>
+                        release.status === "next"
+                          ? `Waiting on ${withV(release.version)}`
+                          : `Runs ${withV(release.version)}`
+                      }
+                    />
                   </span>
                 )}
               </div>
