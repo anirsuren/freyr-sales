@@ -74,6 +74,35 @@ const RA_SERVICES = [
   { company: "Navitas Life Sciences", product: "Regulatory affairs services", link: "https://www.navitaslifesciences.com/", about: "Services peer (part of TAKE Solutions lineage) competing on regulatory affairs and operations outsourcing for global sponsors." },
 ];
 
+const PV = [
+  { company: "Oracle", product: "Argus Safety", link: "https://www.oracle.com/life-sciences/", about: "The industry-standard drug-safety database for case processing and regulatory safety reporting; the incumbent system in most established PV departments." },
+  { company: "ArisGlobal", product: "LifeSphere Safety", link: "https://www.arisglobal.com/", about: "Cloud safety platform (case intake, processing, reporting) with heavy automation positioning; the main modern challenger to Argus." },
+  { company: "IQVIA", product: "Vigilance services & platform", link: "https://www.iqvia.com/solutions/safety-regulatory-and-quality-compliance", about: "Outsourced pharmacovigilance operations plus safety technology at CRO scale — competes on full-service PV outsourcing." },
+  { company: "Ennov", product: "Ennov Pharmacovigilance", link: "https://en.ennov.com/", about: "PV module of the Ennov suite covering case management and reporting; the cost-competitive European alternative." },
+  { company: "PharmaLex (Cencora)", product: "Pharmacovigilance services", link: "https://www.pharmalex.com/", about: "Large outsourced PV operations and QPPV services arm; a direct services rival in safety outsourcing deals." },
+];
+
+const AUDIT = [
+  { company: "ProPharma Group", product: "Compliance & validation services", link: "https://www.propharmagroup.com/", about: "Specialist GxP compliance, audit and computer-system validation services; a frequent head-to-head in compliance outsourcing." },
+  { company: "PharmaLex (Cencora)", product: "GxP audit services", link: "https://www.pharmalex.com/", about: "Audit and quality-compliance services from one of the largest specialist regulatory providers." },
+  { company: "NSF", product: "Health sciences consulting & auditing", link: "https://www.nsf.org/", about: "Global auditing, training and consulting body for pharma and medical devices; carries brand weight in quality-system audits." },
+  { company: "Parexel", product: "Consulting: quality & compliance", link: "https://www.parexel.com/", about: "CRO-scale quality and compliance consulting, including inspection readiness and remediation programs." },
+];
+
+const MEDCOMMS = [
+  { company: "Certara", product: "Synchrogenix medical writing", link: "https://www.certara.com/", about: "Regulatory and medical writing services increasingly paired with AI authoring; a direct rival for scientific-communication deliverables." },
+  { company: "Cactus Communications", product: "Cactus Life Sciences", link: "https://cactusglobal.com/", about: "Global medical-communications and scientific-writing provider competing on scaled medcomms delivery." },
+  { company: "Envision Pharma Group", product: "Medical affairs & communications", link: "https://www.envisionpharmagroup.com/", about: "Medical-affairs communications specialist (publications, med info) with its own technology platform." },
+  { company: "Parexel", product: "Medical writing services", link: "https://www.parexel.com/", about: "CRO-scale medical and regulatory writing; competes when writing is bundled into bigger programs." },
+];
+
+// The three "Others" offerings get their own sets, keyed by offering id.
+const BY_OFFERING_ID = {
+  "of-024": PV,
+  "of-027": AUDIT,
+  "of-028": MEDCOMMS,
+};
+
 const SETS = {
   "Regulatory Information Management": RIM,
   "Submissions and Document Operations": SUBMISSIONS,
@@ -103,7 +132,7 @@ const miIdFor = (company) => {
 let totalAdded = 0;
 const skipped = [];
 for (const o of offerings) {
-  const set = SETS[o.offering_category];
+  const set = BY_OFFERING_ID[o.id] ?? SETS[o.offering_category];
   if (!set) {
     skipped.push(`${o.id} ${o.offering_name} (${o.offering_category ?? "no category"})`);
     continue;
