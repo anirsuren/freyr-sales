@@ -135,22 +135,41 @@ function normalize(value: unknown): MarketIntelTracking {
   };
 }
 
+// Same one-minute process cache as the feed (see marketIntelFeed.ts): tab
+// clicks stop re-reading rows that change a few times a day. Keyed per data
+// mode so mock and real never serve each other's list.
+const TRACKING_CACHE_MS = 60_000;
+
+export function bustMarketIntelTrackingCache(): void {
+  (globalThis as any).__MI_TRACKING_CACHE__ = undefined;
+}
+
 export async function readMarketIntelTracking(): Promise<MarketIntelTracking> {
   if (!hasTrackingDatabase()) return structuredClone(EMPTY);
+  const row = rowId();
+  const cached = (globalThis as any).__MI_TRACKING_CACHE__ as
+    | { at: number; row: string; tracking: MarketIntelTracking }
+    | undefined;
+  if (cached && cached.row === row && Date.now() - cached.at < TRACKING_CACHE_MS) {
+    return cached.tracking;
+  }
   const { data, error } = await trackingClient()
     .from("offering_catalog_state")
     .select("catalog")
-    .eq("id", rowId())
+    .eq("id", row)
     .maybeSingle();
   if (error) {
     throw new Error(`Could not load the tracking list: ${error.message}`);
   }
-  return normalize(data?.catalog);
+  const tracking = normalize(data?.catalog);
+  (globalThis as any).__MI_TRACKING_CACHE__ = { at: Date.now(), row, tracking };
+  return tracking;
 }
 
 async function saveMarketIntelTracking(
   next: MarketIntelTracking
 ): Promise<void> {
+  bustMarketIntelTrackingCache();
   if (!hasTrackingDatabase()) {
     throw new Error("Tracking needs the configured database.");
   }

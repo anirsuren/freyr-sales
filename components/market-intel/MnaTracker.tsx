@@ -3,15 +3,18 @@
 import { useState } from "react";
 import {
   ArrowRight,
+  CheckCircle2,
   ExternalLink,
   Handshake,
+  Layers,
+  Megaphone,
   Pill,
   ShoppingBag,
   Stethoscope,
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { cn } from "@/lib/utils";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import type { MnaBoard, MnaItem } from "@/lib/marketIntelFeed";
 
 /**
@@ -83,71 +86,30 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
           </span>
         </span>
 
-        <span className="ml-auto flex flex-wrap items-center gap-1.5">
-          {(["all", "announced", "completed"] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setStatus(key)}
-              aria-pressed={status === key}
-              className={cn(
-                "cursor-pointer rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors",
-                status === key
-                  ? "border-transparent text-white"
-                  : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
-              )}
-              style={
-                status === key
-                  ? {
-                      background:
-                        key === "completed"
-                          ? "#1A7A35"
-                          : key === "announced"
-                            ? "#0071E3"
-                            : "#1D1D1F",
-                    }
-                  : undefined
-              }
-            >
-              {key === "all" ? "All statuses" : STATUS_META[key].label}
-            </button>
-          ))}
-          <span className="mx-1 h-5 w-px bg-border-light" />
-          <button
-            type="button"
-            onClick={() => setDivision("all")}
-            aria-pressed={division === "all"}
-            className={cn(
-              "cursor-pointer rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors",
-              division === "all"
-                ? "border-transparent bg-[#1D1D1F] text-white"
-                : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
-            )}
-          >
-            All divisions
-          </button>
-          {DIVISIONS.map((d) => {
-            const DIcon = d.icon;
-            const active = division === d.key;
-            return (
-              <button
-                key={d.key}
-                type="button"
-                onClick={() => setDivision(d.key)}
-                aria-pressed={active}
-                className={cn(
-                  "flex cursor-pointer items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors",
-                  active
-                    ? "border-transparent text-white"
-                    : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
-                )}
-                style={active ? { background: d.color } : undefined}
-              >
-                <DIcon size={12} strokeWidth={2.2} />
-                {d.key}
-              </button>
-            );
-          })}
+        <span className="ml-auto flex flex-wrap items-center gap-2">
+          <ColorSelect
+            value={status}
+            onChange={(v) => setStatus(v as typeof status)}
+            ariaLabel="Filter by deal status"
+            minWidth={150}
+            options={[
+              { value: "all", label: "All statuses", icon: Handshake },
+              { value: "announced", label: "Announced", color: "#0071E3", icon: Megaphone },
+              { value: "completed", label: "Completed", color: "#1A7A35", icon: CheckCircle2 },
+            ]}
+          />
+          <ColorSelect
+            value={division}
+            onChange={(v) => setDivision(v as typeof division)}
+            ariaLabel="Filter by division"
+            minWidth={190}
+            options={[
+              { value: "all", label: "All divisions", icon: Layers },
+              { value: "Medicinal Products", label: "Medicinal Products", color: "#0071E3", icon: Pill },
+              { value: "Medical Devices", label: "Medical Devices", color: "#0F766E", icon: Stethoscope },
+              { value: "Consumer", label: "Consumer", color: "#C2410C", icon: ShoppingBag },
+            ]}
+          />
         </span>
       </div>
 

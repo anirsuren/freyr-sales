@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowLeft,
+  CalendarDays,
+  CalendarRange,
   Crown,
   ExternalLink,
   FileCheck2,
   Globe2,
   Handshake,
+  History,
   LayoutGrid,
   List,
   MessageSquare,
@@ -16,6 +19,7 @@ import {
   Radar,
   Repeat2,
   Sparkles,
+  Sun,
   Swords,
   Table2,
   ThumbsUp,
@@ -27,6 +31,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Sparkline } from "@/components/charts/Charts";
 import { MiLogo } from "@/components/market-intel/MiLogo";
@@ -119,12 +124,6 @@ export function LiveCompanyBriefing({
     { key: "signals", label: "Signals", icon: Radar, color: "#7C3AED", count: signals.length },
   ];
 
-  const RANGES: { key: typeof range; label: string }[] = [
-    { key: "1", label: "Past day" },
-    { key: "7", label: "Past week" },
-    { key: "30", label: "Past month" },
-    { key: "90", label: "3 months" },
-  ];
 
   const signalCounts = signals.reduce<Record<string, number>>(
     (acc, s) => ({ ...acc, [s.kind]: (acc[s.kind] ?? 0) + 1 }),
@@ -385,8 +384,22 @@ export function LiveCompanyBriefing({
                 </button>
               );
             })}
+            <span className="ml-auto flex items-center gap-2">
+              <ColorSelect
+                value={range}
+                onChange={(v) => setRange(v as typeof range)}
+                ariaLabel="Filter by time range"
+                minWidth={150}
+                dense
+                options={[
+                  { value: "1", label: "Past day", color: "#C2410C", icon: Sun },
+                  { value: "7", label: "Past week", color: "#0071E3", icon: CalendarDays },
+                  { value: "30", label: "Past month", color: "#6D28D9", icon: CalendarRange },
+                  { value: "90", label: "Past 3 months", color: "#0F766E", icon: History },
+                ]}
+              />
             {lens === "news" && (
-              <span className="ml-auto flex items-center rounded-full border border-border-light bg-white p-0.5">
+              <span className="flex items-center rounded-full border border-border-light bg-white p-0.5">
                 {NEWS_VIEW_META.map((view) => {
                   const VIcon = view.icon;
                   const active = newsView === view.key;
@@ -411,25 +424,7 @@ export function LiveCompanyBriefing({
                 })}
               </span>
             )}
-          </div>
-
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            {RANGES.map((r) => (
-              <button
-                key={r.key}
-                type="button"
-                onClick={() => setRange(r.key)}
-                aria-pressed={range === r.key}
-                className={cn(
-                  "cursor-pointer rounded-full border px-2.5 py-1 text-[11.5px] font-semibold transition-colors",
-                  range === r.key
-                    ? "border-transparent bg-[#1D1D1F] text-white"
-                    : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
+            </span>
           </div>
 
           <div

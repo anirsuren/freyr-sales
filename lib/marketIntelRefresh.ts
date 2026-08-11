@@ -4,10 +4,15 @@ import {
   COMPETITOR_SOURCES,
   type CompanySource,
 } from "./marketIntelSources";
-import { cleanSourceLabel } from "./marketIntelFeed";
+import { bustMarketIntelFeedCache, cleanSourceLabel } from "./marketIntelFeed";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
 import { classifyMna, digestCompany } from "./marketIntelSummarize";
-import { miSlug, type TrackedCompany, type TrackedPerson } from "./marketIntelTracking";
+import {
+  bustMarketIntelTrackingCache,
+  miSlug,
+  type TrackedCompany,
+  type TrackedPerson,
+} from "./marketIntelTracking";
 
 /**
  * THE FEED REFRESHES ITSELF (Anir, Aug 11: "It has to do it by itself...
@@ -81,6 +86,10 @@ async function writeRow(id: string, catalog: unknown): Promise<void> {
     .from("offering_catalog_state")
     .upsert({ id, catalog, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
+  // The read side memoizes these rows for a minute (see marketIntelFeed.ts);
+  // a write on this instance must show up on its next render.
+  if (id === FEED_ROW) bustMarketIntelFeedCache();
+  if (id === TRACKING_ROW) bustMarketIntelTrackingCache();
 }
 
 // ------------------------------------------------------------------ scraping

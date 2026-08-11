@@ -150,8 +150,23 @@ function feedClient() {
   );
 }
 
+// The feed row is multi-megabyte (76 companies of posts and news), and every
+// tab click was re-downloading and re-parsing it — the whole reason switching
+// tabs took seconds (Anir: "it takes 5 seconds for me to click between the
+// tabs"). One process-local copy serves all requests for a minute; writers
+// bust it so edits still show up immediately on the instance that wrote.
+const FEED_CACHE_MS = 60_000;
+
+export function bustMarketIntelFeedCache(): void {
+  (globalThis as any).__MI_FEED_CACHE__ = undefined;
+}
+
 export async function readMarketIntelFeed(): Promise<MarketIntelFeed | null> {
   if (!hasFeedDatabase()) return null;
+  const cached = (globalThis as any).__MI_FEED_CACHE__ as
+    | { at: number; feed: MarketIntelFeed | null }
+    | undefined;
+  if (cached && Date.now() - cached.at < FEED_CACHE_MS) return cached.feed;
   const { data, error } = await feedClient()
     .from("offering_catalog_state")
     .select("catalog")
@@ -159,15 +174,19 @@ export async function readMarketIntelFeed(): Promise<MarketIntelFeed | null> {
     .maybeSingle();
   if (error) throw new Error(`Could not load the market feed: ${error.message}`);
   const raw = data?.catalog;
-  if (!raw || typeof raw !== "object" || !raw.companies) return null;
-  return {
-    version: raw.version ?? 1,
-    companies: raw.companies as Record<string, FeedCompany>,
-    people: (raw.people ?? {}) as Record<string, PersonFeed>,
-    mna: raw.mna as MnaBoard | undefined,
-    updatedAt: raw.updatedAt ?? null,
-    spendUsd: raw.spendUsd,
-  };
+  const feed: MarketIntelFeed | null =
+    !raw || typeof raw !== "object" || !raw.companies
+      ? null
+      : {
+          version: raw.version ?? 1,
+          companies: raw.companies as Record<string, FeedCompany>,
+          people: (raw.people ?? {}) as Record<string, PersonFeed>,
+          mna: raw.mna as MnaBoard | undefined,
+          updatedAt: raw.updatedAt ?? null,
+          spendUsd: raw.spendUsd,
+        };
+  (globalThis as any).__MI_FEED_CACHE__ = { at: Date.now(), feed };
+  return feed;
 }
 
 function itemDates(company: FeedCompany): number[] {
