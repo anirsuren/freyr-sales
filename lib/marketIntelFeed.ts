@@ -26,7 +26,30 @@ export type FeedNews = {
   source: string;
   url: string;
   published: string | null;
+  /** AI summary of the fetched article text; absent when the article could
+   *  not be read (headline stands alone rather than faking a summary). */
+  summary?: string;
 };
+
+/** "MARKETSCREENER.COM" and "Fierce Pharma" were both wearing the source
+ *  chip; every stored label is now a clean publication name. */
+export function cleanSourceLabel(raw: string): string {
+  let s = String(raw || "News").trim();
+  if (/\.[a-z]{2,6}$/i.test(s) || /\.(com|net|org|io|co)\b/i.test(s)) {
+    s = s.replace(/^www\./i, "").split("/")[0];
+    s = s.replace(/\.[a-z]{2,6}$/i, "").replace(/\.[a-z]{2,6}$/i, "");
+    s = s.replace(/[-_.]+/g, " ");
+  }
+  s = s.replace(/\s+/g, " ").trim();
+  if (s === s.toUpperCase() || s === s.toLowerCase()) {
+    s = s
+      .toLowerCase()
+      .split(" ")
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(" ");
+  }
+  return s.slice(0, 32) || "News";
+}
 
 export type FeedCompany = {
   id: string;
@@ -40,6 +63,8 @@ export type FeedCompany = {
   } | null;
   posts: FeedPost[];
   news: FeedNews[];
+  /** The AI rundown shown at the top of the briefing; refreshed with the feed. */
+  tldr?: string | null;
   fetchedAt: string;
 };
 
@@ -75,6 +100,7 @@ export type LiveBriefing = {
   name: string;
   followerCount: number | null;
   logoUrl: string | null;
+  tldr: string | null;
   fetchedAt: string;
   updatedLabel: string;
   /** null when the prior month is too thin for an honest percentage. */
@@ -333,6 +359,7 @@ export function buildBriefing(
     name: company.name,
     followerCount: company.author?.followerCount ?? null,
     logoUrl: company.author?.logoUrl ?? null,
+    tldr: company.tldr ?? null,
     fetchedAt: company.fetchedAt,
     updatedLabel: updatedLabel(company.fetchedAt),
     momentumPct: mo.pct,

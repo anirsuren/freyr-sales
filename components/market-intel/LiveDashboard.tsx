@@ -15,7 +15,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Sparkline } from "@/components/charts/Charts";
-import { MiLogo } from "@/components/market-intel/MiLogo";
+import { LiveCompanyCard } from "@/components/market-intel/LiveCompanyCard";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
 import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import {
@@ -110,102 +110,9 @@ export function LiveMarketIntelDashboard({
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 stagger">
-        {briefings.map((briefing) => {
-          const up = (briefing.momentumPct ?? 0) >= 0;
-          const latest = latestNewsOf(briefing);
-          return (
-            <Link
-              key={briefing.id}
-              href={`/market-intel/${briefing.id}`}
-              className="group block rounded-xl border border-border-light bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-2.5">
-                  <MiLogo
-                    name={briefing.name}
-                    logoUrl={briefing.logoUrl}
-                    className="h-9 w-9 shrink-0"
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[14.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                      {briefing.name}
-                    </span>
-                    <span className="block truncate text-[11.5px] text-text-tertiary">
-                      {briefing.posts.length + briefing.news.length} items, 90
-                      days
-                    </span>
-                  </span>
-                </span>
-                {briefing.momentumPct === null ? (
-                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:#0071E3] tnum">
-                    <TrendingUp size={11} strokeWidth={2.4} />
-                    {briefing.itemsThisMonth} this month
-                  </span>
-                ) : (
-                  <span
-                    className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tnum"
-                    style={{
-                      color: up ? "#1A7A35" : "#DC2626",
-                      background: up
-                        ? "rgba(26,122,53,0.10)"
-                        : "rgba(220,38,38,0.10)",
-                    }}
-                  >
-                    {up ? (
-                      <TrendingUp size={11} strokeWidth={2.4} />
-                    ) : (
-                      <TrendingDown size={11} strokeWidth={2.4} />
-                    )}
-                    {up ? "+" : ""}
-                    {briefing.momentumPct}%
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-3">
-                <Sparkline
-                  points={briefing.trend}
-                  height={36}
-                  xLabels={briefing.trendLabels}
-                  unit="items"
-                  label={`${briefing.name} market activity`}
-                  interactive={false}
-                />
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
-                  <LinkedInIcon size={10.5} />
-                  {briefing.posts.length}{" "}
-                  {briefing.posts.length === 1 ? "post" : "posts"}
-                </span>
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0F766E]">
-                  <Newspaper size={10.5} strokeWidth={2.2} />
-                  {briefing.news.length} news
-                </span>
-                <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#7C3AED]">
-                  <Radar size={10.5} strokeWidth={2.2} />
-                  {briefing.signals.length}{" "}
-                  {briefing.signals.length === 1 ? "signal" : "signals"}
-                </span>
-              </div>
-
-              {latest && (
-                <p className="mt-3 border-t border-border-light pt-2.5 text-[12px] leading-snug text-text-secondary">
-                  <span className="font-semibold text-text-primary">
-                    {latest.source}:
-                  </span>{" "}
-                  {latest.title}
-                </p>
-              )}
-
-              <p className="mt-2 flex items-center gap-1.5 text-[10.5px] font-medium text-text-tertiary">
-                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#1A7A35]" />
-                Updated {briefing.updatedLabel}
-              </p>
-            </Link>
-          );
-        })}
+        {briefings.map((briefing) => (
+          <LiveCompanyCard key={briefing.id} briefing={briefing} />
+        ))}
 
         {pending.map((company) => {
           const peopleCount = tracking.people.filter(

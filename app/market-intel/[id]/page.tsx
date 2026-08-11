@@ -12,10 +12,8 @@ import {
 import { CompanyIntel } from "@/components/market-intel/CompanyIntel";
 import { LiveCompanyBriefing } from "@/components/market-intel/LiveCompanyBriefing";
 import { StopTrackingButton } from "@/components/market-intel/StopTrackingButton";
-import {
-  TrackPersonButton,
-  UntrackPersonButton,
-} from "@/components/market-intel/TrackPersonControls";
+import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
+import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -52,23 +50,16 @@ export default async function MarketIntelCompanyPage({
     const feedCompany = feed?.companies[id];
     if (feedCompany) {
       const trackedConfig = tracking.companies.find((c) => c.id === id);
-      const peoplePosts = extraPeople
-        .filter((p) => feed?.people?.[p.id])
-        .map((p) => ({
+      const withFeed = extraPeople.filter((p) => feed?.people?.[p.id]);
+      const briefing = buildBriefing(
+        feedCompany,
+        allTrackedNames(feed, tracking.companies),
+        withFeed.map((p) => ({
           name: p.name,
           role: p.role,
           photoUrl: p.photoUrl,
           posts: feed?.people?.[p.id]?.posts ?? [],
-        }));
-      const personPostCounts = Object.fromEntries(
-        extraPeople
-          .filter((p) => feed?.people?.[p.id])
-          .map((p) => [p.id, feed?.people?.[p.id]?.posts.length ?? 0])
-      );
-      const briefing = buildBriefing(
-        feedCompany,
-        allTrackedNames(feed, tracking.companies),
-        peoplePosts
+        }))
       );
       return (
         <LiveCompanyBriefing
@@ -79,7 +70,9 @@ export default async function MarketIntelCompanyPage({
               .join(" · ") || undefined
           }
           extraPeople={extraPeople}
-          personPostCounts={personPostCounts}
+          personPosts={Object.fromEntries(
+            withFeed.map((p) => [p.id, feed?.people?.[p.id]?.posts ?? []])
+          )}
         />
       );
     }
@@ -242,34 +235,7 @@ export default async function MarketIntelCompanyPage({
                 with the plus above.
               </p>
             ) : (
-              <ul className="mt-2.5 space-y-2.5">
-                {people.map((person) => (
-                  <li
-                    key={person.id}
-                    className="group/person flex items-center gap-2.5"
-                  >
-                    <Avatar
-                      name={person.name}
-                      className="h-8 w-8 shrink-0 text-[10px]"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-                        {person.name}
-                      </span>
-                      <span className="block truncate text-[11px] text-text-tertiary">
-                        {person.role || "Tracked for posts"}
-                      </span>
-                    </span>
-                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
-                      posts pending
-                    </span>
-                    <UntrackPersonButton
-                      personId={person.id}
-                      personName={person.name}
-                    />
-                  </li>
-                ))}
-              </ul>
+              <TrackedPeopleList people={people} />
             )}
           </Card>
 

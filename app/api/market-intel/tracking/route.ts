@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import {
+  addCompanyByLink,
+  addPersonByLink,
   refreshTrackedCompanyNow,
   refreshTrackedPersonNow,
 } from "@/lib/marketIntelRefresh";
@@ -24,6 +26,19 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json().catch(() => ({}));
   try {
+    // Link-only flows: the LinkedIn page is the whole form; everything else
+    // (name, logo, title, photo, first data pull) comes from the page itself.
+    if (body?.kind === "company-link") {
+      const company = await addCompanyByLink(String(body.linkedinUrl ?? ""));
+      return NextResponse.json({ ok: true, company });
+    }
+    if (body?.kind === "person-link") {
+      const person = await addPersonByLink(
+        String(body.companyId ?? "").trim(),
+        String(body.linkedinUrl ?? "")
+      );
+      return NextResponse.json({ ok: true, person });
+    }
     if (body?.kind === "company") {
       const result = await trackCompany(body);
       // The first briefing is collected right after this response goes out

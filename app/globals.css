@@ -367,6 +367,27 @@ select:focus-visible {
 }
 
 /* Skeleton shimmer */
+/* Market Intel card ticker: each story slides in from the right as the last
+   one leaves, NYSE-style. Reduced motion renders it static. */
+@keyframes miTickerIn {
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.mi-ticker-in {
+  animation: miTickerIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mi-ticker-in {
+    animation: none;
+  }
+}
+
 @keyframes shimmer {
   0% {
     background-position: -400px 0;

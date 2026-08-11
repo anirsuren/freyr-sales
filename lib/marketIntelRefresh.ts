@@ -1,7 +1,9 @@
 import { after } from "next/server";
 import { COMPANY_SOURCES, type CompanySource } from "./marketIntelSources";
+import { cleanSourceLabel } from "./marketIntelFeed";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
-import type { TrackedCompany, TrackedPerson } from "./marketIntelTracking";
+import { digestCompany } from "./marketIntelSummarize";
+import { miSlug, type TrackedCompany, type TrackedPerson } from "./marketIntelTracking";
 
 /**
  * THE FEED REFRESHES ITSELF (Anir, Aug 11: "It has to do it by itself...
@@ -172,12 +174,32 @@ async function scrapeNews(
     seen.add(key);
     news.push({
       title,
-      source: typeof i.source === "string" ? i.source : i.source?.title || "News",
+      source: cleanSourceLabel(
+        typeof i.source === "string" ? i.source : i.source?.title || "News"
+      ),
       url: i.url,
       published: i.published ? new Date(i.published).toISOString() : null,
     });
   }
   return { news, cost };
+}
+
+/** TLDR + article summaries, regenerated whenever the news set changed.
+ *  Anthropic Haiku, fractions of a cent; failures leave the feed untouched. */
+async function applyDigest(entry: FeedCompany): Promise<void> {
+  const needs = entry.news.some((n) => !n.summary) || !entry.tldr;
+  if (!needs) return;
+  try {
+    const digest = await digestCompany(entry);
+    if (digest.tldr) entry.tldr = digest.tldr;
+    digest.summaries.forEach((summary, index) => {
+      if (entry.news[index] && !entry.news[index].summary) {
+        entry.news[index].summary = summary;
+      }
+    });
+  } catch {
+    /* the briefing works without summaries */
+  }
 }
 
 async function scrapePersonPosts(
@@ -339,15 +361,19 @@ export async function runMarketIntelRefresh(options?: {
       spent += postsResult.cost;
       const newsResult = await scrapeNews(source);
       spent += newsResult.cost;
-      feed.companies[source.id] = {
+      const entry: FeedCompany = {
         id: source.id,
         name: source.name,
         slug: postsResult.slug ?? existing?.slug ?? null,
         author: postsResult.author ?? existing?.author ?? null,
         posts: mergePosts(existing?.posts ?? [], postsResult.posts),
         news: mergeNews(existing?.news ?? [], newsResult.news),
+        tldr: existing?.tldr ?? null,
         fetchedAt: new Date().toISOString(),
       };
+      if (newsResult.news.length > 0) entry.tldr = null; // fresh rundown
+      await applyDigest(entry);
+      feed.companies[source.id] = entry;
       feed.updatedAt = new Date().toISOString();
       feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + postsResult.cost + newsResult.cost) * 1000) / 1000;
       refreshed += 1;
@@ -407,15 +433,18 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
     // Cannot exceed by design (10 posts + 10 articles is at most ~$0.10),
     // but the guard stays in case limits change.
   }
-  feed.companies[source.id] = {
+  const entry: FeedCompany = {
     id: source.id,
     name: source.name,
     slug: postsResult.slug,
     author: postsResult.author,
     posts: postsResult.posts,
     news: newsResult.news,
+    tldr: null,
     fetchedAt: new Date().toISOString(),
   };
+  await applyDigest(entry);
+  feed.companies[source.id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
   feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + postsResult.cost + newsResult.cost) * 1000) / 1000;
   await writeRow(FEED_ROW, feed);
@@ -434,6 +463,127 @@ export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<vo
   };
   feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + result.cost) * 1000) / 1000;
   await writeRow(FEED_ROW, feed);
+}
+
+// ---------------------------------------------------------- add by link
+// "It just asks me for the link, and you pull everything else" (Anir,
+// Aug 11). The link is the input; name, logo, title, photo and the first
+// data pull all come from the page itself.
+
+export async function addCompanyByLink(linkedinUrl: string): Promise<TrackedCompany> {
+  if (!hasEnv()) throw new Error("Tracking needs the configured services.");
+  const slug = linkedinUrl.match(/linkedin\.com\/company\/([^/?#]+)/i)?.[1];
+  if (!slug) {
+    throw new Error(
+      "That doesn't look like a LinkedIn company page. It should look like linkedin.com/company/their-name"
+    );
+  }
+  const probe = await scrapeCompanyPosts({
+    id: slug,
+    name: slug,
+    li: [slug],
+    expect: "",
+  });
+  const name = probe.author?.name?.trim();
+  if (!name) {
+    throw new Error(
+      "Couldn't read that LinkedIn page. Check the link, or try again in a minute."
+    );
+  }
+  const id = miSlug(name);
+  const tracking = (await readRow(TRACKING_ROW)) ?? { companies: [], people: [] };
+  tracking.companies = Array.isArray(tracking.companies) ? tracking.companies : [];
+  tracking.people = Array.isArray(tracking.people) ? tracking.people : [];
+  const raw = await readRow(FEED_ROW);
+  const feed: any = raw && raw.companies ? raw : emptyFeed();
+  if (!feed.people) feed.people = {};
+  if (
+    feed.companies[id] ||
+    tracking.companies.some((c: TrackedCompany) => c.id === id)
+  ) {
+    throw new Error(`${name} is already being tracked.`);
+  }
+  const company: TrackedCompany = {
+    id,
+    name,
+    industry: "",
+    hq: "",
+    website: "",
+    linkedinUrl: `https://www.linkedin.com/company/${slug}`,
+    competitors: [],
+    keywords: [],
+    note: "",
+    addedAt: new Date().toISOString(),
+  };
+  tracking.companies.push(company);
+  await writeRow(TRACKING_ROW, tracking);
+
+  const newsResult = await scrapeNews({ name });
+  const entry: FeedCompany = {
+    id,
+    name,
+    slug: probe.slug,
+    author: probe.author,
+    posts: probe.posts,
+    news: newsResult.news,
+    tldr: null,
+    fetchedAt: new Date().toISOString(),
+  };
+  await applyDigest(entry);
+  feed.companies[id] = entry;
+  feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
+  feed.spendUsd =
+    Math.round(((feed.spendUsd ?? 0) + probe.cost + newsResult.cost) * 1000) / 1000;
+  await writeRow(FEED_ROW, feed);
+  return company;
+}
+
+export async function addPersonByLink(
+  companyId: string,
+  linkedinUrl: string
+): Promise<TrackedPerson> {
+  if (!hasEnv()) throw new Error("Tracking needs the configured services.");
+  const username = linkedinUrl.match(/linkedin\.com\/in\/([^/?#]+)/i)?.[1];
+  if (!username) {
+    throw new Error(
+      "That doesn't look like a LinkedIn profile. It should look like linkedin.com/in/their-name"
+    );
+  }
+  let items: any;
+  try {
+    items = await runActor("apimaestro~linkedin-profile-detail", { username });
+  } catch {
+    throw new Error("Couldn't read that profile. Check the link and try again.");
+  }
+  const info = Array.isArray(items) ? items[0]?.basic_info : null;
+  const name = String(info?.fullname ?? "").trim();
+  if (!name) {
+    throw new Error("Couldn't read that profile. Check the link and try again.");
+  }
+  const tracking = (await readRow(TRACKING_ROW)) ?? { companies: [], people: [] };
+  tracking.people = Array.isArray(tracking.people) ? tracking.people : [];
+  if (
+    tracking.people.some(
+      (p: TrackedPerson) =>
+        p.companyId === companyId && p.name.toLowerCase() === name.toLowerCase()
+    )
+  ) {
+    throw new Error(`${name} is already on the tracked list.`);
+  }
+  const person: TrackedPerson = {
+    id: `${companyId}-${miSlug(name)}-${Date.now().toString(36)}`,
+    companyId,
+    name,
+    role: String(info?.headline ?? "").slice(0, 80),
+    linkedinUrl:
+      String(info?.profile_url ?? "") || `https://www.linkedin.com/in/${username}`,
+    photoUrl: String(info?.profile_picture_url ?? ""),
+    addedAt: new Date().toISOString(),
+  };
+  tracking.people.push(person);
+  await writeRow(TRACKING_ROW, tracking);
+  await refreshTrackedPersonNow(person).catch(() => undefined);
+  return person;
 }
 
 /**

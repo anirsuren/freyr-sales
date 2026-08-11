@@ -31,10 +31,8 @@ import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 // See app/market-intel/page.tsx: the house glyph in LucideIcon slots.
 const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
 import { Sparkline } from "@/components/charts/Charts";
-import {
-  TrackPersonButton,
-  UntrackPersonButton,
-} from "@/components/market-intel/TrackPersonControls";
+import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
+import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { cn } from "@/lib/utils";
 import {
   SIGNAL_META,
@@ -471,32 +469,10 @@ export function CompanyIntel({
                   </span>
                 </li>
               ))}
-              {/* People the team added themselves: real names, honest state,
-                  removable. Their posts arrive with the next refresh. */}
-              {extraPeople.map((person) => (
-                <li
-                  key={person.id}
-                  className="group/person flex items-center gap-2.5"
-                >
-                  <Avatar name={person.name} className="h-8 w-8 shrink-0 text-[10px]" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-                      {person.name}
-                    </span>
-                    <span className="block truncate text-[11px] text-text-tertiary">
-                      {person.role || "Tracked for posts"}
-                    </span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
-                    posts pending
-                  </span>
-                  <UntrackPersonButton
-                    personId={person.id}
-                    personName={person.name}
-                  />
-                </li>
-              ))}
             </ul>
+            {/* People the team added themselves: real names, honest state,
+                removable with a confirm. Their posts arrive with the refresh. */}
+            {extraPeople.length > 0 && <TrackedPeopleList people={extraPeople} />}
           </Card>
 
           <Card className="p-4">
