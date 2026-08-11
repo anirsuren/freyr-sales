@@ -34,6 +34,9 @@ import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
 import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { ConnectedComponents } from "@/components/offerings/ConnectedComponents";
+import { OfferingCompetition } from "@/components/offerings/OfferingCompetition";
+import { readCompetition } from "@/lib/offeringCompetition";
+import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
@@ -109,12 +112,25 @@ export default async function OfferingDetailPage({
         ? "materials"
         : query?.tab === "customers"
           ? "customers"
+          : query?.tab === "competition"
+            ? "competition"
           : query?.tab === "components" ||
               query?.tab === "roadmap" ||
               query?.tab === "releases"
             ? "components"
             : "overview";
   const allCustomers = await getDb().customers.list();
+
+  // Competition intel for this offering + the tracked competitors from
+  // Market Intel as quick picks in the add flow.
+  const competitionRows = await readCompetition(o.id).catch(() => []);
+  const competitorSuggestions =
+    getDataMode() === "live"
+      ? (await readMarketIntelTracking().catch(() => ({ companies: [], people: [] }))).companies
+          .filter((c) => c.group === "competitor")
+          .map((c) => ({ id: c.id, name: c.name }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      : [];
 
   // WHO IS ON THIS OFFERING (Suren, Aug 9: "in the offering angle, I want to
   // also know all the customers of this offering"). An account counts if the
@@ -447,6 +463,16 @@ export default async function OfferingDetailPage({
                 : "Customers",
             href: `/offerings/${o.id}?tab=customers`,
           },
+          // COMPETITION (Suren, Aug 11): "for that particular product, list
+          // the competitive companies and their product names" — the fifth tab.
+          {
+            key: "competition",
+            label:
+              competitionRows.length > 0
+                ? `Competition (${competitionRows.length})`
+                : "Competition",
+            href: `/offerings/${o.id}?tab=competition`,
+          },
           ...(showReports
             ? [
                 {
@@ -491,6 +517,14 @@ export default async function OfferingDetailPage({
           <OfferingCustomers
             rows={offeringCustomers}
             offeringName={o.offering_name}
+          />
+        ) : tab === "competition" ? (
+          <OfferingCompetition
+            offeringId={o.id}
+            offeringName={o.offering_name}
+            initialRows={competitionRows}
+            suggestions={competitorSuggestions}
+            live={getDataMode() === "live"}
           />
         ) : tab === "reports" ? (
           <OfferingReports report={report} offeringName={o.offering_name} />

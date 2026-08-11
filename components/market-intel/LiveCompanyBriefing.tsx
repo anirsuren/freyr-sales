@@ -393,10 +393,17 @@ export function LiveCompanyBriefing({
   return (
     <div>
       <Link
-        href="/market-intel"
+        href={
+          briefing.group === "competitor"
+            ? "/market-intel?tab=competitors"
+            : "/market-intel"
+        }
         className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
-        <ArrowLeft size={14} strokeWidth={2} /> Market Intelligence
+        <ArrowLeft size={14} strokeWidth={2} />{" "}
+        {briefing.group === "competitor"
+          ? "Competitor Intelligence"
+          : "Customer Intelligence"}
       </Link>
 
       <div className="rise-in flex flex-wrap items-center gap-4">

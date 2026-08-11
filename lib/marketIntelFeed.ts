@@ -118,6 +118,8 @@ export type LiveSignal = {
 export type LiveBriefing = {
   id: string;
   name: string;
+  /** Which intelligence bucket this company lives in. */
+  group: "customer" | "competitor";
   followerCount: number | null;
   logoUrl: string | null;
   tldr: string | null;
@@ -396,6 +398,7 @@ export function buildBriefing(
   const mo = momentum(windowed);
   return {
     id: company.id,
+    group: company.group === "competitor" ? ("competitor" as const) : ("customer" as const),
     name: company.name,
     followerCount: company.author?.followerCount ?? null,
     logoUrl: company.author?.logoUrl ?? null,

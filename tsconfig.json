@@ -35,6 +35,7 @@
     ".next-auth-test/types/**/*.ts",
     ".next-auth/types/**/*.ts",
     ".next-build/types/**/*.ts",
+    ".next-debug/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
     ".next-live/types/**/*.ts",
     ".next-local-preview/types/**/*.ts",
@@ -44,7 +45,7 @@
     ".next-verify/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-debug/types/**/*.ts"
+    ".next-3006/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

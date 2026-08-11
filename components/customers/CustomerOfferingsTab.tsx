@@ -1064,7 +1064,7 @@ export function CustomerOfferingsTab({
       <section>
         <h3 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
           <Sparkles size={14} strokeWidth={2} className="text-blue-primary" />
-          Opportunities to pitch
+          Applicable offerings
           <span className="text-text-primary tnum">({toPitch.length})</span>
         </h3>
         {applicable.length === 0 ? (
