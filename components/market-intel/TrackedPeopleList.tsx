@@ -156,97 +156,10 @@ export function TrackedPeopleList({
         size="workflow"
       >
         {open && (
-          <div>
-            {/* Everything scraped from their profile, in one organized card:
-                photo, full headline, when we started following, and the
-                engagement their collected posts have earned. */}
-            <div className="rounded-xl border border-border-light bg-[var(--surface)] p-4">
-              <div className="flex flex-wrap items-start gap-4">
-                <Avatar
-                  name={open.name}
-                  src={open.photoUrl || undefined}
-                  className="h-20 w-20 shrink-0 text-[22px]"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[18px] font-bold tracking-[-0.01em] text-text-primary">
-                    {open.name}
-                  </p>
-                  <p className="mt-0.5 text-[13px] leading-snug text-text-secondary">
-                    {open.headline || open.role || "Tracked for posts"}
-                  </p>
-                  {open.location && (
-                    <p className="mt-1 flex items-center gap-1 text-[12px] text-text-tertiary">
-                      <MapPin size={12} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
-                      {open.location}
-                    </p>
-                  )}
-                  <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
-                      Followed since{" "}
-                      {new Date(open.addedAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
-                    <span className="rounded-full bg-[rgba(109,40,217,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9] tnum">
-                      {openPosts === undefined
-                        ? "first sync pending"
-                        : `${openPosts.length} ${openPosts.length === 1 ? "post" : "posts"} collected`}
-                    </span>
-                    {open.followerCount != null && (
-                      <span className="rounded-full bg-[rgba(15,118,110,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0F766E] tnum">
-                        {open.followerCount.toLocaleString("en-US")} followers
-                      </span>
-                    )}
-                  </p>
-                  {open.about && (
-                    <p className="mt-2 overflow-hidden text-[12px] leading-relaxed text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">
-                      {open.about}
-                    </p>
-                  )}
-                </div>
-                {open.linkedinUrl && (
-                  <a
-                    href={open.linkedinUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-full bg-[color:#0071E3] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
-                  >
-                    <LinkedInIcon size={12} /> Open LinkedIn
-                  </a>
-                )}
-              </div>
-              {openPosts && openPosts.length > 0 && (
-                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border-light pt-3">
-                  <span className="text-center">
-                    <span className="block text-[16px] font-bold text-text-primary tnum">
-                      {openPosts.reduce((a, p) => a + (p.reactions ?? 0), 0)}
-                    </span>
-                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      Reactions
-                    </span>
-                  </span>
-                  <span className="text-center">
-                    <span className="block text-[16px] font-bold text-text-primary tnum">
-                      {openPosts.reduce((a, p) => a + (p.comments ?? 0), 0)}
-                    </span>
-                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      Comments
-                    </span>
-                  </span>
-                  <span className="text-center">
-                    <span className="block text-[16px] font-bold text-text-primary tnum">
-                      {openPosts.reduce((a, p) => a + (p.reposts ?? 0), 0)}
-                    </span>
-                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                      Reposts
-                    </span>
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="-mr-2 mt-4 h-[56vh] space-y-4 overflow-y-auto pr-2">
+          <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-[minmax(0,1fr)_272px]">
+            {/* POSTS OWN THE LEFT (Anir, Aug 11: "the person goes on the
+                right, and then on the left are all the posts"). */}
+            <div className="-mr-2 h-[68vh] space-y-4 overflow-y-auto pr-2">
               {!openPosts || openPosts.length === 0 ? (
                 <p className="rounded-lg bg-surface px-4 py-5 text-center text-[12.5px] leading-relaxed text-text-secondary">
                   {openPosts === undefined
@@ -275,10 +188,10 @@ export function TrackedPeopleList({
                         <ExternalLink size={11} strokeWidth={2.2} />
                       </a>
                     </p>
-                    <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
+                    <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
                       {post.text}
                     </p>
-                    <p className="mt-2 flex items-center gap-4 text-[11px] font-medium text-text-tertiary">
+                    <p className="mt-2.5 flex items-center gap-4 border-t border-border-light pt-2.5 text-[11px] font-medium text-text-tertiary">
                       {post.reactions != null && (
                         <span className="flex items-center gap-1 tnum">
                           <ThumbsUp size={11} strokeWidth={2} /> {post.reactions}
@@ -299,6 +212,88 @@ export function TrackedPeopleList({
                 ))
               )}
             </div>
+
+            {/* THE PERSON, compact on the right. */}
+            <aside className="order-first space-y-3 md:order-none md:sticky md:top-0">
+              <div className="rounded-xl border border-border-light bg-[var(--surface)] p-4 text-center">
+                <Avatar
+                  name={open.name}
+                  src={open.photoUrl || undefined}
+                  className="mx-auto h-20 w-20 text-[22px]"
+                />
+                <p className="mt-2.5 text-[15.5px] font-bold tracking-[-0.01em] text-text-primary">
+                  {open.name}
+                </p>
+                <p className="mt-1 text-[12px] leading-snug text-text-secondary">
+                  {open.headline || open.role || "Tracked for posts"}
+                </p>
+                {open.location && (
+                  <p className="mt-1.5 flex items-center justify-center gap-1 text-[11.5px] text-text-tertiary">
+                    <MapPin size={11.5} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+                    {open.location}
+                  </p>
+                )}
+                <p className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                  <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
+                    Followed since{" "}
+                    {new Date(open.addedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                  {open.followerCount != null && (
+                    <span className="rounded-full bg-[rgba(15,118,110,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0F766E] tnum">
+                      {open.followerCount.toLocaleString("en-US")} followers
+                    </span>
+                  )}
+                </p>
+                {open.linkedinUrl && (
+                  <a
+                    href={open.linkedinUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[color:#0071E3] px-3 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                  >
+                    <LinkedInIcon size={12} /> Open LinkedIn
+                  </a>
+                )}
+              </div>
+
+              {openPosts && openPosts.length > 0 && (
+                <div className="rounded-xl border border-border-light bg-white p-4">
+                  <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    Engagement · {openPosts.length}{" "}
+                    {openPosts.length === 1 ? "post" : "posts"}
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {[
+                      { icon: ThumbsUp, label: "Reactions", value: openPosts.reduce((a, p) => a + (p.reactions ?? 0), 0) },
+                      { icon: MessageSquare, label: "Comments", value: openPosts.reduce((a, p) => a + (p.comments ?? 0), 0) },
+                      { icon: Repeat2, label: "Reposts", value: openPosts.reduce((a, p) => a + (p.reposts ?? 0), 0) },
+                    ].map((stat) => (
+                      <li key={stat.label} className="flex items-center gap-2 text-[12.5px] text-text-secondary">
+                        <stat.icon size={13} strokeWidth={2} className="shrink-0 text-blue-primary" />
+                        {stat.label}
+                        <span className="ml-auto font-bold text-text-primary tnum">
+                          {stat.value.toLocaleString("en-US")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {open.about && (
+                <div className="rounded-xl border border-border-light bg-white p-4">
+                  <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    About
+                  </p>
+                  <p className="mt-1.5 overflow-hidden whitespace-pre-line text-[12px] leading-relaxed text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:10]">
+                    {open.about}
+                  </p>
+                </div>
+              )}
+            </aside>
           </div>
         )}
       </Modal>
