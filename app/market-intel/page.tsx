@@ -1,14 +1,16 @@
 import Link from "next/link";
 import {
   Building2,
+  Hourglass,
   type LucideIcon,
   Newspaper,
   Radar,
+  Swords,
   TrendingDown,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
@@ -17,6 +19,8 @@ import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 // size and className and ignores the rest, which is all these slots use.
 const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
 import { Sparkline } from "@/components/charts/Charts";
+import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
+import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import {
   MI_COMPANIES,
   MI_WATCHLIST,
@@ -24,6 +28,7 @@ import {
   miFreshMinutes,
   miTotals,
 } from "@/lib/marketIntelMock";
+import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 
 /**
  * MARKET INTELLIGENCE - DESIGN MOCKUP (Anir, Aug 10, from Anant's ask): one
@@ -45,21 +50,28 @@ function weekLabels(): string[] {
   return out;
 }
 
-export default function MarketIntelPage() {
+export default async function MarketIntelPage() {
   const totals = miTotals();
   const labels = weekLabels();
+  const tracking = await readMarketIntelTracking().catch(() => ({
+    companies: [],
+    people: [],
+  }));
   return (
     <div>
       <PageHeader
         title="Market Intelligence"
         subtitle="What the market is saying about the companies you track. LinkedIn activity, news and competitive signals from the past 3 months."
         action={
-          <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1A7A35] opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
+          <span className="flex flex-wrap items-center gap-2.5">
+            <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1A7A35] opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
+              </span>
+              Auto-refreshing. Sample data preview.
             </span>
-            Auto-refreshing. Sample data preview.
+            <TrackCompanyButton />
           </span>
         }
       />
@@ -68,7 +80,7 @@ export default function MarketIntelPage() {
         <StatTile
           icon={Building2}
           label="Companies tracked"
-          value={String(totals.tracked)}
+          value={String(totals.tracked + tracking.companies.length)}
           sub="across your market"
         />
         <StatTile
@@ -188,30 +200,79 @@ export default function MarketIntelPage() {
             </Link>
           );
         })}
+
+        {/* Companies the team added themselves. Nothing is invented for them:
+            the card says plainly that the first briefing is still coming. */}
+        {tracking.companies.map((company) => {
+          const peopleCount = tracking.people.filter(
+            (p) => p.companyId === company.id
+          ).length;
+          return (
+            <Link
+              key={company.id}
+              href={`/market-intel/${company.id}`}
+              className="group block rounded-xl border border-border-light bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <CompanyLogo
+                    name={company.name}
+                    className="h-9 w-9 shrink-0"
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                      {company.name}
+                    </span>
+                    <span className="block truncate text-[11.5px] text-text-tertiary">
+                      {company.industry || "Tracked company"}
+                    </span>
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:#0071E3]">
+                  New
+                </span>
+              </div>
+
+              <div className="mt-3 flex h-9 items-center justify-center rounded-md border border-dashed border-border-light text-[10.5px] font-medium text-text-tertiary">
+                Collecting the first weeks of activity
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
+                  <Users size={10.5} strokeWidth={2.2} />
+                  {peopleCount} {peopleCount === 1 ? "person" : "people"} followed
+                </span>
+                <span className="flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#B4318F]">
+                  <Swords size={10.5} strokeWidth={2.2} />
+                  {company.competitors.length}{" "}
+                  {company.competitors.length === 1
+                    ? "competitor"
+                    : "competitors"}
+                </span>
+              </div>
+
+              <p className="mt-3 flex items-center gap-1.5 border-t border-border-light pt-2.5 text-[12px] leading-snug text-text-secondary">
+                <Hourglass
+                  size={12}
+                  strokeWidth={2.2}
+                  className="shrink-0 text-blue-primary"
+                />
+                First briefing lands after the next refresh.
+              </p>
+            </Link>
+          );
+        })}
       </section>
 
-      <Card className="mt-6 p-5">
-        <h2 className="text-[14px] font-semibold text-text-primary">
-          Also tracking{" "}
-          <span className="tnum font-normal text-text-tertiary">
-            ({MI_WATCHLIST.length})
-          </span>
-        </h2>
-        <p className="mt-0.5 text-[12px] text-text-secondary">
-          Watched for signals, no notable activity in the past week.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {MI_WATCHLIST.map((name) => (
-            <span
-              key={name}
-              className="flex items-center gap-1.5 rounded-full border border-border-light bg-white py-1 pl-1.5 pr-2.5 text-[12px] font-medium text-text-secondary"
-            >
-              <CompanyLogo name={name} className="h-[18px] w-[18px]" />
-              {name}
-            </span>
-          ))}
-        </div>
-      </Card>
+      <div className="mt-6">
+        <WatchlistMarquee
+          watchlist={MI_WATCHLIST}
+          tracked={[
+            ...MI_COMPANIES.map((c) => ({ id: c.id, name: c.name })),
+            ...tracking.companies.map((c) => ({ id: c.id, name: c.name })),
+          ]}
+        />
+      </div>
 
       <p className="mt-4 text-[11px] text-text-tertiary">
         Design preview. Companies are real, every person, post, article and

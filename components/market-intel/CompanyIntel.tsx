@@ -9,10 +9,13 @@ import {
   FileCheck2,
   Globe2,
   Handshake,
+  LayoutGrid,
+  List,
   MessageSquare,
   Newspaper,
   Radar,
   Swords,
+  Table2,
   ThumbsUp,
   TrendingDown,
   TrendingUp,
@@ -28,6 +31,10 @@ import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 // See app/market-intel/page.tsx: the house glyph in LucideIcon slots.
 const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
 import { Sparkline } from "@/components/charts/Charts";
+import {
+  TrackPersonButton,
+  UntrackPersonButton,
+} from "@/components/market-intel/TrackPersonControls";
 import { cn } from "@/lib/utils";
 import {
   SIGNAL_META,
@@ -36,6 +43,8 @@ import {
   type MiCompany,
   type MiSignalKind,
 } from "@/lib/marketIntelMock";
+import type { TrackedPerson } from "@/lib/marketIntelTracking";
+import { useStoredView } from "@/lib/useStoredView";
 
 /**
  * ONE COMPANY'S BRIEFING (Anir, Aug 10: "I can see the employees, it'll track
@@ -71,8 +80,30 @@ type FeedItem =
   | { kind: "news"; daysAgo: number; source: string; headline: string; summary: string }
   | { kind: "signal"; daysAgo: number; signal: MiSignalKind; title: string; detail: string; why: string };
 
-export function CompanyIntel({ company }: { company: MiCompany }) {
+// How the news blurbs read: full cards, a scannable grid, or a table (Anir,
+// Aug 11: "a tiles view, a rows view, and maybe even a table view").
+const NEWS_VIEWS = ["rows", "tiles", "table"] as const;
+type NewsView = (typeof NEWS_VIEWS)[number];
+const NEWS_VIEW_META: { key: NewsView; label: string; icon: LucideIcon }[] = [
+  { key: "rows", label: "Rows", icon: List },
+  { key: "tiles", label: "Tiles", icon: LayoutGrid },
+  { key: "table", label: "Table", icon: Table2 },
+];
+
+export function CompanyIntel({
+  company,
+  extraPeople = [],
+}: {
+  company: MiCompany;
+  /** People the team added on top of the sample briefing. Never invented. */
+  extraPeople?: TrackedPerson[];
+}) {
   const [lens, setLens] = useState<Lens>("all");
+  const [newsView, chooseNewsView] = useStoredView<NewsView>(
+    "freyr.mi.news.view",
+    "rows",
+    NEWS_VIEWS
+  );
   const personById = new Map(company.people.map((p) => [p.id, p]));
 
   const feed: FeedItem[] = [
@@ -178,10 +209,127 @@ export function CompanyIntel({ company }: { company: MiCompany }) {
                 </button>
               );
             })}
+            {lens === "news" && (
+              <span className="ml-auto flex items-center rounded-full border border-border-light bg-white p-0.5">
+                {NEWS_VIEW_META.map((view) => {
+                  const VIcon = view.icon;
+                  const active = newsView === view.key;
+                  return (
+                    <button
+                      key={view.key}
+                      type="button"
+                      onClick={() => chooseNewsView(view.key)}
+                      aria-pressed={active}
+                      aria-label={`${view.label} view`}
+                      title={view.label}
+                      className={cn(
+                        "flex cursor-pointer items-center justify-center rounded-full px-2.5 py-1 transition-colors",
+                        active
+                          ? "bg-blue-primary text-white"
+                          : "text-text-tertiary hover:text-text-primary"
+                      )}
+                    >
+                      <VIcon size={13} strokeWidth={2.2} />
+                    </button>
+                  );
+                })}
+              </span>
+            )}
           </div>
 
-          <div key={lens} className="tab-panel space-y-2.5">
-            {shown.map((item, index) => {
+          <div
+            key={`${lens}${lens === "news" ? `-${newsView}` : ""}`}
+            className={cn(
+              "tab-panel",
+              lens === "news" && newsView === "tiles"
+                ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2"
+                : "space-y-2.5"
+            )}
+          >
+            {lens === "news" && newsView === "table" ? (
+              <Card className="overflow-x-auto p-0">
+                <table className="min-w-[560px] w-full">
+                  <thead>
+                    <tr className="border-b border-border-light">
+                      <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        Source
+                      </th>
+                      <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        What happened
+                      </th>
+                      <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        When
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        Article
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light">
+                    {[...company.news]
+                      .sort((a, b) => a.daysAgo - b.daysAgo)
+                      .map((item, index) => (
+                        <tr key={index} className="transition-colors hover:bg-surface">
+                          <td className="px-4 py-3 align-top">
+                            <span className="flex w-max items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
+                              <Newspaper size={10.5} strokeWidth={2.2} />
+                              {item.source}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <p className="text-[13px] font-semibold leading-snug text-text-primary">
+                              {item.headline}
+                            </p>
+                            <p className="mt-0.5 text-[12px] leading-snug text-text-secondary">
+                              {item.summary}
+                            </p>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 align-top text-[12px] text-text-secondary">
+                            {miDateLabel(item.daysAgo)}
+                          </td>
+                          <td className="px-4 py-3 text-right align-top">
+                            <a
+                              href={SOURCE_HOME[item.source] || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+                            >
+                              Read <ExternalLink size={11} strokeWidth={2.2} />
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </Card>
+            ) : lens === "news" && newsView === "tiles" ? (
+              [...company.news]
+                .sort((a, b) => a.daysAgo - b.daysAgo)
+                .map((item, index) => (
+                  <Card key={index} className="flex flex-col p-4">
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
+                        <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
+                      </span>
+                      <span className="text-[11.5px] text-text-tertiary">
+                        {miDateLabel(item.daysAgo)}
+                      </span>
+                    </p>
+                    <h3 className="mt-1.5 flex-1 text-[13.5px] font-semibold leading-snug text-text-primary">
+                      {item.headline}
+                    </h3>
+                    <a
+                      href={SOURCE_HOME[item.source] || "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+                    >
+                      Read the article <ExternalLink size={11} strokeWidth={2.2} />
+                    </a>
+                  </Card>
+                ))
+            ) : (
+              shown.map((item, index) => {
               if (item.kind === "post") {
                 const person = personById.get(item.personId);
                 return (
@@ -275,7 +423,8 @@ export function CompanyIntel({ company }: { company: MiCompany }) {
                   </p>
                 </Card>
               );
-            })}
+              })
+            )}
           </div>
         </div>
 
@@ -300,6 +449,10 @@ export function CompanyIntel({ company }: { company: MiCompany }) {
             <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
               <Users size={14} strokeWidth={2} className="text-blue-primary" />
               People tracked
+              <TrackPersonButton
+                companyId={company.id}
+                companyName={company.name}
+              />
             </h2>
             <ul className="mt-2.5 space-y-2.5">
               {company.people.map((person) => (
@@ -316,6 +469,31 @@ export function CompanyIntel({ company }: { company: MiCompany }) {
                   <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3] tnum">
                     {person.posts90d} posts
                   </span>
+                </li>
+              ))}
+              {/* People the team added themselves: real names, honest state,
+                  removable. Their posts arrive with the next refresh. */}
+              {extraPeople.map((person) => (
+                <li
+                  key={person.id}
+                  className="group/person flex items-center gap-2.5"
+                >
+                  <Avatar name={person.name} className="h-8 w-8 shrink-0 text-[10px]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                      {person.name}
+                    </span>
+                    <span className="block truncate text-[11px] text-text-tertiary">
+                      {person.role || "Tracked for posts"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
+                    first sync pending
+                  </span>
+                  <UntrackPersonButton
+                    personId={person.id}
+                    personName={person.name}
+                  />
                 </li>
               ))}
             </ul>
