@@ -26,8 +26,15 @@ export function useStoredView<T extends string>(
   key: string,
   fallback: T,
   allowed: readonly T[]
-): [T, (next: T) => void] {
+): [T, (next: T) => void, boolean] {
   const [view, setView] = useState<T>(fallback);
+  /* The third slot answers "have we actually read storage yet?". The first
+   * paint cannot know the saved choice (it lives in the browser), so a page
+   * that renders the default view and then swaps LOOKS broken (Anir, Aug 10:
+   * "if I'm selecting timeline view only, show me the timeline view... it's
+   * glitching"). A caller that gates on this renders one quiet beat instead
+   * of one wrong view. Existing two-element destructurings are untouched. */
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     try {
@@ -38,6 +45,7 @@ export function useStoredView<T extends string>(
     } catch {
       /* no storage: the default stands */
     }
+    setHydrated(true);
     // `allowed` is a literal at every call site, so re-running on its identity
     // would loop; the key is what actually identifies this preference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,5 +60,5 @@ export function useStoredView<T extends string>(
     }
   }
 
-  return [view, choose];
+  return [view, choose, hydrated];
 }
