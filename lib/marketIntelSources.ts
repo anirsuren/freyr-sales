@@ -36,8 +36,7 @@ export const COMPETITOR_SOURCES: CompanySource[] = [
   // ---- Anir's real lists (Aug 11 screenshots: the Replacement Market slide
   // and the marketing competitor sheet). Platform giants are news-only with
   // scoped queries so the tab tracks the relevant product line, not the whole
-  // conglomerate's feed. Orion, Integras and I4I from the sheet are ambiguous
-  // company names and wait for Anir to say which companies they mean.
+  // conglomerate's feed.
   { id: "amplexor", name: "Amplexor", li: ["amplexor"], expect: "amplexor", newsQ: "Amplexor life sciences" },
   { id: "arisglobal", name: "ArisGlobal", li: ["arisglobal"], expect: "arisglobal" },
   { id: "calyx", name: "Calyx", li: ["calyx", "calyx-inc"], expect: "calyx", newsQ: "Calyx clinical trials" },
@@ -67,6 +66,15 @@ export const COMPETITOR_SOURCES: CompanySource[] = [
   { id: "oracle", name: "Oracle", li: null, expect: "", newsQ: "Oracle Life Sciences" },
   { id: "sap", name: "SAP", li: null, expect: "", newsQ: "SAP life sciences" },
   { id: "siemens", name: "Siemens", li: null, expect: "", newsQ: "Siemens Digital Industries life sciences" },
+  // The sheet's last three, resolved: i4i is the Toronto structured-content
+  // labeling company (SPL/FHIR ePI); Orion is Orion Innovation, the Veeva
+  // Vault RIM implementation partner. "Integras" has no LinkedIn company in
+  // this space (the only match is a Belgian tax firm), so it runs as a
+  // quoted news watch under the sheet's literal name — wrong-company data
+  // never lands on its card.
+  { id: "i4i", name: "i4i", li: ["i4i"], expect: "i4i", newsQ: "i4i structured content labeling" },
+  { id: "orion-innovation", name: "Orion Innovation", li: ["orioninnovation", "orion-innovation"], expect: "orion", newsQ: "Orion Innovation life sciences" },
+  { id: "integras", name: "Integras", li: null, expect: "", newsQ: "\"Integras\" regulatory" },
 ];
 
 export const COMPANY_SOURCES: CompanySource[] = [
