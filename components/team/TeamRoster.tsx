@@ -418,9 +418,13 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
   // FOUR WAYS TO NARROW THE FLOOR (Anir, Aug 9: "have some filters here to
   // look better, like three or four filters maybe"). Every one reads a field
   // the row already prints, so nothing here can disagree with what you see.
-  const [roleFilter, setRoleFilter] = useState("");
+  /* Role and pipeline are MULTI, like region beside them and like every
+     filter on the heat map (Anir, Aug 10: "these should all be multiselect
+     like the other pages") — nothing selected means everyone. The sort next
+     to them stays single on purpose: a list can only be ordered by one key. */
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
-  const [pipelineFilter, setPipelineFilter] = useState("");
+  const [pipelineFilter, setPipelineFilter] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("pipeline");
   const [view, setView] = useStoredView<"table" | "grid">(
     "freyr.team.view",
@@ -449,14 +453,13 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
   );
 
   const visible = [...shown]
-    .filter((r) => !roleFilter || r.role === roleFilter)
+    .filter((r) => roleFilter.length === 0 || roleFilter.includes(r.role))
     .filter((r) => regionFilter.length === 0 || regionFilter.includes(r.region))
-    .filter((r) =>
-      pipelineFilter === "with"
-        ? r.openValue > 0
-        : pipelineFilter === "without"
-          ? r.openValue <= 0
-          : true
+    .filter(
+      (r) =>
+        pipelineFilter.length === 0 ||
+        (pipelineFilter.includes("with") && r.openValue > 0) ||
+        (pipelineFilter.includes("without") && r.openValue <= 0)
     )
     .sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
@@ -495,15 +498,16 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             placeholder="Search the floor…"
             ariaLabel="Search the sales floor"
           />
-          <ColorSelect
-            value={roleFilter}
+          <MultiColorSelect
+            values={roleFilter}
             onChange={setRoleFilter}
+            allLabel="All roles"
+            allIcon={Users}
             ariaLabel="Filter by role"
             dense
             collapsible={false}
-            className="w-[132px] shrink-0"
+            width={132}
             options={[
-              { value: "", label: "All roles", color: "#0071E3", icon: Users },
               { value: "Admin", label: "Admin", color: "#6D28D9", icon: ShieldCheck },
               { value: "Manager", label: "Manager", color: "#0071E3", icon: UserCog },
               { value: "Rep", label: "Rep", color: "#0F766E", icon: User },
@@ -525,15 +529,16 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               icon: Globe,
             }))}
           />
-          <ColorSelect
-            value={pipelineFilter}
+          <MultiColorSelect
+            values={pipelineFilter}
             onChange={setPipelineFilter}
+            allLabel="Any pipeline"
+            allIcon={Layers}
             ariaLabel="Filter by pipeline"
             dense
             collapsible={false}
-            className="w-[152px] shrink-0"
+            width={152}
             options={[
-              { value: "", label: "Any pipeline", color: "#0071E3", icon: Layers },
               { value: "with", label: "Holding pipeline", color: "#1A7A35", icon: TrendingUp },
               { value: "without", label: "Nothing open", color: "#B4318F", icon: CircleSlash },
             ]}
