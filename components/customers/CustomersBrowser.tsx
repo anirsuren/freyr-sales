@@ -613,7 +613,10 @@ export function CustomersBrowser({
               color: "#0071E3",
             }))}
           />
-          <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
+          {/* ICONS ONLY, VIEW TOGGLE LAST (Anir, Aug 10: "the tile dropdown
+              thing should be last. The download button and the select button:
+              you don't have to see what they are. Just have the icons, to the
+              left of that"). Their tooltips still name them on approach. */}
           <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
             <button
               onClick={() => {
@@ -622,28 +625,28 @@ export function CustomersBrowser({
                 setSelected(new Set());
                 if (next) setView("table");
               }}
-              aria-label={selectMode ? "Done" : "Select"}
+              aria-label={selectMode ? "Done selecting" : "Select accounts"}
+              aria-pressed={selectMode}
               className={cn(
-                "inline-flex items-center text-[13px] font-medium px-3 py-2 rounded-md border transition-colors",
+                "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
                 selectMode
                   ? "border-blue-primary bg-blue-light text-blue-primary"
                   : "border-border text-text-secondary hover:bg-surface"
               )}
             >
               <CheckSquare size={15} strokeWidth={1.8} />
-              <PriorityLabel gap="ml-1.5">{selectMode ? "Done" : "Select"}</PriorityLabel>
             </button>
           </PriorityTooltip>
           <PriorityTooltip label="Export CSV">
             <button
               onClick={exportCsv}
               aria-label="Export CSV"
-              className="flex items-center text-[13px] font-medium px-3 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
             >
               <Download size={16} strokeWidth={1.5} />
-              <PriorityLabel>CSV</PriorityLabel>
             </button>
           </PriorityTooltip>
+          <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
       </SearchPriority>
       {/* Bulk action bar */}
       {selectMode && selectedInScope.length > 0 && (
