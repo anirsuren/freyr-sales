@@ -90,18 +90,20 @@ export default async function MarketIntelPage({
                 </span>
               }
             />
-            <MiTabs active="market" />
-            <MnaTracker board={feed.mna ?? null} />
+            <MiTabs active="market">
+              <MnaTracker board={feed.mna ?? null} />
+            </MiTabs>
           </div>
         );
       }
       const group = tab === "competitors" ? "competitor" : "customer";
+      const activeKey = tab === "competitors" ? "competitors" : "customers";
       return (
         <LiveMarketIntelDashboard
           feed={feed}
           tracking={tracking}
           group={group}
-          tabs={<MiTabs active={tab === "competitors" ? "competitors" : "customers"} />}
+          tabs={(content) => <MiTabs active={activeKey}>{content}</MiTabs>}
         />
       );
     }

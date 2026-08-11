@@ -47,8 +47,9 @@ export function LiveMarketIntelDashboard({
   tracking: MarketIntelTracking;
   /** Which intelligence bucket this dashboard shows. */
   group?: "customer" | "competitor";
-  /** The bucket tab row, rendered under the page header. */
-  tabs?: React.ReactNode;
+  /** The bucket tab row wrapping the content, so a click can swap the
+   *  content for a loading skeleton the moment it happens. */
+  tabs?: (content: React.ReactNode) => React.ReactNode;
 }) {
   const names = allTrackedNames(feed, tracking.companies);
   const briefings = Object.values(feed.companies)
@@ -95,8 +96,8 @@ export function LiveMarketIntelDashboard({
         }
       />
 
-      {tabs}
-
+      {(tabs ?? ((content: React.ReactNode) => content))(
+        <>
       <section className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
           icon={group === "competitor" ? Swords : Building2}
@@ -213,6 +214,8 @@ export function LiveMarketIntelDashboard({
         detected automatically and always link to their source. The feed
         refreshes itself twice a day, shared by everyone.
       </p>
+        </>
+      )}
     </div>
   );
 }
