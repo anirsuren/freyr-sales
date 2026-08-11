@@ -2577,7 +2577,12 @@ export function FdlComponentDetail({
         title={`${component.name} versions`}
         size="workflow"
       >
-        <div className="-mr-2 max-h-[68vh] space-y-2.5 overflow-y-auto pr-2">
+        {/* FIXED height, not a max: the white rectangle must not grow and
+            shrink as versions unfold (Anir, Aug 10: "make the entire
+            rectangle a little bit bigger, and then when I click each
+            dropdown, it won't change the actual rectangle"). The cards
+            scroll inside; the popup itself never moves. */}
+        <div className="-mr-2 h-[74vh] space-y-2.5 overflow-y-auto pr-2">
           {releases.map(releaseCard)}
         </div>
       </Modal>
