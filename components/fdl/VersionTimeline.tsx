@@ -144,6 +144,9 @@ export function VersionTimeline({
     id: number;
     dragging: boolean;
   } | null>(null);
+  /** When we last claimed a horizontal wheel event. A trackpad gesture is a
+   *  stream; once it is ours, every event in the stream stays ours. */
+  const wheelStreak = useRef(0);
 
   const dated = useMemo(
     () =>
@@ -231,11 +234,28 @@ export function VersionTimeline({
         );
         setPxPerDay(nextScale);
         setOriginMs(anchorMs - cursorX * (DAY / nextScale));
-      } else if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-        event.preventDefault();
-        setOriginMs((o) => o + event.deltaX * msPerPx);
+      } else {
+        /* THE BACK-SWIPE HOLE (Anir, Aug 10: "it's kind of hard to go left
+           because it keeps taking me back to the previous page"). Chrome arms
+           its history-swipe on the FIRST wheel event of a gesture — if that
+           event starts diagonal (deltaX 3, deltaY 4) a strict |dx| > |dy|
+           test lets it through, and from then on the whole gesture belongs to
+           the browser. So the test is biased: anything meaningfully
+           horizontal is ours, and once a gesture is claimed, every event in
+           its stream is claimed too, momentum tail included. Only a clearly
+           vertical scroll falls through to the page. */
+        const dx = Math.abs(event.deltaX);
+        const dy = Math.abs(event.deltaY);
+        const now = performance.now();
+        const inStreak = now - wheelStreak.current < 250;
+        const horizontal = dx > 0 && (dx > dy * 0.5 || inStreak);
+        if (horizontal) {
+          event.preventDefault();
+          wheelStreak.current = now;
+          setOriginMs((o) => o + event.deltaX * msPerPx);
+        }
+        // Clearly vertical without pinch: the page's scroll, not ours.
       }
-      // Mostly-vertical without pinch: the page's scroll, not ours.
     };
     node.addEventListener("wheel", onWheel, { passive: false });
     return () => node.removeEventListener("wheel", onWheel);
@@ -355,7 +375,13 @@ export function VersionTimeline({
         className="relative cursor-grab select-none overflow-hidden rounded-xl border border-border-light bg-white active:cursor-grabbing"
         // pan-y: a touch that moves vertically scrolls the page; horizontal
         // touches are ours. Mirrors the wheel split exactly.
-        style={{ height: STAGE_H, touchAction: "pan-y" }}
+        style={{
+          height: STAGE_H,
+          touchAction: "pan-y",
+          // Even an unclaimed horizontal remnant must not chain into the
+          // browser's navigate-back overscroll.
+          overscrollBehaviorX: "none",
+        }}
       >
         <div
           className="absolute inset-0 transition-opacity duration-300"
