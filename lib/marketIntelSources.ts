@@ -33,6 +33,40 @@ export const COMPETITOR_SOURCES: CompanySource[] = [
   { id: "icon-plc", name: "ICON plc", li: ["iconplc"], expect: "icon", newsQ: "ICON plc clinical" },
   { id: "ul-solutions", name: "UL Solutions", li: ["ul-solutions"], expect: "ul", newsQ: "UL Solutions" },
   { id: "nsf-international", name: "NSF", li: ["nsf-international"], expect: "nsf", newsQ: "NSF International certification" },
+  // ---- Anir's real lists (Aug 11 screenshots: the Replacement Market slide
+  // and the marketing competitor sheet). Platform giants are news-only with
+  // scoped queries so the tab tracks the relevant product line, not the whole
+  // conglomerate's feed. Orion, Integras and I4I from the sheet are ambiguous
+  // company names and wait for Anir to say which companies they mean.
+  { id: "amplexor", name: "Amplexor", li: ["amplexor"], expect: "amplexor", newsQ: "Amplexor life sciences" },
+  { id: "arisglobal", name: "ArisGlobal", li: ["arisglobal"], expect: "arisglobal" },
+  { id: "calyx", name: "Calyx", li: ["calyx", "calyx-inc"], expect: "calyx", newsQ: "Calyx clinical trials" },
+  { id: "ennov", name: "Ennov", li: ["ennov"], expect: "ennov", newsQ: "Ennov software" },
+  { id: "extedo", name: "EXTEDO", li: ["extedo"], expect: "extedo" },
+  { id: "generis", name: "Generis", li: ["generis-corporation", "generis"], expect: "generis", newsQ: "Generis CARA" },
+  { id: "phlexglobal", name: "Phlexglobal", li: ["phlexglobal"], expect: "phlex" },
+  { id: "lorenz", name: "LORENZ", li: ["lorenz-life-sciences", "lorenz-international"], expect: "lorenz", newsQ: "LORENZ Life Sciences" },
+  { id: "dxc-technology", name: "DXC Technology", li: ["dxctechnology"], expect: "dxc", newsQ: "DXC Technology life sciences" },
+  { id: "opentext", name: "OpenText", li: ["opentext"], expect: "opentext", newsQ: "OpenText Documentum" },
+  { id: "sparta-systems", name: "Sparta Systems", li: ["sparta-systems"], expect: "sparta", newsQ: "Sparta Systems TrackWise" },
+  { id: "sharepoint", name: "SharePoint", li: null, expect: "", newsQ: "Microsoft SharePoint" },
+  { id: "reed-tech", name: "Reed Tech", li: ["reed-tech"], expect: "reed", newsQ: "Reed Tech life sciences" },
+  { id: "navitas-life-sciences", name: "Navitas Life Sciences", li: ["navitas-life-sciences"], expect: "navitas", newsQ: "Navitas Life Sciences" },
+  { id: "kalypso", name: "Kalypso", li: ["kalypso"], expect: "kalypso", newsQ: "Kalypso Rockwell digital" },
+  { id: "regdocs365", name: "RegDocs365", li: ["regdocs365"], expect: "regdocs", newsQ: "RegDocs365" },
+  { id: "schlafender-hase", name: "Schlafender Hase", li: ["schlafender-hase"], expect: "schlafender", newsQ: "Schlafender Hase TVT" },
+  { id: "ddi", name: "DDi", li: ["makeitddi", "ddi-llc"], expect: "ddi", newsQ: "DDi regulatory technology" },
+  { id: "instem", name: "Instem", li: ["instem"], expect: "instem", newsQ: "Instem life sciences" },
+  { id: "dita-exchange", name: "Dita Exchange", li: ["dita-exchange"], expect: "dita", newsQ: "Dita Exchange" },
+  { id: "glemser", name: "Glemser Technologies", li: ["glemser-technologies"], expect: "glemser", newsQ: "Glemser Technologies" },
+  { id: "cortellis", name: "Cortellis", li: null, expect: "", newsQ: "Clarivate Cortellis" },
+  { id: "regask", name: "RegASK", li: ["regask"], expect: "regask" },
+  { id: "rimsys", name: "Rimsys", li: ["rimsys"], expect: "rimsys", newsQ: "Rimsys regulatory" },
+  { id: "esko", name: "Esko", li: ["esko"], expect: "esko", newsQ: "Esko packaging software" },
+  { id: "windchill", name: "Windchill", li: null, expect: "", newsQ: "PTC Windchill" },
+  { id: "oracle", name: "Oracle", li: null, expect: "", newsQ: "Oracle Life Sciences" },
+  { id: "sap", name: "SAP", li: null, expect: "", newsQ: "SAP life sciences" },
+  { id: "siemens", name: "Siemens", li: null, expect: "", newsQ: "Siemens Digital Industries life sciences" },
 ];
 
 export const COMPANY_SOURCES: CompanySource[] = [
