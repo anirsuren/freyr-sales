@@ -601,8 +601,11 @@ export function VersionTimeline({
                     </button>
                   </HoverCard>
                 </div>
-                <span
-                  className="pointer-events-none absolute z-20 h-3.5 w-3.5 -translate-x-1/2 rounded-full transition-transform duration-200"
+                <button
+                  type="button"
+                  aria-label={`Open ${withV(release.version)}`}
+                  onClick={() => onOpen?.(release.id)}
+                  className="absolute z-20 h-3.5 w-3.5 -translate-x-1/2 cursor-pointer rounded-full transition-transform duration-200"
                   style={{
                     left: x,
                     top: DOT_TOP,

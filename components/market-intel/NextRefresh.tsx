@@ -103,55 +103,59 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
         <div
           role="dialog"
           aria-label="Refresh schedule"
-          className="menu-in absolute right-0 top-full z-50 mt-2 w-[272px] rounded-xl border border-border-light bg-white p-3.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
+          className="menu-in absolute right-0 top-full z-50 mt-2 w-[324px] rounded-xl border border-border-light bg-white p-3.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
         >
           <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
             Live data · twice a day
           </p>
 
-          <div className="mt-2.5 flex items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(0,113,227,0.08)] text-[color:#0071E3]">
-              <History size={15} strokeWidth={2.2} />
-            </span>
+          {/* One horizontal timeline: refreshed on the left, next run on the
+              right, and a marker for where in the cycle we are now. */}
+          <div className="mt-3 flex items-end justify-between gap-3">
             <span className="min-w-0">
-              <span className="block text-[11px] font-medium text-text-tertiary">
-                Last refresh
+              <span className="flex items-center gap-1 text-[11px] font-medium text-[color:#0071E3]">
+                <History size={12} strokeWidth={2.2} /> Refreshed
               </span>
-              <span className="block text-[13px] font-semibold text-text-primary tnum">
+              <span className="mt-0.5 block text-[14px] font-bold text-text-primary tnum">
                 {dayClock(last, now)}
               </span>
             </span>
-          </div>
-
-          <div className="mt-2.5 flex items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(109,40,217,0.08)] text-[color:#6D28D9]">
-              {due ? (
-                <Loader2 size={15} strokeWidth={2.2} className="animate-spin" />
-              ) : (
-                <CalendarClock size={15} strokeWidth={2.2} />
-              )}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[11px] font-medium text-text-tertiary">
+            <span className="min-w-0 text-right">
+              <span className="flex items-center justify-end gap-1 text-[11px] font-medium text-[color:#6D28D9]">
+                {due ? (
+                  <Loader2 size={12} strokeWidth={2.2} className="animate-spin" />
+                ) : (
+                  <CalendarClock size={12} strokeWidth={2.2} />
+                )}{" "}
                 Next refresh
               </span>
-              <span className="block text-[13px] font-semibold text-text-primary tnum">
-                {due ? "Running now — new items land shortly" : `~${clock(next)}`}
+              <span className="mt-0.5 block text-[14px] font-bold text-text-primary tnum">
+                {due ? "running now" : `~${clock(next)}`}
               </span>
             </span>
           </div>
 
-          <div className="mt-3">
-            <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(0,113,227,0.12)]">
+          <div className="relative mt-2.5 h-3.5">
+            <div className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 overflow-hidden rounded-full bg-[rgba(0,113,227,0.12)]">
               <div
-                className="h-full rounded-full bg-[#0071E3] transition-all"
+                className="h-full rounded-full bg-[#0071E3]"
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <div className="mt-1 flex justify-between text-[10.5px] font-medium text-text-tertiary tnum">
-              <span>{clock(last)}</span>
-              <span>{due ? "due" : clock(next)}</span>
-            </div>
+            <span className="absolute left-0 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#0071E3]" />
+            <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border-2 border-[#6D28D9] bg-white" />
+            <span
+              className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#0071E3] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.25)]"
+              style={{ left: `${pct}%` }}
+            />
+          </div>
+          <div className="relative mt-1 h-4">
+            <span
+              className="absolute -translate-x-1/2 whitespace-nowrap text-[10.5px] font-bold text-blue-primary tnum"
+              style={{ left: `${Math.min(85, Math.max(15, pct))}%` }}
+            >
+              {due ? "refresh due" : `you're here · ${clock(now)}`}
+            </span>
           </div>
 
           <p className="mt-2.5 flex items-start gap-1.5 border-t border-border-light pt-2.5 text-[11px] leading-snug text-text-secondary">

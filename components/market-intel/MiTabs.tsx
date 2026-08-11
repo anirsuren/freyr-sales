@@ -126,6 +126,7 @@ export function MiTabs({
       <div className="rise-in relative z-40 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div ref={anchorRef} className="relative">
+          <h1 className="m-0">
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -151,6 +152,7 @@ export function MiTabs({
               />
             )}
           </button>
+          </h1>
           {open && (
             <div
               role="menu"

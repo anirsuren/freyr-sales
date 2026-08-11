@@ -46,6 +46,7 @@ import {
 import type { Contact, PitchSession } from "@/lib/types";
 import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 import { readMemberProfile } from "@/lib/memberProfile";
+import { searchMarketIntel } from "@/lib/marketIntelAgent";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,11 @@ export async function POST(req: NextRequest) {
   if (!message) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
   }
+  // Where the person is standing and what their screen shows, sent by the
+  // dock on every message (Anir, Aug 11: "it'll know what page I'm on").
+  const onPath = String(body.path || "").slice(0, 200);
+  const onSubject = String(body.subject || "").slice(0, 120);
+  const pageContext = String(body.pageContext || "").slice(0, 5000);
   const liveAccounts =
     getDataMode() === "live" ? await listAssignablePeople() : [];
   const visibleOfferings = () =>
@@ -520,12 +526,16 @@ export async function POST(req: NextRequest) {
     "and you never claim to have contacted anyone.\n\n" +
 
     (offeringsOnly
-      ? "SCOPE. This workspace contains Freyr's offerings catalogue and uploaded sales materials, nothing else: " +
-        "no customers, deals, pipeline or to-do exist here, so never bring them up or quote zeros for them. " +
-        "Use search_offerings before answering anything about offerings, materials, markets or customer types, and name the document when you quote one unless it is labelled 'Private AI training material'. Never guess or reveal an anonymous source's title, filename, URL or upload metadata.\n\n"
+      ? "SCOPE. This workspace holds Freyr's offerings catalogue, uploaded sales materials, AND the live Market " +
+        "Intelligence feed (tracked customer and competitor companies: their real LinkedIn posts, news, AI signals, " +
+        "followed people, and the M&A tracker). No deals/pipeline/to-do records exist here, so never bring those up or quote zeros for them. " +
+        "Use search_offerings for anything about offerings, materials, markets or customer types; use search_market_intel " +
+        "for anything about a tracked company, what someone is posting, industry news, signals, competitors or M&A. " +
+        "Name the document when you quote one unless it is labelled 'Private AI training material'. Never guess or reveal an anonymous source's title, filename, URL or upload metadata.\n\n"
       : "SCOPE. You have the user's full book (below) plus tools to read it: get_account_detail (depth on one account), " +
         "list_accounts (filter the book), search_offerings (anything about offerings, materials, markets, customer types - " +
-        "search before answering those, and name the document when you quote one unless it is labelled 'Private AI training material'; never guess or reveal an anonymous source's title, filename, URL or upload metadata).\n\n") +
+        "search before answering those, and name the document when you quote one unless it is labelled 'Private AI training material'; never guess or reveal an anonymous source's title, filename, URL or upload metadata), " +
+        "and search_market_intel (the live Market Intelligence feed: tracked companies' LinkedIn posts, news, AI signals, followed people and the M&A tracker - search it for anything about what a tracked company or person is doing).\n\n") +
 
     // A CHATBOT, NOT AN OPERATOR (Anir, Jul 29: "just have it like a normal
     // chatbot for now. I don't know what kind of features they wanted to do and
@@ -546,6 +556,14 @@ export async function POST(req: NextRequest) {
     '```chart\n{"type":"bar","title":"Open pipeline by stage","format":"money","data":[{"label":"Prospect","value":391000}]}\n```\n' +
     'Types: "bar" (comparisons), "donut" (share of a whole), "area" (trend). Real values only.\n\n' +
 
+    (pageContext
+      ? `WHERE THEY ARE. The person is on ${onPath || "the app"}${onSubject ? `, looking at ${onSubject}` : ""}. ` +
+        "PAGE CONTENT below is the exact text on their screen right now; treat it as ground truth for questions " +
+        'about "this page", "this company" or anything they can see.' +
+        "\nPAGE CONTENT:\n" + '"""' + "\n" +
+        pageContext +
+        "\n" + '"""' + "\n\n"
+      : "") +
     (offeringsOnly ? "" : "THE BOOK (live data):\n" + facts) +
     offeringFocus +
     catalogueGrounding +
@@ -751,6 +769,12 @@ export async function POST(req: NextRequest) {
       return { content: result.reply, did: "log_touch" };
     }
 
+    if (name === "search_market_intel") {
+      const q = String(input?.query || "").trim();
+      if (!q) return { content: "Give search_market_intel a query." };
+      return { content: await searchMarketIntel(q) };
+    }
+
     if (name === "search_offerings") {
       const q = String(input?.query || "").trim();
       if (!q) return { content: "Give search_offerings a query." };
@@ -789,10 +813,13 @@ export async function POST(req: NextRequest) {
   // therefore requires an explicit capability decision in both places.
   const readOnlyTools = AGENT_TOOLS.filter((t) =>
     offeringsOnly
-      ? t.name === "search_offerings"
-      : ["search_offerings", "get_account_detail", "list_accounts"].includes(
-          t.name
-        )
+      ? ["search_offerings", "search_market_intel"].includes(t.name)
+      : [
+          "search_offerings",
+          "search_market_intel",
+          "get_account_detail",
+          "list_accounts",
+        ].includes(t.name)
   );
   const agentResult = await agentConverseAgentic(
     agentSystem,
@@ -839,6 +866,22 @@ export async function POST(req: NextRequest) {
 // writes (draft/follow-up/log) are the only real side effects, and every one is
 // human-led — saved for the signed-in user to review, never sent.
 const AGENT_TOOLS: AgentToolDef[] = [
+  {
+    name: "search_market_intel",
+    description:
+      "Search the live Market Intelligence feed: every tracked customer and competitor company's real LinkedIn posts, news articles, AI-detected signals and AI rundown, the senior people followed at each one, and the M&A tracker. Use for ANY question about what a tracked company or person is doing, posting, or in the news for, and for mergers/acquisitions. Query with the company or person's name, or a topic.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Company name ('GSK'), person's name, topic ('layoffs', 'FDA approval'), or 'M&A deals'",
+        },
+      },
+      required: ["query"],
+    },
+  },
   {
     name: "search_offerings",
     description:

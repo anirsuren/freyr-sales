@@ -588,7 +588,13 @@ export function AgentDock({
   // Read what's on screen (the page's H1) so the assistant knows the record.
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const h1 = document.querySelector("main h1")?.textContent?.trim() || "";
+    // First text node only: briefing H1s carry chips (momentum, follower
+    // counts) whose text would otherwise glue onto the name.
+    const h1El = document.querySelector("main h1");
+    const h1 =
+      h1El?.childNodes?.[0]?.textContent?.trim() ||
+      h1El?.textContent?.trim() ||
+      "";
     setSubject(h1.length > 0 && h1.length < 60 ? h1 : "");
   }, [pathname, open]);
 
@@ -677,6 +683,13 @@ export function AgentDock({
           excludeSources: active?.excludedSources ?? [],
           offeringId: requestOffering?.id,
           materialId: requestOffering?.material?.id,
+          // What page they're on and what it says, so the answer can be
+          // about the screen in front of them.
+          path: pathname,
+          subject: focusedSubject,
+          pageContext: (document.querySelector("main")?.textContent || "")
+            .replace(/\s+/g, " ")
+            .slice(0, 5000),
         }),
         signal: controller.signal,
       });

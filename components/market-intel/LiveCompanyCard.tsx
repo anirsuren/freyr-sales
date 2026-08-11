@@ -203,9 +203,12 @@ export function LiveCompanyCard({
         <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#1A7A35]" />
         Updated {briefing.updatedLabel}
         {people && people.length > 0 && (
-          <span className="ml-auto flex items-center pl-1">
+          <span className="hover-yield group/pile ml-auto flex items-center pl-1">
             {people.slice(0, 5).map((person) => (
-              <span key={person.id} className="group/face relative -ml-1.5 first:ml-0">
+              <span
+                key={person.id}
+                className="group/face relative -ml-1.5 transition-[margin] duration-200 first:ml-0 group-hover/pile:ml-1 group-hover/pile:first:ml-0"
+              >
                 <Avatar
                   name={person.name}
                   src={person.photoUrl}
@@ -235,7 +238,7 @@ export function LiveCompanyCard({
               </span>
             ))}
             {people.length > 5 && (
-              <span className="tnum -ml-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-surface text-[9.5px] font-bold text-text-secondary ring-2 ring-white">
+              <span className="tnum -ml-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-surface text-[9.5px] font-bold text-text-secondary ring-2 ring-white transition-[margin] duration-200 group-hover/pile:ml-1">
                 +{people.length - 5}
               </span>
             )}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MessageSquare, Repeat2, ThumbsUp, X } from "lucide-react";
+import { ExternalLink, MessageSquare, Repeat2, ThumbsUp, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -157,38 +157,80 @@ export function TrackedPeopleList({
       >
         {open && (
           <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Avatar
-                name={open.name}
-                src={open.photoUrl || undefined}
-                className="h-16 w-16 shrink-0 text-[18px]"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-[17px] font-semibold text-text-primary">
-                  {open.name}
-                </p>
-                <p className="text-[12.5px] leading-snug text-text-secondary">
-                  {open.role || "Tracked for posts"}
-                </p>
+            {/* Everything scraped from their profile, in one organized card:
+                photo, full headline, when we started following, and the
+                engagement their collected posts have earned. */}
+            <div className="rounded-xl border border-border-light bg-[var(--surface)] p-4">
+              <div className="flex flex-wrap items-start gap-4">
+                <Avatar
+                  name={open.name}
+                  src={open.photoUrl || undefined}
+                  className="h-20 w-20 shrink-0 text-[22px]"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[18px] font-bold tracking-[-0.01em] text-text-primary">
+                    {open.name}
+                  </p>
+                  <p className="mt-0.5 text-[13px] leading-snug text-text-secondary">
+                    {open.role || "Tracked for posts"}
+                  </p>
+                  <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
+                      Followed since{" "}
+                      {new Date(open.addedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                    <span className="rounded-full bg-[rgba(109,40,217,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#6D28D9] tnum">
+                      {openPosts === undefined
+                        ? "first sync pending"
+                        : `${openPosts.length} ${openPosts.length === 1 ? "post" : "posts"} collected`}
+                    </span>
+                  </p>
+                </div>
+                {open.linkedinUrl && (
+                  <a
+                    href={open.linkedinUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 rounded-full bg-[color:#0071E3] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+                  >
+                    <LinkedInIcon size={12} /> Open LinkedIn
+                  </a>
+                )}
               </div>
-              <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11.5px] font-semibold text-[color:#0071E3] tnum">
-                {openPosts === undefined
-                  ? "first sync pending"
-                  : `${openPosts.length} ${openPosts.length === 1 ? "post" : "posts"} collected`}
-              </span>
-              {open.linkedinUrl && (
-                <a
-                  href={open.linkedinUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-full bg-[color:#0071E3] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
-                >
-                  <LinkedInIcon size={12} /> Open LinkedIn
-                </a>
+              {openPosts && openPosts.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border-light pt-3">
+                  <span className="text-center">
+                    <span className="block text-[16px] font-bold text-text-primary tnum">
+                      {openPosts.reduce((a, p) => a + (p.reactions ?? 0), 0)}
+                    </span>
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Reactions
+                    </span>
+                  </span>
+                  <span className="text-center">
+                    <span className="block text-[16px] font-bold text-text-primary tnum">
+                      {openPosts.reduce((a, p) => a + (p.comments ?? 0), 0)}
+                    </span>
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Comments
+                    </span>
+                  </span>
+                  <span className="text-center">
+                    <span className="block text-[16px] font-bold text-text-primary tnum">
+                      {openPosts.reduce((a, p) => a + (p.reposts ?? 0), 0)}
+                    </span>
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Reposts
+                    </span>
+                  </span>
+                </div>
               )}
             </div>
 
-            <div className="-mr-2 mt-5 h-[62vh] space-y-3 overflow-y-auto pr-2">
+            <div className="-mr-2 mt-4 h-[56vh] space-y-4 overflow-y-auto pr-2">
               {!openPosts || openPosts.length === 0 ? (
                 <p className="rounded-lg bg-surface px-4 py-5 text-center text-[12.5px] leading-relaxed text-text-secondary">
                   {openPosts === undefined
@@ -199,10 +241,23 @@ export function TrackedPeopleList({
                 openPosts.map((post) => (
                   <div
                     key={post.url}
-                    className="rounded-lg border border-border-light p-3.5"
+                    className="rounded-xl border border-border-light bg-white p-4 shadow-card"
                   >
-                    <p className="text-[11.5px] font-medium text-text-tertiary">
-                      {fmtDate(post.date)}
+                    <p className="flex items-center text-[11.5px] font-medium text-text-tertiary">
+                      <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0071E3]">
+                        {fmtDate(post.date)}
+                      </span>
+                      <a
+                        href={post.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="Open on LinkedIn"
+                        title="Open on LinkedIn"
+                        className="ml-auto flex items-center gap-1 text-[color:#0071E3] transition-opacity hover:opacity-70"
+                      >
+                        <LinkedInIcon size={12} />
+                        <ExternalLink size={11} strokeWidth={2.2} />
+                      </a>
                     </p>
                     <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
                       {post.text}
@@ -223,14 +278,6 @@ export function TrackedPeopleList({
                           <Repeat2 size={12} strokeWidth={2} /> {post.reposts}
                         </span>
                       )}
-                      <a
-                        href={post.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="ml-auto flex items-center gap-1 text-[color:#0071E3] hover:underline"
-                      >
-                        <LinkedInIcon size={11} /> Open post
-                      </a>
                     </p>
                   </div>
                 ))

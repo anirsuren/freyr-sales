@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  ChevronDown,
+  Check,
+  Building2,
   ArrowLeft,
   CalendarDays,
   CalendarRange,
@@ -64,7 +67,7 @@ const SIGNAL_ICON: Record<MiSignalKind, LucideIcon> = {
   deal: Handshake,
 };
 
-type Lens = "all" | "linkedin" | "news" | "signals";
+type Kind = "company" | "people" | "news" | "signal";
 
 const NEWS_VIEWS = ["rows", "tiles", "table"] as const;
 type NewsView = (typeof NEWS_VIEWS)[number];
@@ -95,7 +98,12 @@ export function LiveCompanyBriefing({
   /** Collected posts per tracked person id; a missing key means no sync yet. */
   personPosts?: Record<string, FeedPost[]>;
 }) {
-  const [lens, setLens] = useState<Lens>("all");
+  const ALL_KINDS: Kind[] = ["company", "people", "news", "signal"];
+  const [kinds, setKinds] = useState<Set<Kind>>(new Set(ALL_KINDS));
+  const [kindsOpen, setKindsOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
+  const kindsRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<HTMLDivElement>(null);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -106,6 +114,27 @@ export function LiveCompanyBriefing({
   // call): the feed keeps 90 days, the chips narrow the window.
   const [range, setRange] = useState<"1" | "7" | "30" | "90">("90");
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!kindsOpen && !viewOpen) return;
+    const onDown = (event: MouseEvent) => {
+      const t = event.target as Node;
+      if (!kindsRef.current?.contains(t)) setKindsOpen(false);
+      if (!viewRef.current?.contains(t)) setViewOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setKindsOpen(false);
+        setViewOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [kindsOpen, viewOpen]);
 
   const up = (briefing.momentumPct ?? 0) >= 0;
   const cutoff = Date.now() - Number(range) * 86_400_000;
@@ -122,16 +151,30 @@ export function LiveCompanyBriefing({
   const signals = briefing.signals.filter(
     (s) => inRange(s.date) && hit(s.title, s.sourceLabel, s.why)
   );
-  // Signals are detected inside these same posts and articles, so Everything
-  // counts each item once rather than repeating it as its own signal card.
-  const feedCount = posts.length + news.length;
-
-  const lenses: { key: Lens; label: string; icon: LucideIcon; color: string; count: number }[] = [
-    { key: "all", label: "Everything", icon: Radar, color: "#0071E3", count: feedCount },
-    { key: "linkedin", label: "LinkedIn", icon: LinkedInGlyph, color: "#0071E3", count: posts.length },
+  // Four content types, each its own toggle (Anir, Aug 11: "I can even filter
+  // to only see what people are posting").
+  const KIND_META: { key: Kind; label: string; icon: LucideIcon; color: string; count: number }[] = [
+    { key: "company", label: "Company posts", icon: Building2, color: "#0071E3", count: posts.filter((p) => !p.by).length },
+    { key: "people", label: "People posts", icon: Users, color: "#B4318F", count: posts.filter((p) => p.by).length },
     { key: "news", label: "News", icon: Newspaper, color: "#0F766E", count: news.length },
-    { key: "signals", label: "Signals", icon: Radar, color: "#7C3AED", count: signals.length },
+    { key: "signal", label: "Signals", icon: Radar, color: "#7C3AED", count: signals.length },
   ];
+  const activeCount = KIND_META.filter((k) => kinds.has(k.key)).reduce((a, k) => a + k.count, 0);
+  const allOn = kinds.size === ALL_KINDS.length;
+  const kindLabel = allOn
+    ? "Everything"
+    : kinds.size === 1
+      ? KIND_META.find((k) => kinds.has(k.key))?.label ?? "Filtered"
+      : `${kinds.size} of 4 types`;
+  const toggleKind = (kind: Kind) =>
+    setKinds((prev) => {
+      const next = new Set(prev);
+      if (next.has(kind)) {
+        if (next.size === 1) return prev;
+        next.delete(kind);
+      } else next.add(kind);
+      return next;
+    });
 
 
   const signalCounts = signals.reduce<Record<string, number>>(
@@ -168,6 +211,17 @@ export function LiveCompanyBriefing({
                   ? `${post.by.role || "Tracked person"} · ${fmtDate(post.date)}`
                   : `Company page · ${fmtDate(post.date)}`}
               </span>
+              <a
+                href={post.url}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open on LinkedIn"
+                title="Open on LinkedIn"
+                className="ml-auto flex items-center gap-1 text-[color:#0071E3] transition-opacity hover:opacity-70"
+              >
+                <LinkedInIcon size={13} />
+                <ExternalLink size={12} strokeWidth={2.2} />
+              </a>
             </p>
             <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
               {isLong && !open ? `${post.text.slice(0, 420).trimEnd()}…` : post.text}
@@ -204,14 +258,6 @@ export function LiveCompanyBriefing({
                   <Repeat2 size={13} strokeWidth={2} /> {post.reposts}
                 </span>
               )}
-              <a
-                href={post.url}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-auto flex items-center gap-1 text-[color:#0071E3] hover:underline"
-              >
-                <LinkedInIcon size={12} /> Open on LinkedIn
-              </a>
             </p>
           </div>
         </div>
@@ -291,18 +337,21 @@ export function LiveCompanyBriefing({
   } as const;
 
   type FeedItem =
-    | { kind: "post"; date: string | null; post: LiveBriefing["posts"][number] }
-    | { kind: "news"; date: string | null; news: LiveBriefing["news"][number] };
+    | { kind: "company" | "people"; date: string | null; post: LiveBriefing["posts"][number] }
+    | { kind: "news"; date: string | null; news: LiveBriefing["news"][number] }
+    | { kind: "signal"; date: string | null; signal: LiveBriefing["signals"][number] };
 
   const merged: FeedItem[] = [
-    ...posts.map((post) => ({ kind: "post" as const, date: post.date, post })),
+    ...posts.map((post) => ({
+      kind: (post.by ? "people" : "company") as "people" | "company",
+      date: post.date,
+      post,
+    })),
     ...news.map((item) => ({ kind: "news" as const, date: item.published, news: item })),
+    ...signals.map((signal) => ({ kind: "signal" as const, date: signal.date, signal })),
   ].sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
 
-  const shown =
-    lens === "all"
-      ? merged
-      : merged.filter((i) => (lens === "linkedin" ? i.kind === "post" : i.kind === "news"));
+  const shown = merged.filter((i) => kinds.has(i.kind));
 
   /** The table layout works on every lens: one row per item, whatever it is. */
   type TableRow = {
@@ -313,34 +362,33 @@ export function LiveCompanyBriefing({
     when: string | null;
     url: string;
   };
-  const tableRows: TableRow[] =
-    lens === "signals"
-      ? signals.map((signal) => ({
+  const tableRows: TableRow[] = shown.map((item) =>
+    item.kind === "signal"
+      ? {
           kind: "signal" as const,
-          tag: SIGNAL_META[signal.kind].label,
-          what: signal.title,
-          sub: signal.why,
-          when: signal.date,
-          url: signal.url,
-        }))
-      : shown.map((item) =>
-          item.kind === "post"
-            ? {
-                kind: "post" as const,
-                tag: item.post.by?.name ?? briefing.name,
-                what: item.post.text,
-                when: item.post.date,
-                url: item.post.url,
-              }
-            : {
-                kind: "news" as const,
-                tag: item.news.source,
-                what: item.news.title,
-                sub: item.news.summary,
-                when: item.news.published,
-                url: item.news.url,
-              }
-        );
+          tag: SIGNAL_META[item.signal.kind].label,
+          what: item.signal.title,
+          sub: item.signal.why,
+          when: item.signal.date,
+          url: item.signal.url,
+        }
+      : item.kind === "news"
+        ? {
+            kind: "news" as const,
+            tag: item.news.source,
+            what: item.news.title,
+            sub: item.news.summary,
+            when: item.news.published,
+            url: item.news.url,
+          }
+        : {
+            kind: "post" as const,
+            tag: item.post.by?.name ?? briefing.name,
+            what: item.post.text,
+            when: item.post.date,
+            url: item.post.url,
+          }
+  );
 
   return (
     <div>
@@ -427,19 +475,83 @@ export function LiveCompanyBriefing({
               inputClassName="h-[34px] w-full rounded-full border border-border-light bg-white pl-8 pr-3 text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-subtle"
             />
             <span className="ml-auto flex items-center gap-2">
-              <ColorSelect
-                value={lens}
-                onChange={(v) => setLens(v as Lens)}
-                ariaLabel="What to show"
-                minWidth={172}
-                dense
-                options={lenses.map((l) => ({
-                  value: l.key,
-                  label: `${l.label} (${l.count})`,
-                  icon: l.icon,
-                  color: l.color,
-                }))}
-              />
+              <div ref={kindsRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setKindsOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={kindsOpen}
+                  className="flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white pl-1.5 pr-2.5 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-subtle"
+                >
+                  <span
+                    className="flex h-6 w-6 items-center justify-center rounded-full"
+                    style={{
+                      color: kinds.size === 1 ? KIND_META.find((k) => kinds.has(k.key))?.color : "#0071E3",
+                      background: `${(kinds.size === 1 ? KIND_META.find((k) => kinds.has(k.key))?.color : "#0071E3") ?? "#0071E3"}14`,
+                    }}
+                  >
+                    <Radar size={13} strokeWidth={2.2} />
+                  </span>
+                  {kindLabel}
+                  <span className="tnum text-text-tertiary">({activeCount})</span>
+                  <ChevronDown
+                    size={13}
+                    strokeWidth={2.2}
+                    className={cn("text-text-tertiary transition-transform", kindsOpen && "rotate-180 text-blue-primary")}
+                  />
+                </button>
+                {kindsOpen && (
+                  <div
+                    role="menu"
+                    className="menu-in absolute right-0 top-full z-50 mt-2 w-[236px] rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
+                  >
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={allOn}
+                      onClick={() => setKinds(new Set(ALL_KINDS))}
+                      className={cn(
+                        "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold transition-colors",
+                        allOn ? "bg-blue-light text-text-primary" : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                      )}
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[rgba(0,113,227,0.08)] text-[color:#0071E3]">
+                        <Radar size={13} strokeWidth={2.2} />
+                      </span>
+                      <span className="flex-1">Everything</span>
+                      {allOn && <Check size={14} strokeWidth={2.4} className="text-blue-primary" />}
+                    </button>
+                    <div className="mx-2 my-1 border-t border-border-light" />
+                    {KIND_META.map((k) => {
+                      const KIcon = k.icon;
+                      const on = kinds.has(k.key);
+                      return (
+                        <button
+                          key={k.key}
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={on}
+                          onClick={() => toggleKind(k.key)}
+                          className={cn(
+                            "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold transition-colors",
+                            on ? "text-text-primary" : "text-text-tertiary hover:bg-surface hover:text-text-secondary"
+                          )}
+                        >
+                          <span
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
+                            style={{ color: k.color, background: `${k.color}${on ? "1f" : "0f"}` }}
+                          >
+                            <KIcon size={13} strokeWidth={2.2} />
+                          </span>
+                          <span className="flex-1">{k.label}</span>
+                          <span className="tnum text-[12px] text-text-tertiary">{k.count}</span>
+                          {on && <Check size={14} strokeWidth={2.4} className="text-blue-primary" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <ColorSelect
                 value={range}
                 onChange={(v) => setRange(v as typeof range)}
@@ -453,26 +565,73 @@ export function LiveCompanyBriefing({
                   { value: "90", label: "Past 3 months", color: "#0F766E", icon: History },
                 ]}
               />
-              <ColorSelect
-                value={newsView}
-                onChange={(v) => chooseNewsView(v as NewsView)}
-                ariaLabel="Layout"
-                minWidth={116}
-                dense
-                options={[
-                  { value: "rows", label: "Rows", icon: List, color: "#0071E3" },
-                  { value: "tiles", label: "Tiles", icon: LayoutGrid, color: "#6D28D9" },
-                  { value: "table", label: "Table", icon: Table2, color: "#0F766E" },
-                ]}
-              />
+              <div ref={viewRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setViewOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={viewOpen}
+                  aria-label="Layout"
+                  title="Layout"
+                  className="flex h-[34px] cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-2 transition-colors hover:border-blue-subtle"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(0,113,227,0.10)] text-blue-primary">
+                    {newsView === "rows" ? (
+                      <List size={14} strokeWidth={2.2} />
+                    ) : newsView === "tiles" ? (
+                      <LayoutGrid size={14} strokeWidth={2.2} />
+                    ) : (
+                      <Table2 size={14} strokeWidth={2.2} />
+                    )}
+                  </span>
+                  <ChevronDown
+                    size={12}
+                    strokeWidth={2.2}
+                    className={cn("text-text-tertiary transition-transform", viewOpen && "rotate-180 text-blue-primary")}
+                  />
+                </button>
+                {viewOpen && (
+                  <div
+                    role="menu"
+                    className="menu-in absolute right-0 top-full z-50 mt-2 flex gap-1 rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
+                  >
+                    {(["rows", "tiles", "table"] as NewsView[]).map((view) => {
+                      const VIcon = view === "rows" ? List : view === "tiles" ? LayoutGrid : Table2;
+                      const on = newsView === view;
+                      return (
+                        <button
+                          key={view}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={on}
+                          aria-label={view}
+                          title={view}
+                          onClick={() => {
+                            chooseNewsView(view);
+                            setViewOpen(false);
+                          }}
+                          className={cn(
+                            "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-colors",
+                            on
+                              ? "bg-[rgba(0,113,227,0.12)] text-blue-primary"
+                              : "text-text-tertiary hover:bg-surface hover:text-text-primary"
+                          )}
+                        >
+                          <VIcon size={16} strokeWidth={2.2} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </span>
           </SearchPriority>
 
           <div
-            key={`${lens}-${newsView}-${range}`}
+            key={`${[...kinds].sort().join("+")}-${newsView}-${range}`}
             className={cn(
               "tab-panel",
-              newsView === "tiles"
+              newsView === "tiles" && shown.length > 0
                 ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2"
                 : "space-y-2.5"
             )}
@@ -546,56 +705,18 @@ export function LiveCompanyBriefing({
                   </tbody>
                 </table>
               </Card>
-            ) : lens === "signals" ? (
-              signals.length === 0 ? (
-                <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
-                  Nothing detected in the current window. Signals are spotted
-                  automatically in new posts and articles: leadership changes,
-                  regulatory moves, deals, expansion and hiring.
-                </Card>
-              ) : (
-                signals.map((signal, index) => signalCard(signal, `s-${index}`))
-              )
-            ) : lens === "news" && newsView === "tiles" ? (
-              news.map((item, index) => (
-                <Card key={index} className="flex flex-col p-4">
-                  <p className="flex flex-wrap items-center gap-2">
-                    <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
-                      <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
-                    </span>
-                    <span className="text-[11.5px] text-text-tertiary">
-                      {fmtDate(item.published)}
-                    </span>
-                  </p>
-                  <h3 className="mt-1.5 text-[13.5px] font-semibold leading-snug text-text-primary">
-                    {item.title}
-                  </h3>
-                  {item.summary && (
-                    <p className="mt-1 flex-1 text-[12px] leading-snug text-text-secondary">
-                      {item.summary}
-                    </p>
-                  )}
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-                  >
-                    Read the article <ExternalLink size={11} strokeWidth={2.2} />
-                  </a>
-                </Card>
-              ))
             ) : shown.length === 0 ? (
               <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
-                {lens === "linkedin"
-                  ? "No public company page connected for this one yet, or no posts in the past 3 months."
-                  : "Nothing in this window yet. The next refresh tops this up."}
+                Nothing matches the current filters. Widen the types, time
+                range or search to see more.
               </Card>
             ) : (
               shown.map((item, index) =>
-                item.kind === "post"
-                  ? postCard(item.post, `p-${index}`)
-                  : newsCard(item.news, `n-${index}`)
+                item.kind === "signal"
+                  ? signalCard(item.signal, `s-${index}`)
+                  : item.kind === "news"
+                    ? newsCard(item.news, `n-${index}`)
+                    : postCard(item.post, `p-${index}`)
               )
             )}
           </div>
