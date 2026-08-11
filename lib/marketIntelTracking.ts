@@ -31,6 +31,8 @@ export type TrackedPerson = {
 export type TrackedCompany = {
   id: string;
   name: string;
+  /** Which intelligence tab owns it; absent means customer. */
+  group?: "customer" | "competitor";
   industry: string;
   hq: string;
   website: string;

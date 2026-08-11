@@ -14,7 +14,11 @@ import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
  * logo and followers, pulls the first posts and news, and writes the AI
  * rundown — the briefing exists by the time the toast shows.
  */
-export function TrackCompanyButton() {
+export function TrackCompanyButton({
+  group = "customer",
+}: {
+  group?: "customer" | "competitor";
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -33,7 +37,7 @@ export function TrackCompanyButton() {
       const res = await fetch("/api/market-intel/tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "company-link", linkedinUrl }),
+        body: JSON.stringify({ kind: "company-link", linkedinUrl, group }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not save.");
@@ -51,7 +55,8 @@ export function TrackCompanyButton() {
   return (
     <>
       <Button onClick={() => setOpen(true)} className="!px-4 !py-2 text-[13px]">
-        <Plus size={15} strokeWidth={2.4} /> Track a company
+        <Plus size={15} strokeWidth={2.4} />
+        {group === "competitor" ? "Track a competitor" : "Track a company"}
       </Button>
 
       <Modal

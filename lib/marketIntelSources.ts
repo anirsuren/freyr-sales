@@ -15,6 +15,26 @@ export type CompanySource = {
   newsQ?: string;
 };
 
+/**
+ * COMPETITOR WATCH (from the Aug 11 call: one tab per bucket — customers,
+ * competitors, market). Seeded from the marketing team's dummy tracker
+ * (Intertek, Veeva, IQVIA, Emergo, Parexel, TCS) topped up with the known
+ * regulatory-services field; marketing's official list replaces or extends
+ * this via Track a company on the Competitors tab.
+ */
+export const COMPETITOR_SOURCES: CompanySource[] = [
+  { id: "veeva", name: "Veeva", li: ["veeva-systems"], expect: "veeva", newsQ: "Veeva Systems" },
+  { id: "iqvia", name: "IQVIA", li: ["iqvia"], expect: "iqvia" },
+  { id: "parexel", name: "Parexel", li: ["parexel"], expect: "parexel" },
+  { id: "intertek", name: "Intertek", li: ["intertek"], expect: "intertek" },
+  { id: "emergo", name: "Emergo by UL", li: ["emergo", "emergo-by-ul"], expect: "emergo", newsQ: "Emergo by UL" },
+  { id: "tcs", name: "TCS", li: ["tata-consultancy-services"], expect: "tata", newsQ: "TCS life sciences regulatory" },
+  { id: "certara", name: "Certara", li: ["certara"], expect: "certara" },
+  { id: "icon-plc", name: "ICON plc", li: ["iconplc"], expect: "icon", newsQ: "ICON plc clinical" },
+  { id: "ul-solutions", name: "UL Solutions", li: ["ul-solutions"], expect: "ul", newsQ: "UL Solutions" },
+  { id: "nsf-international", name: "NSF", li: ["nsf-international"], expect: "nsf", newsQ: "NSF International certification" },
+];
+
 export const COMPANY_SOURCES: CompanySource[] = [
   { id: "takeda", name: "Takeda", li: ["takeda-pharmaceuticals"], expect: "takeda" },
   { id: "gsk", name: "GSK", li: ["gsk"], expect: "gsk" },

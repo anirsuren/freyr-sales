@@ -40,19 +40,28 @@ const WEEK = 7 * 86_400_000;
 export function LiveMarketIntelDashboard({
   feed,
   tracking,
+  group = "customer",
+  tabs,
 }: {
   feed: MarketIntelFeed;
   tracking: MarketIntelTracking;
+  /** Which intelligence bucket this dashboard shows. */
+  group?: "customer" | "competitor";
+  /** The bucket tab row, rendered under the page header. */
+  tabs?: React.ReactNode;
 }) {
   const names = allTrackedNames(feed, tracking.companies);
   const briefings = Object.values(feed.companies)
+    .filter((company) => (company.group ?? "customer") === group)
     .map((company) => buildBriefing(company, names))
     .sort(
       (a, b) =>
         b.posts.length + b.news.length - (a.posts.length + a.news.length)
     );
 
-  const pending = tracking.companies.filter((c) => !feed.companies[c.id]);
+  const pending = tracking.companies.filter(
+    (c) => !feed.companies[c.id] && (c.group ?? "customer") === group
+  );
   const totalPosts = briefings.reduce((a, b) => a + b.posts.length, 0);
   const totalNews = briefings.reduce((a, b) => a + b.news.length, 0);
   const totalSignals = briefings.reduce((a, b) => a + b.signals.length, 0);
@@ -70,22 +79,28 @@ export function LiveMarketIntelDashboard({
     <div>
       <PageHeader
         title="Market Intelligence"
-        subtitle="What the market is saying about the companies you track. Real LinkedIn activity, news and signals from the past 3 months."
+        subtitle={
+          group === "competitor"
+            ? "What your competitors are up to: their LinkedIn activity, news and signals from the past 3 months."
+            : "What the market is saying about the customers you track. Real LinkedIn activity, news and signals from the past 3 months."
+        }
         action={
           <span className="flex flex-wrap items-center gap-2.5">
             <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
               <span className="inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
-              Live data · updated {updatedLabel(feed.updatedAt)}
+              Live data · twice a day · updated {updatedLabel(feed.updatedAt)}
             </span>
-            <TrackCompanyButton />
+            <TrackCompanyButton group={group} />
           </span>
         }
       />
 
+      {tabs}
+
       <section className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
-          icon={Building2}
-          label="Companies tracked"
+          icon={group === "competitor" ? Swords : Building2}
+          label={group === "competitor" ? "Competitors tracked" : "Customers tracked"}
           value={String(briefings.length + pending.length)}
           sub="across your market"
         />
@@ -184,7 +199,11 @@ export function LiveMarketIntelDashboard({
               .filter((b) => b.logoUrl)
               .map((b) => [b.name.toLowerCase(), b.logoUrl as string])
           )}
-          title="Every company on the watch"
+          title={
+            group === "competitor"
+              ? "Every competitor on the watch"
+              : "Every customer on the watch"
+          }
           subtitle="Scroll the strip or search. Any chip opens that company's briefing."
         />
       </div>
@@ -192,7 +211,7 @@ export function LiveMarketIntelDashboard({
       <p className="mt-4 text-[11px] text-text-tertiary">
         Live data from public LinkedIn pages and Google News. Signals are
         detected automatically and always link to their source. The feed
-        refreshes itself about once a day.
+        refreshes itself twice a day, shared by everyone.
       </p>
     </div>
   );

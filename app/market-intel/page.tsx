@@ -22,6 +22,8 @@ import { Sparkline } from "@/components/charts/Charts";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
 import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import { LiveMarketIntelDashboard } from "@/components/market-intel/LiveDashboard";
+import { MiTabs } from "@/components/market-intel/MiTabs";
+import { MnaTracker } from "@/components/market-intel/MnaTracker";
 import { getDataMode } from "@/lib/dataMode";
 import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
@@ -54,7 +56,12 @@ function weekLabels(): string[] {
   return out;
 }
 
-export default async function MarketIntelPage() {
+export default async function MarketIntelPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const tracking = await readMarketIntelTracking().catch(() => ({
     companies: [],
     people: [],
@@ -69,7 +76,34 @@ export default async function MarketIntelPage() {
     // visitors from becoming a hundred refreshes.
     maybeScheduleMarketIntelRefresh(feed);
     if (feed && Object.keys(feed.companies).length > 0) {
-      return <LiveMarketIntelDashboard feed={feed} tracking={tracking} />;
+      // The three buckets from the Aug 11 call.
+      if (tab === "market") {
+        return (
+          <div>
+            <PageHeader
+              title="Market Intelligence"
+              subtitle="What's moving across the regulated industries: mergers and acquisitions, classified by status and division."
+              action={
+                <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
+                  Live data · twice a day
+                </span>
+              }
+            />
+            <MiTabs active="market" />
+            <MnaTracker board={feed.mna ?? null} />
+          </div>
+        );
+      }
+      const group = tab === "competitors" ? "competitor" : "customer";
+      return (
+        <LiveMarketIntelDashboard
+          feed={feed}
+          tracking={tracking}
+          group={group}
+          tabs={<MiTabs active={tab === "competitors" ? "competitors" : "customers"} />}
+        />
+      );
     }
   }
 

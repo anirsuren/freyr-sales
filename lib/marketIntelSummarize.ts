@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { FeedCompany } from "./marketIntelFeed";
+import type { FeedCompany, FeedNews, MnaItem } from "./marketIntelFeed";
 
 /**
  * THE AI LAYER OF MARKET INTEL (Anir, Aug 11: "All this shit should have an
@@ -191,5 +191,74 @@ Rules:
     return { tldr, summaries };
   } catch {
     return { tldr: null, summaries: new Map() };
+  }
+}
+
+/**
+ * M&A TRACKER CLASSIFICATION (Aug 11 call): raw deal headlines in, structured
+ * board out — acquirer, target, Announced or Completed, and which of Freyr's
+ * three divisions it touches. Items the model can't place as a real M&A deal
+ * are dropped, never guessed into the tracker.
+ */
+export async function classifyMna(
+  articles: (FeedNews & { division: string })[]
+): Promise<MnaItem[]> {
+  const client = haiku();
+  if (!client || articles.length === 0) return [];
+  const prompt = `You classify merger & acquisition news for a regulatory-affairs services firm. Divisions: "Medicinal Products" (pharma, biotech, drugs), "Medical Devices" (devices, diagnostics, medtech), "Consumer" (consumer health, cosmetics, food, OTC).
+
+ARTICLES (JSON): ${JSON.stringify(
+    articles.map((a, i) => ({
+      i,
+      title: a.title,
+      source: a.source,
+      published: a.published,
+      hint_division: a.division,
+    }))
+  )}
+
+Reply with ONLY valid JSON, no markdown fence:
+{"deals": [{"i": 0, "acquirer": "...", "target": "...", "status": "announced"|"completed", "division": "Medicinal Products"|"Medical Devices"|"Consumer", "valueLabel": "$1.2 Bn" or null, "summary": "one factual sentence from the headline"}]}
+
+Rules:
+- Include an article ONLY if its headline clearly describes a specific M&A deal (acquirer and target both named or unambiguous). Skip rumors, indexes, listicles and anything unclear.
+- status: "completed" only if the headline says completed/closed/finalized; otherwise "announced".
+- valueLabel only if a value appears in the headline; never estimate.
+- Never invent companies or numbers.`;
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 1600,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+    const out: MnaItem[] = [];
+    for (const deal of parsed.deals ?? []) {
+      const src = articles[Number(deal?.i)];
+      if (!src) continue;
+      const acquirer = String(deal?.acquirer ?? "").trim();
+      const target = String(deal?.target ?? "").trim();
+      const division = String(deal?.division ?? "");
+      if (!acquirer || !target) continue;
+      if (!["Medicinal Products", "Medical Devices", "Consumer"].includes(division)) continue;
+      out.push({
+        acquirer: acquirer.slice(0, 60),
+        target: target.slice(0, 60),
+        status: deal?.status === "completed" ? "completed" : "announced",
+        division: division as MnaItem["division"],
+        valueLabel: deal?.valueLabel ? String(deal.valueLabel).slice(0, 20) : null,
+        date: src.published,
+        summary: String(deal?.summary ?? src.title).slice(0, 240),
+        sourceLabel: src.source,
+        sourceUrl: src.url,
+      });
+    }
+    return out;
+  } catch {
+    return [];
   }
 }

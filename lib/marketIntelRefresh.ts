@@ -1,8 +1,12 @@
 import { after } from "next/server";
-import { COMPANY_SOURCES, type CompanySource } from "./marketIntelSources";
+import {
+  COMPANY_SOURCES,
+  COMPETITOR_SOURCES,
+  type CompanySource,
+} from "./marketIntelSources";
 import { cleanSourceLabel } from "./marketIntelFeed";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
-import { digestCompany } from "./marketIntelSummarize";
+import { classifyMna, digestCompany } from "./marketIntelSummarize";
 import { miSlug, type TrackedCompany, type TrackedPerson } from "./marketIntelTracking";
 
 /**
@@ -23,13 +27,18 @@ import { miSlug, type TrackedCompany, type TrackedPerson } from "./marketIntelTr
  * pages keep showing the last data with an honest "updated" stamp.
  */
 
-const STALE_AFTER_MS = 20 * 60 * 60 * 1000;
-const COMPANY_FRESH_MS = 18 * 60 * 60 * 1000;
+// Twice a day at whatever hour traffic lands (Aug 11 call: "twice a day
+// works... since we have folks across the globe") — one shared refresh, never
+// per-user.
+const STALE_AFTER_MS = 11 * 60 * 60 * 1000;
+const COMPANY_FRESH_MS = 10 * 60 * 60 * 1000;
 const LOCK_MS = 30 * 60 * 1000;
-const RUN_CAP_USD = 4.5;
+// Sized to the $200/month Apify plan: ~$3.20 twice a day is ~$192/month,
+// with the rotation spreading whatever the cap cuts across runs.
+const RUN_CAP_USD = 3.2;
 const TARGETED_CAP_USD = 0.6;
-const POST_LIMIT = 10;
-const NEWS_LIMIT = 10;
+const POST_LIMIT = 5;
+const NEWS_LIMIT = 8;
 // Each pull re-bills the latest N posts whether or not they are new, so the
 // person limit stays small: 133 tracked people at 5 posts is ~$3.30 a run.
 const PERSON_POST_LIMIT = 5;
@@ -184,6 +193,41 @@ async function scrapeNews(
   return { news, cost };
 }
 
+/** The M&A tracker: three division-flavored news pulls, AI-classified into
+ *  structured deals, merged and deduped. ~$0.15 of news per refresh. */
+const MNA_QUERIES: { q: string; division: string }[] = [
+  { q: "pharmaceutical acquisition merger", division: "Medicinal Products" },
+  { q: "medical device company acquisition", division: "Medical Devices" },
+  { q: "consumer health cosmetics acquisition", division: "Consumer" },
+];
+
+async function refreshMna(feed: any): Promise<number> {
+  let cost = 0;
+  const raw: (FeedNews & { division: string })[] = [];
+  for (const query of MNA_QUERIES) {
+    const result = await scrapeNews({ name: query.q });
+    cost += result.cost;
+    for (const item of result.news) raw.push({ ...item, division: query.division });
+  }
+  const classified = await classifyMna(raw);
+  const seen = new Set<string>();
+  const existing: any[] = Array.isArray(feed.mna?.items) ? feed.mna.items : [];
+  const merged = [...classified, ...existing].filter((deal) => {
+    // "Integer" vs "Integer Holdings" is the same deal: key on the first
+    // word of each side so name variants collapse.
+    const first = (name: string) => name.toLowerCase().split(/\s+/)[0];
+    const key = `${first(deal.acquirer)}|${first(deal.target)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  merged.sort(
+    (a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0)
+  );
+  feed.mna = { items: merged.slice(0, 40), fetchedAt: new Date().toISOString() };
+  return cost;
+}
+
 /** TLDR + article summaries, regenerated whenever the news set changed.
  *  Anthropic Haiku, fractions of a cent; failures leave the feed untouched. */
 async function applyDigest(entry: FeedCompany): Promise<void> {
@@ -335,10 +379,19 @@ export async function runMarketIntelRefresh(options?: {
     // being the same starved tail forever.
     const lastSync = (id: string, map: Record<string, { fetchedAt?: string }>) =>
       Date.parse(map[id]?.fetchedAt ?? "") || 0;
+    const competitorIds = new Set(COMPETITOR_SOURCES.map((s) => s.id));
+    for (const c of trackedCompanies) {
+      if (c.group === "competitor") competitorIds.add(c.id);
+    }
     const sources: CompanySource[] = [
       ...COMPANY_SOURCES,
+      ...COMPETITOR_SOURCES,
       ...trackedCompanies
-        .filter((c) => !COMPANY_SOURCES.some((s) => s.id === c.id))
+        .filter(
+          (c) =>
+            !COMPANY_SOURCES.some((s) => s.id === c.id) &&
+            !COMPETITOR_SOURCES.some((s) => s.id === c.id)
+        )
         .map(trackedToSource),
     ]
       .filter(
@@ -369,6 +422,7 @@ export async function runMarketIntelRefresh(options?: {
         posts: mergePosts(existing?.posts ?? [], postsResult.posts),
         news: mergeNews(existing?.news ?? [], newsResult.news),
         tldr: existing?.tldr ?? null,
+        group: competitorIds.has(source.id) ? "competitor" : "customer",
         fetchedAt: new Date().toISOString(),
       };
       if (newsResult.news.length > 0) entry.tldr = null; // fresh rundown
@@ -385,6 +439,24 @@ export async function runMarketIntelRefresh(options?: {
         (Date.parse(feed.people[a.id]?.fetchedAt ?? "") || 0) -
         (Date.parse(feed.people[b.id]?.fetchedAt ?? "") || 0)
     );
+    // The M&A board refreshes on the same twice-daily rhythm.
+    if (
+      spent < RUN_CAP_USD &&
+      (options?.force ||
+        !feed.mna?.fetchedAt ||
+        Date.now() - Date.parse(feed.mna.fetchedAt) > COMPANY_FRESH_MS)
+    ) {
+      try {
+        const mnaCost = await refreshMna(feed);
+        spent += mnaCost;
+        feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + mnaCost) * 1000) / 1000;
+        feed.updatedAt = new Date().toISOString();
+        await writeRow(FEED_ROW, feed);
+      } catch {
+        /* the tracker keeps its last board */
+      }
+    }
+
     for (const person of peopleQueue) {
       if (spent > RUN_CAP_USD) break;
       if (!person.linkedinUrl) continue;
@@ -470,7 +542,10 @@ export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<vo
 // Aug 11). The link is the input; name, logo, title, photo and the first
 // data pull all come from the page itself.
 
-export async function addCompanyByLink(linkedinUrl: string): Promise<TrackedCompany> {
+export async function addCompanyByLink(
+  linkedinUrl: string,
+  group: "customer" | "competitor" = "customer"
+): Promise<TrackedCompany> {
   if (!hasEnv()) throw new Error("Tracking needs the configured services.");
   const slug = linkedinUrl.match(/linkedin\.com\/company\/([^/?#]+)/i)?.[1];
   if (!slug) {
@@ -506,6 +581,7 @@ export async function addCompanyByLink(linkedinUrl: string): Promise<TrackedComp
   const company: TrackedCompany = {
     id,
     name,
+    group,
     industry: "",
     hq: "",
     website: "",
@@ -527,6 +603,7 @@ export async function addCompanyByLink(linkedinUrl: string): Promise<TrackedComp
     posts: probe.posts,
     news: newsResult.news,
     tldr: null,
+    group,
     fetchedAt: new Date().toISOString(),
   };
   await applyDigest(entry);

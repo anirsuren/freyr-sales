@@ -65,8 +65,26 @@ export type FeedCompany = {
   news: FeedNews[];
   /** The AI rundown shown at the top of the briefing; refreshed with the feed. */
   tldr?: string | null;
+  /** "customer" (default) or "competitor" — which intelligence tab owns it. */
+  group?: "customer" | "competitor";
   fetchedAt: string;
 };
+
+/** One merger or acquisition on the tracker (Aug 11 call): who bought whom,
+ *  where it stands, and which Freyr division it touches. */
+export type MnaItem = {
+  acquirer: string;
+  target: string;
+  status: "announced" | "completed";
+  division: "Medicinal Products" | "Medical Devices" | "Consumer";
+  valueLabel: string | null;
+  date: string | null;
+  summary: string;
+  sourceLabel: string;
+  sourceUrl: string;
+};
+
+export type MnaBoard = { items: MnaItem[]; fetchedAt: string };
 
 export type PersonFeed = { posts: FeedPost[]; fetchedAt: string };
 
@@ -75,6 +93,8 @@ export type MarketIntelFeed = {
   companies: Record<string, FeedCompany>;
   /** Posts of team-followed people, keyed by tracked-person id. */
   people: Record<string, PersonFeed>;
+  /** The M&A tracker board, refreshed with the feed. */
+  mna?: MnaBoard;
   updatedAt: string | null;
   spendUsd?: number;
 };
@@ -144,6 +164,7 @@ export async function readMarketIntelFeed(): Promise<MarketIntelFeed | null> {
     version: raw.version ?? 1,
     companies: raw.companies as Record<string, FeedCompany>,
     people: (raw.people ?? {}) as Record<string, PersonFeed>,
+    mna: raw.mna as MnaBoard | undefined,
     updatedAt: raw.updatedAt ?? null,
     spendUsd: raw.spendUsd,
   };

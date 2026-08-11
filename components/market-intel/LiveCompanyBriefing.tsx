@@ -98,20 +98,35 @@ export function LiveCompanyBriefing({
     NEWS_VIEWS
   );
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // "A lot of these post a lot... you can always just filter it" (Aug 11
+  // call): the feed keeps 90 days, the chips narrow the window.
+  const [range, setRange] = useState<"1" | "7" | "30" | "90">("90");
 
   const up = (briefing.momentumPct ?? 0) >= 0;
+  const cutoff = Date.now() - Number(range) * 86_400_000;
+  const inRange = (iso: string | null) => !iso || Date.parse(iso) > cutoff;
+  const posts = briefing.posts.filter((p) => inRange(p.date));
+  const news = briefing.news.filter((n) => inRange(n.published));
+  const signals = briefing.signals.filter((s) => inRange(s.date));
   // Signals are detected inside these same posts and articles, so Everything
   // counts each item once rather than repeating it as its own signal card.
-  const feedCount = briefing.posts.length + briefing.news.length;
+  const feedCount = posts.length + news.length;
 
   const lenses: { key: Lens; label: string; icon: LucideIcon; color: string; count: number }[] = [
     { key: "all", label: "Everything", icon: Radar, color: "#0071E3", count: feedCount },
-    { key: "linkedin", label: "LinkedIn", icon: LinkedInGlyph, color: "#0071E3", count: briefing.posts.length },
-    { key: "news", label: "News", icon: Newspaper, color: "#0F766E", count: briefing.news.length },
-    { key: "signals", label: "Signals", icon: Radar, color: "#7C3AED", count: briefing.signals.length },
+    { key: "linkedin", label: "LinkedIn", icon: LinkedInGlyph, color: "#0071E3", count: posts.length },
+    { key: "news", label: "News", icon: Newspaper, color: "#0F766E", count: news.length },
+    { key: "signals", label: "Signals", icon: Radar, color: "#7C3AED", count: signals.length },
   ];
 
-  const signalCounts = briefing.signals.reduce<Record<string, number>>(
+  const RANGES: { key: typeof range; label: string }[] = [
+    { key: "1", label: "Past day" },
+    { key: "7", label: "Past week" },
+    { key: "30", label: "Past month" },
+    { key: "90", label: "3 months" },
+  ];
+
+  const signalCounts = signals.reduce<Record<string, number>>(
     (acc, s) => ({ ...acc, [s.kind]: (acc[s.kind] ?? 0) + 1 }),
     {}
   );
@@ -266,8 +281,8 @@ export function LiveCompanyBriefing({
     | { kind: "news"; date: string | null; news: LiveBriefing["news"][number] };
 
   const merged: FeedItem[] = [
-    ...briefing.posts.map((post) => ({ kind: "post" as const, date: post.date, post })),
-    ...briefing.news.map((news) => ({ kind: "news" as const, date: news.published, news })),
+    ...posts.map((post) => ({ kind: "post" as const, date: post.date, post })),
+    ...news.map((item) => ({ kind: "news" as const, date: item.published, news: item })),
   ].sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
 
   const shown =
@@ -398,8 +413,27 @@ export function LiveCompanyBriefing({
             )}
           </div>
 
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {RANGES.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => setRange(r.key)}
+                aria-pressed={range === r.key}
+                className={cn(
+                  "cursor-pointer rounded-full border px-2.5 py-1 text-[11.5px] font-semibold transition-colors",
+                  range === r.key
+                    ? "border-transparent bg-[#1D1D1F] text-white"
+                    : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+
           <div
-            key={`${lens}${lens === "news" ? `-${newsView}` : ""}`}
+            key={`${lens}${lens === "news" ? `-${newsView}` : ""}-${range}`}
             className={cn(
               "tab-panel",
               lens === "news" && newsView === "tiles"
@@ -408,14 +442,14 @@ export function LiveCompanyBriefing({
             )}
           >
             {lens === "signals" ? (
-              briefing.signals.length === 0 ? (
+              signals.length === 0 ? (
                 <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
                   Nothing detected in the current window. Signals are spotted
                   automatically in new posts and articles: leadership changes,
                   regulatory moves, deals, expansion and hiring.
                 </Card>
               ) : (
-                briefing.signals.map((signal, index) => signalCard(signal, `s-${index}`))
+                signals.map((signal, index) => signalCard(signal, `s-${index}`))
               )
             ) : lens === "news" && newsView === "table" ? (
               <Card className="overflow-x-auto p-0">
@@ -437,7 +471,7 @@ export function LiveCompanyBriefing({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light">
-                    {briefing.news.map((item, index) => (
+                    {news.map((item, index) => (
                       <tr key={index} className="transition-colors hover:bg-surface">
                         <td className="px-4 py-3 align-top">
                           <span className="flex w-max items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
@@ -474,7 +508,7 @@ export function LiveCompanyBriefing({
                 </table>
               </Card>
             ) : lens === "news" && newsView === "tiles" ? (
-              briefing.news.map((item, index) => (
+              news.map((item, index) => (
                 <Card key={index} className="flex flex-col p-4">
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:#0F766E]">
@@ -551,7 +585,7 @@ export function LiveCompanyBriefing({
             )}
           </Card>
 
-          {briefing.signals.length > 0 && (
+          {signals.length > 0 && (
             <Card className="p-4">
               <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
                 <Radar size={14} strokeWidth={2} className="text-blue-primary" />

@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
     // Link-only flows: the LinkedIn page is the whole form; everything else
     // (name, logo, title, photo, first data pull) comes from the page itself.
     if (body?.kind === "company-link") {
-      const company = await addCompanyByLink(String(body.linkedinUrl ?? ""));
+      const company = await addCompanyByLink(
+        String(body.linkedinUrl ?? ""),
+        body?.group === "competitor" ? "competitor" : "customer"
+      );
       return NextResponse.json({ ok: true, company });
     }
     if (body?.kind === "person-link") {
