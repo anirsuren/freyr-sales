@@ -136,7 +136,11 @@ async function scrapePosts(company) {
       posts,
       slug,
       author: author
-        ? { name: author.name, followerCount: author.follower_count ?? null }
+        ? {
+            name: author.name,
+            followerCount: author.follower_count ?? null,
+            logoUrl: author.logo_url ?? null,
+          }
         : null,
     };
   }

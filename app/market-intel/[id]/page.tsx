@@ -27,6 +27,7 @@ import {
   buildBriefing,
   readMarketIntelFeed,
 } from "@/lib/marketIntelFeed";
+import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import { miCompany } from "@/lib/marketIntelMock";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 
@@ -47,12 +48,27 @@ export default async function MarketIntelCompanyPage({
   if (getDataMode() === "live") {
     // Real mode renders scraped data only; the sample briefings stay in mock.
     const feed = await readMarketIntelFeed().catch(() => null);
+    maybeScheduleMarketIntelRefresh(feed);
     const feedCompany = feed?.companies[id];
     if (feedCompany) {
       const trackedConfig = tracking.companies.find((c) => c.id === id);
+      const peoplePosts = extraPeople
+        .filter((p) => feed?.people?.[p.id])
+        .map((p) => ({
+          name: p.name,
+          role: p.role,
+          photoUrl: p.photoUrl,
+          posts: feed?.people?.[p.id]?.posts ?? [],
+        }));
+      const personPostCounts = Object.fromEntries(
+        extraPeople
+          .filter((p) => feed?.people?.[p.id])
+          .map((p) => [p.id, feed?.people?.[p.id]?.posts.length ?? 0])
+      );
       const briefing = buildBriefing(
         feedCompany,
-        allTrackedNames(feed, tracking.companies)
+        allTrackedNames(feed, tracking.companies),
+        peoplePosts
       );
       return (
         <LiveCompanyBriefing
@@ -63,6 +79,7 @@ export default async function MarketIntelCompanyPage({
               .join(" · ") || undefined
           }
           extraPeople={extraPeople}
+          personPostCounts={personPostCounts}
         />
       );
     }
@@ -244,7 +261,7 @@ export default async function MarketIntelCompanyPage({
                       </span>
                     </span>
                     <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
-                      first sync pending
+                      posts pending
                     </span>
                     <UntrackPersonButton
                       personId={person.id}

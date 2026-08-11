@@ -24,6 +24,7 @@ import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import { LiveMarketIntelDashboard } from "@/components/market-intel/LiveDashboard";
 import { getDataMode } from "@/lib/dataMode";
 import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
+import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import {
   MI_COMPANIES,
   MI_WATCHLIST,
@@ -63,6 +64,10 @@ export default async function MarketIntelPage() {
   // live mode; the sample briefings below remain the mock-mode showroom.
   if (getDataMode() === "live") {
     const feed = await readMarketIntelFeed().catch(() => null);
+    // Nobody clicks anything: a stale feed schedules ONE background refresh
+    // after this response, and a database lock keeps a hundred simultaneous
+    // visitors from becoming a hundred refreshes.
+    maybeScheduleMarketIntelRefresh(feed);
     if (feed && Object.keys(feed.companies).length > 0) {
       return <LiveMarketIntelDashboard feed={feed} tracking={tracking} />;
     }

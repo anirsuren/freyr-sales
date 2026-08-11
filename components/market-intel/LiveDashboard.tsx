@@ -15,6 +15,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Sparkline } from "@/components/charts/Charts";
+import { MiLogo } from "@/components/market-intel/MiLogo";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
 import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import {
@@ -120,8 +121,9 @@ export function LiveMarketIntelDashboard({
             >
               <div className="flex items-start justify-between gap-3">
                 <span className="flex min-w-0 items-center gap-2.5">
-                  <CompanyLogo
+                  <MiLogo
                     name={briefing.name}
+                    logoUrl={briefing.logoUrl}
                     className="h-9 w-9 shrink-0"
                   />
                   <span className="min-w-0">
@@ -270,15 +272,20 @@ export function LiveMarketIntelDashboard({
             ...briefings.map((b) => ({ id: b.id, name: b.name })),
             ...tracking.companies.map((c) => ({ id: c.id, name: c.name })),
           ]}
+          logos={Object.fromEntries(
+            briefings
+              .filter((b) => b.logoUrl)
+              .map((b) => [b.name.toLowerCase(), b.logoUrl as string])
+          )}
           title="Every company on the watch"
           subtitle="Scroll the strip or search. Any chip opens that company's briefing."
         />
       </div>
 
       <p className="mt-4 text-[11px] text-text-tertiary">
-        Live data from public LinkedIn company pages and Google News. Signals
-        are detected automatically and always link to their source. Refreshed
-        manually for now.
+        Live data from public LinkedIn pages and Google News. Signals are
+        detected automatically and always link to their source. The feed
+        refreshes itself about once a day.
       </p>
     </div>
   );

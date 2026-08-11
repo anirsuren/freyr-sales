@@ -26,9 +26,9 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Sparkline } from "@/components/charts/Charts";
+import { MiLogo } from "@/components/market-intel/MiLogo";
 import {
   TrackPersonButton,
   UntrackPersonButton,
@@ -84,10 +84,13 @@ export function LiveCompanyBriefing({
   briefing,
   subtitle,
   extraPeople = [],
+  personPostCounts = {},
 }: {
   briefing: LiveBriefing;
   subtitle?: string;
   extraPeople?: TrackedPerson[];
+  /** Posts collected per tracked person id; absent means no sync yet. */
+  personPostCounts?: Record<string, number>;
 }) {
   const [lens, setLens] = useState<Lens>("all");
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
@@ -120,14 +123,28 @@ export function LiveCompanyBriefing({
     return (
       <Card key={key} className="p-4">
         <div className="flex items-start gap-3">
-          <CompanyLogo name={briefing.name} className="h-9 w-9 shrink-0" />
+          {post.by ? (
+            <Avatar
+              name={post.by.name}
+              src={post.by.photoUrl || undefined}
+              className="h-9 w-9 shrink-0 text-[11px]"
+            />
+          ) : (
+            <MiLogo
+              name={briefing.name}
+              logoUrl={briefing.logoUrl}
+              className="h-9 w-9 shrink-0"
+            />
+          )}
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <span className="text-[13.5px] font-semibold text-text-primary">
-                {briefing.name}
+                {post.by ? post.by.name : briefing.name}
               </span>
               <span className="text-[11.5px] text-text-tertiary">
-                Company page · {fmtDate(post.date)}
+                {post.by
+                  ? `${post.by.role || "Tracked person"} · ${fmtDate(post.date)}`
+                  : `Company page · ${fmtDate(post.date)}`}
               </span>
             </p>
             <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
@@ -261,7 +278,11 @@ export function LiveCompanyBriefing({
       </Link>
 
       <div className="rise-in flex flex-wrap items-center gap-4">
-        <CompanyLogo name={briefing.name} className="h-12 w-12 shrink-0" />
+        <MiLogo
+          name={briefing.name}
+          logoUrl={briefing.logoUrl}
+          className="h-12 w-12 shrink-0"
+        />
         <div className="min-w-0 flex-1">
           <h1 className="flex flex-wrap items-center gap-2.5 text-[24px] font-bold tracking-[-0.02em] text-text-primary">
             {briefing.name}
@@ -497,23 +518,36 @@ export function LiveCompanyBriefing({
               </p>
             ) : (
               <ul className="mt-2.5 space-y-2.5">
-                {extraPeople.map((person) => (
-                  <li key={person.id} className="group/person flex items-center gap-2.5">
-                    <Avatar name={person.name} className="h-8 w-8 shrink-0 text-[10px]" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-                        {person.name}
+                {extraPeople.map((person) => {
+                  const count = personPostCounts[person.id];
+                  return (
+                    <li key={person.id} className="group/person flex items-center gap-2.5">
+                      <Avatar
+                        name={person.name}
+                        src={person.photoUrl || undefined}
+                        className="h-8 w-8 shrink-0 text-[10px]"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                          {person.name}
+                        </span>
+                        <span className="block truncate text-[11px] text-text-tertiary">
+                          {person.role || "Tracked for posts"}
+                        </span>
                       </span>
-                      <span className="block truncate text-[11px] text-text-tertiary">
-                        {person.role || "Tracked for posts"}
-                      </span>
-                    </span>
-                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
-                      first sync pending
-                    </span>
-                    <UntrackPersonButton personId={person.id} personName={person.name} />
-                  </li>
-                ))}
+                      {count === undefined ? (
+                        <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
+                          posts pending
+                        </span>
+                      ) : (
+                        <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3] tnum">
+                          {count} {count === 1 ? "post" : "posts"}
+                        </span>
+                      )}
+                      <UntrackPersonButton personId={person.id} personName={person.name} />
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>
@@ -573,9 +607,9 @@ export function LiveCompanyBriefing({
       </div>
 
       <p className="mt-5 text-[11px] text-text-tertiary">
-        Live data from the company&apos;s public LinkedIn page and Google News.
-        Signals are detected automatically from those items and link to their
-        source. Refreshed manually for now.
+        Live data from public LinkedIn pages and Google News. Signals are
+        detected automatically from those items and link to their source. The
+        feed refreshes itself about once a day.
       </p>
     </div>
   );

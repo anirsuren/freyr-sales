@@ -488,7 +488,7 @@ export function CompanyIntel({
                     </span>
                   </span>
                   <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:#0071E3]">
-                    first sync pending
+                    posts pending
                   </span>
                   <UntrackPersonButton
                     personId={person.id}

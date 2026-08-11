@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
+import {
+  refreshTrackedCompanyNow,
+  refreshTrackedPersonNow,
+} from "@/lib/marketIntelRefresh";
 import {
   trackCompany,
   trackPerson,
@@ -21,10 +26,22 @@ export async function POST(req: NextRequest) {
   try {
     if (body?.kind === "company") {
       const result = await trackCompany(body);
+      // The first briefing is collected right after this response goes out
+      // (a few cents), so the page fills in minutes instead of a day.
+      after(() =>
+        refreshTrackedCompanyNow(result.company).catch((error) =>
+          console.error("[market-intel] first company scrape failed:", error)
+        )
+      );
       return NextResponse.json({ ok: true, ...result });
     }
     if (body?.kind === "person") {
       const person = await trackPerson(body);
+      after(() =>
+        refreshTrackedPersonNow(person).catch((error) =>
+          console.error("[market-intel] first person scrape failed:", error)
+        )
+      );
       return NextResponse.json({ ok: true, person });
     }
     return NextResponse.json({ error: "Unknown request." }, { status: 400 });

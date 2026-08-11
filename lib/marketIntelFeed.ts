@@ -32,17 +32,32 @@ export type FeedCompany = {
   id: string;
   name: string;
   slug: string | null;
-  author: { name: string; followerCount: number | null } | null;
+  author: {
+    name: string;
+    followerCount: number | null;
+    /** The company's LinkedIn page logo — the preferred logo everywhere. */
+    logoUrl?: string | null;
+  } | null;
   posts: FeedPost[];
   news: FeedNews[];
   fetchedAt: string;
 };
 
+export type PersonFeed = { posts: FeedPost[]; fetchedAt: string };
+
 export type MarketIntelFeed = {
   version: number;
   companies: Record<string, FeedCompany>;
+  /** Posts of team-followed people, keyed by tracked-person id. */
+  people: Record<string, PersonFeed>;
   updatedAt: string | null;
   spendUsd?: number;
+};
+
+/** A briefing post; `by` is set when a followed person wrote it rather than
+ *  the company page. */
+export type BriefingPost = FeedPost & {
+  by?: { name: string; role: string; photoUrl?: string };
 };
 
 export type LiveSignal = {
@@ -59,6 +74,7 @@ export type LiveBriefing = {
   id: string;
   name: string;
   followerCount: number | null;
+  logoUrl: string | null;
   fetchedAt: string;
   updatedLabel: string;
   /** null when the prior month is too thin for an honest percentage. */
@@ -66,7 +82,7 @@ export type LiveBriefing = {
   itemsThisMonth: number;
   trend: number[];
   trendLabels: string[];
-  posts: FeedPost[];
+  posts: BriefingPost[];
   news: FeedNews[];
   signals: LiveSignal[];
   competitorMentions: { name: string; count: number }[];
@@ -101,6 +117,7 @@ export async function readMarketIntelFeed(): Promise<MarketIntelFeed | null> {
   return {
     version: raw.version ?? 1,
     companies: raw.companies as Record<string, FeedCompany>,
+    people: (raw.people ?? {}) as Record<string, PersonFeed>,
     updatedAt: raw.updatedAt ?? null,
     spendUsd: raw.spendUsd,
   };
@@ -278,13 +295,28 @@ export function deriveSignals(
   return { signals: unique, competitorMentions };
 }
 
-/** Everything the live briefing page needs, from one feed company. */
+/** Everything the live briefing page needs, from one feed company. Posts by
+ *  followed people ride in the same feed, attributed via `by`. */
 export function buildBriefing(
   company: FeedCompany,
-  allNames: { id: string; name: string }[]
+  allNames: { id: string; name: string }[],
+  peoplePosts: {
+    name: string;
+    role: string;
+    photoUrl?: string;
+    posts: FeedPost[];
+  }[] = []
 ): LiveBriefing {
   const cutoff = Date.now() - WINDOW_DAYS * 86_400_000;
-  const posts = company.posts
+  const posts: BriefingPost[] = [
+    ...company.posts,
+    ...peoplePosts.flatMap((person) =>
+      person.posts.map((p) => ({
+        ...p,
+        by: { name: person.name, role: person.role, photoUrl: person.photoUrl },
+      }))
+    ),
+  ]
     .filter((p) => !p.date || Date.parse(p.date) > cutoff)
     .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
   const news = company.news
@@ -300,6 +332,7 @@ export function buildBriefing(
     id: company.id,
     name: company.name,
     followerCount: company.author?.followerCount ?? null,
+    logoUrl: company.author?.logoUrl ?? null,
     fetchedAt: company.fetchedAt,
     updatedLabel: updatedLabel(company.fetchedAt),
     momentumPct: mo.pct,

@@ -21,6 +21,11 @@ export type TrackedPerson = {
   role: string;
   linkedinUrl: string;
   addedAt: string;
+  /** LinkedIn profile photo, when discovery or the team provided one. */
+  photoUrl?: string;
+  /** "auto-baseline" for people the discovery script added; absent for
+   *  people a teammate added by hand. */
+  source?: string;
 };
 
 export type TrackedCompany = {

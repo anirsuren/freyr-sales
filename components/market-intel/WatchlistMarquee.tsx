@@ -23,12 +23,15 @@ const RESUME_AFTER_MS = 1400;
 export function WatchlistMarquee({
   watchlist,
   tracked,
+  logos = {},
   title = "Also tracking",
   subtitle = "Watched for signals. Scroll the strip, or search everything you follow.",
 }: {
   watchlist: string[];
   /** Everything with a briefing page, for search and for upgraded chips. */
   tracked: { id: string; name: string }[];
+  /** Real LinkedIn logos by lowercased company name, when known. */
+  logos?: Record<string, string>;
   title?: string;
   subtitle?: string;
 }) {
@@ -143,9 +146,20 @@ export function WatchlistMarquee({
 
   const chip = (name: string, key: string) => {
     const trackedId = trackedByName.get(name.toLowerCase());
+    const logoUrl = logos[name.toLowerCase()];
     const body = (
       <>
-        <CompanyLogo name={name} className="h-[18px] w-[18px] shrink-0" />
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt=""
+            className="h-[18px] w-[18px] shrink-0 rounded-[4px] object-contain"
+            draggable={false}
+          />
+        ) : (
+          <CompanyLogo name={name} className="h-[18px] w-[18px] shrink-0" />
+        )}
         {name}
         {trackedId && (
           <ArrowUpRight
