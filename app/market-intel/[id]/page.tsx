@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { CompanyIntel } from "@/components/market-intel/CompanyIntel";
+import { LiveCompanyBriefing } from "@/components/market-intel/LiveCompanyBriefing";
 import { StopTrackingButton } from "@/components/market-intel/StopTrackingButton";
 import {
   TrackPersonButton,
@@ -20,6 +21,12 @@ import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
+import { getDataMode } from "@/lib/dataMode";
+import {
+  allTrackedNames,
+  buildBriefing,
+  readMarketIntelFeed,
+} from "@/lib/marketIntelFeed";
 import { miCompany } from "@/lib/marketIntelMock";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 
@@ -35,14 +42,35 @@ export default async function MarketIntelCompanyPage({
     companies: [],
     people: [],
   }));
-  const company = miCompany(id);
-  if (company) {
-    return (
-      <CompanyIntel
-        company={company}
-        extraPeople={tracking.people.filter((p) => p.companyId === company.id)}
-      />
-    );
+  const extraPeople = tracking.people.filter((p) => p.companyId === id);
+
+  if (getDataMode() === "live") {
+    // Real mode renders scraped data only; the sample briefings stay in mock.
+    const feed = await readMarketIntelFeed().catch(() => null);
+    const feedCompany = feed?.companies[id];
+    if (feedCompany) {
+      const trackedConfig = tracking.companies.find((c) => c.id === id);
+      const briefing = buildBriefing(
+        feedCompany,
+        allTrackedNames(feed, tracking.companies)
+      );
+      return (
+        <LiveCompanyBriefing
+          briefing={briefing}
+          subtitle={
+            [trackedConfig?.industry, trackedConfig?.hq]
+              .filter(Boolean)
+              .join(" · ") || undefined
+          }
+          extraPeople={extraPeople}
+        />
+      );
+    }
+  } else {
+    const company = miCompany(id);
+    if (company) {
+      return <CompanyIntel company={company} extraPeople={extraPeople} />;
+    }
   }
 
   const mine = tracking.companies.find((c) => c.id === id);

@@ -23,10 +23,14 @@ const RESUME_AFTER_MS = 1400;
 export function WatchlistMarquee({
   watchlist,
   tracked,
+  title = "Also tracking",
+  subtitle = "Watched for signals. Scroll the strip, or search everything you follow.",
 }: {
   watchlist: string[];
   /** Everything with a briefing page, for search and for upgraded chips. */
   tracked: { id: string; name: string }[];
+  title?: string;
+  subtitle?: string;
 }) {
   const [query, setQuery] = useState("");
   const outerRef = useRef<HTMLDivElement | null>(null);
@@ -188,15 +192,12 @@ export function WatchlistMarquee({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-[14px] font-semibold text-text-primary">
-            Also tracking{" "}
+            {title}{" "}
             <span className="tnum font-normal text-text-tertiary">
               ({watchlist.length})
             </span>
           </h2>
-          <p className="mt-0.5 text-[12px] text-text-secondary">
-            Watched for signals. Scroll the strip, or search everything you
-            follow.
-          </p>
+          <p className="mt-0.5 text-[12px] text-text-secondary">{subtitle}</p>
         </div>
         <div className="relative">
           <Search
