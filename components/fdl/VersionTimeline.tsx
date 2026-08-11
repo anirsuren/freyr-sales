@@ -585,7 +585,12 @@ export function VersionTimeline({
                 {faces.length > 0 && (
                   <span
                     className="absolute z-30 -translate-x-1/2"
-                    style={{ left: x, top: FACES_TOP - 5 }}
+                    // +1, not -5: the fan's white logo-rings were painting
+                    // over the descender of "Sep" in the date above (Anir,
+                    // Aug 10: "the P looks like it's getting covered") —
+                    // measured 4px of overlap. The date's font box ends at
+                    // FACES_TOP; starting one below clears every tail.
+                    style={{ left: x, top: FACES_TOP + 1 }}
                   >
                     <CustomerDots
                       people={faces}

@@ -2583,13 +2583,26 @@ export function FdlComponentDetail({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-[12px] font-medium text-text-primary">Version</label>
-              <input
-                autoFocus
-                value={version}
-                onChange={(event) => setVersion(event.target.value)}
-                placeholder="V2.1"
-                className={FIELD}
-              />
+              {/* THE V IS THE FIELD'S JOB, NOT THE TYPIST'S (Anir, Aug 10:
+                  "it should automatically add the v, and then the user enters
+                  in whatever it is. It should be after the v"). The V sits
+                  printed in the box, typing lands after it, and a pasted
+                  "v2.1" sheds its own v instead of doubling up. */}
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-text-secondary">
+                  V
+                </span>
+                <input
+                  autoFocus
+                  value={version.replace(/^v+/i, "")}
+                  onChange={(event) =>
+                    setVersion(event.target.value.replace(/^v+/i, ""))
+                  }
+                  placeholder="2.1"
+                  className={FIELD}
+                  style={{ paddingLeft: 26 }}
+                />
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
