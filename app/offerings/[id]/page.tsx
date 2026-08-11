@@ -37,6 +37,7 @@ import { ConnectedComponents } from "@/components/offerings/ConnectedComponents"
 import { OfferingCompetition } from "@/components/offerings/OfferingCompetition";
 import { readCompetition } from "@/lib/offeringCompetition";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
+import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
 import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
@@ -131,6 +132,15 @@ export default async function OfferingDetailPage({
           .map((c) => ({ id: c.id, name: c.name }))
           .sort((a, b) => a.name.localeCompare(b.name))
       : [];
+  // Real LinkedIn page logos for competitors linked to Market Intel, so the
+  // competition views show the actual company mark, not generated initials.
+  const competitionLogos: Record<string, string> = {};
+  if (getDataMode() === "live") {
+    const feed = await readMarketIntelFeed().catch(() => null);
+    for (const c of Object.values(feed?.companies ?? {})) {
+      if (c.author?.logoUrl) competitionLogos[c.id] = c.author.logoUrl;
+    }
+  }
 
   // WHO IS ON THIS OFFERING (Suren, Aug 9: "in the offering angle, I want to
   // also know all the customers of this offering"). An account counts if the
@@ -524,6 +534,7 @@ export default async function OfferingDetailPage({
             offeringName={o.offering_name}
             initialRows={competitionRows}
             suggestions={competitorSuggestions}
+            logos={competitionLogos}
             live={getDataMode() === "live"}
           />
         ) : tab === "reports" ? (
