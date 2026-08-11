@@ -64,11 +64,6 @@ type Lens = "all" | "linkedin" | "news" | "signals";
 
 const NEWS_VIEWS = ["rows", "tiles", "table"] as const;
 type NewsView = (typeof NEWS_VIEWS)[number];
-const NEWS_VIEW_META: { key: NewsView; label: string; icon: LucideIcon }[] = [
-  { key: "rows", label: "Rows", icon: List },
-  { key: "tiles", label: "Tiles", icon: LayoutGrid },
-  { key: "table", label: "Table", icon: Table2 },
-];
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -399,30 +394,18 @@ export function LiveCompanyBriefing({
                 ]}
               />
             {lens === "news" && (
-              <span className="flex items-center rounded-full border border-border-light bg-white p-0.5">
-                {NEWS_VIEW_META.map((view) => {
-                  const VIcon = view.icon;
-                  const active = newsView === view.key;
-                  return (
-                    <button
-                      key={view.key}
-                      type="button"
-                      onClick={() => chooseNewsView(view.key)}
-                      aria-pressed={active}
-                      aria-label={`${view.label} view`}
-                      title={view.label}
-                      className={cn(
-                        "flex cursor-pointer items-center justify-center rounded-full px-2.5 py-1 transition-colors",
-                        active
-                          ? "bg-blue-primary text-white"
-                          : "text-text-tertiary hover:text-text-primary"
-                      )}
-                    >
-                      <VIcon size={13} strokeWidth={2.2} />
-                    </button>
-                  );
-                })}
-              </span>
+              <ColorSelect
+                value={newsView}
+                onChange={(v) => chooseNewsView(v as NewsView)}
+                ariaLabel="News layout"
+                minWidth={116}
+                dense
+                options={[
+                  { value: "rows", label: "Rows", icon: List, color: "#0071E3" },
+                  { value: "tiles", label: "Tiles", icon: LayoutGrid, color: "#6D28D9" },
+                  { value: "table", label: "Table", icon: Table2, color: "#0F766E" },
+                ]}
+              />
             )}
             </span>
           </div>

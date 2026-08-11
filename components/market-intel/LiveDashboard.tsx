@@ -10,18 +10,18 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { StatTile } from "@/components/ui/StatTile";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Sparkline } from "@/components/charts/Charts";
 import { LiveCompanyCard } from "@/components/market-intel/LiveCompanyCard";
+import { MiTabs } from "@/components/market-intel/MiTabs";
+import { RefreshClock } from "@/components/market-intel/NextRefresh";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
 import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import {
   allTrackedNames,
   buildBriefing,
-  updatedLabel,
   type LiveBriefing,
   type MarketIntelFeed,
 } from "@/lib/marketIntelFeed";
@@ -41,15 +41,11 @@ export function LiveMarketIntelDashboard({
   feed,
   tracking,
   group = "customer",
-  tabs,
 }: {
   feed: MarketIntelFeed;
   tracking: MarketIntelTracking;
   /** Which intelligence bucket this dashboard shows. */
   group?: "customer" | "competitor";
-  /** The bucket tab row wrapping the content, so a click can swap the
-   *  content for a loading skeleton the moment it happens. */
-  tabs?: (content: React.ReactNode) => React.ReactNode;
 }) {
   const names = allTrackedNames(feed, tracking.companies);
   const briefings = Object.values(feed.companies)
@@ -78,25 +74,22 @@ export function LiveMarketIntelDashboard({
 
   return (
     <div>
-      <PageHeader
-        title="Market Intelligence"
-        subtitle={
-          group === "competitor"
-            ? "What your competitors are up to: their LinkedIn activity, news and signals from the past 3 months."
-            : "What the market is saying about the customers you track. Real LinkedIn activity, news and signals from the past 3 months."
-        }
+      <MiTabs
+        active={group === "competitor" ? "competitors" : "customers"}
         action={
           <span className="flex flex-wrap items-center gap-2.5">
             <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
               <span className="inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
-              Live data · twice a day · updated {updatedLabel(feed.updatedAt)}
+              <span>
+                Twice a day
+                <RefreshClock updatedAt={feed.updatedAt} />
+              </span>
             </span>
             <TrackCompanyButton group={group} />
           </span>
         }
-      />
+      >
 
-      {(tabs ?? ((content: React.ReactNode) => content))(
         <>
       <section className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
@@ -215,7 +208,7 @@ export function LiveMarketIntelDashboard({
         refreshes itself twice a day, shared by everyone.
       </p>
         </>
-      )}
+      </MiTabs>
     </div>
   );
 }

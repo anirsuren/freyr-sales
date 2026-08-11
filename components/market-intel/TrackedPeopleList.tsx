@@ -153,7 +153,7 @@ export function TrackedPeopleList({
         open={!!open}
         onClose={() => setOpenId(null)}
         title={open ? open.name : ""}
-        size="wide"
+        size="workflow"
       >
         {open && (
           <div>
@@ -161,10 +161,10 @@ export function TrackedPeopleList({
               <Avatar
                 name={open.name}
                 src={open.photoUrl || undefined}
-                className="h-14 w-14 shrink-0 text-[16px]"
+                className="h-16 w-16 shrink-0 text-[18px]"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-semibold text-text-primary">
+                <p className="text-[17px] font-semibold text-text-primary">
                   {open.name}
                 </p>
                 <p className="text-[12.5px] leading-snug text-text-secondary">
@@ -188,7 +188,7 @@ export function TrackedPeopleList({
               )}
             </div>
 
-            <div className="-mr-2 mt-4 max-h-[52vh] space-y-2.5 overflow-y-auto pr-2">
+            <div className="-mr-2 mt-5 h-[62vh] space-y-3 overflow-y-auto pr-2">
               {!openPosts || openPosts.length === 0 ? (
                 <p className="rounded-lg bg-surface px-4 py-5 text-center text-[12.5px] leading-relaxed text-text-secondary">
                   {openPosts === undefined
@@ -204,7 +204,7 @@ export function TrackedPeopleList({
                     <p className="text-[11.5px] font-medium text-text-tertiary">
                       {fmtDate(post.date)}
                     </p>
-                    <p className="mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-text-primary">
+                    <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
                       {post.text}
                     </p>
                     <p className="mt-2 flex items-center gap-4 text-[11px] font-medium text-text-tertiary">

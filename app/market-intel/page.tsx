@@ -24,6 +24,7 @@ import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import { LiveMarketIntelDashboard } from "@/components/market-intel/LiveDashboard";
 import { MiTabs } from "@/components/market-intel/MiTabs";
 import { MnaTracker } from "@/components/market-intel/MnaTracker";
+import { RefreshClock } from "@/components/market-intel/NextRefresh";
 import { getDataMode } from "@/lib/dataMode";
 import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
@@ -80,31 +81,26 @@ export default async function MarketIntelPage({
       if (tab === "market") {
         return (
           <div>
-            <PageHeader
-              title="Market Intelligence"
-              subtitle="What's moving across the regulated industries: mergers and acquisitions, classified by status and division."
+            <MiTabs
+              active="market"
               action={
                 <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
                   <span className="inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
-                  Live data · twice a day
+                  <span>
+                    Twice a day
+                    <RefreshClock updatedAt={feed.updatedAt} />
+                  </span>
                 </span>
               }
-            />
-            <MiTabs active="market">
+            >
               <MnaTracker board={feed.mna ?? null} />
             </MiTabs>
           </div>
         );
       }
       const group = tab === "competitors" ? "competitor" : "customer";
-      const activeKey = tab === "competitors" ? "competitors" : "customers";
       return (
-        <LiveMarketIntelDashboard
-          feed={feed}
-          tracking={tracking}
-          group={group}
-          tabs={(content) => <MiTabs active={activeKey}>{content}</MiTabs>}
-        />
+        <LiveMarketIntelDashboard feed={feed} tracking={tracking} group={group} />
       );
     }
   }
