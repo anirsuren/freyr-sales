@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2 } from "lucide-react";
 import { CustomerDots } from "@/components/fdl/CustomerDots";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { withV } from "@/lib/version";
 import type { FdlRelease } from "@/lib/offerings";
@@ -127,8 +128,7 @@ export function VersionTimeline({
   selectedIds = [],
 }: {
   releases: TimelineRelease[];
-  /** Clicking a marker unfolds that version's full panel under the stage;
-   *  clicking it again folds the panel away. */
+  /** Clicking a marker opens the versions popup with this one unfolded. */
   onOpen?: (releaseId: string) => void;
   /** Versions whose panel is open — their pills wear a ring. */
   selectedIds?: string[];
@@ -518,37 +518,89 @@ export function VersionTimeline({
                     opacity: 0.4,
                   }}
                 />
-                <button
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => onOpen?.(release.id)}
-                  onMouseEnter={() => setHovered(release.id)}
-                  onMouseLeave={() => setHovered(null)}
-                  aria-label={`${withV(release.version)}, ${tone.label}, ${new Date(
-                    release.ms
-                  ).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}`}
-                  className="absolute z-30 -translate-x-1/2 cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-blue-primary focus-visible:ring-offset-2"
+                {/* SOMETHING ON TOP WHEN YOU HOVER (Anir, Aug 10): the pill
+                    carries a quarter-second summary card — version, status,
+                    date, what's in it, who runs it — and says a click brings
+                    the full popup. The positioned div is OUTSIDE the
+                    HoverCard because its wrapper is position:relative, and an
+                    absolute pill inside it would anchor to the wrong box. */}
+                <div
+                  className="absolute z-30 -translate-x-1/2"
                   style={{ left: x, top: pillTop }}
                 >
-                  <span
-                    className="block whitespace-nowrap rounded-full px-2.5 py-[3px] text-[12px] font-bold tnum text-white transition-[transform,box-shadow] duration-200"
-                    style={{
-                      background: tone.dot,
-                      transform: isHot ? "translateY(-2px) scale(1.06)" : "none",
-                      boxShadow: isSelected
-                        ? `0 0 0 2px var(--white), 0 0 0 4px ${tone.dot}`
-                        : isHot
-                          ? `0 8px 20px -6px ${tone.dot}`
-                          : "0 1px 2px rgba(16,24,40,0.10)",
-                    }}
+                  <HoverCard
+                    width={250}
+                    anchor="trigger"
+                    delayMs={0}
+                    content={
+                      <div>
+                        <p className="flex items-center gap-2 text-[13px] font-bold text-text-primary tnum">
+                          {withV(release.version)}
+                          <span
+                            className="rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em]"
+                            style={{ color: tone.dot, background: tone.bar }}
+                          >
+                            {tone.label}
+                          </span>
+                        </p>
+                        <p className="mt-1 text-[12px] text-text-secondary">
+                          {new Date(release.ms).toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </p>
+                        <p className="mt-0.5 text-[12px] text-text-secondary">
+                          {release.featureCount ?? 0}{" "}
+                          {(release.featureCount ?? 0) === 1
+                            ? "feature"
+                            : "features"}{" "}
+                          · {faces.length}{" "}
+                          {faces.length === 1 ? "customer" : "customers"}
+                          {days > 0 && release.status !== "next"
+                            ? ` · held ${heldFor}`
+                            : ""}
+                        </p>
+                        <p className="mt-1.5 text-[11px] font-medium text-blue-primary">
+                          Click for the full breakdown
+                        </p>
+                      </div>
+                    }
                   >
-                    {withV(release.version)}
-                  </span>
-                </button>
+                    <button
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => onOpen?.(release.id)}
+                      onMouseEnter={() => setHovered(release.id)}
+                      onMouseLeave={() => setHovered(null)}
+                      aria-label={`${withV(release.version)}, ${tone.label}, ${new Date(
+                        release.ms
+                      ).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}`}
+                      className="cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-blue-primary focus-visible:ring-offset-2"
+                    >
+                      <span
+                        className="block whitespace-nowrap rounded-full px-2.5 py-[3px] text-[12px] font-bold tnum text-white transition-[transform,box-shadow] duration-200"
+                        style={{
+                          background: tone.dot,
+                          transform: isHot
+                            ? "translateY(-2px) scale(1.06)"
+                            : "none",
+                          boxShadow: isSelected
+                            ? `0 0 0 2px var(--white), 0 0 0 4px ${tone.dot}`
+                            : isHot
+                              ? `0 8px 20px -6px ${tone.dot}`
+                              : "0 1px 2px rgba(16,24,40,0.10)",
+                        }}
+                      >
+                        {withV(release.version)}
+                      </span>
+                    </button>
+                  </HoverCard>
+                </div>
                 <span
                   className="pointer-events-none absolute z-20 h-3.5 w-3.5 -translate-x-1/2 rounded-full transition-transform duration-200"
                   style={{
