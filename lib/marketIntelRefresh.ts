@@ -257,9 +257,9 @@ async function applyDigest(entry: FeedCompany): Promise<void> {
 
 async function scrapePersonPosts(
   person: TrackedPerson
-): Promise<{ posts: FeedPost[]; cost: number }> {
+): Promise<{ posts: FeedPost[]; cost: number; headline: string | null }> {
   const username = person.linkedinUrl.match(/\/in\/([^/]+)/)?.[1];
-  if (!username) return { posts: [], cost: 0 };
+  if (!username) return { posts: [], cost: 0, headline: null };
   let items: any;
   try {
     items = await runActor("apimaestro~linkedin-profile-posts", {
@@ -267,16 +267,41 @@ async function scrapePersonPosts(
       limit: PERSON_POST_LIMIT,
     });
   } catch {
-    return { posts: [], cost: 0 };
+    return { posts: [], cost: 0, headline: null };
   }
-  if (!Array.isArray(items) || items.length === 0) return { posts: [], cost: 0 };
+  if (!Array.isArray(items) || items.length === 0)
+    return { posts: [], cost: 0, headline: null };
+  // The author block rides along free on every post: it carries the person's
+  // FULL headline, which discovery search truncates (Anir, Aug 11: "his bio
+  // is not there"). Keep it every sync so the profile stays current.
+  const headline =
+    String(items.find((i: any) => i?.author?.headline)?.author?.headline ?? "").trim() ||
+    null;
   if (items.length === 1 && items[0]?.message) {
-    return { posts: [], cost: 0.005 };
+    return { posts: [], cost: 0.005, headline };
   }
   return {
     posts: items.map(toPost).filter(Boolean) as FeedPost[],
     cost: items.length * 0.005,
+    headline,
   };
+}
+
+/** Persist profile facts a sync brought back onto the tracked person. */
+async function updateTrackedPersonProfile(
+  personId: string,
+  patch: Partial<TrackedPerson>
+): Promise<void> {
+  const clean = Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v != null && v !== "")
+  );
+  if (Object.keys(clean).length === 0) return;
+  const tracking = await readRow(TRACKING_ROW);
+  if (!tracking || !Array.isArray(tracking.people)) return;
+  const person = tracking.people.find((p: TrackedPerson) => p.id === personId);
+  if (!person) return;
+  Object.assign(person, clean);
+  await writeRow(TRACKING_ROW, tracking);
 }
 
 // ------------------------------------------------------------------ merging
@@ -479,6 +504,11 @@ export async function runMarketIntelRefresh(options?: {
       }
       const result = await scrapePersonPosts(person);
       spent += result.cost;
+      if (result.headline && result.headline !== person.headline) {
+        await updateTrackedPersonProfile(person.id, {
+          headline: result.headline,
+        }).catch(() => undefined);
+      }
       feed.people[person.id] = {
         posts: mergePosts(existing?.posts ?? [], result.posts),
         fetchedAt: new Date().toISOString(),
@@ -538,6 +568,11 @@ export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<vo
   const feed: any = raw && raw.companies ? raw : emptyFeed();
   if (!feed.people) feed.people = {};
   const result = await scrapePersonPosts(person);
+  if (result.headline && result.headline !== person.headline) {
+    await updateTrackedPersonProfile(person.id, {
+      headline: result.headline,
+    }).catch(() => undefined);
+  }
   feed.people[person.id] = {
     posts: result.posts,
     fetchedAt: new Date().toISOString(),
@@ -661,6 +696,11 @@ export async function addPersonByLink(
     companyId,
     name,
     role: String(info?.headline ?? "").slice(0, 80),
+    headline: String(info?.headline ?? "").trim() || undefined,
+    location: String(info?.location?.full ?? "").trim() || undefined,
+    about: String(info?.about ?? "").trim().slice(0, 800) || undefined,
+    followerCount:
+      typeof info?.follower_count === "number" ? info.follower_count : undefined,
     linkedinUrl:
       String(info?.profile_url ?? "") || `https://www.linkedin.com/in/${username}`,
     photoUrl: String(info?.profile_picture_url ?? ""),

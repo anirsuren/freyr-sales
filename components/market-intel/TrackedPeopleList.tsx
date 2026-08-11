@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, MessageSquare, Repeat2, ThumbsUp, X } from "lucide-react";
+import { ExternalLink, MapPin, MessageSquare, Repeat2, ThumbsUp, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -172,8 +172,14 @@ export function TrackedPeopleList({
                     {open.name}
                   </p>
                   <p className="mt-0.5 text-[13px] leading-snug text-text-secondary">
-                    {open.role || "Tracked for posts"}
+                    {open.headline || open.role || "Tracked for posts"}
                   </p>
+                  {open.location && (
+                    <p className="mt-1 flex items-center gap-1 text-[12px] text-text-tertiary">
+                      <MapPin size={12} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+                      {open.location}
+                    </p>
+                  )}
                   <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0071E3]">
                       Followed since{" "}
@@ -187,7 +193,17 @@ export function TrackedPeopleList({
                         ? "first sync pending"
                         : `${openPosts.length} ${openPosts.length === 1 ? "post" : "posts"} collected`}
                     </span>
+                    {open.followerCount != null && (
+                      <span className="rounded-full bg-[rgba(15,118,110,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:#0F766E] tnum">
+                        {open.followerCount.toLocaleString("en-US")} followers
+                      </span>
+                    )}
                   </p>
+                  {open.about && (
+                    <p className="mt-2 overflow-hidden text-[12px] leading-relaxed text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">
+                      {open.about}
+                    </p>
+                  )}
                 </div>
                 {open.linkedinUrl && (
                   <a

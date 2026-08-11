@@ -23,6 +23,13 @@ export type TrackedPerson = {
   addedAt: string;
   /** LinkedIn profile photo, when discovery or the team provided one. */
   photoUrl?: string;
+  /** Their full LinkedIn headline, exactly as it reads on the profile. */
+  headline?: string;
+  /** "City, Region, Country" as LinkedIn shows it. */
+  location?: string;
+  /** The About paragraph, when a profile scrape included it. */
+  about?: string;
+  followerCount?: number;
   /** "auto-baseline" for people the discovery script added; absent for
    *  people a teammate added by hand. */
   source?: string;
