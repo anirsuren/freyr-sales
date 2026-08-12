@@ -203,7 +203,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                   <th
                     key={m}
                     className={cn(
-                      "min-w-[128px] border-b border-border-light px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.05em]",
+                      "min-w-[128px] border-b border-r border-border-light px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.05em]",
                       m === nowIndex
                         ? "bg-blue-light/60 text-blue-primary"
                         : "text-text-tertiary"
@@ -271,7 +271,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                         <td
                           key={m}
                           className={cn(
-                            "border-b border-border-light px-3 py-3 text-center align-middle",
+                            "border-b border-r border-border-light px-3 py-3 text-center align-middle",
                             m === nowIndex && "bg-blue-light/30"
                           )}
                         >
