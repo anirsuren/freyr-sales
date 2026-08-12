@@ -20,6 +20,7 @@ import {
   Search,
   Server,
   X,
+  CalendarRange,
 } from "lucide-react";
 import { OfferingIcon, ServiceTag, offeringMark } from "@/components/ui/OfferingIcon";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -370,6 +371,12 @@ export function FdlComponentsBrowser({
               })),
             ]}
           />
+          <Link
+            href="/components/release-calendar"
+            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+          >
+            <CalendarRange size={14} strokeWidth={2.1} /> Release calendar
+          </Link>
           <MultiColorSelect
             values={offeringFilter}
             onChange={setOfferingFilter}
