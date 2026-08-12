@@ -167,7 +167,7 @@ export function PeopleTab({
   return (
     <div>
       {people.some((p) => p.attainment !== null) && (
-        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
           <Card className="p-4">
             <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
               Average attainment by group

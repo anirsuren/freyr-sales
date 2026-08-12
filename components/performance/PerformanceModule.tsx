@@ -536,7 +536,7 @@ function MasterTab({
   return (
     <div>
       {state.goals.length > 0 && (
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           <Card className="p-4">
             <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
               Goals by type
