@@ -322,10 +322,16 @@ function fromPdf(buf: Buffer): string {
   const parts: string[] = [];
   let collected = 0;
   const MAX_PDF_STREAM_BYTES = 4 * 1024 * 1024;
+  // Hard wall-clock stop for the whole walk. This runs synchronously on the
+  // upload request path, so a slow file must degrade to "fewer words read",
+  // never to a stalled request — a stalled parse blocks the event loop, which
+  // fails the ECS health checks and takes the whole container down with it
+  // (Inayat's deck, Aug 12).
+  const deadline = Date.now() + 5_000;
   // Walk stream/endstream pairs rather than regexing the whole file: PDF
   // bodies are binary and a greedy match across them is both wrong and slow.
   let i = 0;
-  while (true) {
+  while (Date.now() < deadline) {
     const s = buf.indexOf("stream", i);
     if (s < 0) break;
     const e = buf.indexOf("endstream", s);
@@ -384,10 +390,17 @@ function pdfContentDate(buf: Buffer): string | undefined {
 /** Pull the literal strings out of a PDF content stream: `(hello) Tj` and
  *  `[(hel) -20 (lo)] TJ`. Anything drawn as an image or as a hex-encoded CID
  *  font is not recoverable this way, and we would rather return less than
- *  return mojibake the model would happily quote. */
+ *  return mojibake the model would happily quote.
+ *
+ *  Every repeated group in this regex MUST keep its alternatives disjoint
+ *  (`\\.` first, then a class that EXCLUDES backslash). The `[...] TJ` branch
+ *  once used `[^\][]`, which also matches a backslash, so glyph runs like
+ *  `\a\a\a…` with no closing `] TJ` could be consumed two ways per pair —
+ *  exponential backtracking that pinned the CPU for minutes on a 0.3MB deck
+ *  and got the prod container killed mid-upload (Aug 12). */
 function pdfOperators(stream: string): string {
   const out: string[] = [];
-  for (const m of stream.matchAll(/\((?:\\.|[^\\()])*\)\s*(Tj|TJ|')|\[((?:[^\][]|\\.)*)\]\s*TJ|\bT\*|\bTd\b|\bTD\b/g)) {
+  for (const m of stream.matchAll(/\((?:\\.|[^\\()])*\)\s*(Tj|TJ|')|\[((?:\\.|[^\\\][])*)\]\s*TJ|\bT\*|\bTd\b|\bTD\b/g)) {
     if (m[0] === "T*" || m[0] === "Td" || m[0] === "TD") {
       out.push("\n");
       continue;
