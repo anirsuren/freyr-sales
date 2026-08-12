@@ -304,7 +304,7 @@ export function OfferingActivities({
              it invents a scrollbar for a table that already fits (Anir, Aug 9:
              "it looks like you don't even need the horizontal scroll on the
              table, you're fitting it properly"). */}
-          <table className="w-full min-w-[720px] border-collapse text-left">
+          <table className="w-full min-w-[720px] table-fixed border-collapse text-left">
             <thead>
               <tr className="border-b border-border-light text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
                 <th className="w-[132px] py-2 pr-3 font-bold">Activity</th>
@@ -313,12 +313,12 @@ export function OfferingActivities({
                 <th className="w-[184px] py-2 pr-3 font-bold">Dates</th>
                 <th className="w-[104px] py-2 pr-3 text-right font-bold">Value</th>
                 <th className="w-[140px] py-2 pr-2 font-bold">Current</th>
-                <th className="w-[76px] py-1 font-bold">
+                <th className="w-[88px] py-1 font-bold">
                   {/* A WHITE PLUS ON A BLUE SQUARE (Anir, Aug 9: "add activity
                       should be just the white plus with the blue square, keep
                       it simple") — now sitting in the column that already owns
                       the row actions, so it costs no vertical space at all. */}
-                  <span className="flex justify-start">
+                  <span className="flex justify-end pr-1">
                     <Tooltip label="Add activity">
                       <button
                         type="button"

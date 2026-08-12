@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
-import { PrioritySearchInput } from "@/components/ui/SearchPriority";
+import {
+  PrioritySearchInput,
+  SearchPriority,
+} from "@/components/ui/SearchPriority";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
@@ -485,11 +488,14 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
         <p className="text-[12.5px] text-text-tertiary mt-0.5">
           Ranked by open pipeline. Message on Teams or call, click a rep for their full analytics.
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {/* The shared search box, so this one focuses and behaves like every
-              other search in the app (Anir, Aug 9: "do the same animation for
-              the search bar as you do on the other things"). It was a raw
-              input, which is why it sat still while the others responded. */}
+        {/* SearchPriority provider: without it the box focused but nothing
+            around it responded — the filters never yielded their labels, so
+            this toolbar alone sat still (Anir, Aug 12: "you're still not
+            doing the search bar thing here"). */}
+        <SearchPriority
+          query={query}
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
           <PrioritySearchInput
             grow
             className="min-w-[200px] flex-1"
@@ -505,7 +511,6 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             allIcon={Users}
             ariaLabel="Filter by role"
             dense
-            collapsible={false}
             width={132}
             options={[
               { value: "Admin", label: "Admin", color: "#6D28D9", icon: ShieldCheck },
@@ -520,7 +525,6 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             allIcon={Globe}
             ariaLabel="Filter by region"
             dense
-            collapsible={false}
             width={150}
             options={regions.map((region) => ({
               value: region,
@@ -536,7 +540,6 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             allIcon={Layers}
             ariaLabel="Filter by pipeline"
             dense
-            collapsible={false}
             width={152}
             options={[
               { value: "with", label: "Holding pipeline", color: "#1A7A35", icon: TrendingUp },
@@ -548,7 +551,6 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             onChange={setSortBy}
             ariaLabel="Sort the floor"
             dense
-            collapsible={false}
             className="w-[150px] shrink-0"
             options={[
               { value: "pipeline", label: "Open pipeline", color: "#1A7A35", icon: TrendingUp },
@@ -570,7 +572,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               tableValue="table"
             />
           </span>
-        </div>
+        </SearchPriority>
       </div>
 
       {/* key=view re-mounts the panel so switching grid↔table animates. It used
