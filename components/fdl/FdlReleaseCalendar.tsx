@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CalendarRange, Layers, Rocket, Search } from "lucide-react";
+import { ArrowLeft, AlarmClock, CalendarCheck, CalendarRange, CircleCheck, Layers, Rocket, Search } from "lucide-react";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { StatTile } from "@/components/ui/StatTile";
 import { cn } from "@/lib/utils";
 import { FDL_TYPE_META } from "./FdlComponentsBrowser";
 
@@ -56,6 +57,64 @@ function fmtDay(date?: string): string {
   if (!date) return "no date yet";
   const d = new Date(`${date}T00:00:00`);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** The glance row: what's landing, what's coming, what slipped — computed
+ *  over every component, before any table filter narrows the view. */
+function ReleaseStats({ components }: { components: FdlComponent[] }) {
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const today = now.toISOString().slice(0, 10);
+  const in30 = new Date(now.getTime() + 30 * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  let thisMonth = 0;
+  let expectedSoon = 0;
+  let overdue = 0;
+  let withCurrent = 0;
+  for (const c of components) {
+    if (c.releases.some((r) => r.current)) withCurrent += 1;
+    for (const r of c.releases) {
+      if (r.date?.startsWith(monthKey)) thisMonth += 1;
+      if (r.status === "next" && r.date) {
+        if (r.date >= today && r.date <= in30) expectedSoon += 1;
+        if (r.date < today) overdue += 1;
+      }
+    }
+  }
+
+  return (
+    <div className="rise-in mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatTile
+        icon={CalendarCheck}
+        label="Landing this month"
+        value={String(thisMonth)}
+        sub={thisMonth === 1 ? "version" : "versions"}
+      />
+      <StatTile
+        icon={Rocket}
+        label="Expected in 30 days"
+        value={String(expectedSoon)}
+        sub={expectedSoon === 1 ? "version" : "versions"}
+        color="#7C3AED"
+      />
+      <StatTile
+        icon={AlarmClock}
+        label="Past their date"
+        value={String(overdue)}
+        sub="expected, not out yet"
+        warn={overdue > 0}
+      />
+      <StatTile
+        icon={CircleCheck}
+        label="On a current version"
+        value={`${withCurrent} of ${components.length}`}
+        sub="components"
+        color="#16A34A"
+      />
+    </div>
+  );
 }
 
 export function FdlReleaseCalendar({ components }: { components: FdlComponent[] }) {
@@ -124,6 +183,8 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
         title="Release calendar"
         subtitle="Every component's versions mapped onto the months they land — released, current and expected together."
       />
+
+      <ReleaseStats components={components} />
 
       <div className="rise-in mb-4 flex flex-wrap items-center gap-2">
         <label className="relative min-w-0 flex-1 sm:max-w-[300px]">
