@@ -18,6 +18,7 @@ import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { FolderBrowserSelect } from "@/components/offerings/FolderBrowserSelect";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -880,21 +881,12 @@ export function AddMaterialButton({
               )}
             </label>
             <div className="flex items-stretch gap-2">
-              <ColorSelect
+              <FolderBrowserSelect
                 value={folder}
-                options={[
-                  { value: "", label: "Choose a folder", color: "#0071E3", icon: Folder },
-                  ...selectableFolders.map((name) => ({
-                    value: name,
-                    label: materialFolderLabel(name),
-                    color: "#0071E3",
-                    icon: Folder,
-                  })),
-                ]}
                 onChange={setFolder}
+                folders={folderOptions}
+                materials={materials}
                 ariaLabel="Folder"
-                minWidth={0}
-                collapsible={false}
                 className="min-w-0 flex-1"
               />
               <button
@@ -1207,24 +1199,12 @@ export function AddMaterialButton({
                           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             Folder
                           </span>
-                          <ColorSelect
+                          <FolderBrowserSelect
                             value={fileOverrides[key]?.folder || folder}
-                            options={[
-                              ...((fileOverrides[key]?.folder || folder)
-                                ? []
-                                : [{ value: "", label: "Choose a folder", color: "#B02020", icon: Folder }]),
-                              ...selectableFolders.map((name) => ({
-                                value: name,
-                                label: materialFolderLabel(name),
-                                color: "#0071E3",
-                                icon: Folder,
-                              })),
-                            ]}
-                            onChange={(value) => updateFileOverride(selected, { folder: value })}
+                            onChange={(next) => updateFileOverride(selected, { folder: next })}
+                            folders={folderOptions}
+                            materials={materials}
                             ariaLabel={`Folder for ${selected.name}`}
-                            minWidth={0}
-                            collapsible={false}
-                            className="w-full"
                           />
                         </div>
                         <div>

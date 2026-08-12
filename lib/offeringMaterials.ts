@@ -593,7 +593,9 @@ export const MATERIAL_FOLDER_TREE = [
   },
   {
     name: "Sales Decks",
-    children: ["Internal Sales Decks", "Client Sales Decks"],
+    // Eswar's original names, restored Aug 12 — see LEGACY_FOLDER_NAMES for
+    // the map that had been silently renaming them to Internal/Client.
+    children: ["Short Sales Deck", "Long Sales Deck"],
   },
   { name: "Battle Cards" },
   // The stored path cannot contain "/" because slash separates nested folders.
@@ -651,8 +653,13 @@ const LEGACY_FOLDER_NAMES: Record<string, string> = {
   "Success Stories / Case Studies": "Success Stories and Case Studies",
   "Success Stories/Case Studies": "Success Stories and Case Studies",
   "Introductory Emails (Templates)": "Introductory Emails",
-  "Sales Decks/Short Sales Deck": "Sales Decks/Client Sales Decks",
-  "Sales Decks/Long Sales Deck": "Sales Decks/Internal Sales Decks",
+  // REVERSED on Aug 12. The old direction (Short→Client, Long→Internal) is
+  // what "mysteriously" renamed Eswar's subfolders — Saras asked who changed
+  // them on the call, and the answer was this map, not a person. Short and
+  // Long are the approved names; any stored Client/Internal rows normalize
+  // back on their next save.
+  "Sales Decks/Client Sales Decks": "Sales Decks/Short Sales Deck",
+  "Sales Decks/Internal Sales Decks": "Sales Decks/Long Sales Deck",
 };
 
 /**
@@ -687,10 +694,10 @@ export function canonicalMaterialFolder(
   if (/(recorded|client|customer).*demo|demo.*(recorded|client|customer)/.test(label))
     return "Product Demos/Recorded Client Demos";
   if (/\bdemo\b/.test(label) || documentType === "product_demo") return "Product Demos";
-  if (/internal.*(sales\s*)?deck|(sales\s*)?deck.*internal/.test(label))
-    return "Sales Decks/Internal Sales Decks";
-  if (/client.*(sales\s*)?deck|(sales\s*)?deck.*client/.test(label))
-    return "Sales Decks/Client Sales Decks";
+  if (/short.*(sales\s*)?deck|(sales\s*)?deck.*short|2\s*slider/.test(label))
+    return "Sales Decks/Short Sales Deck";
+  if (/long.*(sales\s*)?deck|(sales\s*)?deck.*long|master\s*deck/.test(label))
+    return "Sales Decks/Long Sales Deck";
   if (/\b(deck|presentation|pitch)\b/.test(label) || documentType === "sales_deck")
     return "Sales Decks";
   if (/battle|competit/.test(label) || documentType === "battle_card" || material.kind === "competition")
