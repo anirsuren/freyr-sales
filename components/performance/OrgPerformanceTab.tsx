@@ -36,7 +36,7 @@ import {
 } from "@/lib/performanceShared";
 import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill } from "./bits";
+import { MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -107,6 +107,9 @@ export function OrgPerformanceTab({
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [paceFilter, setPaceFilter] = useState("all");
+  const [verFilter, setVerFilter] = useState("all");
   const [period, choosePeriod] = useStoredView<PeriodKey>(
     "freyr.performance.period",
     "quarter",
@@ -116,8 +119,16 @@ export function OrgPerformanceTab({
 
   const picked = state.goals.filter((g) => g.pickedForOrg);
   const q = query.trim().toLowerCase();
-  const shown = picked.filter(
-    (g) =>
+  const shown = picked.filter((g) => {
+    if (typeFilter !== "all" && g.type !== typeFilter) return false;
+    if (paceFilter !== "all") {
+      const a = actualValue(state.actuals, g);
+      if (paceVerdict(a, g.target, g.year, g.measure) !== paceFilter)
+        return false;
+    }
+    if (verFilter === "verified" && !g.verified) return false;
+    if (verFilter === "unverified" && g.verified) return false;
+    return (
       !q ||
       g.name.toLowerCase().includes(q) ||
       g.type.toLowerCase().includes(q) ||
@@ -127,7 +138,8 @@ export function OrgPerformanceTab({
           s.owners.some((o) => o.toLowerCase().includes(q)) ||
           s.people.some((p) => p.name.toLowerCase().includes(q))
       )
-  );
+    );
+  });
 
   const withValue = picked.map((g) => ({
     goal: g,
@@ -224,7 +236,7 @@ export function OrgPerformanceTab({
               Where the goals stand
               <InfoHint text="Every tracked goal, judged against where the calendar says it should be by today." />
             </p>
-            <div className="mt-3 flex items-center gap-5">
+            <div className="mx-auto mt-3 flex w-full max-w-[420px] items-center justify-center gap-6">
               <DonutChart
                 size={140}
                 thickness={15}
@@ -248,7 +260,7 @@ export function OrgPerformanceTab({
                   .filter((s) => s.value > 0)}
               />
               <DonutLegend
-                className="min-w-0 flex-1"
+                className="min-w-0 flex-1 max-w-[230px]"
                 syncId="perf-pace"
                 total={picked.length}
                 items={(["met", "ahead", "ontrack", "lagging", "unset"] as const)
@@ -286,7 +298,50 @@ export function OrgPerformanceTab({
           growExpandedMaxWidth={460}
           className="min-w-[200px] flex-1"
         />
-        <span className="ml-auto flex items-center gap-2">
+        <span className="ml-auto flex flex-wrap items-center gap-2">
+          <ColorSelect
+            value={typeFilter}
+            onChange={setTypeFilter}
+            ariaLabel="Goal type"
+            dense
+            minWidth={170}
+            options={[
+              { value: "all", label: "All goal types", color: "#0071E3" },
+              ...state.types.map((t) => ({
+                value: t,
+                label: t,
+                color: typeMeta(t).color,
+                icon: typeMeta(t).icon,
+              })),
+            ]}
+          />
+          <ColorSelect
+            value={paceFilter}
+            onChange={setPaceFilter}
+            ariaLabel="Standing"
+            dense
+            minWidth={150}
+            options={[
+              { value: "all", label: "Any standing", color: "#0071E3" },
+              { value: "met", label: "Target met", color: "#16A34A" },
+              { value: "ahead", label: "Ahead", color: "#0F766E" },
+              { value: "ontrack", label: "On track", color: "#0071E3" },
+              { value: "lagging", label: "Lagging", color: "#DC2626" },
+              { value: "unset", label: "No target yet", color: "#8AB4E8" },
+            ]}
+          />
+          <ColorSelect
+            value={verFilter}
+            onChange={setVerFilter}
+            ariaLabel="Verified"
+            dense
+            minWidth={140}
+            options={[
+              { value: "all", label: "Verified + not", color: "#0071E3" },
+              { value: "verified", label: "Verified", color: "#16A34A" },
+              { value: "unverified", label: "Not verified", color: "#B45309" },
+            ]}
+          />
           <ColorSelect
             value={period}
             onChange={(v) => choosePeriod(v as PeriodKey)}

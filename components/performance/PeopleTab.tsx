@@ -280,7 +280,7 @@ export function PeopleTab({
               People by standing
               <InfoHint text="Everyone with goals, grouped by how their attainment stands right now." />
             </p>
-            <div className="mt-2 flex items-center gap-4">
+            <div className="mx-auto mt-2 flex w-full max-w-[400px] items-center justify-center gap-6">
               <DonutChart
                 size={120}
                 thickness={13}
@@ -295,7 +295,7 @@ export function PeopleTab({
                 })).filter((s) => s.value > 0)}
               />
               <DonutLegend
-                className="min-w-0 flex-1"
+                className="min-w-0 flex-1 max-w-[230px]"
                 syncId="perf-bands"
                 total={people.length}
                 items={BANDS.map((b) => ({

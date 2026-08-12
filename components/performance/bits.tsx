@@ -1,20 +1,26 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   BadgeDollarSign,
+  Check,
   CheckCircle2,
+  ChevronDown,
   Handshake,
   Hash,
   Magnet,
   Percent,
+  Search,
   ShieldCheck,
   ShieldQuestion,
   Sparkles,
   TrendingDown,
   TrendingUp,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import {
   fmtAmount,
@@ -99,6 +105,151 @@ export function TypeChip({
       <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.2} />
       {type}
     </span>
+  );
+}
+
+/**
+ * A person picker that looks like people (Anir: "I know you need the profile
+ * pictures here, not the blue dots"). Real headshots, a search box for long
+ * rosters, and — when nobody matches — a "use this name" row so free text
+ * still works.
+ */
+export function PersonSelect({
+  value,
+  onChange,
+  people,
+  placeholder = "Pick a person…",
+  allowFree = true,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  people: string[];
+  placeholder?: string;
+  allowFree?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const q = query.trim().toLowerCase();
+  const matches = people.filter((p) => !q || p.toLowerCase().includes(q));
+  const exact = people.some((p) => p.toLowerCase() === q);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((v) => !v);
+          setQuery("");
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex h-[40px] w-full cursor-pointer items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 text-left transition-colors hover:border-blue-subtle"
+      >
+        {value ? (
+          <>
+            <Avatar name={value} className="h-6 w-6 text-[9px]" />
+            <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-text-primary">
+              {value}
+            </span>
+          </>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-[13.5px] text-text-tertiary">
+            {placeholder}
+          </span>
+        )}
+        <ChevronDown
+          size={14}
+          strokeWidth={2.2}
+          className={cn(
+            "shrink-0 text-text-tertiary transition-transform",
+            open && "rotate-180 text-blue-primary"
+          )}
+        />
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          className="menu-in absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
+        >
+          {people.length > 6 && (
+            <div className="flex items-center gap-1.5 border-b border-border-light px-2.5 py-2">
+              <Search size={13} strokeWidth={2.2} className="text-text-tertiary" />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search people…"
+                className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
+              />
+            </div>
+          )}
+          <div className="max-h-56 overflow-y-auto p-1">
+            {matches.map((p) => (
+              <button
+                key={p}
+                type="button"
+                role="option"
+                aria-selected={p === value}
+                onClick={() => {
+                  onChange(p);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors",
+                  p === value ? "bg-[rgba(0,113,227,0.07)]" : "hover:bg-surface"
+                )}
+              >
+                <Avatar name={p} className="h-6 w-6 text-[9px]" />
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">
+                  {p}
+                </span>
+                {p === value && (
+                  <Check size={13} strokeWidth={2.6} className="shrink-0 text-blue-primary" />
+                )}
+              </button>
+            ))}
+            {matches.length === 0 && !allowFree && (
+              <p className="px-2 py-2 text-[12px] text-text-tertiary">
+                Nobody matches that.
+              </p>
+            )}
+            {allowFree && q && !exact && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(query.trim());
+                  setOpen(false);
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(0,113,227,0.10)] text-blue-primary">
+                  <UserPlus size={12} strokeWidth={2.2} />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-blue-primary">
+                  Use &ldquo;{query.trim()}&rdquo;
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
