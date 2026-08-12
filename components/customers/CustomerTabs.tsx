@@ -669,7 +669,16 @@ export function CustomerTabs({
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-8",
+        // The right rail exists only in mock: in real mode the Components and
+        // Activity tables take the entire width instead of being squeezed by
+        // the snapshot/owner cards (Anir, Aug 12: "the table has to take up
+        // the entire space... move it to Mock-mode").
+        includeDemoTeam && "lg:grid-cols-[1fr_280px]"
+      )}
+    >
       <div>
         {/* Tabs */}
         <div
@@ -2089,7 +2098,9 @@ export function CustomerTabs({
       </div>
 
       {/* Right rail — decision-first: the agent entry, the health picture,
-          then the working cards. One glance, no wall of boxes (Anir, Jul 3). */}
+          then the working cards. One glance, no wall of boxes (Anir, Jul 3).
+          Mock only — see the grid above. */}
+      {includeDemoTeam && (
       <aside className="space-y-4">
         {/* Per-account agent entry — opens the account-scoped drawer (chat +
             quick actions) over the page, reachable from any tab. The global
@@ -2296,6 +2307,7 @@ export function CustomerTabs({
         {/* The Deliverables tiles that used to sit here are gone — see the note
             at the top of this file. Agent asks belong in the dock. */}
       </aside>
+      )}
 
       {/* New deal modal (#58) — full deal detail, not just name/stage/value */}
       <Modal

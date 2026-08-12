@@ -780,6 +780,9 @@ export function CustomersBrowser({
               outcomeMix={c.outcome_mix}
               healthTrend={c.health_trend}
               trendTips={c.trend_tips}
+              selectMode={selectMode}
+              selected={selected.has(c.id)}
+              onToggleSelect={() => toggleSel(c.id)}
             />
           ))}
         </div>

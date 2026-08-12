@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
+  CheckSquare,
   CircleDashed,
+  Square,
   TrendingUp,
   TrendingDown,
   Target,
@@ -184,9 +186,30 @@ export function CustomerCard({
   // own link lifted above it, so there are no nested anchors.
   return (
     <HoverExpandCard
-      className="h-full"
+      className={
+        selected
+          ? "h-full rounded-xl ring-2 ring-blue-primary ring-offset-1"
+          : "h-full"
+      }
       summary={
         <>
+          {/* Select mode: one full-card click target ABOVE the stretched
+              company link, so checking off works from the tiles view too
+              (Anir: "I should be able to check it off... on normal view").
+              The same Square/CheckSquare pair as the table rows. */}
+          {selectMode && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleSelect?.();
+              }}
+              aria-label={`${selected ? "Deselect" : "Select"} ${customer.company_name}`}
+              aria-pressed={selected}
+              className="absolute inset-0 z-20 cursor-pointer rounded-xl"
+            />
+          )}
           <div className="flex items-start gap-3 mb-4">
             <CompanyLogo
               name={customer.company_name}
@@ -201,7 +224,23 @@ export function CustomerCard({
                 >
                   {customer.company_name}
                 </Link>
-                <SizeBadge tier={customer.size_tier} />
+                <span className="flex shrink-0 items-center gap-2">
+                  {selectMode &&
+                    (selected ? (
+                      <CheckSquare
+                        size={18}
+                        strokeWidth={1.9}
+                        className="text-blue-primary"
+                      />
+                    ) : (
+                      <Square
+                        size={18}
+                        strokeWidth={1.9}
+                        className="text-text-tertiary"
+                      />
+                    ))}
+                  <SizeBadge tier={customer.size_tier} />
+                </span>
               </div>
               {/* Industry is a category, so it wears its colour + icon like
                   every other chip in the app, it was the last place still

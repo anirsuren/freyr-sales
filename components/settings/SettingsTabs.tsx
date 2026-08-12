@@ -102,6 +102,20 @@ const PERMISSIONS: { cap: string; admin: boolean; manager: boolean; rep: boolean
   { cap: "Browse offerings & open sales materials", admin: true, manager: true, rep: true },
   { cap: "Ask the assistant", admin: true, manager: true, rep: true },
   {
+    cap: "Open FDL Components, Customers, Reports, Performance & Market Intel",
+    admin: true,
+    manager: true,
+    rep: false,
+    note: "AI Agent, Offerings and Team stay open to every role",
+  },
+  {
+    cap: "Change a teammate's role",
+    admin: true,
+    manager: false,
+    rep: false,
+    note: "From the member directory on the Team tab",
+  },
+  {
     cap: "Edit an offering & its materials",
     admin: true,
     manager: false,
@@ -1028,7 +1042,7 @@ export function SettingsTabs({
         </div>
 
       {tab === "workspace" && (
-        <div className="space-y-5">
+        <div className="tab-panel stagger space-y-5">
           {/* The three status cards that sat here — "Current data view",
               "Access policy", "Identity provider: Supabase email/password" —
               were deployment facts, not settings. Nobody reading this page can
@@ -1135,7 +1149,7 @@ export function SettingsTabs({
       )}
 
       {tab === "profile" && (
-        <Card>
+        <Card className="tab-panel">
           <div className="flex items-center gap-4 mb-5">
             <button
               type="button"
@@ -1333,7 +1347,7 @@ export function SettingsTabs({
       )}
 
       {tab === "team" && (
-        <div className="space-y-5">
+        <div className="tab-panel stagger space-y-5">
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Active members", value: accessDirectory.members.filter((member) => member.active).length, icon: UsersRound, color: "text-blue-primary bg-blue-light" },
@@ -1481,7 +1495,7 @@ export function SettingsTabs({
       )}
 
       {tab === "notifications" && (
-        <div className="space-y-4">
+        <div className="tab-panel stagger space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Card className="flex items-center justify-between px-5 py-4"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-light text-blue-primary"><Mail size={16} /></span><span><span className="block text-[13px] font-semibold text-text-primary">Email delivery</span><span className="text-[11px] text-text-tertiary">Immediate alerts and digests</span></span></div><span className="rounded-md bg-success/10 px-2 py-1 text-[10.5px] font-semibold text-success">Primary</span></Card>
             <Card className="flex items-center justify-between px-5 py-4"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-md bg-violet-50 text-violet-600"><MessageSquare size={16} /></span><span><span className="block text-[13px] font-semibold text-text-primary">Slack / Teams</span><span className="text-[11px] text-text-tertiary">Connected channel alerts</span></span></div><span className="rounded-md bg-surface px-2 py-1 text-[10.5px] font-semibold text-text-tertiary">Optional</span></Card>
@@ -1501,7 +1515,7 @@ export function SettingsTabs({
       )}
 
       {tab === "access" && (
-        <div className="space-y-5">
+        <div className="tab-panel stagger space-y-5">
           <div className="grid grid-cols-[1.15fr_0.85fr] gap-4">
             <Card className="px-5 py-4">
               <div className="flex items-start gap-3">
@@ -1679,7 +1693,7 @@ export function SettingsTabs({
       )}
 
       {tab === "integrations" && (
-        <div className="space-y-4">
+        <div className="tab-panel stagger space-y-4">
           <p className="text-[13px] text-text-secondary max-w-[640px]">
             Connect the tools your team already uses. Freyr works alongside them,
             you stay in control of what syncs, and nothing goes out without your
