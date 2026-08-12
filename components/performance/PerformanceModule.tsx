@@ -114,7 +114,7 @@ export function PerformanceModule({
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 rounded-full border border-border-light bg-white p-1">
+        <div className="flex max-w-full flex-wrap items-center gap-1 rounded-full border border-border-light bg-white p-1">
           {(
             [
               { key: "org", label: "Org performance", icon: Gauge },
@@ -130,7 +130,7 @@ export function PerformanceModule({
                 type="button"
                 onClick={() => chooseTab(t.key)}
                 className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors",
+                  "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-colors sm:px-3.5 sm:text-[12.5px]",
                   active
                     ? "bg-blue-primary text-white"
                     : "text-text-secondary hover:bg-surface hover:text-text-primary"
