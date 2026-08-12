@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Check,
+  ChevronDown,
   ClipboardList,
   Gauge,
+  LayoutGrid,
   Pencil,
   Plus,
+  Table2,
   Trash2,
   UsersRound,
   X,
 } from "lucide-react";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -32,7 +37,8 @@ import {
   type PrimaryGoal,
   type Subgoal,
 } from "@/lib/performanceShared";
-import { TypeChip, TypeIconTile, UnitChip, typeMeta } from "./bits";
+import { DonutChart, DonutLegend } from "@/components/charts/Charts";
+import { TrackSwitch, TypeChip, TypeIconTile, UnitChip, typeMeta } from "./bits";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { PeopleTab } from "./PeopleTab";
 
@@ -52,6 +58,12 @@ import { PeopleTab } from "./PeopleTab";
  */
 
 const TABS = ["org", "master", "people"] as const;
+const MASTER_VIEWS = ["cards", "table"] as const;
+const SPLIT_COLORS = ["#0071E3", "#6D28D9", "#0F766E", "#B4318F", "#C2410C", "#0EA5E9"];
+// A sane window: last year through three years out. Nobody plans 2126.
+const YEAR_CHOICES = Array.from({ length: 5 }, (_, i) =>
+  String(new Date().getFullYear() - 1 + i)
+);
 type Tab = (typeof TABS)[number];
 
 export type RunOp = (
@@ -59,14 +71,43 @@ export type RunOp = (
   ok?: string
 ) => Promise<boolean>;
 
+const ROOMS: Record<
+  Tab,
+  { label: string; icon: typeof Gauge; color: string; subtitle: string }
+> = {
+  org: {
+    label: "Org performance",
+    icon: Gauge,
+    color: "#0071E3",
+    subtitle:
+      "The goals being tracked this year — target, actual, met, % met and verified — from the company down to every person.",
+  },
+  master: {
+    label: "Goal Master",
+    icon: ClipboardList,
+    color: "#6D28D9",
+    subtitle:
+      "The master list of every goal: its type, its subgoals, who owns them, and whether it's being tracked on the plan.",
+  },
+  people: {
+    label: "People & groups",
+    icon: UsersRound,
+    color: "#B4318F",
+    subtitle: "User groups with their heads, and each person's goals one by one.",
+  },
+};
+
 export function PerformanceModule({
   initial,
   live,
   meName,
+  memberNames,
 }: {
   initial: PerformanceState;
   live: boolean;
   meName: string;
+  /** Real workspace accounts — the only names suggested in live mode. */
+  memberNames: string[];
 }) {
   const { toast } = useToast();
   const [state, setState] = useState<PerformanceState>(initial);
@@ -76,6 +117,28 @@ export function PerformanceModule({
     TABS
   );
   const [busy, setBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // Capture phase, same as Market Intel's title menu: a click elsewhere only
+  // closes the menu, it never also activates whatever sits underneath.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClickCapture = (event: MouseEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("click", onClickCapture, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onClickCapture, true);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   const run: RunOp = async (body, ok) => {
     if (busy) return false;
@@ -108,47 +171,105 @@ export function PerformanceModule({
   const [logOpen, setLogOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
 
-  const people = useMemo(() => knownPeople(state, meName), [state, meName]);
+  const people = useMemo(() => {
+    if (live && memberNames.length > 0) {
+      return [...new Set([...memberNames, ...knownPeople(state, meName)])].sort(
+        (a, b) => a.localeCompare(b)
+      );
+    }
+    return knownPeople(state, meName);
+  }, [state, meName, live, memberNames]);
+
+  const room = ROOMS[tab];
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex max-w-full flex-wrap items-center gap-1 rounded-full border border-border-light bg-white p-1">
-          {(
-            [
-              { key: "org", label: "Org performance", icon: Gauge },
-              { key: "master", label: "Goal Master", icon: ClipboardList },
-              { key: "people", label: "People & groups", icon: UsersRound },
-            ] as const
-          ).map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.key;
-            return (
+      {/* The title IS the room picker — same pattern as Market Intel. */}
+      <div className="rise-in relative z-40 mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div ref={menuRef} className="relative">
+            <h1 className="m-0">
               <button
-                key={t.key}
                 type="button"
-                onClick={() => chooseTab(t.key)}
-                className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-colors sm:px-3.5 sm:text-[12.5px]",
-                  active
-                    ? "bg-blue-primary text-white"
-                    : "text-text-secondary hover:bg-surface hover:text-text-primary"
-                )}
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="group flex cursor-pointer items-center gap-2 rounded-lg text-[24px] font-semibold tracking-[-0.02em] text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/35"
               >
-                <Icon size={13.5} strokeWidth={2.2} />
-                {t.label}
+                {room.label}
+                <ChevronDown
+                  size={20}
+                  strokeWidth={2.2}
+                  className={cn(
+                    "text-text-tertiary transition-transform group-hover:text-blue-primary",
+                    menuOpen && "rotate-180 text-blue-primary"
+                  )}
+                />
               </button>
-            );
-          })}
+            </h1>
+            {menuOpen && (
+              <div
+                role="menu"
+                className="menu-in absolute left-0 top-full z-50 mt-2 w-[300px] rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
+              >
+                {TABS.map((key) => {
+                  const r = ROOMS[key];
+                  const Icon = r.icon;
+                  const active = key === tab;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      onClick={() => {
+                        chooseTab(key);
+                        setMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                        active ? "bg-[rgba(0,113,227,0.06)]" : "hover:bg-surface"
+                      )}
+                    >
+                      <span
+                        className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                        style={{ color: r.color, background: `${r.color}14` }}
+                      >
+                        <Icon size={14.5} strokeWidth={2.2} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-semibold text-text-primary">
+                          {r.label}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] leading-snug text-text-tertiary">
+                          {r.subtitle}
+                        </span>
+                      </span>
+                      {active && (
+                        <Check
+                          size={14}
+                          strokeWidth={2.4}
+                          className="mt-1 shrink-0 text-blue-primary"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {!live && (
+            <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
+              Sample data — switch to Real mode to work with the live plan
+            </span>
+          )}
         </div>
-        {!live && (
-          <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-            Sample data — switch to Real mode to work with the live plan
-          </span>
-        )}
+        <p className="mt-1.5 max-w-[720px] text-[13.5px] leading-relaxed text-text-secondary">
+          {room.subtitle}
+        </p>
       </div>
 
-      <div key={tab} className="tab-panel mt-5">
+      <div key={tab} className="tab-panel">
         {tab === "org" ? (
           <OrgPerformanceTab
             state={state}
@@ -157,6 +278,7 @@ export function PerformanceModule({
             onLogActual={() => setLogOpen(true)}
             onGoToMaster={() => chooseTab("master")}
             onEditGoal={(g) => setGoalModal({ editing: g })}
+            onEditSubgoal={(g, s) => setSubModal({ goal: g, editing: s })}
           />
         ) : tab === "master" ? (
           <MasterTab
@@ -237,11 +359,33 @@ function MasterTab({
 }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [trackFilter, setTrackFilter] = useState("all");
+  const [unitFilter, setUnitFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [view, chooseView] = useStoredView<(typeof MASTER_VIEWS)[number]>(
+    "freyr.performance.master.view",
+    "cards",
+    MASTER_VIEWS
+  );
+  const [viewOpen, setViewOpen] = useState(false);
+  const viewRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!viewOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!viewRef.current?.contains(e.target as Node)) setViewOpen(false);
+    };
+    document.addEventListener("click", close, true);
+    return () => document.removeEventListener("click", close, true);
+  }, [viewOpen]);
   const [openId, setOpenId] = useState<string | null>(null);
   const openGoal = state.goals.find((g) => g.id === openId) ?? null;
 
   const filtered = state.goals.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
+    if (trackFilter === "tracking" && !g.pickedForOrg) return false;
+    if (trackFilter === "master" && g.pickedForOrg) return false;
+    if (unitFilter !== "all" && g.unit !== unitFilter) return false;
+    if (yearFilter !== "all" && String(g.year) !== yearFilter) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -283,13 +427,13 @@ function MasterTab({
           growExpandedMaxWidth={460}
           className="min-w-[200px] flex-1"
         />
-        <span className="ml-auto flex items-center gap-2">
+        <span className="ml-auto flex flex-wrap items-center gap-2">
           <ColorSelect
             value={typeFilter}
             onChange={setTypeFilter}
             ariaLabel="Goal type"
             dense
-            minWidth={190}
+            minWidth={180}
             options={[
               { value: "all", label: "All goal types", color: "#0071E3" },
               ...state.types.map((t) => ({
@@ -300,6 +444,107 @@ function MasterTab({
               })),
             ]}
           />
+          <ColorSelect
+            value={trackFilter}
+            onChange={setTrackFilter}
+            ariaLabel="Tracking"
+            dense
+            minWidth={150}
+            options={[
+              { value: "all", label: "Tracked + master", color: "#0071E3" },
+              { value: "tracking", label: "Tracking", color: "#16A34A" },
+              { value: "master", label: "Not tracked", color: "#8AB4E8" },
+            ]}
+          />
+          <ColorSelect
+            value={unitFilter}
+            onChange={setUnitFilter}
+            ariaLabel="Counted in"
+            dense
+            minWidth={140}
+            options={[
+              { value: "all", label: "All units", color: "#0071E3" },
+              { value: "currency", label: "Money ($)", color: "#0F766E" },
+              { value: "count", label: "Count (#)", color: "#0071E3" },
+              { value: "percent", label: "Percentage (%)", color: "#6D28D9" },
+            ]}
+          />
+          <ColorSelect
+            value={yearFilter}
+            onChange={setYearFilter}
+            ariaLabel="Year"
+            dense
+            minWidth={120}
+            options={[
+              { value: "all", label: "All years", color: "#0071E3" },
+              ...[...new Set(state.goals.map((g) => g.year))]
+                .sort((x, y) => y - x)
+                .map((y) => ({
+                  value: String(y),
+                  label: String(y),
+                  color: "#6D28D9",
+                })),
+            ]}
+          />
+          <span className="relative" ref={viewRef}>
+            <button
+              type="button"
+              onClick={() => setViewOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={viewOpen}
+              aria-label="Layout"
+              title="Layout"
+              className="flex h-[36px] cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-2 transition-colors hover:border-blue-subtle"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(0,113,227,0.10)] text-blue-primary">
+                {view === "cards" ? (
+                  <LayoutGrid size={14} strokeWidth={2.2} />
+                ) : (
+                  <Table2 size={14} strokeWidth={2.2} />
+                )}
+              </span>
+              <ChevronDown
+                size={12}
+                strokeWidth={2.2}
+                className={cn(
+                  "text-text-tertiary transition-transform",
+                  viewOpen && "rotate-180 text-blue-primary"
+                )}
+              />
+            </button>
+            {viewOpen && (
+              <span
+                role="menu"
+                className="menu-in absolute right-0 top-full z-50 mt-2 flex gap-1 rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
+              >
+                {MASTER_VIEWS.map((v) => {
+                  const VIcon = v === "cards" ? LayoutGrid : Table2;
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={view === v}
+                      aria-label={v}
+                      title={v}
+                      onClick={() => {
+                        chooseView(v);
+                        setViewOpen(false);
+                      }}
+                      className={cn(
+                        "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-colors",
+                        view === v
+                          ? "bg-[rgba(0,113,227,0.12)] text-blue-primary"
+                          : "text-text-tertiary hover:bg-surface hover:text-text-primary"
+                      )}
+                    >
+                      <VIcon size={16} strokeWidth={2.2} />
+                    </button>
+                  );
+                })}
+              </span>
+            )}
+          </span>
           <button
             type="button"
             onClick={onNewGoal}
@@ -331,14 +576,187 @@ function MasterTab({
         <p className="mt-6 rounded-xl bg-surface px-4 py-6 text-center text-[13px] text-text-secondary">
           Nothing matches that search.
         </p>
+      ) : null}
+
+      {state.goals.length > 0 && filtered.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card className="p-4">
+            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
+              Goals by type
+              <InfoHint text="How the master list splits across the goal types." />
+            </p>
+            <div className="mt-2 flex items-center gap-4">
+              <DonutChart
+                size={110}
+                thickness={12}
+                syncId="perf-types"
+                centerLabel={String(state.goals.length)}
+                centerSub="goals"
+                segments={state.types
+                  .map((t) => ({
+                    label: t,
+                    color: typeMeta(t).color,
+                    value: state.goals.filter((g) => g.type === t).length,
+                  }))
+                  .filter((s) => s.value > 0)}
+              />
+              <DonutLegend
+                className="min-w-0 flex-1"
+                syncId="perf-types"
+                total={state.goals.length}
+                items={state.types
+                  .map((t) => ({
+                    label: t,
+                    color: typeMeta(t).color,
+                    value: state.goals.filter((g) => g.type === t).length,
+                  }))
+                  .filter((s) => s.value > 0)}
+              />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
+              Tracked vs master-only
+              <InfoHint text="Tracked goals are counted on Org performance. Master-only goals wait on the list." />
+            </p>
+            <div className="mt-2 flex items-center gap-4">
+              <DonutChart
+                size={110}
+                thickness={12}
+                syncId="perf-tracked"
+                centerLabel={String(state.goals.filter((g) => g.pickedForOrg).length)}
+                centerSub="tracking"
+                segments={[
+                  {
+                    label: "Tracking",
+                    color: "#0071E3",
+                    value: state.goals.filter((g) => g.pickedForOrg).length,
+                  },
+                  {
+                    label: "Not tracked",
+                    color: "#8AB4E8",
+                    value: state.goals.filter((g) => !g.pickedForOrg).length,
+                  },
+                ].filter((s) => s.value > 0)}
+              />
+              <DonutLegend
+                className="min-w-0 flex-1"
+                syncId="perf-tracked"
+                total={state.goals.length}
+                items={[
+                  {
+                    label: "Tracking",
+                    color: "#0071E3",
+                    value: state.goals.filter((g) => g.pickedForOrg).length,
+                  },
+                  {
+                    label: "Not tracked",
+                    color: "#8AB4E8",
+                    value: state.goals.filter((g) => !g.pickedForOrg).length,
+                  },
+                ].filter((s) => s.value > 0)}
+              />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {state.goals.length > 0 && filtered.length > 0 && view === "table" ? (
+        <Card className="mt-4 overflow-x-auto p-0">
+          <table className="w-full min-w-[780px]">
+            <thead>
+              <tr className="border-b border-border-light">
+                {["Goal", "Counted in", "Target", "Subgoals", "Owners", "Tracking"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
+                    >
+                      {h}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light">
+              {filtered.map((g) => {
+                const owners = [...new Set(g.subgoals.flatMap((s) => s.owners))];
+                return (
+                  <tr
+                    key={g.id}
+                    onClick={() => setOpenId(g.id)}
+                    className="cursor-pointer transition-colors hover:bg-surface"
+                  >
+                    <td className="px-4 py-2.5">
+                      <span className="flex items-center gap-2.5">
+                        <TypeIconTile type={g.type} className="h-8 w-8" />
+                        <span className="min-w-0">
+                          <span className="block text-[13px] font-semibold text-text-primary">
+                            {g.name}
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-1.5">
+                            <TypeChip type={g.type} size="sm" />
+                            <span className="text-[10px] text-text-tertiary tnum">
+                              {g.year}
+                            </span>
+                          </span>
+                        </span>
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5">
+                      <UnitChip unit={g.unit} />
+                      {g.measure === "level" && (
+                        <span className="ml-1.5 rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
+                          latest value
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-[13px] font-semibold text-text-primary tnum">
+                      {g.target > 0 ? (
+                        fmtAmount(g.unit, g.target)
+                      ) : (
+                        <span className="text-[11.5px] font-semibold text-blue-primary">
+                          Set the target →
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-[12.5px] text-text-secondary tnum">
+                      {g.subgoals.length}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {owners.length > 0 ? (
+                        <span className="flex -space-x-1.5">
+                          {owners.slice(0, 4).map((o) => (
+                            <Avatar
+                              key={o}
+                              name={o}
+                              tooltip={"Goal owner: " + o}
+                              className="h-6 w-6 border-2 border-white text-[9px]"
+                            />
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="text-[11.5px] text-text-tertiary">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <PickedPill goal={g} live={live} run={run} stop />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
       ) : (
         [...byType, ...strayTypes].map(({ type, goals }) => (
-          <div key={type} className="mt-5">
+          <div key={type} className="mt-7">
             <div className="flex items-center gap-2">
               <TypeChip type={type} />
               <span className="text-[11px] font-semibold text-text-tertiary tnum">
                 {goals.length} {goals.length === 1 ? "goal" : "goals"}
               </span>
+              <span className="ml-1 h-px min-w-4 flex-1 bg-border-light" aria-hidden />
             </div>
             <div className="mt-2.5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 stagger">
               {goals.map((g) => (
@@ -385,9 +803,48 @@ function MasterTab({
                     : "not set yet"}
                 </span>
               </span>
-              <PickedPill goal={openGoal} live={live} run={run} />
+              <span className="flex items-center gap-1">
+                <PickedPill goal={openGoal} live={live} run={run} />
+                <InfoHint text="Tracking means this goal is counted and shown on Org performance. Not tracked means it stays on the master list only." />
+              </span>
             </div>
 
+            {openGoal.subgoals.filter((s) => s.target > 0).length >= 2 && (
+              <div className="mt-3 rounded-xl border border-border-light bg-white p-3.5">
+                <p className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+                  How the target splits
+                  <InfoHint text="Each subgoal's share of this goal's target." />
+                </p>
+                <div className="mt-2 flex items-center gap-4">
+                  <DonutChart
+                    size={104}
+                    thickness={12}
+                    syncId={"split-" + openGoal.id}
+                    centerLabel={fmtAmount(openGoal.unit, openGoal.subgoals.reduce((acc, s) => acc + s.target, 0))}
+                    centerSub="across subgoals"
+                    segments={openGoal.subgoals
+                      .filter((s) => s.target > 0)
+                      .map((s, i) => ({
+                        label: s.name,
+                        color: SPLIT_COLORS[i % SPLIT_COLORS.length],
+                        value: s.target,
+                      }))}
+                  />
+                  <DonutLegend
+                    className="min-w-0 flex-1"
+                    syncId={"split-" + openGoal.id}
+                    format={openGoal.unit === "currency" ? "money" : "number"}
+                    items={openGoal.subgoals
+                      .filter((s) => s.target > 0)
+                      .map((s, i) => ({
+                        label: s.name,
+                        color: SPLIT_COLORS[i % SPLIT_COLORS.length],
+                        value: s.target,
+                      }))}
+                  />
+                </div>
+              </div>
+            )}
             <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
               Subgoals
             </p>
@@ -504,12 +961,11 @@ function MasterTab({
   );
 }
 
-/** The "On the goal plan / Master only" toggle, shared by cards and popup. */
+/** The tracking switch, shared by cards, table and popup. */
 function PickedPill({
   goal,
   live,
   run,
-  stop = false,
 }: {
   goal: PrimaryGoal;
   live: boolean;
@@ -517,44 +973,26 @@ function PickedPill({
   stop?: boolean;
 }) {
   return (
-    <span
-      role="button"
-      tabIndex={0}
-      onClick={(e) => {
-        if (stop) e.stopPropagation();
-        if (!live) return;
-        run(
-          {
-            op: "update-goal",
-            goalId: goal.id,
-            pickedForOrg: !goal.pickedForOrg,
-          },
-          goal.pickedForOrg
-            ? goal.name + " is off the goal plan"
-            : goal.name + " is on the goal plan"
-        );
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          e.stopPropagation();
-          (e.target as HTMLElement).click();
-        }
-      }}
-      title={
-        goal.pickedForOrg
-          ? "Counted on Org performance. Click to keep it master-only."
-          : "Master-only. Click to put it on the org goal plan."
+    <TrackSwitch
+      on={goal.pickedForOrg}
+      withLabel
+      disabled={!live}
+      onToggle={
+        live
+          ? () =>
+              run(
+                {
+                  op: "update-goal",
+                  goalId: goal.id,
+                  pickedForOrg: !goal.pickedForOrg,
+                },
+                goal.pickedForOrg
+                  ? goal.name + " is no longer tracked"
+                  : goal.name + " is now being tracked"
+              )
+          : undefined
       }
-      className={cn(
-        "shrink-0 cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1 text-[10.5px] font-bold transition-all",
-        goal.pickedForOrg
-          ? "bg-blue-primary text-white"
-          : "border border-border-light text-text-tertiary hover:border-blue-subtle hover:text-text-secondary"
-      )}
-    >
-      {goal.pickedForOrg ? "On the goal plan" : "Master only"}
-    </span>
+    />
   );
 }
 
@@ -572,9 +1010,18 @@ function GoalCard({
 }) {
   const owners = [...new Set(goal.subgoals.flatMap((s) => s.owners))];
   return (
-    <button
-      type="button"
+    // A div-with-button-role, NOT a <button>: the tracking switch inside is a
+    // real <button>, and buttons cannot nest (hydration error).
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       className="group flex cursor-pointer flex-col rounded-xl border border-border-light bg-white p-4 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
     >
       <span className="flex w-full items-start justify-between gap-2">
@@ -627,7 +1074,7 @@ function GoalCard({
           </span>
         </span>
       </span>
-    </button>
+    </div>
   );
 }
 
@@ -789,15 +1236,23 @@ function GoalModal({
               />
             </div>
           </div>
-          <div className="w-[110px]">
+          <div>
             <label className="text-[12px] font-semibold text-text-primary">
               Year
             </label>
-            <input
-              value={year}
-              onChange={(e) => setYear(e.target.value.replace(/\D/g, ""))}
-              className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
-            />
+            <div className="mt-1">
+              <ColorSelect
+                value={year}
+                onChange={setYear}
+                ariaLabel="Year"
+                minWidth={110}
+                options={YEAR_CHOICES.map((y) => ({
+                  value: y,
+                  label: y,
+                  color: "#6D28D9",
+                }))}
+              />
+            </div>
           </div>
         </div>
         {measure === "level" && (
@@ -813,12 +1268,17 @@ function GoalModal({
               (the big number from the top — leave empty to set later)
             </span>
           </label>
-          <input
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-            placeholder={unit === "currency" ? "e.g. 100M" : unit === "percent" ? "e.g. 45" : "e.g. 1,200"}
-            className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
-          />
+          <div className="relative mt-1">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
+              {unit === "currency" ? "$" : unit === "percent" ? "%" : "#"}
+            </span>
+            <input
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              placeholder={unit === "currency" ? "e.g. 100M" : unit === "percent" ? "e.g. 45" : "e.g. 1,200"}
+              className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
+            />
+          </div>
           {target.trim() !== "" && (
             <p className="mt-1 text-[11px] text-text-tertiary tnum">
               {parsedTarget !== null
@@ -827,37 +1287,27 @@ function GoalModal({
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => setPicked((p) => !p)}
+        <div
           className={cn(
-            "flex w-full cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors",
+            "flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition-colors",
             picked
               ? "border-blue-subtle bg-[rgba(0,113,227,0.05)]"
-              : "border-border-light bg-white hover:border-blue-subtle"
+              : "border-border-light bg-white"
           )}
         >
-          <span>
-            <span className="block text-[12.5px] font-semibold text-text-primary">
-              {picked ? "On the org goal plan" : "Master only"}
+          <span className="min-w-0">
+            <span className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
+              Track on Org performance
+              <InfoHint text="Tracking means this goal is counted and shown on Org performance with its target and actuals. Off means it stays on the master list only." />
             </span>
             <span className="block text-[11px] text-text-tertiary">
               {picked
-                ? "Counted and shown on Org performance."
-                : "Kept on the master list, not tracked on the plan."}
+                ? "Counted and shown with its target and actuals."
+                : "Stays on the master list without being tracked yet."}
             </span>
           </span>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[10.5px] font-bold",
-              picked
-                ? "bg-blue-primary text-white"
-                : "border border-border-light text-text-tertiary"
-            )}
-          >
-            {picked ? "Picked" : "Not picked"}
-          </span>
-        </button>
+          <TrackSwitch on={picked} withLabel onToggle={() => setPicked((p) => !p)} />
+        </div>
         <button
           type="button"
           disabled={
@@ -1437,8 +1887,9 @@ function GroupModal({
   return (
     <Modal open={open} onClose={onClose} title="New user group">
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
-        A group is a team with a head — like Rukmini&apos;s growth accounts
-        group. Every member&apos;s numbers roll into the group&apos;s count.
+        A group is a team with a head — for example a growth accounts team.
+        Every member&apos;s numbers roll into the group&apos;s count, and
+        group counts roll into the organization.
       </p>
       <div className="mt-3 space-y-3">
         <div>

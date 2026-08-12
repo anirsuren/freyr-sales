@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Gauge,
+  Pencil,
   PenLine,
   ShieldCheck,
   Target,
@@ -33,6 +34,8 @@ import {
   type PeriodKey,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
+import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
@@ -46,6 +49,46 @@ import type { RunOp } from "./PerformanceModule";
 
 const PERIOD_KEYS = ["week", "month", "quarter", "year"] as const;
 
+const PACE_COLOR: Record<string, string> = {
+  met: "#16A34A",
+  ahead: "#0F766E",
+  ontrack: "#0071E3",
+  lagging: "#DC2626",
+  unset: "#8AB4E8",
+};
+const PACE_LABEL: Record<string, string> = {
+  met: "Target met",
+  ahead: "Ahead",
+  ontrack: "On track",
+  lagging: "Lagging",
+  unset: "No target yet",
+};
+
+/** Clean chart label: the goal name without its bracketed clarifier. */
+function chartName(name: string): string {
+  return name.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function monthlyTotals(
+  actuals: PerfActual[],
+  goalId: string,
+  year: number
+): { label: string; value: number }[] {
+  const now = new Date();
+  const lastMonth = year === now.getFullYear() ? now.getMonth() : 11;
+  const months = Array.from({ length: lastMonth + 1 }, (_, m) => ({
+    label: new Date(year, m, 1).toLocaleDateString("en-US", { month: "short" }),
+    value: 0,
+  }));
+  for (const a of actuals) {
+    if (a.goalId !== goalId) continue;
+    const d = new Date(a.date);
+    if (d.getFullYear() !== year || d.getMonth() > lastMonth) continue;
+    months[d.getMonth()].value += a.amount;
+  }
+  return months;
+}
+
 export function OrgPerformanceTab({
   state,
   live,
@@ -53,6 +96,7 @@ export function OrgPerformanceTab({
   onLogActual,
   onGoToMaster,
   onEditGoal,
+  onEditSubgoal,
 }: {
   state: PerformanceState;
   live: boolean;
@@ -60,6 +104,7 @@ export function OrgPerformanceTab({
   onLogActual: () => void;
   onGoToMaster: () => void;
   onEditGoal: (g: PrimaryGoal) => void;
+  onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
 }) {
   const [query, setQuery] = useState("");
   const [period, choosePeriod] = useStoredView<PeriodKey>(
@@ -105,7 +150,7 @@ export function OrgPerformanceTab({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           icon={Target}
-          label="Goals on the plan"
+          label="Goals tracked"
           value={String(picked.length)}
           sub={`${state.goals.length} on the master`}
         />
@@ -132,6 +177,100 @@ export function OrgPerformanceTab({
           sub="marked by leadership"
         />
       </div>
+
+      {picked.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+          <Card className="p-5">
+            <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
+              How far along each goal is
+              <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the subgoals behind it." />
+            </p>
+            <div className="mt-3">
+              <BarChart
+                height={190}
+                format="percent"
+                data={picked.map((g) => {
+                  const a = actualValue(state.actuals, g);
+                  const p = paceVerdict(a, g.target, g.year, g.measure);
+                  return {
+                    label: chartName(g.name),
+                    value: g.target > 0 ? Math.round(pctMet(a, g.target)) : 0,
+                    color: PACE_COLOR[p],
+                    caption:
+                      g.target > 0
+                        ? `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
+                        : "no target yet",
+                    tip: g.subgoals.map((s) => {
+                      const sa = actualValue(state.actuals, g, { subgoalId: s.id });
+                      return {
+                        name: s.name,
+                        value:
+                          s.target > 0
+                            ? `${Math.round(pctMet(sa, s.target))}%`
+                            : fmtAmount(g.unit, sa),
+                        sub:
+                          s.target > 0
+                            ? `${fmtAmount(g.unit, sa)} of ${fmtAmount(g.unit, s.target)}`
+                            : "no target set",
+                      };
+                    }),
+                  };
+                })}
+              />
+            </div>
+          </Card>
+          <Card className="p-5">
+            <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
+              Where the goals stand
+              <InfoHint text="Every tracked goal, judged against where the calendar says it should be by today." />
+            </p>
+            <div className="mt-3 flex items-center gap-5">
+              <DonutChart
+                size={140}
+                thickness={15}
+                syncId="perf-pace"
+                centerLabel={String(picked.length)}
+                centerSub={picked.length === 1 ? "org goal" : "org goals"}
+                segments={(["met", "ahead", "ontrack", "lagging", "unset"] as const)
+                  .map((k) => ({
+                    label: PACE_LABEL[k],
+                    color: PACE_COLOR[k],
+                    value: withValue.filter(
+                      (x) =>
+                        paceVerdict(
+                          x.actual,
+                          x.goal.target,
+                          x.goal.year,
+                          x.goal.measure
+                        ) === k
+                    ).length,
+                  }))
+                  .filter((s) => s.value > 0)}
+              />
+              <DonutLegend
+                className="min-w-0 flex-1"
+                syncId="perf-pace"
+                total={picked.length}
+                items={(["met", "ahead", "ontrack", "lagging", "unset"] as const)
+                  .map((k) => ({
+                    label: PACE_LABEL[k],
+                    color: PACE_COLOR[k],
+                    value: withValue.filter(
+                      (x) =>
+                        paceVerdict(
+                          x.actual,
+                          x.goal.target,
+                          x.goal.year,
+                          x.goal.measure
+                        ) === k
+                    ).length,
+                  }))
+                  .filter((s) => s.value > 0)}
+              />
+            </div>
+          </Card>
+        </div>
+      )}
 
       <SearchPriority
         query={query}
@@ -198,20 +337,31 @@ export function OrgPerformanceTab({
           <table className="w-full min-w-[860px]">
             <thead>
               <tr className="border-b border-border-light">
-                {["Goal", "Target", "Actual", "Met", "% met", "Verified", ""].map(
-                  (h, i) => (
-                    <th
-                      key={i}
-                      className={cn(
-                        "px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
-                        i >= 1 && i <= 4 && "w-[130px]",
-                        i === 6 && "w-8"
-                      )}
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                {(
+                  [
+                    { h: "Goal" },
+                    { h: "Target", hint: "The number to hit for the year. Set it here or in the Goal Master." },
+                    { h: "Actual", hint: "Everything logged so far, added up. Latest-value goals (ratios, averages) show the most recent number instead." },
+                    { h: "Met", hint: "Met means the actual has reached the target." },
+                    { h: "% met", hint: "How much of the target is achieved. The small dark tick is where the calendar says you should be by today." },
+                    { h: "Verified", hint: "A manual yes/no from leadership. Click the pill to flip it." },
+                    { h: "" },
+                  ] as { h: string; hint?: string }[]
+                ).map((col, i) => (
+                  <th
+                    key={i}
+                    className={cn(
+                      "px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
+                      i >= 1 && i <= 4 && "w-[130px]",
+                      i === 6 && "w-8"
+                    )}
+                  >
+                    <span className="flex items-center gap-1">
+                      {col.h}
+                      {col.hint && <InfoHint text={col.hint} />}
+                    </span>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -227,6 +377,7 @@ export function OrgPerformanceTab({
                   period={period}
                   periodLabel={periodLabel}
                   onEditGoal={onEditGoal}
+                  onEditSubgoal={onEditSubgoal}
                 />
               ))}
             </tbody>
@@ -274,6 +425,7 @@ function GoalRows({
   period,
   periodLabel,
   onEditGoal,
+  onEditSubgoal,
 }: {
   goal: PrimaryGoal;
   actuals: PerfActual[];
@@ -284,6 +436,7 @@ function GoalRows({
   period: PeriodKey;
   periodLabel: string;
   onEditGoal: (g: PrimaryGoal) => void;
+  onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
 }) {
   const actual = actualValue(actuals, goal);
   const pace = paceVerdict(actual, goal.target, goal.year, goal.measure);
@@ -520,6 +673,25 @@ function GoalRows({
                                 : undefined
                             }
                           />
+                          {live && s.target === 0 && (
+                            <button
+                              type="button"
+                              onClick={() => onEditSubgoal(goal, s)}
+                              className="cursor-pointer rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-bold text-blue-primary transition-colors hover:bg-[rgba(0,113,227,0.14)]"
+                            >
+                              Set target
+                            </button>
+                          )}
+                          {live && (
+                            <button
+                              type="button"
+                              title="Edit this subgoal - target, owners, people"
+                              onClick={() => onEditSubgoal(goal, s)}
+                              className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                            >
+                              <Pencil size={13} strokeWidth={2.2} />
+                            </button>
+                          )}
                         </span>
                       </div>
                       {s.people.length > 0 && (
@@ -623,6 +795,23 @@ function GoalRows({
                             })}
                           </tbody>
                         </table>
+                      )}
+                      {s.people.length === 0 && (
+                        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-border-light px-3 py-2">
+                          <span className="text-[11.5px] text-text-tertiary">
+                            No people on this subgoal yet - each person gets
+                            their own target.
+                          </span>
+                          {live && (
+                            <button
+                              type="button"
+                              onClick={() => onEditSubgoal(goal, s)}
+                              className="cursor-pointer rounded-full bg-blue-primary px-2.5 py-1 text-[11px] font-bold text-white transition-all hover:opacity-90"
+                            >
+                              Assign people
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   );

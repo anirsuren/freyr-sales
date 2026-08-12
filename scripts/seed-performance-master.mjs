@@ -33,8 +33,10 @@ const TYPES = [
 // [type, name, unit, measure, pickedForOrg, subgoals?]
 // unit: currency | count | percent · measure: total (running sum) | level (latest value)
 const GOALS = [
+  // Owners deliberately empty: only real registered accounts belong in the
+  // live workspace (Anir, Aug 11: "you can't put fake accounts on real mode").
   [0, "Booked Revenue (Contract Value Signed)", "currency", "total", true, [
-    { name: "Growth Accounts", owners: ["Rukmini"] },
+    { name: "Growth Accounts", owners: [] },
     { name: "Focused Account AMR", owners: [] },
     { name: "Focused Account EUA", owners: [] },
   ]],

@@ -19,6 +19,8 @@ import {
   pctMet,
   type PerformanceState,
 } from "@/lib/performanceShared";
+import { BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { GoalBar, PacePill, TypeChip, VerifiedPill } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
@@ -107,6 +109,20 @@ function buildPeople(state: PerformanceState): PersonRow[] {
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+const BANDS = [
+  { value: "strong", label: "Going strong", color: "#16A34A" },
+  { value: "steady", label: "Steady", color: "#0071E3" },
+  { value: "behind", label: "Falling behind", color: "#DC2626" },
+  { value: "none", label: "Nothing measured yet", color: "#8AB4E8" },
+];
+
+function bandOf(attainment: number | null): string {
+  if (attainment === null) return "none";
+  if (attainment >= 85) return "strong";
+  if (attainment >= 55) return "steady";
+  return "behind";
+}
+
 export function PeopleTab({
   state,
   live,
@@ -120,13 +136,24 @@ export function PeopleTab({
 }) {
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [bandFilter, setBandFilter] = useState("all");
   const [openPerson, setOpenPerson] = useState<string | null>(null);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   const people = useMemo(() => buildPeople(state), [state]);
+  const heads = useMemo(
+    () => new Set(state.groups.map((g) => g.head)),
+    [state.groups]
+  );
   const q = query.trim().toLowerCase();
   const shown = people.filter((p) => {
     if (groupFilter !== "all" && !p.groups.includes(groupFilter)) return false;
+    if (roleFilter === "heads" && !heads.has(p.name)) return false;
+    if (roleFilter === "owners" && p.owns.length === 0) return false;
+    if (roleFilter === "assigned" && p.assignments.length === 0) return false;
+    if (bandFilter !== "all" && bandOf(p.attainment) !== bandFilter)
+      return false;
     if (!q) return true;
     return (
       p.name.toLowerCase().includes(q) ||
@@ -156,13 +183,41 @@ export function PeopleTab({
             onChange={setGroupFilter}
             ariaLabel="Group"
             dense
-            minWidth={170}
+            minWidth={150}
             options={[
               { value: "all", label: "All groups", color: "#0071E3" },
               ...state.groups.map((g) => ({
                 value: g.name,
                 label: g.name,
                 color: "#6D28D9",
+              })),
+            ]}
+          />
+          <ColorSelect
+            value={roleFilter}
+            onChange={setRoleFilter}
+            ariaLabel="Role"
+            dense
+            minWidth={150}
+            options={[
+              { value: "all", label: "Everyone", color: "#0071E3" },
+              { value: "heads", label: "Group heads", color: "#DB2777" },
+              { value: "owners", label: "Goal owners", color: "#6D28D9" },
+              { value: "assigned", label: "Carrying goals", color: "#0F766E" },
+            ]}
+          />
+          <ColorSelect
+            value={bandFilter}
+            onChange={setBandFilter}
+            ariaLabel="Standing"
+            dense
+            minWidth={150}
+            options={[
+              { value: "all", label: "Any standing", color: "#0071E3" },
+              ...BANDS.map((b) => ({
+                value: b.value,
+                label: b.label,
+                color: b.color,
               })),
             ]}
           />
@@ -178,12 +233,89 @@ export function PeopleTab({
         </span>
       </SearchPriority>
 
+      {people.some((p) => p.attainment !== null) && (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+          <Card className="p-4">
+            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
+              Average attainment by group
+              <InfoHint text="For each group: the average of its members' goal attainment, against their own targets." />
+            </p>
+            <div className="mt-2">
+              <BarChart
+                height={150}
+                format="percent"
+                data={state.groups
+                  .map((g) => {
+                    const scores = g.members
+                      .map(
+                        (m) => people.find((p) => p.name === m)?.attainment ?? null
+                      )
+                      .filter((v): v is number => v !== null);
+                    const avg = scores.length
+                      ? scores.reduce((x, y) => x + y, 0) / scores.length
+                      : 0;
+                    return {
+                      label: g.name,
+                      value: Math.round(avg),
+                      color:
+                        BANDS.find((b) => b.value === bandOf(scores.length ? avg : null))
+                          ?.color ?? "#0071E3",
+                      caption: `${scores.length} of ${g.members.length} measured`,
+                      tip: g.members.map((m) => ({
+                        name: m,
+                        value:
+                          people.find((p) => p.name === m)?.attainment !== null &&
+                          people.find((p) => p.name === m) !== undefined
+                            ? `${Math.round(people.find((p) => p.name === m)!.attainment!)}%`
+                            : "—",
+                      })),
+                    };
+                  })
+                  .filter((d) => d.value > 0 || state.groups.length <= 6)}
+              />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
+              People by standing
+              <InfoHint text="Everyone with goals, grouped by how their attainment stands right now." />
+            </p>
+            <div className="mt-2 flex items-center gap-4">
+              <DonutChart
+                size={120}
+                thickness={13}
+                syncId="perf-bands"
+                centerLabel={String(people.length)}
+                centerSub="people"
+                segments={BANDS.map((b) => ({
+                  label: b.label,
+                  color: b.color,
+                  value: people.filter((p) => bandOf(p.attainment) === b.value)
+                    .length,
+                })).filter((s) => s.value > 0)}
+              />
+              <DonutLegend
+                className="min-w-0 flex-1"
+                syncId="perf-bands"
+                total={people.length}
+                items={BANDS.map((b) => ({
+                  label: b.label,
+                  color: b.color,
+                  value: people.filter((p) => bandOf(p.attainment) === b.value)
+                    .length,
+                })).filter((s) => s.value > 0)}
+              />
+            </div>
+          </Card>
+        </div>
+      )}
+
       {state.groups.length === 0 && people.length === 0 ? (
         <div className="mt-4">
           <EmptyState
             icon={UsersRound}
             title="No groups yet"
-            description="Create the first user group — a team and its head, like Rukmini's growth accounts group. Every member's numbers roll into the group's count."
+            description="Create the first user group — a team and its head. Every member's numbers roll into the group's count, and group counts roll into the organization."
             action={
               live ? (
                 <button

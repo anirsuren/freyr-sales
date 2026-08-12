@@ -102,6 +102,70 @@ export function TypeChip({
   );
 }
 
+/**
+ * The tracking switch (Anir: "that should probably be more like a toggle").
+ * ON = the goal is counted and shown on Org performance; OFF = it stays on
+ * the master list only. His concept, his words: "these goals, right now we
+ * are going to pick it up as an org goal... I may have some goals I don't
+ * want to track here."
+ */
+export function TrackSwitch({
+  on,
+  onToggle,
+  disabled = false,
+  withLabel = false,
+}: {
+  on: boolean;
+  onToggle?: () => void;
+  disabled?: boolean;
+  /** Show "Tracking / Not tracked" text beside the switch. */
+  withLabel?: boolean;
+}) {
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={on ? "Tracking on Org performance" : "Not tracked"}
+        title={
+          on
+            ? "Tracking — counted and shown on Org performance. Click to stop tracking."
+            : "Not tracked — master list only. Click to start tracking it on Org performance."
+        }
+        disabled={disabled || !onToggle}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle?.();
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+        className={cn(
+          "relative h-[20px] w-[36px] shrink-0 rounded-full transition-colors",
+          onToggle && !disabled ? "cursor-pointer" : "cursor-default opacity-70",
+          on ? "bg-blue-primary" : "bg-[rgba(0,113,227,0.18)]"
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-[2px] h-4 w-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-all",
+            on ? "left-[18px]" : "left-[2px]"
+          )}
+        />
+      </button>
+      {withLabel && (
+        <span
+          className={cn(
+            "text-[11px] font-bold",
+            on ? "text-blue-primary" : "text-text-tertiary"
+          )}
+        >
+          {on ? "Tracking" : "Not tracked"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function UnitChip({ unit }: { unit: GoalUnit }) {
   const meta =
     unit === "currency"
