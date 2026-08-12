@@ -80,7 +80,10 @@ const YEAR_CHOICES = Array.from({ length: 5 }, (_, i) =>
 
 export type RunOp = (
   body: Record<string, unknown>,
-  ok?: string
+  ok?: string,
+  /** Applied to local state IMMEDIATELY, before the server confirms — for
+   *  toggles that must feel instant. On failure the state re-syncs. */
+  optimistic?: (prev: PerformanceState) => PerformanceState
 ) => Promise<boolean>;
 
 const ROOMS: Record<
@@ -183,10 +186,24 @@ export function PerformanceModule({
     }
   };
 
-  const run: RunOp = (body, ok) => {
+  const run: RunOp = (body, ok, optimistic) => {
+    if (optimistic) setState(optimistic);
     pendingRef.current += 1;
     setBusy(true);
-    const next = queueRef.current.then(() => doRun(body, ok));
+    const next = queueRef.current.then(async () => {
+      const okRes = await doRun(body, ok);
+      if (!okRes && optimistic) {
+        // The hopeful flip was wrong — pull the server's truth back.
+        try {
+          const res = await fetch("/api/performance");
+          const data = await res.json();
+          if (data.state) setState(data.state);
+        } catch {
+          /* next successful op will resync */
+        }
+      }
+      return okRes;
+    });
     queueRef.current = next.catch(() => {});
     next.finally(() => {
       pendingRef.current -= 1;
@@ -1229,7 +1246,15 @@ function PickedPill({
                 },
                 goal.pickedForOrg
                   ? goal.name + " is no longer tracked"
-                  : goal.name + " is now being tracked"
+                  : goal.name + " is now being tracked",
+                (prev) => ({
+                  ...prev,
+                  goals: prev.goals.map((g) =>
+                    g.id === goal.id
+                      ? { ...g, pickedForOrg: !goal.pickedForOrg }
+                      : g
+                  ),
+                })
               )
           : undefined
       }

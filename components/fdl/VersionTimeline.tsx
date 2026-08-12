@@ -604,8 +604,11 @@ export function VersionTimeline({
                 <button
                   type="button"
                   aria-label={`Open ${withV(release.version)}`}
+                  title={`Open ${withV(release.version)}`}
                   onClick={() => onOpen?.(release.id)}
-                  className="absolute z-20 h-3.5 w-3.5 -translate-x-1/2 cursor-pointer rounded-full transition-transform duration-200"
+                  onMouseEnter={() => setHovered(release.id)}
+                  onMouseLeave={() => setHovered(null)}
+                  className="absolute z-20 h-3.5 w-3.5 -translate-x-1/2 cursor-pointer rounded-full transition-transform duration-200 hover:scale-[1.35] active:scale-95"
                   style={{
                     left: x,
                     top: DOT_TOP,

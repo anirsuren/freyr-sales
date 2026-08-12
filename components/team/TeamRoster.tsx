@@ -492,7 +492,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               input, which is why it sat still while the others responded. */}
           <PrioritySearchInput
             grow
-            className="flex-1 sm:max-w-[280px]"
+            className="min-w-[200px] flex-1"
             value={query}
             onChange={setQuery}
             placeholder="Search the floor…"
