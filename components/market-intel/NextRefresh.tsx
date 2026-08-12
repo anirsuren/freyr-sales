@@ -144,9 +144,13 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
             </div>
             <span className="absolute left-0 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#0071E3]" />
             <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border-2 border-[#6D28D9] bg-white" />
+            {/* Dot and label share ONE clamped position so the label is
+                always centered under the dot, and neither ever hugs the
+                very end of the track (Anir). The fill bar keeps the true
+                percentage; only the marker is eased inward. */}
             <span
               className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#0071E3] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.25)]"
-              style={{ left: `${Math.min(97, Math.max(3, pct))}%` }}
+              style={{ left: `${Math.min(76, Math.max(24, pct))}%` }}
             />
           </div>
           <div className="relative mt-1 h-4">
