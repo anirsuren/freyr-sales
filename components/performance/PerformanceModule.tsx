@@ -535,6 +535,81 @@ function MasterTab({
 
   return (
     <div>
+      {state.goals.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card className="p-4">
+            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
+              Goals by type
+              <InfoHint text="How the master list splits across the goal types." />
+            </p>
+            <div className="mx-auto mt-2 flex w-full max-w-[420px] items-center justify-center gap-6">
+              <DonutChart
+                size={110}
+                thickness={12}
+                syncId="perf-types"
+                centerLabel={String(state.goals.length)}
+                centerSub="goals"
+                segments={state.types
+                  .map((t) => ({
+                    label: t,
+                    color: typeMeta(t).color,
+                    value: state.goals.filter((g) => g.type === t).length,
+                  }))
+                  .filter((s) => s.value > 0)}
+              />
+              <DonutLegend
+                className="min-w-0 max-w-[230px] flex-1"
+                syncId="perf-types"
+                total={state.goals.length}
+                items={state.types
+                  .map((t) => ({
+                    label: t,
+                    color: typeMeta(t).color,
+                    value: state.goals.filter((g) => g.type === t).length,
+                  }))
+                  .filter((s) => s.value > 0)}
+              />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
+              Tracked vs master-only
+              <InfoHint text="Tracked goals are counted on Org performance. Master-only goals wait on the list." />
+            </p>
+            <div className="mx-auto mt-2 flex w-full max-w-[420px] items-center justify-center gap-6">
+              <DonutChart
+                size={110}
+                thickness={12}
+                syncId="perf-tracked"
+                centerLabel={String(trackedCount)}
+                centerSub="tracking"
+                segments={[
+                  { label: "Tracking", color: "#0071E3", value: trackedCount },
+                  {
+                    label: "Not tracked",
+                    color: "#8AB4E8",
+                    value: state.goals.length - trackedCount,
+                  },
+                ].filter((s) => s.value > 0)}
+              />
+              <DonutLegend
+                className="min-w-0 max-w-[230px] flex-1"
+                syncId="perf-tracked"
+                total={state.goals.length}
+                items={[
+                  { label: "Tracking", color: "#0071E3", value: trackedCount },
+                  {
+                    label: "Not tracked",
+                    color: "#8AB4E8",
+                    value: state.goals.length - trackedCount,
+                  },
+                ].filter((s) => s.value > 0)}
+              />
+            </div>
+          </Card>
+        </div>
+      )}
+
       <SearchPriority query={query} className="flex flex-wrap items-center gap-2">
         <PrioritySearchInput
           value={query}
@@ -696,81 +771,6 @@ function MasterTab({
           Nothing matches those filters.
         </p>
       ) : null}
-
-      {state.goals.length > 0 && filtered.length > 0 && (
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Card className="p-4">
-            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
-              Goals by type
-              <InfoHint text="How the master list splits across the goal types." />
-            </p>
-            <div className="mx-auto mt-2 flex w-full max-w-[420px] items-center justify-center gap-6">
-              <DonutChart
-                size={110}
-                thickness={12}
-                syncId="perf-types"
-                centerLabel={String(state.goals.length)}
-                centerSub="goals"
-                segments={state.types
-                  .map((t) => ({
-                    label: t,
-                    color: typeMeta(t).color,
-                    value: state.goals.filter((g) => g.type === t).length,
-                  }))
-                  .filter((s) => s.value > 0)}
-              />
-              <DonutLegend
-                className="min-w-0 max-w-[230px] flex-1"
-                syncId="perf-types"
-                total={state.goals.length}
-                items={state.types
-                  .map((t) => ({
-                    label: t,
-                    color: typeMeta(t).color,
-                    value: state.goals.filter((g) => g.type === t).length,
-                  }))
-                  .filter((s) => s.value > 0)}
-              />
-            </div>
-          </Card>
-          <Card className="p-4">
-            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
-              Tracked vs master-only
-              <InfoHint text="Tracked goals are counted on Org performance. Master-only goals wait on the list." />
-            </p>
-            <div className="mx-auto mt-2 flex w-full max-w-[420px] items-center justify-center gap-6">
-              <DonutChart
-                size={110}
-                thickness={12}
-                syncId="perf-tracked"
-                centerLabel={String(trackedCount)}
-                centerSub="tracking"
-                segments={[
-                  { label: "Tracking", color: "#0071E3", value: trackedCount },
-                  {
-                    label: "Not tracked",
-                    color: "#8AB4E8",
-                    value: state.goals.length - trackedCount,
-                  },
-                ].filter((s) => s.value > 0)}
-              />
-              <DonutLegend
-                className="min-w-0 max-w-[230px] flex-1"
-                syncId="perf-tracked"
-                total={state.goals.length}
-                items={[
-                  { label: "Tracking", color: "#0071E3", value: trackedCount },
-                  {
-                    label: "Not tracked",
-                    color: "#8AB4E8",
-                    value: state.goals.length - trackedCount,
-                  },
-                ].filter((s) => s.value > 0)}
-              />
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* keyed on the layout so switching cards ⇄ table animates in */}
       <div key={view} className="tab-panel">

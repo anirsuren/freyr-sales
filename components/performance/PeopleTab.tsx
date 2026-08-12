@@ -166,75 +166,8 @@ export function PeopleTab({
 
   return (
     <div>
-      <SearchPriority query={query} className="flex flex-wrap items-center gap-2">
-        <PrioritySearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Search people and groups…"
-          ariaLabel="Search people"
-          grow
-          growMaxWidth={340}
-          growExpandedMaxWidth={460}
-          className="min-w-[200px] flex-1"
-        />
-        <span className="ml-auto flex items-center gap-2">
-          <ColorSelect
-            value={groupFilter}
-            onChange={setGroupFilter}
-            ariaLabel="Group"
-            dense
-            minWidth={150}
-            options={[
-              { value: "all", label: "All groups", color: "#0071E3" },
-              ...state.groups.map((g) => ({
-                value: g.name,
-                label: g.name,
-                color: "#6D28D9",
-              })),
-            ]}
-          />
-          <ColorSelect
-            value={roleFilter}
-            onChange={setRoleFilter}
-            ariaLabel="Role"
-            dense
-            minWidth={150}
-            options={[
-              { value: "all", label: "Everyone", color: "#0071E3" },
-              { value: "heads", label: "Group heads", color: "#DB2777" },
-              { value: "owners", label: "Goal owners", color: "#6D28D9" },
-              { value: "assigned", label: "Carrying goals", color: "#0F766E" },
-            ]}
-          />
-          <ColorSelect
-            value={bandFilter}
-            onChange={setBandFilter}
-            ariaLabel="Standing"
-            dense
-            minWidth={150}
-            options={[
-              { value: "all", label: "Any standing", color: "#0071E3" },
-              ...BANDS.map((b) => ({
-                value: b.value,
-                label: b.label,
-                color: b.color,
-              })),
-            ]}
-          />
-          {live && (
-            <button
-              type="button"
-              onClick={onNewGroup}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-            >
-              <Plus size={14} strokeWidth={2.4} /> New group
-            </button>
-          )}
-        </span>
-      </SearchPriority>
-
       {people.some((p) => p.attainment !== null) && (
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
           <Card className="p-4">
             <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
               Average attainment by group
@@ -309,6 +242,73 @@ export function PeopleTab({
           </Card>
         </div>
       )}
+
+      <SearchPriority query={query} className="flex flex-wrap items-center gap-2">
+        <PrioritySearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search people and groups…"
+          ariaLabel="Search people"
+          grow
+          growMaxWidth={340}
+          growExpandedMaxWidth={460}
+          className="min-w-[200px] flex-1"
+        />
+        <span className="ml-auto flex items-center gap-2">
+          <ColorSelect
+            value={groupFilter}
+            onChange={setGroupFilter}
+            ariaLabel="Group"
+            dense
+            minWidth={150}
+            options={[
+              { value: "all", label: "All groups", color: "#0071E3" },
+              ...state.groups.map((g) => ({
+                value: g.name,
+                label: g.name,
+                color: "#6D28D9",
+              })),
+            ]}
+          />
+          <ColorSelect
+            value={roleFilter}
+            onChange={setRoleFilter}
+            ariaLabel="Role"
+            dense
+            minWidth={150}
+            options={[
+              { value: "all", label: "Everyone", color: "#0071E3" },
+              { value: "heads", label: "Group heads", color: "#DB2777" },
+              { value: "owners", label: "Goal owners", color: "#6D28D9" },
+              { value: "assigned", label: "Carrying goals", color: "#0F766E" },
+            ]}
+          />
+          <ColorSelect
+            value={bandFilter}
+            onChange={setBandFilter}
+            ariaLabel="Standing"
+            dense
+            minWidth={150}
+            options={[
+              { value: "all", label: "Any standing", color: "#0071E3" },
+              ...BANDS.map((b) => ({
+                value: b.value,
+                label: b.label,
+                color: b.color,
+              })),
+            ]}
+          />
+          {live && (
+            <button
+              type="button"
+              onClick={onNewGroup}
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+            >
+              <Plus size={14} strokeWidth={2.4} /> New group
+            </button>
+          )}
+        </span>
+      </SearchPriority>
 
       {state.groups.length === 0 && people.length === 0 ? (
         <div className="mt-4">
