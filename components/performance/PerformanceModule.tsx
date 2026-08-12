@@ -21,6 +21,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
+import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { useToast } from "@/components/ui/Toast";
 import {
   PrioritySearchInput,
@@ -1238,7 +1239,9 @@ function PickedPill({
   );
 }
 
-/** One goal on the master — an Offerings-style card, not a text row. */
+/** One goal on the master — an Offerings-style card. Hovering scales the
+ *  card up and reveals its subgoals, the same reveal the Offerings and Voice
+ *  cards use (Anir: "the same hover thing I asked you to do before"). */
 function GoalCard({
   goal,
   live,
@@ -1252,8 +1255,6 @@ function GoalCard({
 }) {
   const owners = [...new Set(goal.subgoals.flatMap((s) => s.owners))];
   return (
-    // A div-with-button-role, NOT a <button>: the tracking switch inside is a
-    // real <button>, and buttons cannot nest (hydration error).
     <div
       role="button"
       tabIndex={0}
@@ -1264,58 +1265,106 @@ function GoalCard({
           onOpen();
         }
       }}
-      className="group flex cursor-pointer flex-col rounded-xl border border-border-light bg-white p-4 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
+      className="cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/35"
     >
-      <span className="flex w-full items-start justify-between gap-2">
-        <TypeIconTile type={goal.type} />
-        <PickedPill goal={goal} live={live} run={run} />
-      </span>
-      <span className="mt-2.5 block text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
-        {goal.name}
-      </span>
-      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <UnitChip unit={goal.unit} />
-        {goal.measure === "level" && (
-          <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
-            latest value
-          </span>
-        )}
-        <span className="text-[10.5px] text-text-tertiary tnum">
-          {goal.year}
-        </span>
-      </span>
-      <span className="mt-3 flex w-full items-center justify-between gap-2 border-t border-border-light pt-2.5">
-        {goal.target > 0 ? (
-          <span className="text-[11.5px] text-text-tertiary tnum">
-            Target{" "}
-            <span className="font-bold text-text-primary">
-              {fmtAmount(goal.unit, goal.target)}
+      <HoverExpandCard
+        summary={
+          <div>
+            <span className="flex w-full items-start justify-between gap-2">
+              <TypeIconTile type={goal.type} />
+              <PickedPill goal={goal} live={live} run={run} />
             </span>
-          </span>
-        ) : (
-          <span className="text-[11.5px] font-semibold text-blue-primary">
-            Set the target →
-          </span>
-        )}
-        <span className="flex items-center gap-1.5">
-          {owners.length > 0 && (
-            <span className="flex -space-x-1.5">
-              {owners.slice(0, 3).map((o) => (
-                <Avatar
-                  key={o}
-                  name={o}
-                  tooltip={"Goal owner: " + o}
-                  className="h-5 w-5 border-2 border-white text-[8px]"
-                />
-              ))}
+            <span className="mt-2.5 block text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
+              {goal.name}
             </span>
-          )}
-          <span className="text-[10.5px] text-text-tertiary tnum">
-            {goal.subgoals.length}{" "}
-            {goal.subgoals.length === 1 ? "subgoal" : "subgoals"}
-          </span>
-        </span>
-      </span>
+            <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <UnitChip unit={goal.unit} />
+              {goal.measure === "level" && (
+                <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
+                  latest value
+                </span>
+              )}
+              <span className="text-[10.5px] text-text-tertiary tnum">
+                {goal.year}
+              </span>
+            </span>
+            <span className="mt-3 flex w-full items-center justify-between gap-2 border-t border-border-light pt-2.5">
+              {goal.target > 0 ? (
+                <span className="text-[11.5px] text-text-tertiary tnum">
+                  Target{" "}
+                  <span className="font-bold text-text-primary">
+                    {fmtAmount(goal.unit, goal.target)}
+                  </span>
+                </span>
+              ) : (
+                <span className="text-[11.5px] font-semibold text-blue-primary">
+                  Set the target →
+                </span>
+              )}
+              <span className="flex items-center gap-1.5">
+                {owners.length > 0 && (
+                  <span className="flex -space-x-1.5">
+                    {owners.slice(0, 3).map((o) => (
+                      <Avatar
+                        key={o}
+                        name={o}
+                        tooltip={"Goal owner: " + o}
+                        className="h-5 w-5 border-2 border-white text-[8px]"
+                      />
+                    ))}
+                  </span>
+                )}
+                <span className="text-[10.5px] text-text-tertiary tnum">
+                  {goal.subgoals.length}{" "}
+                  {goal.subgoals.length === 1 ? "subgoal" : "subgoals"}
+                </span>
+              </span>
+            </span>
+          </div>
+        }
+        extra={
+          goal.subgoals.length === 0 ? (
+            <p className="text-[11.5px] leading-relaxed text-text-tertiary">
+              No subgoals yet — open the goal to split it across teams.
+            </p>
+          ) : (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                Subgoals
+              </p>
+              <div className="mt-1.5 space-y-1.5">
+                {goal.subgoals.map((sub) => (
+                  <div key={sub.id} className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 whitespace-normal text-[12px] font-medium leading-snug text-text-primary">
+                      {sub.name}
+                    </span>
+                    {sub.owners.length > 0 && (
+                      <span className="flex -space-x-1">
+                        {sub.owners.slice(0, 2).map((o) => (
+                          <Avatar
+                            key={o}
+                            name={o}
+                            tooltip={"Goal owner: " + o}
+                            className="h-4 w-4 border border-white text-[7px]"
+                          />
+                        ))}
+                      </span>
+                    )}
+                    <span className="shrink-0 text-[10.5px] text-text-tertiary tnum">
+                      {sub.target > 0
+                        ? fmtAmount(goal.unit, sub.target)
+                        : "no target"}
+                      {" · "}
+                      {sub.people.length}{" "}
+                      {sub.people.length === 1 ? "person" : "people"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        }
+      />
     </div>
   );
 }
