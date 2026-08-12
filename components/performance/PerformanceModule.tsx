@@ -1221,7 +1221,7 @@ function GoalPopupBody({
         {/* The add action lives WITH the section it adds to, not stranded at
             the bottom-left (Anir, Aug 12: "that's a bad place to put this
             button"). */}
-        {live && openSub !== "new" && (
+        {live && (
           <button
             type="button"
             onClick={() => setOpenSub("new")}
@@ -1231,7 +1231,7 @@ function GoalPopupBody({
           </button>
         )}
       </div>
-      {goal.subgoals.length === 0 && openSub !== "new" && (
+      {goal.subgoals.length === 0 && (
         <p className="mt-1.5 rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] leading-relaxed text-text-secondary">
           No subgoals yet. Split this goal when different teams carry different
           pieces of it.
@@ -1243,6 +1243,7 @@ function GoalPopupBody({
           onClose={() => setOpenSub(null)}
           title="New subgoal"
           size="wide"
+          tall
           stacked
         >
           <SubgoalEditorFields
