@@ -749,11 +749,11 @@ export function MaterialsSection({
           bar here"). A query searches the WHOLE tree, like the filters. */}
       <SearchPriority
         query={query}
-        className="flex flex-wrap items-center gap-2"
+        className="flex flex-nowrap items-center gap-2"
       >
         <PrioritySearchInput
           grow
-          className="min-w-[200px] flex-1"
+          className="min-w-[150px] flex-1"
           value={query}
           onChange={setQuery}
           placeholder="Search materials…"
@@ -762,7 +762,7 @@ export function MaterialsSection({
         <MultiColorSelect
           values={formats}
           onChange={setFormats}
-          minWidth={150}
+          minWidth={136}
           allLabel="All formats"
           allIcon={Files}
           allColor="#0071E3"
@@ -778,7 +778,7 @@ export function MaterialsSection({
           <MultiColorSelect
             values={fileTypes}
             onChange={setFileTypes}
-            minWidth={150}
+            minWidth={136}
             allLabel="All file types"
             allIcon={FileType}
             allColor="#0071E3"
@@ -789,7 +789,7 @@ export function MaterialsSection({
         <MultiColorSelect
           values={stages}
           onChange={setStages}
-          minWidth={170}
+          minWidth={150}
           allLabel="All buyer's journey stages"
           allIcon={Route}
           allColor="#7C3AED"
@@ -804,7 +804,7 @@ export function MaterialsSection({
         <MultiColorSelect
           values={levels}
           onChange={setLevels}
-          minWidth={160}
+          minWidth={144}
           allLabel="All access levels"
           allIcon={ShieldCheck}
           allColor="#0F766E"
@@ -828,7 +828,7 @@ export function MaterialsSection({
               type="button"
               aria-pressed={!showAllFiles}
               onClick={() => setMaterialsView("folders")}
-              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
+              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
                 !showAllFiles
                   ? "bg-white text-blue-primary shadow-card"
                   : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
@@ -841,7 +841,7 @@ export function MaterialsSection({
               type="button"
               aria-pressed={showAllFiles}
               onClick={() => setMaterialsView("files")}
-              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
+              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
                 showAllFiles
                   ? "bg-white text-blue-primary shadow-card"
                   : "text-text-secondary hover:bg-white/70 hover:text-text-primary"

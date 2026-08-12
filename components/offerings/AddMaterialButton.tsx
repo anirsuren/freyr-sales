@@ -4,8 +4,10 @@ import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
+  Check,
   FileQuestion,
   Folder,
+  Loader2,
   Package,
   Plus,
   Route,
@@ -144,7 +146,19 @@ export function AddMaterialButton({
    * and the form will not submit without it.
    */
   const [kind, setKind] = useState<MaterialFormat | "">("");
-  const [folder, setFolder] = useState(isFixedMaterialFolder(openFolder) ? openFolder : "");
+  // A parent with subfolders is a heading, not a destination (Saras' call,
+  // Aug 12: "the parent folder shouldn't be an option — they should choose
+  // between the subfolders"). The open folder only preselects when it's a
+  // leaf, and the pickers below list leaves only.
+  const allKnownFolders = allFolders(materials, materialFolders);
+  const openFolderIsLeaf =
+    !!openFolder &&
+    !allKnownFolders.some(
+      (other) => other !== openFolder && other.startsWith(`${openFolder}/`)
+    );
+  const [folder, setFolder] = useState(
+    isFixedMaterialFolder(openFolder) && openFolderIsLeaf ? openFolder : ""
+  );
   const [journeyStages, setJourneyStages] = useState<JourneyStage[]>([]);
   const [accessLevel, setAccessLevel] = useState<AccessLevel | "">("");
   const [label, setLabel] = useState("");
@@ -173,6 +187,11 @@ export function AddMaterialButton({
   >({});
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** The dedicated upload-progress dialog. The form closes the moment the
+   *  upload starts — watching bytes move is its own screen, not a state of
+   *  the form (Anir, Aug 12: "it should just be a pop-up that shows the
+   *  loading screen"). */
+  const [uploadingOpen, setUploadingOpen] = useState(false);
   /** 0-100 while bytes are moving, null when nothing is uploading. */
   const [, setProgress] = useState<number | null>(null);
   const [uploadIndex, setUploadIndex] = useState(0);
@@ -193,7 +212,7 @@ export function AddMaterialButton({
   function reset() {
     setKind("");
     setJourneyStages([]);
-    setFolder(isFixedMaterialFolder(openFolder) ? openFolder : "");
+    setFolder(isFixedMaterialFolder(openFolder) && openFolderIsLeaf ? openFolder : "");
     setAccessLevel("");
     setLabel("");
     setDescription("");
@@ -344,6 +363,12 @@ export function AddMaterialButton({
     ...materialFolders,
     ...createdFolders,
   ]);
+  const selectableFolders = folderOptions.filter(
+    (name) =>
+      !folderOptions.some(
+        (other) => other !== name && other.startsWith(`${name}/`)
+      )
+  );
 
   async function createFolder() {
     const name = cleanFolderName(folderName);
@@ -352,7 +377,8 @@ export function AddMaterialButton({
       return;
     }
     if (folderOptions.includes(name)) {
-      setFolder(name);
+      if (selectableFolders.includes(name)) setFolder(name);
+      else toast("That's a parent folder — pick one of its subfolders.", "error");
       setFolderName("");
       setCreatingFolder(false);
       return;
@@ -547,6 +573,20 @@ export function AddMaterialButton({
       return;
     }
     setBusy(true);
+    // Files get the dedicated progress screen; a pasted link is one quick
+    // request and keeps the button spinner.
+    if (files.length) {
+      setOpen(false);
+      setUploadingOpen(true);
+      setFileProgress(
+        Object.fromEntries(
+          files.map((file) => [
+            fileKey(file),
+            { percent: 0, status: "waiting" as const },
+          ])
+        )
+      );
+    }
     try {
       // The file's bytes go up first; the material row then references where
       // they landed, through the same PATCH as a pasted link.
@@ -586,6 +626,8 @@ export function AddMaterialButton({
       const failedCount = files.length - uploaded.length;
       if (files.length && uploaded.length === 0) {
         toast("None of the selected files uploaded. Review the failed rows and retry.", "error");
+        setUploadingOpen(false);
+        setOpen(true);
         return;
       }
       if (!files.length) {
@@ -696,6 +738,10 @@ export function AddMaterialButton({
           failedCount > 0 || readFailed ? "error" : undefined
         );
         if (failedCount === 0) {
+          // Let the finished state land for a beat — every bar full, the green
+          // check on — before the dialog hands off to the folder.
+          if (files.length) await new Promise((r) => setTimeout(r, 900));
+          setUploadingOpen(false);
           setOpen(false);
           // GO TO THE FILE. Saving used to leave the page on the folder
           // overview, where the fresh upload is invisible inside its folder
@@ -716,13 +762,19 @@ export function AddMaterialButton({
           const failedFiles = files.filter((file) => !uploadedKeys.has(fileKey(file)));
           setFiles(failedFiles);
           setBusy(false);
+          setUploadingOpen(false);
+          setOpen(true);
         }
         router.refresh();
       } else {
         toast(data.error || "Couldn't add that", "error");
+        setUploadingOpen(false);
+        setOpen(true);
       }
     } catch {
       toast("Couldn't add that", "error");
+      setUploadingOpen(false);
+      setOpen(true);
     } finally {
       setBusy(false);
     }
@@ -832,7 +884,7 @@ export function AddMaterialButton({
                 value={folder}
                 options={[
                   { value: "", label: "Choose a folder", color: "#0071E3", icon: Folder },
-                  ...folderOptions.map((name) => ({
+                  ...selectableFolders.map((name) => ({
                     value: name,
                     label: materialFolderLabel(name),
                     color: "#0071E3",
@@ -1161,7 +1213,7 @@ export function AddMaterialButton({
                               ...((fileOverrides[key]?.folder || folder)
                                 ? []
                                 : [{ value: "", label: "Choose a folder", color: "#B02020", icon: Folder }]),
-                              ...folderOptions.map((name) => ({
+                              ...selectableFolders.map((name) => ({
                                 value: name,
                                 label: materialFolderLabel(name),
                                 color: "#0071E3",
@@ -1287,6 +1339,134 @@ export function AddMaterialButton({
                       : "Add material"}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* THE UPLOAD IS ITS OWN SCREEN. The form hands off here the moment
+          bytes start moving — one calm list, each file with its own bar and
+          state, nothing else competing for attention (Anir, Aug 12: "a pop-up
+          that shows the loading screen... multiple files... this is going,
+          this is going"). */}
+      <Modal
+        open={uploadingOpen}
+        onClose={() => {
+          if (!busy) setUploadingOpen(false);
+        }}
+        title="Uploading materials"
+        size="wide"
+      >
+        <div className="space-y-4">
+          {(() => {
+            const rows = files.map((file) => {
+              const key = fileKey(file);
+              const progress = fileProgress[key] || { percent: 0, status: "waiting" as const };
+              return { file, key, progress };
+            });
+            const doneCount = rows.filter((row) => row.progress.status === "done").length;
+            const failedCount = rows.filter((row) => row.progress.status === "failed").length;
+            const overall = rows.length
+              ? Math.round(rows.reduce((sum, row) => sum + row.progress.percent, 0) / rows.length)
+              : 0;
+            const allSettled = rows.length > 0 && rows.every((row) => row.progress.status === "done" || row.progress.status === "failed");
+            return (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+                    {allSettled && failedCount === 0 ? (
+                      <Check size={20} strokeWidth={2.4} className="text-success" />
+                    ) : (
+                      <Loader2 size={20} strokeWidth={2.2} className="animate-spin" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-semibold text-text-primary">
+                      {allSettled
+                        ? failedCount
+                          ? `${doneCount} uploaded, ${failedCount} failed`
+                          : "All files uploaded"
+                        : `Uploading ${rows.length === 1 ? "1 file" : `${rows.length} files`}${offeringName ? ` to ${offeringName}` : ""}`}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] text-text-secondary">
+                      Freyr AI reads each file right after it lands, then everything is filed in one go.
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[15px] font-bold tnum text-blue-primary">{overall}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-surface">
+                  <div
+                    className="h-full rounded-full bg-blue-primary transition-[width] duration-300 ease-out"
+                    style={{ width: `${Math.max(overall, 3)}%` }}
+                  />
+                </div>
+                <ul className="space-y-2">
+                  {rows.map(({ file, key, progress }, index) => {
+                    const phase =
+                      progress.status === "done"
+                        ? "Uploaded"
+                        : progress.status === "failed"
+                          ? "Failed — retry from the form"
+                          : progress.status === "waiting"
+                            ? "Waiting its turn"
+                            : progress.percent >= 100
+                              ? "Saving & reading with Freyr AI…"
+                              : "Uploading…";
+                    return (
+                      <li
+                        key={key}
+                        className="step-in rounded-xl border border-border-light bg-surface/60 px-3.5 py-3"
+                        style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                              progress.status === "failed"
+                                ? "bg-error/10 text-error"
+                                : progress.status === "done"
+                                  ? "bg-success/10 text-success"
+                                  : "bg-blue-light text-blue-primary"
+                            }`}
+                          >
+                            {progress.status === "done" ? (
+                              <Check size={15} strokeWidth={2.6} />
+                            ) : progress.status === "failed" ? (
+                              <AlertTriangle size={14} strokeWidth={2.2} />
+                            ) : progress.status === "waiting" ? (
+                              <span className="text-[11px] font-bold tnum">{index + 1}</span>
+                            ) : (
+                              <Loader2 size={15} strokeWidth={2.2} className="animate-spin" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13px] font-semibold text-text-primary">
+                              {fileLabels[key]?.trim() || file.name.replace(/\.[^.]+$/, "")}
+                            </span>
+                            <span className="block text-[11px] text-text-tertiary">
+                              {file.name} · {fmtFileSize(file.size)} · {phase}
+                            </span>
+                          </span>
+                          <span
+                            className={`shrink-0 text-[12px] font-semibold tnum ${
+                              progress.status === "failed" ? "text-error" : "text-text-secondary"
+                            }`}
+                          >
+                            {progress.status === "failed" ? "—" : `${progress.percent}%`}
+                          </span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                          <div
+                            className={`h-full rounded-full transition-[width] duration-300 ease-out ${
+                              progress.status === "failed" ? "bg-error" : progress.status === "done" ? "bg-success" : "bg-blue-primary"
+                            }`}
+                            style={{ width: `${Math.max(progress.percent, progress.status === "waiting" ? 0 : 4)}%` }}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            );
+          })()}
         </div>
       </Modal>
 

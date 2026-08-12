@@ -268,11 +268,19 @@ export async function middleware(request: NextRequest) {
     const developmentRequestHost =
       request.headers.get("x-forwarded-host") ||
       request.headers.get("host");
+    // A dev server answering its own browser is never a cross-origin caller.
+    // With authOrigin set (the prod URL lives in .env.local), this branch
+    // used to reject EVERY save made on localhost — drag-to-folder, edits,
+    // uploads all 403'd with no visible reason (Anir, Aug 12: "why the hell
+    // can i not drag them into the folder"). Production still accepts only
+    // the configured origin.
+    const sameHostDevOrigin =
+      process.env.NODE_ENV !== "production" &&
+      !!developmentRequestHost &&
+      parsedOriginHost === developmentRequestHost;
     const originAllowed = authOrigin
-      ? parsedOrigin === authOrigin
-      : process.env.NODE_ENV !== "production" &&
-        !!developmentRequestHost &&
-        parsedOriginHost === developmentRequestHost;
+      ? parsedOrigin === authOrigin || sameHostDevOrigin
+      : sameHostDevOrigin;
     if (origin && !originAllowed) {
       const response = NextResponse.json(
         { error: "Cross-origin mutation rejected", requestId },
