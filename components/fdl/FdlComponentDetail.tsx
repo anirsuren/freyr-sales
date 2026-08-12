@@ -1268,10 +1268,15 @@ export function FdlComponentDetail({
       {/* -------------------------------------------------------- header */}
       <div>
         <Link
-          href="/components"
+          href={backTo ?? "/components"}
           className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
         >
-          <ArrowLeft size={13} strokeWidth={2.2} /> All components
+          <ArrowLeft size={13} strokeWidth={2.2} />{" "}
+          {backTo === "/components/release-calendar"
+            ? "Release calendar"
+            : backTo
+              ? "Back"
+              : "All components"}
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <OfferingIcon name={component.name} className="h-10 w-10 shrink-0" />
