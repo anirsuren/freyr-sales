@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { getOffering } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
-import { formatFromFilename } from "@/lib/materialStorage";
+import {
+  contentTypeForFilename,
+  formatFromFilename,
+  mirrorMaterialToSupabase,
+} from "@/lib/materialStorage";
 import {
   extractFileContent,
   isReadableFile,
@@ -84,6 +88,9 @@ export async function POST(
   let words = 0;
   let text = "";
   let extracted: ExtractedFileContent = { text: "" };
+  /** Bytes already in hand from the read-back, reused for the mirror below so
+   *  documents cost no second download. */
+  let mirrorBytes: Buffer | null = null;
   // `failed` means we could not READ it this time — a different thing from a
   // format that has no text in it, and the two must never be reported as the
   // same thing (see the response below).
@@ -113,10 +120,9 @@ export async function POST(
           failed = false;
           break;
         }
-        extracted = extractFileContent(
-          Buffer.from(await res.arrayBuffer()),
-          filename
-        );
+        const bytes = Buffer.from(await res.arrayBuffer());
+        mirrorBytes = bytes;
+        extracted = extractFileContent(bytes, filename);
         text = extracted.text;
         readable = text.length > 0;
         words = text.match(/\S+/g)?.length ?? 0;
@@ -143,6 +149,29 @@ export async function POST(
         : {}),
     }).catch(() => undefined);
   }
+
+  // MIRROR INTO THE WORKSPACE'S OWN SUPABASE BUCKET (Anir, Aug 12: "store
+  // them in supabase storage as well"). Fire-and-forget: this container keeps
+  // running after the response, and a mirror failure must never turn a
+  // finished upload into an error. Files the read-back already downloaded
+  // reuse those bytes; everything else (videos, oversize) is fetched once.
+  void (async () => {
+    try {
+      let bytes = mirrorBytes;
+      if (!bytes) {
+        const { presignUrl } = await docsStorage.getDownloadUrl(path);
+        const res = await fetch(presignUrl);
+        if (!res.ok) return;
+        const size = Number(res.headers.get("content-length") || 0);
+        if (size > EXTRACT_LIMIT_BYTES * 3) return; // bucket cap ~ upload cap
+        bytes = Buffer.from(await res.arrayBuffer());
+      }
+      await mirrorMaterialToSupabase(path, bytes, contentTypeForFilename(filename));
+    } catch {
+      // Freya.Docs remains the source of truth; the mirror retries on the
+      // next backfill run.
+    }
+  })();
 
   return NextResponse.json({
     ok: true,

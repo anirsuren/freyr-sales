@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  PrioritySearchInput,
+  SearchPriority,
+} from "@/components/ui/SearchPriority";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   CalendarDays,
@@ -222,6 +226,7 @@ export function MaterialsSection({
    *  the crown beside their name, the same mark ownership wears everywhere. */
   ownerNames?: string[];
 }) {
+  const [query, setQuery] = useState("");
   const [formats, setFormats] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [levels, setLevels] = useState<string[]>([]);
@@ -557,7 +562,8 @@ export function MaterialsSection({
     formats.length > 0 ||
     stages.length > 0 ||
     levels.length > 0 ||
-    fileTypes.length > 0;
+    fileTypes.length > 0 ||
+    query.trim().length > 0;
   // Agent-training uploads never reach a rep's list. They are background
   // knowledge for the assistant, not collateral, so only an owner — who has
   // to be able to manage them — sees them here at all.
@@ -616,6 +622,14 @@ export function MaterialsSection({
     anyFilter || showAllFiles ? mine : materialsInFolder(mine, folder);
   const visible = scoped
     .filter((m) => {
+      const q = query.trim().toLowerCase();
+      if (
+        q &&
+        ![m.label, m.description, m.folder, m.docsPath]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(q))
+      )
+        return false;
       if (formats.length && !formats.includes(materialFormat(m.kind))) return false;
       // An untagged material matches only "no restriction" — it is never
       // counted into a stage or an access level nobody recorded for it.
@@ -730,7 +744,21 @@ export function MaterialsSection({
           "so disorganized… why is access level on the same row as that?").
           All three are ALWAYS rendered, even when every material shares one
           value: a control that appears and disappears reads as broken. */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Search first, on the left, filling the row up to the filters — the
+          app-wide toolbar standard (Anir, Aug 12: "make sure we have a search
+          bar here"). A query searches the WHOLE tree, like the filters. */}
+      <SearchPriority
+        query={query}
+        className="flex flex-wrap items-center gap-2"
+      >
+        <PrioritySearchInput
+          grow
+          className="min-w-[200px] flex-1"
+          value={query}
+          onChange={setQuery}
+          placeholder="Search materials…"
+          ariaLabel="Search sales materials"
+        />
         <MultiColorSelect
           values={formats}
           onChange={setFormats}
@@ -825,7 +853,7 @@ export function MaterialsSection({
           </div>
           {action}
         </div>
-      </div>
+      </SearchPriority>
 
       {/* Live count + one-click reset */}
       <div className="mt-3 flex items-center justify-between gap-3">

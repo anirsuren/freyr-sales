@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  AlertTriangle,
   FileQuestion,
   Folder,
   Package,
@@ -73,6 +74,29 @@ const ACCESS_OPTIONS: ColorOption[] = [
 // only thing the upload still has to state is what kind of file it is. Four
 // equal tiles across one row: symmetric, and the whole choice is one glance.
 const FORMATS = MATERIAL_FORMATS;
+
+// What each extension USUALLY is — for a gentle heads-up when the picked
+// format disagrees (Anir, Aug 12: "if they choose video and it's a docx...
+// still let them do it, but just throw a little warning"). Advisory only:
+// nothing here blocks a save, because the owner may genuinely know better.
+const EXT_EXPECTED_FORMAT: Record<string, MaterialFormat> = {
+  mp4: "video", mov: "video", webm: "video", m4v: "video",
+  ppt: "presentation", pptx: "presentation", key: "presentation",
+  doc: "document", docx: "document", pdf: "document", txt: "document",
+  rtf: "document", xls: "document", xlsx: "document", csv: "document",
+  zip: "other",
+};
+
+function formatMismatch(
+  filename: string,
+  picked: MaterialFormat | ""
+): { ext: string; expected: MaterialFormat } | null {
+  if (!picked) return null;
+  const ext = (filename.split(".").pop() || "").toLowerCase();
+  const expected = EXT_EXPECTED_FORMAT[ext];
+  if (!expected || expected === picked) return null;
+  return { ext, expected };
+}
 
 // Add a sales material to an offering from a POP-UP, right on the offering page
 // (Suren: "this should be a pop-up, not take me to some weird edit page"). Saves
@@ -673,7 +697,20 @@ export function AddMaterialButton({
         );
         if (failedCount === 0) {
           setOpen(false);
+          // GO TO THE FILE. Saving used to leave the page on the folder
+          // overview, where the fresh upload is invisible inside its folder
+          // (Anir, Aug 12: "it should take me to wherever the file is and
+          // show me the file"). Open the folder the (first) new material
+          // landed in.
+          const landedFolder = uploaded.length
+            ? fileOverrides[fileKey(uploaded[0].file)]?.folder || folder
+            : folder;
           reset();
+          if (landedFolder) {
+            router.push(
+              `?tab=materials&mf=${encodeURIComponent(landedFolder)}`
+            );
+          }
         } else {
           const uploadedKeys = new Set(uploaded.map((item) => fileKey(item.file)));
           const failedFiles = files.filter((file) => !uploadedKeys.has(fileKey(file)));
@@ -1092,6 +1129,27 @@ export function AddMaterialButton({
                             collapsible={false}
                             className="w-full"
                           />
+                          {(() => {
+                            const mismatch = formatMismatch(
+                              selected.name,
+                              fileOverrides[key]?.kind || kind
+                            );
+                            if (!mismatch) return null;
+                            return (
+                              <p className="mt-1 flex items-start gap-1 text-[11px] leading-snug text-warning">
+                                <AlertTriangle
+                                  size={12}
+                                  strokeWidth={2.2}
+                                  className="mt-[1px] shrink-0"
+                                />
+                                A .{mismatch.ext} file is usually{" "}
+                                {MATERIAL_FORMAT_META[mismatch.expected].label} —
+                                saving it as{" "}
+                                {MATERIAL_FORMAT_META[(fileOverrides[key]?.kind || kind) as MaterialFormat].label}{" "}
+                                is still allowed.
+                              </p>
+                            );
+                          })()}
                         </div>
                         <div>
                           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
@@ -1151,6 +1209,7 @@ export function AddMaterialButton({
                             ariaLabel={`Access level for ${selected.name}`}
                             minWidth={0}
                             collapsible={false}
+                            compactTrigger
                             className="w-full"
                           />
                         </div>

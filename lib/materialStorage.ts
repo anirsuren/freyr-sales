@@ -81,6 +81,42 @@ export function validateMaterialUpload(
   return null;
 }
 
+/** The extension's canonical MIME type, for dashboard previews of mirrored
+ *  copies. Falls back to a generic stream. */
+export function contentTypeForFilename(filename: string): string {
+  const extension = (filename.split(".").pop() || "").toLowerCase();
+  const allowed = MATERIAL_UPLOAD_MIME[extension];
+  const first = allowed?.find((candidate) => !candidate.endsWith("/"));
+  return first || "application/octet-stream";
+}
+
+/**
+ * BEST-EFFORT MIRROR into the workspace's own Supabase bucket (Anir, Aug 12:
+ * "store them in supabase storage as well... make sure everything's stored
+ * there"). Freya.Docs stays the source of truth the app serves downloads
+ * from; this copy exists so the team can SEE and hold their files in their
+ * own dashboard. Same path as the docsPath, so the bucket reads 1:1 against
+ * the catalog. Never throws — a mirror hiccup must not break an upload.
+ */
+export async function mirrorMaterialToSupabase(
+  path: string,
+  bytes: Buffer | Uint8Array,
+  contentType?: string
+): Promise<boolean> {
+  try {
+    const client = storageClient();
+    if (!client) return false;
+    await ensureBucket();
+    const { error } = await client.storage.from(BUCKET).upload(path, bytes, {
+      contentType: contentType || "application/octet-stream",
+      upsert: true,
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 function storageClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -113,9 +149,14 @@ async function ensureBucket(): Promise<void> {
       // Private by construction. Application-level access labels must also be
       // enforced at the object boundary; a copied CDN URL must never bypass
       // the material authorization route.
+      //
+      // NO per-bucket fileSizeLimit: asking for one above the project's
+      // global upload cap makes createBucket AND updateBucket fail ("The
+      // object exceeded the maximum allowed size"), which silently disabled
+      // this store for the life of the process (found Aug 12 when the mirror
+      // never landed). The project-wide cap applies on its own.
       const { error } = await client.storage.createBucket(BUCKET, {
         public: false,
-        fileSizeLimit: MAX_UPLOAD_BYTES,
       });
       if (error && !/already exists/i.test(error.message)) {
         bucketReady = null;
@@ -124,7 +165,6 @@ async function ensureBucket(): Promise<void> {
       if (error && /already exists/i.test(error.message)) {
         const { error: updateError } = await client.storage.updateBucket(BUCKET, {
           public: false,
-          fileSizeLimit: MAX_UPLOAD_BYTES,
         });
         if (updateError) {
           bucketReady = null;
@@ -181,6 +221,14 @@ export async function uploadMaterialFile(
       // Rule 3: without complete(), the object stays pending and the path is
       // unusable until aborted.
       await docsStorage.completeUpload(path);
+      // Mirror to the workspace's own Supabase bucket too — same contract as
+      // the direct-upload path: best-effort, never blocks the upload.
+      void file
+        .arrayBuffer()
+        .then((buf) =>
+          mirrorMaterialToSupabase(path, Buffer.from(buf), contentType)
+        )
+        .catch(() => undefined);
       return {
         // Downloads go through our own route, which mints a fresh signed URL
         // per click: a stored presign would expire and rot in the record.
