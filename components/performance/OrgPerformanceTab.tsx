@@ -702,21 +702,27 @@ function GoalRows({
                             </span>
                           </span>
                         )}
-                        <span className="ml-auto flex items-center gap-2">
-                          <span className="text-[12px] text-text-secondary tnum">
-                            <span className="font-bold text-text-primary">
-                              {fmtAmount(goal.unit, subActual)}
-                            </span>{" "}
-                            of{" "}
-                            {s.target > 0
-                              ? fmtAmount(goal.unit, s.target)
-                              : "—"}
+                        <span className="ml-auto flex items-center gap-4">
+                          {/* the number and its bar read as ONE unit; the
+                              actions sit apart (Anir, Aug 12: "I don't like
+                              those buttons and that progress bar"). */}
+                          <span className="flex items-center gap-2">
+                            <span className="whitespace-nowrap text-[12px] text-text-secondary tnum">
+                              <span className="font-bold text-text-primary">
+                                {fmtAmount(goal.unit, subActual)}
+                              </span>{" "}
+                              of{" "}
+                              {s.target > 0
+                                ? fmtAmount(goal.unit, s.target)
+                                : "—"}
+                            </span>
+                            <MiniBar
+                              actual={subActual}
+                              target={s.target}
+                              pace={subPace}
+                            />
                           </span>
-                          <MiniBar
-                            actual={subActual}
-                            target={s.target}
-                            pace={subPace}
-                          />
+                          <span className="flex items-center gap-1.5">
                           <VerifiedPill
                             verified={s.verified}
                             size="sm"
@@ -741,21 +747,24 @@ function GoalRows({
                             <button
                               type="button"
                               onClick={() => onEditSubgoal(goal, s)}
-                              className="cursor-pointer rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-bold text-blue-primary transition-colors hover:bg-[rgba(0,113,227,0.14)]"
+                              className="cursor-pointer whitespace-nowrap rounded-full border border-[rgba(0,113,227,0.25)] bg-white px-2.5 py-1 text-[11px] font-bold text-blue-primary shadow-sm transition-all hover:-translate-y-px hover:bg-blue-light hover:shadow active:translate-y-0"
                             >
                               Set target
                             </button>
                           )}
-                          {live && (
+                          {/* Set target IS the edit when no target exists —
+                              two buttons doing one job was the clutter. */}
+                          {live && s.target > 0 && (
                             <button
                               type="button"
                               title="Edit this subgoal - target, owners, people"
                               onClick={() => onEditSubgoal(goal, s)}
-                              className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
                             >
                               <Pencil size={13} strokeWidth={2.2} />
                             </button>
                           )}
+                          </span>
                         </span>
                       </div>
                       {s.people.length > 0 && (
