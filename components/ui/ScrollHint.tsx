@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,8 +10,9 @@ import { cn } from "@/lib/utils";
  * more customers. I wouldn't know to scroll here").
  *
  * Two signals, both of which disappear the moment you reach the end: the
- * content fades out at the boundary instead of being cut off, and a chevron
- * offers to page down for you.
+ * content fades out at the boundary instead of being cut off,.
+ * (The floating chevron button is gone — Anir, Aug 12: "remove that weird
+ * arrow" — the fade alone carries the signal.)
  *
  * No count. Guessing how many rows are out of view from the scroll height was
  * wrong as often as it was right — it said "1 more" over ten hidden rows — and
@@ -71,29 +71,6 @@ export function ScrollHint({
         )}
       />
 
-      <button
-        type="button"
-        aria-label="Scroll down for more"
-        tabIndex={more ? 0 : -1}
-        aria-hidden={!more}
-        onClick={() =>
-          ref.current?.scrollBy({
-            top: ref.current.clientHeight * 0.8,
-            behavior: "smooth",
-          })
-        }
-        className={cn(
-          // Bottom-RIGHT, on the same line the dialog's own action sits on
-          // (Anir: "that arrow should be where the save button is"), so the
-          // list can run all the way down without the chevron covering rows.
-          "absolute -bottom-3 right-0 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-border-light bg-white text-text-secondary shadow-[0_2px_8px_rgba(16,24,40,0.10)] transition-all hover:border-blue-subtle hover:text-blue-primary",
-          more
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none translate-y-1 opacity-0"
-        )}
-      >
-        <ChevronDown size={14} strokeWidth={2.4} className="animate-bounce-hint" />
-      </button>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
+  Crown,
   ClipboardList,
   Gauge,
   HelpCircle,
@@ -348,6 +349,7 @@ export function PerformanceModule({
             busy={busy}
             suggestions={people}
             onNewGoal={() => setGoalModal({ editing: null })}
+            onEditGoal={(g) => setGoalModal({ editing: g })}
           />
         ) : (
           <PeopleTab
@@ -381,7 +383,6 @@ export function PerformanceModule({
       </Modal>
       {subModal && (
         <Modal
-          tall
           open
           onClose={() => setSubModal(null)}
           title={
@@ -493,6 +494,7 @@ function MasterTab({
   busy,
   suggestions,
   onNewGoal,
+  onEditGoal,
 }: {
   state: PerformanceState;
   live: boolean;
@@ -500,6 +502,8 @@ function MasterTab({
   busy: boolean;
   suggestions: string[];
   onNewGoal: () => void;
+  /** Opens the goal-edit dialog (owned by the module root). */
+  onEditGoal: (goal: PrimaryGoal) => void;
 }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -523,6 +527,10 @@ function MasterTab({
   }, [viewOpen]);
   const [openId, setOpenId] = useState<string | null>(null);
   const openGoal = state.goals.find((g) => g.id === openId) ?? null;
+  /** Table rows expand IN PLACE like a dropdown — no popup over the list
+   *  (Anir, Aug 12: "these should be drop-downs instead of pop-ups"). The
+   *  cards view keeps the popup, where an inline expansion has no room. */
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = state.goals.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
@@ -813,10 +821,15 @@ function MasterTab({
                 {filtered.map((g) => {
                   const owners = [...new Set(g.subgoals.flatMap((s) => s.owners))];
                   return (
+                    <Fragment key={g.id}>
                     <tr
-                      key={g.id}
-                      onClick={() => setOpenId(g.id)}
-                      className="cursor-pointer transition-colors hover:bg-surface"
+                      onClick={() =>
+                        setExpandedId(expandedId === g.id ? null : g.id)
+                      }
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        expandedId === g.id ? "bg-blue-light/40" : "hover:bg-surface"
+                      )}
                     >
                       <td className="px-4 py-2.5">
                         <span className="flex items-center gap-2.5">
@@ -874,6 +887,26 @@ function MasterTab({
                         <PickedPill goal={g} live={live} run={run} />
                       </td>
                     </tr>
+                    {expandedId === g.id && (
+                      <tr className="bg-white">
+                        <td colSpan={6} className="px-4 pb-4 pt-2">
+                          <div className="tab-panel rounded-xl border border-border-light bg-white p-4">
+                            <GoalPopupBody
+                              key={g.id}
+                              goal={g}
+                              state={state}
+                              live={live}
+                              run={run}
+                              busy={busy}
+                              suggestions={suggestions}
+                              onRemoved={() => setExpandedId(null)}
+                              onEditGoal={() => onEditGoal(g)}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -923,6 +956,7 @@ function MasterTab({
             busy={busy}
             suggestions={suggestions}
             onRemoved={() => setOpenId(null)}
+            onEditGoal={() => openGoal && onEditGoal(openGoal)}
           />
         )}
       </Modal>
@@ -944,6 +978,7 @@ function GoalPopupBody({
   busy,
   suggestions,
   onRemoved,
+  onEditGoal,
 }: {
   goal: PrimaryGoal;
   state: PerformanceState;
@@ -952,8 +987,11 @@ function GoalPopupBody({
   busy: boolean;
   suggestions: string[];
   onRemoved: () => void;
+  /** Edit opens the dedicated goal dialog — a form this size deserves its
+   *  own popup, not an inline unfold (Anir, Aug 12: "when I press edit, I
+   *  can definitely have a pop-up then"). */
+  onEditGoal: () => void;
 }) {
-  const [editingGoal, setEditingGoal] = useState(false);
   /** Which subgoal row is expanded; "new" = the add-subgoal editor. */
   const [openSub, setOpenSub] = useState<string | null>(null);
 
@@ -987,32 +1025,14 @@ function GoalPopupBody({
             <button
               type="button"
               title="Edit the goal's details — name, type, year, target"
-              aria-expanded={editingGoal}
-              onClick={() => setEditingGoal((v) => !v)}
-              className={cn(
-                "cursor-pointer rounded-md p-1.5 transition-colors",
-                editingGoal
-                  ? "bg-[rgba(0,113,227,0.10)] text-blue-primary"
-                  : "text-text-tertiary hover:bg-white hover:text-blue-primary"
-              )}
+              onClick={onEditGoal}
+              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary"
             >
               <Pencil size={14} strokeWidth={2.2} />
             </button>
           )}
         </span>
       </div>
-
-      {editingGoal && (
-        <div className="tab-panel mt-2 rounded-xl border border-blue-subtle bg-[rgba(0,113,227,0.03)] p-3.5">
-          <GoalEditorFields
-            editing={goal}
-            types={state.types}
-            run={run}
-            busy={busy}
-            onDone={() => setEditingGoal(false)}
-          />
-        </div>
-      )}
 
       {splitSubs.length >= 2 && (
         <div className="mt-3 rounded-xl border border-border-light bg-white p-3.5">
@@ -1050,10 +1070,24 @@ function GoalPopupBody({
         </div>
       )}
 
-      <p className="mt-3 flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-        Subgoals
-        <InfoHint text="A subgoal splits the goal across teams — like Growth Accounts vs Focused Account AMR. Click a row to open it and edit its target, owners and people right here." />
-      </p>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+          Subgoals
+          <InfoHint text="A subgoal splits the goal across teams — like Growth Accounts vs Focused Account AMR. Click a row to open it and edit its target, owners and people right here." />
+        </p>
+        {/* The add action lives WITH the section it adds to, not stranded at
+            the bottom-left (Anir, Aug 12: "that's a bad place to put this
+            button"). */}
+        {live && openSub !== "new" && (
+          <button
+            type="button"
+            onClick={() => setOpenSub("new")}
+            className="flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-blue-primary px-3 py-1.5 text-[12px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+          >
+            <Plus size={12} strokeWidth={2.4} /> Add subgoal
+          </button>
+        )}
+      </div>
       {goal.subgoals.length === 0 && openSub !== "new" && (
         <p className="mt-1.5 rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] leading-relaxed text-text-secondary">
           No subgoals yet. Split this goal when different teams carry different
@@ -1061,6 +1095,24 @@ function GoalPopupBody({
         </p>
       )}
       <div className="mt-1.5 space-y-1.5">
+        {openSub === "new" && (
+          <div className="overflow-hidden rounded-xl border border-blue-subtle bg-white">
+            <div className="border-b border-border-light bg-[rgba(0,113,227,0.04)] px-3 py-2 text-[12.5px] font-semibold text-text-primary">
+              New subgoal
+            </div>
+            <div className="p-3.5">
+              <SubgoalEditorFields
+                key="new"
+                goal={goal}
+                editing={null}
+                suggestions={suggestions}
+                run={run}
+                busy={busy}
+                onDone={() => setOpenSub(null)}
+              />
+            </div>
+          </div>
+        )}
         {goal.subgoals.map((s) => {
           const expanded = openSub === s.id;
           return (
@@ -1167,38 +1219,11 @@ function GoalPopupBody({
           );
         })}
 
-        {openSub === "new" && (
-          <div className="overflow-hidden rounded-xl border border-blue-subtle bg-white">
-            <div className="border-b border-border-light bg-[rgba(0,113,227,0.04)] px-3 py-2 text-[12.5px] font-semibold text-text-primary">
-              New subgoal
-            </div>
-            <div className="p-3.5">
-              <SubgoalEditorFields
-                key="new"
-                goal={goal}
-                editing={null}
-                suggestions={suggestions}
-                run={run}
-                busy={busy}
-                onDone={() => setOpenSub(null)}
-              />
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-light pt-3">
         {live ? (
           <>
-            {openSub !== "new" && (
-              <button
-                type="button"
-                onClick={() => setOpenSub("new")}
-                className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-primary px-3.5 py-2 text-[12.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-              >
-                <Plus size={13} strokeWidth={2.4} /> Add subgoal
-              </button>
-            )}
             <button
               type="button"
               onClick={() =>
@@ -1609,21 +1634,14 @@ function GoalEditorFields({
         </span>
         <TrackSwitch on={picked} withLabel onToggle={() => setPicked((p) => !p)} />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end">
         <button
           type="button"
           disabled={busy || !name.trim() || (type === "__new" && !newType.trim())}
           onClick={save}
-          className="flex-1 cursor-pointer rounded-full bg-blue-primary py-2.5 text-[13.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+          className="cursor-pointer rounded-full bg-blue-primary px-6 py-2.5 text-[13.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
         >
           {busy ? "Saving…" : editing ? "Save changes" : "Add to the goal master"}
-        </button>
-        <button
-          type="button"
-          onClick={onDone}
-          className="cursor-pointer rounded-full px-4 py-2.5 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
-        >
-          Cancel
         </button>
       </div>
     </div>
@@ -1740,114 +1758,127 @@ function SubgoalEditorFields({
         </div>
       </div>
 
-      <div>
-        <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-          Goal owners
-          <InfoHint text="Responsible for this subgoal overall — you can add several." />
-        </label>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          {owners.map((o) => (
-            <span
-              key={o}
-              className="flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2 text-[12px] font-medium text-text-primary"
-            >
-              <Avatar name={o} className="h-5 w-5 text-[8px]" />
-              {o}
-              <button
-                type="button"
-                aria-label={"Remove " + o}
-                onClick={() => setOwners(owners.filter((x) => x !== o))}
-                className="cursor-pointer text-text-tertiary hover:text-[color:#DC2626]"
-              >
-                <X size={11} strokeWidth={2.4} />
-              </button>
-            </span>
-          ))}
-          <div className="min-w-[200px] flex-1">
+      {/* Two matching cards, side by side — who answers for it, who carries
+          a number. One visual language, no floating rows (Anir, Aug 12:
+          "keep it consistent... make this thing look better"). */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            Goal owners
+            <InfoHint text="Responsible for this subgoal overall — you can add several. An owner can also appear in the people list with a personal target of their own." />
+          </label>
+          <div className="mt-2 space-y-1.5">
             <PersonSelect
               value=""
               onChange={addOwner}
               people={suggestions.filter((s) => !owners.includes(s))}
               placeholder="Add an owner…"
             />
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-          People on this subgoal
-          <InfoHint text="Each person carries their own target. Their logged numbers roll up into this subgoal." />
-        </label>
-        <div className="mt-1 space-y-1.5">
-          {rows.map((r, i) => (
-            <div key={r.name} className="flex items-center gap-2">
-              <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
-                <Avatar name={r.name} className="h-5 w-5 text-[8px]" />
-                <span className="truncate text-[12.5px] font-medium text-text-primary">
-                  {r.name}
+            {owners.map((o) => (
+              <div key={o} className="flex items-center gap-2">
+                <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
+                  <Avatar name={o} className="h-5 w-5 text-[8px]" />
+                  <span className="truncate text-[12.5px] font-medium text-text-primary">
+                    {o}
+                  </span>
+                  <Crown
+                    size={10}
+                    strokeWidth={2.6}
+                    aria-label="Goal owner"
+                    className="shrink-0 text-[color:#7C3AED]"
+                  />
                 </span>
-              </span>
-              <input
-                value={r.target}
-                onChange={(e) =>
-                  setRows(
-                    rows.map((x, xi) =>
-                      xi === i ? { ...x, target: e.target.value } : x
+                <button
+                  type="button"
+                  aria-label={"Remove " + o}
+                  onClick={() => setOwners(owners.filter((x) => x !== o))}
+                  className="cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-surface hover:text-[color:#DC2626]"
+                >
+                  <Trash2 size={13} strokeWidth={2.2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            People on this subgoal
+            <InfoHint text="Each person carries their own target. Their logged numbers roll up into this subgoal." />
+          </label>
+          <div className="mt-2 space-y-1.5">
+            <PersonSelect
+              value=""
+              onChange={addPerson}
+              people={suggestions.filter((s) => !rows.some((r) => r.name === s))}
+              placeholder="Add a person…"
+            />
+            {rows.map((r, i) => (
+              <div key={r.name} className="flex items-center gap-2">
+                <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
+                  <Avatar name={r.name} className="h-5 w-5 text-[8px]" />
+                  <span className="truncate text-[12.5px] font-medium text-text-primary">
+                    {r.name}
+                  </span>
+                  {owners.includes(r.name) && (
+                    <Crown
+                      size={10}
+                      strokeWidth={2.6}
+                      aria-label="Also a goal owner"
+                      className="shrink-0 text-[color:#7C3AED]"
+                    />
+                  )}
+                </span>
+                <input
+                  value={r.target}
+                  onChange={(e) =>
+                    setRows(
+                      rows.map((x, xi) =>
+                        xi === i ? { ...x, target: e.target.value } : x
+                      )
                     )
-                  )
-                }
-                placeholder="Target"
-                aria-label={"Target for " + r.name}
-                className="h-[32px] w-[120px] rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle"
-              />
-              <button
-                type="button"
-                aria-label={"Remove " + r.name}
-                onClick={() => setRows(rows.filter((_, xi) => xi !== i))}
-                className="cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-surface hover:text-[color:#DC2626]"
-              >
-                <Trash2 size={13} strokeWidth={2.2} />
-              </button>
-            </div>
-          ))}
-          <PersonSelect
-            value=""
-            onChange={addPerson}
-            people={suggestions.filter((s) => !rows.some((r) => r.name === s))}
-            placeholder="Add a person…"
-          />
-        </div>
-        {parsedTarget !== null && parsedTarget > 0 && rows.length > 0 && (
-          <p
-            className={cn(
-              "mt-1.5 text-[11px] tnum",
-              Math.abs(peopleSum - parsedTarget) < 0.005 * parsedTarget
-                ? "text-[color:#16A34A]"
-                : "text-text-tertiary"
-            )}
-          >
-            People&apos;s targets add to {fmtAmount(goal.unit, peopleSum)} of the{" "}
-            {fmtAmount(goal.unit, parsedTarget)} subgoal target.
-          </p>
-        )}
+                  }
+                  placeholder="Target"
+                  aria-label={"Target for " + r.name}
+                  className="h-[32px] w-[110px] rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle"
+                />
+                <button
+                  type="button"
+                  aria-label={"Remove " + r.name}
+                  onClick={() => setRows(rows.filter((_, xi) => xi !== i))}
+                  className="cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-surface hover:text-[color:#DC2626]"
+                >
+                  <Trash2 size={13} strokeWidth={2.2} />
+                </button>
+              </div>
+            ))}
+          </div>
+          {parsedTarget !== null && parsedTarget > 0 && rows.length > 0 && (
+            <p
+              className={cn(
+                "mt-2 text-[11px] tnum",
+                Math.abs(peopleSum - parsedTarget) < 0.005 * parsedTarget
+                  ? "text-[color:#16A34A]"
+                  : "text-text-tertiary"
+              )}
+            >
+              People&apos;s targets add to {fmtAmount(goal.unit, peopleSum)} of
+              the {fmtAmount(goal.unit, parsedTarget)} subgoal target.
+            </p>
+          )}
+        </section>
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Primary action alone, bottom right, on its own footer line. No
+          Cancel: the X (and the accordion header) close without saving. */}
+      <div className="flex items-center justify-end border-t border-border-light pt-3">
         <button
           type="button"
           disabled={busy || !name.trim()}
           onClick={save}
-          className="cursor-pointer rounded-full bg-blue-primary px-4 py-2 text-[12.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+          className="cursor-pointer rounded-full bg-blue-primary px-5 py-2 text-[12.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
         >
           {busy ? "Saving…" : editing ? "Save changes" : "Add subgoal"}
-        </button>
-        <button
-          type="button"
-          onClick={onDone}
-          className="cursor-pointer rounded-full px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:bg-surface"
-        >
-          Cancel
         </button>
       </div>
     </div>
@@ -1928,8 +1959,9 @@ function LogActualModal({
       <div className="mt-3 space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-[12px] font-semibold text-text-primary">
+            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Goal
+              <InfoHint text="Which goal this number counts toward. Pick the subgoal too when it belongs to one." />
             </label>
             <div className="mt-1">
               <ColorSelect
@@ -1987,8 +2019,9 @@ function LogActualModal({
           )}
         </div>
         <div>
-          <label className="text-[12px] font-semibold text-text-primary">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Person
+            <InfoHint text="Whose achievement this is — one person per entry, so nothing is ever counted twice. A shared win is logged once per person, each with their real share." />
           </label>
           <div className="mt-1">
             <PersonSelect
@@ -2001,8 +2034,9 @@ function LogActualModal({
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-[12px] font-semibold text-text-primary">
+            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Amount
+              <InfoHint text="How much this single achievement is worth, in this goal&apos;s unit. It adds onto everything logged before it." />
             </label>
             <div className="relative mt-1">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
@@ -2030,8 +2064,9 @@ function LogActualModal({
             )}
           </div>
           <div>
-            <label className="text-[12px] font-semibold text-text-primary">
+            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Date
+              <InfoHint text="When it actually happened — it lands in that month on the progress charts." />
             </label>
             <input
               type="date"
@@ -2048,9 +2083,10 @@ function LogActualModal({
           </p>
         )}
         <div>
-          <label className="text-[12px] font-semibold text-text-primary">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Note{" "}
             <span className="font-normal text-text-tertiary">(optional)</span>
+            <InfoHint text="One line on what this was — the deal, the milestone — so the number still means something months later." />
           </label>
           <input
             value={note}

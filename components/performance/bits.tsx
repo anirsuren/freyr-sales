@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Activity,
   BadgeDollarSign,
@@ -129,20 +130,50 @@ export function PersonSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  /** The menu renders in a PORTAL with fixed positioning so no ancestor's
+   *  overflow-hidden can clip it — inside the inline goal expansion the old
+   *  absolute menu was cut off after one row (Anir, Aug 12: "I can't
+   *  see"). */
+  const anchorMenu = () => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setMenuStyle({
+      position: "fixed",
+      left: rect.left,
+      width: rect.width,
+      top: spaceBelow > 300 ? rect.bottom + 6 : undefined,
+      bottom: spaceBelow > 300 ? undefined : window.innerHeight - rect.top + 6,
+      zIndex: 200,
+    });
+  };
 
   useEffect(() => {
     if (!open) return;
+    anchorMenu();
     const onDoc = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!ref.current?.contains(target) && !menuRef.current?.contains(target))
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onScroll = () => anchorMenu();
+    const onResize = () => setOpen(false);
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
+      window.removeEventListener("resize", onResize);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const q = query.trim().toLowerCase();
@@ -182,10 +213,14 @@ export function PersonSelect({
           )}
         />
       </button>
-      {open && (
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
         <div
+          ref={menuRef}
           role="listbox"
-          className="menu-in absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
+          style={menuStyle ?? undefined}
+          className="menu-in overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
         >
           {people.length > 6 && (
             <div className="flex items-center gap-1.5 border-b border-border-light px-2.5 py-2">
@@ -199,7 +234,7 @@ export function PersonSelect({
               />
             </div>
           )}
-          <div className="max-h-56 overflow-y-auto p-1">
+          <div className="max-h-[320px] overflow-y-auto p-1">
             {matches.map((p) => (
               <button
                 key={p}
@@ -247,7 +282,8 @@ export function PersonSelect({
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

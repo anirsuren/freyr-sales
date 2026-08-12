@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import {
+  Crown,
   CheckCircle2,
   ChevronDown,
   Gauge,
@@ -678,7 +679,10 @@ function GoalRows({
                           {s.name}
                         </span>
                         {s.owners.length > 0 && (
-                          <span className="flex items-center gap-1">
+                          <span
+                            className="flex items-center gap-1"
+                            title={`Goal owner${s.owners.length === 1 ? "" : "s"}: ${s.owners.join(", ")}`}
+                          >
                             {s.owners.map((o) => (
                               <Avatar
                                 key={o}
@@ -687,7 +691,13 @@ function GoalRows({
                                 className="h-5 w-5 text-[8px]"
                               />
                             ))}
-                            <span className="text-[10.5px] font-medium text-text-tertiary">
+                            <Crown
+                              size={10}
+                              strokeWidth={2.6}
+                              aria-label="Goal owner"
+                              className="text-[color:#7C3AED]"
+                            />
+                            <span className="text-[10.5px] font-medium text-text-secondary">
                               {s.owners.join(", ")}
                             </span>
                           </span>
@@ -859,8 +869,27 @@ function GoalRows({
                             <UsersRound size={17} strokeWidth={2} />
                           </span>
                           <span className="block text-[12.5px] leading-relaxed text-text-secondary">
-                            No people on this subgoal yet — each person gets
-                            their own target.
+                            {s.owners.length > 0 ? (
+                              <>
+                                <Crown
+                                  size={11}
+                                  strokeWidth={2.6}
+                                  aria-hidden="true"
+                                  className="mr-1 inline align-[-1px] text-[color:#7C3AED]"
+                                />
+                                <span className="font-semibold text-text-primary">
+                                  {s.owners.join(" and ")}
+                                </span>{" "}
+                                {s.owners.length === 1 ? "owns" : "own"} this
+                                subgoal. No one carries a personal target yet —
+                                owners can be assigned one too.
+                              </>
+                            ) : (
+                              <>
+                                No people on this subgoal yet — each person
+                                gets their own target.
+                              </>
+                            )}
                           </span>
                           {live && (
                             <button
