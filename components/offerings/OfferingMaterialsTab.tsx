@@ -58,6 +58,7 @@ export function OfferingMaterialsTab({
             <AddMaterialButton
               key="add-material"
               offeringId={o.id}
+              offeringName={o.offering_name}
               materials={o.materials}
               materialFolders={o.materialFolders ?? []}
               compact

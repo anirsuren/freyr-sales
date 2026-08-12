@@ -3,7 +3,9 @@
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  FileQuestion,
   Folder,
+  Package,
   Plus,
   Route,
   ShieldCheck,
@@ -77,12 +79,17 @@ const FORMATS = MATERIAL_FORMATS;
 // via the offering PATCH and refreshes so it shows immediately.
 export function AddMaterialButton({
   offeringId,
+  offeringName,
   materials,
   materialFolders = [],
   variant = "link",
   compact = false,
 }: {
   offeringId: string;
+  /** Shown at the top of the dialog so nobody uploads into the wrong
+   *  offering (Anir, Aug 12: "imagine if someone forgot which offering
+   *  they're in"). */
+  offeringName?: string;
   materials: OfferingMaterial[];
   /** Empty owner-created folders that cannot be inferred from a material. */
   materialFolders?: string[];
@@ -718,8 +725,21 @@ export function AddMaterialButton({
         </button>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Add sales materials" size="workflow">
+      <Modal open={open} onClose={() => setOpen(false)} title="Add sales materials" size="workflow" tall>
         <div className="space-y-4">
+          {offeringName && (
+            <div className="flex items-center gap-2.5 rounded-lg bg-blue-light/60 px-3 py-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-primary/15 text-blue-primary">
+                <Package size={15} strokeWidth={2} />
+              </span>
+              <p className="text-[12px] text-text-secondary">
+                Adding materials to{" "}
+                <span className="font-semibold text-text-primary">
+                  {offeringName}
+                </span>
+              </p>
+            </div>
+          )}
           <div>
               <label className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               File format <span className="font-medium normal-case tracking-normal">Shared default</span>
@@ -825,6 +845,7 @@ export function AddMaterialButton({
                 ariaLabel="Buyer's journey stage"
                 minWidth={0}
                 collapsible={false}
+                fluid
                 className="w-full"
               />
               </div>
@@ -991,10 +1012,20 @@ export function AddMaterialButton({
             {files.length > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                    Review each file
-                  </p>
-                  <span className="text-[11.5px] text-text-tertiary">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                      Review each file
+                    </p>
+                    {/* Say what these repeated controls ARE — without this the
+                        card read as an unlabeled wall of dropdowns (Anir,
+                        Aug 12: "when you add a file, you lose it... I have no
+                        idea what's going on"). */}
+                    <p className="mt-0.5 text-[11.5px] text-text-secondary">
+                      Each file starts with your shared choices above — adjust
+                      any file on its own card before saving.
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[11.5px] text-text-tertiary">
                     {files.length} selected
                   </span>
                 </div>
@@ -1032,64 +1063,113 @@ export function AddMaterialButton({
                           <Trash2 size={14} strokeWidth={2.2} />
                         </button>
                       </div>
-                      <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
-                        <ColorSelect
-                          value={fileOverrides[key]?.kind || kind}
-                          options={FORMATS.map((format) => ({
-                            value: format,
-                            label: MATERIAL_FORMAT_META[format].label,
-                            color: MATERIAL_FORMAT_META[format].color,
-                            icon: MATERIAL_FORMAT_META[format].icon,
-                          }))}
-                          onChange={(value) => updateFileOverride(selected, { kind: value as MaterialFormat })}
-                          ariaLabel={`File format for ${selected.name}`}
-                          minWidth={0}
-                          collapsible={false}
-                          className="w-full"
-                        />
-                        <ColorSelect
-                          value={fileOverrides[key]?.folder || folder}
-                          options={folderOptions.map((name) => ({
-                            value: name,
-                            label: materialFolderLabel(name),
-                            color: "#0071E3",
-                            icon: Folder,
-                          }))}
-                          onChange={(value) => updateFileOverride(selected, { folder: value })}
-                          ariaLabel={`Folder for ${selected.name}`}
-                          minWidth={0}
-                          collapsible={false}
-                          className="w-full"
-                        />
-                        <MultiColorSelect
-                          values={fileOverrides[key]?.journeyStages || journeyStages}
-                          options={STAGE_OPTIONS.filter((option) => option.value)}
-                          onChange={(values) => updateFileOverride(selected, { journeyStages: values as JourneyStage[] })}
-                          allLabel="Journey stages"
-                          allIcon={Route}
-                          allColor="#7C3AED"
-                          ariaLabel={`Buyer journey stages for ${selected.name}`}
-                          minWidth={0}
-                          collapsible={false}
-                          className="w-full"
-                        />
-                        <ColorSelect
-                          value={fileOverrides[key]?.accessLevel || accessLevel}
-                          options={ACCESS_OPTIONS.filter((option) => option.value)}
-                          onChange={(value) => updateFileOverride(selected, { accessLevel: value as AccessLevel })}
-                          ariaLabel={`Access level for ${selected.name}`}
-                          minWidth={0}
-                          collapsible={false}
-                          className="w-full"
+                      {/* The same four choices as the shared section, each
+                          under its own name — an unlabeled dropdown is a
+                          mystery box the second it leaves its labeled twin. */}
+                      <div className="mt-3 grid grid-cols-1 gap-x-3 gap-y-2.5 border-t border-border-light pt-3 lg:grid-cols-2">
+                        <div>
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            File format
+                          </span>
+                          <ColorSelect
+                            value={fileOverrides[key]?.kind || kind}
+                            options={[
+                              // Never wear the first option while empty — an
+                              // unpicked control that reads "Video" is a lie.
+                              ...((fileOverrides[key]?.kind || kind)
+                                ? []
+                                : [{ value: "", label: "Pick a format", color: "#B02020", icon: FileQuestion }]),
+                              ...FORMATS.map((format) => ({
+                                value: format,
+                                label: MATERIAL_FORMAT_META[format].label,
+                                color: MATERIAL_FORMAT_META[format].color,
+                                icon: MATERIAL_FORMAT_META[format].icon,
+                              })),
+                            ]}
+                            onChange={(value) => updateFileOverride(selected, { kind: value as MaterialFormat })}
+                            ariaLabel={`File format for ${selected.name}`}
+                            minWidth={0}
+                            collapsible={false}
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            Folder
+                          </span>
+                          <ColorSelect
+                            value={fileOverrides[key]?.folder || folder}
+                            options={[
+                              ...((fileOverrides[key]?.folder || folder)
+                                ? []
+                                : [{ value: "", label: "Choose a folder", color: "#B02020", icon: Folder }]),
+                              ...folderOptions.map((name) => ({
+                                value: name,
+                                label: materialFolderLabel(name),
+                                color: "#0071E3",
+                                icon: Folder,
+                              })),
+                            ]}
+                            onChange={(value) => updateFileOverride(selected, { folder: value })}
+                            ariaLabel={`Folder for ${selected.name}`}
+                            minWidth={0}
+                            collapsible={false}
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            Buyer&apos;s journey stage
+                          </span>
+                          <MultiColorSelect
+                            values={fileOverrides[key]?.journeyStages || journeyStages}
+                            options={STAGE_OPTIONS.filter((option) => option.value)}
+                            onChange={(values) => updateFileOverride(selected, { journeyStages: values as JourneyStage[] })}
+                            allLabel="Journey stages"
+                            allIcon={Route}
+                            allColor="#7C3AED"
+                            ariaLabel={`Buyer journey stages for ${selected.name}`}
+                            minWidth={0}
+                            collapsible={false}
+                            fluid
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            Who can view this file?
+                          </span>
+                          <ColorSelect
+                            value={fileOverrides[key]?.accessLevel || accessLevel}
+                            options={[
+                              ...((fileOverrides[key]?.accessLevel || accessLevel)
+                                ? []
+                                : [{ value: "", label: "Choose who can view it", color: "#B02020", icon: ShieldCheck }]),
+                              ...ACCESS_OPTIONS.filter((option) => option.value),
+                            ]}
+                            onChange={(value) => updateFileOverride(selected, { accessLevel: value as AccessLevel })}
+                            ariaLabel={`Access level for ${selected.name}`}
+                            minWidth={0}
+                            collapsible={false}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2.5">
+                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                          Description{" "}
+                          <span className="font-medium normal-case tracking-normal">
+                            Optional
+                          </span>
+                        </span>
+                        <input
+                          value={fileOverrides[key]?.description ?? description}
+                          onChange={(event) => updateFileOverride(selected, { description: event.target.value })}
+                          aria-label={`Description for ${selected.name}`}
+                          placeholder="One sentence on what this file is for"
+                          className="h-9 w-full rounded-md border border-border bg-white px-2.5 text-[12px] text-text-primary outline-none focus:border-blue-primary"
                         />
                       </div>
-                      <input
-                        value={fileOverrides[key]?.description ?? description}
-                        onChange={(event) => updateFileOverride(selected, { description: event.target.value })}
-                        aria-label={`Description for ${selected.name}`}
-                        placeholder="Optional description for this file"
-                        className="mt-2 h-9 w-full rounded-md border border-border bg-white px-2.5 text-[12px] text-text-primary outline-none focus:border-blue-primary"
-                      />
                       {fileProgress[key] && (
                         <div className="mt-2" aria-live="polite">
                           <div className="flex items-center justify-between text-[10.5px] font-semibold text-text-secondary">
