@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/utils";
@@ -985,26 +986,8 @@ export function FdlComponentDetail({
                       >
                         <Download size={14} strokeWidth={2} />
                       </button>
-                      {canEdit &&
-                        (confirmReleaseDelete === release.id ? (
-                          <span className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => void removeRelease(release.id)}
-                              className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                            >
-                              Remove?
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Keep this version"
-                              onClick={() => setConfirmReleaseDelete(null)}
-                              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
-                            >
-                              <X size={13} strokeWidth={2} />
-                            </button>
-                          </span>
-                        ) : (
+                      {canEdit && (
+                        <>
                           <button
                             type="button"
                             aria-label={`Remove ${withV(release.version)}`}
@@ -1013,7 +996,19 @@ export function FdlComponentDetail({
                           >
                             <Trash2 size={14} strokeWidth={2} />
                           </button>
-                        ))}
+                          <ConfirmDialog
+                            open={confirmReleaseDelete === release.id}
+                            onClose={() => setConfirmReleaseDelete(null)}
+                            onConfirm={() => {
+                              setConfirmReleaseDelete(null);
+                              void removeRelease(release.id);
+                            }}
+                            title="Remove this version?"
+                            body={`${withV(release.version)} and its feature list come off this component.`}
+                            confirmLabel="Remove version"
+                          />
+                        </>
+                      )}
                     </span>
                   </div>
 
@@ -2061,24 +2056,26 @@ export function FdlComponentDetail({
                           >
                             <Pencil size={13} strokeWidth={2} />
                           </button>
-                          {confirmFeatureDelete === feature.id ? (
-                            <button
-                              type="button"
-                              onClick={() => void removeFeature(feature.id)}
-                              className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                            >
-                              Remove?
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              aria-label={`Remove ${feature.name}`}
-                              onClick={() => setConfirmFeatureDelete(feature.id)}
-                              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
-                            >
-                              <Trash2 size={13} strokeWidth={2} />
-                            </button>
-                          )}
+                          {null}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${feature.name}`}
+                            onClick={() => setConfirmFeatureDelete(feature.id)}
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
+                          >
+                            <Trash2 size={13} strokeWidth={2} />
+                          </button>
+                          <ConfirmDialog
+                            open={confirmFeatureDelete === feature.id}
+                            onClose={() => setConfirmFeatureDelete(null)}
+                            onConfirm={() => {
+                              setConfirmFeatureDelete(null);
+                              void removeFeature(feature.id);
+                            }}
+                            title="Remove this feature?"
+                            body={`"${feature.name}" comes off this component's feature list.`}
+                            confirmLabel="Remove feature"
+                          />
                         </span>
                       </td>
                     )}

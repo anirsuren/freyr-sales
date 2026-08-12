@@ -94,19 +94,31 @@ async function writeRow(id: string, catalog: unknown): Promise<void> {
 
 // ------------------------------------------------------------------ scraping
 async function runActor(actor: string, input: unknown): Promise<any> {
-  const res = await fetch(
-    `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${process.env.APIFY_API_TOKEN}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-      signal: AbortSignal.timeout(180_000),
+  // One retry: the actors flake intermittently (timeouts, transient 5xx), and
+  // before Aug 12 a single hiccup silently cost a company its whole refresh
+  // window while the UI still said "Refreshed".
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(
+        `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${process.env.APIFY_API_TOKEN}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+          signal: AbortSignal.timeout(180_000),
+        }
+      );
+      if (!res.ok) {
+        throw new Error(`${actor} HTTP ${res.status}`);
+      }
+      return res.json();
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
     }
-  );
-  if (!res.ok) {
-    throw new Error(`${actor} HTTP ${res.status}`);
   }
-  return res.json();
+  throw lastError;
 }
 
 function toPost(i: any): FeedPost | null {
@@ -126,21 +138,29 @@ function toPost(i: any): FeedPost | null {
 /** Returns billed cost alongside results so every caller keeps the ledger. */
 async function scrapeCompanyPosts(
   source: CompanySource
-): Promise<{ posts: FeedPost[]; author: FeedCompany["author"]; slug: string | null; cost: number }> {
+): Promise<{ posts: FeedPost[]; author: FeedCompany["author"]; slug: string | null; cost: number; failed: boolean }> {
   let cost = 0;
+  let failures = 0;
+  let attempts = 0;
   for (const slug of source.li ?? []) {
+    attempts += 1;
     let items: any;
     try {
       items = await runActor("apimaestro~linkedin-company-posts", {
         company_name: `linkedin.com/company/${slug}`,
         limit: POST_LIMIT,
       });
-    } catch {
+    } catch (error) {
+      failures += 1;
+      console.error(
+        `[market-intel] posts scrape failed for ${source.id}/${slug}: ${error instanceof Error ? error.message : error}`
+      );
       continue;
     }
     if (!Array.isArray(items) || items.length === 0) continue;
     if (items.length === 1 && items[0]?.message) {
       cost += 0.005; // error items still bill
+      failures += 1;
       continue;
     }
     cost += items.length * 0.005;
@@ -163,24 +183,34 @@ async function scrapeCompanyPosts(
         : null,
       slug,
       cost,
+      failed: false,
     };
   }
-  return { posts: [], author: null, slug: null, cost };
+  return {
+    posts: [],
+    author: null,
+    slug: null,
+    cost,
+    failed: attempts > 0 && failures === attempts,
+  };
 }
 
 async function scrapeNews(
   source: Pick<CompanySource, "name" | "newsQ">
-): Promise<{ news: FeedNews[]; cost: number }> {
+): Promise<{ news: FeedNews[]; cost: number; failed: boolean }> {
   let items: any;
   try {
     items = await runActor("s-r~google-news", {
       q: source.newsQ || source.name,
       maxItems: NEWS_LIMIT,
     });
-  } catch {
-    return { news: [], cost: 0 };
+  } catch (error) {
+    console.error(
+      `[market-intel] news scrape failed for "${source.name}": ${error instanceof Error ? error.message : error}`
+    );
+    return { news: [], cost: 0, failed: true };
   }
-  if (!Array.isArray(items)) return { news: [], cost: 0 };
+  if (!Array.isArray(items)) return { news: [], cost: 0, failed: true };
   const cost = 0.01 + items.length * 0.004;
   const seen = new Set<string>();
   const news: FeedNews[] = [];
@@ -199,7 +229,7 @@ async function scrapeNews(
       published: i.published ? new Date(i.published).toISOString() : null,
     });
   }
-  return { news, cost };
+  return { news, cost, failed: false };
 }
 
 /** The M&A tracker: three division-flavored news pulls, AI-classified into
@@ -257,20 +287,23 @@ async function applyDigest(entry: FeedCompany): Promise<void> {
 
 async function scrapePersonPosts(
   person: TrackedPerson
-): Promise<{ posts: FeedPost[]; cost: number; headline: string | null }> {
+): Promise<{ posts: FeedPost[]; cost: number; headline: string | null; failed: boolean }> {
   const username = person.linkedinUrl.match(/\/in\/([^/]+)/)?.[1];
-  if (!username) return { posts: [], cost: 0, headline: null };
+  if (!username) return { posts: [], cost: 0, headline: null, failed: false };
   let items: any;
   try {
     items = await runActor("apimaestro~linkedin-profile-posts", {
       username,
       limit: PERSON_POST_LIMIT,
     });
-  } catch {
-    return { posts: [], cost: 0, headline: null };
+  } catch (error) {
+    console.error(
+      `[market-intel] person scrape failed for ${person.name ?? username}: ${error instanceof Error ? error.message : error}`
+    );
+    return { posts: [], cost: 0, headline: null, failed: true };
   }
   if (!Array.isArray(items) || items.length === 0)
-    return { posts: [], cost: 0, headline: null };
+    return { posts: [], cost: 0, headline: null, failed: false };
   // The author block rides along free on every post: it carries the person's
   // FULL headline, which discovery search truncates (Anir, Aug 11: "his bio
   // is not there"). Keep it every sync so the profile stays current.
@@ -278,12 +311,13 @@ async function scrapePersonPosts(
     String(items.find((i: any) => i?.author?.headline)?.author?.headline ?? "").trim() ||
     null;
   if (items.length === 1 && items[0]?.message) {
-    return { posts: [], cost: 0.005, headline };
+    return { posts: [], cost: 0.005, headline, failed: true };
   }
   return {
     posts: items.map(toPost).filter(Boolean) as FeedPost[],
     cost: items.length * 0.005,
     headline,
+    failed: false,
   };
 }
 
@@ -448,6 +482,21 @@ export async function runMarketIntelRefresh(options?: {
       spent += postsResult.cost;
       const newsResult = await scrapeNews(source);
       spent += newsResult.cost;
+      if (postsResult.failed && newsResult.failed) {
+        // Nothing came back at all. Before Aug 12 this still stamped the
+        // company "fresh", so the UI said Refreshed over day-old data and the
+        // rotation skipped it for 11 hours. Keep the old stamp: the 30-minute
+        // tick retries it, and the Updated time only moves when data does.
+        console.error(
+          `[market-intel] ${source.id}: posts AND news scrapes failed — keeping previous data, will retry next tick`
+        );
+        continue;
+      }
+      if (postsResult.failed || newsResult.failed) {
+        console.warn(
+          `[market-intel] ${source.id}: ${postsResult.failed ? "posts" : "news"} scrape failed this run — stored what worked`
+        );
+      }
       const entry: FeedCompany = {
         id: source.id,
         name: source.name,
@@ -504,6 +553,12 @@ export async function runMarketIntelRefresh(options?: {
       }
       const result = await scrapePersonPosts(person);
       spent += result.cost;
+      if (result.failed) {
+        console.error(
+          `[market-intel] person ${person.id}: scrape failed — keeping previous data, will retry next tick`
+        );
+        continue;
+      }
       if (result.headline && result.headline !== person.headline) {
         await updateTrackedPersonProfile(person.id, {
           headline: result.headline,

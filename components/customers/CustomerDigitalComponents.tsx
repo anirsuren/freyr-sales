@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Boxes, Check, LayoutGrid, Link2, Plus, Table2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
@@ -433,12 +434,21 @@ export function CustomerDigitalComponents({
                   )}
                 </p>
 
-                {canEdit &&
-                  (confirmRemove === link.component_id ? (
-                    <span className="absolute right-3 top-3 flex items-center gap-1">
+                {canEdit && (
+                  <>
                       <button
                         type="button"
-                        onClick={() => {
+                        aria-label={`Remove ${component.name}`}
+                        title="This customer no longer runs it"
+                        onClick={() => setConfirmRemove(link.component_id)}
+                        className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary opacity-0 transition-opacity hover:bg-error/10 hover:text-error group-hover:opacity-100"
+                      >
+                        <X size={13} strokeWidth={2} />
+                      </button>
+                      <ConfirmDialog
+                        open={confirmRemove === link.component_id}
+                        onClose={() => setConfirmRemove(null)}
+                        onConfirm={() => {
                           setConfirmRemove(null);
                           void save(
                             state.filter(
@@ -447,30 +457,12 @@ export function CustomerDigitalComponents({
                             `${component.name} removed.`
                           );
                         }}
-                        className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                      >
-                        Remove?
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Keep it"
-                        onClick={() => setConfirmRemove(null)}
-                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
-                      >
-                        <X size={12} strokeWidth={2} />
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      aria-label={`Remove ${component.name}`}
-                      title="This customer no longer runs it"
-                      onClick={() => setConfirmRemove(link.component_id)}
-                      className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary opacity-0 transition-opacity hover:bg-error/10 hover:text-error group-hover:opacity-100"
-                    >
-                      <X size={13} strokeWidth={2} />
-                    </button>
-                  ))}
+                        title={`Remove ${component.name}?`}
+                        body="It comes off this customer's digital components. You can add it back any time."
+                        confirmLabel="Remove"
+                      />
+                  </>
+                )}
               </div>
             );
           })}

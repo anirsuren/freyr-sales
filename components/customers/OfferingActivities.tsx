@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { DateField } from "@/components/ui/DateField";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -430,24 +431,22 @@ export function OfferingActivities({
                         >
                           <Pencil size={13} strokeWidth={2} />
                         </button>
-                        {confirmDelete === version.id ? (
-                          <button
-                            type="button"
-                            onClick={() => remove(version.id)}
-                            className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                          >
-                            Remove?
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            aria-label="Remove this activity"
-                            onClick={() => setConfirmDelete(version.id)}
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
-                          >
-                            <Trash2 size={13} strokeWidth={2} />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          aria-label="Remove this activity"
+                          onClick={() => setConfirmDelete(version.id)}
+                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                        >
+                          <Trash2 size={13} strokeWidth={2} />
+                        </button>
+                        <ConfirmDialog
+                          open={confirmDelete === version.id}
+                          onClose={() => setConfirmDelete(null)}
+                          onConfirm={() => remove(version.id)}
+                          title="Remove this activity?"
+                          body={`Attempt ${version.version} comes off this offering's activity log.`}
+                          confirmLabel="Remove activity"
+                        />
                       </span>
                     </td>
                   </tr>

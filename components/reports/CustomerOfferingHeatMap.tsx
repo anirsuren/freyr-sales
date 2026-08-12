@@ -48,6 +48,8 @@ import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { Textarea } from "@/components/ui/Textarea";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
+import { InfoHint } from "@/components/ui/InfoHint";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   PrioritySearchInput,
   SearchPriority,
@@ -337,6 +339,10 @@ export function CustomerOfferingHeatMap({
     null
   );
   const [selected, setSelected] = useState<SelectedCell | null>(null);
+  /** Which activity's remove-from-heat-map is awaiting a yes. */
+  const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
+  const [confirmBannerDiscard, setConfirmBannerDiscard] = useState(false);
+  const [confirmFooterDiscard, setConfirmFooterDiscard] = useState(false);
   const [draft, setDraft] =
     useState<CustomerOfferingEngagementVersion | null>(null);
   const [initialDraft, setInitialDraft] =
@@ -810,6 +816,8 @@ export function CustomerOfferingHeatMap({
   }
 
   async function cancelExpandedVersion() {
+    setConfirmBannerDiscard(false);
+    setConfirmFooterDiscard(false);
     if (!draft) return;
     if (!editingExisting) {
       const linked =
@@ -1113,8 +1121,13 @@ export function CustomerOfferingHeatMap({
                       pinOfferings && "top-0"
                     )}
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
-                      Customer
+                    <span className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+                        Customer ↓
+                      </span>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-blue-primary">
+                        Offering →
+                      </span>
                     </span>
                     <span className="mt-1.5 flex items-center gap-1">
                       {(
@@ -1429,7 +1442,10 @@ export function CustomerOfferingHeatMap({
               )}
               <div className="overflow-visible rounded-xl border border-border-light bg-white">
                 <div className="hidden grid-cols-[116px_minmax(0,1.4fr)_120px_90px_140px_24px_36px] items-center gap-3 rounded-t-xl bg-surface px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary lg:grid">
-                  <span>Report row</span>
+                  <span className="flex items-center gap-1">
+                    Report row
+                    <InfoHint text="The one activity this offering shows on the customer heat map — exactly one per offering. Tick a different row to report that one instead." />
+                  </span>
                   <span>Activity</span>
                   <span>Status</span>
                   <span>Value</span>
@@ -1533,7 +1549,7 @@ export function CustomerOfferingHeatMap({
                                 </span>
                               )}
                             </span>
-                            <span className="block truncate text-[10px] text-text-tertiary lg:hidden">
+                            <span title="One saved activity for this customer and offering — the number counts how many have been logged." className="block truncate text-[10px] text-text-tertiary lg:hidden">
                               Attempt {version.version} · {versionStatus.label} · {valueSummary}
                             </span>
                             <span className="hidden text-[10px] text-text-tertiary lg:block">
@@ -1573,29 +1589,46 @@ export function CustomerOfferingHeatMap({
                         />
                       </button>
                       {reported && !unsaved ? (
-                        <button
-                          type="button"
-                          onClick={() => unlinkCurrent(version.id)}
-                          disabled={saving}
-                          title={`Remove ${versionMeta.label} from the heat map`}
-                          className="inline-flex h-8 w-8 shrink-0 self-center items-center justify-center rounded-lg bg-error text-white shadow-sm transition-[transform,background-color,opacity] hover:bg-[#D92D20] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                          aria-label={`Remove ${versionMeta.label} from the heat map`}
-                        >
-                          <Trash2
-                            size={14}
-                            strokeWidth={2.4}
-                            className="text-white"
-                            aria-hidden="true"
-                          />
-                        </button>
+                        confirmUnlink === version.id ? (
+                          <span className="flex shrink-0 items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmUnlink(null);
+                                unlinkCurrent(version.id);
+                              }}
+                              className="cursor-pointer rounded-full bg-[color:#DC2626] px-2.5 py-1 text-[11px] font-semibold text-white transition-all hover:opacity-90"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmUnlink(null)}
+                              className="cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
+                            >
+                              Deny
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            title="Remove this activity from the heat map"
+                            aria-label="Remove this activity from the heat map"
+                            onClick={() => setConfirmUnlink(version.id)}
+                            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                          >
+                            <Trash2 size={14} strokeWidth={2} />
+                          </button>
+                        )
                       ) : (
                         <span className="w-8 shrink-0" />
                       )}
                     </div>
                     {expanded && (
-                      <div className="space-y-4 border-t border-blue-subtle bg-white p-4">
+                      <div className="tab-panel space-y-4 border-t border-blue-subtle bg-white p-4">
             {draftIsNew && (
-              <div className="rounded-lg border border-blue-subtle bg-blue-light px-3 py-2.5">
+              <div className="flex items-start justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2.5">
+                <div>
                 <p className="text-[11.5px] font-semibold text-text-primary">
                   Draft activity {draft.version}
                 </p>
@@ -1604,6 +1637,33 @@ export function CustomerOfferingHeatMap({
                   and continue later; it reaches the activity log only when you
                   save it.
                 </p>
+                </div>
+                {confirmBannerDiscard ? (
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={cancelExpandedVersion}
+                      className="cursor-pointer rounded-full bg-[color:#DC2626] px-3 py-1.5 text-[11.5px] font-semibold text-white transition-all hover:opacity-90"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmBannerDiscard(false)}
+                      className="cursor-pointer rounded-full bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+                    >
+                      Deny
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmBannerDiscard(true)}
+                    className="shrink-0 cursor-pointer rounded-full bg-error/10 px-3 py-1.5 text-[11.5px] font-semibold text-error transition-colors hover:bg-error/20"
+                  >
+                    Discard this draft
+                  </button>
+                )}
               </div>
             )}
             <FormSectionHeading
@@ -1823,10 +1883,29 @@ export function CustomerOfferingHeatMap({
                     Cancel changes
                   </Button>
                 )}
-                {!editingExisting && (
+                {!editingExisting && !draftIsNew && (
                   <Button variant="secondary" onClick={cancelExpandedVersion}>
-                    {draftIsNew ? "Discard activity" : "Close details"}
+                    Close details
                   </Button>
+                )}
+                {!editingExisting && draftIsNew && (
+                  confirmFooterDiscard ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-[12px] font-medium text-text-secondary">
+                        Throw this draft away?
+                      </span>
+                      <Button variant="secondary" onClick={() => setConfirmFooterDiscard(false)}>
+                        Deny
+                      </Button>
+                      <Button variant="destructive" onClick={cancelExpandedVersion}>
+                        Confirm
+                      </Button>
+                    </span>
+                  ) : (
+                    <Button variant="secondary" onClick={() => setConfirmFooterDiscard(true)}>
+                      Discard activity
+                    </Button>
+                  )
                 )}
                 {(hasDraftChanges || draftIsNew) && (
                   <Button onClick={saveDraft} loading={saving} className="page-in">

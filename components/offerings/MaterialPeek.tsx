@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom";
 import { Check, Copy, Loader2 } from "lucide-react";
 import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
-import type { OfferingMaterial } from "@/lib/offeringMaterials";
+import { materialFormat, type OfferingMaterial } from "@/lib/offeringMaterials";
 
 /**
  * SEE THE FILE BEFORE YOU OPEN IT.
@@ -120,14 +120,18 @@ export function MaterialPeek({
   // for quick re-peeks, then released once it is clearly not coming back.
   useEffect(() => {
     if (open || !everOpened) return;
+    // A VIDEO keeps playing inside a hidden iframe (Anir, Aug 12: "video
+    // doesn't stop") — unmount those immediately; documents keep the cheap
+    // 45s re-peek window.
+    const grace = materialFormat(material.kind) === "video" ? 0 : 45_000;
     unmountTimer.current = window.setTimeout(() => {
       unmountTimer.current = null;
       setEverOpened(false);
       setLoaded(false);
       setContentHeight(null);
-    }, 45_000);
+    }, grace);
     return () => clear(unmountTimer);
-  }, [open, everOpened, clear]);
+  }, [open, everOpened, clear, material.kind]);
 
   const scheduleClose = useCallback(() => {
     clear(openTimer);

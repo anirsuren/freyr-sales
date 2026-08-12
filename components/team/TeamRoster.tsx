@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import {
   PrioritySearchInput,
@@ -32,6 +33,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { PresenceDot } from "@/components/presence/PresenceDot";
+import { PRESENCE_META, presenceOf } from "@/lib/presence";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Badge } from "@/components/ui/Badge";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
@@ -417,6 +419,13 @@ function ActivityTrendInspector({ rep }: { rep: RosterRep }) {
   );
 }
 
+/** The dot's colors decoded on hover (Anir, Aug 12: "what does the orange
+ *  thing mean... when I hover over that circle, it tells me what that means"). */
+function presenceTip(lastSeenAt: string | null | undefined): string {
+  const meta = PRESENCE_META[presenceOf(lastSeenAt ?? null, Date.now())];
+  return `${meta.label} — ${meta.title}`;
+}
+
 export function TeamRoster({ reps }: { reps: RosterRep[] }) {
   // FOUR WAYS TO NARROW THE FLOOR (Anir, Aug 9: "have some filters here to
   // look better, like three or four filters maybe"). Every one reads a field
@@ -608,15 +617,19 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           members — the synthetic mock roster passes no
                           lastSeenAt at all, and a dot on a person who does not
                           exist would be the exact fiction this replaced. */}
-                      <span className="relative shrink-0">
-                        <Avatar name={r.name} className="w-11 h-11 text-[14px] shrink-0" />
-                        {r.lastSeenAt !== undefined && (
+                      {r.lastSeenAt !== undefined ? (
+                        <Tooltip label={presenceTip(r.lastSeenAt)} className="shrink-0">
+                          <Avatar name={r.name} className="w-11 h-11 text-[14px] shrink-0" />
                           <PresenceDot
                             lastSeenAt={r.lastSeenAt}
                             className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white"
                           />
-                        )}
-                      </span>
+                        </Tooltip>
+                      ) : (
+                        <span className="relative shrink-0">
+                          <Avatar name={r.name} className="w-11 h-11 text-[14px] shrink-0" />
+                        </span>
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           {/* Stretched nav link — the whole card opens the rep. */}
@@ -891,15 +904,19 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                         }
                       >
                         <Link href={`/analytics/reps/${r.slug}`} className="flex items-center gap-3 group">
-                          <span className="relative shrink-0">
-                            <Avatar name={r.name} className="w-10 h-10 text-[13px] shrink-0" />
-                            {r.lastSeenAt !== undefined && (
+                          {r.lastSeenAt !== undefined ? (
+                            <Tooltip label={presenceTip(r.lastSeenAt)} className="shrink-0">
+                              <Avatar name={r.name} className="w-10 h-10 text-[13px] shrink-0" />
                               <PresenceDot
                                 lastSeenAt={r.lastSeenAt}
                                 className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white"
                               />
-                            )}
-                          </span>
+                            </Tooltip>
+                          ) : (
+                            <span className="relative shrink-0">
+                              <Avatar name={r.name} className="w-10 h-10 text-[13px] shrink-0" />
+                            </span>
+                          )}
                           <span className="min-w-0">
                             <span className="flex items-center gap-2">
                               <span className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary truncate">
