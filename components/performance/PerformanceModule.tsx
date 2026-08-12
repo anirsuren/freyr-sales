@@ -918,7 +918,7 @@ function MasterTab({
                       </td>
                     </tr>
                     {expandedId === g.id && (
-                      <tr className="bg-white">
+                      <tr className="!border-t-0 bg-white">
                         <td colSpan={7} className="px-4 pb-6 pt-2">
                           <div className="tab-panel pt-1">
                             <GoalPopupBody

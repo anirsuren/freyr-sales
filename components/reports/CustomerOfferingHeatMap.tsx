@@ -1625,7 +1625,7 @@ export function CustomerOfferingHeatMap({
                       )}
                     </div>
                     {expanded && (
-                      <div className="tab-panel space-y-4 border-t border-blue-subtle bg-white p-4">
+                      <div className="tab-panel space-y-4 bg-white p-4">
             {draftIsNew && (
               <div className="flex items-start justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2.5">
                 <div>

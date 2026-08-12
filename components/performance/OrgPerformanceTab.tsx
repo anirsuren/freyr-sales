@@ -616,7 +616,7 @@ function GoalRows({
         </td>
       </tr>
       {open && (
-        <tr>
+        <tr className="!border-t-0">
           <td colSpan={7} className="bg-[var(--surface)] px-4 pb-5 pt-3">
             <div className="tab-panel space-y-3">
               {goal.subgoals.length === 0 ? (
