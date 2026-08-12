@@ -146,13 +146,13 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
             <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border-2 border-[#6D28D9] bg-white" />
             <span
               className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#0071E3] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.25)]"
-              style={{ left: `${pct}%` }}
+              style={{ left: `${Math.min(97, Math.max(3, pct))}%` }}
             />
           </div>
           <div className="relative mt-1 h-4">
             <span
               className="absolute -translate-x-1/2 whitespace-nowrap text-[10.5px] font-bold text-blue-primary tnum"
-              style={{ left: `${Math.min(85, Math.max(15, pct))}%` }}
+              style={{ left: `${Math.min(76, Math.max(24, pct))}%` }}
             >
               {due ? "refresh due" : `you're here · ${clock(now)}`}
             </span>

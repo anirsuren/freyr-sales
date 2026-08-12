@@ -71,13 +71,44 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
 
   return (
     <div>
-      {/* Sub-tabs: M&A is the first; the call promised more trackers here. */}
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        <span className="flex items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.08)] px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary">
-          <Handshake size={13} strokeWidth={2.2} /> M&A Tracker
-        </span>
-        <span className="text-[11.5px] text-text-tertiary">
-          More trackers join this bucket as they&apos;re built.
+      {/* The tracker BAR: an obvious selector that scrolls sideways as more
+          trackers land (Anir: "it has to be obvious that that's there…
+          horizontally scroll left and right"). M&A is the first resident. */}
+      <div className="mb-4 flex items-center gap-2">
+        <div className="-mx-1 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-1 pb-0.5">
+          <button
+            type="button"
+            aria-pressed="true"
+            className="flex shrink-0 cursor-default items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-1.5 text-[12.5px] font-semibold text-white"
+          >
+            <Handshake size={13} strokeWidth={2.2} /> M&A Tracker
+          </button>
+          <span
+            title="More trackers join this bucket as they're built."
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-border-light px-3.5 py-1.5 text-[12px] font-medium text-text-tertiary"
+          >
+            More trackers coming
+          </span>
+        </div>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className="flex items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.07)] px-2.5 py-1 text-[11.5px] font-semibold text-text-primary tnum">
+            <Handshake size={11} strokeWidth={2.4} className="text-blue-primary" />
+            {items.length} deals
+          </span>
+          <span
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold tnum"
+            style={{ color: "#0071E3", background: "rgba(0,113,227,0.10)" }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0071E3]" />
+            {announced} announced
+          </span>
+          <span
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold tnum"
+            style={{ color: "#1A7A35", background: "rgba(26,122,53,0.10)" }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-[#1A7A35]" />
+            {completed} completed
+          </span>
         </span>
       </div>
 
@@ -85,30 +116,17 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
         query={query}
         className="mb-4 flex flex-wrap items-center gap-2"
       >
-        <span className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-4 py-2">
-          <span className="text-[12px] font-medium text-text-secondary">
-            <span className="tnum text-[16px] font-bold text-text-primary">
-              {items.length}
-            </span>{" "}
-            deals
-          </span>
-          <span className="text-[12px] font-medium" style={{ color: "#0071E3" }}>
-            <span className="tnum text-[16px] font-bold">{announced}</span> announced
-          </span>
-          <span className="text-[12px] font-medium" style={{ color: "#1A7A35" }}>
-            <span className="tnum text-[16px] font-bold">{completed}</span> completed
-          </span>
-        </span>
-
+        <PrioritySearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search deals…"
+          ariaLabel="Search deals"
+          grow
+          growMaxWidth={340}
+          growExpandedMaxWidth={460}
+          className="min-w-[200px] flex-1"
+        />
         <span className="ml-auto flex flex-wrap items-center gap-2">
-          <PrioritySearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder="Search deals…"
-            ariaLabel="Search deals"
-            width={170}
-            expandedWidth={260}
-          />
           <ColorSelect
             value={status}
             onChange={(v) => setStatus(v as typeof status)}
