@@ -1118,9 +1118,7 @@ export function OfferingsBrowser({
           placeholder="Search offerings…"
           ariaLabel="Search offerings"
           iconSize={16}
-          growMaxWidth={220}
-          growExpandedMaxWidth={400}
-          className="min-w-[140px] flex-1"
+          className="min-w-[200px] flex-1"
           iconClassName="left-3"
           inputClassName={`${inputCls} w-full pl-9 pr-3`}
         />

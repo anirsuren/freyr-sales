@@ -66,7 +66,7 @@ export function ScrollHint({
       <span
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-12 rounded-b-lg bg-gradient-to-t from-white via-white/85 to-transparent transition-opacity",
+          "pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-lg bg-gradient-to-t from-white/95 via-white/55 to-transparent transition-opacity",
           more ? "opacity-100" : "opacity-0"
         )}
       />
@@ -83,7 +83,10 @@ export function ScrollHint({
           })
         }
         className={cn(
-          "absolute bottom-1.5 left-1/2 flex h-7 w-7 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-border-light bg-white text-text-secondary shadow-[0_2px_8px_rgba(16,24,40,0.10)] transition-all hover:border-blue-subtle hover:text-blue-primary",
+          // Bottom-RIGHT, on the same line the dialog's own action sits on
+          // (Anir: "that arrow should be where the save button is"), so the
+          // list can run all the way down without the chevron covering rows.
+          "absolute -bottom-3 right-0 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-border-light bg-white text-text-secondary shadow-[0_2px_8px_rgba(16,24,40,0.10)] transition-all hover:border-blue-subtle hover:text-blue-primary",
           more
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none translate-y-1 opacity-0"
