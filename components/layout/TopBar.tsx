@@ -275,7 +275,10 @@ export function TopBar({
   return (
     <header
       data-tour="topbar"
-      className="sticky top-0 z-40 h-14 shrink-0 bg-white border-b border-border-light flex items-center justify-between gap-4 px-4 lg:px-8"
+      // z-50, not z-40: the page-title menus (Market Intel, Performance) sit
+      // at z-40 and are LATER in the DOM, so at equal z they painted straight
+      // through the topbar's search dropdown (Anir: "it's bleeding").
+      className="sticky top-0 z-50 h-14 shrink-0 bg-white border-b border-border-light flex items-center justify-between gap-4 px-4 lg:px-8"
     >
       <button
         onClick={onMenuClick}
