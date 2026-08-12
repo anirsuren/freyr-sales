@@ -335,7 +335,19 @@ export function FdlComponentsBrowser({
       <PageHeader
         title="FDL Components"
         subtitle="Freya Digital components, the software pieces an offering is made of. Each keeps its own versions and features."
-        action={components.length > 0 ? newButton : undefined}
+        action={
+          components.length > 0 ? (
+            <span className="flex items-center gap-2">
+              <Link
+                href="/components/release-calendar"
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                <CalendarRange size={14} strokeWidth={2.1} /> Release calendar
+              </Link>
+              {newButton}
+            </span>
+          ) : undefined
+        }
       />
       {components.length > 0 && (
         <div className="rise-in mb-4 flex flex-wrap items-center gap-2">
@@ -371,12 +383,6 @@ export function FdlComponentsBrowser({
               })),
             ]}
           />
-          <Link
-            href="/components/release-calendar"
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-          >
-            <CalendarRange size={14} strokeWidth={2.1} /> Release calendar
-          </Link>
           <MultiColorSelect
             values={offeringFilter}
             onChange={setOfferingFilter}
