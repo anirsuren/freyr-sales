@@ -59,10 +59,17 @@ const TRACKING_ROW = "market-intel:default";
 function hasEnv(): boolean {
   return !!(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY &&
-    process.env.APIFY_API_TOKEN
+    process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 }
+
+/** The token the current run scrapes with. Production's task definition
+ *  carries a revoked APIFY key it inherits deploy after deploy (Aug 12: a
+ *  whole "refresh" made zero scrape calls), so the database config row wins
+ *  when present — updating one row fixes every running instance without an
+ *  AWS change. */
+const CONFIG_ROW = "market-intel:config";
+let activeApifyToken: string | undefined = process.env.APIFY_API_TOKEN;
 
 function client() {
   return require("@supabase/supabase-js").createClient(
@@ -101,7 +108,7 @@ async function runActor(actor: string, input: unknown): Promise<any> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await fetch(
-        `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${process.env.APIFY_API_TOKEN}`,
+        `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${activeApifyToken}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -412,7 +419,12 @@ export async function runMarketIntelRefresh(options?: {
   force?: boolean;
   onlyCompanyIds?: string[];
 }): Promise<RefreshSummary> {
-  if (!hasEnv()) return { ran: false, reason: "missing env (database or APIFY_API_TOKEN)" };
+  if (!hasEnv()) return { ran: false, reason: "missing env (database)" };
+  const config = await readRow(CONFIG_ROW).catch(() => null);
+  activeApifyToken = config?.apifyToken || process.env.APIFY_API_TOKEN;
+  if (!activeApifyToken) {
+    return { ran: false, reason: "no APIFY token in config row or env" };
+  }
   const raw = await readRow(FEED_ROW);
   const feed: any = raw && raw.companies ? raw : emptyFeed();
   if (!feed.people) feed.people = {};

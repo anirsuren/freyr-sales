@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Check,
   ChevronDown,
@@ -831,6 +832,8 @@ function MasterTab({
                       </th>
                     )
                   )}
+                  {/* the expand chevron's lane */}
+                  <th aria-hidden className="w-10" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
@@ -902,12 +905,23 @@ function MasterTab({
                       <td className="px-4 py-2.5">
                         <PickedPill goal={g} live={live} run={run} />
                       </td>
+                      <td className="w-10 py-2.5 pr-4">
+                        <ChevronDown
+                          size={15}
+                          strokeWidth={2.2}
+                          className={cn(
+                            "text-text-tertiary transition-transform",
+                            expandedId === g.id && "rotate-180 text-blue-primary"
+                          )}
+                        />
+                      </td>
                     </tr>
                     {expandedId === g.id && (
                       <tr className="bg-white">
-                        <td colSpan={6} className="px-4 pb-4 pt-2">
-                          <div className="tab-panel rounded-xl border border-border-light bg-white p-4">
+                        <td colSpan={7} className="px-4 pb-4 pt-2">
+                          <div className="tab-panel pt-1">
                             <GoalPopupBody
+                              hostedInPopup={false}
                               key={g.id}
                               goal={g}
                               state={state}
@@ -964,6 +978,7 @@ function MasterTab({
       >
         {openGoal && (
           <GoalPopupBody
+            hostedInPopup
             key={openGoal.id}
             goal={openGoal}
             state={state}
@@ -986,6 +1001,50 @@ function MasterTab({
  * header. No popup ever opens on top of this popup (Anir: "I don't want
  * another popup because then it ruins this popup").
  */
+/** A small "are you sure" card that drops right under the delete button —
+ *  the popup context confirms in place without taking over the header
+ *  (Anir, Aug 12: "it should just show me underneath the delete button"). */
+function ConfirmUnder({
+  question,
+  actionLabel,
+  onConfirm,
+  onCancel,
+}: {
+  question: string;
+  actionLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <span
+      className="step-in absolute right-0 top-full z-30 mt-1.5 block w-max max-w-[260px] rounded-xl border border-border-light bg-white p-2.5 text-left shadow-[0_12px_32px_rgba(16,24,40,0.18)]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="block text-[12px] font-medium leading-snug text-text-secondary">
+        {question}
+      </span>
+      <span className="mt-2 flex items-center justify-end gap-1.5">
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={onCancel}
+          className="cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
+        >
+          Keep
+        </span>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={onConfirm}
+          className="cursor-pointer rounded-full bg-[color:#DC2626] px-2.5 py-1 text-[11.5px] font-semibold text-white transition-all hover:opacity-90"
+        >
+          {actionLabel}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 function GoalPopupBody({
   goal,
   state,
@@ -995,6 +1054,7 @@ function GoalPopupBody({
   suggestions,
   onRemoved,
   onEditGoal,
+  hostedInPopup,
 }: {
   goal: PrimaryGoal;
   state: PerformanceState;
@@ -1007,6 +1067,10 @@ function GoalPopupBody({
    *  own popup, not an inline unfold (Anir, Aug 12: "when I press edit, I
    *  can definitely have a pop-up then"). */
   onEditGoal: () => void;
+  /** Where this body lives decides how deletes confirm (Anir, Aug 12: cards
+   *  view opens a popup, so confirm in place; the table expands on the page,
+   *  so a proper popup is right there). */
+  hostedInPopup: boolean;
 }) {
   /** Two-step guard: no goal or subgoal disappears on a single click
    *  (Anir, Aug 12: "it didn't even ask me for a confirmation"). */
@@ -1019,7 +1083,7 @@ function GoalPopupBody({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-[var(--surface)] p-3.5">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[var(--surface)] p-3.5">
         <TypeIconTile type={goal.type} />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
@@ -1039,57 +1103,43 @@ function GoalPopupBody({
           </span>
         </span>
         <span className="flex items-center gap-1.5">
-          {confirmGoalRemove ? (
-            <>
-              <span className="text-[12px] font-medium text-text-secondary">
-                Remove this goal and its subgoals?
-              </span>
+          <PickedPill goal={goal} live={live} run={run} />
+          <InfoHint text="Tracking means this goal is counted and shown on Org performance. Not tracked means it stays on the master list only." />
+          {live && (
+            <button
+              type="button"
+              title="Edit the goal's details — name, type, year, target"
+              onClick={onEditGoal}
+              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary"
+            >
+              <Pencil size={14} strokeWidth={2.2} />
+            </button>
+          )}
+          {live && (
+            <span className="relative">
               <button
                 type="button"
-                onClick={() => {
-                  setConfirmGoalRemove(false);
-                  void run(
-                    { op: "remove-goal", goalId: goal.id },
-                    goal.name + " removed from the master"
-                  ).then((ok) => ok && onRemoved());
-                }}
-                className="cursor-pointer rounded-full bg-[color:#DC2626] px-3 py-1.5 text-[12px] font-semibold text-white transition-all hover:opacity-90"
+                title="Remove this goal from the master"
+                onClick={() => setConfirmGoalRemove(!confirmGoalRemove)}
+                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
               >
-                Remove goal
+                <Trash2 size={14} strokeWidth={2.2} />
               </button>
-              <button
-                type="button"
-                onClick={() => setConfirmGoalRemove(false)}
-                className="cursor-pointer rounded-full bg-surface px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
-              >
-                Keep
-              </button>
-            </>
-          ) : (
-            <>
-              <PickedPill goal={goal} live={live} run={run} />
-              <InfoHint text="Tracking means this goal is counted and shown on Org performance. Not tracked means it stays on the master list only." />
-              {live && (
-                <button
-                  type="button"
-                  title="Edit the goal's details — name, type, year, target"
-                  onClick={onEditGoal}
-                  className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary"
-                >
-                  <Pencil size={14} strokeWidth={2.2} />
-                </button>
+              {confirmGoalRemove && hostedInPopup && (
+                <ConfirmUnder
+                  question="Remove this goal and its subgoals?"
+                  actionLabel="Remove goal"
+                  onConfirm={() => {
+                    setConfirmGoalRemove(false);
+                    void run(
+                      { op: "remove-goal", goalId: goal.id },
+                      goal.name + " removed from the master"
+                    ).then((ok) => ok && onRemoved());
+                  }}
+                  onCancel={() => setConfirmGoalRemove(false)}
+                />
               )}
-              {live && (
-                <button
-                  type="button"
-                  title="Remove this goal from the master"
-                  onClick={() => setConfirmGoalRemove(true)}
-                  className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
-                >
-                  <Trash2 size={14} strokeWidth={2.2} />
-                </button>
-              )}
-            </>
+            </span>
           )}
         </span>
       </div>
@@ -1130,6 +1180,39 @@ function GoalPopupBody({
         </div>
       )}
 
+      <ConfirmDialog
+        open={confirmGoalRemove && !hostedInPopup}
+        onClose={() => setConfirmGoalRemove(false)}
+        onConfirm={() => {
+          setConfirmGoalRemove(false);
+          void run(
+            { op: "remove-goal", goalId: goal.id },
+            goal.name + " removed from the master"
+          ).then((ok) => ok && onRemoved());
+        }}
+        title="Remove this goal?"
+        body={`${goal.name} and its subgoals come off the master, and Org performance stops counting it.`}
+        confirmLabel="Remove goal"
+      />
+      <ConfirmDialog
+        open={confirmSubRemove !== null && !hostedInPopup}
+        onClose={() => setConfirmSubRemove(null)}
+        onConfirm={() => {
+          const id = confirmSubRemove;
+          setConfirmSubRemove(null);
+          if (!id) return;
+          const name =
+            goal.subgoals.find((x) => x.id === id)?.name ?? "Subgoal";
+          void run(
+            { op: "remove-subgoal", goalId: goal.id, subgoalId: id },
+            name + " removed"
+          ).then((ok) => ok && setOpenSub(null));
+        }}
+        title="Remove this subgoal?"
+        body="Its owners, people and targets come off this goal."
+        confirmLabel="Remove subgoal"
+      />
+
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Subgoals
@@ -1154,7 +1237,7 @@ function GoalPopupBody({
           pieces of it.
         </p>
       )}
-      <div className="mt-1.5 space-y-1.5">
+      <div className="mt-1.5 space-y-2">
         <Modal
           open={openSub === "new"}
           onClose={() => setOpenSub(null)}
@@ -1178,15 +1261,17 @@ function GoalPopupBody({
             <div
               key={s.id}
               className={cn(
-                "overflow-hidden rounded-xl border bg-white transition-colors",
-                expanded ? "border-blue-subtle" : "border-border-light"
+                "overflow-hidden rounded-xl border transition-colors",
+                expanded
+                  ? "border-blue-subtle bg-white"
+                  : "border-transparent bg-surface"
               )}
             >
               <button
                 type="button"
                 aria-expanded={expanded}
                 onClick={() => setOpenSub(expanded ? null : s.id)}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-surface"
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-blue-light/40"
               >
                 <span className="min-w-0 flex-1">
                   <span className="text-[13px] font-semibold text-text-primary">
@@ -1210,6 +1295,46 @@ function GoalPopupBody({
                     ))}
                   </span>
                 )}
+                {live && expanded && (
+                  <span
+                    className="relative shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      title="Remove this subgoal"
+                      aria-label={`Remove ${s.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmSubRemove(
+                          confirmSubRemove === s.id ? null : s.id
+                        );
+                      }}
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-[color:#DC2626]"
+                    >
+                      <Trash2 size={13} strokeWidth={2.2} />
+                    </span>
+                    {confirmSubRemove === s.id && hostedInPopup && (
+                      <ConfirmUnder
+                        question="Remove this subgoal?"
+                        actionLabel="Remove"
+                        onConfirm={() => {
+                          setConfirmSubRemove(null);
+                          void run(
+                            {
+                              op: "remove-subgoal",
+                              goalId: goal.id,
+                              subgoalId: s.id,
+                            },
+                            s.name + " removed"
+                          ).then((ok) => ok && setOpenSub(null));
+                        }}
+                        onCancel={() => setConfirmSubRemove(null)}
+                      />
+                    )}
+                  </span>
+                )}
                 <ChevronDown
                   size={14}
                   strokeWidth={2.2}
@@ -1220,7 +1345,7 @@ function GoalPopupBody({
                 />
               </button>
               {expanded && (
-                <div className="tab-panel border-t border-border-light bg-[rgba(0,113,227,0.02)] p-3.5">
+                <div className="tab-panel bg-[rgba(0,113,227,0.02)] p-3.5">
                   {live ? (
                     <>
                       <SubgoalEditorFields
@@ -1232,45 +1357,6 @@ function GoalPopupBody({
                         busy={busy}
                         onDone={() => setOpenSub(null)}
                       />
-                      {confirmSubRemove === s.id ? (
-                        <span className="mt-2 flex items-center gap-1.5">
-                          <span className="text-[11.5px] font-medium text-text-secondary">
-                            Remove this subgoal?
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setConfirmSubRemove(null);
-                              void run(
-                                {
-                                  op: "remove-subgoal",
-                                  goalId: goal.id,
-                                  subgoalId: s.id,
-                                },
-                                s.name + " removed"
-                              ).then((ok) => ok && setOpenSub(null));
-                            }}
-                            className="cursor-pointer rounded-full bg-[color:#DC2626] px-2.5 py-1 text-[11.5px] font-semibold text-white transition-all hover:opacity-90"
-                          >
-                            Remove
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmSubRemove(null)}
-                            className="cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
-                          >
-                            Keep
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmSubRemove(s.id)}
-                          className="mt-2 flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
-                        >
-                          <Trash2 size={12} strokeWidth={2.2} /> Remove this subgoal
-                        </button>
-                      )}
                     </>
                   ) : (
                     <div className="space-y-1.5">
@@ -1832,7 +1918,13 @@ function SubgoalEditorFields({
         <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Goal owners
-            <InfoHint text="Responsible for this subgoal overall — you can add several. An owner can also appear in the people list with a personal target of their own." />
+            <Crown
+              size={13}
+              strokeWidth={2.2}
+              className="text-[color:#7C3AED]"
+              aria-label="Owners wear the crown"
+            />
+            <InfoHint text="Responsible for this subgoal overall — the crown marks them wherever they appear. An owner can also appear in the people list with a personal target of their own." />
           </label>
           <div className="mt-2 space-y-1.5">
             <PersonSelect
@@ -1938,7 +2030,7 @@ function SubgoalEditorFields({
 
       {/* Primary action alone, bottom right, on its own footer line. No
           Cancel: the X (and the accordion header) close without saving. */}
-      <div className="flex items-center justify-end border-t border-border-light pt-3">
+      <div className="flex items-center justify-end pt-1">
         <button
           type="button"
           disabled={busy || !name.trim()}

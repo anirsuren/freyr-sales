@@ -411,7 +411,11 @@ export function PeopleTab({
                     className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface"
                   >
                     <Avatar name={p.name} className="h-9 w-9 text-[12px]" />
-                    <span className="min-w-0 flex-1">
+                    {/* The name keeps a fixed lane and the bar takes every
+                        remaining pixel — no dead middle (Anir, Aug 12: "the
+                        progress bar was too far from the name... fill the
+                        space", like the Team rows). */}
+                    <span className="min-w-0 w-full sm:w-64 sm:shrink-0">
                       <span className="block text-[13px] font-semibold text-text-primary transition-colors group-hover:text-blue-primary">
                         {p.name}
                       </span>
@@ -421,13 +425,13 @@ export function PeopleTab({
                           ` · owns ${p.owns.length} ${p.owns.length === 1 ? "subgoal" : "subgoals"}`}
                       </span>
                     </span>
-                    <span className="hidden shrink-0 text-[11.5px] text-text-tertiary tnum sm:block">
-                      {p.assignments.length}{" "}
-                      {p.assignments.length === 1 ? "goal" : "goals"}
-                    </span>
-                    {p.attainment !== null && (
-                      <span className="flex shrink-0 items-center gap-2">
-                        <span className="h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
+                    <span className="hidden flex-1 items-center gap-2.5 sm:flex">
+                      <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
+                        {p.assignments.length}{" "}
+                        {p.assignments.length === 1 ? "goal" : "goals"}
+                      </span>
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
+                        {p.attainment !== null && (
                           <span
                             className="block h-full rounded-full"
                             style={{
@@ -440,12 +444,12 @@ export function PeopleTab({
                                     : "#DC2626",
                             }}
                           />
-                        </span>
-                        <span className="w-9 text-right text-[12px] font-semibold text-text-primary tnum">
-                          {Math.round(p.attainment)}%
-                        </span>
+                        )}
                       </span>
-                    )}
+                      <span className="w-12 shrink-0 text-right text-[12px] font-semibold text-text-primary tnum">
+                        {p.attainment !== null ? `${Math.round(p.attainment)}%` : "—"}
+                      </span>
+                    </span>
                     <ChevronDown
                       size={15}
                       strokeWidth={2.2}
