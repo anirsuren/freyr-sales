@@ -620,10 +620,12 @@ export function CustomersBrowser({
           <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
             <button
               onClick={() => {
+                // Selecting works in BOTH layouts now — flipping people into
+                // the table was a surprise every time (Anir, Aug 12: "I should
+                // be able to check it off like on normal view too").
                 const next = !selectMode;
                 setSelectMode(next);
                 setSelected(new Set());
-                if (next) setView("table");
               }}
               aria-label={selectMode ? "Done selecting" : "Select accounts"}
               aria-pressed={selectMode}

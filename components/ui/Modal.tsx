@@ -14,6 +14,7 @@ export function Modal({
   title,
   children,
   size = "default",
+  tall = false,
   actions,
   dialogClassName,
   stacked = false,
@@ -24,6 +25,11 @@ export function Modal({
   children: React.ReactNode;
   // "wide" for content-heavy dialogs (editors, recipient pickers) — 640px.
   size?: "default" | "wide" | "workflow" | "chart" | "viewer";
+  /** Reserve real height. Dialogs whose fields open big dropdowns were
+   *  shorter than the menus they host, so every pick fought the bottom edge
+   *  (Anir, Aug 12: "these pop-ups with the big drop-downs have to be
+   *  significantly bigger — just make them all a certain size"). */
+  tall?: boolean;
   /** Actions that belong to the whole dialog — rendered in the header, left of
    *  the close button. Document controls (download, open elsewhere) live here
    *  rather than floating above the content they act on. */
@@ -130,7 +136,7 @@ export function Modal({
             : size === "wide"
             ? "max-w-[640px]"
             : "max-w-[440px]"
-        } max-h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl border border-border-light shadow-[0_24px_64px_-16px_rgba(0,0,0,0.30)] modal-in ${dialogClassName || ""}`}
+        } ${tall ? "min-h-[min(640px,calc(100vh-4rem))] " : ""}max-h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl border border-border-light shadow-[0_24px_64px_-16px_rgba(0,0,0,0.30)] modal-in ${dialogClassName || ""}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border-light shrink-0">

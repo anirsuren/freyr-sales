@@ -1082,12 +1082,15 @@ export function CustomerOfferingHeatMap({
         ) : (
           <div
             className={cn(
-              "heat-map-scroll min-h-[420px] overflow-auto pb-1.5",
+              // The matrix takes the screen: it is the page's whole point, and
+              // a short window meant scrolling a grid inside a scrolling page
+              // (Anir, Aug 12: "make this entire spreadsheet bigger… all the
+              // way till the bottom of the screen").
+              "heat-map-scroll max-h-[calc(100vh-190px)] min-h-[520px] overflow-auto pb-1.5",
               // A pinned offering row needs something to outlast: give the
               // matrix its own scroll area so the header can stay while the
               // rows move under it. Unpinned, the table grows and the page
               // scrolls exactly as it always did.
-              pinOfferings && "max-h-[70vh]"
             )}
           >
             <table

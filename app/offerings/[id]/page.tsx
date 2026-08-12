@@ -627,9 +627,13 @@ export default async function OfferingDetailPage({
                 and the link and stays silent rather than inventing one. */}
             {o.offeringType && (
               <SectionCard title="Offering Type" icon={Package}>
-                <p className="text-[13.5px] font-semibold text-text-primary">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-bold"
+                  style={{ color: "#6D28D9", background: "rgba(109,40,217,0.10)" }}
+                >
+                  <Package size={13} strokeWidth={2.2} />
                   {o.offeringType.name}
-                </p>
+                </span>
                 {o.offeringType.description && (
                   <p className="text-[13px] text-text-secondary leading-relaxed mt-1.5">
                     {o.offeringType.description}

@@ -59,7 +59,7 @@ export function OfferingCustomers({
        customer's full picture meant scrolling to a second table and finding
        their name again. Both facts hang off the same account, so they are
        columns of one row. */
-    <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+    <section className="mt-4 rounded-xl border border-border-light bg-white p-5 shadow-card">
       <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
         <Building2 size={15} strokeWidth={2} className="text-blue-primary" />
         Customers on this offering

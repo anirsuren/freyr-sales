@@ -361,6 +361,7 @@ export function PerformanceModule({
 
       <HowItWorksModal open={howOpen} onClose={() => setHowOpen(false)} />
       <Modal
+        tall
         open={goalModal !== null}
         onClose={() => setGoalModal(null)}
         title={
@@ -380,6 +381,7 @@ export function PerformanceModule({
       </Modal>
       {subModal && (
         <Modal
+          tall
           open
           onClose={() => setSubModal(null)}
           title={
@@ -905,6 +907,7 @@ function MasterTab({
 
       {/* ------------------------------------------- goal detail popup */}
       <Modal
+        tall
         open={openGoal !== null}
         onClose={() => setOpenId(null)}
         title={openGoal ? openGoal.name : ""}
@@ -1917,7 +1920,7 @@ function LogActualModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Log an actual" size="wide">
+    <Modal tall open={open} onClose={onClose} title="Log an actual" size="wide">
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
         One number at a time: who achieved what, on which goal. Person rolls
         into group, group rolls into the organization — automatically.
@@ -2115,7 +2118,7 @@ function GroupModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="New user group">
+    <Modal tall open={open} onClose={onClose} title="New user group">
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
         A group is a team with a head — for example a growth accounts team.
         Every member&apos;s numbers roll into the group&apos;s count, and

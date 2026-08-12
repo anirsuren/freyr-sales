@@ -107,6 +107,9 @@ export function CustomerCard({
   outcomeMix,
   healthTrend,
   trendTips,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
 }: {
   customer: Customer;
   contactCount: number;
@@ -118,6 +121,10 @@ export function CustomerCard({
   outcomeMix?: MixSlice[];
   healthTrend?: number[];
   trendTips?: TipItem[][];
+  /** Tile-view selection (Anir: checking off must work here too). */
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   // The hover pie: pipeline mix when there's open money, else how the logged
   // touches landed — a rep's first two questions about an account.

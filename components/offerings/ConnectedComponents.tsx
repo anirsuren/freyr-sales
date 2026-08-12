@@ -287,30 +287,7 @@ export function ConnectedComponents({
                             <Download size={14} strokeWidth={2} />
                           </button>
                         </Tooltip>
-                        {canEdit &&
-                          (confirmDisconnect === component.id ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void disconnect(component).then(() =>
-                                    setConfirmDisconnect(null)
-                                  )
-                                }
-                                className="cursor-pointer whitespace-nowrap rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                              >
-                                Disconnect?
-                              </button>
-                              <button
-                                type="button"
-                                aria-label="Keep it connected"
-                                onClick={() => setConfirmDisconnect(null)}
-                                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
-                              >
-                                <X size={12} strokeWidth={2} />
-                              </button>
-                            </>
-                          ) : (
+                        {canEdit && (
                             <Tooltip label="Take it out of this offering">
                               <button
                                 type="button"
@@ -324,7 +301,7 @@ export function ConnectedComponents({
                                 <Unlink size={14} strokeWidth={2} />
                               </button>
                             </Tooltip>
-                          ))}
+                          )}
                         <Tooltip label={`Open ${component.name}`}>
                           <Link
                             href={`/components/${component.id}?from=${encodeURIComponent(
@@ -417,30 +394,7 @@ export function ConnectedComponents({
                   )}
                 </div>
 
-                {canEdit &&
-                  (confirmDisconnect === component.id ? (
-                    <span className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-lg bg-white px-1 py-0.5 shadow-[0_2px_10px_rgba(0,0,0,0.10)]">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void disconnect(component).then(() =>
-                            setConfirmDisconnect(null)
-                          )
-                        }
-                        className="cursor-pointer rounded-lg bg-error/10 px-2 py-1 text-[11px] font-semibold text-error hover:bg-error/20"
-                      >
-                        Disconnect?
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Keep it connected"
-                        onClick={() => setConfirmDisconnect(null)}
-                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-surface"
-                      >
-                        <X size={12} strokeWidth={2} />
-                      </button>
-                    </span>
-                  ) : (
+                {canEdit && (
                     <button
                       type="button"
                       aria-label={`Disconnect ${component.name}`}
@@ -450,7 +404,7 @@ export function ConnectedComponents({
                     >
                       <Unlink size={13} strokeWidth={2} />
                     </button>
-                  ))}
+                  )}
               </div>
             );
           })}
@@ -535,6 +489,45 @@ export function ConnectedComponents({
           </form>
         )}
       </Modal>
+      {/* A REAL CONFIRMATION (Anir, Aug 12: "it should be like a pop-up that
+          says either Disconnect in red or Cancel… like normal"). The floating
+          "Disconnect?" chip read as a mistake, not a decision. */}
+      <Modal
+        open={confirmDisconnect !== null}
+        onClose={() => setConfirmDisconnect(null)}
+        title="Disconnect this component?"
+      >
+        <p className="text-[13px] leading-relaxed text-text-secondary">
+          {(() => {
+            const c = connected.find((x) => x.id === confirmDisconnect);
+            return c
+              ? `${c.name} stops being part of this offering. The component itself, its versions and its files are untouched — you can connect it again any time.`
+              : "";
+          })()}
+        </p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setConfirmDisconnect(null)}
+            className="cursor-pointer rounded-full px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              const c = connected.find((x) => x.id === confirmDisconnect);
+              if (!c) return;
+              void disconnect(c).then(() => setConfirmDisconnect(null));
+            }}
+            className="cursor-pointer rounded-full bg-error px-4 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+          >
+            {busy ? "Disconnecting…" : "Disconnect"}
+          </button>
+        </div>
+      </Modal>
     </section>
+
   );
 }

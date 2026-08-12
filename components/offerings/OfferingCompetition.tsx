@@ -508,7 +508,8 @@ export function OfferingCompetition({
           setFormOpen(false);
         }}
         title={openRow ? `${openRow.company} — ${openRow.product}` : ""}
-        size="wide"
+        size="workflow"
+        tall
       >
         {openRow && (
           <div>
@@ -714,6 +715,8 @@ export function OfferingCompetition({
         open={adding}
         onClose={() => setAdding(false)}
         title="Add a competitor product"
+        size="wide"
+        tall
       >
         <p className="text-[12.5px] leading-relaxed text-text-secondary">
           Who competes with {offeringName}, and with what? Companies already

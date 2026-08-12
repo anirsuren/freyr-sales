@@ -312,13 +312,6 @@ export function FolderPeek({
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => onOpenFolder(peekPath)}
-              className="shrink-0 cursor-pointer border-t border-border-light px-3 py-2 text-left text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-light/40"
-            >
-              Open this folder
-            </button>
           </div>,
           document.body
         )}
