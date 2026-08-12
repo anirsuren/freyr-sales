@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import {
-  ChevronDown,
   ClipboardList,
   Gauge,
   Pencil,
@@ -33,7 +32,7 @@ import {
   type PrimaryGoal,
   type Subgoal,
 } from "@/lib/performanceShared";
-import { TypeChip, UnitChip, VerifiedPill, typeMeta } from "./bits";
+import { TypeChip, TypeIconTile, UnitChip, typeMeta } from "./bits";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { PeopleTab } from "./PeopleTab";
 
@@ -157,6 +156,7 @@ export function PerformanceModule({
             run={run}
             onLogActual={() => setLogOpen(true)}
             onGoToMaster={() => chooseTab("master")}
+            onEditGoal={(g) => setGoalModal({ editing: g })}
           />
         ) : tab === "master" ? (
           <MasterTab
@@ -238,6 +238,7 @@ function MasterTab({
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const openGoal = state.goals.find((g) => g.id === openId) ?? null;
 
   const filtered = state.goals.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
@@ -261,6 +262,13 @@ function MasterTab({
       filtered.map((g) => g.type).filter((t) => !state.types.includes(t))
     ),
   ].map((t) => ({ type: t, goals: filtered.filter((g) => g.type === t) }));
+
+  // Popup-first (his standing preference): editing flows leave the detail
+  // popup before opening their own modal, so dialogs never stack.
+  const via = (fn: () => void) => {
+    setOpenId(null);
+    fn();
+  };
 
   return (
     <div>
@@ -332,240 +340,294 @@ function MasterTab({
                 {goals.length} {goals.length === 1 ? "goal" : "goals"}
               </span>
             </div>
-            <div className="mt-2 space-y-2">
+            <div className="mt-2.5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 stagger">
               {goals.map((g) => (
-                <MasterGoalRow
+                <GoalCard
                   key={g.id}
                   goal={g}
-                  open={openId === g.id}
-                  onToggle={() => setOpenId(openId === g.id ? null : g.id)}
                   live={live}
                   run={run}
-                  onEditGoal={onEditGoal}
-                  onNewSubgoal={onNewSubgoal}
-                  onEditSubgoal={onEditSubgoal}
+                  onOpen={() => setOpenId(g.id)}
                 />
               ))}
             </div>
           </div>
         ))
       )}
+
+      {/* ------------------------------------------- goal detail popup */}
+      <Modal
+        open={openGoal !== null}
+        onClose={() => setOpenId(null)}
+        title={openGoal ? openGoal.name : ""}
+        size="wide"
+      >
+        {openGoal && (
+          <div>
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-[var(--surface)] p-3.5">
+              <TypeIconTile type={openGoal.type} />
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-[15px] font-bold text-text-primary">
+                    {openGoal.name}
+                  </span>
+                  <UnitChip unit={openGoal.unit} />
+                  {openGoal.measure === "level" && (
+                    <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
+                      latest value
+                    </span>
+                  )}
+                </span>
+                <span className="mt-0.5 block text-[12px] text-text-secondary tnum">
+                  {openGoal.year} · Target{" "}
+                  {openGoal.target > 0
+                    ? fmtAmount(openGoal.unit, openGoal.target)
+                    : "not set yet"}
+                </span>
+              </span>
+              <PickedPill goal={openGoal} live={live} run={run} />
+            </div>
+
+            <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+              Subgoals
+            </p>
+            {openGoal.subgoals.length === 0 ? (
+              <p className="mt-1.5 rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] leading-relaxed text-text-secondary">
+                No subgoals yet. Split this goal when different teams carry
+                different pieces of it — like Growth Accounts vs Focused
+                Account AMR.
+              </p>
+            ) : (
+              <div className="mt-1.5 space-y-1.5">
+                {openGoal.subgoals.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-2.5"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="text-[13px] font-semibold text-text-primary">
+                        {s.name}
+                      </span>
+                      <span className="ml-2 text-[11px] text-text-tertiary tnum">
+                        {s.target > 0
+                          ? fmtAmount(openGoal.unit, s.target)
+                          : "no target"}{" "}
+                        · {s.people.length}{" "}
+                        {s.people.length === 1 ? "person" : "people"}
+                      </span>
+                    </span>
+                    {s.owners.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        {s.owners.slice(0, 3).map((o) => (
+                          <Avatar
+                            key={o}
+                            name={o}
+                            tooltip={"Goal owner: " + o}
+                            className="h-5 w-5 text-[8px]"
+                          />
+                        ))}
+                        <span className="text-[10.5px] font-medium text-text-tertiary">
+                          {s.owners.length === 1
+                            ? s.owners[0]
+                            : s.owners.length + " owners"}
+                        </span>
+                      </span>
+                    )}
+                    {live && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => via(() => onEditSubgoal(openGoal, s))}
+                          title="Edit subgoal"
+                          className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                        >
+                          <Pencil size={12.5} strokeWidth={2.2} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            run(
+                              {
+                                op: "remove-subgoal",
+                                goalId: openGoal.id,
+                                subgoalId: s.id,
+                              },
+                              s.name + " removed"
+                            )
+                          }
+                          title="Remove subgoal"
+                          className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                        >
+                          <Trash2 size={12.5} strokeWidth={2.2} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {live && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-light pt-3">
+                <button
+                  type="button"
+                  onClick={() => via(() => onNewSubgoal(openGoal))}
+                  className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-primary px-3.5 py-2 text-[12.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+                >
+                  <Plus size={13} strokeWidth={2.4} /> Add subgoal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => via(() => onEditGoal(openGoal))}
+                  className="flex cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-3.5 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
+                >
+                  <Pencil size={13} strokeWidth={2.2} /> Edit goal
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    run(
+                      { op: "remove-goal", goalId: openGoal.id },
+                      openGoal.name + " removed from the master"
+                    ).then((ok) => ok && setOpenId(null))
+                  }
+                  className="ml-auto flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
+                >
+                  <Trash2 size={12.5} strokeWidth={2.2} /> Remove goal
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
 
-function MasterGoalRow({
+/** The "On the goal plan / Master only" toggle, shared by cards and popup. */
+function PickedPill({
   goal,
-  open,
-  onToggle,
   live,
   run,
-  onEditGoal,
-  onNewSubgoal,
-  onEditSubgoal,
+  stop = false,
 }: {
   goal: PrimaryGoal;
-  open: boolean;
-  onToggle: () => void;
   live: boolean;
   run: RunOp;
-  onEditGoal: (g: PrimaryGoal) => void;
-  onNewSubgoal: (g: PrimaryGoal) => void;
-  onEditSubgoal: (g: PrimaryGoal, s: Subgoal) => void;
+  stop?: boolean;
 }) {
   return (
-    <Card className="overflow-hidden p-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface"
-      >
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-[13.5px] font-semibold text-text-primary">
-              {goal.name}
-            </span>
-            <UnitChip unit={goal.unit} />
-            {goal.measure === "level" && (
-              <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
-                latest value
-              </span>
-            )}
-            <span className="text-[11px] text-text-tertiary tnum">
-              {goal.year}
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={(e) => {
+        if (stop) e.stopPropagation();
+        if (!live) return;
+        run(
+          {
+            op: "update-goal",
+            goalId: goal.id,
+            pickedForOrg: !goal.pickedForOrg,
+          },
+          goal.pickedForOrg
+            ? goal.name + " is off the goal plan"
+            : goal.name + " is on the goal plan"
+        );
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          (e.target as HTMLElement).click();
+        }
+      }}
+      title={
+        goal.pickedForOrg
+          ? "Counted on Org performance. Click to keep it master-only."
+          : "Master-only. Click to put it on the org goal plan."
+      }
+      className={cn(
+        "shrink-0 cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1 text-[10.5px] font-bold transition-all",
+        goal.pickedForOrg
+          ? "bg-blue-primary text-white"
+          : "border border-border-light text-text-tertiary hover:border-blue-subtle hover:text-text-secondary"
+      )}
+    >
+      {goal.pickedForOrg ? "On the goal plan" : "Master only"}
+    </span>
+  );
+}
+
+/** One goal on the master — an Offerings-style card, not a text row. */
+function GoalCard({
+  goal,
+  live,
+  run,
+  onOpen,
+}: {
+  goal: PrimaryGoal;
+  live: boolean;
+  run: RunOp;
+  onOpen: () => void;
+}) {
+  const owners = [...new Set(goal.subgoals.flatMap((s) => s.owners))];
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex cursor-pointer flex-col rounded-xl border border-border-light bg-white p-4 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
+    >
+      <span className="flex w-full items-start justify-between gap-2">
+        <TypeIconTile type={goal.type} />
+        <PickedPill goal={goal} live={live} run={run} stop />
+      </span>
+      <span className="mt-2.5 block text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
+        {goal.name}
+      </span>
+      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <UnitChip unit={goal.unit} />
+        {goal.measure === "level" && (
+          <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
+            latest value
+          </span>
+        )}
+        <span className="text-[10.5px] text-text-tertiary tnum">
+          {goal.year}
+        </span>
+      </span>
+      <span className="mt-3 flex w-full items-center justify-between gap-2 border-t border-border-light pt-2.5">
+        {goal.target > 0 ? (
+          <span className="text-[11.5px] text-text-tertiary tnum">
+            Target{" "}
+            <span className="font-bold text-text-primary">
+              {fmtAmount(goal.unit, goal.target)}
             </span>
           </span>
-          <span className="mt-0.5 block text-[11.5px] text-text-tertiary tnum">
-            Target{" "}
-            {goal.target > 0 ? (
-              <span className="font-semibold text-text-secondary">
-                {fmtAmount(goal.unit, goal.target)}
-              </span>
-            ) : (
-              "not set yet"
-            )}
-            {" · "}
+        ) : (
+          <span className="text-[11.5px] font-semibold text-blue-primary">
+            Set the target →
+          </span>
+        )}
+        <span className="flex items-center gap-1.5">
+          {owners.length > 0 && (
+            <span className="flex -space-x-1.5">
+              {owners.slice(0, 3).map((o) => (
+                <Avatar
+                  key={o}
+                  name={o}
+                  tooltip={"Goal owner: " + o}
+                  className="h-5 w-5 border-2 border-white text-[8px]"
+                />
+              ))}
+            </span>
+          )}
+          <span className="text-[10.5px] text-text-tertiary tnum">
             {goal.subgoals.length}{" "}
             {goal.subgoals.length === 1 ? "subgoal" : "subgoals"}
           </span>
         </span>
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!live) return;
-            run(
-              {
-                op: "update-goal",
-                goalId: goal.id,
-                pickedForOrg: !goal.pickedForOrg,
-              },
-              goal.pickedForOrg
-                ? `${goal.name} is off the goal plan`
-                : `${goal.name} is on the goal plan`
-            );
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-              (e.target as HTMLElement).click();
-            }
-          }}
-          title={
-            goal.pickedForOrg
-              ? "Counted on Org performance. Click to keep it master-only."
-              : "Master-only. Click to put it on the org goal plan."
-          }
-          className={cn(
-            "shrink-0 cursor-pointer rounded-full px-2.5 py-1 text-[10.5px] font-bold transition-all",
-            goal.pickedForOrg
-              ? "bg-blue-primary text-white"
-              : "border border-border-light text-text-tertiary hover:border-blue-subtle hover:text-text-secondary"
-          )}
-        >
-          {goal.pickedForOrg ? "On the goal plan" : "Master only"}
-        </span>
-        <ChevronDown
-          size={15}
-          strokeWidth={2.2}
-          className={cn(
-            "shrink-0 text-text-tertiary transition-transform",
-            open && "rotate-180 text-blue-primary"
-          )}
-        />
-      </button>
-      {open && (
-        <div className="tab-panel border-t border-border-light bg-[var(--surface)] px-4 py-3">
-          {goal.subgoals.length === 0 ? (
-            <p className="text-[12px] text-text-tertiary">
-              No subgoals yet. Split this goal when different teams carry
-              different pieces of it — e.g. Growth Accounts vs Focused Account
-              AMR.
-            </p>
-          ) : (
-            <div className="space-y-1.5">
-              {goal.subgoals.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-2"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="text-[12.5px] font-semibold text-text-primary">
-                      {s.name}
-                    </span>
-                    <span className="ml-2 text-[11px] text-text-tertiary tnum">
-                      {s.target > 0
-                        ? fmtAmount(goal.unit, s.target)
-                        : "no target"}{" "}
-                      · {s.people.length}{" "}
-                      {s.people.length === 1 ? "person" : "people"}
-                    </span>
-                  </span>
-                  {s.owners.length > 0 && (
-                    <span className="flex items-center gap-1">
-                      {s.owners.slice(0, 3).map((o) => (
-                        <Avatar
-                          key={o}
-                          name={o}
-                          tooltip={`Goal owner: ${o}`}
-                          className="h-5 w-5 text-[8px]"
-                        />
-                      ))}
-                      <span className="text-[10.5px] font-medium text-text-tertiary">
-                        {s.owners.length === 1
-                          ? s.owners[0]
-                          : `${s.owners.length} owners`}
-                      </span>
-                    </span>
-                  )}
-                  {live && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => onEditSubgoal(goal, s)}
-                        title="Edit subgoal"
-                        className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
-                      >
-                        <Pencil size={12.5} strokeWidth={2.2} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          run(
-                            {
-                              op: "remove-subgoal",
-                              goalId: goal.id,
-                              subgoalId: s.id,
-                            },
-                            `${s.name} removed`
-                          )
-                        }
-                        title="Remove subgoal"
-                        className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:#DC2626]"
-                      >
-                        <Trash2 size={12.5} strokeWidth={2.2} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {live && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onNewSubgoal(goal)}
-                className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-primary px-3 py-1.5 text-[12px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-              >
-                <Plus size={12} strokeWidth={2.4} /> Add subgoal
-              </button>
-              <button
-                type="button"
-                onClick={() => onEditGoal(goal)}
-                className="flex cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
-              >
-                <Pencil size={12} strokeWidth={2.2} /> Edit goal
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  run(
-                    { op: "remove-goal", goalId: goal.id },
-                    `${goal.name} removed from the master`
-                  )
-                }
-                className="ml-auto flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1.5 text-[11.5px] font-medium text-text-tertiary transition-colors hover:bg-white hover:text-[color:#DC2626]"
-              >
-                <Trash2 size={12} strokeWidth={2.2} /> Remove goal
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </Card>
+      </span>
+    </button>
   );
 }
 

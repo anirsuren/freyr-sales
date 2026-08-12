@@ -55,6 +55,30 @@ export function typeMeta(type: string): TypeMeta {
   };
 }
 
+/** The colored icon square that fronts goal cards and rows — same visual
+ *  language as the Offerings catalog tiles. */
+export function TypeIconTile({
+  type,
+  className,
+}: {
+  type: string;
+  className?: string;
+}) {
+  const meta = typeMeta(type);
+  const Icon = meta.icon;
+  return (
+    <span
+      className={cn(
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+        className
+      )}
+      style={{ color: meta.color, background: `${meta.color}14` }}
+    >
+      <Icon size={18} strokeWidth={2} />
+    </span>
+  );
+}
+
 export function TypeChip({
   type,
   size = "md",

@@ -33,7 +33,7 @@ import {
   type PeriodKey,
   type PrimaryGoal,
 } from "@/lib/performanceShared";
-import { MetPill, PacePill, TypeChip, VerifiedPill } from "./bits";
+import { MetPill, PacePill, TypeChip, TypeIconTile, VerifiedPill } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 
 /**
@@ -52,12 +52,14 @@ export function OrgPerformanceTab({
   run,
   onLogActual,
   onGoToMaster,
+  onEditGoal,
 }: {
   state: PerformanceState;
   live: boolean;
   run: RunOp;
   onLogActual: () => void;
   onGoToMaster: () => void;
+  onEditGoal: (g: PrimaryGoal) => void;
 }) {
   const [query, setQuery] = useState("");
   const [period, choosePeriod] = useStoredView<PeriodKey>(
@@ -224,6 +226,7 @@ export function OrgPerformanceTab({
                   run={run}
                   period={period}
                   periodLabel={periodLabel}
+                  onEditGoal={onEditGoal}
                 />
               ))}
             </tbody>
@@ -270,6 +273,7 @@ function GoalRows({
   run,
   period,
   periodLabel,
+  onEditGoal,
 }: {
   goal: PrimaryGoal;
   actuals: PerfActual[];
@@ -279,6 +283,7 @@ function GoalRows({
   run: RunOp;
   period: PeriodKey;
   periodLabel: string;
+  onEditGoal: (g: PrimaryGoal) => void;
 }) {
   const actual = actualValue(actuals, goal);
   const pace = paceVerdict(actual, goal.target, goal.year, goal.measure);
@@ -306,23 +311,43 @@ function GoalRows({
         )}
       >
         <td className="px-4 py-3">
-          <span className="flex flex-col gap-1">
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="text-[13.5px] font-semibold text-text-primary">
-                {goal.name}
+          <span className="flex items-center gap-2.5">
+            <TypeIconTile type={goal.type} />
+            <span className="flex min-w-0 flex-col gap-1">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-[13.5px] font-semibold text-text-primary">
+                  {goal.name}
+                </span>
+                <PacePill pace={pace} size="sm" />
               </span>
-              <PacePill pace={pace} size="sm" />
-            </span>
-            <span className="flex items-center gap-1.5">
-              <TypeChip type={goal.type} size="sm" />
-              <span className="text-[10.5px] text-text-tertiary tnum">
-                {goal.year}
+              <span className="flex items-center gap-1.5">
+                <TypeChip type={goal.type} size="sm" />
+                <span className="text-[10.5px] text-text-tertiary tnum">
+                  {goal.year}
+                </span>
               </span>
             </span>
           </span>
         </td>
-        <td className="whitespace-nowrap px-4 py-3 text-[13px] font-semibold text-text-primary tnum">
-          {goal.target > 0 ? fmtAmount(goal.unit, goal.target) : "—"}
+        <td className="whitespace-nowrap px-4 py-3">
+          {goal.target > 0 ? (
+            <span className="text-[13px] font-semibold text-text-primary tnum">
+              {fmtAmount(goal.unit, goal.target)}
+            </span>
+          ) : live ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditGoal(goal);
+              }}
+              className="cursor-pointer rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-bold text-blue-primary transition-colors hover:bg-[rgba(0,113,227,0.14)]"
+            >
+              Set target
+            </button>
+          ) : (
+            <span className="text-[13px] text-text-tertiary">—</span>
+          )}
         </td>
         <td className="whitespace-nowrap px-4 py-3">
           <span className="block text-[13px] font-semibold text-text-primary tnum">
@@ -336,7 +361,11 @@ function GoalRows({
           )}
         </td>
         <td className="px-4 py-3">
-          <MetPill met={goal.target > 0 && actual >= goal.target} size="sm" />
+          {goal.target > 0 ? (
+            <MetPill met={actual >= goal.target} size="sm" />
+          ) : (
+            <span className="text-[12px] text-text-tertiary">—</span>
+          )}
         </td>
         <td className="px-4 py-3">
           <MiniBar actual={actual} target={goal.target} pace={pace} />
