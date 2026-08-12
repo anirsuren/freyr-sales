@@ -369,7 +369,7 @@ export function PerformanceModule({
               ? `Edit subgoal — ${subModal.editing.name}`
               : `Add a subgoal to ${subModal.goal.name}`
           }
-          size="wide"
+          size="workflow"
         >
           <SubgoalEditorFields
             key={subModal.editing?.id ?? "new"}

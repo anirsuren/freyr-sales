@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, type LucideIcon } from "lucide-react";
+import { ChevronDown, Check, Search, type LucideIcon } from "lucide-react";
 import {
   PriorityLabel,
   PriorityTooltip,
@@ -141,6 +141,10 @@ export function ColorSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
+  // Long lists get a search box (Anir: "all big dropdowns like this with
+  // over 10 things definitely need a search bar").
+  const [menuQuery, setMenuQuery] = useState("");
+  const searchable = options.length > 10;
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? options[0];
@@ -163,6 +167,7 @@ export function ColorSelect({
       const desiredWidth = detailed ? 304 : Math.max(rect.width, 240);
       setMenuStyle(floatingMenuStyle(rect, desiredWidth, 190));
     }
+    setMenuQuery("");
     setOpen(true);
   };
 
@@ -361,7 +366,31 @@ export function ColorSelect({
           )}
           style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
         >
-          {options.map((o, rowIndex) => {
+          {searchable && (
+            <div className="sticky top-0 z-10 -m-1.5 mb-1 border-b border-border-light bg-white p-1.5">
+              <div className="flex items-center gap-1.5 rounded-md bg-surface px-2 py-1.5">
+                <Search size={13} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                <input
+                  autoFocus
+                  value={menuQuery}
+                  onChange={(e) => setMenuQuery(e.target.value)}
+                  placeholder="Search…"
+                  aria-label={`Search ${ariaLabel || "options"}`}
+                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
+                />
+              </div>
+            </div>
+          )}
+          {(searchable && menuQuery.trim()
+            ? options.filter((o) => {
+                const q = menuQuery.trim().toLowerCase();
+                return (
+                  o.label.toLowerCase().includes(q) ||
+                  (o.description ?? "").toLowerCase().includes(q)
+                );
+              })
+            : options
+          ).map((o, rowIndex) => {
             const on = o.value === value;
             // Selected look = a whisper of the option's own color (Suren: the old
             // solid-blue fill + left notch looked bad). No bar, no heavy fill.
@@ -390,10 +419,9 @@ export function ColorSelect({
                 <span className="flex-1 min-w-0">
                   <span
                     className={cn(
-                      "block",
-                      !detailed && "truncate",
+                      "block whitespace-normal leading-snug",
                       on && "font-semibold",
-                      detailed && "whitespace-normal text-[13px] leading-tight"
+                      detailed && "text-[13px] leading-tight"
                     )}
                   >
                     {o.label}
@@ -425,6 +453,19 @@ export function ColorSelect({
               </button>
             );
           })}
+          {searchable &&
+            menuQuery.trim() &&
+            options.every(
+              (o) =>
+                !o.label.toLowerCase().includes(menuQuery.trim().toLowerCase()) &&
+                !(o.description ?? "")
+                  .toLowerCase()
+                  .includes(menuQuery.trim().toLowerCase())
+            ) && (
+              <p className="px-2.5 py-2 text-[12.5px] text-text-tertiary">
+                Nothing matches that.
+              </p>
+            )}
         </div>,
         document.body
       )}
