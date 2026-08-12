@@ -7,6 +7,7 @@ import {
   Gauge,
   Pencil,
   PenLine,
+  UsersRound,
   ShieldCheck,
   Target,
   TrendingDown,
@@ -404,7 +405,7 @@ export function OrgPerformanceTab({
                   <th
                     key={i}
                     className={cn(
-                      "px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
+                      "px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
                       i >= 1 && i <= 4 && "w-[130px]",
                       i === 6 && "w-8"
                     )}
@@ -516,10 +517,10 @@ function GoalRows({
           open && "bg-surface"
         )}
       >
-        <td className="px-4 py-3">
-          <span className="flex items-center gap-2.5">
+        <td className="px-4 py-4">
+          <span className="flex items-center gap-3">
             <TypeIconTile type={goal.type} />
-            <span className="flex min-w-0 flex-col gap-1">
+            <span className="flex min-w-0 flex-col gap-2">
               <span className="flex flex-wrap items-center gap-2">
                 <span className="text-[13.5px] font-semibold text-text-primary">
                   {goal.name}
@@ -535,7 +536,7 @@ function GoalRows({
             </span>
           </span>
         </td>
-        <td className="whitespace-nowrap px-4 py-3">
+        <td className="whitespace-nowrap px-4 py-4">
           {goal.target > 0 ? (
             <span className="text-[13px] font-semibold text-text-primary tnum">
               {fmtAmount(goal.unit, goal.target)}
@@ -555,7 +556,7 @@ function GoalRows({
             <span className="text-[13px] text-text-tertiary">—</span>
           )}
         </td>
-        <td className="whitespace-nowrap px-4 py-3">
+        <td className="whitespace-nowrap px-4 py-4">
           <span className="block text-[13px] font-semibold text-text-primary tnum">
             {fmtAmount(goal.unit, actual)}
           </span>
@@ -566,14 +567,14 @@ function GoalRows({
             </span>
           )}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-4">
           {goal.target > 0 ? (
             <MetPill met={actual >= goal.target} size="sm" />
           ) : (
             <span className="text-[12px] text-text-tertiary">—</span>
           )}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-4">
           <MiniBar actual={actual} target={goal.target} pace={pace} />
           {goal.measure === "total" && goal.target > 0 && (
             <span className="mt-0.5 block text-[10px] text-text-tertiary tnum">
@@ -581,7 +582,7 @@ function GoalRows({
             </span>
           )}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-4">
           <VerifiedPill
             verified={goal.verified}
             size="sm"
@@ -602,7 +603,7 @@ function GoalRows({
             }
           />
         </td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-4">
           <ChevronDown
             size={15}
             strokeWidth={2.2}
@@ -615,7 +616,7 @@ function GoalRows({
       </tr>
       {open && (
         <tr>
-          <td colSpan={7} className="bg-[var(--surface)] px-4 pb-4 pt-1">
+          <td colSpan={7} className="bg-[var(--surface)] px-4 pb-5 pt-3">
             <div className="tab-panel space-y-3">
               {goal.subgoals.length === 0 ? (
                 goal.measure === "level" ? (
@@ -850,16 +851,22 @@ function GoalRows({
                         </table>
                       )}
                       {s.people.length === 0 && (
-                        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-border-light px-3 py-2">
-                          <span className="text-[11.5px] text-text-tertiary">
-                            No people on this subgoal yet - each person gets
+                        // A real empty state, centred (Anir, Aug 12: "make
+                        // that section bigger and put Assign people in the
+                        // center") — the squeezed row read as a footnote.
+                        <div className="mt-2.5 flex flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-border-light bg-white px-4 py-6 text-center">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(0,113,227,0.08)] text-blue-primary">
+                            <UsersRound size={17} strokeWidth={2} />
+                          </span>
+                          <span className="block text-[12.5px] leading-relaxed text-text-secondary">
+                            No people on this subgoal yet — each person gets
                             their own target.
                           </span>
                           {live && (
                             <button
                               type="button"
                               onClick={() => onEditSubgoal(goal, s)}
-                              className="cursor-pointer rounded-full bg-blue-primary px-2.5 py-1 text-[11px] font-bold text-white transition-all hover:opacity-90"
+                              className="cursor-pointer rounded-full bg-blue-primary px-4 py-2 text-[12.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
                             >
                               Assign people
                             </button>
