@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Crown, Plus, Trash2, UsersRound } from "lucide-react";
+import { ChevronDown, Crown, Plus, Trash2, UsersRound,
+  PencilLine,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -128,11 +130,19 @@ export function PeopleTab({
   live,
   run,
   onNewGroup,
+  onLogActual,
 }: {
   state: PerformanceState;
   live: boolean;
   run: RunOp;
   onNewGroup: () => void;
+  /** Opens the Log-an-actual popup pre-filled with this goal row's
+   *  goal, subgoal and person — anyone signed in can update a number. */
+  onLogActual: (prefill: {
+    goalId: string;
+    subgoalId: string | null;
+    person: string;
+  }) => void;
 }) {
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
@@ -620,6 +630,23 @@ export function PeopleTab({
                         pace={pace}
                         showExpected={a.measure === "total"}
                       />
+                      {live && (
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onLogActual({
+                                goalId: a.goalId,
+                                subgoalId: a.subgoalId,
+                                person: person.name,
+                              })
+                            }
+                            className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-light px-3 py-1.5 text-[11.5px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
+                          >
+                            <PencilLine size={12} strokeWidth={2.2} /> Log an actual
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

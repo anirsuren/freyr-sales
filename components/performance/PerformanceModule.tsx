@@ -220,6 +220,14 @@ export function PerformanceModule({
     editing: Subgoal | null;
   } | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  /** Prefill for the Log-an-actual popup when opened from a person's own
+   *  goal row (Anir, Aug 12: "I can't edit this because it's me — if I'm
+   *  signed in I should be able to"). */
+  const [logPrefill, setLogPrefill] = useState<{
+    goalId: string;
+    subgoalId: string | null;
+    person: string;
+  } | null>(null);
   const [groupOpen, setGroupOpen] = useState(false);
 
   const people = useMemo(() => {
@@ -357,6 +365,10 @@ export function PerformanceModule({
             live={live}
             run={run}
             onNewGroup={() => setGroupOpen(true)}
+            onLogActual={(prefill) => {
+              setLogPrefill(prefill);
+              setLogOpen(true);
+            }}
           />
         )}
       </div>
@@ -408,7 +420,11 @@ export function PerformanceModule({
         state={state}
         meName={meName}
         suggestions={people}
-        onClose={() => setLogOpen(false)}
+        initial={logPrefill}
+        onClose={() => {
+          setLogOpen(false);
+          setLogPrefill(null);
+        }}
         run={run}
         busy={busy}
       />
@@ -1943,6 +1959,7 @@ function LogActualModal({
   state,
   meName,
   suggestions,
+  initial,
   onClose,
   run,
   busy,
@@ -1951,6 +1968,7 @@ function LogActualModal({
   state: PerformanceState;
   meName: string;
   suggestions: string[];
+  initial?: { goalId: string; subgoalId: string | null; person: string } | null;
   onClose: () => void;
   run: RunOp;
   busy: boolean;
@@ -1961,6 +1979,15 @@ function LogActualModal({
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
+
+  // Opened from a person's goal row: land with goal, subgoal and person
+  // already chosen so the only thing left to type is the number.
+  useEffect(() => {
+    if (!open || !initial) return;
+    setGoalId(initial.goalId);
+    setSubgoalId(initial.subgoalId ?? "");
+    setPerson(initial.person);
+  }, [open, initial]);
 
   const goal = state.goals.find((g) => g.id === goalId) ?? null;
   const sub = goal?.subgoals.find((s) => s.id === subgoalId) ?? null;

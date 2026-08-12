@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AutoFresh } from "@/components/market-intel/AutoFresh";
 import {
   Building2,
   Hourglass,
@@ -83,6 +84,7 @@ export default async function MarketIntelPage({
       if (tab === "market") {
         return (
           <div>
+            <AutoFresh />
             <MiTabs
               active="market"
               action={

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AutoFresh } from "@/components/market-intel/AutoFresh";
 import {
   ArrowLeft,
   Building2,
@@ -89,6 +90,7 @@ export default async function MarketIntelCompanyPage({
   if (!mine) {
     return (
       <div>
+        <AutoFresh />
         <Link
           href="/market-intel"
           className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
