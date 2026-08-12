@@ -16,6 +16,7 @@ import {
   Trash2,
   UsersRound,
   X,
+  Maximize2,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Card } from "@/components/ui/Card";
@@ -906,15 +907,32 @@ function MasterTab({
                       <td className="px-4 py-4">
                         <PickedPill goal={g} live={live} run={run} />
                       </td>
-                      <td className="w-10 py-4 pr-4">
-                        <ChevronDown
-                          size={15}
-                          strokeWidth={2.2}
-                          className={cn(
-                            "text-text-tertiary transition-transform",
-                            expandedId === g.id && "rotate-180 text-blue-primary"
-                          )}
-                        />
+                      <td className="w-16 py-4 pr-4">
+                        <span className="flex items-center justify-end gap-1">
+                          {/* the same goal, in the popup form instead of the
+                              inline unfold (Anir, Aug 12: "add the option to
+                              have it in a pop-up form if they want to") */}
+                          <button
+                            type="button"
+                            title="Open in a popup"
+                            aria-label={`Open ${g.name} in a popup`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenId(g.id);
+                            }}
+                            className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                          >
+                            <Maximize2 size={13} strokeWidth={2.2} />
+                          </button>
+                          <ChevronDown
+                            size={15}
+                            strokeWidth={2.2}
+                            className={cn(
+                              "text-text-tertiary transition-transform",
+                              expandedId === g.id && "rotate-180 text-blue-primary"
+                            )}
+                          />
+                        </span>
                       </td>
                     </tr>
                     {expandedId === g.id && (

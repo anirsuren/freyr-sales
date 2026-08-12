@@ -185,6 +185,10 @@ export function PersonSelect({
       <button
         type="button"
         onClick={() => {
+          // Position first, THEN show: anchoring used to run an effect late,
+          // so the menu painted one frame at the wrong spot and jumped
+          // (Anir, Aug 12: "it glitches... like a frame stutter").
+          if (!open) anchorMenu();
           setOpen((v) => !v);
           setQuery("");
         }}
@@ -214,6 +218,7 @@ export function PersonSelect({
         />
       </button>
       {open &&
+        menuStyle !== null &&
         typeof document !== "undefined" &&
         createPortal(
         <div
