@@ -551,8 +551,12 @@ export function LiveCompanyBriefing({
                           >
                             <KIcon size={13} strokeWidth={2.2} />
                           </span>
-                          <span className="flex-1">{k.label}</span>
-                          <span className="tnum text-[12px] text-text-tertiary">{k.count}</span>
+                          <span className="flex-1">
+                            {k.label}{" "}
+                            <span className="tnum font-normal text-[12px] text-text-tertiary">
+                              ({k.count})
+                            </span>
+                          </span>
                           {on && <Check size={14} strokeWidth={2.4} className="text-blue-primary" />}
                         </button>
                       );
