@@ -850,7 +850,7 @@ function MasterTab({
                         expandedId === g.id ? "bg-blue-light/40" : "hover:bg-surface"
                       )}
                     >
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-4">
                         <span className="flex items-center gap-2.5">
                           <TypeIconTile type={g.type} className="h-8 w-8" />
                           <span className="min-w-0">
@@ -866,7 +866,7 @@ function MasterTab({
                           </span>
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-2.5">
+                      <td className="whitespace-nowrap px-4 py-4">
                         <UnitChip unit={g.unit} />
                         {g.measure === "level" && (
                           <span className="ml-1.5 rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
@@ -874,7 +874,7 @@ function MasterTab({
                           </span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-2.5 text-[13px] font-semibold text-text-primary tnum">
+                      <td className="whitespace-nowrap px-4 py-4 text-[13px] font-semibold text-text-primary tnum">
                         {g.target > 0 ? (
                           fmtAmount(g.unit, g.target)
                         ) : (
@@ -883,10 +883,10 @@ function MasterTab({
                           </span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-2.5 text-[12.5px] text-text-secondary tnum">
+                      <td className="whitespace-nowrap px-4 py-4 text-[12.5px] text-text-secondary tnum">
                         {g.subgoals.length}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-4">
                         {owners.length > 0 ? (
                           <span className="flex -space-x-1.5">
                             {owners.slice(0, 4).map((o) => (
@@ -902,10 +902,10 @@ function MasterTab({
                           <span className="text-[11.5px] text-text-tertiary">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-4">
                         <PickedPill goal={g} live={live} run={run} />
                       </td>
-                      <td className="w-10 py-2.5 pr-4">
+                      <td className="w-10 py-4 pr-4">
                         <ChevronDown
                           size={15}
                           strokeWidth={2.2}
@@ -918,7 +918,7 @@ function MasterTab({
                     </tr>
                     {expandedId === g.id && (
                       <tr className="bg-white">
-                        <td colSpan={7} className="px-4 pb-4 pt-2">
+                        <td colSpan={7} className="px-4 pb-6 pt-2">
                           <div className="tab-panel pt-1">
                             <GoalPopupBody
                               hostedInPopup={false}
