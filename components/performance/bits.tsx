@@ -423,24 +423,27 @@ export function VerifiedPill({
   size?: "sm" | "md";
 }) {
   const Icon = verified ? ShieldCheck : ShieldQuestion;
-  const body = (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full font-bold transition-opacity",
-        size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]",
-        onToggle && "group-hover/vp:opacity-80"
-      )}
-      style={
-        verified
-          ? { color: "#16A34A", background: "rgba(22,163,74,0.10)" }
-          : { color: "#B45309", background: "rgba(180,83,9,0.10)" }
-      }
-    >
-      <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
-      {verified ? "Verified" : "Not verified"}
-    </span>
-  );
-  if (!onToggle) return body;
+  // Read-only chip: leadership hasn't opened the switch to this viewer.
+  if (!onToggle) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full font-bold",
+          size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]"
+        )}
+        style={
+          verified
+            ? { color: "#16A34A", background: "rgba(22,163,74,0.10)" }
+            : { color: "#B45309", background: "rgba(180,83,9,0.10)" }
+        }
+      >
+        <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
+        {verified ? "Verified" : "Not verified"}
+      </span>
+    );
+  }
+  // Clickable: dress like a real button — border, shadow, hover fill, a
+  // visible action (Anir, Aug 12: "this doesn't even look like a button").
   return (
     <button
       type="button"
@@ -448,10 +451,33 @@ export function VerifiedPill({
         e.stopPropagation();
         onToggle();
       }}
-      title={verified ? "Mark as not verified" : "Mark as verified"}
-      className="group/vp cursor-pointer"
+      title={
+        verified
+          ? "Leadership has signed this off — click to undo"
+          : "Click when leadership has checked this number"
+      }
+      className={cn(
+        "group/vp inline-flex cursor-pointer items-center gap-1.5 rounded-full border bg-white font-bold shadow-sm transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
+        size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1 text-[10.5px]"
+      )}
+      style={
+        verified
+          ? { color: "#16A34A", borderColor: "rgba(22,163,74,0.35)" }
+          : { color: "#B45309", borderColor: "rgba(180,83,9,0.35)" }
+      }
     >
-      {body}
+      <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
+      {verified ? "Verified" : "Not verified"}
+      <span
+        className={cn(
+          "rounded-full px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.04em] transition-colors",
+          verified
+            ? "bg-[rgba(22,163,74,0.10)] group-hover/vp:bg-[rgba(22,163,74,0.18)]"
+            : "bg-[rgba(180,83,9,0.10)] group-hover/vp:bg-[rgba(180,83,9,0.18)]"
+        )}
+      >
+        {verified ? "Undo" : "Verify"}
+      </span>
     </button>
   );
 }
