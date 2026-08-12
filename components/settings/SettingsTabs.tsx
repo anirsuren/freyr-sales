@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { UserGroupsAdmin } from "@/components/settings/UserGroupsAdmin";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { RoleTag } from "@/components/ui/RoleTag";
@@ -1348,6 +1349,14 @@ export function SettingsTabs({
 
       {tab === "team" && (
         <div className="tab-panel stagger space-y-5">
+          {currentUser.role === "admin" && (
+            <UserGroupsAdmin
+              memberNames={accessDirectory.members
+                .filter((m) => m.active)
+                .map((m) => m.name)
+                .sort((a, b) => a.localeCompare(b))}
+            />
+          )}
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Active members", value: accessDirectory.members.filter((member) => member.active).length, icon: UsersRound, color: "text-blue-primary bg-blue-light" },

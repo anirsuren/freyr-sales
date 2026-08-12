@@ -105,6 +105,24 @@ function normalizeGoal(v: unknown): PrimaryGoal | null {
           .map(normalizeSubgoal)
           .filter((s): s is Subgoal => s !== null)
       : [],
+    assignments: Array.isArray(raw.assignments)
+      ? raw.assignments
+          .map((a) => {
+            if (!a || typeof a !== "object") return null;
+            const r = a as Partial<import("./performanceShared").GoalAssignment>;
+            const person = str(r.person, 80);
+            if (!person) return null;
+            return {
+              person,
+              target: num(r.target),
+              verified: r.verified === true,
+              assignedBy: str(r.assignedBy, 80) || "unknown",
+              assignedAt:
+                typeof r.assignedAt === "string" ? r.assignedAt : new Date().toISOString(),
+            };
+          })
+          .filter((a): a is NonNullable<typeof a> => a !== null)
+      : [],
     createdBy: str(raw.createdBy, 80) || "Unknown",
     createdAt: str(raw.createdAt, 40) || new Date().toISOString(),
   };
@@ -397,7 +415,15 @@ export async function setVerified(input: {
   if (!goal) throw new Error("That goal is gone. Refresh and retry.");
   const flag = input.verified === true;
   if (!input.subgoalId) {
-    goal.verified = flag;
+    if (input.person) {
+      const assignment = (goal.assignments ?? []).find(
+        (a) => a.person === input.person
+      );
+      if (!assignment) throw new Error("That person isn't assigned this goal.");
+      assignment.verified = flag;
+    } else {
+      goal.verified = flag;
+    }
   } else {
     const sub = goal.subgoals.find((s) => s.id === input.subgoalId);
     if (!sub) throw new Error("That subgoal is gone. Refresh and retry.");
@@ -438,7 +464,12 @@ export async function logActual(input: {
     const sub = goal.subgoals.find((s) => s.id === input.subgoalId);
     if (!sub) throw new Error("That subgoal is gone. Refresh and retry.");
     subgoalId = sub.id;
-  } else if (goal.subgoals.length > 0) {
+  } else if (
+    goal.subgoals.length > 0 &&
+    !(goal.assignments ?? []).some((a) => a.person === person)
+  ) {
+    // Directly-assigned people log on the goal itself even when subgoals
+    // exist for other teams (Suren, Aug 12: person-level attaches).
     throw new Error("Pick which subgoal this number belongs to.");
   }
   const dateIso = /^\d{4}-\d{2}-\d{2}$/.test(input.date ?? "")
@@ -495,6 +526,53 @@ export async function addGroup(input: {
   state.groups.push(group);
   await writeRow(state);
   return group;
+}
+
+/** Attach a goal straight to a person (Suren, Aug 12: from the Goal Master,
+ *  "add to the org or add to a particular person"). */
+export async function assignGoal(input: {
+  goalId: string;
+  person: string;
+  target?: number;
+  addedBy: string;
+}): Promise<void> {
+  const person = str(input.person, 80);
+  if (!person) throw new Error("Pick who this goal is for.");
+  const state = await readRow();
+  const goal = state.goals.find((g) => g.id === input.goalId);
+  if (!goal) throw new Error("That goal is gone. Refresh and retry.");
+  goal.assignments = goal.assignments ?? [];
+  const existing = goal.assignments.find((a) => a.person === person);
+  if (existing) {
+    if (typeof input.target === "number" && Number.isFinite(input.target)) {
+      existing.target = Math.max(0, input.target);
+    }
+  } else {
+    goal.assignments.push({
+      person,
+      target:
+        typeof input.target === "number" && Number.isFinite(input.target)
+          ? Math.max(0, input.target)
+          : 0,
+      verified: false,
+      assignedBy: input.addedBy,
+      assignedAt: new Date().toISOString(),
+    });
+  }
+  await writeRow(state);
+}
+
+export async function unassignGoal(input: {
+  goalId: string;
+  person: string;
+}): Promise<void> {
+  const state = await readRow();
+  const goal = state.goals.find((g) => g.id === input.goalId);
+  if (!goal) throw new Error("That goal is gone. Refresh and retry.");
+  goal.assignments = (goal.assignments ?? []).filter(
+    (a) => a.person !== input.person
+  );
+  await writeRow(state);
 }
 
 export async function removeGroup(groupId: string): Promise<void> {

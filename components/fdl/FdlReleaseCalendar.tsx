@@ -362,7 +362,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
       <p className="mt-3 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
         <CalendarRange size={13} strokeWidth={2} />
         Click any version to open its component. The per-component timeline
-        stays on each component's page.
+        stays on each component&apos;s page.
       </p>
     </div>
   );

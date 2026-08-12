@@ -619,6 +619,108 @@ function GoalRows({
         <tr className="!border-t-0">
           <td colSpan={7} className="bg-[var(--surface)] px-4 pb-5 pt-3">
             <div className="tab-panel space-y-3">
+              {/* People holding this goal DIRECTLY (Suren, Aug 12: expand a
+                  goal and "all the people who have contributed to this, and
+                  their individual performance"). */}
+              {(goal.assignments ?? []).length > 0 && (
+                <div className="rounded-xl border border-border-light bg-white p-3.5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                    Assigned people
+                  </p>
+                  <table className="mt-1.5 w-full text-left text-[12px]">
+                    <thead>
+                      <tr className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        <th className="py-2 pr-3 font-bold">Person</th>
+                        <th className="w-[110px] py-2 pr-3 font-bold">Target</th>
+                        <th className="w-[110px] py-2 pr-3 font-bold">Actual</th>
+                        <th className="w-[150px] py-2 pr-3 font-bold">% met</th>
+                        <th className="w-[130px] py-2 font-bold">Verified</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-light">
+                      {(goal.assignments ?? []).map((a) => {
+                        const aActual = actualValue(actuals, goal, {
+                          subgoalId: null,
+                          person: a.person,
+                        });
+                        const share =
+                          a.target > 0 ? Math.min(100, pctMet(aActual, a.target)) : null;
+                        return (
+                          <tr key={a.person}>
+                            <td className="py-2.5 pr-3">
+                              <span className="flex items-center gap-2">
+                                <Avatar name={a.person} className="h-6 w-6 text-[9px]" />
+                                <span className="font-semibold text-text-primary">
+                                  {a.person}
+                                </span>
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap py-2.5 pr-3 tnum">
+                              {a.target > 0 ? fmtAmount(goal.unit, a.target) : "—"}
+                            </td>
+                            <td className="whitespace-nowrap py-2.5 pr-3 font-bold text-text-primary tnum">
+                              {fmtAmount(goal.unit, aActual)}
+                            </td>
+                            <td className="py-2.5 pr-3">
+                              {share !== null ? (
+                                <span className="flex items-center gap-2">
+                                  <span className="h-1.5 w-20 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
+                                    <span
+                                      className="block h-full rounded-full"
+                                      style={{
+                                        width: `${share}%`,
+                                        background:
+                                          share >= 85
+                                            ? "#16A34A"
+                                            : share >= 55
+                                              ? "#0071E3"
+                                              : "#DC2626",
+                                      }}
+                                    />
+                                  </span>
+                                  <span
+                                    className={
+                                      share < 55
+                                        ? "font-semibold text-[color:#DC2626] tnum"
+                                        : "font-semibold text-text-primary tnum"
+                                    }
+                                  >
+                                    {Math.round(share)}%
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-text-tertiary">—</span>
+                              )}
+                            </td>
+                            <td className="py-2.5">
+                              <VerifiedPill
+                                verified={a.verified}
+                                size="sm"
+                                onToggle={
+                                  live
+                                    ? () =>
+                                        run(
+                                          {
+                                            op: "set-verified",
+                                            goalId: goal.id,
+                                            person: a.person,
+                                            verified: !a.verified,
+                                          },
+                                          a.verified
+                                            ? `${a.person} marked not verified`
+                                            : `${a.person} verified`
+                                        )
+                                    : undefined
+                                }
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               {goal.subgoals.length === 0 ? (
                 goal.measure === "level" ? (
                   <div className="rounded-xl border border-border-light bg-white p-3.5">

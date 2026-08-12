@@ -43,6 +43,17 @@ export type Subgoal = {
   people: SubgoalPerson[];
 };
 
+/** A goal attached straight to a person from the Goal Master (Suren, Aug 12:
+ *  "goal is attached at the org level, goal is attached at the person level"
+ *  — never at the department; a department is just its members added up). */
+export type GoalAssignment = {
+  person: string;
+  target: number;
+  verified: boolean;
+  assignedBy: string;
+  assignedAt: string;
+};
+
 export type PrimaryGoal = {
   id: string;
   name: string;
@@ -57,6 +68,8 @@ export type PrimaryGoal = {
   pickedForOrg: boolean;
   verified: boolean;
   subgoals: Subgoal[];
+  /** Person-level attaches from the Goal Master. */
+  assignments?: GoalAssignment[];
   createdBy: string;
   createdAt: string;
 };
@@ -286,7 +299,73 @@ export function knownPeople(state: PerformanceState, extra?: string): string[] {
       for (const o of s.owners) if (o.trim()) set.add(o.trim());
       for (const p of s.people) if (p.name.trim()) set.add(p.name.trim());
     }
+    for (const a of goal.assignments ?? []) {
+      if (a.person.trim()) set.add(a.person.trim());
+    }
   }
   if (extra?.trim()) set.add(extra.trim());
   return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+
+/* ------------------------------------------------------- who sees whom */
+
+/** Groups this person heads. */
+export function headedGroups(
+  state: Pick<PerformanceState, "groups">,
+  me: string
+): PerfGroup[] {
+  const name = me.trim().toLowerCase();
+  return state.groups.filter((g) => g.head.trim().toLowerCase() === name);
+}
+
+/**
+ * The names a signed-in person may see numbers for (Suren, Aug 12: "Rukmini
+ * is a user group owner for one group — she should not have access to other
+ * groups"). Managers and admins see everyone; a group head sees themself and
+ * their members; everyone else sees only themself.
+ */
+export function visibleNamesFor(
+  state: Pick<PerformanceState, "groups">,
+  me: string
+): Set<string> {
+  const names = new Set<string>([me.trim()]);
+  for (const g of headedGroups(state, me)) {
+    if (g.head.trim()) names.add(g.head.trim());
+    for (const m of g.members) if (m.trim()) names.add(m.trim());
+  }
+  return names;
+}
+
+/** One row per goal this person carries — direct assignments plus every
+ *  subgoal they are on — with the target that applies to THEM. */
+export type PersonGoalRow = {
+  goal: PrimaryGoal;
+  /** Null for a direct assignment; the subgoal when they sit on one. */
+  subgoal: Subgoal | null;
+  target: number;
+  verified: boolean;
+};
+
+export function personGoalRows(
+  state: PerformanceState,
+  person: string
+): PersonGoalRow[] {
+  const name = person.trim().toLowerCase();
+  const rows: PersonGoalRow[] = [];
+  for (const goal of state.goals) {
+    for (const a of goal.assignments ?? []) {
+      if (a.person.trim().toLowerCase() === name) {
+        rows.push({ goal, subgoal: null, target: a.target, verified: a.verified });
+      }
+    }
+    for (const sub of goal.subgoals) {
+      for (const p of sub.people) {
+        if (p.name.trim().toLowerCase() === name) {
+          rows.push({ goal, subgoal: sub, target: p.target, verified: p.verified });
+        }
+      }
+    }
+  }
+  return rows;
 }

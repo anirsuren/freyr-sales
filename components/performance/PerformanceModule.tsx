@@ -17,6 +17,8 @@ import {
   UsersRound,
   X,
   Maximize2,
+  CircleUserRound,
+  UserRoundPlus,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Card } from "@/components/ui/Card";
@@ -24,6 +26,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -50,9 +53,11 @@ import {
   TypeIconTile,
   UnitChip,
   typeMeta,
+  VerifiedPill,
 } from "./bits";
 import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { PeopleTab } from "./PeopleTab";
+import { GroupPerformanceTab } from "./GroupPerformanceTab";
 
 /**
  * THE PERFORMANCE MANAGEMENT MODULE (Suren, Aug 11 — voice notes +
@@ -71,7 +76,7 @@ import { PeopleTab } from "./PeopleTab";
  * header. Saves QUEUE instead of silently dropping while one is in flight.
  */
 
-const TABS = ["org", "master", "people"] as const;
+const TABS = ["org", "groups", "people", "master"] as const;
 const MASTER_VIEWS = ["cards", "table"] as const;
 type Tab = (typeof TABS)[number];
 
@@ -107,11 +112,19 @@ const ROOMS: Record<
     subtitle:
       "The master list of every goal: its type, its subgoals, who owns them, and whether it's being tracked on the plan.",
   },
-  people: {
-    label: "People & groups",
+  groups: {
+    label: "Group performance",
     icon: UsersRound,
+    color: "#0F766E",
+    subtitle:
+      "Every group added up from its members' goals — open one to see the people inside and their numbers.",
+  },
+  people: {
+    label: "People performance",
+    icon: CircleUserRound,
     color: "#B4318F",
-    subtitle: "User groups with their heads, and each person's goals one by one.",
+    subtitle:
+      "You land on your own goals. Search a name to see anyone you're allowed to see.",
   },
 };
 
@@ -119,11 +132,15 @@ export function PerformanceModule({
   initial,
   live,
   meName,
+  isManager,
   memberNames,
 }: {
   initial: PerformanceState;
   live: boolean;
   meName: string;
+  /** Admins and editors run the whole plan; everyone else is scoped
+   *  (Suren, Aug 12: org head / group owner / individual). */
+  isManager: boolean;
   /** Real workspace accounts — the only names suggested in live mode. */
   memberNames: string[];
 }) {
@@ -136,6 +153,20 @@ export function PerformanceModule({
   );
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Which rooms this person gets: org for managers, groups when you head
+  // one, and everyone gets their own performance plus the Goal Master.
+  const iHeadAGroup = state.groups.some(
+    (g) => g.head.trim().toLowerCase() === meName.trim().toLowerCase()
+  );
+  const visibleTabs: Tab[] = isManager
+    ? [...TABS]
+    : iHeadAGroup
+      ? ["groups", "people", "master"]
+      : ["people", "master"];
+  useEffect(() => {
+    if (!visibleTabs.includes(tab)) chooseTab(visibleTabs[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, isManager, iHeadAGroup]);
   const [howOpen, setHowOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   // Capture phase, same as Market Intel's title menu: a click elsewhere only
@@ -230,7 +261,6 @@ export function PerformanceModule({
     subgoalId: string | null;
     person: string;
   } | null>(null);
-  const [groupOpen, setGroupOpen] = useState(false);
 
   const people = useMemo(() => {
     if (live && memberNames.length > 0) {
@@ -240,6 +270,21 @@ export function PerformanceModule({
     }
     return knownPeople(state, meName);
   }, [state, meName, live, memberNames]);
+
+  // Who a goal can be assigned to from the Goal Master: managers pick anyone;
+  // a group head picks their people; an individual picks themself.
+  const assignablePeople = useMemo(() => {
+    if (isManager) return people;
+    const set = new Set<string>([meName]);
+    for (const g of state.groups) {
+      if (g.head.trim().toLowerCase() === meName.trim().toLowerCase()) {
+        if (g.head.trim()) set.add(g.head.trim());
+        for (const m of g.members) if (m.trim()) set.add(m.trim());
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isManager, meName, state.groups, live, memberNames]);
 
   const room = ROOMS[tab];
 
@@ -273,7 +318,7 @@ export function PerformanceModule({
                 role="menu"
                 className="menu-in absolute left-0 top-full z-50 mt-2 w-[300px] rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
               >
-                {TABS.map((key) => {
+                {visibleTabs.map((key) => {
                   const r = ROOMS[key];
                   const Icon = r.icon;
                   const active = key === tab;
@@ -358,15 +403,27 @@ export function PerformanceModule({
             run={run}
             busy={busy}
             suggestions={people}
+            assignablePeople={assignablePeople}
+            isManager={isManager}
             onNewGoal={() => setGoalModal({ editing: null })}
             onEditGoal={(g) => setGoalModal({ editing: g })}
+          />
+        ) : tab === "groups" ? (
+          <GroupPerformanceTab
+            state={state}
+            meName={meName}
+            onLogActual={(prefill) => {
+              setLogPrefill(prefill);
+              setLogOpen(true);
+            }}
+            live={live}
           />
         ) : (
           <PeopleTab
             state={state}
             live={live}
             run={run}
-            onNewGroup={() => setGroupOpen(true)}
+            meName={meName}
             onLogActual={(prefill) => {
               setLogPrefill(prefill);
               setLogOpen(true);
@@ -428,13 +485,6 @@ export function PerformanceModule({
           setLogOpen(false);
           setLogPrefill(null);
         }}
-        run={run}
-        busy={busy}
-      />
-      <GroupModal
-        open={groupOpen}
-        suggestions={people}
-        onClose={() => setGroupOpen(false)}
         run={run}
         busy={busy}
       />
@@ -512,9 +562,13 @@ function MasterTab({
   run,
   busy,
   suggestions,
+  assignablePeople,
+  isManager,
   onNewGoal,
   onEditGoal,
 }: {
+  assignablePeople: string[];
+  isManager: boolean;
   state: PerformanceState;
   live: boolean;
   run: RunOp;
@@ -941,6 +995,8 @@ function MasterTab({
                           <div className="tab-panel pt-1">
                             <GoalPopupBody
                               hostedInPopup={false}
+                              assignablePeople={assignablePeople}
+                              isManager={isManager}
                               key={g.id}
                               goal={g}
                               state={state}
@@ -998,6 +1054,8 @@ function MasterTab({
         {openGoal && (
           <GoalPopupBody
             hostedInPopup
+            assignablePeople={assignablePeople}
+            isManager={isManager}
             key={openGoal.id}
             goal={openGoal}
             state={state}
@@ -1023,6 +1081,95 @@ function MasterTab({
 /** A small "are you sure" card that drops right under the delete button —
  *  the popup context confirms in place without taking over the header
  *  (Anir, Aug 12: "it should just show me underneath the delete button"). */
+/** Attach the goal to one person, with an optional personal target. Group
+ *  heads only see their own people in this list; individuals see themselves
+ *  (Suren, Aug 12: "show only those people who are in his list"). */
+function AssignPersonModal({
+  open,
+  goal,
+  options,
+  onClose,
+  run,
+  busy,
+}: {
+  open: boolean;
+  goal: PrimaryGoal;
+  options: string[];
+  onClose: () => void;
+  run: RunOp;
+  busy: boolean;
+}) {
+  const [person, setPerson] = useState("");
+  const [target, setTarget] = useState("");
+  const parsed = parseAmountInput(target);
+
+  async function save() {
+    const ok = await run(
+      {
+        op: "assign-goal",
+        goalId: goal.id,
+        person,
+        ...(parsed !== null ? { target: parsed } : {}),
+      },
+      `${goal.name} assigned to ${person}`
+    );
+    if (ok) {
+      setPerson("");
+      setTarget("");
+      onClose();
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Assign — ${goal.name}`}
+      size="wide"
+      tall
+      stacked
+    >
+      <p className="text-[12.5px] leading-relaxed text-text-secondary">
+        The goal lands on this person directly. Their logged numbers roll into
+        their group and the organization automatically.
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
+        <div>
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            Person
+            <InfoHint text="Only people you're allowed to assign — managers see everyone, a group owner sees their group." />
+          </label>
+          <div className="mt-1">
+            <PersonSelect
+              value={person}
+              onChange={setPerson}
+              people={options}
+              placeholder="Pick a person…"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            Personal target
+            <InfoHint text="Optional. Their own slice of the goal — type 250K, 1.5M or a plain number." />
+          </label>
+          <input
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder={goal.unit === "currency" ? "e.g. 250K" : "e.g. 40"}
+            className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
+          />
+        </div>
+      </div>
+      <div className="mt-4 flex items-center justify-end">
+        <Button onClick={save} disabled={!person} loading={busy}>
+          Assign goal
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
 function ConfirmUnder({
   question,
   actionLabel,
@@ -1074,8 +1221,12 @@ function GoalPopupBody({
   onRemoved,
   onEditGoal,
   hostedInPopup,
+  assignablePeople,
+  isManager,
 }: {
   goal: PrimaryGoal;
+  assignablePeople: string[];
+  isManager: boolean;
   state: PerformanceState;
   live: boolean;
   run: RunOp;
@@ -1095,6 +1246,8 @@ function GoalPopupBody({
    *  (Anir, Aug 12: "it didn't even ask me for a confirmation"). */
   const [confirmGoalRemove, setConfirmGoalRemove] = useState(false);
   const [confirmSubRemove, setConfirmSubRemove] = useState<string | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [confirmUnassign, setConfirmUnassign] = useState<string | null>(null);
   /** Which subgoal row is expanded; "new" = the add-subgoal editor. */
   const [openSub, setOpenSub] = useState<string | null>(null);
 
@@ -1408,6 +1561,110 @@ function GoalPopupBody({
         })}
 
       </div>
+
+      {/* ---------------- person-level attaches (Suren, Aug 12: "add to the
+          org or add to a particular person" — departments never hold goals,
+          their people do) ---------------- */}
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+          Assigned people
+          <InfoHint text="This goal attached straight to a person from the Goal Master. Their numbers roll into their group and the organization — a department is just its people added up." />
+        </p>
+        {live && (
+          <button
+            type="button"
+            onClick={() => setAssignOpen(true)}
+            className="flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-blue-light px-3 py-1.5 text-[12px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
+          >
+            <UserRoundPlus size={12} strokeWidth={2.4} /> Assign to a person
+          </button>
+        )}
+      </div>
+      {(goal.assignments ?? []).length === 0 ? (
+        <p className="mt-1.5 rounded-lg bg-surface px-4 py-3 text-center text-[12.5px] text-text-secondary">
+          Nobody carries this goal individually yet.
+        </p>
+      ) : (
+        <div className="mt-1.5 space-y-1.5">
+          {(goal.assignments ?? []).map((a) => (
+            <div
+              key={a.person}
+              className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
+            >
+              <Avatar name={a.person} className="h-7 w-7 text-[10px]" />
+              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-primary">
+                {a.person}
+              </span>
+              <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
+                {a.target > 0
+                  ? `Target ${fmtAmount(goal.unit, a.target)}`
+                  : "No personal target"}
+              </span>
+              <VerifiedPill
+                verified={a.verified}
+                size="sm"
+                onToggle={
+                  live
+                    ? () =>
+                        run(
+                          {
+                            op: "set-verified",
+                            goalId: goal.id,
+                            person: a.person,
+                            verified: !a.verified,
+                          },
+                          a.verified
+                            ? `${a.person} marked not verified`
+                            : `${a.person} verified`
+                        )
+                    : undefined
+                }
+              />
+              {live && (
+                <span className="relative shrink-0">
+                  <button
+                    type="button"
+                    title={`Unassign ${a.person}`}
+                    aria-label={`Unassign ${a.person}`}
+                    onClick={() =>
+                      setConfirmUnassign(
+                        confirmUnassign === a.person ? null : a.person
+                      )
+                    }
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-[color:#DC2626]"
+                  >
+                    <Trash2 size={13} strokeWidth={2.2} />
+                  </button>
+                  {confirmUnassign === a.person && (
+                    <ConfirmUnder
+                      question={`Take this goal off ${a.person}?`}
+                      actionLabel="Unassign"
+                      onConfirm={() => {
+                        setConfirmUnassign(null);
+                        void run(
+                          { op: "unassign-goal", goalId: goal.id, person: a.person },
+                          `${a.person} unassigned`
+                        );
+                      }}
+                      onCancel={() => setConfirmUnassign(null)}
+                    />
+                  )}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <AssignPersonModal
+        open={assignOpen}
+        goal={goal}
+        options={assignablePeople.filter(
+          (name) => !(goal.assignments ?? []).some((a) => a.person === name)
+        )}
+        onClose={() => setAssignOpen(false)}
+        run={run}
+        busy={busy}
+      />
 
       {!live && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-light pt-3">
@@ -2114,6 +2371,7 @@ function LogActualModal({
       for (const s of goal.subgoals) {
         for (const p of s.people) set.add(p.name);
       }
+      for (const a of goal.assignments ?? []) set.add(a.person);
     }
     if (set.size === 0) for (const s of suggestions) set.add(s);
     set.add(meName);
@@ -2304,124 +2562,3 @@ function LogActualModal({
   );
 }
 
-/* ------------------------------------------------------------ group modal */
-
-function GroupModal({
-  open,
-  suggestions,
-  onClose,
-  run,
-  busy,
-}: {
-  open: boolean;
-  suggestions: string[];
-  onClose: () => void;
-  run: RunOp;
-  busy: boolean;
-}) {
-  const [name, setName] = useState("");
-  const [members, setMembers] = useState<string[]>([]);
-  const [head, setHead] = useState("");
-
-  function addMember(m: string) {
-    const clean = m.trim();
-    if (!clean || members.includes(clean)) return;
-    setMembers([...members, clean]);
-    if (!head) setHead(clean);
-  }
-
-  async function save() {
-    const ok = await run(
-      { op: "add-group", name, head, members },
-      name.trim() + " created"
-    );
-    if (ok) {
-      setName("");
-      setMembers([]);
-      setHead("");
-      onClose();
-    }
-  }
-
-  return (
-    <Modal tall open={open} onClose={onClose} title="New user group">
-      <p className="text-[12.5px] leading-relaxed text-text-secondary">
-        A group is a team with a head — for example a growth accounts team.
-        Every member&apos;s numbers roll into the group&apos;s count, and
-        group counts roll into the organization.
-      </p>
-      <div className="mt-3 space-y-3">
-        <div>
-          <label className="text-[12px] font-semibold text-text-primary">
-            Group name
-          </label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Growth Accounts"
-            className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
-          />
-        </div>
-        <div>
-          <label className="text-[12px] font-semibold text-text-primary">
-            People in the group
-          </label>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {members.map((m) => (
-              <span
-                key={m}
-                className="flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2 text-[12px] font-medium text-text-primary"
-              >
-                <Avatar name={m} className="h-5 w-5 text-[8px]" />
-                {m}
-                <button
-                  type="button"
-                  aria-label={"Remove " + m}
-                  onClick={() => {
-                    setMembers(members.filter((x) => x !== m));
-                    if (head === m) setHead("");
-                  }}
-                  className="cursor-pointer text-text-tertiary hover:text-[color:#DC2626]"
-                >
-                  <X size={11} strokeWidth={2.4} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="mt-1.5">
-            <PersonSelect
-              value=""
-              onChange={addMember}
-              people={suggestions.filter((s) => !members.includes(s))}
-              placeholder="Add a person…"
-            />
-          </div>
-        </div>
-        {members.length > 0 && (
-          <div>
-            <label className="text-[12px] font-semibold text-text-primary">
-              Group head
-            </label>
-            <div className="mt-1">
-              <PersonSelect
-                value={head}
-                onChange={setHead}
-                people={members}
-                placeholder="Pick the head…"
-                allowFree={false}
-              />
-            </div>
-          </div>
-        )}
-        <button
-          type="button"
-          disabled={busy || !name.trim() || members.length === 0}
-          onClick={save}
-          className="w-full cursor-pointer rounded-full bg-blue-primary py-2.5 text-[13.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-        >
-          {busy ? "Saving…" : "Create the group"}
-        </button>
-      </div>
-    </Modal>
-  );
-}

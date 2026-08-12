@@ -2,6 +2,9 @@ import { PerformanceModule } from "@/components/performance/PerformanceModule";
 import { readPerformance } from "@/lib/performance";
 import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
+import { getRole } from "@/lib/role";
+import { isManagerOrAdmin } from "@/lib/moduleAccess";
+import { visibleNamesFor } from "@/lib/performanceShared";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
@@ -22,11 +25,37 @@ export default async function PerformancePage() {
   await requireServerMemberScope();
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;
-  const [state, me, directory] = await Promise.all([
+  const [state, me, role, directory] = await Promise.all([
     readPerformance(),
     getCurrentUser(),
+    getRole(),
     live && workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
   ]);
+  const manager = isManagerOrAdmin(role);
+  // The scoped copy for non-managers — same rule as the API (Suren, Aug 12:
+  // a group owner sees their group, an individual sees themself).
+  const visible = manager ? null : visibleNamesFor(state, me.name);
+  const scoped = visible
+    ? {
+        ...state,
+        goals: state.goals.map((g) => ({
+          ...g,
+          subgoals: g.subgoals.map((s) => ({
+            ...s,
+            people: s.people.filter((p) => visible.has(p.name.trim())),
+          })),
+          assignments: (g.assignments ?? []).filter((a) =>
+            visible.has(a.person.trim())
+          ),
+        })),
+        groups: state.groups.filter(
+          (g) =>
+            visible.has(g.head.trim()) ||
+            g.members.some((m) => visible.has(m.trim()))
+        ),
+        actuals: state.actuals.filter((a) => visible.has(a.person.trim())),
+      }
+    : state;
   const memberNames = [
     ...new Set(
       (directory?.members ?? [])
@@ -37,9 +66,10 @@ export default async function PerformancePage() {
   ].sort((a, b) => a.localeCompare(b));
   return (
     <PerformanceModule
-      initial={state}
+      initial={scoped}
       live={live}
       meName={me.name}
+      isManager={manager}
       memberNames={memberNames}
     />
   );

@@ -8,6 +8,7 @@ import {
   addGoalType,
   addGroup,
   addSubgoal,
+  assignGoal,
   logActual,
   readPerformance,
   removeActual,
@@ -15,16 +16,55 @@ import {
   removeGroup,
   removeSubgoal,
   setVerified,
+  unassignGoal,
   updateGoal,
   updateSubgoal,
 } from "@/lib/performance";
-import type { GoalMeasure, GoalUnit } from "@/lib/performanceShared";
+import {
+  visibleNamesFor,
+  type GoalMeasure,
+  type GoalUnit,
+  type PerformanceState,
+} from "@/lib/performanceShared";
 
 export const dynamic = "force-dynamic";
 
-// MANAGERS AND ADMINS ONLY (Freyr, Aug 12) — the page is guarded and so is
-// this API, so a Sales Rep cannot reach the goal plan by calling it directly.
-// Mock mode shows the sample workspace and never accepts writes.
+// THREE KINDS OF PEOPLE WALK IN (Suren, Aug 12): the org head sees everything,
+// a group owner sees exactly their group ("Rukmini should not have access to
+// other groups"), and an individual sees their own goals. Managers and admins
+// keep the full plan; everyone else gets a SCOPED copy of the state and a
+// short list of allowed operations. Mock mode never accepts writes.
+
+/** The names this caller may see and act for. Managers/admins → null (all). */
+function callerScope(
+  state: PerformanceState,
+  meName: string,
+  manager: boolean
+): Set<string> | null {
+  if (manager) return null;
+  return visibleNamesFor(state, meName);
+}
+
+/** A copy of the state with other people's numbers removed. The goal catalog
+ *  itself stays whole — the Goal Master is how anyone picks up more goals. */
+function scopeState(state: PerformanceState, visible: Set<string>): PerformanceState {
+  const has = (name: string) => visible.has(name.trim());
+  return {
+    types: state.types,
+    goals: state.goals.map((g) => ({
+      ...g,
+      subgoals: g.subgoals.map((s) => ({
+        ...s,
+        people: s.people.filter((p) => has(p.name)),
+      })),
+      assignments: (g.assignments ?? []).filter((a) => has(a.person)),
+    })),
+    groups: state.groups.filter(
+      (g) => has(g.head) || g.members.some((m) => has(m))
+    ),
+    actuals: state.actuals.filter((a) => has(a.person)),
+  };
+}
 
 export async function GET(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
@@ -32,14 +72,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   const me = await getCurrentUser();
-  if (!isManagerOrAdmin(me.role)) {
-    return NextResponse.json(
-      { error: "Performance is available to managers and admins." },
-      { status: 403 }
-    );
-  }
   const state = await readPerformance();
-  return NextResponse.json({ state });
+  const visible = callerScope(state, me.name, isManagerOrAdmin(me.role));
+  return NextResponse.json({
+    state: visible ? scopeState(state, visible) : state,
+  });
 }
 
 function unit(v: unknown): GoalUnit {
@@ -62,14 +99,45 @@ export async function POST(req: NextRequest) {
     );
   }
   const me = await getCurrentUser();
-  if (!isManagerOrAdmin(me.role)) {
-    return NextResponse.json(
-      { error: "Performance is available to managers and admins." },
-      { status: 403 }
-    );
-  }
+  const manager = isManagerOrAdmin(me.role);
   const body = await req.json().catch(() => ({}));
   const op = String(body.op ?? "");
+
+  // What a non-manager may do, and only inside their own circle: log their
+  // numbers, pick up goals for themselves (a head, for their group), and a
+  // head may verify their people. Everything that shapes the plan itself —
+  // goals, subgoals, targets, groups — stays with managers and admins.
+  if (!manager) {
+    const SELF_OPS = new Set(["log-actual", "assign-goal", "unassign-goal", "set-verified"]);
+    if (!SELF_OPS.has(op)) {
+      return NextResponse.json(
+        { error: "Only managers and admins can change the goal plan." },
+        { status: 403 }
+      );
+    }
+    const state = await readPerformance();
+    const visible = visibleNamesFor(state, me.name);
+    const person = String(body.person ?? "");
+    if (!person || !visible.has(person.trim())) {
+      return NextResponse.json(
+        { error: "You can only do that for yourself or people in your group." },
+        { status: 403 }
+      );
+    }
+    if (op === "set-verified") {
+      // Verifying is a leadership act: a group head signs off their people,
+      // never themself alone acting as their own referee.
+      const heads = state.groups.some(
+        (g) => g.head.trim().toLowerCase() === me.name.trim().toLowerCase()
+      );
+      if (!heads) {
+        return NextResponse.json(
+          { error: "Only group owners, managers and admins verify numbers." },
+          { status: 403 }
+        );
+      }
+    }
+  }
 
   try {
     switch (op) {
@@ -168,6 +236,20 @@ export async function POST(req: NextRequest) {
           verified: body.verified === true,
         });
         break;
+      case "assign-goal":
+        await assignGoal({
+          goalId: String(body.goalId ?? ""),
+          person: String(body.person ?? ""),
+          ...(body.target !== undefined ? { target: Number(body.target) } : {}),
+          addedBy: me.name,
+        });
+        break;
+      case "unassign-goal":
+        await unassignGoal({
+          goalId: String(body.goalId ?? ""),
+          person: String(body.person ?? ""),
+        });
+        break;
       case "log-actual":
         await logActual({
           goalId: String(body.goalId ?? ""),
@@ -203,5 +285,9 @@ export async function POST(req: NextRequest) {
     );
   }
   const state = await readPerformance();
-  return NextResponse.json({ ok: true, state });
+  const visible = callerScope(state, me.name, manager);
+  return NextResponse.json({
+    ok: true,
+    state: visible ? scopeState(state, visible) : state,
+  });
 }
