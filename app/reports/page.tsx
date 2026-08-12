@@ -32,6 +32,7 @@ import { listOfferings } from "@/lib/offerings";
 import { portfolioReport, REVENUE_TYPE_META } from "@/lib/revenue";
 import { buildDeals, formatMoney, STAGE_PROBABILITY } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
@@ -41,6 +42,7 @@ export const dynamic = "force-dynamic";
 // currently going on" — cumulated across every offering and customer from the
 // per-account revenue lines. Everything real; exports to Excel.
 export default async function ReportsPage() {
+  await requireModuleAccess("/reports");
   const db = getDb();
   const [customers, sessions, contacts, interactions] = await Promise.all([
     db.customers.list(),

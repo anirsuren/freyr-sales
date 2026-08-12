@@ -22,6 +22,8 @@ import {
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { canAccessModule } from "@/lib/moduleAccess";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { useToast } from "@/components/ui/Toast";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
@@ -102,6 +104,7 @@ export function CommandPalette({
   customersReleased?: boolean;
 }) {
   const router = useRouter();
+  const me = useCurrentUser();
   const { toast } = useToast();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Result[]>([]);
@@ -213,11 +216,14 @@ export function CommandPalette({
         : NAV
       ).filter(
         (n) =>
-          !offeringsOnly ||
-          n.href.startsWith("/offerings") ||
-          (customersReleased && n.href.startsWith("/customers"))
+          // A Sales Rep must not be able to jump to a manager-only module
+          // from search either (Freyr, Aug 12).
+          canAccessModule(n.href, me.role) &&
+          (!offeringsOnly ||
+            n.href.startsWith("/offerings") ||
+            (customersReleased && n.href.startsWith("/customers")))
       ),
-    [customersReleased, offeringsOnly, q]
+    [customersReleased, offeringsOnly, q, me.role]
   );
 
   const agentMatches = useMemo(

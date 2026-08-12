@@ -28,6 +28,7 @@ import {
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import { miCompany } from "@/lib/marketIntelMock";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function MarketIntelCompanyPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireModuleAccess("/market-intel");
   const { id } = await params;
   const tracking = await readMarketIntelTracking().catch(() => ({
     companies: [],

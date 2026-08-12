@@ -7,6 +7,7 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { FdlComponentDetail } from "@/components/fdl/FdlComponentDetail";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function FdlComponentPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string }>;
 }) {
+  await requireModuleAccess("/components");
   await initializeLiveOfferings().catch(() => undefined);
   const { id } = await params;
   // WHERE "BACK" SHOULD GO. Suren, Aug 9: "you should have a back button —

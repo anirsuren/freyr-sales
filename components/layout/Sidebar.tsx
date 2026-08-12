@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import type { DataMode } from "@/lib/dataMode";
 import { getHomePath, isOfferingsOnly, isReleased } from "@/lib/release";
+import { canAccessModule } from "@/lib/moduleAccess";
 import {
   useCurrentUser,
   useMyPhoto,
@@ -100,7 +101,13 @@ export function Sidebar({
   // The signed-in user's uploaded picture, shared by every avatar of them.
   const { photo: myPhoto } = useMyPhoto();
   const offeringsOnly = isOfferingsOnly(dataMode);
-  const navItems = ALL_NAV_ITEMS.filter((item) => isReleased(item.href, dataMode));
+  // Released for this rollout AND open to this person's role — a Sales Rep
+  // never sees a module they cannot open (Freyr, Aug 12).
+  const navItems = ALL_NAV_ITEMS.filter(
+    (item) =>
+      isReleased(item.href, dataMode) &&
+      canAccessModule(item.href, currentUser.role)
+  );
   const [collapsed, setCollapsed] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
   const collapseStorageKey = userScopedStorageKey(COLLAPSE_KEY, currentUser.id);

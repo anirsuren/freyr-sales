@@ -5,6 +5,7 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { FdlComponentsBrowser } from "@/components/fdl/FdlComponentsBrowser";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
  * here, each component with its own versions and features.
  */
 export default async function FdlComponentsPage() {
+  await requireModuleAccess("/components");
   await initializeLiveOfferings().catch(() => undefined);
   const components = listFdlComponents();
   const offerings = listOfferings();

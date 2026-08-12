@@ -36,6 +36,7 @@ import {
   miTotals,
 } from "@/lib/marketIntelMock";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 /**
  * MARKET INTELLIGENCE - DESIGN MOCKUP (Anir, Aug 10, from Anant's ask): one
@@ -62,6 +63,7 @@ export default async function MarketIntelPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
+  await requireModuleAccess("/market-intel");
   const { tab } = await searchParams;
   const tracking = await readMarketIntelTracking().catch(() => ({
     companies: [],

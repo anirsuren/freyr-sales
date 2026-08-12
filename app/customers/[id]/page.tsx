@@ -19,6 +19,7 @@ import {
 } from "@/lib/offerings";
 import { isSalesVisible } from "@/lib/offeringMaterials";
 import { getDataMode } from "@/lib/dataMode";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Customer" };
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireModuleAccess("/customers");
   const id = (await params).id;
   const db = getDb();
   const customer = await db.customers.get(id);

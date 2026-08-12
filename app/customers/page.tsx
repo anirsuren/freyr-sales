@@ -5,11 +5,13 @@ import { accountHealth, accountHealthSeries } from "@/lib/health";
 import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import type { TipItem } from "@/components/charts/Charts";
 import { getDataMode } from "@/lib/dataMode";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Customers" };
 export const dynamic = "force-dynamic";
 
 export default async function CustomersPage() {
+  await requireModuleAccess("/customers");
   const db = getDb();
   const customers = await db.customers.list();
   const allContacts = await db.contacts.list();

@@ -4,6 +4,7 @@ import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { listWorkspaceAccess } from "@/lib/accessStore";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Performance" };
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
  * can't put fake accounts on real mode" (Anir).
  */
 export default async function PerformancePage() {
+  await requireModuleAccess("/performance");
   await requireServerMemberScope();
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;

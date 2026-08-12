@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
+import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { getDataMode } from "@/lib/dataMode";
 import {
   addGoal,
@@ -21,14 +22,21 @@ import type { GoalMeasure, GoalUnit } from "@/lib/performanceShared";
 
 export const dynamic = "force-dynamic";
 
-// Performance management is everyone's mirror: anyone signed in reads it and
-// logs their own numbers. Mock mode shows the sample workspace and never
-// accepts writes.
+// MANAGERS AND ADMINS ONLY (Freyr, Aug 12) — the page is guarded and so is
+// this API, so a Sales Rep cannot reach the goal plan by calling it directly.
+// Mock mode shows the sample workspace and never accepts writes.
 
 export async function GET(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+  const me = await getCurrentUser();
+  if (!isManagerOrAdmin(me.role)) {
+    return NextResponse.json(
+      { error: "Performance is available to managers and admins." },
+      { status: 403 }
+    );
   }
   const state = await readPerformance();
   return NextResponse.json({ state });
@@ -54,6 +62,12 @@ export async function POST(req: NextRequest) {
     );
   }
   const me = await getCurrentUser();
+  if (!isManagerOrAdmin(me.role)) {
+    return NextResponse.json(
+      { error: "Performance is available to managers and admins." },
+      { status: 403 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const op = String(body.op ?? "");
 
