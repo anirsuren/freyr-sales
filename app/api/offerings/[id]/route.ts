@@ -159,11 +159,25 @@ export async function PATCH(
       // boundary even if a caller bypasses the browser form.
       if (!prior) {
         const stages = materialJourneyStages(material);
+        // Two kinds of "valid file or link". An uploaded file's url is OUR OWN
+        // download route — app-relative on purpose, so no stored presign can
+        // ever expire in the record. Only a pasted link must be an absolute
+        // http(s) URL. Requiring absolute of BOTH rejected every fresh file
+        // upload at the final save while pasted links kept working (Inayat's
+        // Test File.docx, Aug 12 — fully tagged, still bounced).
+        const rawUrl = String(material.url || "");
         let validUrl = false;
-        try {
-          const parsed = new URL(String(material.url || ""));
-          validUrl = parsed.protocol === "https:" || parsed.protocol === "http:";
-        } catch {}
+        if (material.docsPath) {
+          validUrl = rawUrl.startsWith(
+            `/api/offerings/${id}/materials/download`
+          );
+        } else {
+          try {
+            const parsed = new URL(rawUrl);
+            validUrl =
+              parsed.protocol === "https:" || parsed.protocol === "http:";
+          } catch {}
+        }
         if (
           !material.label?.trim() ||
           !validUrl ||

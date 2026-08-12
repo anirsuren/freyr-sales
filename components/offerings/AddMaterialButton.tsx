@@ -151,6 +151,14 @@ export function AddMaterialButton({
     return `${relativePath}\u0000${file.size}\u0000${file.lastModified}`;
   }
 
+  /** "14 KB", never "0.0MB" — a small file must not read as empty (Inayat's
+   *  14KB test doc showed 0.0, which looks like the upload lost the bytes). */
+  function fmtFileSize(bytes: number) {
+    if (bytes < 1024 * 1024)
+      return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
   function reset() {
     setKind("");
     setJourneyStages([]);
@@ -936,7 +944,7 @@ export function AddMaterialButton({
                     {files.length === 1 ? files[0].name : `${files.length} files selected`}
                   </span>
                   <span className="text-[11.5px] text-text-tertiary">
-                    {(files.reduce((total, item) => total + item.size, 0) / 1024 / 1024).toFixed(1)}MB total · click to add more, or{" "}
+                    {fmtFileSize(files.reduce((total, item) => total + item.size, 0))} total · click to add more, or{" "}
                     <span
                       role="button"
                       tabIndex={0}
@@ -1011,7 +1019,7 @@ export function AddMaterialButton({
                           className="h-8 w-full rounded-md border border-border bg-white px-2.5 text-[12.5px] font-medium text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus"
                         />
                         <p className="mt-1 truncate text-[10.5px] text-text-tertiary">
-                          {selected.webkitRelativePath || selected.name} · {(selected.size / 1024 / 1024).toFixed(1)}MB
+                          {selected.webkitRelativePath || selected.name} · {fmtFileSize(selected.size)}
                         </p>
                         </div>
                         <button
