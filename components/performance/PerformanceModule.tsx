@@ -618,8 +618,6 @@ function MasterTab({
           placeholder="Search goals, subgoals, owners…"
           ariaLabel="Search the goal master"
           grow
-          growMaxWidth={340}
-          growExpandedMaxWidth={460}
           className="min-w-[200px] flex-1"
         />
         <span className="ml-auto flex flex-wrap items-center gap-2">

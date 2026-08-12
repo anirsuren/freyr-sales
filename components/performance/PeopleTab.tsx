@@ -250,8 +250,6 @@ export function PeopleTab({
           placeholder="Search people and groups…"
           ariaLabel="Search people"
           grow
-          growMaxWidth={340}
-          growExpandedMaxWidth={460}
           className="min-w-[200px] flex-1"
         />
         <span className="ml-auto flex items-center gap-2">

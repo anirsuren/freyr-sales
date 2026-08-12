@@ -294,8 +294,6 @@ export function OrgPerformanceTab({
           placeholder="Search goals, subgoals, people…"
           ariaLabel="Search org performance"
           grow
-          growMaxWidth={340}
-          growExpandedMaxWidth={460}
           className="min-w-[200px] flex-1"
         />
         <span className="ml-auto flex flex-wrap items-center gap-2">

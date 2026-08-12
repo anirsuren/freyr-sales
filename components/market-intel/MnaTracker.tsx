@@ -12,6 +12,9 @@ import {
   ShoppingBag,
   Stethoscope,
   type LucideIcon,
+  CalendarClock,
+  BadgeDollarSign,
+  Newspaper,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -49,23 +52,51 @@ function fmtDate(iso: string | null): string {
   });
 }
 
+/** "$360 M" / "$3.8 B" → dollars; null when the deal value is undisclosed. */
+function dealValueUsd(v: string | null): number | null {
+  if (!v) return null;
+  const m = v.replace(/[$,\s]/g, "").match(/^([\d.]+)([MB])/i);
+  if (!m) return null;
+  return parseFloat(m[1]) * (m[2].toUpperCase() === "B" ? 1e9 : 1e6);
+}
+
 export function MnaTracker({ board }: { board: MnaBoard | null }) {
   const [status, setStatus] = useState<"all" | "announced" | "completed">("all");
   const [division, setDivision] = useState<"all" | MnaItem["division"]>("all");
+  const [timeFilter, setTimeFilter] = useState<"all" | "30" | "90" | "year">("all");
+  const [sizeFilter, setSizeFilter] = useState<"all" | "big" | "small" | "undisclosed">("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [query, setQuery] = useState("");
 
   const items = board?.items ?? [];
   const q = query.trim().toLowerCase();
-  const shown = items.filter(
-    (deal) =>
-      (status === "all" || deal.status === status) &&
-      (division === "all" || deal.division === division) &&
-      (!q ||
-        [deal.acquirer, deal.target, deal.summary, deal.sourceLabel]
-          .join(" ")
-          .toLowerCase()
-          .includes(q))
-  );
+  const sources = [...new Set(items.map((d) => d.sourceLabel).filter(Boolean))].sort();
+  const shown = items.filter((deal) => {
+    if (status !== "all" && deal.status !== status) return false;
+    if (division !== "all" && deal.division !== division) return false;
+    if (timeFilter !== "all") {
+      if (!deal.date) return false;
+      const t = Date.parse(deal.date);
+      const now = Date.now();
+      if (timeFilter === "30" && t < now - 30 * 86400e3) return false;
+      if (timeFilter === "90" && t < now - 90 * 86400e3) return false;
+      if (timeFilter === "year" && new Date(t).getFullYear() !== new Date().getFullYear()) return false;
+    }
+    if (sizeFilter !== "all") {
+      const v = dealValueUsd(deal.valueLabel);
+      if (sizeFilter === "undisclosed" && v !== null) return false;
+      if (sizeFilter === "big" && (v === null || v < 1e9)) return false;
+      if (sizeFilter === "small" && (v === null || v >= 1e9)) return false;
+    }
+    if (sourceFilter !== "all" && deal.sourceLabel !== sourceFilter) return false;
+    return (
+      !q ||
+      [deal.acquirer, deal.target, deal.summary, deal.sourceLabel]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  });
   const announced = items.filter((d) => d.status === "announced").length;
   const completed = items.length - announced;
 
@@ -122,8 +153,6 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
           placeholder="Search deals…"
           ariaLabel="Search deals"
           grow
-          growMaxWidth={340}
-          growExpandedMaxWidth={460}
           className="min-w-[200px] flex-1"
         />
         <span className="ml-auto flex flex-wrap items-center gap-2">
@@ -148,6 +177,45 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
               { value: "Medicinal Products", label: "Medicinal Products", color: "#0071E3", icon: Pill },
               { value: "Medical Devices", label: "Medical Devices", color: "#0F766E", icon: Stethoscope },
               { value: "Consumer", label: "Consumer", color: "#C2410C", icon: ShoppingBag },
+            ]}
+          />
+          <ColorSelect
+            value={timeFilter}
+            onChange={(v) => setTimeFilter(v as typeof timeFilter)}
+            ariaLabel="Filter by time"
+            minWidth={150}
+            options={[
+              { value: "all", label: "All time", icon: CalendarClock },
+              { value: "30", label: "Last 30 days", color: "#0071E3", icon: CalendarClock },
+              { value: "90", label: "Last 90 days", color: "#6D28D9", icon: CalendarClock },
+              { value: "year", label: "This year", color: "#0F766E", icon: CalendarClock },
+            ]}
+          />
+          <ColorSelect
+            value={sizeFilter}
+            onChange={(v) => setSizeFilter(v as typeof sizeFilter)}
+            ariaLabel="Filter by deal size"
+            minWidth={160}
+            options={[
+              { value: "all", label: "Any deal size", icon: BadgeDollarSign },
+              { value: "big", label: "$1B and up", color: "#0F766E", icon: BadgeDollarSign },
+              { value: "small", label: "Under $1B", color: "#0071E3", icon: BadgeDollarSign },
+              { value: "undisclosed", label: "Undisclosed", color: "#8AB4E8", icon: BadgeDollarSign },
+            ]}
+          />
+          <ColorSelect
+            value={sourceFilter}
+            onChange={setSourceFilter}
+            ariaLabel="Filter by source"
+            minWidth={170}
+            options={[
+              { value: "all", label: "All sources", icon: Newspaper },
+              ...sources.map((src) => ({
+                value: src,
+                label: src,
+                color: "#6D28D9",
+                icon: Newspaper,
+              })),
             ]}
           />
         </span>
