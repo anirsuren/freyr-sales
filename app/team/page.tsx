@@ -32,6 +32,7 @@ import {
 } from "@/lib/team";
 import { StatTile } from "@/components/ui/StatTile";
 import { TeamRoster, type RosterRep } from "@/components/team/TeamRoster";
+import { InviteTeammate } from "@/components/team/InviteTeammate";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -87,11 +88,25 @@ export default async function TeamPage() {
     );
     if (members.length === 0) {
       return (
-        <EmptyState
-          icon={Users}
-          title="No teammates yet"
-          description="Invite your first teammate from Settings to build the sales workspace."
-        />
+        <div className="space-y-5">
+          <PageHeader
+            title="Team"
+            subtitle="Everyone in the workspace."
+            action={
+              <InviteTeammate
+                canInvite={currentUser?.role === "admin"}
+                workspaceDomain={
+                  currentUser?.email?.split("@")[1] || "freyrsolutions.com"
+                }
+              />
+            }
+          />
+          <EmptyState
+            icon={Users}
+            title="No teammates yet"
+            description="Use Invite, up in the corner, to bring in the first person."
+          />
+        </div>
       );
     }
     const ACCESS_ROLE: Record<string, RosterRep["role"]> = {
@@ -142,6 +157,14 @@ export default async function TeamPage() {
         <PageHeader
           title="Team"
           subtitle="Everyone in the workspace. Pipeline numbers fill in as deals are logged."
+          action={
+            <InviteTeammate
+              canInvite={currentUser?.role === "admin"}
+              workspaceDomain={
+                currentUser?.email?.split("@")[1] || "freyrsolutions.com"
+              }
+            />
+          }
         />
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {rollup.map((tile) => (
@@ -258,6 +281,14 @@ export default async function TeamPage() {
       <PageHeader
         title="Team"
         subtitle="Your Freyr sales floor: message anyone on Teams or call them directly, and see what each rep is working."
+        action={
+          <InviteTeammate
+            canInvite={currentUser.role === "admin"}
+            workspaceDomain={
+              currentUser.email?.split("@")[1] || "freyrsolutions.com"
+            }
+          />
+        }
       />
 
       {/* The shared tile, same as Sequences: icon and label on one row, the

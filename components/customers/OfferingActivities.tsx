@@ -312,7 +312,7 @@ export function OfferingActivities({
                 <th className="w-[300px] py-2 pr-3 font-bold">Details</th>
                 <th className="w-[136px] py-2 pr-3 font-bold">Status</th>
                 <th className="w-[184px] py-2 pr-3 font-bold">Dates</th>
-                <th className="w-[104px] py-2 pr-3 text-right font-bold">Value</th>
+                <th className="w-[104px] py-2 pr-3 font-bold">Value</th>
                 <th className="w-[140px] py-2 pr-2 font-bold">Current</th>
                 <th className="w-[88px] py-1 font-bold">
                   {/* A WHITE PLUS ON A BLUE SQUARE (Anir, Aug 9: "add activity
@@ -388,7 +388,7 @@ export function OfferingActivities({
                         <span className="text-text-tertiary">No dates yet</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap py-2.5 pr-3 text-right text-[12px] font-semibold text-text-primary tnum">
+                    <td className="whitespace-nowrap py-2.5 pr-3 text-[12px] font-semibold text-text-primary tnum">
                       {version.dollar_value > 0 ? (
                         money(version.dollar_value, version.currency)
                       ) : (

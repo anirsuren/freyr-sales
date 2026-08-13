@@ -117,9 +117,12 @@ function toneOf(release: TimelineRelease) {
   return { dot: "#1A7A35", bar: "rgba(26,122,53,0.20)", label: "Released" };
 }
 
-/** Rough pill width so the lane logic can spot collisions before they paint. */
-function pillWidth(version: string) {
-  return withV(version).length * 7.5 + 26;
+/** Rough pill width so the lane logic can spot collisions before they paint.
+ *  It has to count the status word too, now that each pill carries its own
+ *  (Anir, Aug 12: "you don't need the three tags… just say 'expected' or
+ *  'current' right on top of the dot"). */
+function pillWidth(release: TimelineRelease) {
+  return withV(release.version).length * 7.5 + toneOf(release).label.length * 5.4 + 34;
 }
 
 export function VersionTimeline({
@@ -315,7 +318,7 @@ export function VersionTimeline({
     const laneEnds = [-Infinity, -Infinity];
     for (const release of dated) {
       const x = xOf(release.ms);
-      const w = pillWidth(release.version);
+      const w = pillWidth(release);
       const lane = x - w / 2 > laneEnds[0] + 8 ? 0 : 1;
       laneEnds[lane] = x + w / 2;
       lanes.push(lane);
@@ -333,26 +336,10 @@ export function VersionTimeline({
 
   return (
     <div className="mt-3.5">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        {/* The legend carries what the per-marker status text used to say, so
-            every marker sheds a line and the stage breathes. */}
-        <div className="flex items-center gap-3.5">
-          {[
-            { color: "#1A7A35", label: "Released" },
-            { color: "#0071E3", label: "Current" },
-            { color: "#6D28D9", label: "Expected" },
-          ].map((entry) => (
-            <span key={entry.label} className="flex items-center gap-1.5">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ background: entry.color }}
-              />
-              <span className="text-[11px] font-medium text-text-secondary">
-                {entry.label}
-              </span>
-            </span>
-          ))}
-        </div>
+      {/* NO LEGEND (Anir, Aug 12: "you don't need the three tags… save some
+          space"). Each pill says its own status, so a colour key you had to
+          look up and translate is three chips of pure overhead. */}
+      <div className="mb-2 flex flex-wrap items-center justify-end gap-3">
         <div className="flex items-center gap-2.5">
           <p className="hidden text-[11.5px] text-text-tertiary sm:block">
             Swipe or drag to pan · pinch to zoom
@@ -597,6 +584,9 @@ export function VersionTimeline({
                         }}
                       >
                         {withV(release.version)}
+                        <span className="ml-1.5 text-[9.5px] font-bold uppercase tracking-[0.05em] text-white/75">
+                          {tone.label}
+                        </span>
                       </span>
                     </button>
                   </HoverCard>

@@ -5,6 +5,8 @@ import { Crown, Plus, Trash2, UsersRound, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
+import { PersonSelect } from "@/components/performance/bits";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
 import type { PerfGroup } from "@/lib/performanceShared";
@@ -98,8 +100,21 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         )}
       </div>
 
-      {creating && (
-        <div className="mt-3 rounded-xl border border-blue-subtle bg-[rgba(0,113,227,0.03)] p-4">
+      {/* Creating a group is its own popup (Anir, Aug 12: "when I create a
+          new group, it should be a pop-up"). */}
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="New user group"
+        size="wide"
+        tall
+      >
+        <p className="text-[12.5px] leading-relaxed text-text-secondary">
+          A group is a department with an owner. Its members&apos; goals add up
+          into the group automatically — goals are never attached to a group,
+          only to its people.
+        </p>
+        <div className="mt-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="text-[12px] font-semibold text-text-primary">
@@ -118,83 +133,74 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 <Crown size={12} strokeWidth={2.4} className="text-[color:#7C3AED]" />
                 <InfoHint text="The owner runs this group's performance — they see their people's numbers and can verify them." />
               </label>
-              <select
-                value={head}
-                onChange={(e) => {
-                  setHead(e.target.value);
-                  addMember(e.target.value);
-                }}
-                className="mt-1 h-[38px] w-full cursor-pointer rounded-lg border border-border-light bg-white px-2.5 text-[13.5px] outline-none focus:border-blue-primary"
-              >
-                <option value="">Pick the owner…</option>
-                {memberNames.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <PersonSelect
+                  value={head}
+                  onChange={(next) => {
+                    setHead(next);
+                    addMember(next);
+                  }}
+                  people={memberNames}
+                  placeholder="Pick the owner…"
+                />
+              </div>
             </div>
           </div>
           <div className="mt-3">
             <label className="text-[12px] font-semibold text-text-primary">
               People in the group
             </label>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              {members.map((m) => (
-                <span
-                  key={m}
-                  className="flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2 text-[12px] font-medium text-text-primary"
-                >
-                  <Avatar name={m} className="h-5 w-5 text-[8px]" />
-                  {m}
-                  {m === head && (
-                    <Crown size={10} strokeWidth={2.6} className="text-[color:#7C3AED]" />
-                  )}
-                  <button
-                    type="button"
-                    aria-label={`Remove ${m}`}
-                    onClick={() => {
-                      setMembers((prev) => prev.filter((x) => x !== m));
-                      if (head === m) setHead("");
-                    }}
-                    className="cursor-pointer text-text-tertiary hover:text-error"
-                  >
-                    <X size={11} strokeWidth={2.4} />
-                  </button>
-                </span>
-              ))}
-              <select
+            {/* THE PICKER SITS ABOVE WHAT IT BUILDS (Anir, Aug 12: "when I add
+                a person, why do the people show up on top? That doesn't make
+                any sense. It should be below."). You reach for the same
+                control every time, and the group grows downward under it. */}
+            <div className="mt-1.5">
+              <PersonSelect
                 value=""
-                onChange={(e) => e.target.value && addMember(e.target.value)}
-                className="h-[30px] cursor-pointer rounded-full border border-dashed border-border bg-white px-2.5 text-[12px] text-text-secondary outline-none focus:border-blue-primary"
-              >
-                <option value="">+ Add a person…</option>
-                {freeMembers.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => next && addMember(next)}
+                people={freeMembers}
+                placeholder="Add a person…"
+              />
             </div>
-          </div>
-          <div className="mt-3.5 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setCreating(false)}
-              className="cursor-pointer rounded-full bg-surface px-3.5 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
-            >
-              Not now
-            </button>
-            <Button
-              onClick={create}
-              disabled={!name.trim() || members.length === 0}
-              loading={busy}
-            >
-              Create group
-            </Button>
+            {members.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {members.map((m) => (
+                  <span
+                    key={m}
+                    className="flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2 text-[12px] font-medium text-text-primary"
+                  >
+                    <Avatar name={m} className="h-5 w-5 text-[8px]" />
+                    {m}
+                    {m === head && (
+                      <Crown size={10} strokeWidth={2.6} className="text-[color:#7C3AED]" />
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${m}`}
+                      onClick={() => {
+                        setMembers((prev) => prev.filter((x) => x !== m));
+                        if (head === m) setHead("");
+                      }}
+                      className="cursor-pointer text-text-tertiary hover:text-error"
+                    >
+                      <X size={11} strokeWidth={2.4} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
+        <div className="mt-4 flex items-center justify-end">
+          <Button
+            onClick={create}
+            disabled={!name.trim() || members.length === 0}
+            loading={busy}
+          >
+            Create group
+          </Button>
+        </div>
+      </Modal>
 
       <div className="mt-3 space-y-2">
         {groups === null ? (

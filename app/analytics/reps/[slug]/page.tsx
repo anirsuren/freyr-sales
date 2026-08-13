@@ -121,9 +121,24 @@ export default async function RepPage({
             <p className="mt-0.5 text-[13px] text-text-secondary">
               {memberTitle || "Title not set"}
             </p>
-            {member.email && (
-              <p className="mt-0.5 text-[12px] text-text-tertiary">{member.email}</p>
-            )}
+            {/* WHEN DID THEY JOIN (Anir, Aug 12: "I would like to see when
+                they join when I click on them") — the workspace account's own
+                creation date, so it is a fact about this person and not a
+                guess. Absent on accounts created before the column existed. */}
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-text-tertiary">
+              {member.email && <span>{member.email}</span>}
+              {member.joinedAt && (
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarCheck size={12} strokeWidth={2} />
+                  Joined{" "}
+                  {new Date(member.joinedAt).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+              )}
+            </p>
           </div>
           {member.email && (
             <a

@@ -1367,56 +1367,10 @@ export function SettingsTabs({
             ))}
           </div>
 
-          <Card className="px-5 py-4">
-            <div className="flex items-start justify-between gap-5">
-              <div>
-                <h2 className="flex items-center gap-2 text-[14px] font-semibold text-text-primary">
-                  <UserPlus size={16} className="text-blue-primary" /> Invite a teammate
-                </h2>
-                <p className="mt-1 text-[11.5px] text-text-secondary">Invite any valid email address. Only workspace owners can create invitations, and each invite expires after 14 days.</p>
-              </div>
-              <span className="rounded-md bg-success/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-success">Invite only</span>
-            </div>
-            <div className="mt-4 grid grid-cols-[minmax(180px,0.8fr)_minmax(240px,1fr)_160px_auto] items-end gap-3">
-              <label>
-                <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Full name</span>
-                <Input
-                  autoComplete="name"
-                  placeholder="Teammate’s name"
-                  value={invite.name}
-                  onChange={(e) =>
-                    setInvite({ ...invite, name: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Work email</span>
-                {/* THIS WORKSPACE'S OWN DOMAIN, not a stock "company.com"
-                    (Anir, Jul 30: "make sure this is personalized for Freyr
-                    Solutions. It shouldn't say add company name"). Taken from
-                    the signed-in admin's address rather than hardcoded, so it
-                    stays true if Freyr ever runs this on another domain. */}
-                <Input type="email" placeholder={`name@${workspaceDomain}`} value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
-              </label>
-              <label>
-                <span className="mb-1.5 block text-[11px] font-semibold text-text-secondary">Starting role</span>
-                {/* A colour + an icon each, like every other picker in the app.
-                    A bare native select was the last plain-text dropdown left,
-                    and what someone can DO here is exactly the kind of fact the
-                    chip rule exists for. */}
-                <ColorSelect
-                  value={invite.role}
-                  onChange={(v) => setInvite({ ...invite, role: v })}
-                  options={INVITE_ROLE_OPTIONS}
-                  ariaLabel="Starting role"
-                />
-              </label>
-              <Button onClick={addMember} disabled={!canInvite || accessBusy === "invite"} className="h-[42px]">
-                {accessBusy === "invite" ? "Creating…" : "Create invite"}
-              </Button>
-            </div>
-            {!canInvite && <p className="mt-2 text-[11.5px] text-warning">Only an admin can invite or approve members.</p>}
-          </Card>
+          {/* THE INVITE FORM MOVED TO /team (Anir, Aug 12: "this should not be
+              in the settings page. This should be in the team page"). Hiring
+              happens where you look at the people; what stays here is the
+              record of who is already in and who is still pending. */}
 
           <Card className="overflow-hidden p-0">
             <div className="flex items-center justify-between border-b border-border-light px-5 py-3.5">

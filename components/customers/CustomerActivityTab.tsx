@@ -193,8 +193,8 @@ export function CustomerActivityTab({
                       type="button"
                       onClick={() => toggleOffering(u.offering_id)}
                       aria-expanded={open}
-                      className={`entry-card__head -mx-4 flex w-[calc(100%+2rem)] cursor-pointer items-center gap-2.5 px-4 text-left transition-colors hover:bg-surface/60 ${
-                        open ? "mb-3.5 pb-3" : "pb-0"
+                      className={`-mx-4 flex w-[calc(100%+2rem)] cursor-pointer items-center gap-2.5 px-4 text-left transition-colors hover:bg-surface/60 ${
+                        open ? "entry-card__head mb-3.5 pb-3" : "pb-0"
                       }`}
                     >
                       <ChevronRight

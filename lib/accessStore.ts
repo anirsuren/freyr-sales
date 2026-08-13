@@ -20,6 +20,9 @@ export type AccessMember = {
   active: boolean;
   accountType: "real" | "test";
   lastSeenAt: string | null;
+  /** When this person joined the workspace (Anir, Aug 12: "I would like to
+   *  see when they join when I click on them"). */
+  joinedAt: string | null;
 };
 
 export type AccessRequestRecord = {
@@ -434,7 +437,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
   const client = adminClient();
   const classifiedMembers = await client
       .from("app_users")
-      .select("id, display_name, email, app_role, active, account_type, last_seen_at")
+      .select("id, display_name, email, app_role, active, account_type, last_seen_at, created_at")
       .eq("workspace_id", workspace)
       .order("display_name");
   let memberRows: Array<{
@@ -445,6 +448,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
     active: boolean;
     account_type?: string | null;
     last_seen_at: string | null;
+    created_at?: string | null;
   }> = classifiedMembers.data || [];
   let membersError = classifiedMembers.error;
   let legacyAccountTypes = false;
@@ -452,7 +456,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
     legacyAccountTypes = true;
     const legacyMembers = await client
       .from("app_users")
-      .select("id, display_name, email, app_role, active, last_seen_at")
+      .select("id, display_name, email, app_role, active, last_seen_at, created_at")
       .eq("workspace_id", workspace)
       .order("display_name");
     memberRows = legacyMembers.data || [];
@@ -495,6 +499,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
         active: item.active,
         accountType,
         lastSeenAt: item.last_seen_at,
+        joinedAt: (item as { created_at?: string | null }).created_at ?? null,
       };
     })
     .filter((member): member is AccessMember => member !== null);

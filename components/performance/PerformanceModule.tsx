@@ -2241,10 +2241,13 @@ function SubgoalEditorFields({
         </div>
       </div>
 
-      {/* Two matching cards, side by side — who answers for it, who carries
-          a number. One visual language, no floating rows (Anir, Aug 12:
-          "keep it consistent... make this thing look better"). */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      {/* ONE PER LINE, FULL WIDTH (Anir, Aug 12: "let's have the goal owners
+          and the people on the sub-goal on two different lines so this
+          doesn't happen, so that the name of the person always shows up in
+          full"). Side by side, each card was half a dialog wide and ate names
+          like "Anant Purohit" into "Anant Pur…". A person's own name is the
+          last thing that should be abbreviated. */}
+      <div className="grid grid-cols-1 gap-3">
         <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Goal owners
@@ -2267,7 +2270,7 @@ function SubgoalEditorFields({
               <div key={o} className="flex items-center gap-2">
                 <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
                   <Avatar name={o} className="h-5 w-5 text-[8px]" />
-                  <span className="truncate text-[12.5px] font-medium text-text-primary">
+                  <span className="text-[12.5px] font-medium text-text-primary">
                     {o}
                   </span>
                   <Crown
@@ -2306,7 +2309,7 @@ function SubgoalEditorFields({
               <div key={r.name} className="flex items-center gap-2">
                 <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
                   <Avatar name={r.name} className="h-5 w-5 text-[8px]" />
-                  <span className="truncate text-[12.5px] font-medium text-text-primary">
+                  <span className="text-[12.5px] font-medium text-text-primary">
                     {r.name}
                   </span>
                   {owners.includes(r.name) && (
