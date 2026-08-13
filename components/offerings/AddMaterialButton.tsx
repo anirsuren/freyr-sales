@@ -613,18 +613,14 @@ export function AddMaterialButton({
       // Whether the assistant could actually READ the file. Worth saying out
       // loud: an owner uploading a deck so the agent can answer from it needs
       // to know when it was a scan or a video and there were no words to take.
-      let wasRead = false;
-      let readWords = 0;
-      let unsupported = false;
-      let readFailed = false;
+      // Whether any stored file is being read in the background. Nothing here
+      // waits on the outcome — that is the point of the split.
+      let indexing = false;
       const uploaded: Array<{
         file: File;
         url: string;
         docsPath?: string;
-        words: number;
-        readable: boolean;
-        unsupported: boolean;
-        failed: boolean;
+        indexing: boolean;
       }> = [];
       for (let index = 0; index < files.length; index += 1) {
         const currentFile = files[index];
@@ -635,10 +631,7 @@ export function AddMaterialButton({
           file: currentFile,
           url: stored.url,
           docsPath: stored.docsPath,
-          words: typeof stored.words === "number" ? stored.words : 0,
-          readable: Boolean(stored.readable),
-          unsupported: stored.supported === false,
-          failed: Boolean(stored.failed),
+          indexing: Boolean(stored.indexing),
         });
       }
       const failedCount = files.length - uploaded.length;
@@ -648,17 +641,7 @@ export function AddMaterialButton({
         setOpen(true);
         return;
       }
-      if (!files.length) {
-        wasRead = false;
-        readWords = 0;
-        unsupported = false;
-        readFailed = false;
-      } else {
-        readWords = uploaded.reduce((total, item) => total + item.words, 0);
-        wasRead = uploaded.some((item) => item.readable);
-        unsupported = uploaded.every((item) => item.unsupported);
-        readFailed = uploaded.some((item) => item.failed);
-      }
+      indexing = files.length > 0 && uploaded.some((item) => item.indexing);
       // Note: "added by" is NOT sent from here. The PATCH route stamps the
       // uploader from the server session and restores every existing row's
       // attribution from the store, so a client can neither credit itself for
@@ -740,20 +723,26 @@ export function AddMaterialButton({
         // unreadable format when the real cause was a failed read-back
         // (Anir, Jul 29: "it literally just gave me a pop-up that said it
         // can't read this file type... that thing should never say that").
+        /**
+         * THE MESSAGE IS ABOUT STORAGE, NOT ABOUT THE AI.
+         *
+         * Reading the file now happens after the upload answers (Anir, Aug 13:
+         * "get it in the fucking system" first, "then train the AI on it"), so
+         * the word count simply is not known yet and must not be waited for.
+         * The old copy reported the assistant's reading as part of the upload
+         * result, which is how a stored file ended up described as a failure.
+         */
         toast(
           failedCount > 0
             ? `${uploaded.length} ${uploaded.length === 1 ? "file" : "files"} added; ${failedCount} failed and remain in the review list.`
-            :
-          !files.length
-            ? "Material added"
-            : wasRead
-              ? `${files.length === 1 ? "Material" : `${files.length} materials`} added, Freyr AI read ${readWords.toLocaleString()} words`
-              : unsupported
-                ? "Material added. There is no text in this kind of file, so the assistant answers from its title and tags."
-                : readFailed
-                  ? "Material added. The assistant hasn't read it yet. Open Edit and save to try again."
-                  : "Material added. The assistant found no text inside it.",
-          failedCount > 0 || readFailed ? "error" : undefined
+            : !files.length
+              ? "Material added"
+              : indexing
+                ? `${files.length === 1 ? "Material" : `${files.length} materials`} added. The assistant reads it in the background.`
+                : files.length === 1
+                  ? "Material added"
+                  : `${files.length} materials added`,
+          failedCount > 0 ? "error" : undefined
         );
         if (failedCount === 0) {
           // Let the finished state land for a beat — every bar full, the green

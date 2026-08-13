@@ -3,8 +3,8 @@ import { getOffering } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
 import { uploadMaterialFile, MAX_UPLOAD_BYTES } from "@/lib/materialStorage";
 import { getCurrentUser } from "@/lib/currentUser";
-import { extractFileContent, isReadableFile } from "@/lib/fileText";
-import { saveMaterialText } from "@/lib/materialText";
+import { isReadableFile } from "@/lib/fileText";
+import { indexStoredMaterialInBackground } from "@/lib/materialIndexing";
 
 export const dynamic = "force-dynamic";
 // A recorded demo is tens of MB; the platform default body cap would bounce it.
@@ -57,43 +57,35 @@ export async function POST(
     const me = await getCurrentUser().catch(() => null);
     const stored = await uploadMaterialFile(id, file, me?.email || me?.name);
 
-    // READ THE FILE so the assistant can answer from it. This is the whole
-    // reason uploads exist rather than links (Wajeed, Jul 29: "the AI should
-    // be able to use the content of each of the files uploaded"). Extraction
-    // is best-effort and never blocks the upload: a scanned PDF or a .mov
-    // still stores fine, it just isn't searchable, and we say so.
-    // This path still has the bytes in hand, so there is nothing to race and
-    // nothing to retry — but it reports the SAME three outcomes as the direct
-    // path so the dialog never has to guess which one it is talking to.
-    const supported = isReadableFile(file.name);
-    let readable = false;
-    let words = 0;
+    /**
+     * THE UPLOAD IS DONE. ANSWER NOW.
+     *
+     * Reading the file for the assistant is a SECOND job and it starts after
+     * this response goes out (Anir, Aug 13: "get it in the fucking system"
+     * first, "then train the AI on it"). Extraction used to run inline here,
+     * so a corrupt pptx or a PDF with a broken xref threw, fell to the outer
+     * catch, and answered 500 "Upload failed" about a file already sitting
+     * safely in the bucket. That is the bug that made sales materials feel
+     * like they broke every day — and once the bucket's missing CORS started
+     * routing every browser upload through here, it would have hit everyone.
+     */
     if (stored.docsPath) {
-      const extracted = supported
-        ? extractFileContent(Buffer.from(await file.arrayBuffer()), file.name)
-        : { text: "" };
-      const text = extracted.text;
-      readable = text.length > 0;
-      words = text.match(/\S+/g)?.length ?? 0;
-      await saveMaterialText(stored.docsPath, {
+      indexStoredMaterialInBackground({
         offeringId: id,
+        path: stored.docsPath,
         filename: file.name,
-        text,
-        extractedAt: new Date().toISOString(),
-        ...(extracted.contentDate ? { contentDate: extracted.contentDate } : {}),
-        ...(extracted.archiveMembers
-          ? { archiveMembers: extracted.archiveMembers }
-          : {}),
-      }).catch(() => undefined);
+        bytes: Buffer.from(await file.arrayBuffer()),
+      });
     }
 
     return NextResponse.json({
       ok: true,
       ...stored,
-      supported,
+      // The format CAN hold text; whether we got any is decided in the
+      // background now, so the dialog reports storage, not searchability.
+      supported: isReadableFile(file.name),
       failed: false,
-      readable,
-      words,
+      indexing: Boolean(stored.docsPath),
     });
   } catch (e) {
     return NextResponse.json(
