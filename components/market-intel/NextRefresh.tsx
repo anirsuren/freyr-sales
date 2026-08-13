@@ -144,19 +144,26 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
             </div>
             <span className="absolute left-0 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#0071E3]" />
             <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border-2 border-[#6D28D9] bg-white" />
-            {/* Dot and label share ONE clamped position so the label is
-                always centered under the dot, and neither ever hugs the
-                very end of the track (Anir). The fill bar keeps the true
-                percentage; only the marker is eased inward. */}
+            {/* THE HANDLE SITS ON THE TRUE PERCENTAGE. It used to be clamped
+                to 24-76% while the fill bar used the real number, so late in
+                a cycle the blue fill ran straight past its own handle and the
+                bar looked broken (Anir, Aug 13: "what's wrong with this
+                progress bar here?"). Only the LABEL is kept inside the box
+                now, by shifting its own alignment near the ends. */}
             <span
               className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#0071E3] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.25)]"
-              style={{ left: `${Math.min(76, Math.max(24, pct))}%` }}
+              style={{ left: `${pct}%` }}
             />
           </div>
           <div className="relative mt-1 h-4">
             <span
-              className="absolute -translate-x-1/2 whitespace-nowrap text-[10.5px] font-bold text-blue-primary tnum"
-              style={{ left: `${Math.min(76, Math.max(24, pct))}%` }}
+              className="absolute whitespace-nowrap text-[10.5px] font-bold text-blue-primary tnum"
+              style={{
+                left: `${pct}%`,
+                // Centred in the middle, flush at either end, so the text is
+                // never cut off and never drifts away from the handle.
+                transform: `translateX(-${Math.min(100, Math.max(0, pct))}%)`,
+              }}
             >
               {due ? "refresh due" : `you're here · ${clock(now)}`}
             </span>

@@ -43,7 +43,22 @@ const LOCK_MS = 30 * 60 * 1000;
 const RUN_CAP_USD = 3.2;
 const TARGETED_CAP_USD = 0.6;
 const POST_LIMIT = 5;
-const NEWS_LIMIT = 8;
+/**
+ * WHY 8 WAS TOO FEW (Anir, Aug 13: "all the companies according to this have
+ * no news in the past day, which doesn't make any sense").
+ *
+ * The actor returns Google News results ranked by RELEVANCE, not date, and it
+ * ignores its own `sort: newest` (verified against the live API: passing it
+ * dropped the freshest article rather than promoting it). So a page of 8 is a
+ * relevance slice that happens to contain roughly one same-day item. Filter
+ * that to "past day" and you land on zero for every company, while the
+ * scraper itself is working perfectly: a probe for Dr. Reddy's returned a
+ * story 3.9 hours old at rank 1.
+ *
+ * Pulling a deeper page is the fix; there is no recency parameter to lean on.
+ * It costs ~$0.07 more per company per refresh (0.004/item).
+ */
+const NEWS_LIMIT = 25;
 // Each pull re-bills the latest N posts whether or not they are new, so the
 // person limit stays small: 133 tracked people at 5 posts is ~$3.30 a run.
 const PERSON_POST_LIMIT = 5;
