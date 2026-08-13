@@ -4,12 +4,14 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Check,
+  CheckCircle2,
   ChevronDown,
   Crown,
   ClipboardList,
   Gauge,
   HelpCircle,
   LayoutGrid,
+  ListChecks,
   Pencil,
   Plus,
   Table2,
@@ -77,7 +79,7 @@ import { GroupPerformanceTab } from "./GroupPerformanceTab";
  */
 
 const TABS = ["org", "groups", "people"] as const;
-const MASTER_VIEWS = ["cards", "table"] as const;
+const MASTER_VIEWS = ["trail", "cards", "table"] as const;
 type Tab = (typeof TABS)[number];
 
 const SPLIT_COLORS = ["#0071E3", "#6D28D9", "#0F766E", "#B4318F", "#C2410C", "#0EA5E9"];
@@ -610,9 +612,12 @@ function MasterTab({
   const [trackFilter, setTrackFilter] = useState("all");
   const [unitFilter, setUnitFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
+  // Keyed .v2 on purpose: the trail is the new default way of reading this
+  // page, and an old stored "table"/"cards" choice would silently keep
+  // everyone on the layout being replaced.
   const [view, chooseView] = useStoredView<(typeof MASTER_VIEWS)[number]>(
-    "freyr.performance.master.view",
-    "cards",
+    "freyr.performance.master.view.v2",
+    "trail",
     MASTER_VIEWS
   );
   const [viewOpen, setViewOpen] = useState(false);
@@ -745,7 +750,9 @@ function MasterTab({
               className="flex h-[36px] cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-2 transition-colors hover:border-blue-subtle"
             >
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(0,113,227,0.10)] text-blue-primary">
-                {view === "cards" ? (
+                {view === "trail" ? (
+                  <ListChecks size={14} strokeWidth={2.2} />
+                ) : view === "cards" ? (
                   <LayoutGrid size={14} strokeWidth={2.2} />
                 ) : (
                   <Table2 size={14} strokeWidth={2.2} />
@@ -766,7 +773,7 @@ function MasterTab({
                 className="menu-in absolute right-0 top-full z-50 mt-2 flex gap-1 rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
               >
                 {MASTER_VIEWS.map((v) => {
-                  const VIcon = v === "cards" ? LayoutGrid : Table2;
+                  const VIcon = v === "trail" ? ListChecks : v === "cards" ? LayoutGrid : Table2;
                   return (
                     <button
                       key={v}
@@ -1031,6 +1038,29 @@ function MasterTab({
                 );
               })}
           </div>
+        ) : view === "trail" ? (
+          [...byType, ...strayTypes].map(({ type, goals }) => (
+            <div key={type} className="mt-7">
+              <div className="flex items-center gap-2">
+                <TypeChip type={type} />
+                <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                  {goals.length} {goals.length === 1 ? "goal" : "goals"}
+                </span>
+                <span className="ml-1 h-px min-w-4 flex-1 bg-border-light" aria-hidden />
+              </div>
+              <div className="mt-2.5 space-y-2.5 stagger">
+                {goals.map((g) => (
+                  <TrailGoalRow
+                    key={g.id}
+                    goal={g}
+                    live={live}
+                    run={run}
+                    onOpen={() => setOpenId(g.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))
         ) : (
           [...byType, ...strayTypes].map(({ type, goals }) => (
             <div key={type} className="mt-7">
@@ -1818,6 +1848,171 @@ function PickedPill({
 /** One goal on the master — an Offerings-style card. Cards WITH subgoals do
  *  the scale-up hover that reveals them (Anir's ask); cards without stay
  *  plain — expanding into an empty panel read as broken. */
+/**
+ * THE TRAIL VIEW: a goal as its setup journey, not a spreadsheet row.
+ *
+ * The table led with emptiness — nine rows of "Set the target / 0 / —" read
+ * as broken (Suren keeps bouncing off it; Anir, Aug 13: "he still doesn't
+ * like this. pick another way of showing it"). The same facts become a
+ * left-to-right trail: Target, Subgoals, Owners, each step either DONE
+ * (green check + the value) or NEXT (dashed blue + the action to take), so
+ * an unconfigured goal reads as "here is what to do" instead of "nothing is
+ * here". Clicking anywhere opens the same goal popup as the other views.
+ */
+function TrailGoalRow({
+  goal,
+  live,
+  run,
+  onOpen,
+}: {
+  goal: PrimaryGoal;
+  live: boolean;
+  run: RunOp;
+  onOpen: () => void;
+}) {
+  const owners = [...new Set(goal.subgoals.flatMap((s) => s.owners))];
+  const steps: {
+    key: string;
+    done: boolean;
+    label: string;
+    value: React.ReactNode;
+  }[] = [
+    {
+      key: "target",
+      done: goal.target > 0,
+      label: "Target",
+      value:
+        goal.target > 0 ? (
+          <span className="font-bold text-text-primary tnum">
+            {fmtAmount(goal.unit, goal.target)}
+          </span>
+        ) : (
+          "Set the target"
+        ),
+    },
+    {
+      key: "subgoals",
+      done: goal.subgoals.length > 0,
+      label: "Subgoals",
+      value:
+        goal.subgoals.length > 0 ? (
+          <span className="font-bold text-text-primary tnum">
+            {goal.subgoals.length} set
+          </span>
+        ) : (
+          "Split the goal"
+        ),
+    },
+    {
+      key: "owners",
+      done: owners.length > 0,
+      label: "Owners",
+      value:
+        owners.length > 0 ? (
+          <span className="flex -space-x-1.5">
+            {owners.slice(0, 4).map((o) => (
+              <Avatar
+                key={o}
+                name={o}
+                tooltip={"Goal owner: " + o}
+                className="h-5 w-5 border-2 border-white text-[8px]"
+              />
+            ))}
+            {owners.length > 4 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-light text-[8px] font-bold text-blue-primary">
+                +{owners.length - 4}
+              </span>
+            )}
+          </span>
+        ) : (
+          "Assign owners"
+        ),
+    },
+  ];
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="group flex cursor-pointer flex-wrap items-center gap-x-5 gap-y-3 rounded-xl border border-border-light bg-white px-4 py-3.5 outline-none transition-[border-color,box-shadow] hover:border-blue-subtle hover:shadow-[0_6px_20px_-10px_rgba(15,23,42,0.18)] focus-visible:ring-2 focus-visible:ring-blue-primary/35"
+    >
+      <span className="flex min-w-[220px] flex-1 items-center gap-2.5 basis-[240px]">
+        <TypeIconTile type={goal.type} className="h-9 w-9 shrink-0" />
+        <span className="min-w-0">
+          <span className="block truncate text-[13.5px] font-semibold text-text-primary transition-colors group-hover:text-blue-primary">
+            {goal.name}
+          </span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+            <UnitChip unit={goal.unit} />
+            {goal.measure === "level" && (
+              <span className="rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
+                latest value
+              </span>
+            )}
+            <span className="text-[10.5px] text-text-tertiary tnum">
+              {goal.year}
+            </span>
+          </span>
+        </span>
+      </span>
+
+      <span className="flex flex-wrap items-center gap-x-0 gap-y-2">
+        {steps.map((step, index) => (
+          <Fragment key={step.key}>
+            {index > 0 && (
+              <span
+                aria-hidden
+                className={cn(
+                  "mx-2.5 hidden h-px w-7 sm:block",
+                  step.done && steps[index - 1].done
+                    ? "bg-[#16A34A]/45"
+                    : "border-t border-dashed border-blue-primary/35"
+                )}
+              />
+            )}
+            <span className="flex min-w-[132px] items-center gap-2">
+              {step.done ? (
+                <CheckCircle2
+                  size={17}
+                  strokeWidth={2.1}
+                  className="shrink-0 text-[#16A34A]"
+                />
+              ) : (
+                <span className="flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full border-[1.6px] border-dashed border-blue-primary/60" />
+              )}
+              <span className="min-w-0">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  {step.label}
+                </span>
+                <span
+                  className={cn(
+                    "mt-px block text-[12px] leading-tight",
+                    step.done
+                      ? "text-text-secondary"
+                      : "font-semibold text-blue-primary"
+                  )}
+                >
+                  {step.value}
+                </span>
+              </span>
+            </span>
+          </Fragment>
+        ))}
+      </span>
+
+      <span className="ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
+        <PickedPill goal={goal} live={live} run={run} />
+      </span>
+    </div>
+  );
+}
+
 function GoalCard({
   goal,
   live,
