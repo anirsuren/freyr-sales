@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useState } from "react";
 import {
   Crown,
@@ -523,9 +524,14 @@ function GoalRows({
             <TypeIconTile type={goal.type} />
             <span className="flex min-w-0 flex-col gap-2">
               <span className="flex flex-wrap items-center gap-2">
-                <span className="text-[13.5px] font-semibold text-text-primary">
+                <Link
+                  href={`/performance/goal/${goal.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                  title="Open this goal: financial years, quarters, months, weeks, groups and people"
+                >
                   {goal.name}
-                </span>
+                </Link>
                 <PacePill pace={pace} size="sm" />
               </span>
               <span className="flex items-center gap-1.5">

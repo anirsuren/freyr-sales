@@ -1839,6 +1839,11 @@ function GoalCard({
       <span className="mt-2.5 block text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover:text-blue-primary">
         {goal.name}
       </span>
+      {(goal.componentGoalIds?.length ?? 0) > 0 && (
+        <span className="mt-1.5 inline-flex rounded-full bg-[rgba(109,40,217,0.10)] px-2 py-0.5 text-[10px] font-bold text-[color:#6D28D9]">
+          ⧉ adds up from {goal.componentGoalIds?.length} goals — nobody enters here
+        </span>
+      )}
       <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
         <UnitChip unit={goal.unit} />
         {goal.measure === "level" && (
@@ -2442,10 +2447,15 @@ function LogActualModal({
 }) {
   const [goalId, setGoalId] = useState("");
   const [subgoalId, setSubgoalId] = useState("");
+  const [componentId, setComponentId] = useState("");
   const [person, setPerson] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
+  const [customer, setCustomer] = useState("");
+  const [evidence, setEvidence] = useState<{ name: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const evidenceInputRef = useRef<HTMLInputElement>(null);
 
   // Opened from a person's goal row: land with goal, subgoal and person
   // already chosen so the only thing left to type is the number.
@@ -2457,41 +2467,78 @@ function LogActualModal({
   }, [open, initial]);
 
   const goal = state.goals.find((g) => g.id === goalId) ?? null;
-  const sub = goal?.subgoals.find((s) => s.id === subgoalId) ?? null;
+  // Composite goals (Booked Revenue) are never logged directly — the person
+  // picks WHICH booking it was and the entry lands on that component.
+  const components = (goal?.componentGoalIds ?? [])
+    .map((id) => state.goals.find((g) => g.id === id))
+    .filter((g): g is PrimaryGoal => Boolean(g));
+  const composite = components.length > 0;
+  const effectiveGoal = composite
+    ? (components.find((c) => c.id === componentId) ?? null)
+    : goal;
+  const sub = effectiveGoal?.subgoals.find((s) => s.id === subgoalId) ?? null;
   const parsed = parseAmountInput(amount);
+
+  async function attachEvidence(files: FileList | null) {
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files).slice(0, 5 - evidence.length)) {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/performance/evidence", {
+          method: "POST",
+          body: form,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? "Upload failed");
+        setEvidence((prev) => [...prev, { name: data.name, url: data.url }]);
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (evidenceInputRef.current) evidenceInputRef.current.value = "";
+    }
+  }
 
   const personOptions = useMemo(() => {
     const set = new Set<string>();
     if (sub) {
       for (const p of sub.people) set.add(p.name);
       for (const o of sub.owners) set.add(o);
-    } else if (goal) {
-      for (const s of goal.subgoals) {
+    } else if (effectiveGoal) {
+      for (const s of effectiveGoal.subgoals) {
         for (const p of s.people) set.add(p.name);
       }
-      for (const a of goal.assignments ?? []) set.add(a.person);
+      for (const a of effectiveGoal.assignments ?? []) set.add(a.person);
     }
     if (set.size === 0) for (const s of suggestions) set.add(s);
     set.add(meName);
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [goal, sub, suggestions, meName]);
+  }, [effectiveGoal, sub, suggestions, meName]);
 
   async function save() {
     const ok = await run(
       {
         op: "log-actual",
-        goalId,
+        goalId: composite ? componentId : goalId,
         subgoalId: subgoalId || null,
         person,
         amount: parsed ?? NaN,
         date: date || undefined,
         note: note || undefined,
+        customer: customer || undefined,
+        evidence: evidence.length ? evidence : undefined,
       },
-      "Logged — the numbers roll straight up"
+      "Sent for verification — it counts once the group owner locks it"
     );
     if (ok) {
       setAmount("");
       setNote("");
+      setCustomer("");
+      setEvidence([]);
+      setComponentId("");
       onClose();
     }
   }
@@ -2527,7 +2574,10 @@ function LogActualModal({
                   { value: "", label: "Pick a goal…", color: "#8E98A8" },
                   ...state.goals.map((g) => ({
                     value: g.id,
-                    label: g.name,
+                    label:
+                      (g.componentGoalIds?.length ?? 0) > 0
+                        ? `${g.name} · adds up`
+                        : g.name,
                     color: typeMeta(g.type).color,
                     icon: typeMeta(g.type).icon,
                   })),
@@ -2535,7 +2585,7 @@ function LogActualModal({
               />
             </div>
           </div>
-          {goal && goal.subgoals.length > 0 ? (
+          {effectiveGoal && effectiveGoal.subgoals.length > 0 ? (
             <div>
               <label className="text-[12px] font-semibold text-text-primary">
                 Subgoal
@@ -2551,10 +2601,10 @@ function LogActualModal({
                   minWidth={280}
                   options={[
                     { value: "", label: "Pick a subgoal…", color: "#8E98A8" },
-                    ...goal.subgoals.map((s) => ({
+                    ...effectiveGoal.subgoals.map((s) => ({
                       value: s.id,
                       label: s.name,
-                      color: typeMeta(goal.type).color,
+                      color: typeMeta(effectiveGoal.type).color,
                     })),
                   ]}
                 />
@@ -2564,6 +2614,36 @@ function LogActualModal({
             <div />
           )}
         </div>
+        {composite && (
+          <div className="rounded-xl border border-[rgba(109,40,217,0.3)] bg-[rgba(109,40,217,0.04)] px-3 py-2.5">
+            <p className="text-[11.5px] font-semibold text-[color:#6D28D9]">
+              {goal?.name} is only ever a sum — pick which booking this was:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {components.map((c) => {
+                const active = componentId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      if (c.id !== componentId) setSubgoalId("");
+                      setComponentId(c.id);
+                    }}
+                    className={cn(
+                      "cursor-pointer rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors",
+                      active
+                        ? "bg-blue-primary text-white"
+                        : "border border-border-light bg-white text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Person
@@ -2586,25 +2666,25 @@ function LogActualModal({
             </label>
             <div className="relative mt-1">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
-                {goal?.unit === "currency" ? "$" : goal?.unit === "percent" ? "%" : "#"}
+                {effectiveGoal?.unit === "currency" ? "$" : effectiveGoal?.unit === "percent" ? "%" : "#"}
               </span>
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder={
-                  goal?.unit === "currency"
+                  effectiveGoal?.unit === "currency"
                     ? "e.g. 250K"
-                    : goal?.unit === "percent"
+                    : effectiveGoal?.unit === "percent"
                       ? "e.g. 44"
                       : "e.g. 12"
                 }
                 className="h-[40px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
               />
             </div>
-            {amount.trim() !== "" && goal && (
+            {amount.trim() !== "" && effectiveGoal && (
               <p className="mt-1 text-[10.5px] text-text-tertiary tnum">
                 {parsed !== null
-                  ? `= ${fmtAmount(goal.unit, parsed)}`
+                  ? `= ${fmtAmount(effectiveGoal.unit, parsed)}`
                   : "That doesn't read as a number yet."}
               </p>
             )}
@@ -2622,12 +2702,68 @@ function LogActualModal({
             />
           </div>
         </div>
-        {goal?.measure === "level" && (
+        {effectiveGoal?.measure === "level" && (
           <p className="rounded-lg bg-[rgba(109,40,217,0.06)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:#6D28D9]">
             This goal tracks the latest value — this entry becomes the current
             number rather than adding to a total.
           </p>
         )}
+        <div>
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            Customer / deal{" "}
+            <span className="font-normal text-text-tertiary">(what is this from?)</span>
+          </label>
+          <input
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+            placeholder="e.g. Zenlabs Pharma — first contract (MSA + Reg Ops)"
+            className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+          />
+        </div>
+        <div>
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+            Evidence
+            <InfoHint text={"The proof behind the claim: the signed contract, SOW or opportunity summary.\nThe group owner opens it before verifying, and money claims cannot be submitted without it."} />
+          </label>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {evidence.map((e, i) => (
+              <span
+                key={e.url}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary"
+              >
+                📎 {e.name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${e.name}`}
+                  onClick={() => setEvidence((prev) => prev.filter((_, j) => j !== i))}
+                  className="cursor-pointer text-blue-primary/70 hover:text-blue-primary"
+                >
+                  <X size={11} strokeWidth={2.6} />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              disabled={uploading || evidence.length >= 5}
+              onClick={() => evidenceInputRef.current?.click()}
+              className="cursor-pointer rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary disabled:opacity-50"
+            >
+              {uploading ? "Uploading…" : "＋ Attach a file"}
+            </button>
+            <input
+              ref={evidenceInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => attachEvidence(e.target.files)}
+            />
+          </div>
+          {effectiveGoal?.unit === "currency" && evidence.length === 0 && (
+            <p className="mt-1 text-[10.5px] text-[color:#B45309]">
+              Money claims need the contract attached before they can be submitted.
+            </p>
+          )}
+        </div>
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Note{" "}
@@ -2646,14 +2782,19 @@ function LogActualModal({
           disabled={
             busy ||
             !goalId ||
-            (goal !== null && goal.subgoals.length > 0 && !subgoalId) ||
+            (composite && !componentId) ||
+            (effectiveGoal !== null &&
+              effectiveGoal.subgoals.length > 0 &&
+              !subgoalId) ||
             !person.trim() ||
-            parsed === null
+            parsed === null ||
+            uploading ||
+            (effectiveGoal?.unit === "currency" && evidence.length === 0)
           }
           onClick={save}
           className="w-full cursor-pointer rounded-full bg-blue-primary py-2.5 text-[13.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Log it"}
+          {busy ? "Saving…" : "Submit for verification"}
         </button>
       </div>
     </Modal>

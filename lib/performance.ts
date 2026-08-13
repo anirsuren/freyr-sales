@@ -10,6 +10,7 @@ import {
   type PrimaryGoal,
   type Subgoal,
   type SubgoalPerson,
+  canVerifyEntry,
 } from "./performanceShared";
 
 /**
@@ -123,6 +124,17 @@ function normalizeGoal(v: unknown): PrimaryGoal | null {
           })
           .filter((a): a is NonNullable<typeof a> => a !== null)
       : [],
+    // The round-trip trap: this normalizer rebuilds the object field by
+    // field, so any field it does not carry is silently DELETED on the next
+    // write. The first booking-family seed died exactly that way.
+    componentGoalIds: Array.isArray(raw.componentGoalIds)
+      ? raw.componentGoalIds.map((c) => str(c, 60)).filter(Boolean)
+      : undefined,
+    cadences: Array.isArray(raw.cadences)
+      ? (raw.cadences.filter((c) =>
+          ["weekly", "monthly", "quarterly", "yearly"].includes(c as string)
+        ) as PrimaryGoal["cadences"])
+      : undefined,
     createdBy: str(raw.createdBy, 80) || "Unknown",
     createdAt: str(raw.createdAt, 40) || new Date().toISOString(),
   };
@@ -176,6 +188,23 @@ function normalize(value: unknown): PerformanceState {
             amount,
             date: str(ra.date, 40) || new Date().toISOString().slice(0, 10),
             note: ra.note ? str(ra.note, 400) : undefined,
+            customer: ra.customer ? str(ra.customer, 160) : undefined,
+            evidence: Array.isArray(ra.evidence)
+              ? ra.evidence
+                  .map((e) => ({
+                    name: str((e as { name?: string })?.name ?? "", 120),
+                    url: str((e as { url?: string })?.url ?? "", 500),
+                  }))
+                  .filter((e) => e.name && e.url)
+                  .slice(0, 5)
+              : undefined,
+            status:
+              ra.status === "reported" || ra.status === "verified"
+                ? ra.status
+                : undefined,
+            verifiedBy: ra.verifiedBy ? str(ra.verifiedBy, 80) : undefined,
+            verifiedAt: ra.verifiedAt ? str(ra.verifiedAt, 40) : undefined,
+            managerNote: ra.managerNote ? str(ra.managerNote, 300) : undefined,
             addedBy: str(ra.addedBy, 80) || person,
             addedAt: str(ra.addedAt, 40) || new Date().toISOString(),
           },
@@ -445,6 +474,8 @@ export async function logActual(input: {
   amount: number;
   date?: string;
   note?: string;
+  customer?: string;
+  evidence?: { name?: unknown; url?: unknown }[];
   addedBy: string;
 }): Promise<PerfActual> {
   const person = str(input.person, 80);
@@ -459,6 +490,13 @@ export async function logActual(input: {
   const state = await readRow();
   const goal = state.goals.find((g) => g.id === input.goalId);
   if (!goal) throw new Error("That goal is gone. Refresh and retry.");
+  if ((goal.componentGoalIds?.length ?? 0) > 0) {
+    // Composite goals are only ever a sum (Suren, Aug 13: "people enter only
+    // the sub-level, and people do not enter the main level").
+    throw new Error(
+      "Nobody logs on this goal directly — it adds up from its components. Log the result on the right component."
+    );
+  }
   let subgoalId: string | null = null;
   if (input.subgoalId) {
     const sub = goal.subgoals.find((s) => s.id === input.subgoalId);
@@ -475,6 +513,13 @@ export async function logActual(input: {
   const dateIso = /^\d{4}-\d{2}-\d{2}$/.test(input.date ?? "")
     ? (input.date as string)
     : new Date().toISOString().slice(0, 10);
+  const evidence = (input.evidence ?? [])
+    .map((e) => ({
+      name: str(String(e?.name ?? ""), 120),
+      url: str(String(e?.url ?? ""), 500),
+    }))
+    .filter((e) => e.name && /^(https?:\/\/|\/api\/)/.test(e.url))
+    .slice(0, 5);
   const actual: PerfActual = {
     id: uid("pa"),
     goalId: goal.id,
@@ -483,6 +528,11 @@ export async function logActual(input: {
     amount,
     date: dateIso,
     note: input.note ? str(input.note, 400) : undefined,
+    customer: input.customer ? str(input.customer, 160) : undefined,
+    evidence: evidence.length ? evidence : undefined,
+    // Everything logged now waits for its group owner. Legacy entries with no
+    // status keep counting as verified so history does not move.
+    status: "reported",
     addedBy: input.addedBy,
     addedAt: new Date().toISOString(),
   };
@@ -493,7 +543,56 @@ export async function logActual(input: {
 
 export async function removeActual(actualId: string): Promise<void> {
   const state = await readRow();
+  const entry = state.actuals.find((a) => a.id === actualId);
+  if (entry && (entry.status ?? "verified") === "verified" && entry.verifiedBy) {
+    // Verified means LOCKED (Suren, Aug 13: "once she verifies and then locks
+    // it, that's all"). The group owner sends it back first if it is wrong.
+    throw new Error(
+      "This entry is verified and locked. The group owner has to send it back before it can change."
+    );
+  }
   state.actuals = state.actuals.filter((a) => a.id !== actualId);
+  await writeRow(state);
+}
+
+/** Group-owner sign-off: checks the evidence, locks the entry, and from that
+ *  moment the amount is what rolls up. Only a head of a group the person
+ *  belongs to may do this — enforced again at the API layer with the signed-in
+ *  identity. */
+export async function verifyActual(input: {
+  actualId: string;
+  by: string;
+}): Promise<void> {
+  const state = await readRow();
+  const entry = state.actuals.find((a) => a.id === input.actualId);
+  if (!entry) throw new Error("That entry is gone. Refresh and retry.");
+  if (!canVerifyEntry(state, input.by, entry.person)) {
+    throw new Error("Only the group owner for this person can verify their numbers.");
+  }
+  entry.status = "verified";
+  entry.verifiedBy = input.by;
+  entry.verifiedAt = new Date().toISOString();
+  entry.managerNote = undefined;
+  await writeRow(state);
+}
+
+/** The other verdict: return the claim with a note, editable again. Also the
+ *  only way to unlock a wrongly-verified entry. */
+export async function sendBackActual(input: {
+  actualId: string;
+  by: string;
+  note?: string;
+}): Promise<void> {
+  const state = await readRow();
+  const entry = state.actuals.find((a) => a.id === input.actualId);
+  if (!entry) throw new Error("That entry is gone. Refresh and retry.");
+  if (!canVerifyEntry(state, input.by, entry.person)) {
+    throw new Error("Only the group owner for this person can send their numbers back.");
+  }
+  entry.status = "reported";
+  entry.verifiedBy = undefined;
+  entry.verifiedAt = undefined;
+  entry.managerNote = input.note ? str(input.note, 300) : undefined;
   await writeRow(state);
 }
 

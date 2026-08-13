@@ -15,6 +15,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import type { RunOp } from "./PerformanceModule";
+import { MyEntriesCard, VerifyQueueCard } from "./EntryCards";
 import { GoalBar, PacePill, TypeChip } from "./bits";
 
 /**
@@ -27,7 +28,7 @@ import { GoalBar, PacePill, TypeChip } from "./bits";
 export function PeopleTab({
   state,
   live,
-  run: _run,
+  run,
   meName,
   onLogActual,
 }: {
@@ -108,6 +109,10 @@ export function PeopleTab({
             ))}
           </div>
         )}
+      </div>
+
+      <div className="mt-4 space-y-4">
+        <VerifyQueueCard state={state} run={run} meName={meName} busy={false} />
       </div>
 
       <Card className="mt-4 p-5">
@@ -226,6 +231,10 @@ export function PeopleTab({
           </div>
         )}
       </Card>
+
+      <div className="mt-4">
+        <MyEntriesCard state={state} person={person} />
+      </div>
     </div>
   );
 }

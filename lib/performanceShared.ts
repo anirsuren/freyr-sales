@@ -70,9 +70,42 @@ export type PrimaryGoal = {
   subgoals: Subgoal[];
   /** Person-level attaches from the Goal Master. */
   assignments?: GoalAssignment[];
+  /** COMPOSITE goal: its number is only the sum of these goals, and nobody
+   *  logs on it directly (Suren, Aug 13: "people enter only the sub-level").
+   *  Booked Revenue = New Business + Existing Business + Renewals. */
+  componentGoalIds?: string[];
+  /** Cadences this goal may be measured at. Missing = all four. The Goal
+   *  Master decides: "you can't get RFPs on a weekly basis" — so an RFP goal
+   *  simply does not allow weekly. Yearly is always allowed. */
+  cadences?: Cadence[];
   createdBy: string;
   createdAt: string;
 };
+
+export type Cadence = "weekly" | "monthly" | "quarterly" | "yearly";
+export const ALL_CADENCES: Cadence[] = [
+  "weekly",
+  "monthly",
+  "quarterly",
+  "yearly",
+];
+
+export function goalCadences(goal: Pick<PrimaryGoal, "cadences">): Cadence[] {
+  const set = new Set(goal.cadences ?? ALL_CADENCES);
+  set.add("yearly");
+  return ALL_CADENCES.filter((c) => set.has(c));
+}
+
+export function isComposite(
+  goal: Pick<PrimaryGoal, "componentGoalIds">
+): boolean {
+  return (goal.componentGoalIds?.length ?? 0) > 0;
+}
+
+/** A legacy entry with no status was entered by a manager and counts. */
+export function entryStatus(a: Pick<PerfActual, "status">): "reported" | "verified" {
+  return a.status ?? "verified";
+}
 
 export type PerfGroup = {
   id: string;
@@ -82,6 +115,8 @@ export type PerfGroup = {
   createdBy: string;
   createdAt: string;
 };
+
+export type ActualEvidence = { name: string; url: string };
 
 export type PerfActual = {
   id: string;
@@ -93,6 +128,19 @@ export type PerfActual = {
   /** ISO date (day precision) the result belongs to. */
   date: string;
   note?: string;
+  /** Which customer/deal this came from — the claim in plain words. */
+  customer?: string;
+  /** The proof: signed contract, SOW, opportunity summary (Suren, Aug 13:
+   *  "we need evidence"). */
+  evidence?: ActualEvidence[];
+  /** reported = waiting for the group owner; verified = checked and LOCKED.
+   *  Absent on entries from before this existed — those were entered by
+   *  managers directly and count as verified. */
+  status?: "reported" | "verified";
+  verifiedBy?: string;
+  verifiedAt?: string;
+  /** Set when a group owner sends a claim back with feedback. */
+  managerNote?: string;
   addedBy: string;
   addedAt: string;
 };
@@ -368,4 +416,155 @@ export function personGoalRows(
     }
   }
   return rows;
+}
+
+/* ----------------------------------------------- composites and verification */
+
+/** Actuals belonging to a goal, INCLUDING its components when composite. */
+export function goalFamilyActuals(
+  state: Pick<PerformanceState, "actuals">,
+  goal: Pick<PrimaryGoal, "id" | "componentGoalIds">
+): PerfActual[] {
+  const ids = new Set([goal.id, ...(goal.componentGoalIds ?? [])]);
+  return state.actuals.filter((a) => ids.has(a.goalId));
+}
+
+export type ValueFilter = {
+  person?: string;
+  people?: Set<string>;
+  /** [startMs, endMs) window; omit for all time. */
+  range?: [number, number];
+  /** Count only verified entries (the number that rolls up). */
+  verifiedOnly?: boolean;
+  /** Count only waiting entries (the pending amount). */
+  reportedOnly?: boolean;
+  componentGoalId?: string;
+};
+
+/**
+ * THE rollup. Composite goals sum their components; every level (week, month,
+ * quarter, half, year, group, person) is this one function with a different
+ * filter. Verified is what counts; reported is shown as pending.
+ */
+export function familyValue(
+  state: Pick<PerformanceState, "actuals">,
+  goal: Pick<PrimaryGoal, "id" | "componentGoalIds" | "measure">,
+  filter: ValueFilter = {}
+): number {
+  let total = 0;
+  for (const a of goalFamilyActuals(state, goal)) {
+    if (filter.componentGoalId && a.goalId !== filter.componentGoalId) continue;
+    if (filter.person && a.person !== filter.person) continue;
+    if (filter.people && !filter.people.has(a.person)) continue;
+    if (filter.range) {
+      const t = Date.parse(a.date);
+      if (Number.isNaN(t) || t < filter.range[0] || t >= filter.range[1]) continue;
+    }
+    const status = entryStatus(a);
+    if (filter.verifiedOnly && status !== "verified") continue;
+    if (filter.reportedOnly && status !== "reported") continue;
+    total += a.amount;
+  }
+  return total;
+}
+
+/** Entries a given person is allowed to verify: they head a group the entry's
+ *  person belongs to (Suren, Aug 13: "whoever has been identified as a group
+ *  owner is the only person who can verify it"). */
+export function canVerifyEntry(
+  state: Pick<PerformanceState, "groups">,
+  me: string,
+  entryPerson: string
+): boolean {
+  const mine = headedGroups(state, me);
+  const who = entryPerson.trim().toLowerCase();
+  return mine.some(
+    (g) =>
+      g.head.trim().toLowerCase() === who ||
+      g.members.some((m) => m.trim().toLowerCase() === who)
+  );
+}
+
+/** The queue a group owner sees: reported entries from their people. */
+export function verificationQueue(
+  state: Pick<PerformanceState, "groups" | "actuals">,
+  me: string
+): PerfActual[] {
+  return state.actuals
+    .filter(
+      (a) => entryStatus(a) === "reported" && canVerifyEntry(state, me, a.person)
+    )
+    .sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1));
+}
+
+/* -------------------------------------------------- fiscal calendar (Apr–Mar) */
+
+/** Freyr's financial year runs April to March (Suren, Aug 13). fy 2026 means
+ *  FY 2026–27: Apr 1 2026 up to Apr 1 2027. */
+export const FY_START_MONTH = 3; // April, 0-indexed
+
+export function fiscalYearOf(dateIso: string, now = new Date()): number {
+  const t = Number.isNaN(Date.parse(dateIso)) ? now : new Date(dateIso);
+  return t.getMonth() >= FY_START_MONTH ? t.getFullYear() : t.getFullYear() - 1;
+}
+
+export function currentFiscalYear(now = new Date()): number {
+  return now.getMonth() >= FY_START_MONTH ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+export function fiscalLabel(fy: number): string {
+  return `FY ${fy}–${String(fy + 1).slice(2)}`;
+}
+
+export type FiscalLevel = "year" | "half" | "quarter" | "month" | "week";
+
+/** [startMs, endMs) for a fiscal slice. index: half 0–1, quarter 0–3,
+ *  month 0–11 counted from April. */
+export function fiscalRange(
+  fy: number,
+  level: Exclude<FiscalLevel, "week"> = "year",
+  index = 0
+): [number, number] {
+  const start = (monthsFromApril: number) =>
+    new Date(fy, FY_START_MONTH + monthsFromApril, 1).getTime();
+  if (level === "year") return [start(0), start(12)];
+  if (level === "half") return [start(index * 6), start(index * 6 + 6)];
+  if (level === "quarter") return [start(index * 3), start(index * 3 + 3)];
+  return [start(index), start(index + 1)];
+}
+
+/** Monday-based weeks overlapping a fiscal month, clipped to the month. */
+export function fiscalWeeks(
+  fy: number,
+  monthIndex: number
+): { label: string; range: [number, number] }[] {
+  const [monthStart, monthEnd] = fiscalRange(fy, "month", monthIndex);
+  const out: { label: string; range: [number, number] }[] = [];
+  const cursor = new Date(monthStart);
+  cursor.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7));
+  while (cursor.getTime() < monthEnd) {
+    const weekStart = cursor.getTime();
+    const weekEndDate = new Date(cursor);
+    weekEndDate.setDate(weekEndDate.getDate() + 7);
+    const weekEnd = weekEndDate.getTime();
+    const from = new Date(Math.max(weekStart, monthStart));
+    const to = new Date(Math.min(weekEnd, monthEnd) - 1);
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    out.push({
+      label: `Week ${fmt(from)} – ${fmt(to)}`,
+      range: [Math.max(weekStart, monthStart), Math.min(weekEnd, monthEnd)],
+    });
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return out;
+}
+
+/** The month names of a fiscal year in order, April first. */
+export function fiscalMonthLabels(fy: number): string[] {
+  return Array.from({ length: 12 }, (_, i) =>
+    new Date(fy, FY_START_MONTH + i, 1).toLocaleDateString("en-US", {
+      month: "long",
+    })
+  );
 }

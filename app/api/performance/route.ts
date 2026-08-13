@@ -10,6 +10,8 @@ import {
   addSubgoal,
   assignGoal,
   logActual,
+  verifyActual,
+  sendBackActual,
   readPerformance,
   removeActual,
   removeGoal,
@@ -108,7 +110,16 @@ export async function POST(req: NextRequest) {
   // head may verify their people. Everything that shapes the plan itself —
   // goals, subgoals, targets, groups — stays with managers and admins.
   if (!manager) {
-    const SELF_OPS = new Set(["log-actual", "assign-goal", "unassign-goal", "set-verified"]);
+    const SELF_OPS = new Set([
+      "log-actual",
+      "assign-goal",
+      "unassign-goal",
+      "set-verified",
+      // Entry verification carries no body.person; the store itself checks
+      // that the caller heads a group containing the entry's person.
+      "verify-actual",
+      "send-back-actual",
+    ]);
     if (!SELF_OPS.has(op)) {
       return NextResponse.json(
         { error: "Only managers and admins can change the goal plan." },
@@ -118,7 +129,8 @@ export async function POST(req: NextRequest) {
     const state = await readPerformance();
     const visible = visibleNamesFor(state, me.name);
     const person = String(body.person ?? "");
-    if (!person || !visible.has(person.trim())) {
+    const entryOps = op === "verify-actual" || op === "send-back-actual";
+    if (!entryOps && (!person || !visible.has(person.trim()))) {
       return NextResponse.json(
         { error: "You can only do that for yourself or people in your group." },
         { status: 403 }
@@ -250,6 +262,16 @@ export async function POST(req: NextRequest) {
           person: String(body.person ?? ""),
         });
         break;
+      case "verify-actual":
+        await verifyActual({ actualId: String(body.actualId ?? ""), by: me.name });
+        break;
+      case "send-back-actual":
+        await sendBackActual({
+          actualId: String(body.actualId ?? ""),
+          by: me.name,
+          note: body.note ? String(body.note) : undefined,
+        });
+        break;
       case "log-actual":
         await logActual({
           goalId: String(body.goalId ?? ""),
@@ -258,6 +280,8 @@ export async function POST(req: NextRequest) {
           amount: Number(body.amount),
           date: body.date ? String(body.date) : undefined,
           note: body.note ? String(body.note) : undefined,
+          customer: body.customer ? String(body.customer) : undefined,
+          evidence: Array.isArray(body.evidence) ? body.evidence : undefined,
           addedBy: me.name,
         });
         break;
