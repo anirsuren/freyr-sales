@@ -190,11 +190,24 @@ export function PinnableTable({
       // worse than no header at all.
       const past = headRect.top < pageTop;
       const stillHere = tableRect.bottom > pageTop + headRect.height;
-      setFloating(
-        past && stillHere
-          ? { top: pageTop, left: scrollerRect.left, width: scrollerRect.width }
-          : null
-      );
+      // Only produce a NEW object when a value moved: plain vertical scrolling
+      // keeps top/left/width identical, and returning the previous object stops
+      // the clone effect below from tearing the strip down and rebuilding it
+      // on every scroll frame.
+      setFloating((prev) => {
+        if (!(past && stillHere)) return prev === null ? prev : null;
+        const next = {
+          top: pageTop,
+          left: scrollerRect.left,
+          width: scrollerRect.width,
+        };
+        return prev &&
+          prev.top === next.top &&
+          prev.left === next.left &&
+          prev.width === next.width
+          ? prev
+          : next;
+      });
     };
 
     measure();
@@ -227,17 +240,42 @@ export function PinnableTable({
     host.textContent = "";
     const copy = document.createElement("table");
     copy.className = table.className;
-    copy.style.width = `${table.offsetWidth}px`;
     copy.setAttribute("aria-hidden", "true");
     copy.appendChild(head.cloneNode(true));
     host.appendChild(copy);
+
+    // A thead cloned into a table WITHOUT its body lays out its own columns
+    // from header text alone — the real table's columns are stretched by the
+    // body cells beneath them, so the strip's columns sat over the wrong data
+    // (Anir, Aug 13: "your pinning thing doesn't even match the actual columns
+    // you retarget"). Freeze the clone to the real header's measured widths:
+    // `table-layout: fixed` makes the first row's explicit widths law.
+    const applyWidths = () => {
+      copy.style.tableLayout = "fixed";
+      copy.style.width = `${table.getBoundingClientRect().width}px`;
+      const real = head.querySelectorAll("th, td");
+      const cloned = copy.querySelectorAll("th, td");
+      real.forEach((cell, index) => {
+        const target = cloned[index] as HTMLElement | undefined;
+        if (!target) return;
+        target.style.width = `${cell.getBoundingClientRect().width}px`;
+      });
+    };
+    applyWidths();
     host.scrollLeft = scroller.scrollLeft;
 
     const sync = () => {
       host.scrollLeft = scroller.scrollLeft;
     };
     scroller.addEventListener("scroll", sync, { passive: true });
-    return () => scroller.removeEventListener("scroll", sync);
+    // Column widths move when data pages in or the window resizes; remeasure
+    // from the real table whenever it changes shape.
+    const observer = new ResizeObserver(applyWidths);
+    observer.observe(table);
+    return () => {
+      scroller.removeEventListener("scroll", sync);
+      observer.disconnect();
+    };
   }, [floating]);
 
   return (
