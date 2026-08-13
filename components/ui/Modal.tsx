@@ -131,16 +131,20 @@ export function Modal({
        *
        * stopPropagation ends the click here. One line, and it fixes every
        * dialog in the app at once, because they all render through this file.
+       *
+       * ONLY the click. An earlier version of this also swallowed mousedown
+       * and mouseup "for good measure" and broke every dropdown in the app:
+       * ColorSelect, the folder picker, DateField and PersonSelect all close
+       * themselves from a native `document` mousedown listener, and React's
+       * stopPropagation halts the native event before it ever reaches
+       * document. So click-away stopped working and two menus could sit open
+       * at once (Anir, Aug 13: "why are there two dropdowns lol. this should
+       * never be possible"). Do not add those handlers back.
        */
       onClick={(e) => {
         e.stopPropagation();
         onClose();
       }}
-      /* mousedown/mouseup travel the same React path, and a row that opens on
-         either one would still fire. Sealing all three keeps the dialog a
-         separate surface no matter which event a parent listens for. */
-      onMouseDown={(e) => e.stopPropagation()}
-      onMouseUp={(e) => e.stopPropagation()}
     >
       <div
         ref={dialogRef}

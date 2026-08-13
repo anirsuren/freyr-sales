@@ -93,8 +93,6 @@ export function OfferingsManageMenu() {
                 e.stopPropagation();
                 setOpen(false);
               }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onMouseUp={(e) => e.stopPropagation()}
             />
             <div
               role="menu"

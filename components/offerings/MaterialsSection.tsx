@@ -624,13 +624,43 @@ export function MaterialsSection({
   const visible = scoped
     .filter((m) => {
       const q = query.trim().toLowerCase();
-      if (
-        q &&
-        ![m.label, m.description, m.folder, m.docsPath]
-          .filter(Boolean)
-          .some((field) => String(field).toLowerCase().includes(q))
-      )
-        return false;
+      /**
+       * EVERYTHING ON THE ROW IS SEARCHABLE (Anir, Aug 13: "when I search up
+       * the name of the person, why is it not doing that? All the data points
+       * of the file should be searchable").
+       *
+       * It used to match four fields — name, description, folder and object
+       * path — so typing a teammate's name found nothing even though their
+       * name is right there in the Uploaded by column. Now every fact the
+       * table shows is matchable: who uploaded it, the format, the file type,
+       * the access level and the journey stages, in the same words the row
+       * prints them in.
+       */
+      if (q) {
+        const haystack = [
+          m.label,
+          m.description,
+          m.folder,
+          m.folder ? materialFolderLabel(m.folder) : "",
+          m.docsPath,
+          m.addedBy,
+          materialFormat(m.kind),
+          MATERIAL_FORMAT_META[materialFormat(m.kind)]?.label,
+          materialFileTypeLabel(m),
+          m.accessLevel,
+          m.accessLevel ? ACCESS_LEVEL_META[m.accessLevel]?.label : "",
+          ...materialJourneyStages(m).flatMap((stage) => [
+            stage,
+            JOURNEY_STAGE_META[stage]?.label ?? "",
+          ]),
+        ];
+        if (
+          !haystack
+            .filter(Boolean)
+            .some((field) => String(field).toLowerCase().includes(q))
+        )
+          return false;
+      }
       if (formats.length && !formats.includes(materialFormat(m.kind))) return false;
       // An untagged material matches only "no restriction" — it is never
       // counted into a stage or an access level nobody recorded for it.
@@ -752,9 +782,15 @@ export function MaterialsSection({
         query={query}
         className="flex flex-nowrap items-center gap-2"
       >
+        {/* The resting minimum has to leave the row able to FIT. At 150px the
+            search + four filters + the view toggle + "+" came to 1184px in a
+            1164px row: the overflow hung the "+" 20px past the right edge,
+            which is why it looked "way too right" and then snapped back into
+            place the moment focus collapsed the filters and the row fit again
+            (Anir, Aug 13). Now it fits in both states, so nothing moves. */}
         <PrioritySearchInput
           grow
-          className="min-w-[150px] flex-1"
+          className="min-w-[120px] flex-1"
           value={query}
           onChange={setQuery}
           placeholder="Search materials…"
@@ -819,7 +855,12 @@ export function MaterialsSection({
         />
         {/* Add lives on the same row as the filters (Anir: "put this filter
             inline with the add button"). */}
-        <div className="ml-auto flex items-center gap-2">
+        {/* PINNED RIGHT, IN BOTH STATES (Anir, Aug 13: "the plus one
+            shouldn't even move when i click search bar"). The auto margin
+            takes the row's slack before flex-grow does, which parks this
+            cluster on the right edge whatever the filters are doing — so
+            collapsing them to icons cannot drag the "+" sideways. */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <div
             role="group"
             aria-label="Sales materials view"
