@@ -1,6 +1,8 @@
 import {
+  Briefcase,
   CalendarClock,
   ClipboardCheck,
+  Compass,
   Flame,
   PhoneCall,
   Sparkles,
@@ -14,6 +16,7 @@ import type {
   AppNotification,
   NotificationType,
   NotificationUrgency,
+  SetupMark,
 } from "@/lib/notifications";
 
 /**
@@ -44,8 +47,25 @@ const TYPE_META: Record<NotificationType, { icon: LucideIcon; color: string }> =
   followup: { icon: CalendarClock, color: "#7C3AED" },
   // A call.
   voice: { icon: PhoneCall, color: "#0891B2" },
-  // Your own account — the identity purple used for ownership everywhere else.
+  // Your own account. Overridden per row by SETUP_META below: the three setup
+  // rows are three different jobs and must not share one glyph.
   security: { icon: Fingerprint, color: "#6D28D9" },
+};
+
+/**
+ * The account-setup rows, each with its own icon and colour. All three used to
+ * inherit the fingerprint from `security`, so the walkthrough row and the job
+ * title row both advertised themselves as Touch ID (Anir, Aug 13: "I have no
+ * idea why your account has a Touch ID icon, and why the block does have a
+ * Touch ID icon. None of that makes any sense").
+ */
+export const SETUP_META: Record<SetupMark, { icon: LucideIcon; color: string }> = {
+  // Finding your way around: the blue used for "something waiting on you".
+  tour: { icon: Compass, color: "#0071E3" },
+  // Sign-in, and the only row a fingerprint belongs on.
+  passkey: { icon: Fingerprint, color: "#6D28D9" },
+  // Who you are to the rest of the company.
+  profile: { icon: Briefcase, color: "#0F766E" },
 };
 
 /**
@@ -70,9 +90,14 @@ export function urgencyColor(urgency?: NotificationUrgency): string | null {
   return null;
 }
 
+function rowMeta(n: AppNotification): { icon: LucideIcon; color: string } {
+  if (n.mark && SETUP_META[n.mark]) return SETUP_META[n.mark];
+  return TYPE_META[n.type] || TYPE_META.review;
+}
+
 function chipColor(n: AppNotification): string {
   if (n.type === "followup" && n.urgency === "overdue") return LATE_RED;
-  return (TYPE_META[n.type] || TYPE_META.review).color;
+  return rowMeta(n).color;
 }
 
 /**
@@ -122,22 +147,30 @@ export function NotificationRow({
   notification: AppNotification;
   unread?: boolean;
 }) {
-  const meta = TYPE_META[n.type] || TYPE_META.review;
-  const Icon = meta.icon;
+  const Icon = rowMeta(n).icon;
   const color = chipColor(n);
-  const label = CHIP_LABEL[n.title] || n.title;
+  const heading = n.subject || n.title;
+  const label = n.chip || CHIP_LABEL[n.title] || n.title;
+  // A chip that repeats the headline is noise, so it is dropped rather than
+  // printed twice. The detail line then takes the full width.
+  const showChip = label.trim().toLowerCase() !== heading.trim().toLowerCase();
   const stampColor = urgencyColor(n.urgency);
 
   return (
     <div className="flex items-start gap-3 min-w-0">
       {/* Every account and person keeps its mark — just sized so the imagery
           never outweighs the words it's labelling. */}
-      <NotificationMark type={n.type} company={n.company} person={n.person} />
+      <NotificationMark
+        type={n.type}
+        mark={n.mark}
+        company={n.company}
+        person={n.person}
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2 min-w-0">
           <p className="min-w-0 flex-1 text-[13px] font-semibold text-text-primary leading-[1.35] break-words">
-            {n.subject || n.title}
+            {heading}
           </p>
           {n.stamp && (
             <span
@@ -153,18 +186,20 @@ export function NotificationRow({
         </div>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-          <span
-            className="semantic-color-pill inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold whitespace-nowrap"
-            style={
-              {
-                "--semantic-color": color,
-                "--semantic-bg": `${color}1A`,
-              } as CSSProperties
-            }
-          >
-            <Icon size={11} strokeWidth={2.4} aria-hidden="true" />
-            {label}
-          </span>
+          {showChip && (
+            <span
+              className="semantic-color-pill inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold whitespace-nowrap"
+              style={
+                {
+                  "--semantic-color": color,
+                  "--semantic-bg": `${color}1A`,
+                } as CSSProperties
+              }
+            >
+              <Icon size={11} strokeWidth={2.4} aria-hidden="true" />
+              {label}
+            </span>
+          )}
           <span className="min-w-0 text-[12px] text-text-secondary leading-snug break-words">
             {n.detail || n.body}
           </span>

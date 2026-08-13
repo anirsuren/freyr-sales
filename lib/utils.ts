@@ -197,3 +197,17 @@ export const SIZE_TIER_LABEL: Record<string, string> = {
 export function titleCase(s: string): string {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/**
+ * THE FLOATING-PANEL SHADOW.
+ *
+ * Anything that floats above the page (the account menu, the notifications
+ * bell, the agent dock) uses this one string, so they cannot drift apart
+ * again. Two layers: a wide soft one that lifts the panel off the page, and a
+ * tight one that draws the bottom edge. Plus a hairline ring, because on a
+ * white page a border alone left no visible edge at all (Anir, Aug 13: "I
+ * can't properly see where it ends").
+ */
+export const POPOVER_SURFACE =
+  "border border-border-light ring-1 ring-black/[0.03] " +
+  "shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35),0_4px_16px_-8px_rgba(15,23,42,0.2)]";

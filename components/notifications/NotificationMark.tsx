@@ -10,7 +10,8 @@ import {
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
-import type { NotificationType } from "@/lib/notifications";
+import { SETUP_META } from "@/components/notifications/NotificationRow";
+import type { NotificationType, SetupMark } from "@/lib/notifications";
 
 const ICON: Record<NotificationType, typeof Bell> = {
   review: ClipboardCheck,
@@ -48,16 +49,21 @@ const BADGE: Record<NotificationType, string> = {
  */
 export function NotificationMark({
   type,
+  mark,
   company,
   person,
   className,
 }: {
   type: NotificationType;
+  /** Set on the account-setup rows so each draws its own glyph and colour
+   *  rather than all three inheriting the fingerprint from `security`. */
+  mark?: SetupMark;
   company?: string;
   person?: string;
   className?: string;
 }) {
-  const Icon = ICON[type] || Bell;
+  const setup = mark ? SETUP_META[mark] : undefined;
+  const Icon = setup?.icon || ICON[type] || Bell;
   const badge = (
     <span
       className={cn(
@@ -75,11 +81,17 @@ export function NotificationMark({
     return (
       <span
         className={cn(
-          "relative w-8 h-8 rounded-lg bg-blue-light text-blue-primary flex items-center justify-center shrink-0",
+          "relative w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0",
+          setup ? undefined : "bg-blue-light text-blue-primary",
           className
         )}
+        style={
+          setup
+            ? { backgroundColor: `${setup.color}18`, color: setup.color }
+            : undefined
+        }
       >
-        <Icon size={15} strokeWidth={1.8} />
+        <Icon size={16} strokeWidth={2} />
       </span>
     );
   }

@@ -1,19 +1,15 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { buildNotifications } from "@/lib/notifications";
 import { listStoredVoiceConversations } from "@/lib/voiceEvents";
-import { currentUserNeedsPasskey } from "@/lib/passkeyStatus";
-import { currentUserNeedsTour } from "@/lib/tourStatus";
+import { currentUserSetupNudges } from "@/lib/setupNudges";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  const [needsPasskey, needsTour] = await Promise.all([
-    currentUserNeedsPasskey(),
-    currentUserNeedsTour(request),
-  ]);
+export async function GET() {
+  const nudges = await currentUserSetupNudges();
 
   /**
    * IN THE LIVE WORKSPACE, TWO ROWS AND NOTHING ELSE (Anir, Aug 13:
@@ -34,8 +30,7 @@ export async function GET(request: NextRequest) {
         customers: [],
         contacts: [],
         interactions: [],
-        needsPasskey,
-        needsTour,
+        ...nudges,
       }),
     });
   }
@@ -54,8 +49,7 @@ export async function GET(request: NextRequest) {
     contacts,
     interactions,
     voiceConversations,
-    needsPasskey,
-    needsTour,
+    ...nudges,
   });
   return NextResponse.json({ notifications });
 }

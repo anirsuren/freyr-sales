@@ -12,7 +12,7 @@ import {
   NotificationRow,
 } from "@/components/notifications/NotificationRow";
 import { Modal } from "@/components/ui/Modal";
-import { cn } from "@/lib/utils";
+import { cn, POPOVER_SURFACE } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
 import {
   groupByUrgency,
@@ -361,7 +361,10 @@ export function TopBar({
           {notifOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-              <div className="absolute right-0 mt-2 w-[380px] max-w-[calc(100vw-2rem)] bg-white border border-border-light rounded-xl shadow-card z-50 overflow-hidden">
+              {/* A real drop shadow and a ring, not the flat card border: against a white
+                  page the old panel had no visible bottom edge (Anir, Aug 13:
+                  "I can't properly see where it ends"). */}
+              <div className={cn("absolute right-0 mt-2 w-[392px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl z-50 overflow-hidden", POPOVER_SURFACE)}>
                 <div className="px-4 py-3 border-b border-border-light flex items-center justify-between gap-3">
                   <span className="text-[14px] font-semibold text-text-primary">Notifications</span>
                   {unread > 0 && (
@@ -466,7 +469,7 @@ export function TopBar({
             <div
               role="menu"
               aria-label="Account menu"
-              className="absolute right-0 mt-2.5 w-[264px] origin-top-right rounded-2xl border border-border-light bg-white z-50 overflow-hidden shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35),0_4px_16px_-8px_rgba(15,23,42,0.2)] ring-1 ring-black/[0.03]"
+              className={cn("absolute right-0 mt-2.5 w-[264px] origin-top-right rounded-2xl bg-white z-50 overflow-hidden", POPOVER_SURFACE)}
               style={{ animation: "menu-pop 160ms cubic-bezier(0.16,1,0.3,1)" }}
             >
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-border-light">

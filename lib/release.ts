@@ -50,6 +50,12 @@ export function isReleased(href: string, dataMode: DataMode): boolean {
 // is no revenue recorded yet, so it would open on zeroes.
 const RELEASED_MODULE_PREFIXES = [
   "/offerings",
+  // The bell's own "View all notifications" link points here. Without this the
+  // gate bounced it straight back to /offerings, so the link looked broken
+  // (Anir, Aug 13: "pressing 'View all notifications' doesn't even work").
+  // Safe to release: in the live workspace this page shows the same account
+  // setup rows the bell shows and nothing data-derived.
+  "/notifications",
   // FDL Components travels with Offerings — offerings are packages of these
   // components, so the pilot needs both (Anir, Aug 8).
   "/components",

@@ -10,7 +10,7 @@ import {
   PanelRightOpen,
   PanelRightClose,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, POPOVER_SURFACE } from "@/lib/utils";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
@@ -778,7 +778,7 @@ export function AgentDock({
             "flex min-h-0 flex-col overflow-hidden bg-white",
             embedded
               ? "h-full w-full border-l border-border-light shadow-[-8px_0_30px_rgba(16,24,40,0.06)]"
-              : "fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] rounded-2xl border border-border-light shadow-[0_24px_60px_-15px_rgba(0,0,0,0.28)] slide-in-right"
+              : `fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] rounded-2xl slide-in-right ${POPOVER_SURFACE}`
           )}
         >
           {/* Header */}

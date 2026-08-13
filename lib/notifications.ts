@@ -39,6 +39,9 @@ export const URGENCY_LABEL: Record<NotificationUrgency, string> = {
   later: "Later",
 };
 
+/** The account-setup rows each draw their own glyph. */
+export type SetupMark = "tour" | "passkey" | "profile";
+
 export interface AppNotification {
   id: string;
   type: NotificationType;
@@ -63,6 +66,22 @@ export interface AppNotification {
   subject?: string;
   /** One short line saying what's needed. Never repeats the subject or the time. */
   detail?: string;
+  /**
+   * The category chip's words. Without this the chip falls back to the title,
+   * which on the setup rows printed the headline twice in a row, once in bold
+   * and again inside a pill (Anir, Aug 13: "I don't like the way the
+   * notifications look. It's really ugly"). A chip names the KIND of thing;
+   * it is never the headline repeated.
+   */
+  chip?: string;
+  /**
+   * Which glyph to draw when there is no company or person to show. The three
+   * account-setup rows share one type but are three different jobs, so keying
+   * the icon off the type alone stamped a fingerprint on the walkthrough and on
+   * the job title too (Anir: "I have no idea why your account has a Touch ID
+   * icon"). Each row names its own.
+   */
+  mark?: SetupMark;
   urgency?: NotificationUrgency;
   /**
    * Compact relative time ("in 4d", "2d ago") for the right-hand stamp.
@@ -146,6 +165,10 @@ export function buildNotifications(input: {
    *  notifications"). Same shape as the Touch ID nudge: server-computed, a
    *  standing row while it is true, gone the moment they finish. */
   needsTour?: boolean;
+  /** True when the signed-in person has left their job title blank (Anir,
+   *  Aug 13: "their notification should be a third notification for putting
+   *  their title instead of saying 'title not set'"). */
+  needsTitle?: boolean;
 }): AppNotification[] {
   const {
     sessions,
@@ -155,6 +178,7 @@ export function buildNotifications(input: {
     voiceConversations = [],
     needsPasskey = false,
     needsTour = false,
+    needsTitle = false,
   } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
   const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
@@ -338,6 +362,8 @@ export function buildNotifications(input: {
       title: "Take the guided walkthrough",
       body: "A short tour of the app, one screen at a time.",
       subject: "Take the guided walkthrough",
+      chip: "Getting started",
+      mark: "tour",
       detail: "Five minutes, and you can stop at any point.",
       urgency: "today",
       href: "/onboarding",
@@ -352,11 +378,31 @@ export function buildNotifications(input: {
       title: "Set up Touch ID",
       body: "Sign in with your fingerprint instead of typing a password.",
       subject: "Set up Touch ID",
-      detail: "Use your fingerprint to sign in — takes about ten seconds.",
+      chip: "Sign-in",
+      mark: "passkey",
+      detail: "Use your fingerprint instead of a password. Ten seconds.",
       urgency: "today",
       href: "/settings?tab=profile",
       ts: new Date(nowMs).toISOString(),
       stamp: "Not set up",
+    });
+  }
+  if (needsTitle) {
+    securityRows.push({
+      id: "setup-job-title",
+      type: "security",
+      title: "Add your job title",
+      body: "Your job title is blank on your profile.",
+      subject: "Add your job title",
+      chip: "Your profile",
+      mark: "profile",
+      // Says what it costs to ignore. "Title not set" is the literal string a
+      // teammate sees on the team page and on this person's profile.
+      detail: 'Your team sees "Title not set" next to your name until you do.',
+      urgency: "today",
+      href: "/settings?tab=profile",
+      ts: new Date(nowMs).toISOString(),
+      stamp: "Not set",
     });
   }
 
