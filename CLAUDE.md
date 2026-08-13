@@ -63,8 +63,21 @@ preference and never changes another person's view.
   one, or to the four after it.
 - When asking, name what is in it, in one line, so the yes is informed.
 
-On Jul 30 I deployed five times. **One** had permission. That is the failure
-this file exists to prevent.
+On Jul 30 I deployed five times. **One** had permission. On Aug 13 I did it
+again: he approved the upload fix, I shipped it, and then pushed the *next*
+batch on the same approval. "It is all work he asked for" is not a yes.
+
+**This is now enforced by a hook, not by my judgement.** `.githooks/pre-push`
+refuses any push to `main` unless the push itself carries the approval:
+
+```
+FREYR_DEPLOY_APPROVED=yes git push origin HEAD:main
+```
+
+Wired with `git config core.hooksPath .githooks`. Setting that variable is a
+statement that Anir said yes to **this** push, in the message before it. Never
+export it into the shell, never set it "so it stops nagging", and never reach
+for `--no-verify`. If the hook fires, the answer is to go and ask him.
 
 ## 4. Report first, act second, when the work is investigative
 

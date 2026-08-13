@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# A PUSH TO main IS A DEPLOY. THIS HOOK IS THE STOP.
+#
+# Anir, Aug 13 2026: "You can never, ever deploy it without my explicit
+# permission. You can never make this mistake again. This is priority one."
+#
+# Writing it in CLAUDE.md and in memory was not enough — it had already been
+# broken twice by an assistant reasoning its way to "he probably meant this
+# push too". So the rule is enforced by the machine now: pushing to main is
+# refused unless the person doing it states, in that command, that this
+# specific push is approved.
+#
+#   FREYR_DEPLOY_APPROVED=yes git push origin HEAD:main
+#
+# Any other branch pushes normally. Nothing here can be satisfied by intent,
+# by an earlier approval, or by a queue of work the owner asked for: the
+# variable has to be typed for the push in hand.
+#
+# Wired up with:  git config core.hooksPath .githooks
+
+protected="refs/heads/main"
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in
+    "$protected")
+      if [ "$FREYR_DEPLOY_APPROVED" != "yes" ]; then
+        cat >&2 <<'MSG'
+
+  ✋ Push to main BLOCKED — this would deploy to production.
+
+  .github/workflows/deploy.yml fires on every push to main and rolls ECS,
+  which reaches the people using the app today.
+
+  A push needs a yes from Anir for THIS push. Not an earlier "deploy when
+  done", not "it is all work he asked for". Ask, name what is in it in one
+  line, wait for the answer.
+
+  When he has said yes to this specific push:
+
+      FREYR_DEPLOY_APPROVED=yes git push origin HEAD:main
+
+MSG
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+exit 0
