@@ -2028,27 +2028,22 @@ export function OfferingForm({
         </div>
       </FormSection>
 
-      {/* ------------------------------------------------ product roadmap */}
-      {/* The complete roadmap editor lives right here in the accordion and
-          saves with the page's ONE Save button — no inner save, no separate
-          page, no new tab. */}
-      {isEdit && offeringId && (
-        <FormSection
-          icon={Route}
-          title="Product roadmap"
-          hint="The version timeline, modules, comparison and history sellers see on the Roadmap tab. Saves with this page's Save button."
-        >
-          {roadmapEditable ? (
-            <div className="space-y-4">
-              <RoadmapEditorFields
-                draft={roadmapDraft}
-                onChange={setRoadmapDraft}
-                canSeeNext
-              />
-            </div>
-          ) : null}
-        </FormSection>
-      )}
+      {/* NO PRODUCT ROADMAP SECTION (Suren, Aug 13, with Anir: "since you've
+         removed that tab of product roadmap altogether… you've replaced the
+         product roadmap tab with the components tab. So since the product
+         roadmap tab doesn't exist anymore, can you also remove in the edit
+         offering mode the product roadmap section? It's still there").
+
+         The offering's tabs are Overview, Sales Materials, Components,
+         Customers and Competition — there is no Roadmap tab to feed, so this
+         was an editor for a screen nobody can open, and its hint pointed at a
+         tab that no longer exists.
+
+         The STORED roadmap is deliberately left alone. `roadmapDraft` is still
+         initialised from it and still rides the save, so editing an offering
+         writes the same roadmap back untouched rather than blanking work
+         somebody did before the tab was replaced. Nothing is lost if the tab
+         ever returns; there is simply no way to edit it from here. */}
 
       {/* ---------------------------------------------------- sales materials */}
       <FormSection

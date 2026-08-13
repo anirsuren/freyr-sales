@@ -29,6 +29,10 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { canManageOfferings } from "@/lib/role";
+import {
+  customerFamiliesPresent,
+  customerFamilyColor,
+} from "@/lib/customerFamilies";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
 import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTab";
@@ -69,7 +73,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: o ? `${o.offering_name} · Offerings` : "Offering" };
 }
 
-const CT_FAMILIES = ["Pharmaceutical", "Biologics", "Bio Pharmaceutical"];
 
 export default async function OfferingDetailPage({
   params,
@@ -241,12 +244,22 @@ export default async function OfferingDetailPage({
     name: c.company_name,
   }));
 
-  // Sibling offerings of the same type — Suren's catalog is variant-heavy, so a
-  // quick way to compare the family (e.g. the Freya Register stack) is useful.
-  const related = raw.offering_type
+  /**
+   * SIBLINGS OF THE SAME CATEGORY, NOT THE SAME TYPE (Suren, Aug 13, with Anir:
+   * "instead show only those offerings which are a part of the offering
+   * category… Freya.Register comes under Regulatory Information Management, it
+   * has 3 other offerings inside it, so let's just show only those 3").
+   *
+   * This matched on offering_type, which is the commercial packaging — "Freya
+   * Fusion (Module)" — so opening Freya.Register offered eight things drawn
+   * from four unrelated categories: labelling, submissions, intelligence. It
+   * looked arbitrary because, as a suggestion for the same account, it was.
+   * The category is what actually says "these solve neighbouring problems".
+   */
+  const related = raw.offering_category
     ? listOfferings()
         .filter(
-          (x) => x.id !== raw.id && x.offering_type === raw.offering_type
+          (x) => x.id !== raw.id && x.offering_category === raw.offering_category
         )
         .map((x) => redactUnverifiedOfferingPeople(x, people))
         .map((x) => redactAgentOnlyMaterials(x, me.memberId))
@@ -303,16 +316,12 @@ export default async function OfferingDetailPage({
     if (n.includes("germany")) return "🇩🇪";
     return "🌐";
   };
-  // Two colour dimensions on Target segments (Suren): the FAMILY (blue / rose /
-  // violet) and the SIZE (slate / amber / green) — distinct hues so they never
-  // clash when shown together.
-  const familyStyle = (fam: string): string => {
-    const f = fam.toLowerCase();
-    if (f.includes("bio pharma") || f.includes("biopharma")) return "#7C3AED"; // violet
-    if (f.includes("biologic")) return "#E11D48"; // rose
-    if (f.includes("pharma")) return "#0071E3"; // blue
-    return "#8E98A8";
-  };
+  // Two colour dimensions on Target segments (Suren): the FAMILY and the SIZE —
+  // distinct hues so they never clash when shown together. Family colours come
+  // from the shared map the editor and the master list already use; the local
+  // copy knew only three families and painted every other one gray, which is a
+  // colour identity is never allowed to be.
+  const familyStyle = customerFamilyColor;
   // One size system app-wide (SizeBadge's). The old local palette painted
   // small in sky and mid in cyan — two blues nobody can tell apart (Anir:
   // "small and mid-sized, literally the same color").
@@ -677,7 +686,7 @@ export default async function OfferingDetailPage({
                 )
               ) : (
                 <div className="space-y-2.5">
-                  {CT_FAMILIES.map((fam) => {
+                  {customerFamiliesPresent(o.customerTypes).map((fam) => {
                     const types = o.customerTypes.filter((c) => c.family === fam);
                     if (types.length === 0) return null; // hide families that don't apply
                     const famColor = familyStyle(fam);

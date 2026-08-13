@@ -67,6 +67,22 @@ export function ConnectedComponents({
   const [confirmDisconnect, setConfirmDisconnect] = useState<string | null>(null);
 
   const connectedIds = new Set(connected.map((c) => c.id));
+  /**
+   * MODULES AT THE TOP, AGENTS AT THE BOTTOM (Suren, Aug 13, with Anir: "can
+   * the components' default view be that they're sorted or grouped… so at the
+   * top, only those components which are modules to be shown, and then at the
+   * bottom, only those which are agents").
+   *
+   * The tab used to list them in whatever order they happened to be connected,
+   * so a package read as a jumble. An offering is a platform and its modules
+   * with agents layered on top, and that is the order it should be read in.
+   * Within a kind the existing order is kept, so nothing else shuffles.
+   */
+  const KIND_ORDER: Record<string, number> = { Platform: 0, Module: 1, Agent: 2 };
+  const ordered = [...connected].sort(
+    (a, b) => (KIND_ORDER[a.type] ?? 9) - (KIND_ORDER[b.type] ?? 9)
+  );
+
   const available = all.filter((c) => !connectedIds.has(c.id));
 
   async function saveIds(ids: string[], done: string) {
@@ -193,7 +209,7 @@ export function ConnectedComponents({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
-              {connected.map((component) => {
+              {ordered.map((component) => {
                 const current = fdlCurrentVersion(component);
                 return (
                   <tr
@@ -323,7 +339,7 @@ export function ConnectedComponents({
         </div>
         ) : (
         <div className="mt-4 grid gap-3 md:grid-cols-2 stagger">
-          {connected.map((component) => {
+          {ordered.map((component) => {
             const current = fdlCurrentVersion(component);
             return (
               <div

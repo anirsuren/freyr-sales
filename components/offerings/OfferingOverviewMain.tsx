@@ -9,6 +9,7 @@ import {
   FolderOpen,
   KeyRound,
   Layers,
+  Package,
   ReceiptText,
   Building2,
 } from "lucide-react";
@@ -655,7 +656,7 @@ export function OfferingOverviewMain({
           <SectionHeading
             icon={Layers}
             title="Related offerings"
-            description={`Other ${o.offering_type} configurations worth considering for the same account.`}
+            description={`The rest of ${o.offering_category} — the offerings that solve neighbouring problems for this account.`}
           />
           {/* Floating pill cards, not hairline rows (Anir, Jul 28: "make it
               look better, like pill-like floating pills"). Each related
@@ -697,15 +698,16 @@ export function OfferingOverviewMain({
                     the category chip in this page's own header, so the same
                     fact reads the same on both. */}
                 <span className="flex flex-wrap items-center gap-1">
-                  {relatedOffering.offering_category && (
-                    // Sized to clear the row, not by eye: the widest pair in
-                    // this list ("Submissions and Document Operations" +
-                    // "Available Oct-26") came to 361px against 360px of row,
-                    // and wrapped, which is what made two of the eight pills
-                    // taller than the other six.
+                  {relatedOffering.offering_type && (
+                    /* THE TYPE, NOT THE CATEGORY. Every card in this list now
+                       shares the category named in the heading above, so
+                       stamping it on all of them said nothing and repeated the
+                       heading eight times. How each one is packaged — Module,
+                       Module + Agents, Service — is the fact that actually
+                       differs, and it is what a rep is choosing between. */
                     <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-semibold text-blue-primary">
-                      <Layers size={10} strokeWidth={2.3} aria-hidden="true" />
-                      {relatedOffering.offering_category}
+                      <Package size={10} strokeWidth={2.3} aria-hidden="true" />
+                      {relatedOffering.offering_type}
                     </span>
                   )}
                   <AvailabilityPill value={relatedOffering.current_availability} size="sm" />
