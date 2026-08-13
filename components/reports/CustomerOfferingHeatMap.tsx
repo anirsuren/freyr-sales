@@ -924,6 +924,13 @@ export function CustomerOfferingHeatMap({
           setInitialDraft({ ...activeVersion });
           setEditingExisting(true);
           setExpandedVersionId(activeVersion.id);
+        } else {
+          // Nothing left in the log: fall back to the No-activities-yet
+          // screen instead of keeping a stale draft of a deleted row.
+          setDraft(null);
+          setInitialDraft(null);
+          setEditingExisting(false);
+          setExpandedVersionId(null);
         }
         setPendingVersionDraft(null);
         setPendingVersionBase(null);
@@ -1012,8 +1019,14 @@ export function CustomerOfferingHeatMap({
         linked: version.id === nextReport,
       })),
       "Activity deleted.",
-      { clearDraft: draft?.id === versionId }
+      // Stay in the dialog: deleting one row is not "done with this cell"
+      // (Anir, Aug 13: "it should just come back to this screen instead of
+      // dismissing the pop-up as a whole").
+      { clearDraft: draft?.id === versionId, closeAfterSave: false }
     );
+    // persistVersions re-expands the newest survivor for the save flow; after
+    // a delete the log stays collapsed.
+    setExpandedVersionId(null);
   }
 
   return (
@@ -1758,14 +1771,14 @@ export function CustomerOfferingHeatMap({
                               onClick={() => void deleteVersion(version.id)}
                               className="cursor-pointer rounded-full bg-[color:#DC2626] px-2.5 py-1 text-[11px] font-semibold text-white transition-all hover:opacity-90"
                             >
-                              Confirm
+                              Delete
                             </button>
                             <button
                               type="button"
                               onClick={() => setConfirmUnlink(null)}
                               className="cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
                             >
-                              Deny
+                              Cancel
                             </button>
                           </span>
                         ) : (
