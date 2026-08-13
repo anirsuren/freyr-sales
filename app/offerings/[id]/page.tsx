@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -347,12 +348,12 @@ export default async function OfferingDetailPage({
           `tab-panel`, so it also replays on every Overview↔Reports switch.
           Existing classes only, the reduced-motion guards in globals.css
           already cover both. */}
-      <Link
-        href="/offerings"
-        className="rise-in inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
+      <SmartBack
+        fallback="/offerings"
+        className="rise-in inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
       >
         <ArrowLeft size={15} strokeWidth={1.8} /> All offerings
-      </Link>
+      </SmartBack>
 
       {/* Header: identity on the left, primary actions on the right */}
       <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">

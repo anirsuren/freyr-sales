@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
@@ -393,19 +394,19 @@ export function LiveCompanyBriefing({
 
   return (
     <div>
-      <Link
-        href={
+      <SmartBack
+        fallback={
           briefing.group === "competitor"
             ? "/market-intel?tab=competitors"
             : "/market-intel"
         }
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
+        className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2} />{" "}
         {briefing.group === "competitor"
           ? "Competitor Intelligence"
           : "Customer Intelligence"}
-      </Link>
+      </SmartBack>
 
       <div className="rise-in flex flex-wrap items-center gap-4">
         <MiLogo

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import {
   Mail,
   Phone,
@@ -103,13 +104,13 @@ export default async function ContactDetailPage({
         description="The link may be out of date, or this contact was removed. Head back to your contacts to find them."
         className="py-24"
         action={
-          <Link
-            href="/contacts"
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+          <SmartBack
+            fallback="/contacts"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to contacts
-          </Link>
+          </SmartBack>
         }
       />
     );

@@ -805,7 +805,8 @@ export function CustomersBrowser({
                       </span>
                     </th>
                   ))}
-                  <th className="px-5 py-3" />
+                  {/* Trailing arrow column: header aligns like its cells. */}
+                  <th className="px-5 py-3 text-right" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light stagger">

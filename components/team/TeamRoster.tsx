@@ -797,7 +797,8 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                 <th className="px-4 py-2.5 text-right">Open deals</th>
                 <th className="px-4 py-2.5 text-right">Meetings</th>
                 <th className="px-4 py-2.5 w-[120px]">Activity · 10w</th>
-                <th className="px-4 py-2.5" />
+                {/* Trailing arrow column: header aligns like its cells. */}
+                <th className="px-4 py-2.5 text-right" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">

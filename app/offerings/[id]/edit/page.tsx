@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -47,12 +48,12 @@ export default async function EditOfferingPage({
   const o = redactUnverifiedOfferingPeople(raw, people);
   return (
     <div>
-      <Link
-        href={`/offerings/${o.id}`}
-        className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
+      <SmartBack
+        fallback={`/offerings/${o.id}`}
+        className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
       >
         <ArrowLeft size={15} strokeWidth={1.8} /> Back to offering
-      </Link>
+      </SmartBack>
       <PageHeader
         title={`Edit ${o.offering_name}`}
         subtitle="Update this offering: its details, who it's for, the markets it's available in, and its sales materials."

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { SmartBack } from "@/components/ui/BackButton";
 import { CustomerTypesManager } from "@/components/offerings/CustomerTypesManager";
 import {
   listCustomerTypes,
@@ -26,12 +26,12 @@ export default async function CustomerTypesPage() {
 
   return (
     <div>
-      <Link
-        href="/offerings"
-        className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
+      <SmartBack
+        fallback="/offerings"
+        className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary mb-4"
       >
         <ArrowLeft size={15} strokeWidth={1.8} /> All offerings
-      </Link>
+      </SmartBack>
       <CustomerTypesManager
         customerTypes={listCustomerTypes()}
         markets={listMarkets()}

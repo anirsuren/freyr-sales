@@ -1448,7 +1448,9 @@ export function OfferingsBrowser({
                     mistake here show up as a scroll rather than as two words
                     on top of each other. */}
                 <tr className="border-b border-border-light text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
-                  <th className="px-5 py-2.5 w-[24%]">Offering</th>
+                  {/* px-4 like every other column: the header text must start
+                      exactly where the cell text below it starts. */}
+                  <th className="px-4 py-2.5 w-[24%]">Offering</th>
                   <th className="px-4 py-2.5 w-[16%]">Category</th>
                   <th className="px-4 py-2.5 w-[11%]">Type</th>
                   <th className="px-4 py-2.5 w-[11%]">Availability</th>

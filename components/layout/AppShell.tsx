@@ -8,6 +8,7 @@ import { TopBar } from "./TopBar";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AgentDock } from "@/components/agent/AgentDock";
 import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
+import { NavHistoryTracker } from "@/components/ui/BackButton";
 import type { DataMode } from "@/lib/dataMode";
 import { isOfferingsOnly, isReleased, isReleasedPath } from "@/lib/release";
 import { HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
@@ -275,6 +276,9 @@ export function AppShell({
         <MyPhotoProvider>
           <TimeZoneProvider>
             <ToastProvider>
+              {/* Material pages are part of navigation chains too, and their
+                  own back arrow needs the same trail. */}
+              <NavHistoryTracker />
               <div className="flex h-screen min-h-0 overflow-hidden bg-white">
                 <main
                   id="main-content"
@@ -346,6 +350,8 @@ export function AppShell({
             branches above return before this, so nobody who is not through
             the door is ever reported present. */}
         <PresenceHeartbeat />
+        {/* The trail every back arrow walks (see BackButton.tsx). */}
+        <NavHistoryTracker />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-blue-primary focus:text-white focus:text-[14px] focus:font-semibold focus:shadow-card"

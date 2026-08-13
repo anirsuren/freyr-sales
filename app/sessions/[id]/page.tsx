@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { getDb } from "@/lib/db";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchX, ArrowLeft } from "lucide-react";
@@ -29,13 +30,13 @@ export default async function SessionPage({
         description="This pitch session doesn't exist yet, or the link is invalid. Head back to your sessions to find it."
         className="py-24"
         action={
-          <Link
-            href="/sessions"
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+          <SmartBack
+            fallback="/sessions"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to sessions
-          </Link>
+          </SmartBack>
         }
       />
     );
@@ -105,13 +106,13 @@ export default async function SessionPage({
           background looks weird because there are so many fucking lines").
           No border, no caption; the workspace says what it is. */}
       <div className="shrink-0 px-6 pb-1 pt-3">
-        <Link
-          href={`/deals/${session.id}`}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
+        <SmartBack
+          fallback={`/deals/${session.id}`}
+          className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
         >
           <ArrowLeft size={16} strokeWidth={1.8} />
           Back to the deal
-        </Link>
+        </SmartBack>
       </div>
       <div className="rise-in flex min-h-0 flex-1 overflow-hidden">
         <RecordView

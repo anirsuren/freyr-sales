@@ -15,7 +15,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { BackButton } from "@/components/ui/BackButton";
+import { BackButton, SmartBack } from "@/components/ui/BackButton";
 import { CallAnalytics } from "@/components/voice/CallAnalytics";
 import { CallStatusRefresh } from "@/components/voice/CallStatusRefresh";
 import { getConversation } from "@/lib/elevenlabs";
@@ -197,13 +197,13 @@ export default async function ConversationPage({
         description="This conversation couldn't be loaded: it may still be processing, or the voice service isn't connected in this environment."
         className="py-24"
         action={
-          <Link
-            href="/voice"
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+          <SmartBack
+            fallback="/voice"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to voice agents
-          </Link>
+          </SmartBack>
         }
       />
     );

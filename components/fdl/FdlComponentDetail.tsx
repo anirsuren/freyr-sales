@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { useRouter } from "next/navigation";
 import {
   GanttChartSquare,
@@ -1267,9 +1268,9 @@ export function FdlComponentDetail({
     <div className="space-y-5">
       {/* -------------------------------------------------------- header */}
       <div>
-        <Link
-          href={backTo ?? "/components"}
-          className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
+        <SmartBack
+          fallback={backTo ?? "/components"}
+          className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
         >
           <ArrowLeft size={13} strokeWidth={2.2} />{" "}
           {backTo === "/components/release-calendar"
@@ -1277,7 +1278,7 @@ export function FdlComponentDetail({
             : backTo
               ? "Back"
               : "All components"}
-        </Link>
+        </SmartBack>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <OfferingIcon name={component.name} className="h-10 w-10 shrink-0" />
           <h1 className="text-[22px] font-bold text-text-primary">{component.name}</h1>

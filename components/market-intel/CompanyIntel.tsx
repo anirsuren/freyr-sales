@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -140,12 +141,12 @@ export function CompanyIntel({
 
   return (
     <div>
-      <Link
-        href="/market-intel"
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
+      <SmartBack
+        fallback="/market-intel"
+        className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2} /> Market Intelligence
-      </Link>
+      </SmartBack>
 
       {/* Header: who this is, how loud the market is about them, how fresh. */}
       <div className="rise-in flex flex-wrap items-center gap-4">

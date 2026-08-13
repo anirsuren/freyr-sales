@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -93,13 +94,13 @@ export default async function AgentRunDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href="/agent"
-          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline mb-3"
+        <SmartBack
+          fallback="/agent"
+          className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline mb-3"
         >
           <ArrowLeft size={14} strokeWidth={1.9} />
           Back to Agent
-        </Link>
+        </SmartBack>
         <div className="flex items-start gap-3">
           <span className="w-10 h-10 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0 mt-0.5">
             <Icon size={20} strokeWidth={1.7} />

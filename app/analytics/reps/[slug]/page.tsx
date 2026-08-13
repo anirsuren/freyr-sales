@@ -22,7 +22,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { StatTile } from "@/components/ui/StatTile";
 import { SizeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { BackButton } from "@/components/ui/BackButton";
+import { BackButton, SmartBack } from "@/components/ui/BackButton";
 import { DonutChart, DonutLegend, BarChart, AreaChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { ChartInspector, type ChartRecord } from "@/components/charts/ChartInspector";
 import { ExpandableChartCard } from "@/components/charts/ExpandableChartCard";
@@ -91,13 +91,13 @@ export default async function RepPage({
           description="That teammate isn't on the roster. Head back to the team."
           className="py-24"
           action={
-            <Link
-              href="/team"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+            <SmartBack
+              fallback="/team"
+              className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
             >
               <ArrowLeft size={15} strokeWidth={2} />
               Back to team
-            </Link>
+            </SmartBack>
           }
         />
       );
@@ -185,13 +185,13 @@ export default async function RepPage({
         description="That teammate isn't on the roster. Head back to the team."
         className="py-24"
         action={
-          <Link
-            href="/team"
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+          <SmartBack
+            fallback="/team"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to team
-          </Link>
+          </SmartBack>
         }
       />
     );

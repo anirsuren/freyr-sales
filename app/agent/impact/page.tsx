@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import {
   ArrowLeft,
   ArrowRight,
@@ -112,13 +113,13 @@ export default async function AgentImpactPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href="/agent"
-          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline mb-3"
+        <SmartBack
+          fallback="/agent"
+          className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline mb-3"
         >
           <ArrowLeft size={14} strokeWidth={1.9} />
           Back to Agent
-        </Link>
+        </SmartBack>
         <PageHeader
           title="Agent impact"
           subtitle="Where the agent has invested effort, and the open pipeline at those accounts. An effort view: not a causation claim."

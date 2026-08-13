@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import {
   ArrowLeft,
   PhoneCall,
@@ -79,13 +80,13 @@ export default async function VoiceAgentPage({
         description="The link may be out of date. Head back to the voice team to find everyone."
         className="py-24"
         action={
-          <Link
-            href="/voice"
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
+          <SmartBack
+            fallback="/voice"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to voice agents
-          </Link>
+          </SmartBack>
         }
       />
     );
@@ -449,13 +450,13 @@ export default async function VoiceAgentPage({
     <div className="space-y-6">
       {/* Identity first */}
       <div>
-        <Link
-          href="/voice"
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors mb-3"
+        <SmartBack
+          fallback="/voice"
+          className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors mb-3"
         >
           <ArrowLeft size={15} strokeWidth={1.8} />
           Voice agents
-        </Link>
+        </SmartBack>
         <div className="flex items-start gap-4">
           <span
             className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-white"

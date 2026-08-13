@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFillHeight } from "@/components/ui/useFillHeight";
 import { FullScreenButton } from "@/components/ui/FullScreenPanel";
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { ArrowLeft, AlarmClock, CalendarCheck, CalendarRange, CircleCheck, Layers, Rocket, Search, X } from "lucide-react";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -194,12 +195,12 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
 
   return (
     <div>
-      <Link
-        href="/components"
-        className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
+      <SmartBack
+        fallback="/components"
+        className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2.2} /> All components
-      </Link>
+      </SmartBack>
       <PageHeader
         title="Release calendar"
         subtitle="Every component's versions mapped onto the months they land: released, current and expected together."

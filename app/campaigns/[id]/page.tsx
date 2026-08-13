@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import {
   ArrowLeft,
   Users,
@@ -69,13 +70,13 @@ export default async function CampaignDetailPage({
         description="The link may be out of date, or this campaign was removed. Head back to campaigns to find it."
         className="py-24"
         action={
-          <Link
-            href="/campaigns"
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+          <SmartBack
+            fallback="/campaigns"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to campaigns
-          </Link>
+          </SmartBack>
         }
       />
     );
@@ -304,13 +305,13 @@ export default async function CampaignDetailPage({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <Link
-          href="/campaigns"
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors mb-3"
+        <SmartBack
+          fallback="/campaigns"
+          className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors mb-3"
         >
           <ArrowLeft size={15} strokeWidth={1.8} />
           All campaigns
-        </Link>
+        </SmartBack>
         <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
             {campaign.name}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { AutoFresh } from "@/components/market-intel/AutoFresh";
 import {
   ArrowLeft,
@@ -91,12 +92,12 @@ export default async function MarketIntelCompanyPage({
     return (
       <div>
         <AutoFresh />
-        <Link
-          href="/market-intel"
-          className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
+        <SmartBack
+          fallback="/market-intel"
+          className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
         >
           <ArrowLeft size={14} strokeWidth={2} /> Market Intelligence
-        </Link>
+        </SmartBack>
         <EmptyState
           icon={Radar}
           title="This company is on the watchlist"
@@ -114,12 +115,12 @@ export default async function MarketIntelCompanyPage({
   });
   return (
     <div>
-      <Link
-        href="/market-intel"
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
+      <SmartBack
+        fallback="/market-intel"
+        className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2} /> Market Intelligence
-      </Link>
+      </SmartBack>
 
       <div className="rise-in flex flex-wrap items-center gap-4">
         <CompanyLogo name={mine.name} className="h-12 w-12 shrink-0" />

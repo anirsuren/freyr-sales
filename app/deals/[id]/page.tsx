@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { ArrowUpRight, ChevronRight, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { SizeBadge } from "@/components/ui/Badge";
@@ -55,13 +56,13 @@ export default async function DealDetailPage({
         description="The link may be out of date, or this deal was closed or removed. Head back to the pipeline to pick up where you left off."
         className="py-24"
         action={
-          <Link
-            href="/pipeline"
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+          <SmartBack
+            fallback="/pipeline"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Back to pipeline
-          </Link>
+          </SmartBack>
         }
       />
     );
@@ -153,13 +154,13 @@ export default async function DealDetailPage({
         aria-label="Breadcrumb"
         className="mb-3 flex min-w-0 items-center gap-1.5 text-[12.5px]"
       >
-        <Link
-          href={DEAL_HOME.href}
-          className="-ml-1 inline-flex shrink-0 items-center gap-1.5 rounded px-1 py-0.5 font-medium text-text-secondary transition-colors hover:text-text-primary"
+        <SmartBack
+          fallback={DEAL_HOME.href}
+          className="-ml-1 inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 font-medium text-text-secondary transition-colors hover:text-text-primary"
         >
           <ArrowLeft size={15} strokeWidth={1.8} />
           {DEAL_HOME.label}
-        </Link>
+        </SmartBack>
         <ChevronRight
           size={13}
           strokeWidth={1.8}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartBack } from "@/components/ui/BackButton";
 import { ArrowLeft, Grid3X3 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CustomerOfferingHeatMap } from "@/components/reports/CustomerOfferingHeatMap";
@@ -29,13 +30,13 @@ export default async function CustomerOfferingHeatMapPage() {
     <div className="space-y-5 pb-24">
       <div>
         <div className="mb-3">
-          <Link
-            href="/reports"
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
+          <SmartBack
+            fallback="/reports"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
           >
             <ArrowLeft size={14} strokeWidth={2} />
             All reports
-          </Link>
+          </SmartBack>
         </div>
         <PageHeader
           title="Customer Offering Heat Map"
