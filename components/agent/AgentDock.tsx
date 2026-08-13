@@ -747,21 +747,6 @@ export function AgentDock({
     }
   }
 
-  if (hidden) return null;
-
-  const suggestions = offeringContext?.material
-    ? [
-        `Summarize ${offeringContext.material.label}`,
-        "How should I use this material with a customer?",
-        "What are the most important points in this material?",
-      ]
-    : offeringContext
-    ? [
-        `Explain ${offeringContext.name} in plain English`,
-        `What materials do we have for ${offeringContext.name}?`,
-        `Who is ${offeringContext.name} best suited for?`,
-      ]
-    : suggestionsFor(label, offeringsOnly);
   /**
    * CLICK ANYWHERE ELSE AND THE ASSISTANT CLOSES (Anir, Aug 13: "when I click
    * out of the AI assistant, it should automatically close"). Floating bubble
@@ -780,6 +765,21 @@ export function AgentDock({
     return () => document.removeEventListener("mousedown", onDown);
   }, [open, embedded, onOpenChange]);
 
+  if (hidden) return null;
+
+  const suggestions = offeringContext?.material
+    ? [
+        `Summarize ${offeringContext.material.label}`,
+        "How should I use this material with a customer?",
+        "What are the most important points in this material?",
+      ]
+    : offeringContext
+    ? [
+        `Explain ${offeringContext.name} in plain English`,
+        `What materials do we have for ${offeringContext.name}?`,
+        `Who is ${offeringContext.name} best suited for?`,
+      ]
+    : suggestionsFor(label, offeringsOnly);
   const greeting = offeringContext?.material
     ? `Hi ${firstName}. Freyr AI is focused on **${offeringContext.material.label}** from **${offeringContext.name}**. Ask me anything about this material, or pick a starting point below.`
     : offeringContext
