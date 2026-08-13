@@ -347,19 +347,18 @@ export function CustomerOfferingHeatMap({
      scroll until here, until it's right above the AI assistant"). */
   const { ref: gridRef, height: gridHeight } = useFillHeight(96, 320);
   const [fullScreen, setFullScreen] = useState(false);
+  const [selected, setSelected] = useState<SelectedCell | null>(null);
   useEffect(() => {
     if (!fullScreen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFullScreen(false);
+      if (e.key === "Escape" && !selected) setFullScreen(false);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [fullScreen]);
-  const [selected, setSelected] = useState<SelectedCell | null>(null);
+  }, [fullScreen, selected]);
+
   /** Which activity's remove-from-heat-map is awaiting a yes. */
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
-  const [confirmBannerDiscard, setConfirmBannerDiscard] = useState(false);
-  const [confirmFooterDiscard, setConfirmFooterDiscard] = useState(false);
   const [draft, setDraft] =
     useState<CustomerOfferingEngagementVersion | null>(null);
   const [initialDraft, setInitialDraft] =
@@ -585,13 +584,28 @@ export function CustomerOfferingHeatMap({
           updated_at: now,
         };
     const activeDraft = storedDraft || nextDraft;
-    // Cells backed only by an older deal/usage record still need an editable
-    // first activity. Treat that derived bridge (and a genuinely empty cell)
-    // as a shared draft until the rep explicitly saves it into the activity
-    // log. This also makes every empty matrix cell open consistently.
-    const isPendingDraft = Boolean(storedDraft) || !explicit;
+    // A parked shared draft, or a cell bridged from an older deal/usage
+    // record, still opens as an editable pending draft. A genuinely EMPTY
+    // cell no longer invents one: it opens to an empty log with an explicit
+    // add button (Anir, Aug 13: "why is it even creating a draft as soon as I
+    // click it? It should have a button for me to click").
+    const bridged = !!resolved.engagement || !!resolved.activity;
+    const isPendingDraft = Boolean(storedDraft) || (!explicit && bridged);
+    const emptyCell = !explicit && !storedDraft && !bridged;
     const savedReportId = history.find((version) => version.linked)?.id || null;
     setSelected({ customerId: customer.id, offeringId: offering.id });
+    if (emptyCell) {
+      setEditingExisting(false);
+      setDraftIsNew(false);
+      setDraft(null);
+      setInitialDraft(null);
+      setPendingVersionDraft(null);
+      setPendingVersionBase(null);
+      setExpandedVersionId(null);
+      setReportVersionId(null);
+      setReportSelectionError(false);
+      return;
+    }
     setEditingExisting(!isPendingDraft && !!explicit);
     setDraftIsNew(isPendingDraft);
     setDraft({ ...activeDraft });
@@ -720,7 +734,7 @@ export function CustomerOfferingHeatMap({
   }
 
   function createNewVersion() {
-    if (!selectedCustomer || !selectedOffering || !draft) return;
+    if (!selectedCustomer || !selectedOffering) return;
     if (pendingVersionDraft) {
       setDraft({ ...pendingVersionDraft });
       setInitialDraft({
@@ -742,7 +756,7 @@ export function CustomerOfferingHeatMap({
       activity_description: null,
       status: defaultStatusForActivity("lead"),
       dollar_value: 0,
-      currency: draft.currency || "USD",
+      currency: draft?.currency || "USD",
       start_date: null,
       end_date: null,
       potential_close_date: null,
@@ -833,8 +847,6 @@ export function CustomerOfferingHeatMap({
   }
 
   async function cancelExpandedVersion() {
-    setConfirmBannerDiscard(false);
-    setConfirmFooterDiscard(false);
     if (!draft) return;
     if (!editingExisting) {
       const linked =
@@ -974,15 +986,34 @@ export function CustomerOfferingHeatMap({
     );
   }
 
-  function unlinkCurrent(versionId = draft?.id) {
-    if (!versionId || reportVersionId !== versionId) return;
-    setReportVersionId(null);
-    setReportSelectionError(false);
-    if (draft?.id === versionId) {
-      setDraft((current) =>
-        current ? { ...current, linked: false } : current
-      );
+  /** Delete one activity: a saved row leaves the log, an unsaved draft is
+   *  simply discarded. Deleting the report row promotes the newest survivor,
+   *  because the heat map always reads exactly one. */
+  async function deleteVersion(versionId: string) {
+    setConfirmUnlink(null);
+    if (versionId === pendingVersionDraft?.id) {
+      cancelExpandedVersion();
+      return;
     }
+    if (!selectedCustomer || !selectedOffering) return;
+    const remaining = engagementHistory(
+      selectedCustomer,
+      selectedOffering.id
+    ).filter((version) => version.id !== versionId);
+    const nextReport =
+      reportVersionId === versionId
+        ? (remaining[0]?.id ?? null)
+        : reportVersionId;
+    setReportVersionId(nextReport);
+    if (expandedVersionId === versionId) setExpandedVersionId(null);
+    await persistVersions(
+      remaining.map((version) => ({
+        ...version,
+        linked: version.id === nextReport,
+      })),
+      "Activity deleted.",
+      { clearDraft: draft?.id === versionId }
+    );
   }
 
   return (
@@ -1098,7 +1129,7 @@ export function CustomerOfferingHeatMap({
       {fullScreen && (
         <div
           onClick={() => setFullScreen(false)}
-          className="fixed inset-0 z-[200] bg-[rgba(15,23,42,0.45)] backdrop-blur-[1px]"
+          className="matrix-backdrop-in fixed inset-0 z-[200] bg-[rgba(15,23,42,0.45)] backdrop-blur-[1px]"
           aria-hidden="true"
         />
       )}
@@ -1113,7 +1144,7 @@ export function CustomerOfferingHeatMap({
             // Inset, so the page stays visible around it and it reads as a
             // popup rather than a navigation (Anir, Aug 13: "it should still be
             // a pop-up… I should be able to see the edges").
-            ? "popover-in fixed inset-6 z-[201] m-0 overflow-hidden rounded-2xl p-0 shadow-[0_40px_100px_-20px_rgba(15,23,42,0.5)]"
+            ? "matrix-pop-in fixed inset-6 z-[201] m-0 overflow-hidden rounded-2xl p-0 shadow-[0_40px_100px_-20px_rgba(15,23,42,0.5)]"
             : "-mb-28 overflow-hidden p-0"
         )}
       >
@@ -1439,8 +1470,9 @@ export function CustomerOfferingHeatMap({
       </Card>
 
       <Modal
-        open={!!selected && !!draft && !!selectedCustomer && !!selectedOffering}
+        open={!!selected && !!selectedCustomer && !!selectedOffering}
         onClose={closeModal}
+        dock={fullScreen}
         title={
           selectedCustomer && selectedOffering
             ? `${selectedCustomer.company_name} × ${selectedOffering.name}`
@@ -1449,6 +1481,40 @@ export function CustomerOfferingHeatMap({
         size="workflow"
         dialogClassName="h-[min(760px,calc(100vh-2rem))]"
       >
+        {/* AN EMPTY CELL OPENS TO AN EMPTY LOG, not to an invented draft.
+            The button is the only way an activity comes into being (Anir,
+            Aug 13: "It should have a button for me to click"). */}
+        {!draft && selectedCustomer && selectedOffering && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-xl border border-border-light bg-surface/70 p-3">
+              <CompanyLogo
+                name={selectedCustomer.company_name}
+                className="h-10 w-10 shrink-0"
+              />
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold text-text-primary">
+                  {selectedCustomer.company_name}
+                </p>
+                <p className="truncate text-[11px] text-text-tertiary">
+                  {selectedOffering.name}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-border-light px-6 py-12 text-center">
+              <p className="text-[14px] font-semibold text-text-primary">
+                No activities yet
+              </p>
+              <p className="max-w-[420px] text-[12.5px] leading-snug text-text-secondary">
+                Nothing has been logged for this customer and offering, so the
+                heat map shows None. Add the first activity to put it on the
+                map.
+              </p>
+              <Button onClick={createNewVersion} className="mt-1.5">
+                <Plus size={14} strokeWidth={2.2} /> Add the first activity
+              </Button>
+            </div>
+          </div>
+        )}
         {draft && selectedCustomer && selectedOffering && (
           <div className="space-y-4">
             <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-surface/70 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1507,7 +1573,14 @@ export function CustomerOfferingHeatMap({
                 </div>
               )}
               <div className="overflow-visible rounded-xl border border-border-light bg-white">
-                <div className="hidden grid-cols-[116px_minmax(0,1.4fr)_120px_90px_140px_24px_36px] items-center gap-3 rounded-t-xl bg-surface px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary lg:grid">
+                <div
+                  className={cn(
+                    "hidden grid-cols-[116px_minmax(0,1.4fr)_120px_90px_140px_24px_36px] items-center gap-3 rounded-t-xl bg-surface px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary",
+                    // The docked side panel is too narrow for these columns;
+                    // rows show their compact stacked layout there instead.
+                    !fullScreen && "lg:grid"
+                  )}
+                >
                   <span className="flex items-center gap-1">
                     Report row
                     <InfoHint text="The one activity this offering shows on the customer heat map — exactly one per offering. Tick a different row to report that one instead." />
@@ -1519,6 +1592,21 @@ export function CustomerOfferingHeatMap({
                   <span className="sr-only">Open</span>
                   <span className="sr-only">Actions</span>
                 </div>
+              {versionRows.length === 0 && (
+                <div className="flex flex-col items-center gap-2.5 px-6 py-10 text-center">
+                  <p className="text-[13.5px] font-semibold text-text-primary">
+                    No activities yet
+                  </p>
+                  <p className="max-w-[420px] text-[12px] leading-snug text-text-secondary">
+                    Nothing has been logged for this customer and offering, so
+                    the heat map shows None. Add the first activity to put it
+                    on the map.
+                  </p>
+                  <Button onClick={createNewVersion} className="mt-1">
+                    <Plus size={14} strokeWidth={2.2} /> Add the first activity
+                  </Button>
+                </div>
+              )}
               {versionRows.map((version) => {
                 const versionMeta =
                   CUSTOMER_OFFERING_ACTIVITIES[version.activity];
@@ -1527,7 +1615,7 @@ export function CustomerOfferingHeatMap({
                 const VersionIcon = ACTIVITY_ICONS[version.activity];
                 const VersionStatusIcon = STATUS_ICONS[version.status];
                 const expanded =
-                  expandedVersionId === version.id && draft.id === version.id;
+                  expandedVersionId === version.id && draft?.id === version.id;
                 const unsaved = version.id === pendingVersionDraft?.id;
                 const isNewRow = unsaved && draftIsNew;
                 const reported = reportVersionId === version.id;
@@ -1548,13 +1636,18 @@ export function CustomerOfferingHeatMap({
                   <section
                     key={version.id}
                     className={cn(
-                      "relative border-t border-border-light bg-white transition-colors first:border-t-0",
+                      "relative transition-colors",
                       expanded
-                        ? "z-20 overflow-visible bg-blue-light/10"
-                        : "overflow-hidden"
+                        // Row + form as one visibly bounded card: lifted out of
+                        // the list, tinted, ringed in blue. Without the shared
+                        // boundary the form read as a separate unrelated panel
+                        // (Anir, Aug 13: "I'm not getting the sense that this
+                        // is part of that").
+                        ? "z-20 my-1.5 overflow-visible rounded-xl bg-blue-light/30 ring-2 ring-inset ring-blue-primary/40"
+                        : "overflow-hidden border-t border-border-light bg-white first:border-t-0"
                     )}
                   >
-                    <div className="flex items-stretch gap-2 px-3 py-2.5">
+                    <div className="flex items-center gap-2 px-3 py-2.5">
                       <button
                         type="button"
                         role="checkbox"
@@ -1568,7 +1661,7 @@ export function CustomerOfferingHeatMap({
                         }
                         onClick={() => chooseHeatMapActivity(version.id)}
                         className={cn(
-                          "inline-flex w-[104px] shrink-0 items-center justify-center gap-2 rounded-lg px-2 text-[10.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary disabled:cursor-default lg:w-[116px]",
+                          "inline-flex w-[104px] shrink-0 items-center justify-start gap-2 self-stretch rounded-lg px-2 text-[10.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary disabled:cursor-default lg:w-[116px]",
                           reported
                             ? "bg-blue-light text-blue-primary"
                             : "text-text-secondary hover:bg-blue-light/40 hover:text-blue-primary"
@@ -1592,7 +1685,11 @@ export function CustomerOfferingHeatMap({
                         type="button"
                         aria-expanded={expanded}
                         onClick={() => toggleVersion(version.id)}
-                        className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_24px] items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary lg:grid-cols-[minmax(0,1.4fr)_120px_90px_140px_24px]"
+                        className={cn(
+                          "grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary",
+                          !fullScreen &&
+                            "lg:grid-cols-[minmax(0,1.4fr)_120px_90px_140px]"
+                        )}
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
                           <span
@@ -1615,16 +1712,21 @@ export function CustomerOfferingHeatMap({
                                 </span>
                               )}
                             </span>
-                            <span title="One saved activity for this customer and offering — the number counts how many have been logged." className="block truncate text-[10px] text-text-tertiary lg:hidden">
+                            <span title="One saved activity for this customer and offering — the number counts how many have been logged." className={cn("block truncate text-[10px] text-text-tertiary", !fullScreen && "lg:hidden")}>
                               Attempt {version.version} · {versionStatus.label} · {valueSummary}
                             </span>
-                            <span className="hidden text-[10px] text-text-tertiary lg:block">
+                            <span
+                              className={cn(
+                                "hidden text-[10px] text-text-tertiary",
+                                !fullScreen && "lg:block"
+                              )}
+                            >
                               Attempt {version.version}
                             </span>
                           </span>
                         </span>
                         <span
-                          className="hidden w-fit max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold text-text-primary lg:inline-flex"
+                          className={cn("hidden w-fit max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold text-text-primary", !fullScreen && "lg:inline-flex")}
                           style={{
                             background: `${versionStatus.color}1F`,
                           }}
@@ -1636,33 +1738,24 @@ export function CustomerOfferingHeatMap({
                           />
                           {versionStatus.label}
                         </span>
-                        <span className="hidden truncate text-[11px] font-semibold text-text-primary lg:block">
+                        <span className={cn("hidden truncate text-[11px] font-semibold text-text-primary", !fullScreen && "lg:block")}>
                           {valueSummary}
                         </span>
                         <span
-                          className="hidden truncate text-[10px] text-text-secondary lg:block"
+                          className={cn(
+                            "hidden truncate text-[10px] text-text-secondary",
+                            !fullScreen && "lg:block"
+                          )}
                           title={dateSummary}
                         >
                           {dateSummary}
                         </span>
-                        <ChevronDown
-                          size={16}
-                          strokeWidth={2.1}
-                          className={cn(
-                            "shrink-0 text-text-primary transition-transform",
-                            expanded && "rotate-180"
-                          )}
-                        />
                       </button>
-                      {reported && !unsaved ? (
-                        confirmUnlink === version.id ? (
+                      {confirmUnlink === version.id ? (
                           <span className="flex shrink-0 items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => {
-                                setConfirmUnlink(null);
-                                unlinkCurrent(version.id);
-                              }}
+                              onClick={() => void deleteVersion(version.id)}
                               className="cursor-pointer rounded-full bg-[color:#DC2626] px-2.5 py-1 text-[11px] font-semibold text-white transition-all hover:opacity-90"
                             >
                               Confirm
@@ -1678,17 +1771,30 @@ export function CustomerOfferingHeatMap({
                         ) : (
                           <button
                             type="button"
-                            title="Remove this activity from the heat map"
-                            aria-label="Remove this activity from the heat map"
+                            title="Delete this activity"
+                            aria-label="Delete this activity"
                             onClick={() => setConfirmUnlink(version.id)}
                             className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                           >
                             <Trash2 size={14} strokeWidth={2} />
                           </button>
-                        )
-                      ) : (
-                        <span className="w-8 shrink-0" />
                       )}
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        aria-label={expanded ? "Collapse this activity" : "Open this activity"}
+                        onClick={() => toggleVersion(version.id)}
+                        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-primary transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+                      >
+                        <ChevronDown
+                          size={16}
+                          strokeWidth={2.1}
+                          className={cn(
+                            "transition-transform",
+                            expanded && "rotate-180"
+                          )}
+                        />
+                      </button>
                     </div>
                     {expanded && (
                       /* CLEARLY PART OF THE ROW ABOVE IT (Anir, Aug 13: "it's
@@ -1698,47 +1804,7 @@ export function CustomerOfferingHeatMap({
                          table, so it read as a second, unrelated panel. Now it
                          is indented, tinted, and hangs off a blue rule that
                          runs down from the row it belongs to. */
-                      <div className="tab-panel ml-6 space-y-4 border-l-[3px] border-blue-primary/45 bg-blue-light/[0.13] p-4 sm:ml-10">
-            {draftIsNew && (
-              <div className="flex items-start justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2.5">
-                <div>
-                <p className="text-[11.5px] font-semibold text-text-primary">
-                  Draft activity {draft.version}
-                </p>
-                <p className="mt-0.5 text-[10.5px] leading-relaxed text-text-secondary">
-                  Saved as a shared workspace draft. You can close this window
-                  and continue later; it reaches the activity log only when you
-                  save it.
-                </p>
-                </div>
-                {confirmBannerDiscard ? (
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={cancelExpandedVersion}
-                      className="cursor-pointer rounded-full bg-[color:#DC2626] px-3 py-1.5 text-[11.5px] font-semibold text-white transition-all hover:opacity-90"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmBannerDiscard(false)}
-                      className="cursor-pointer rounded-full bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:bg-surface"
-                    >
-                      Deny
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmBannerDiscard(true)}
-                    className="shrink-0 cursor-pointer rounded-full bg-error/10 px-3 py-1.5 text-[11.5px] font-semibold text-error transition-colors hover:bg-error/20"
-                  >
-                    Discard this draft
-                  </button>
-                )}
-              </div>
-            )}
+                      <div className="tab-panel mx-3 mb-3 space-y-4 rounded-lg border border-border-light bg-white p-4">
             <FormSectionHeading
               title={draftIsNew ? "New activity details" : "Activity details"}
             />
@@ -1956,40 +2022,14 @@ export function CustomerOfferingHeatMap({
                     Cancel changes
                   </Button>
                 )}
-                {!editingExisting && !draftIsNew && (
-                  <Button variant="secondary" onClick={cancelExpandedVersion}>
-                    Close details
-                  </Button>
-                )}
-                {!editingExisting && draftIsNew && (
-                  confirmFooterDiscard ? (
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-[12px] font-medium text-text-secondary">
-                        Throw this draft away?
-                      </span>
-                      <Button variant="secondary" onClick={() => setConfirmFooterDiscard(false)}>
-                        Deny
-                      </Button>
-                      <Button variant="destructive" onClick={cancelExpandedVersion}>
-                        Confirm
-                      </Button>
-                    </span>
-                  ) : (
-                    <Button variant="secondary" onClick={() => setConfirmFooterDiscard(true)}>
-                      Discard activity
-                    </Button>
-                  )
-                )}
-                {(hasDraftChanges || draftIsNew) && (
-                  <Button onClick={saveDraft} loading={saving} className="page-in">
-                    <Link2 size={14} strokeWidth={2.2} />
-                    {editingExisting
-                      ? "Save changes"
-                      : draftIsNew
-                        ? "Save activity"
-                        : "Save details"}
-                  </Button>
-                )}
+                <Button
+                  onClick={saveDraft}
+                  loading={saving}
+                  disabled={!hasDraftChanges && !draftIsNew}
+                >
+                  <Link2 size={14} strokeWidth={2.2} />
+                  {draftIsNew ? "Save activity" : "Save changes"}
+                </Button>
             </div>
                       </div>
                     )}

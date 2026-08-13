@@ -272,12 +272,12 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
       {fullScreen && (
         <div
           onClick={() => setFullScreen(false)}
-          className="fixed inset-0 z-[200] bg-[rgba(15,23,42,0.45)] backdrop-blur-[1px]"
+          className="matrix-backdrop-in fixed inset-0 z-[200] bg-[rgba(15,23,42,0.45)] backdrop-blur-[1px]"
           aria-hidden="true"
         />
       )}
       {fullScreen && (
-        <div className="popover-in fixed inset-x-6 top-6 z-[201] flex h-[53px] items-center justify-between gap-4 rounded-t-2xl border border-b-0 border-border-light bg-white px-5">
+        <div className="matrix-pop-in fixed inset-x-6 top-6 z-[201] flex h-[53px] items-center justify-between gap-4 rounded-t-2xl border border-b-0 border-border-light bg-white px-5">
           <h2 className="text-[15px] font-semibold text-text-primary">
             Release calendar
           </h2>
@@ -308,7 +308,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
           className={cn(
             "overflow-auto border border-border-light bg-white",
             fullScreen
-              ? "fixed inset-x-6 bottom-6 top-[calc(1.5rem+53px)] z-[201] rounded-b-2xl border-t-0"
+              ? "matrix-pop-in fixed inset-x-6 bottom-6 top-[calc(1.5rem+53px)] z-[201] rounded-b-2xl border-t-0"
               : "-mb-28 rounded-xl"
           )}
         >

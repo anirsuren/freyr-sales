@@ -1464,3 +1464,43 @@ input {
 .heat-map-scroll tbody tr:last-child > td {
   border-bottom-width: 0;
 }
+
+/* THE MATRIX POPUP OPENS LIKE A DIALOG, NOT A FLICKER.
+   The big heat map / calendar popup reused the bell's 160ms corner pop, which
+   on a near-fullscreen surface read as a glitch (Anir, Aug 13: "the pop-up
+   animation for this heat map pop-up is really bad"). A centred rise + settle
+   sized for a large surface, with the dimmer fading alongside it. */
+@keyframes matrixPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.955) translateY(18px);
+  }
+  55% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.matrix-pop-in {
+  animation: matrixPopIn 0.34s cubic-bezier(0.2, 0.9, 0.24, 1.02) both;
+  transform-origin: center;
+}
+@keyframes matrixBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.matrix-backdrop-in {
+  animation: matrixBackdropIn 0.26s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .matrix-pop-in,
+  .matrix-backdrop-in {
+    animation: none;
+  }
+}
