@@ -68,6 +68,10 @@ export type FeedCompany = {
   /** "customer" (default) or "competitor" — which intelligence tab owns it. */
   group?: "customer" | "competitor";
   fetchedAt: string;
+  /** Last time the cheap same-day news pass visited (Perplexity). Kept apart
+   *  from `fetchedAt`, which still means "full Apify sync" and drives that
+   *  rotation's ordering. */
+  newsAt?: string;
 };
 
 /** One merger or acquisition on the tracker (Aug 11 call): who bought whom,

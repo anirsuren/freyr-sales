@@ -7,6 +7,7 @@ import {
 import { bustMarketIntelFeedCache, cleanSourceLabel } from "./marketIntelFeed";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
 import { classifyMna, digestCompany } from "./marketIntelSummarize";
+import { scrapeFreshNews } from "./perplexityNews";
 import {
   bustMarketIntelTrackingCache,
   miSlug,
@@ -44,21 +45,16 @@ const RUN_CAP_USD = 3.2;
 const TARGETED_CAP_USD = 0.6;
 const POST_LIMIT = 5;
 /**
- * WHY 8 WAS TOO FEW (Anir, Aug 13: "all the companies according to this have
- * no news in the past day, which doesn't make any sense").
- *
- * The actor returns Google News results ranked by RELEVANCE, not date, and it
- * ignores its own `sort: newest` (verified against the live API: passing it
- * dropped the freshest article rather than promoting it). So a page of 8 is a
- * relevance slice that happens to contain roughly one same-day item. Filter
- * that to "past day" and you land on zero for every company, while the
- * scraper itself is working perfectly: a probe for Dr. Reddy's returned a
- * story 3.9 hours old at rank 1.
- *
- * Pulling a deeper page is the fix; there is no recency parameter to lean on.
- * It costs ~$0.07 more per company per refresh (0.004/item).
+ * BACK TO A SHALLOW PAGE, ON PURPOSE. The actor returns Google News ranked by
+ * RELEVANCE, not date, and ignores its own `sort: newest` (verified live:
+ * passing it dropped the freshest article). Aug 13 briefly raised this to 25
+ * to fish for same-day items in a deeper relevance slice, at ~$0.11 a company
+ * — which the run cap turned into fewer companies per run. Same-day coverage
+ * now comes from the Perplexity pass below at a twentieth of the price, so
+ * this pull is back to being what relevance ranking is good at: the handful
+ * of stories that MATTER about the company, merged in as depth.
  */
-const NEWS_LIMIT = 25;
+const NEWS_LIMIT = 8;
 // Each pull re-bills the latest N posts whether or not they are new, so the
 // person limit stays small: 133 tracked people at 5 posts is ~$3.30 a run.
 const PERSON_POST_LIMIT = 5;
@@ -85,6 +81,9 @@ function hasEnv(): boolean {
  *  AWS change. */
 const CONFIG_ROW = "market-intel:config";
 let activeApifyToken: string | undefined = process.env.APIFY_API_TOKEN;
+/** Same escape hatch as the Apify token: the config row wins over the env,
+ *  so prod picks up a key (or a rotation) without an AWS change. */
+let activePerplexityKey: string | undefined = process.env.PERPLEXITY_API_KEY;
 
 function client() {
   return require("@supabase/supabase-js").createClient(
@@ -437,6 +436,8 @@ export async function runMarketIntelRefresh(options?: {
   if (!hasEnv()) return { ran: false, reason: "missing env (database)" };
   const config = await readRow(CONFIG_ROW).catch(() => null);
   activeApifyToken = config?.apifyToken || process.env.APIFY_API_TOKEN;
+  activePerplexityKey =
+    config?.perplexityKey || process.env.PERPLEXITY_API_KEY;
   if (!activeApifyToken) {
     return { ran: false, reason: "no APIFY token in config row or env" };
   }
@@ -456,7 +457,11 @@ export async function runMarketIntelRefresh(options?: {
   const token = await claimLock();
   if (!token) return { ran: false, reason: "another refresh is running" };
 
+  // Two ledgers on purpose: `spent` is Apify dollars and is what RUN_CAP_USD
+  // meters (the $200/month plan); `spentFresh` is Perplexity's separate bill
+  // and must never eat the Apify rotation's budget.
   let spent = 0;
+  let spentFresh = 0;
   let refreshed = 0;
   let skippedFresh = 0;
   let peopleRefreshed = 0;
@@ -493,6 +498,59 @@ export async function runMarketIntelRefresh(options?: {
         (s) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(s.id)
       )
       .sort((a, b) => lastSync(a.id, feed.companies) - lastSync(b.id, feed.companies));
+
+    // ---- Pass 1: same-day news for EVERYONE, before any Apify money moves.
+    // The dollar-capped rotation below cannot visit ~75 companies twice a
+    // day; this pass can, at ~$0.006 a company (Perplexity, its own billing),
+    // so "nothing from the past day" stops being a budget artifact. Failures
+    // cost nothing but that company's freshness until the next tick.
+    if (activePerplexityKey) {
+      let sinceWrite = 0;
+      for (const source of sources) {
+        const existing: FeedCompany | undefined = feed.companies[source.id];
+        const newsAt = existing?.newsAt ?? existing?.fetchedAt;
+        if (
+          !options?.force &&
+          newsAt &&
+          Date.now() - Date.parse(newsAt) < COMPANY_FRESH_MS
+        ) {
+          continue;
+        }
+        const fresh = await scrapeFreshNews(source, activePerplexityKey);
+        spentFresh += fresh.cost;
+        if (fresh.failed) continue;
+        const entry: FeedCompany = existing ?? {
+          id: source.id,
+          name: source.name,
+          slug: null,
+          author: null,
+          posts: [],
+          news: [],
+          tldr: null,
+          group: competitorIds.has(source.id) ? "competitor" : "customer",
+          // Epoch on purpose: Apify has never visited this company, so it
+          // belongs at the FRONT of the rotation below.
+          fetchedAt: new Date(0).toISOString(),
+        };
+        if (fresh.news.length > 0) {
+          entry.news = mergeNews(entry.news ?? [], fresh.news);
+          entry.tldr = null; // the rundown must mention today's stories
+          await applyDigest(entry);
+        }
+        entry.newsAt = new Date().toISOString();
+        feed.companies[source.id] = entry;
+        feed.updatedAt = new Date().toISOString();
+        feed.spendUsd =
+          Math.round(((feed.spendUsd ?? 0) + fresh.cost) * 1000) / 1000;
+        // Batched writes: cheap pass, so a crash re-buys at most ten calls.
+        sinceWrite += 1;
+        if (sinceWrite >= 10) {
+          await writeRow(FEED_ROW, feed);
+          sinceWrite = 0;
+        }
+      }
+      if (sinceWrite > 0) await writeRow(FEED_ROW, feed);
+    }
 
     for (const source of sources) {
       if (spent > RUN_CAP_USD) break;
@@ -534,6 +592,7 @@ export async function runMarketIntelRefresh(options?: {
         tldr: existing?.tldr ?? null,
         group: competitorIds.has(source.id) ? "competitor" : "customer",
         fetchedAt: new Date().toISOString(),
+        newsAt: existing?.newsAt,
       };
       if (newsResult.news.length > 0) entry.tldr = null; // fresh rundown
       await applyDigest(entry);
@@ -609,7 +668,7 @@ export async function runMarketIntelRefresh(options?: {
     companiesRefreshed: refreshed,
     companiesSkippedFresh: skippedFresh,
     peopleRefreshed,
-    spentUsd: Math.round(spent * 1000) / 1000,
+    spentUsd: Math.round((spent + spentFresh) * 1000) / 1000,
   };
 }
 
@@ -622,6 +681,9 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
   const source = trackedToSource(company);
   const postsResult = await scrapeCompanyPosts(source);
   const newsResult = await scrapeNews(source);
+  // The first briefing should include today's stories, same as the standing
+  // watch gets on every run.
+  const freshResult = await scrapeFreshNews(source, activePerplexityKey);
   if (postsResult.cost + newsResult.cost > TARGETED_CAP_USD) {
     // Cannot exceed by design (10 posts + 10 articles is at most ~$0.10),
     // but the guard stays in case limits change.
@@ -632,14 +694,19 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
     slug: postsResult.slug,
     author: postsResult.author,
     posts: postsResult.posts,
-    news: newsResult.news,
+    news: mergeNews(newsResult.news, freshResult.news),
     tldr: null,
     fetchedAt: new Date().toISOString(),
+    newsAt: new Date().toISOString(),
   };
   await applyDigest(entry);
   feed.companies[source.id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
-  feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + postsResult.cost + newsResult.cost) * 1000) / 1000;
+  feed.spendUsd =
+    Math.round(
+      ((feed.spendUsd ?? 0) + postsResult.cost + newsResult.cost + freshResult.cost) *
+        1000
+    ) / 1000;
   await writeRow(FEED_ROW, feed);
 }
 
@@ -721,22 +788,26 @@ export async function addCompanyByLink(
   await writeRow(TRACKING_ROW, tracking);
 
   const newsResult = await scrapeNews({ name });
+  const freshResult = await scrapeFreshNews({ name }, activePerplexityKey);
   const entry: FeedCompany = {
     id,
     name,
     slug: probe.slug,
     author: probe.author,
     posts: probe.posts,
-    news: newsResult.news,
+    news: mergeNews(newsResult.news, freshResult.news),
     tldr: null,
     group,
     fetchedAt: new Date().toISOString(),
+    newsAt: new Date().toISOString(),
   };
   await applyDigest(entry);
   feed.companies[id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
   feed.spendUsd =
-    Math.round(((feed.spendUsd ?? 0) + probe.cost + newsResult.cost) * 1000) / 1000;
+    Math.round(
+      ((feed.spendUsd ?? 0) + probe.cost + newsResult.cost + freshResult.cost) * 1000
+    ) / 1000;
   await writeRow(FEED_ROW, feed);
   return company;
 }
