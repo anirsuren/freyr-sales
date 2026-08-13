@@ -26,6 +26,7 @@ import {
   LucideIcon,
   Boxes,
   Gauge,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -65,6 +66,10 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/performance", label: "Performance", icon: Gauge },
   { href: "/market-intel", label: "Market Intel", icon: Radar },
   { href: "/activity", label: "Activity", icon: Rss },
+  // Running the workspace — user groups and system status. Its own page in
+  // the nav, not buried in the account menu (Anir, Aug 12: "there has to be
+  // an admin tab, like a page").
+  { href: "/admin", label: "Admin", icon: ShieldCheck },
 ];
 
 // Release gating (Suren): the first Freyr rollout shows ONLY production-ready

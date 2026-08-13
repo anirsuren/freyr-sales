@@ -76,7 +76,7 @@ import { GroupPerformanceTab } from "./GroupPerformanceTab";
  * header. Saves QUEUE instead of silently dropping while one is in flight.
  */
 
-const TABS = ["org", "groups", "people", "master"] as const;
+const TABS = ["org", "groups", "people"] as const;
 const MASTER_VIEWS = ["cards", "table"] as const;
 type Tab = (typeof TABS)[number];
 
@@ -104,13 +104,6 @@ const ROOMS: Record<
     color: "#0071E3",
     subtitle:
       "The goals being tracked this year — target, actual, met, % met and verified — from the company down to every person.",
-  },
-  master: {
-    label: "Goal Master",
-    icon: ClipboardList,
-    color: "#6D28D9",
-    subtitle:
-      "The master list of every goal: its type, its subgoals, who owns them, and whether it's being tracked on the plan.",
   },
   groups: {
     label: "Group performance",
@@ -161,8 +154,8 @@ export function PerformanceModule({
   const visibleTabs: Tab[] = isManager
     ? [...TABS]
     : iHeadAGroup
-      ? ["groups", "people", "master"]
-      : ["people", "master"];
+      ? ["groups", "people"]
+      : ["people"];
   useEffect(() => {
     if (!visibleTabs.includes(tab)) chooseTab(visibleTabs[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -257,7 +250,7 @@ export function PerformanceModule({
   // and anybody can pick more goals for them"). The strip flips the room
   // between its numbers and the master list, scoped to who you may assign.
   const [masterFor, setMasterFor] = useState<Tab | null>(null);
-  const showMaster = tab !== "master" && masterFor === tab;
+  const showMaster = masterFor === tab;
   const [logOpen, setLogOpen] = useState(false);
   /** Prefill for the Log-an-actual popup when opened from a person's own
    *  goal row (Anir, Aug 12: "I can't edit this because it's me — if I'm
@@ -387,12 +380,9 @@ export function PerformanceModule({
           </div>
         </div>
         <p className="mt-1.5 max-w-[720px] text-[13.5px] leading-relaxed text-text-secondary">
-          {showMaster
-            ? "Every goal, by category. Assign one to a person and it starts counting here."
-            : room.subtitle}
+          {room.subtitle}
         </p>
-        {tab !== "master" && (
-          <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-surface p-1">
+        <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-surface p-1">
             {[
               { key: "numbers", label: room.label },
               { key: "master", label: "Goal Master" },
@@ -417,9 +407,8 @@ export function PerformanceModule({
                   {choice.label}
                 </button>
               );
-            })}
-          </div>
-        )}
+          })}
+        </div>
       </div>
 
       <div key={`${tab}-${showMaster ? "master" : "numbers"}`} className="tab-panel">
@@ -441,21 +430,9 @@ export function PerformanceModule({
             live={live}
             run={run}
             onLogActual={() => setLogOpen(true)}
-            onGoToMaster={() => chooseTab("master")}
+            onGoToMaster={() => setMasterFor(tab)}
             onEditGoal={(g) => setGoalModal({ editing: g })}
             onEditSubgoal={(g, s) => setSubModal({ goal: g, editing: s })}
-          />
-        ) : tab === "master" ? (
-          <MasterTab
-            state={state}
-            live={live}
-            run={run}
-            busy={busy}
-            suggestions={people}
-            assignablePeople={assignablePeople}
-            isManager={isManager}
-            onNewGoal={() => setGoalModal({ editing: null })}
-            onEditGoal={(g) => setGoalModal({ editing: g })}
           />
         ) : tab === "groups" ? (
           <GroupPerformanceTab
@@ -1383,24 +1360,59 @@ function GoalPopupBody({
         </p>
       )}
       <div className="mt-1.5 space-y-2">
-        <Modal
-          open={openSub === "new"}
-          onClose={() => setOpenSub(null)}
-          title="New subgoal"
-          size="wide"
-          tall
-          stacked
-        >
-          <SubgoalEditorFields
-                key="new"
-                goal={goal}
-                editing={null}
-                suggestions={suggestions}
-                run={run}
-                busy={busy}
-                onDone={() => setOpenSub(null)}
-              />
-        </Modal>
+        {/* NO POPUP ON A POPUP (Anir, Aug 12: "when I click on subgoal it
+            should not be a pop-up because it's already a pop-up"). Hosted in
+            the goal popup, the new-subgoal form unfolds right here; expanded
+            inline on the page, it gets its own dialog. */}
+        {hostedInPopup ? (
+          openSub === "new" && (
+            <div className="tab-panel overflow-hidden rounded-xl border border-blue-subtle bg-white">
+              <div className="flex items-center justify-between gap-2 border-b border-border-light bg-[rgba(0,113,227,0.04)] px-3.5 py-2.5">
+                <span className="text-[12.5px] font-semibold text-text-primary">
+                  New subgoal
+                </span>
+                <button
+                  type="button"
+                  aria-label="Close the new subgoal form"
+                  onClick={() => setOpenSub(null)}
+                  className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+                >
+                  <X size={14} strokeWidth={2.2} />
+                </button>
+              </div>
+              <div className="p-3.5">
+                <SubgoalEditorFields
+                  key="new-inline"
+                  goal={goal}
+                  editing={null}
+                  suggestions={suggestions}
+                  run={run}
+                  busy={busy}
+                  onDone={() => setOpenSub(null)}
+                />
+              </div>
+            </div>
+          )
+        ) : (
+          <Modal
+            open={openSub === "new"}
+            onClose={() => setOpenSub(null)}
+            title="New subgoal"
+            size="wide"
+            tall
+            stacked
+          >
+            <SubgoalEditorFields
+              key="new"
+              goal={goal}
+              editing={null}
+              suggestions={suggestions}
+              run={run}
+              busy={busy}
+              onDone={() => setOpenSub(null)}
+            />
+          </Modal>
+        )}
         {goal.subgoals.map((s) => {
           const expanded = openSub === s.id;
           return (
@@ -1543,7 +1555,9 @@ function GoalPopupBody({
           Assigned people
           <InfoHint text="This goal attached straight to a person from the Goal Master. Their numbers roll into their group and the organization — a department is just its people added up." />
         </p>
-        {live && (
+        {/* The action sits WITH the empty state while there's nobody here —
+            centred in the grey box, not floating in the header (Anir). */}
+        {live && (goal.assignments ?? []).length > 0 && (
           <button
             type="button"
             onClick={() => setAssignOpen(true)}
@@ -1554,9 +1568,20 @@ function GoalPopupBody({
         )}
       </div>
       {(goal.assignments ?? []).length === 0 ? (
-        <p className="mt-1.5 rounded-lg bg-surface px-4 py-3 text-center text-[12.5px] text-text-secondary">
-          Nobody carries this goal individually yet.
-        </p>
+        <div className="mt-1.5 flex flex-col items-center gap-2.5 rounded-lg bg-surface px-4 py-5 text-center">
+          <p className="text-[12.5px] text-text-secondary">
+            Nobody carries this goal individually yet.
+          </p>
+          {live && (
+            <button
+              type="button"
+              onClick={() => setAssignOpen(true)}
+              className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-light px-3.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
+            >
+              <UserRoundPlus size={12} strokeWidth={2.4} /> Assign to a person
+            </button>
+          )}
+        </div>
       ) : (
         <div className="mt-1.5 space-y-1.5">
           {(goal.assignments ?? []).map((a) => (

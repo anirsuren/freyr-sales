@@ -37,6 +37,8 @@ export function canAccessModule(
   path: string,
   role: UserIdentityRole
 ): boolean {
+  // Running the workspace is an ADMIN job — not a manager one.
+  if (path === "/admin" || path.startsWith("/admin/")) return role === "admin";
   if (!isManagerOnlyPath(path)) return true;
   return isManagerOrAdmin(role);
 }
