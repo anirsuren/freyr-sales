@@ -67,7 +67,7 @@ export async function verifiedWorkflowActor(
 }
 
 export function isWorkflowManager(actor: VerifiedWorkflowActor): boolean {
-  return actor.role === "admin" || actor.role === "editor";
+  return actor.role === "admin" || actor.role === "manager";
 }
 
 /**

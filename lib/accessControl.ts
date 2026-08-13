@@ -10,7 +10,17 @@ export const ACCESS_COOKIE = "freyr_access_v2";
 // through /api/auth/resolve.
 export const ACCESS_TTL_SECONDS = 15 * 60;
 
-export type WorkspaceRole = "sales" | "editor" | "admin";
+export type WorkspaceRole = "rep" | "manager" | "admin";
+
+/** The stored names used to be "sales"/"editor". Rows, snapshots and cookies
+ * minted before the Aug 13 rename still carry them; every ingress maps them
+ * to the canonical names so nothing ever breaks on old data. */
+export function normalizeWorkspaceRole(raw: unknown): WorkspaceRole | null {
+  if (raw === "admin") return "admin";
+  if (raw === "manager" || raw === "editor") return "manager";
+  if (raw === "rep" || raw === "sales") return "rep";
+  return null;
+}
 export type AccessGrant = {
   sub: string;
   userId: string;
@@ -104,7 +114,7 @@ export async function verifyAccessGrant(
       typeof payload.displayName !== "string" ||
       payload.displayName.trim().length < 2 ||
       payload.displayName.length > 120 ||
-      !["sales", "editor", "admin"].includes(payload.role) ||
+      !normalizeWorkspaceRole(payload.role) ||
       typeof payload.exp !== "number" ||
       !Number.isFinite(payload.exp) ||
       payload.exp <= Math.floor(Date.now() / 1000) ||
@@ -112,6 +122,9 @@ export async function verifyAccessGrant(
     ) {
       return null;
     }
+    // A grant minted before the rename says "sales"/"editor"; hand every
+    // caller the canonical spelling.
+    payload.role = normalizeWorkspaceRole(payload.role)!;
     return payload;
   } catch {
     return null;

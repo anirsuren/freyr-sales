@@ -6,11 +6,11 @@ import { ShieldCheck, Eye, Pencil } from "lucide-react";
 
 // Flips the active role cookie and refreshes so the (server-rendered) edit
 // controls appear/disappear. Demo stand-in for real per-user logins.
-export function RoleSwitcher({ current }: { current: "admin" | "editor" | "sales" }) {
+export function RoleSwitcher({ current }: { current: "admin" | "manager" | "rep" }) {
   const router = useRouter();
   const [pending, start] = useTransition();
 
-  function setRole(role: "admin" | "editor" | "sales") {
+  function setRole(role: "admin" | "manager" | "rep") {
     if (role === current) return;
     // Two cookies, one intent. `freyr_as_role` drives the unauthenticated
     // demo harness; `freyr_preview_role` is the signed-in preview, honored
@@ -45,9 +45,9 @@ export function RoleSwitcher({ current }: { current: "admin" | "editor" | "sales
       </span>
       <button
         type="button"
-        onClick={() => setRole("editor")}
-        aria-pressed={current === "editor"}
-        className={btn(current === "editor")}
+        onClick={() => setRole("manager")}
+        aria-pressed={current === "manager"}
+        className={btn(current === "manager")}
       >
         <Pencil size={13} strokeWidth={2} /> Editor
       </button>
@@ -61,9 +61,9 @@ export function RoleSwitcher({ current }: { current: "admin" | "editor" | "sales
       </button>
       <button
         type="button"
-        onClick={() => setRole("sales")}
-        aria-pressed={current === "sales"}
-        className={btn(current === "sales")}
+        onClick={() => setRole("rep")}
+        aria-pressed={current === "rep"}
+        className={btn(current === "rep")}
       >
         <Eye size={13} strokeWidth={2} /> Sales (view only)
       </button>

@@ -32,7 +32,7 @@ function sign(payload: Record<string, unknown>): string {
 
 async function signIn(
   context: BrowserContext,
-  role: "admin" | "editor" | "sales" = "admin"
+  role: "admin" | "manager" | "rep" = "admin"
 ): Promise<void> {
   const exp = Math.floor(Date.now() / 1000) + 3600;
   await context.addCookies([
@@ -174,7 +174,7 @@ test("live account and deal ownership use the signed member id and reject spoofe
     owner_user_id: null,
   });
 
-  await signIn(context, "sales");
+  await signIn(context, "rep");
   const salesReassignment = await context.request.patch(
     `/api/customers/${customer!.id}`,
     {

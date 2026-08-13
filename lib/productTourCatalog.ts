@@ -24,11 +24,11 @@ export type ProductTourStep = {
 
 type ProductTourStepDefinition = Omit<ProductTourStep, "catalogIndex">;
 
-const ALL_ROLES: readonly WorkspaceRole[] = ["sales", "editor", "admin"];
+const ALL_ROLES: readonly WorkspaceRole[] = ["rep", "manager", "admin"];
 /** FDL Components, Customers, Reports, Performance and Market Intel are a
  *  manager-and-admin job (lib/moduleAccess). A rep must never be walked to a
  *  page they cannot open. */
-const MANAGERS: readonly WorkspaceRole[] = ["editor", "admin"];
+const MANAGERS: readonly WorkspaceRole[] = ["manager", "admin"];
 
 /**
  * Primary target first, then the page's own header, then the whole page. The

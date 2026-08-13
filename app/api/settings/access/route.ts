@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ACCESS_COOKIE, type WorkspaceRole, verifyAccessGrant } from "@/lib/accessControl";
+import { ACCESS_COOKIE, type WorkspaceRole, verifyAccessGrant, normalizeWorkspaceRole } from "@/lib/accessControl";
 import {
   inviteWorkspaceUser,
   listWorkspaceAccess,
@@ -7,7 +7,7 @@ import {
   updateWorkspaceMember,
 } from "@/lib/accessStore";
 
-const ROLES = new Set<WorkspaceRole>(["sales", "editor", "admin"]);
+const ROLES = new Set<WorkspaceRole>(["rep", "manager", "admin"]);
 
 async function adminGrant(request: NextRequest) {
   const grant = await verifyAccessGrant(request.cookies.get(ACCESS_COOKIE)?.value);
@@ -31,7 +31,9 @@ export async function POST(request: NextRequest) {
   const grant = await adminGrant(request);
   if (!grant) return NextResponse.json({ error: "Workspace owner access required." }, { status: 403 });
   const body = await request.json().catch(() => ({}));
-  const role: WorkspaceRole = ROLES.has(body.role) ? body.role : "sales";
+  // Accept the pre-rename spellings too: a stale admin tab can still POST
+  // "sales"/"editor" for a few minutes after the deploy.
+  const role: WorkspaceRole = normalizeWorkspaceRole(body.role) ?? "rep";
   try {
     let invitationDelivery = null;
     if (body.action === "invite") {

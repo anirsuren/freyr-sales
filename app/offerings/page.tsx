@@ -247,7 +247,7 @@ export default async function OfferingsPage() {
   const offeringTypes = listOfferingTypes();
   const offeringCategories = listOfferingCategories();
   const role = await getRole();
-  const canEdit = role === "admin" || role === "editor";
+  const canEdit = role === "admin" || role === "manager";
 
   // Commercial reality per offering — revenue, seats, and WHO is using it —
   // so the card hover is a mini-dashboard like the Customers page, not just a

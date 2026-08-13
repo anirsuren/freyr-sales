@@ -19,7 +19,7 @@ type Identity = {
   memberId: string;
   name: string;
   email: string;
-  role: "admin" | "editor" | "sales";
+  role: "admin" | "manager" | "rep";
   firstName: string;
   initials: string;
   photo: string | null;
@@ -41,7 +41,7 @@ const SUREN: Identity = {
   memberId: "member-suren",
   name: "Walter Hensley",
   email: "suren.dheen@freyrsolutions.com",
-  role: "sales",
+  role: "rep",
   firstName: "Suren",
   initials: "SD",
   photo: "/avatars/suren-dheen.png",
@@ -52,7 +52,7 @@ const AVERY: Identity = {
   memberId: "member-avery",
   name: "Avery Partner",
   email: "avery@partner.org",
-  role: "sales",
+  role: "rep",
   firstName: "Avery",
   initials: "AP",
   photo: null,

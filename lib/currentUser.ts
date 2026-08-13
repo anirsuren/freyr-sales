@@ -25,8 +25,8 @@ import {
 
 function roleFromClaims(user: AuthenticatedUser): UserIdentityRole {
   if (hasAppRole(user, "Platform-Admins")) return "admin";
-  if (hasAppRole(user, "Offering-Editors")) return "editor";
-  return "sales";
+  if (hasAppRole(user, "Offering-Editors")) return "manager";
+  return "rep";
 }
 
 function identityFromPrincipal(

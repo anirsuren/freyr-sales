@@ -1,14 +1,14 @@
 import { cookies, headers } from "next/headers";
 import { hasAppRole, parseAlbOidcPrincipal, parseEasyAuthPrincipal } from "./auth";
-import { ACCESS_COOKIE, isApprovalGateEnabled, verifyAccessGrant } from "./accessControl";
+import { ACCESS_COOKIE, isApprovalGateEnabled, normalizeWorkspaceRole, verifyAccessGrant } from "./accessControl";
 
 // Workspace roles come from the signed access grant in every protected
 // deployment. The browser-only role switch remains available solely in the
 // unauthenticated local demo harness.
-export type Role = "admin" | "editor" | "sales";
+export type Role = "admin" | "manager" | "rep";
 
 // Higher number = more privilege. Used so "view as" can only ever DOWNGRADE.
-const ROLE_RANK: Record<Role, number> = { admin: 3, editor: 2, sales: 1 };
+const ROLE_RANK: Record<Role, number> = { admin: 3, manager: 2, rep: 1 };
 
 /**
  * "Viewing as" preview. An admin checking what the sales team sees is a real
@@ -20,9 +20,10 @@ const ROLE_RANK: Record<Role, number> = { admin: 3, editor: 2, sales: 1 };
  * still gets sales.
  */
 function applyViewAs(base: Role, viewCookie: string | undefined): Role {
-  if (viewCookie !== "admin" && viewCookie !== "editor" && viewCookie !== "sales")
-    return base;
-  return ROLE_RANK[viewCookie] < ROLE_RANK[base] ? viewCookie : base;
+  // Session cookies written before the rename may still say "editor"/"sales".
+  const wanted = normalizeWorkspaceRole(viewCookie);
+  if (!wanted) return base;
+  return ROLE_RANK[wanted] < ROLE_RANK[base] ? wanted : base;
 }
 
 /**
@@ -52,7 +53,7 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
       return { role: applyViewAs(grant.role, viewAs), realRole: grant.role };
     // Protected deployments must never turn a missing or invalid grant into
     // administrator access.
-    return { role: "sales", realRole: "sales" };
+    return { role: "rep", realRole: "rep" };
   }
 
   const headerStore = await headers();
@@ -69,20 +70,20 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
     if (hasAppRole(principal, "Platform-Admins"))
       return { role: applyViewAs("admin", viewAs), realRole: "admin" };
     if (hasAppRole(principal, "Offering-Editors"))
-      return { role: applyViewAs("editor", viewAs), realRole: "editor" };
-    return { role: "sales", realRole: "sales" };
+      return { role: applyViewAs("manager", viewAs), realRole: "manager" };
+    return { role: "rep", realRole: "rep" };
   }
 
   if (!process.env.AUTH_MODE) {
     // Demo harness (no authentication configured): the switcher IS the role,
     // and its identity defaults to admin.
-    const role = store.get("freyr_as_role")?.value;
+    const role = normalizeWorkspaceRole(store.get("freyr_as_role")?.value);
     return {
-      role: role === "sales" || role === "editor" ? role : "admin",
+      role: role === "rep" || role === "manager" ? role : "admin",
       realRole: "admin",
     };
   }
-  return { role: "sales", realRole: "sales" };
+  return { role: "rep", realRole: "rep" };
 }
 
 export async function isAdmin(): Promise<boolean> {
@@ -91,7 +92,7 @@ export async function isAdmin(): Promise<boolean> {
 
 export async function canManageOfferings(): Promise<boolean> {
   const role = await getRole();
-  return role === "admin" || role === "editor";
+  return role === "admin" || role === "manager";
 }
 
 /** Compliance queue and workspace-wide outreach actions are manager-level.
@@ -99,5 +100,5 @@ export async function canManageOfferings(): Promise<boolean> {
  * the entire workspace queue. */
 export async function canManageReviewQueue(): Promise<boolean> {
   const role = await getRole();
-  return role === "admin" || role === "editor";
+  return role === "admin" || role === "manager";
 }

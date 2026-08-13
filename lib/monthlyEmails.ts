@@ -179,7 +179,7 @@ export async function buildRepUsageEmails(
     .filter(Boolean);
 
   const reps = directory.members.filter(
-    (m) => m.active && m.email && m.role === "sales"
+    (m) => m.active && m.email && m.role === "rep"
   );
   // The window is whatever the counters have actually been running for, not an
   // assumed calendar month — the first send after this ships covers a few days,

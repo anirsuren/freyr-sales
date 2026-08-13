@@ -267,6 +267,6 @@ async function linkedInByMember(
 
 function roleLabel(role: string): string {
   if (role === "admin") return "Workspace admin";
-  if (role === "editor") return "Offering editor";
+  if (role === "manager") return "Manager";
   return "Sales";
 }

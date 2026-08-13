@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { WorkspaceRole } from "./accessControl";
+import { normalizeWorkspaceRole, type WorkspaceRole } from "./accessControl";
 import {
   TOUR_FIRST_STEP,
   TOUR_LAST_STEP,
@@ -105,18 +105,21 @@ async function verifyMembership(
   }
   const providerSubject =
     member.data?.provider_subject || member.data?.entra_object_id;
+  // The row may still carry a pre-rename spelling ("sales"/"editor");
+  // compare and return the canonical role, never the raw column.
+  const memberRole = normalizeWorkspaceRole(member.data?.app_role);
   if (
     !member.data ||
     !member.data.active ||
     providerSubject !== access.subject ||
-    member.data.app_role !== access.role
+    memberRole !== access.role
   ) {
     throw new OnboardingStoreError(
       "Current workspace access is required.",
       403
     );
   }
-  return member.data.app_role as WorkspaceRole;
+  return memberRole;
 }
 
 async function readRow(
@@ -168,11 +171,9 @@ function metadataStateToRow(
   ) {
     return null;
   }
-  const roleSnapshot = ["sales", "editor", "admin"].includes(
-    String(value.roleSnapshot)
-  )
-    ? (value.roleSnapshot as WorkspaceRole)
-    : access.role;
+  // Snapshots written before the rename still say "sales"/"editor".
+  const roleSnapshot =
+    normalizeWorkspaceRole(value.roleSnapshot) ?? access.role;
   return {
     workspace_id: access.workspaceId,
     user_id: access.userId,

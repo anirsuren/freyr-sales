@@ -244,7 +244,7 @@ export default async function TeamPage() {
         you
           ? currentUser.role === "admin"
             ? "Admin"
-            : currentUser.role === "editor"
+            : currentUser.role === "manager"
               ? "Manager"
               : "Rep"
           : repRole(r.name),

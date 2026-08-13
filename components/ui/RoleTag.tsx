@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
  * what you may do.
  */
 
-export type WorkspaceRoleKey = "admin" | "editor" | "sales";
+export type WorkspaceRoleKey = "admin" | "manager" | "rep";
 
 export const ROLE_META: Record<
   WorkspaceRoleKey,
@@ -36,13 +36,13 @@ export const ROLE_META: Record<
     icon: ShieldCheck,
     what: "Invites and approves teammates, and hands out offering ownership",
   },
-  editor: {
+  manager: {
     label: "Manager",
     color: "#7C3AED",
     icon: UsersRound,
     what: "Runs the catalogue day to day alongside the reps",
   },
-  sales: {
+  rep: {
     label: "Rep",
     color: "#0071E3",
     icon: UserRound,
@@ -55,8 +55,8 @@ export const ROLE_META: Record<
 export function roleKey(role: string | null | undefined): WorkspaceRoleKey {
   const r = (role || "").toLowerCase();
   if (r === "admin") return "admin";
-  if (r === "editor" || r === "manager") return "editor";
-  return "sales";
+  if (r === "editor" || r === "manager") return "manager";
+  return "rep";
 }
 
 export function roleLabel(role: string | null | undefined): string {

@@ -11,7 +11,7 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 const SECRET = "freyr-auth-test-secret-2026-long-enough";
 const WORKSPACE_ID = "00000000-0000-4000-8000-000000000001";
 
-type Role = "sales" | "editor" | "admin";
+type Role = "rep" | "manager" | "admin";
 
 function sign(payload: Record<string, unknown>): string {
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -66,7 +66,7 @@ async function roleContext(
 test("sales members cannot approve or send workspace-wide queues", async ({
   browser,
 }) => {
-  const sales = await roleContext(browser, "sales");
+  const sales = await roleContext(browser, "rep");
   try {
     const review = await sales.request.post("/api/sessions/sess-003/review", {
       data: { action: "approve" },
@@ -88,17 +88,17 @@ test("campaign edits are limited to the stable owner or an admin", async ({
 }) => {
   const owner = await roleContext(
     browser,
-    "sales",
+    "rep",
     "campaign-owner",
     "Campaign Owner"
   );
   const other = await roleContext(
     browser,
-    "sales",
+    "rep",
     "campaign-other",
     "Campaign Other"
   );
-  const editor = await roleContext(browser, "editor", "campaign-editor");
+  const editor = await roleContext(browser, "manager", "campaign-editor");
   const admin = await roleContext(browser, "admin", "campaign-admin");
   try {
     const created = await owner.request.post("/api/campaigns", {
@@ -162,17 +162,17 @@ test("sequence edits and deletion are limited to the stable owner or an admin", 
 }) => {
   const owner = await roleContext(
     browser,
-    "sales",
+    "rep",
     "sequence-owner",
     "Sequence Owner"
   );
   const other = await roleContext(
     browser,
-    "sales",
+    "rep",
     "sequence-other",
     "Sequence Other"
   );
-  const editor = await roleContext(browser, "editor", "sequence-editor");
+  const editor = await roleContext(browser, "manager", "sequence-editor");
   const admin = await roleContext(browser, "admin", "sequence-admin");
   try {
     const created = await owner.request.post("/api/sequences", {
@@ -228,11 +228,11 @@ test("sequence edits and deletion are limited to the stable owner or an admin", 
 test("agent undo is limited to the run creator or a manager", async ({
   browser,
 }) => {
-  const owner = await roleContext(browser, "sales", "run-owner", "Run Owner");
-  const other = await roleContext(browser, "sales", "run-other", "Run Other");
+  const owner = await roleContext(browser, "rep", "run-owner", "Run Owner");
+  const other = await roleContext(browser, "rep", "run-other", "Run Other");
   const manager = await roleContext(
     browser,
-    "editor",
+    "manager",
     "run-manager",
     "Run Manager"
   );
@@ -280,17 +280,17 @@ test("mock voice runs stay simulated for teammates and enforce a bulk cap", asyn
 }) => {
   const owner = await roleContext(
     browser,
-    "sales",
+    "rep",
     "voice-owner",
     "Voice Owner"
   );
   const other = await roleContext(
     browser,
-    "sales",
+    "rep",
     "voice-other",
     "Voice Other"
   );
-  const editor = await roleContext(browser, "editor", "voice-editor");
+  const editor = await roleContext(browser, "manager", "voice-editor");
   const admin = await roleContext(browser, "admin", "voice-admin");
   const category = "Regulatory Affairs";
   try {
@@ -351,7 +351,7 @@ test("mock voice runs stay simulated for teammates and enforce a bulk cap", asyn
 });
 
 test("knowledge-base mutations are admin-only", async ({ browser }) => {
-  const sales = await roleContext(browser, "sales");
+  const sales = await roleContext(browser, "rep");
   try {
     expect((await sales.request.post("/api/kb/crawl")).status()).toBe(403);
     expect(
@@ -381,7 +381,7 @@ test("knowledge-base mutations are admin-only", async ({ browser }) => {
 test("pitch sending requires approval and uses the session contact", async ({
   browser,
 }) => {
-  const sales = await roleContext(browser, "sales");
+  const sales = await roleContext(browser, "rep");
   try {
     const draftSend = await sales.request.post("/api/sessions/sess-001/send", {
       data: {
@@ -437,10 +437,10 @@ test("pitch sending requires approval and uses the session contact", async ({
 test("changing approved pitch content resets compliance approval", async ({
   browser,
 }) => {
-  const sales = await roleContext(browser, "sales", "pitch-editor", "Pitch Editor");
+  const sales = await roleContext(browser, "rep", "pitch-editor", "Pitch Editor");
   const manager = await roleContext(
     browser,
-    "editor",
+    "manager",
     "pitch-manager",
     "Pitch Manager"
   );
@@ -503,7 +503,7 @@ test("changing approved pitch content resets compliance approval", async ({
 test("session outcomes ignore caller-supplied customer and contact ids", async ({
   browser,
 }) => {
-  const sales = await roleContext(browser, "sales");
+  const sales = await roleContext(browser, "rep");
   try {
     const response = await sales.request.post(
       "/api/sessions/sess-005/outcome",

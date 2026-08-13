@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
 };
 
-const ROLE_RANK = { admin: 3, editor: 2, sales: 1 } as const;
+const ROLE_RANK = { admin: 3, manager: 2, rep: 1 } as const;
 
 export default async function RootLayout({
   children,

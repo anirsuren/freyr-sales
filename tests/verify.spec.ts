@@ -4257,7 +4257,7 @@ test.describe("Freyr Sales Intelligence Platform: Full Verification", () => {
     context,
   }) => {
     await context.addCookies([
-      { name: "freyr_role", value: "sales", url: BASE },
+      { name: "freyr_role", value: "rep", url: BASE },
     ]);
     await page.goto(`${BASE}/offerings`);
     await expect(
@@ -4575,7 +4575,7 @@ test.describe("Freyr Sales Intelligence Platform: Full Verification", () => {
     context,
   }) => {
     await context.addCookies([
-      { name: "freyr_role", value: "sales", url: BASE },
+      { name: "freyr_role", value: "rep", url: BASE },
     ]);
     // Publishing (of-013) has no markets/customer types/materials yet. A sales
     // (view-only) user sees plain "Not specified yet", never an "Add…" control.
@@ -4592,7 +4592,7 @@ test.describe("Freyr Sales Intelligence Platform: Full Verification", () => {
     context,
   }) => {
     await context.addCookies([
-      { name: "freyr_role", value: "sales", url: BASE },
+      { name: "freyr_role", value: "rep", url: BASE },
     ]);
     await page.goto(`${BASE}/services`);
     // search still works…

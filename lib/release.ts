@@ -130,7 +130,7 @@ export function isOfferingsReleasePath(pathname: string): boolean {
 
 /** Every signed-in workspace role may temporarily preview Mock mode. */
 export function canSwitchWorkspaceMode(role: string | null | undefined): boolean {
-  return role === "admin" || role === "editor" || role === "sales";
+  return role === "admin" || role === "manager" || role === "rep";
 }
 
 // Where the logo / default redirects should land per mode.

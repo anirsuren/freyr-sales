@@ -51,8 +51,8 @@ const INVITE_ROLE_OPTIONS: ColorOption[] = [
 // The directory's role control for admins — same three identities, keyed by
 // the STORED role values the access API expects.
 const ROLE_CHANGE_OPTIONS: ColorOption[] = [
-  { value: "sales", label: "Rep", color: "#0071E3", icon: UserRound },
-  { value: "editor", label: "Manager", color: "#7C3AED", icon: UsersRound },
+  { value: "rep", label: "Rep", color: "#0071E3", icon: UserRound },
+  { value: "manager", label: "Manager", color: "#7C3AED", icon: UsersRound },
   { value: "admin", label: "Admin", color: "#0F766E", icon: ShieldCheck },
 ];
 
@@ -163,7 +163,7 @@ function lastSeenLabel(iso: string | null | undefined): string {
   if (days < 7) return `${days} days ago`;
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
-type AccessRole = "admin" | "editor" | "sales";
+type AccessRole = "admin" | "manager" | "rep";
 type AccessDirectory = {
   members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; accountType: "real" | "test"; lastSeenAt: string | null }[];
   requests: { id: string; name: string; email: string | null; requestedRole: AccessRole; requestedAt: string }[];
@@ -439,7 +439,7 @@ export function SettingsTabs({
   const authenticatedRoleLabel =
     currentUser.role === "admin"
       ? "Admin"
-      : currentUser.role === "editor"
+      : currentUser.role === "manager"
         ? "Manager"
         : "Rep";
   const [role, setRole] = useState(authenticatedRoleLabel);
@@ -892,7 +892,7 @@ export function SettingsTabs({
       toast("Full name and email are required", "error");
       return;
     }
-    const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Manager" ? "editor" : "sales";
+    const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Manager" ? "manager" : "rep";
     setAccessBusy("invite");
     try {
       if (authConfig.approvalEnabled) {
@@ -1431,7 +1431,7 @@ export function SettingsTabs({
                         value={
                           ROLE_CHANGE_OPTIONS.some((o) => o.value === member.role)
                             ? member.role
-                            : "sales"
+                            : "rep"
                         }
                         options={ROLE_CHANGE_OPTIONS}
                         onChange={(next) => changeMemberRole(member, next)}

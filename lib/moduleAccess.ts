@@ -7,7 +7,7 @@ import type { UserIdentityRole } from "./userIdentity";
  *   Managers and Admins only — FDL Components, Customers, Reports,
  *   Performance, Market Intel.
  *
- * Roles in this app: "sales" = Sales Rep, "editor" = Manager, "admin" =
+ * Roles in this app: "rep" = Sales Rep, "manager" = Manager, "admin" =
  * Admin. This is a VISIBILITY *and* ACCESS rule: the sidebar hides what a rep
  * may not open, and every restricted page re-checks on the server, so typing
  * the URL is not a way in.
@@ -22,7 +22,7 @@ export const MANAGER_ONLY_MODULES = [
 ] as const;
 
 export function isManagerOrAdmin(role: UserIdentityRole): boolean {
-  return role === "admin" || role === "editor";
+  return role === "admin" || role === "manager";
 }
 
 /** Does this path belong to a manager-and-admin-only module? */

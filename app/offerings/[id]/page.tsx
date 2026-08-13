@@ -110,7 +110,7 @@ export default async function OfferingDetailPage({
    * to see the 'Customers' tab within an Offering Page", so reps aren't
    * confused by the thin beta customer list). Managers and admins keep it.
    * Deliberately temporary: delete this flag to give it back to everyone. */
-  const showOfferingCustomers = me.role !== "sales";
+  const showOfferingCustomers = me.role !== "rep";
   // The package's contents: FDL components connected by id.
   const allComponents = listFdlComponents();
   const connectedComponents = (o.component_ids ?? [])

@@ -66,7 +66,7 @@ async function memberContext(
         userId: member.userId,
         email: member.email,
         displayName: member.name,
-        role: "sales",
+        role: "rep",
         workspaceId: WORKSPACE_ID,
         exp,
       }),

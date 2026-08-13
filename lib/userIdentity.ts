@@ -1,4 +1,4 @@
-export type UserIdentityRole = "sales" | "editor" | "admin";
+export type UserIdentityRole = "rep" | "manager" | "admin";
 
 export type UserIdentity = {
   id: string;
@@ -25,7 +25,7 @@ export const GENERIC_USER_IDENTITY: UserIdentity = {
   memberId: null,
   name: "Freyr user",
   email: null,
-  role: "sales",
+  role: "rep",
   title: "Workspace User",
 };
 
@@ -41,7 +41,7 @@ export const GENERIC_USER_IDENTITY: UserIdentity = {
  */
 export function titleForUserRole(role: UserIdentityRole): string {
   if (role === "admin") return "Admin";
-  if (role === "editor") return "Manager";
+  if (role === "manager") return "Manager";
   return "Rep";
 }
 
