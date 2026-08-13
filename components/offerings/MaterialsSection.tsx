@@ -32,6 +32,7 @@ import { EditMaterialButton } from "@/components/offerings/EditMaterialButton";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { FolderPeek } from "@/components/offerings/FolderPeek";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { MaterialReadState } from "@/components/offerings/MaterialReadState";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
 import {
@@ -1142,6 +1143,17 @@ export function MaterialsSection({
                             <span className="mt-1 block break-words text-[11px] leading-snug text-text-secondary">
                               {material.description}
                             </span>
+                          )}
+                          {/* Whether Freyr AI has read this file, reported on
+                              the file's own row rather than in the upload
+                              dialog (Anir, Aug 13: "it shouldn't be a pop-up.
+                              It should be somewhere here, underneath where I
+                              just uploaded it"). */}
+                          {uploaded && material.docsPath && offeringId && (
+                            <MaterialReadState
+                              offeringId={offeringId}
+                              docsPath={material.docsPath}
+                            />
                           )}
                         </span>
                       </button>

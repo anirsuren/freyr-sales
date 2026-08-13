@@ -1416,3 +1416,17 @@ input {
   opacity: 0 !important;
 }
 
+
+/* The indeterminate sweep under a material that Freyr AI is still reading
+   (Anir, Aug 13: "How do I even know if the AI read it?"). A travelling bar
+   says "working" honestly, where a percentage would be invented. */
+@keyframes reading-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+.reading-sweep {
+  animation: reading-sweep 1.35s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reading-sweep { animation: none; width: 100%; opacity: 0.45; }
+}

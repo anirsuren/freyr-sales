@@ -114,7 +114,33 @@ export function Modal({
   return createPortal(
     <div
       className={`fixed inset-0 ${stacked ? "z-[105] bg-black/25" : "z-[95] bg-black/40"} flex items-center justify-center backdrop-blur-sm p-4 backdrop-in`}
-      onClick={onClose}
+      /**
+       * A CLICK ON THE BACKDROP CLOSES THE DIALOG AND STOPS THERE.
+       *
+       * Anir, Aug 13: "when I'm on the popup and I click the background to
+       * untoggle it… it thinks I'm opening it. When I'm on a popup I'm
+       * technically on a completely separate page." Exactly right, and the
+       * portal is what broke the illusion.
+       *
+       * This overlay renders through createPortal, so in the DOM it sits at
+       * the end of <body>, far away from the row underneath. But React does
+       * not bubble synthetic events along the DOM tree — it bubbles them along
+       * the REACT tree. A <Modal> written inside a clickable row is still a
+       * React child of that row, so dismissing the dialog delivered the same
+       * click to the row's onClick and the row opened behind it.
+       *
+       * stopPropagation ends the click here. One line, and it fixes every
+       * dialog in the app at once, because they all render through this file.
+       */
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+      /* mousedown/mouseup travel the same React path, and a row that opens on
+         either one would still fire. Sealing all three keeps the dialog a
+         separate surface no matter which event a parent listens for. */
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
     >
       <div
         ref={dialogRef}

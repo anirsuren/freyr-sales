@@ -541,11 +541,52 @@ export function AddMaterialButton({
     }));
     const fd = new FormData();
     fd.append("file", f);
-    const up = await fetch(`/api/offerings/${offeringId}/materials/upload`, {
-      method: "POST",
-      body: fd,
+    /**
+     * XHR, NOT FETCH — SO THE BAR ACTUALLY MOVES.
+     *
+     * Anir, Aug 13: "make sure this goes from 0 to 100 normally. It just goes
+     * all at once." Right: fetch() reports nothing while a body uploads, so
+     * this path sat at 0% and snapped to 100% when the response came back.
+     * Now that the bucket's missing CORS routes every browser upload through
+     * here, this IS the bar everyone watches, so it has to be real.
+     */
+    const { ok, status, body } = await new Promise<{
+      ok: boolean;
+      status: number;
+      body: string;
+    }>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `/api/offerings/${offeringId}/materials/upload`);
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        // Cap the sending phase at 95: the last stretch is the server storing
+        // the bytes, and a bar that hits 100 before the file is safe is a lie.
+        const percent = Math.min(95, Math.round((e.loaded / e.total) * 95));
+        setProgress(percent);
+        setFileProgress((current) => ({
+          ...current,
+          [key]: { percent, status: "uploading" },
+        }));
+      };
+      xhr.onload = () =>
+        resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, body: xhr.responseText });
+      xhr.onerror = () => resolve({ ok: false, status: 0, body: "" });
+      xhr.onabort = () => resolve({ ok: false, status: 0, body: "" });
+      xhr.send(fd);
     });
-    const stored = await up.json().catch(() => ({}));
+    const up = { ok, status };
+    let stored: {
+      url?: string;
+      error?: string;
+      docsPath?: string;
+      indexing?: boolean;
+      supported?: boolean;
+    } = {};
+    try {
+      stored = body ? JSON.parse(body) : {};
+    } catch {
+      stored = {};
+    }
     if (!up.ok || !stored.url) {
       toast(stored.error || "Couldn't upload that file", "error");
       setFileProgress((current) => ({
@@ -1372,8 +1413,18 @@ export function AddMaterialButton({
                           : "All files uploaded"
                         : `Uploading ${rows.length === 1 ? "1 file" : `${rows.length} files`}${offeringName ? ` to ${offeringName}` : ""}`}
                     </p>
+                    {/* This dialog is about ONE thing: are the bytes in?
+                        Freyr AI's reading used to be advertised here, which is
+                        what made the whole screen confusing (Anir, Aug 13:
+                        "How do I even know if the AI read it?"). That now
+                        reports itself on the material's own row, where the
+                        file lives. */}
                     <p className="mt-0.5 text-[11.5px] text-text-secondary">
-                      Freyr AI reads each file right after it lands, then everything is filed in one go.
+                      {rows.length === 1
+                        ? `${files[0].name} · ${fmtFileSize(files[0].size)}`
+                        : allSettled
+                          ? `${rows.length} files${offeringName ? ` in ${offeringName}` : ""}`
+                          : `File ${Math.min(doneCount + failedCount + 1, rows.length)} of ${rows.length}`}
                     </p>
                   </div>
                   <span className="shrink-0 text-[15px] font-bold tnum text-blue-primary">{overall}%</span>
@@ -1384,7 +1435,22 @@ export function AddMaterialButton({
                     style={{ width: `${Math.max(overall, 3)}%` }}
                   />
                 </div>
-                <ul className="space-y-2">
+                {/* ONE FILE NEEDS ONE BAR (Anir, Aug 13: "why are there two
+                    progress bars? That looks weird"). With a single file the
+                    header bar already IS that file's bar, so repeating it
+                    underneath said nothing twice. With several, the per-file
+                    rows earn their place — and they are indented behind a rail
+                    so it reads as "this total, made of these parts" ("clearly
+                    show that this is the main progress bar for all the files,
+                    and these are each individual ones… like an indented
+                    list"). */}
+                {rows.length > 1 && (
+                  <div className="mt-1">
+                    <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                      Each file
+                      <span className="h-px flex-1 bg-border-light" />
+                    </p>
+                    <ul className="space-y-2 border-l-2 border-border-light pl-3.5">
                   {rows.map(({ file, key, progress }, index) => {
                     const phase =
                       progress.status === "done"
@@ -1449,7 +1515,9 @@ export function AddMaterialButton({
                       </li>
                     );
                   })}
-                </ul>
+                    </ul>
+                  </div>
+                )}
               </>
             );
           })()}

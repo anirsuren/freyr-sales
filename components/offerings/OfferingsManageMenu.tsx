@@ -82,7 +82,20 @@ export function OfferingsManageMenu() {
         typeof document !== "undefined" &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+            {/* Click-away closes the menu and goes no further. This sheet is
+                portalled, and React bubbles synthetic events along the React
+                tree, so without stopPropagation the dismiss click also reached
+                whatever clickable row this menu was declared inside — same bug
+                Anir hit on the Edit material dialog (Aug 13). */}
+            <div
+              className="fixed inset-0 z-[90]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+            />
             <div
               role="menu"
               style={{ top: box.top, right: box.right }}
