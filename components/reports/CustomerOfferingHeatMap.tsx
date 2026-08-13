@@ -1583,7 +1583,7 @@ export function CustomerOfferingHeatMap({
                 >
                   <span className="flex items-center gap-1">
                     Report row
-                    <InfoHint text="The one activity this offering shows on the customer heat map — exactly one per offering. Tick a different row to report that one instead." />
+                    <InfoHint text={"The one activity this offering shows on the customer heat map. Exactly one per offering.\nTick a different row to report that one instead."} />
                   </span>
                   <span>Activity</span>
                   <span>Status</span>
@@ -1712,7 +1712,7 @@ export function CustomerOfferingHeatMap({
                                 </span>
                               )}
                             </span>
-                            <span title="One saved activity for this customer and offering — the number counts how many have been logged." className={cn("block truncate text-[10px] text-text-tertiary", !fullScreen && "lg:hidden")}>
+                            <span title="One saved activity for this customer and offering. The number counts how many have been logged." className={cn("block truncate text-[10px] text-text-tertiary", !fullScreen && "lg:hidden")}>
                               Attempt {version.version} · {versionStatus.label} · {valueSummary}
                             </span>
                             <span

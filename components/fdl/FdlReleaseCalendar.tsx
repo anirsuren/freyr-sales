@@ -202,7 +202,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
       </Link>
       <PageHeader
         title="Release calendar"
-        subtitle="Every component's versions mapped onto the months they land — released, current and expected together."
+        subtitle="Every component's versions mapped onto the months they land: released, current and expected together."
       />
 
       <ReleaseStats components={components} />

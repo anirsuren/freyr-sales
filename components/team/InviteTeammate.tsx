@@ -164,7 +164,7 @@ export function InviteTeammate({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
-              placeholder="A line that goes in the invitation email — why you're bringing them in, what to look at first."
+              placeholder="A line that goes in the invitation email: why you're bringing them in, what to look at first."
               className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary focus:shadow-input-focus"
             />
           </label>

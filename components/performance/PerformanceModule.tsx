@@ -1146,7 +1146,7 @@ function AssignPersonModal({
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Person
-            <InfoHint text="Only people you're allowed to assign — managers see everyone, a group owner sees their group." />
+            <InfoHint text={"Only people you're allowed to assign.\nManagers see everyone, a group owner sees their group."} />
           </label>
           <div className="mt-1">
             <PersonSelect
@@ -1160,7 +1160,7 @@ function AssignPersonModal({
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Personal target
-            <InfoHint text="Optional. Their own slice of the goal — type 250K, 1.5M or a plain number." />
+            <InfoHint text="Optional. Their own slice of the goal. Type 250K, 1.5M or a plain number." />
           </label>
           <input
             value={target}
@@ -1324,7 +1324,7 @@ function GoalPopupBody({
           {live && (
             <button
               type="button"
-              title="Edit the goal's details — name, type, year, target"
+              title="Edit the goal's details: name, type, year, target"
               onClick={onEditGoal}
               className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary"
             >
@@ -1432,7 +1432,7 @@ function GoalPopupBody({
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Subgoals
-          <InfoHint text="A subgoal splits the goal across teams — like Growth Accounts vs Focused Account AMR. Click a row to open it and edit its target, owners and people right here." />
+          <InfoHint text={"A subgoal splits the goal across teams, like Growth Accounts vs Focused Account AMR.\nClick a row to open it and edit its target, owners and people right here."} />
         </p>
         {/* The add action lives WITH the section it adds to, not stranded at
             the bottom-left (Anir, Aug 12: "that's a bad place to put this
@@ -1647,7 +1647,7 @@ function GoalPopupBody({
       <div className="mt-4 flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Assigned people
-          <InfoHint text="This goal attached straight to a person from the Goal Master. Their numbers roll into their group and the organization — a department is just its people added up." />
+          <InfoHint text={"This goal attached straight to a person from the Goal Master.\nTheir numbers roll into their group and the organization: a department is just its people added up."} />
         </p>
         {/* The action sits WITH the empty state while there's nobody here —
             centred in the grey box, not floating in the header (Anir). */}
@@ -2297,7 +2297,7 @@ function SubgoalEditorFields({
               className="text-[color:#7C3AED]"
               aria-label="Owners wear the crown"
             />
-            <InfoHint text="Responsible for this subgoal overall — the crown marks them wherever they appear. An owner can also appear in the people list with a personal target of their own." />
+            <InfoHint text={"Responsible for this subgoal overall. The crown marks them wherever they appear.\nAn owner can also appear in the people list with a personal target of their own."} />
           </label>
           <div className="mt-2 space-y-1.5">
             <PersonSelect
@@ -2610,7 +2610,7 @@ function LogActualModal({
           <div>
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Date
-              <InfoHint text="When it actually happened — it lands in that month on the progress charts." />
+              <InfoHint text="When it actually happened. It lands in that month on the progress charts." />
             </label>
             <input
               type="date"
@@ -2630,7 +2630,7 @@ function LogActualModal({
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Note{" "}
             <span className="font-normal text-text-tertiary">(optional)</span>
-            <InfoHint text="One line on what this was — the deal, the milestone — so the number still means something months later." />
+            <InfoHint text="One line on what this was, the deal or the milestone, so the number still means something months later." />
           </label>
           <input
             value={note}

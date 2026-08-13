@@ -133,7 +133,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
               <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
                 Group owner
                 <Crown size={12} strokeWidth={2.4} className="text-[color:#7C3AED]" />
-                <InfoHint text="The owner runs this group's performance — they see their people's numbers and can verify them." />
+                <InfoHint text="The owner runs this group's performance. They see their people's numbers and can verify them." />
               </label>
               <div className="mt-1">
                 {/* PICKING THE OWNER PICKS ONLY THE OWNER (Anir, Aug 12: "I
