@@ -466,6 +466,7 @@ export function PerformanceModule({
         title={
           goalModal?.editing ? `Edit goal — ${goalModal.editing.name}` : "New goal"
         }
+        size="wide"
       >
         {goalModal && (
           <GoalEditorFields
@@ -843,7 +844,29 @@ function MasterTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
-                {filtered.map((g) => {
+                {/* ONE HEADING PER CATEGORY, NOT A CHIP ON EVERY ROW (Anir,
+                    Aug 12: "club them together so you don't see that on every
+                    row — you just have the section, and then all the goals").
+                    Same grouping the cards view uses, so the two agree. */}
+                {[...byType, ...strayTypes].flatMap(({ type, goals: groupGoals }) =>
+                  groupGoals.length === 0
+                    ? []
+                    : [
+                        <tr key={`head-${type}`} className="!border-t-0">
+                          <td
+                            colSpan={7}
+                            className="border-y border-border-light bg-surface px-4 py-2.5"
+                          >
+                            <span className="flex items-center gap-2">
+                              <TypeChip type={type} />
+                              <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                                {groupGoals.length}{" "}
+                                {groupGoals.length === 1 ? "goal" : "goals"}
+                              </span>
+                            </span>
+                          </td>
+                        </tr>,
+                        ...groupGoals.map((g) => {
                   const owners = [...new Set(g.subgoals.flatMap((s) => s.owners))];
                   return (
                     <Fragment key={g.id}>
@@ -863,11 +886,8 @@ function MasterTab({
                             <span className="block text-[13px] font-semibold text-text-primary">
                               {g.name}
                             </span>
-                            <span className="mt-0.5 flex items-center gap-1.5">
-                              <TypeChip type={g.type} size="sm" />
-                              <span className="text-[10px] text-text-tertiary tnum">
-                                {g.year}
-                              </span>
+                            <span className="mt-0.5 block text-[10px] text-text-tertiary tnum">
+                              {g.year}
                             </span>
                           </span>
                         </span>
@@ -963,7 +983,9 @@ function MasterTab({
                     )}
                     </Fragment>
                   );
-                })}
+                        }),
+                      ]
+                )}
               </tbody>
             </table>
           </Card>
@@ -1036,6 +1058,7 @@ function MasterTab({
  *  (Suren, Aug 12: "show only those people who are in his list"). */
 function AssignPersonModal({
   open,
+  inline,
   goal,
   options,
   onClose,
@@ -1043,6 +1066,9 @@ function AssignPersonModal({
   busy,
 }: {
   open: boolean;
+  /** Already inside a popup → unfold here instead of stacking a second one
+   *  (Anir, Aug 12, twice: no popup on a popup, ever). */
+  inline: boolean;
   goal: PrimaryGoal;
   options: string[];
   onClose: () => void;
@@ -1070,15 +1096,8 @@ function AssignPersonModal({
     }
   }
 
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={`Assign — ${goal.name}`}
-      size="wide"
-      tall
-      stacked
-    >
+  const form = (
+    <>
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
         The goal lands on this person directly. Their logged numbers roll into
         their group and the organization automatically.
@@ -1116,6 +1135,41 @@ function AssignPersonModal({
           Assign goal
         </Button>
       </div>
+    </>
+  );
+
+  if (inline) {
+    if (!open) return null;
+    return (
+      <div className="tab-panel mt-2 overflow-hidden rounded-xl border border-blue-subtle bg-white">
+        <div className="flex items-center justify-between gap-2 border-b border-border-light bg-[rgba(0,113,227,0.04)] px-3.5 py-2.5">
+          <span className="text-[12.5px] font-semibold text-text-primary">
+            Assign {goal.name}
+          </span>
+          <button
+            type="button"
+            aria-label="Close the assign form"
+            onClick={onClose}
+            className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+          >
+            <X size={14} strokeWidth={2.2} />
+          </button>
+        </div>
+        <div className="p-3.5">{form}</div>
+      </div>
+    );
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Assign — ${goal.name}`}
+      size="wide"
+      tall
+      stacked
+    >
+      {form}
     </Modal>
   );
 }
@@ -1655,6 +1709,7 @@ function GoalPopupBody({
       )}
       <AssignPersonModal
         open={assignOpen}
+        inline={hostedInPopup}
         goal={goal}
         options={assignablePeople.filter(
           (name) => !(goal.assignments ?? []).some((a) => a.person === name)
