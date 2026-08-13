@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
+import { friendlyAuthError } from "@/lib/authErrors";
 
 /**
  * Email-first sign-in. A colleague never has to decide whether they are
@@ -81,7 +82,7 @@ export function SupabaseLoginForm({
       establishSession(strayToken).catch((caught) => {
         setBusy(false);
         setError(
-          caught instanceof Error ? caught.message : "Could not complete sign-in."
+          friendlyAuthError(caught) || "Could not complete sign-in."
         );
       });
     }
@@ -221,7 +222,7 @@ export function SupabaseLoginForm({
       await establishSession(data.session.access_token);
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "Something went wrong. Please try again."
+        friendlyAuthError(caught)
       );
     } finally {
       setBusy(false);
@@ -254,11 +255,7 @@ export function SupabaseLoginForm({
         "Password reset email sent. Open the newest email from Freyr Sales to choose a new password."
       );
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Could not send the reset email. Try again shortly."
-      );
+      setError(friendlyAuthError(caught));
     } finally {
       setResetBusy(false);
     }
@@ -426,6 +423,16 @@ export function SupabaseLoginForm({
               <span className="font-semibold text-text-primary">{email}</span>.
               Clicking it signs you in automatically, that&apos;s it.
             </p>
+            {/* A refused RESEND used to leave a red error sitting over an
+                unchanged "we sent it" panel, which reads as the whole thing
+                having failed (Anir, Aug 13: "what the fuck does this mean").
+                It had not: the first link was sent and still works, and that
+                is the one sentence that matters here. */}
+            {error && (
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-tertiary">
+                Nothing else is needed — open the link that is already there.
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -443,7 +450,7 @@ export function SupabaseLoginForm({
                 setMessage("Sent: check your inbox for the newest email.");
               } catch (caught) {
                 setError(
-                  caught instanceof Error ? caught.message : "Could not resend the email."
+                  friendlyAuthError(caught) || "Could not resend the email."
                 );
               } finally {
                 setBusy(false);

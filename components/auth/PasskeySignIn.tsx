@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { friendlyAuthError } from "@/lib/authErrors";
 import { useRouter } from "next/navigation";
 import { Fingerprint } from "lucide-react";
 import { startAuthentication } from "@simplewebauthn/browser";
@@ -44,7 +45,7 @@ export function PasskeySignIn({ next }: { next?: string }) {
       router.push(next || "/offerings");
       router.refresh();
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Sign-in failed.";
+      const message = friendlyAuthError(caught) || "Sign-in failed.";
       // A cancelled prompt is silent. But "nothing matched" is the case that
       // actually confuses people: no passkey is enrolled on this device yet,
       // and the browser just shows an empty security-key dialog. Say so.
