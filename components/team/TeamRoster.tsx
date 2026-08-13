@@ -586,7 +586,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               {visible.length} of {reps.length}
             </span>
           )}
-          <span className="ml-auto">
+          <span className="ml-auto flex items-center gap-2">
             <ViewSelect
               value={view}
               onChange={setView}

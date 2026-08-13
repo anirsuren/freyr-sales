@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFillHeight } from "@/components/ui/useFillHeight";
+import { FullScreenButton } from "@/components/ui/FullScreenPanel";
 import Link from "next/link";
-import { ArrowLeft, AlarmClock, CalendarCheck, CalendarRange, CircleCheck, Layers, Rocket, Search } from "lucide-react";
+import { ArrowLeft, AlarmClock, CalendarCheck, CalendarRange, CircleCheck, Layers, Rocket, Search, X } from "lucide-react";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -121,6 +123,25 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
   const [statusFilter, setStatusFilter] = useState<"" | ReleaseStatus>("");
   const [scope, setScope] = useState<"all" | "latest">("all");
   const [query, setQuery] = useState("");
+  /**
+   * CROSSHAIR, THE SAME ONE THE HEAT MAP HAS (Anir, Aug 13: "you're not doing
+   * the highlighting thing when I put my mouse over these, like you're doing on
+   * the heat map"). Hovering a cell lights its whole row and its whole column,
+   * and both headers answer the question the beams are asking: THIS component,
+   * THIS month.
+   */
+  const [cross, setCross] = useState<{ row: string; col: number } | null>(null);
+  /* And it ends where the window ends, like the heat map. */
+  const { ref: gridRef, height: gridHeight } = useFillHeight(96, 320);
+  const [fullScreen, setFullScreen] = useState(false);
+  useEffect(() => {
+    if (!fullScreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullScreen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [fullScreen]);
 
   const nowIndex = new Date().getFullYear() * 12 + new Date().getMonth();
 
@@ -241,8 +262,35 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
               {STATUS_META[s].label}
             </span>
           ))}
+          <FullScreenButton
+            onOpen={() => setFullScreen(true)}
+            label="release calendar"
+          />
         </span>
       </div>
+
+      {fullScreen && (
+        <div
+          onClick={() => setFullScreen(false)}
+          className="fixed inset-0 z-[200] bg-[rgba(15,23,42,0.45)] backdrop-blur-[1px]"
+          aria-hidden="true"
+        />
+      )}
+      {fullScreen && (
+        <div className="popover-in fixed inset-x-6 top-6 z-[201] flex h-[53px] items-center justify-between gap-4 rounded-t-2xl border border-b-0 border-border-light bg-white px-5">
+          <h2 className="text-[15px] font-semibold text-text-primary">
+            Release calendar
+          </h2>
+          <button
+            type="button"
+            onClick={() => setFullScreen(false)}
+            aria-label="Close full screen"
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
+        </div>
+      )}
 
       {rows.length === 0 || (monthRange.length === 0 && !anyUndated) ? (
         <div className="rounded-xl border border-border-light bg-white px-6 py-14 text-center text-[13px] text-text-secondary">
@@ -250,7 +298,20 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
           see releases.
         </div>
       ) : (
-        <div ref={scrollRef} className="overflow-x-auto rounded-xl border border-border-light bg-white">
+        <div
+          ref={(node) => {
+            scrollRef.current = node;
+            gridRef(node);
+          }}
+          style={!fullScreen && gridHeight ? { height: gridHeight } : undefined}
+          onMouseLeave={() => setCross(null)}
+          className={cn(
+            "overflow-auto border border-border-light bg-white",
+            fullScreen
+              ? "fixed inset-x-6 bottom-6 top-[calc(1.5rem+53px)] z-[201] rounded-b-2xl border-t-0"
+              : "-mb-28 rounded-xl"
+          )}
+        >
           <table
             className="border-separate border-spacing-0 text-left"
             style={{ minWidth: 240 + (monthRange.length + (anyUndated ? 1 : 0)) * 128 }}
@@ -264,10 +325,12 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                   <th
                     key={m}
                     className={cn(
-                      "min-w-[128px] border-b border-r border-border-light px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.05em]",
+                      "min-w-[128px] border-b border-r border-border-light px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.05em] transition-colors duration-150",
                       m === nowIndex
                         ? "bg-blue-light/60 text-blue-primary"
-                        : "text-text-tertiary"
+                        : cross?.col === m
+                          ? "bg-blue-light/45 text-blue-primary"
+                          : "text-text-tertiary"
                     )}
                   >
                     {monthLabel(m)}
@@ -305,7 +368,14 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                 };
                 return (
                   <tr key={component.id} className="group">
-                    <td className="sticky left-0 z-10 border-b border-r border-border-light bg-white px-4 py-3 transition-colors group-hover:bg-surface">
+                    <td
+                      className={cn(
+                        "sticky left-0 z-10 border-b border-r border-border-light px-4 py-3 transition-colors duration-150",
+                        cross?.row === component.id
+                          ? "bg-blue-light/45"
+                          : "bg-white group-hover:bg-surface"
+                      )}
+                    >
                       <Link
                         href={`/components/${component.id}?from=/components/release-calendar`}
                         className="flex items-center gap-2.5"
@@ -331,9 +401,16 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                       return (
                         <td
                           key={m}
+                          onMouseEnter={() => setCross({ row: component.id, col: m })}
                           className={cn(
-                            "border-b border-r border-border-light px-3 py-3 text-center align-middle",
-                            m === nowIndex && "bg-blue-light/30"
+                            "border-b border-r border-border-light px-3 py-3 text-center align-middle transition-colors duration-150",
+                            m === nowIndex && "bg-blue-light/30",
+                            // The two beams, and a stronger tint where they meet.
+                            cross?.row === component.id && cross?.col === m
+                              ? "bg-blue-light/70"
+                              : cross?.row === component.id || cross?.col === m
+                                ? "bg-blue-light/35"
+                                : undefined
                           )}
                         >
                           {here.length > 0 && (

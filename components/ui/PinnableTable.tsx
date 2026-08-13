@@ -259,7 +259,7 @@ export function PinnableTable({
           <div
             ref={floatRef}
             aria-hidden="true"
-            className="pointer-events-none fixed z-30 overflow-hidden border-b border-border-light bg-white shadow-[0_6px_16px_-8px_rgba(15,23,42,0.28)]"
+            className="popover-in pointer-events-none fixed z-30 overflow-hidden border-b-2 border-blue-primary/30 bg-white shadow-[0_10px_24px_-8px_rgba(15,23,42,0.34)]"
             style={{
               top: floating.top,
               left: floating.left,

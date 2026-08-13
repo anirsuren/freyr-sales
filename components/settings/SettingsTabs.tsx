@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -639,16 +641,10 @@ export function SettingsTabs({
         if (!response.ok) throw new Error("Access directory unavailable");
         const directory = (await response.json()) as AccessDirectory;
         if (active) {
-          setAccessDirectory(
-            initialDataMode === "live"
-              ? {
-                  ...directory,
-                  members: directory.members.filter(
-                    (member) => member.accountType === "real"
-                  ),
-                }
-              : directory
-          );
+          // No accountType filter. The Team page dropped the identical one
+          // because it hid real accounts behind a field nothing reliably
+          // sets, and the two rosters must not disagree about who works here.
+          setAccessDirectory(directory);
         }
       })
       .catch(() => {
@@ -1209,15 +1205,21 @@ export function SettingsTabs({
                 />
               </label>
               <label className="block">
-                <span className="block text-[13px] font-medium text-text-primary mb-1.5">Title</span>
+                {/* The explanation moved off the page and onto the label's own
+                    "?" (Anir, Aug 13: "move the subtext to a question mark next
+                    to the title"). Two grey lines under a one-line field made
+                    the field look like the small print. */}
+                <span className="mb-1.5 flex items-center gap-1.5">
+                  <span className="text-[13px] font-medium text-text-primary">Title</span>
+                  <InfoHint
+                    text={"This job title appears on your Team profile.\nYour Admin, Manager or Rep access is managed separately."}
+                  />
+                </span>
                 <Input
                   value={profile.title}
                   placeholder="e.g. Director, Regulatory Solutions"
                   onChange={(e) => setProfile({ ...profile, title: e.target.value })}
                 />
-                <span className="mt-1.5 block text-[11.5px] leading-relaxed text-text-tertiary">
-                  This job title appears on your Team profile. Your Admin, Manager, or Rep access is managed separately.
-                </span>
               </label>
             </div>
             <label className="block">
@@ -1348,8 +1350,33 @@ export function SettingsTabs({
 
       {tab === "team" && (
         <div className="tab-panel stagger space-y-5">
+          {/* THE COUNTS BELOW ARE ADMIN-ONLY DATA. A rep never fetches the
+              directory (the endpoint refuses them), so this panel used to fall
+              back to its seed value and state, in large bold type, that the
+              company has one member (Anir, Aug 13: "this doesn't make sense…
+              where is everyone???"). Say what is actually true and send them to
+              the roster everyone can already see. */}
+          {authConfig.approvalEnabled && currentUser.role !== "admin" && (
+            <Card className="flex items-center justify-between gap-4 px-5 py-4">
+              <p className="text-[13px] leading-snug text-text-secondary">
+                Workspace membership is managed by an admin, so the counts and
+                the directory here are not visible to your account.
+                <br />
+                The full roster of everyone at Freyr is on the Team page.
+              </p>
+              <Link
+                href="/team"
+                className="shrink-0 rounded-lg bg-blue-primary px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-blue-hover"
+              >
+                Open Team
+              </Link>
+            </Card>
+          )}
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className={cn(
+            "grid grid-cols-3 gap-3",
+            authConfig.approvalEnabled && currentUser.role !== "admin" && "hidden"
+          )}>
             {[
               { label: "Active members", value: accessDirectory.members.filter((member) => member.active).length, icon: UsersRound, color: "text-blue-primary bg-blue-light" },
               { label: "Awaiting approval", value: accessDirectory.requests.length, icon: Clock3, color: "text-warning bg-warning/10" },
@@ -1372,7 +1399,10 @@ export function SettingsTabs({
               happens where you look at the people; what stays here is the
               record of who is already in and who is still pending. */}
 
-          <Card className="overflow-hidden p-0">
+          <Card className={cn(
+            "overflow-hidden p-0",
+            authConfig.approvalEnabled && currentUser.role !== "admin" && "hidden"
+          )}>
             <div className="flex items-center justify-between border-b border-border-light px-5 py-3.5">
               <div>
                 <h2 className="text-[14px] font-semibold text-text-primary">Member directory</h2>

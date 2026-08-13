@@ -364,7 +364,7 @@ export function TopBar({
               {/* A real drop shadow and a ring, not the flat card border: against a white
                   page the old panel had no visible bottom edge (Anir, Aug 13:
                   "I can't properly see where it ends"). */}
-              <div className={cn("absolute right-0 mt-2 w-[392px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl z-50 overflow-hidden", POPOVER_SURFACE)}>
+              <div className={cn("popover-in absolute right-0 mt-2 w-[392px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl z-50 overflow-hidden", POPOVER_SURFACE)}>
                 <div className="px-4 py-3 border-b border-border-light flex items-center justify-between gap-3">
                   <span className="text-[14px] font-semibold text-text-primary">Notifications</span>
                   {unread > 0 && (
@@ -469,7 +469,7 @@ export function TopBar({
             <div
               role="menu"
               aria-label="Account menu"
-              className={cn("absolute right-0 mt-2.5 w-[264px] origin-top-right rounded-2xl bg-white z-50 overflow-hidden", POPOVER_SURFACE)}
+              className={cn("popover-in absolute right-0 mt-2.5 w-[264px] origin-top-right rounded-2xl bg-white z-50 overflow-hidden", POPOVER_SURFACE)}
               style={{ animation: "menu-pop 160ms cubic-bezier(0.16,1,0.3,1)" }}
             >
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-border-light">

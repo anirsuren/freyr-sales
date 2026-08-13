@@ -1,7 +1,9 @@
 "use client";
 
-import { LayoutGrid, Table2, type LucideIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, LayoutGrid, Table2, type LucideIcon } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { cn, POPOVER_SURFACE } from "@/lib/utils";
 
 /**
  * THE ONE WAY TO SWITCH BETWEEN TILES AND ROWS.
@@ -12,11 +14,13 @@ import { Tooltip } from "@/components/ui/Tooltip";
  * Same decision, three affordances (Anir, Aug 9: "can we please have it
  * consistent? You always mess around with this thing").
  *
- * It is now the segmented pair at the compact size of the single button, which
- * is the combination he picked: both destinations are visible at once so you
- * never decode a glyph to work out which way it will flip, and the active half
- * is filled so the current view reads without a tooltip. Every list in the app
- * renders this exact component.
+ * It is now ONE button that shows the view you are in, opening a small menu
+ * with both destinations named (Anir, Aug 13: "make the selector for row view
+ * or tiles view a single dropdown, still the same icons, but just dropdown
+ * instead of side by side, so the pin can fit properly and not touch
+ * anything"). Half the width of the old pair, so the pin beside it has room,
+ * and the destinations are still spelled out rather than left as glyphs to
+ * decode: they moved from the toolbar into the menu.
  *
  * Callers keep their own vocabulary — "tile"/"grid", "cards"/"table",
  * "grid"/"list" — and map it through the two value props, because renaming the
@@ -49,43 +53,92 @@ export function ViewSelect<T extends string>({
   tableIcon?: LucideIcon;
   className?: string;
 }) {
-  const half =
-    "flex h-9 w-9 cursor-pointer items-center justify-center transition-colors";
-  const on = "bg-blue-light text-blue-primary";
-  const off = "text-text-secondary hover:bg-surface hover:text-text-primary";
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => {
+      if (!boxRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const options = [
+    { value: tileValue, label: tileLabel, Icon: TileIcon },
+    { value: tableValue, label: tableLabel, Icon: TableIcon },
+  ];
+  const current = options.find((o) => o.value === value) ?? options[0];
+  const CurrentIcon = current.Icon;
 
   return (
-    <div
-      role="group"
-      aria-label="How to show this list"
-      className={`inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white ${
-        className ?? ""
-      }`}
-    >
-      <Tooltip label={tileLabel}>
+    <div ref={boxRef} className={cn("relative inline-flex shrink-0", className)}>
+      <Tooltip label={`Showing ${current.label.toLowerCase()}`}>
         <button
           type="button"
-          onClick={() => onChange(tileValue)}
-          aria-label={tileLabel}
-          aria-pressed={value === tileValue}
-          className={`${half} ${value === tileValue ? on : off}`}
+          onClick={() => setOpen((v) => !v)}
+          aria-label="How to show this list"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className={cn(
+            "flex h-9 cursor-pointer items-center gap-1 rounded-lg border border-border-light bg-white pl-2 pr-1.5 transition-colors",
+            open
+              ? "border-blue-subtle bg-blue-light text-blue-primary"
+              : "text-text-secondary hover:bg-surface hover:text-text-primary"
+          )}
         >
-          <TileIcon size={15} strokeWidth={1.9} />
+          <CurrentIcon size={15} strokeWidth={1.9} />
+          <ChevronDown
+            size={13}
+            strokeWidth={2.2}
+            className={cn("transition-transform duration-200", open && "rotate-180")}
+          />
         </button>
       </Tooltip>
-      <Tooltip label={tableLabel}>
-        <button
-          type="button"
-          onClick={() => onChange(tableValue)}
-          aria-label={tableLabel}
-          aria-pressed={value === tableValue}
-          className={`${half} border-l border-border-light ${
-            value === tableValue ? on : off
-          }`}
+
+      {open && (
+        <div
+          role="menu"
+          className={cn(
+            "popover-in absolute right-0 top-[calc(100%+6px)] z-50 w-[132px] overflow-hidden rounded-xl bg-white py-1",
+            POPOVER_SURFACE
+          )}
         >
-          <TableIcon size={15} strokeWidth={1.9} />
-        </button>
-      </Tooltip>
+          {options.map(({ value: optionValue, label, Icon }) => {
+            const active = optionValue === value;
+            return (
+              <button
+                key={optionValue}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  onChange(optionValue);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] font-medium transition-colors",
+                  active
+                    ? "text-blue-primary"
+                    : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                )}
+              >
+                <Icon size={14} strokeWidth={1.9} className="shrink-0" />
+                <span className="flex-1">{label}</span>
+                {active && <Check size={13} strokeWidth={2.4} className="shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

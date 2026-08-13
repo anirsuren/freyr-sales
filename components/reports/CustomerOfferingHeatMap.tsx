@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useFillHeight } from "@/components/ui/useFillHeight";
+import { FullScreenButton } from "@/components/ui/FullScreenPanel";
+import { X } from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -339,8 +341,20 @@ export function CustomerOfferingHeatMap({
   const [cross, setCross] = useState<{ row: string; col: string } | null>(
     null
   );
-  /* The matrix ends where the window ends, whatever is stacked above it. */
-  const { ref: gridRef, height: gridHeight } = useFillHeight(24, 320);
+  /* The matrix ends where the window ends, whatever is stacked above it. The
+     gap clears the floating Freyr AI bubble, so the last row stops right above
+     it and there is nothing left to scroll past (Anir, Aug 13: "it should only
+     scroll until here, until it's right above the AI assistant"). */
+  const { ref: gridRef, height: gridHeight } = useFillHeight(96, 320);
+  const [fullScreen, setFullScreen] = useState(false);
+  useEffect(() => {
+    if (!fullScreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullScreen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [fullScreen]);
   const [selected, setSelected] = useState<SelectedCell | null>(null);
   /** Which activity's remove-from-heat-map is awaiting a yes. */
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
@@ -1073,10 +1087,51 @@ export function CustomerOfferingHeatMap({
             ariaLabel="Filter by status"
             minWidth={155}
           />
+          <FullScreenButton
+            onOpen={() => setFullScreen(true)}
+            label="heat map"
+            className="ml-auto"
+          />
         </SearchPriority>
       </Card>
 
-      <Card className="overflow-hidden p-0">
+      {fullScreen && (
+        <div
+          onClick={() => setFullScreen(false)}
+          className="fixed inset-0 z-[200] bg-[rgba(15,23,42,0.45)] backdrop-blur-[1px]"
+          aria-hidden="true"
+        />
+      )}
+      {/* FULL SCREEN IS THE SAME CARD, PROMOTED (Anir, Aug 13: "click a button,
+          and it's gonna literally take up my entire screen… It's literally only
+          the entire table"). Promoting the element that is already there beats
+          rendering the matrix twice: there is one grid, so the two views can
+          never drift, and every filter and selection survives the switch. */}
+      <Card
+        className={cn(
+          fullScreen
+            // Inset, so the page stays visible around it and it reads as a
+            // popup rather than a navigation (Anir, Aug 13: "it should still be
+            // a pop-up… I should be able to see the edges").
+            ? "popover-in fixed inset-6 z-[201] m-0 overflow-hidden rounded-2xl p-0 shadow-[0_40px_100px_-20px_rgba(15,23,42,0.5)]"
+            : "-mb-28 overflow-hidden p-0"
+        )}
+      >
+        {fullScreen && (
+          <div className="flex h-[53px] items-center justify-between gap-4 border-b border-border-light px-5">
+            <h2 className="text-[15px] font-semibold text-text-primary">
+              Customer Offering Heat Map
+            </h2>
+            <button
+              type="button"
+              onClick={() => setFullScreen(false)}
+              aria-label="Close full screen"
+              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
+            >
+              <X size={18} strokeWidth={2} />
+            </button>
+          </div>
+        )}
         {matrixCustomers.length === 0 ||
         matrixOfferings.length === 0 ? (
           <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
@@ -1093,16 +1148,19 @@ export function CustomerOfferingHeatMap({
         ) : (
           <div
             ref={gridRef}
-            style={gridHeight ? { height: gridHeight } : undefined}
+            style={!fullScreen && gridHeight ? { height: gridHeight } : undefined}
             className={cn(
               // The matrix takes the screen: it is the page's whole point, and
               // a short window meant scrolling a grid inside a scrolling page
               // (Anir, Aug 12: "make this entire spreadsheet bigger… all the
               // way till the bottom of the screen"). The exact height comes
               // from useFillHeight, measured from where this element actually
-              // starts. max-h-screen is only a first-paint guard: it is always
-              // larger than the measured value, so it never clamps it.
-              "heat-map-scroll max-h-screen min-h-[320px] overflow-auto pb-1.5",
+              // starts. NO min-h/max-h here on purpose: a Tailwind clamp beats
+              // the inline height, and a min-height of "most of the viewport"
+              // made the grid overshoot the bottom by exactly the amount the
+              // measurement was trying to remove.
+              "heat-map-scroll overflow-auto",
+              fullScreen && "h-[calc(100vh-101px)]",
               // A pinned offering row needs something to outlast: give the
               // matrix its own scroll area so the header can stay while the
               // rows move under it. Unpinned, the table grows and the page
@@ -1633,7 +1691,14 @@ export function CustomerOfferingHeatMap({
                       )}
                     </div>
                     {expanded && (
-                      <div className="tab-panel space-y-4 bg-white p-4">
+                      /* CLEARLY PART OF THE ROW ABOVE IT (Anir, Aug 13: "it's
+                         kind of hard to see that this is all part of that first
+                         row… make it clear, indent it"). The form used to start
+                         hard against the left edge at the same width as the
+                         table, so it read as a second, unrelated panel. Now it
+                         is indented, tinted, and hangs off a blue rule that
+                         runs down from the row it belongs to. */
+                      <div className="tab-panel ml-6 space-y-4 border-l-[3px] border-blue-primary/45 bg-blue-light/[0.13] p-4 sm:ml-10">
             {draftIsNew && (
               <div className="flex items-start justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2.5">
                 <div>

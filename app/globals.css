@@ -1430,3 +1430,37 @@ input {
 @media (prefers-reduced-motion: reduce) {
   .reading-sweep { animation: none; width: 100%; opacity: 0.45; }
 }
+
+/* A PANEL THAT OPENS RATHER THAN APPEARS.
+   The bell and the account menu popped into existence with no transition while
+   every other surface in the app animates, which reads as a glitch (Anir,
+   Aug 13: "can we have an animation on here too, on the notifications? Seems
+   weird that you don't"). Rise and scale from the control that opened it. */
+@keyframes popoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.popover-in {
+  animation: popoverIn 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top right;
+}
+@media (prefers-reduced-motion: reduce) {
+  .popover-in {
+    animation: none;
+  }
+}
+
+/* ONE LINE AT THE BOTTOM OF A MATRIX, NOT TWO.
+   The last row draws its own bottom border and the card draws its edge a
+   hairline below it, which reads as a double rule (Anir, Aug 13: "I don't like
+   the way there are two lines there. Do you see that on the last row"). The
+   card's edge is the one that belongs to the page, so the row gives way. */
+.heat-map-scroll tbody tr:last-child > td {
+  border-bottom-width: 0;
+}
