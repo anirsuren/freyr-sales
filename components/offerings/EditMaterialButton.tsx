@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Folder, Route } from "lucide-react";
+import { Building2, Pencil, Folder, Route } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
   ACCESS_LEVELS,
+  DIVISIONS,
+  DIVISION_META,
   ACCESS_LEVEL_META,
   ACCESS_LEVEL_VISIBILITY_COPY,
   JOURNEY_STAGES,
@@ -16,8 +18,10 @@ import {
   allFolders,
   canonicalMaterialFolder,
   materialFolderLabel,
+  materialDivisions,
   materialJourneyStages,
   type AccessLevel,
+  type Division,
   type JourneyStage,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
@@ -27,6 +31,12 @@ const STAGE_OPTIONS: ColorOption[] = JOURNEY_STAGES.map((s) => ({
   label: JOURNEY_STAGE_META[s].label,
   color: JOURNEY_STAGE_META[s].color,
   icon: JOURNEY_STAGE_META[s].icon,
+}));
+const DIVISION_OPTIONS: ColorOption[] = DIVISIONS.map((d) => ({
+  value: d,
+  label: `${d} · ${DIVISION_META[d].label}`,
+  color: DIVISION_META[d].color,
+  icon: DIVISION_META[d].icon,
 }));
 const ACCESS_OPTIONS: ColorOption[] = ACCESS_LEVELS.map((l) => ({
   value: l,
@@ -76,6 +86,10 @@ export function EditMaterialButton({
   const [accessLevel, setAccessLevel] = useState<AccessLevel>(
     material.accessLevel || "client_facing"
   );
+  // Editable here as well as on upload, or the twenty-five files that predate
+  // divisions could never be tagged with one.
+  const initialDivisions = materialDivisions(material);
+  const [divisions, setDivisions] = useState<Division[]>(initialDivisions);
   /** MOVE A FILE. The folder is a plain path, so moving is a re-save. */
   const initialFolder = canonicalMaterialFolder(material);
   const [folder, setFolder] = useState(initialFolder);
@@ -85,7 +99,8 @@ export function EditMaterialButton({
     description !== (material.description || "") ||
     folder !== initialFolder ||
     JSON.stringify(journeyStages) !== JSON.stringify(initialStages.length ? initialStages : ["awareness"]) ||
-    accessLevel !== (material.accessLevel || "client_facing");
+    accessLevel !== (material.accessLevel || "client_facing") ||
+    JSON.stringify(divisions) !== JSON.stringify(initialDivisions);
 
   function reset() {
     setLabel(material.label);
@@ -93,6 +108,7 @@ export function EditMaterialButton({
     setFolder(initialFolder);
     setJourneyStages(initialStages.length ? initialStages : ["awareness"]);
     setAccessLevel(material.accessLevel || "client_facing");
+    setDivisions(materialDivisions(material));
   }
 
   async function save() {
@@ -122,6 +138,7 @@ export function EditMaterialButton({
               folder,
               journeyStage: journeyStages[0],
               journeyStages,
+              divisions,
               accessLevel,
               documentType: m.documentType,
             }
@@ -135,6 +152,7 @@ export function EditMaterialButton({
               folder: m.folder,
               journeyStage: m.journeyStage,
               journeyStages: materialJourneyStages(m),
+              divisions: materialDivisions(m),
               accessLevel: m.accessLevel,
               documentType: m.documentType,
             }
@@ -233,6 +251,24 @@ export function EditMaterialButton({
                 allIcon={Route}
                 allColor="#7C3AED"
                 ariaLabel="Buyer's journey stage"
+                minWidth={0}
+                collapsible={false}
+                fluid
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                Division
+              </label>
+              <MultiColorSelect
+                values={divisions}
+                onChange={(values) => setDivisions(values as Division[])}
+                options={DIVISION_OPTIONS}
+                allLabel="Any division"
+                allIcon={Building2}
+                allColor="#0071E3"
+                ariaLabel="Division"
                 minWidth={0}
                 collapsible={false}
                 fluid

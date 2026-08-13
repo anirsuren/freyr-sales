@@ -7,10 +7,13 @@ import {
   Handshake,
   Lightbulb,
   Lock,
+  Pill,
   Presentation,
   Quote,
   Scale,
   Shapes,
+  ShoppingBag,
+  Stethoscope,
   Swords,
   Table2,
   Users,
@@ -113,6 +116,19 @@ export type JourneyStage = "awareness" | "evaluation" | "decision";
  */
 export type AccessLevel = "client_facing" | "internal_only" | "agent_only";
 
+/**
+ * WHICH FREYR DIVISION A MATERIAL BELONGS TO (Suren, Aug 13, with Anir: "while
+ * uploading a file, can you also add another tag, which is division, and it'll
+ * have essentially three multi-select options: MPR, MDV and CON… make this
+ * multi-select only, like buyer's journey, because it can be all three
+ * combined").
+ *
+ * Multi-select for the same reason the journey stage is: one deck routinely
+ * serves more than one division, and forcing a single choice would make the
+ * tag a lie.
+ */
+export type Division = "MPR" | "MDV" | "CON";
+
 export interface OfferingMaterial {
   id: string;
   kind: MaterialKind;
@@ -154,6 +170,10 @@ export interface OfferingMaterial {
    * normalize both shapes through `materialJourneyStages` below.
    */
   journeyStages?: JourneyStage[];
+  /** Which Freyr divisions this material is for. Optional: every file
+   *  uploaded before divisions existed has none, and guessing one would put a
+   *  wrong label on a real document. */
+  divisions?: Division[];
   accessLevel?: AccessLevel;
   /**
    * WHAT THE DOCUMENT IS, from the system-defined list — Suren's governance ask.
@@ -232,6 +252,8 @@ export function stampMaterialAttribution(
       next.journeyStages = journeyStages;
       next.journeyStage = journeyStages[0];
     }
+    const divisions = materialDivisions(material);
+    if (divisions.length) next.divisions = divisions;
     if (material.accessLevel) next.accessLevel = material.accessLevel;
     const prior =
       (material.id ? priorById.get(material.id) : undefined) ??
@@ -493,6 +515,25 @@ export const JOURNEY_STAGE_META: Record<
   evaluation: { label: "Evaluation Stage", short: "Evaluation", color: "#7C3AED", icon: Scale }, // violet
   decision: { label: "Decision Stage", short: "Decision", color: "#059669", icon: Handshake }, // green
 };
+
+export const DIVISIONS: Division[] = ["MPR", "MDV", "CON"];
+
+/** Colour + icon per division, so the chip is never a plain grey pill. The
+ *  hues are identity, deliberately clear of red/green/amber. */
+export const DIVISION_META: Record<
+  Division,
+  { label: string; short: string; color: string; icon: LucideIcon }
+> = {
+  MPR: { label: "Medicinal Products", short: "MPR", color: "#0071E3", icon: Pill },
+  MDV: { label: "Medical Devices", short: "MDV", color: "#0F766E", icon: Stethoscope },
+  CON: { label: "Consumer", short: "CON", color: "#C2410C", icon: ShoppingBag },
+};
+
+/** Tolerant reader: unknown or malformed values are dropped rather than
+ *  rendered as a broken chip. */
+export function materialDivisions(m: { divisions?: Division[] }): Division[] {
+  return (m.divisions ?? []).filter((d): d is Division => DIVISIONS.includes(d));
+}
 
 export const ACCESS_LEVELS: AccessLevel[] = [
   "client_facing",

@@ -10,6 +10,7 @@ import {
   Loader2,
   Package,
   Plus,
+  Building2,
   Route,
   ShieldCheck,
   Trash2,
@@ -37,6 +38,10 @@ import {
   type AccessLevel,
   type JourneyStage,
   type MaterialFormat,
+  DIVISIONS,
+  DIVISION_META,
+  materialDivisions,
+  type Division,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 
@@ -55,6 +60,12 @@ const STAGE_OPTIONS: ColorOption[] = [
     icon: JOURNEY_STAGE_META[s].icon,
   })),
 ];
+const DIVISION_OPTIONS: ColorOption[] = DIVISIONS.map((d) => ({
+  value: d,
+  label: `${d} · ${DIVISION_META[d].label}`,
+  color: DIVISION_META[d].color,
+  icon: DIVISION_META[d].icon,
+}));
 const ACCESS_OPTIONS: ColorOption[] = [
   {
     value: "",
@@ -161,6 +172,7 @@ export function AddMaterialButton({
     isFixedMaterialFolder(openFolder) && openFolderIsLeaf ? openFolder : ""
   );
   const [journeyStages, setJourneyStages] = useState<JourneyStage[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
   const [accessLevel, setAccessLevel] = useState<AccessLevel | "">("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
@@ -178,6 +190,7 @@ export function AddMaterialButton({
         kind?: MaterialFormat;
         folder?: string;
         journeyStages?: JourneyStage[];
+        divisions?: Division[];
         accessLevel?: AccessLevel;
         description?: string;
       }
@@ -724,6 +737,7 @@ export function AddMaterialButton({
           description: m.description,
           journeyStage: m.journeyStage,
           journeyStages: materialJourneyStages(m),
+          divisions: materialDivisions(m),
           accessLevel: m.accessLevel,
           documentType: m.documentType,
           // Without this the siblings come back folderless and one upload
@@ -751,6 +765,9 @@ export function AddMaterialButton({
               folder: override.folder || folder,
               journeyStage: selectedStages[0],
               journeyStages: selectedStages,
+              ...((override.divisions ?? divisions).length
+                ? { divisions: override.divisions ?? divisions }
+                : {}),
               accessLevel: selectedAccess,
             };
           })
@@ -767,6 +784,7 @@ export function AddMaterialButton({
                 folder,
                 journeyStage: journeyStages[0],
                 journeyStages,
+                ...(divisions.length ? { divisions } : {}),
                 accessLevel: accessLevel as AccessLevel,
               },
             ]),
@@ -1019,6 +1037,31 @@ export function AddMaterialButton({
                 minWidth={0}
                 collapsible={false}
                 compactTrigger
+                className="w-full"
+              />
+              </div>
+              {/* DIVISION (Suren, Aug 13: "just one more tagging dropdown here,
+                  which should say division, and then MPR, MDV, CON"). Multi
+                  select for the same reason the journey stage is — "it can be
+                  all three combined". Optional: unlike the two above it does
+                  not block a save, because thousands of existing files have no
+                  division and nobody is going back to tag them. */}
+              <div>
+              <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                <span>Division</span>
+                <InfoHint text="Which Freyr division this file is for. Pick any combination." />
+              </label>
+              <MultiColorSelect
+                values={divisions}
+                options={DIVISION_OPTIONS}
+                onChange={(values) => setDivisions(values as Division[])}
+                allLabel="Any division"
+                allIcon={Building2}
+                allColor="#0071E3"
+                ariaLabel="Division"
+                minWidth={0}
+                collapsible={false}
+                fluid
                 className="w-full"
               />
               </div>

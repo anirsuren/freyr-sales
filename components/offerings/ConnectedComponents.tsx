@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,9 +21,10 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { ColorSelect } from "@/components/ui/ColorSelect";
-import type { FdlComponent } from "@/lib/offerings";
+import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 import {
   downloadFeatureSheet,
+  FDL_TYPE_META,
   FdlTypeChip,
   fdlCurrentVersion,
   VersionPill,
@@ -78,10 +79,17 @@ export function ConnectedComponents({
    * with agents layered on top, and that is the order it should be read in.
    * Within a kind the existing order is kept, so nothing else shuffles.
    */
-  const KIND_ORDER: Record<string, number> = { Platform: 0, Module: 1, Agent: 2 };
-  const ordered = [...connected].sort(
-    (a, b) => (KIND_ORDER[a.type] ?? 9) - (KIND_ORDER[b.type] ?? 9)
-  );
+  const KIND_ORDER: FdlComponentType[] = ["Platform", "Module", "Agent"];
+  const KIND_TITLE: Record<string, string> = {
+    Platform: "Platforms",
+    Module: "Modules",
+    Agent: "Agents",
+  };
+  const groups = KIND_ORDER.map((kind) => ({
+    kind,
+    title: KIND_TITLE[kind],
+    items: connected.filter((c) => c.type === kind),
+  })).filter((g) => g.items.length > 0);
 
   const available = all.filter((c) => !connectedIds.has(c.id));
 
@@ -209,7 +217,27 @@ export function ConnectedComponents({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
-              {ordered.map((component) => {
+              {groups.map((group) => (
+                <Fragment key={group.kind}>
+                  {/* The band that says which kind you are looking at. A row
+                      inside the table, not a second table, so every column
+                      stays in one grid and nothing has to line up twice. */}
+                  <tr className="bg-surface/60">
+                    <td colSpan={7} className="px-4 py-1.5">
+                      <span
+                        className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em]"
+                        style={{ color: FDL_TYPE_META[group.kind].color }}
+                      >
+                        {(() => {
+                          const KindIcon = FDL_TYPE_META[group.kind].Icon;
+                          return <KindIcon size={11} strokeWidth={2.4} aria-hidden="true" />;
+                        })()}
+                        {group.title}
+                        <span className="text-text-tertiary">({group.items.length})</span>
+                      </span>
+                    </td>
+                  </tr>
+                  {group.items.map((component) => {
                 const current = fdlCurrentVersion(component);
                 return (
                   <tr
@@ -334,12 +362,28 @@ export function ConnectedComponents({
                   </tr>
                 );
               })}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>
         ) : (
-        <div className="mt-4 grid gap-3 md:grid-cols-2 stagger">
-          {ordered.map((component) => {
+        <div className="mt-4 space-y-5">
+          {groups.map((group) => (
+          <div key={group.kind}>
+            <p
+              className="mb-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em]"
+              style={{ color: FDL_TYPE_META[group.kind].color }}
+            >
+              {(() => {
+                const KindIcon = FDL_TYPE_META[group.kind].Icon;
+                return <KindIcon size={11} strokeWidth={2.4} aria-hidden="true" />;
+              })()}
+              {group.title}
+              <span className="text-text-tertiary">({group.items.length})</span>
+            </p>
+            <div className="grid gap-3 md:grid-cols-2 stagger">
+          {group.items.map((component) => {
             const current = fdlCurrentVersion(component);
             return (
               <div
@@ -424,6 +468,9 @@ export function ConnectedComponents({
               </div>
             );
           })}
+            </div>
+          </div>
+          ))}
         </div>
         )
       )}

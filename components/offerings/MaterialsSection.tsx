@@ -39,7 +39,9 @@ import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
   JOURNEY_STAGES,
+  DIVISION_META,
   JOURNEY_STAGE_META,
+  materialDivisions,
   MATERIAL_FORMATS,
   MATERIAL_FORMAT_META,
   MATERIAL_ICON,
@@ -233,7 +235,6 @@ export function MaterialsSection({
   const [levels, setLevels] = useState<string[]>([]);
   /** The literal extension — PDF, MP4, PPTX, CSV. Separate from `formats`,
    *  which is the four broad families. */
-  const [fileTypes, setFileTypes] = useState<string[]>([]);
   // ONE view for files: the details table (Change Request point 25, Saras,
   // Aug 3 — "restrict the sales materials view option to only one 'List'
   // view"). The 1/2/4-column tile layouts and their saved preference are
@@ -563,7 +564,6 @@ export function MaterialsSection({
     formats.length > 0 ||
     stages.length > 0 ||
     levels.length > 0 ||
-    fileTypes.length > 0 ||
     query.trim().length > 0;
   // Agent-training uploads never reach a rep's list. They are background
   // knowledge for the assistant, not collateral, so only an owner — who has
@@ -589,28 +589,6 @@ export function MaterialsSection({
     () => allFolders(mine, materialFolders),
     [mine, materialFolders]
   );
-  /**
-   * THE FILE TYPES ACTUALLY IN THIS OFFERING, not a fixed menu. The catalogue
-   * is whatever Freyr uploaded, so a hard-coded "CSV" row on an offering that
-   * holds none is a filter that can only ever return nothing. Each type
-   * borrows its format's glyph, keeping the one-blue-family look the format
-   * pills already have.
-   *
-   * The dropdown itself is hidden when the offering has no typed files at all
-   * — unlike the other three filters, whose options are the same everywhere,
-   * this one has genuinely nothing to offer on a link-only offering.
-   */
-  const fileTypeOptions = useMemo(() => {
-    const seen = new Map<string, LucideIcon>();
-    for (const material of mine) {
-      const type = materialFileTypeLabel(material);
-      if (seen.has(type)) continue;
-      seen.set(type, MATERIAL_FORMAT_META[materialFormat(material.kind)].icon);
-    }
-    return Array.from(seen.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([value, icon]) => ({ value, label: value, color: "#0071E3", icon }));
-  }, [mine]);
   const subFolders =
     anyFilter || showAllFiles ? [] : childFolders(folders, folder);
   /**
@@ -647,6 +625,8 @@ export function MaterialsSection({
           materialFormat(m.kind),
           MATERIAL_FORMAT_META[materialFormat(m.kind)]?.label,
           materialFileTypeLabel(m),
+          ...materialDivisions(m).map((d) => DIVISION_META[d].label),
+          ...materialDivisions(m),
           m.accessLevel,
           m.accessLevel ? ACCESS_LEVEL_META[m.accessLevel]?.label : "",
           ...materialJourneyStages(m).flatMap((stage) => [
@@ -670,10 +650,6 @@ export function MaterialsSection({
       )
         return false;
       if (levels.length && !levels.includes(m.accessLevel ?? "")) return false;
-      // A material whose source names no extension matches no file type —
-      // it is never quietly folded into one it might have been.
-      if (fileTypes.length && !fileTypes.includes(materialFileTypeLabel(m)))
-        return false;
       return true;
     })
     .sort(
@@ -685,7 +661,6 @@ export function MaterialsSection({
     setFormats([]);
     setStages([]);
     setLevels([]);
-    setFileTypes([]);
   };
 
   // localStorage cannot be read during the server render. Showing the default
@@ -811,18 +786,12 @@ export function MaterialsSection({
             icon: MATERIAL_FORMAT_META[f].icon,
           }))}
         />
-        {fileTypeOptions.length > 0 && (
-          <MultiColorSelect
-            values={fileTypes}
-            onChange={setFileTypes}
-            minWidth={136}
-            allLabel="All file types"
-            allIcon={FileType}
-            allColor="#0071E3"
-            ariaLabel="Filter by file type"
-            options={fileTypeOptions}
-          />
-        )}
+        {/* NO SECOND FORMAT FILTER (Suren, Aug 13: "is there a difference
+            between all formats and all file types? … we can remove the filter
+            of all file types, and we can just retain the simple all formats").
+            There was no difference worth a control: "All formats" already cuts
+            by video / presentation / document, and this re-cut the same files
+            by extension. Two dropdowns, one question. */}
         <MultiColorSelect
           values={stages}
           onChange={setStages}
@@ -1088,6 +1057,7 @@ export function MaterialsSection({
                 <th className="px-3 py-3 align-middle">File format</th>
                 <th className="px-3 py-3 align-middle">Access level</th>
                 <th className="px-3 py-3 align-middle">Buyer&apos;s journey stage(s)</th>
+                <th className="px-3 py-3 align-middle">Division</th>
                 <th className="px-3 py-3 align-middle">Uploaded by</th>
                 <th className="px-4 py-3 text-center align-middle">Actions</th>
               </tr>
@@ -1237,6 +1207,24 @@ export function MaterialsSection({
                           const meta = JOURNEY_STAGE_META[stage];
                           return <TagPill key={stage} label={meta.short} color={meta.color} icon={meta.icon} />;
                         }) : <span className="text-[11px] text-text-tertiary">Not recorded</span>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      {/* Same pill language as the stages beside it, so the row
+                          reads as one vocabulary rather than two. */}
+                      <div className="flex flex-wrap items-center gap-1">
+                        {materialDivisions(material).length ? (
+                          materialDivisions(material).map((d) => {
+                            const meta = DIVISION_META[d];
+                            return (
+                              <Tooltip key={d} label={meta.label} side="top">
+                                <TagPill label={meta.short} color={meta.color} icon={meta.icon} />
+                              </Tooltip>
+                            );
+                          })
+                        ) : (
+                          <span className="text-[11px] text-text-tertiary">Not recorded</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-3 py-3 align-middle">
