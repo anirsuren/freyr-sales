@@ -63,11 +63,13 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
     }
   }
 
+  // Neither field fills the other in. Adding a person used to quietly crown
+  // them when no owner was set yet — the same surprise as the owner adding
+  // themselves to the roster. Two questions, two answers, both his.
   function addMember(m: string) {
     const clean = m.trim();
     if (!clean || members.includes(clean)) return;
     setMembers((prev) => [...prev, clean]);
-    if (!head) setHead(clean);
   }
 
   async function create() {
@@ -134,12 +136,14 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 <InfoHint text="The owner runs this group's performance — they see their people's numbers and can verify them." />
               </label>
               <div className="mt-1">
+                {/* PICKING THE OWNER PICKS ONLY THE OWNER (Anir, Aug 12: "I
+                    don't know why you're automatically adding people in the
+                    group when I add the owner"). A manager who runs a group
+                    is not necessarily carrying a number inside it — that is
+                    his call to make, one person at a time, below. */}
                 <PersonSelect
                   value={head}
-                  onChange={(next) => {
-                    setHead(next);
-                    addMember(next);
-                  }}
+                  onChange={setHead}
                   people={memberNames}
                   placeholder="Pick the owner…"
                 />
@@ -194,7 +198,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         <div className="mt-4 flex items-center justify-end">
           <Button
             onClick={create}
-            disabled={!name.trim() || members.length === 0}
+            disabled={!name.trim() || !head || members.length === 0}
             loading={busy}
           >
             Create group

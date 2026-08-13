@@ -848,10 +848,25 @@ function MasterTab({
                     Aug 12: "club them together so you don't see that on every
                     row — you just have the section, and then all the goals").
                     Same grouping the cards view uses, so the two agree. */}
-                {[...byType, ...strayTypes].flatMap(({ type, goals: groupGoals }) =>
-                  groupGoals.length === 0
-                    ? []
-                    : [
+                {[...byType, ...strayTypes]
+                  .filter(({ goals: groupGoals }) => groupGoals.length > 0)
+                  .flatMap(({ type, goals: groupGoals }, groupIndex) =>
+                    [
+                        /* A SECTION HAS TO CLOSE (Anir, Aug 12: "there has to
+                           be a more prominent space" → "the thing should end.
+                           I dunno how to explain it. It should end"). Blank
+                           space alone was not enough: with no rule under the
+                           last goal, the category just trailed off into a gap.
+                           This row keeps the divider it inherits — that line
+                           is the lid on the section — and then holds open real
+                           empty space before the next heading begins. */
+                        ...(groupIndex === 0
+                          ? []
+                          : [
+                              <tr key={`gap-${type}`}>
+                                <td colSpan={7} className="h-9 p-0" />
+                              </tr>,
+                            ]),
                         <tr key={`head-${type}`} className="!border-t-0">
                           <td
                             colSpan={7}
