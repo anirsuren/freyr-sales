@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useFillHeight } from "@/components/ui/useFillHeight";
+import { IndustryTag } from "@/components/ui/IndustryTag";
 import { FullScreenButton } from "@/components/ui/FullScreenPanel";
 import { X } from "lucide-react";
 import {
@@ -348,6 +349,15 @@ export function CustomerOfferingHeatMap({
   const { ref: gridRef, height: gridHeight } = useFillHeight(96, 320);
   const [fullScreen, setFullScreen] = useState(false);
   const [selected, setSelected] = useState<SelectedCell | null>(null);
+  /** True when the current selection was opened inside the full-screen popup,
+   *  so closing the popup must not hand the editor to the centred dialog
+   *  (Anir, Aug 13: "make sure it doesn't automatically trigger another
+   *  pop-up when I close the heat map"). */
+  const [paneMode, setPaneMode] = useState(false);
+  function closePopup() {
+    setFullScreen(false);
+    if (selected) void closeModal();
+  }
   useEffect(() => {
     if (!fullScreen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -356,6 +366,36 @@ export function CustomerOfferingHeatMap({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [fullScreen, selected]);
+
+  /**
+   * WHEN THE EDITOR PANE OPENS, THE TABLE SHIFTS so the clicked cell stays in
+   * the visible left region instead of disappearing under the pane (Anir,
+   * Aug 13: "you shift the table so that if I click on something on the
+   * right… it has to show up on the left side").
+   */
+  useEffect(() => {
+    if (!fullScreen || !selected) return;
+    const frame = requestAnimationFrame(() => {
+      const cell = document.querySelector<HTMLElement>(
+        `[data-heat-cell="${selected.customerId}::${selected.offeringId}"]`
+      );
+      const scroller = document.querySelector<HTMLElement>(".heat-map-scroll");
+      if (!cell || !scroller) return;
+      const rect = cell.getBoundingClientRect();
+      const box = scroller.getBoundingClientRect();
+      // 244px keeps it clear of the sticky customer column on the left.
+      if (rect.right > box.right - 16) {
+        scroller.scrollBy({ left: rect.right - (box.right - 16), behavior: "smooth" });
+      } else if (rect.left < box.left + 244) {
+        scroller.scrollBy({ left: rect.left - (box.left + 244), behavior: "smooth" });
+      }
+      if (rect.bottom > box.bottom - 8) {
+        scroller.scrollBy({ top: rect.bottom - (box.bottom - 8), behavior: "smooth" });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [fullScreen, selected]);
+
 
   /** Which activity's remove-from-heat-map is awaiting a yes. */
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
@@ -594,6 +634,7 @@ export function CustomerOfferingHeatMap({
     const emptyCell = !explicit && !storedDraft && !bridged;
     const savedReportId = history.find((version) => version.linked)?.id || null;
     setSelected({ customerId: customer.id, offeringId: offering.id });
+    setPaneMode(fullScreen);
     if (emptyCell) {
       setEditingExisting(false);
       setDraftIsNew(false);
@@ -636,6 +677,7 @@ export function CustomerOfferingHeatMap({
       if (!saved) return;
     }
     setSelected(null);
+    setPaneMode(false);
     setDraft(null);
     setInitialDraft(null);
     setPendingVersionDraft(null);
@@ -938,6 +980,7 @@ export function CustomerOfferingHeatMap({
         return;
       }
       setSelected(null);
+      setPaneMode(false);
       setDraft(null);
       setInitialDraft(null);
       setPendingVersionDraft(null);
@@ -1029,471 +1072,8 @@ export function CustomerOfferingHeatMap({
     setExpandedVersionId(null);
   }
 
-  return (
-    <div className="customer-offering-heat-map space-y-4">
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        {[
-          {
-            label: "Customers",
-            value: customers.length.toLocaleString(),
-            sub: "accounts in view",
-            icon: Building2,
-          },
-          {
-            label: "Offerings",
-            value: offerings.length.toLocaleString(),
-            sub: "catalogue columns",
-            icon: Package,
-          },
-          {
-            label: "Active motions",
-            value: summary.active.toLocaleString(),
-            sub: "beyond to pitch",
-            icon: Activity,
-          },
-          {
-            label: "Recorded value",
-            value: formatMoney(summary.value),
-            sub: "across reported activities",
-            icon: BadgeDollarSign,
-          },
-          {
-            label: "Coverage",
-            value: `${summary.coverage}%`,
-            sub: "offerings in motion",
-            icon: Target,
-          },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card
-              key={item.label}
-              className="relative flex h-[96px] min-w-0 flex-col p-4"
-            >
-              <span className="absolute right-3.5 top-3.5 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
-                <Icon size={15} strokeWidth={2} />
-              </span>
-              <p className="whitespace-nowrap pr-9 text-[9.5px] font-semibold uppercase tracking-[0.045em] text-text-tertiary">
-                {item.label}
-              </p>
-              <p className="mt-1.5 whitespace-nowrap text-[21px] font-bold leading-none tracking-[-0.02em] text-text-primary tnum">
-                {item.value}
-              </p>
-              <p
-                className="mt-1.5 truncate whitespace-nowrap text-[10.5px] text-text-tertiary"
-                title={item.sub}
-              >
-                {item.sub}
-              </p>
-            </Card>
-          );
-        })}
-      </section>
-
-      <Card className="overflow-visible p-3">
-        <SearchPriority
-          query={query}
-          className="flex flex-wrap items-center gap-2"
-        >
-          <PrioritySearchInput
-            grow
-            className="min-w-[250px] flex-1"
-            value={query}
-            onChange={setQuery}
-            placeholder="Search a customer, offering or category"
-            ariaLabel="Search heat map"
-            inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none transition-[border-color,box-shadow] focus:border-blue-primary focus:shadow-input-focus"
-            iconClassName="left-3"
-            iconSize={16}
-          />
-          <ColorSelect
-            value={displayMode}
-            onChange={(value) => setDisplayMode(value as DisplayMode)}
-            options={DISPLAY_OPTIONS}
-            ariaLabel="Cell display"
-            minWidth={150}
-          />
-          <MultiColorSelect
-            values={activityFilter}
-            onChange={setActivityFilter}
-            options={activityOptions(summary.counts)}
-            allLabel="All activities"
-            allIcon={Filter}
-            ariaLabel="Filter by activity"
-            minWidth={165}
-          />
-          <MultiColorSelect
-            values={statusFilter}
-            onChange={setStatusFilter}
-            options={STATUS_OPTIONS}
-            allLabel="All statuses"
-            allIcon={Filter}
-            ariaLabel="Filter by status"
-            minWidth={155}
-          />
-          <FullScreenButton
-            onOpen={() => setFullScreen(true)}
-            label="heat map"
-            className="ml-auto"
-          />
-        </SearchPriority>
-      </Card>
-
-      {fullScreen && (
-        <div
-          onClick={() => setFullScreen(false)}
-          className="matrix-backdrop-in fixed inset-0 z-[200] bg-[rgba(15,23,42,0.45)] backdrop-blur-[1px]"
-          aria-hidden="true"
-        />
-      )}
-      {/* FULL SCREEN IS THE SAME CARD, PROMOTED (Anir, Aug 13: "click a button,
-          and it's gonna literally take up my entire screen… It's literally only
-          the entire table"). Promoting the element that is already there beats
-          rendering the matrix twice: there is one grid, so the two views can
-          never drift, and every filter and selection survives the switch. */}
-      <Card
-        className={cn(
-          fullScreen
-            // Inset, so the page stays visible around it and it reads as a
-            // popup rather than a navigation (Anir, Aug 13: "it should still be
-            // a pop-up… I should be able to see the edges").
-            ? "matrix-pop-in fixed inset-6 z-[201] m-0 overflow-hidden rounded-2xl p-0 shadow-[0_40px_100px_-20px_rgba(15,23,42,0.5)]"
-            : "-mb-28 overflow-hidden p-0"
-        )}
-      >
-        {fullScreen && (
-          <div className="flex h-[53px] items-center justify-between gap-4 border-b border-border-light px-5">
-            <h2 className="text-[15px] font-semibold text-text-primary">
-              Customer Offering Heat Map
-            </h2>
-            <button
-              type="button"
-              onClick={() => setFullScreen(false)}
-              aria-label="Close full screen"
-              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
-            >
-              <X size={18} strokeWidth={2} />
-            </button>
-          </div>
-        )}
-        {matrixCustomers.length === 0 ||
-        matrixOfferings.length === 0 ? (
-          <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
-            <Search size={28} strokeWidth={1.5} className="text-text-tertiary" />
-            <h2 className="mt-3 text-[15px] font-semibold text-text-primary">
-              Nothing matches {activityFilter.length || statusFilter.length ? "those filters" : "that search"}
-            </h2>
-            <p className="mt-1 text-[12px] text-text-tertiary">
-              {activityFilter.length || statusFilter.length
-                ? "Choose another activity or status to update the matrix."
-                : "Search by customer, offering name, or offering category."}
-            </p>
-          </div>
-        ) : (
-          <div
-            ref={gridRef}
-            style={!fullScreen && gridHeight ? { height: gridHeight } : undefined}
-            className={cn(
-              // The matrix takes the screen: it is the page's whole point, and
-              // a short window meant scrolling a grid inside a scrolling page
-              // (Anir, Aug 12: "make this entire spreadsheet bigger… all the
-              // way till the bottom of the screen"). The exact height comes
-              // from useFillHeight, measured from where this element actually
-              // starts. NO min-h/max-h here on purpose: a Tailwind clamp beats
-              // the inline height, and a min-height of "most of the viewport"
-              // made the grid overshoot the bottom by exactly the amount the
-              // measurement was trying to remove.
-              "heat-map-scroll overflow-auto",
-              fullScreen && "h-[calc(100vh-101px)]",
-              // A pinned offering row needs something to outlast: give the
-              // matrix its own scroll area so the header can stay while the
-              // rows move under it. Unpinned, the table grows and the page
-              // scrolls exactly as it always did.
-            )}
-          >
-            <table
-              onMouseLeave={() => setCross(null)}
-              className="table-fixed border-separate border-spacing-0 text-left"
-              style={{
-                width: 220 + matrixOfferings.length * 156,
-              }}
-            >
-              <thead>
-                <tr>
-                  <th
-                    className={cn(
-                      "w-[220px] border-b border-r border-border bg-surface px-4 py-3",
-                      // The corner belongs to both headers, so it sticks in
-                      // whichever directions they do — and outranks them, or
-                      // the customer names would slide underneath it.
-                      (pinCustomers || pinOfferings) && "sticky z-30",
-                      pinCustomers && "left-0",
-                      pinOfferings && "top-0"
-                    )}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
-                        Customer ↓
-                      </span>
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-blue-primary">
-                        Offering →
-                      </span>
-                    </span>
-                    <span className="mt-1.5 flex items-center gap-1">
-                      {(
-                        [
-                          {
-                            label: "Customers",
-                            on: pinCustomers,
-                            flip: () =>
-                              setPinCustomersState(pinCustomers ? "off" : "on"),
-                            hint: pinCustomers
-                              ? "Customer names stay put while you scroll sideways. Click to unpin."
-                              : "Pin the customer column so names stay while you scroll sideways.",
-                          },
-                          {
-                            label: "Offerings",
-                            on: pinOfferings,
-                            flip: () =>
-                              setPinOfferingsState(pinOfferings ? "off" : "on"),
-                            hint: pinOfferings
-                              ? "Offering names stay put while you scroll down. Click to unpin."
-                              : "Pin the offering row so names stay while you scroll down.",
-                          },
-                        ] as const
-                      ).map((axis) => (
-                        <Tooltip key={axis.label} label={axis.hint}>
-                          <button
-                            type="button"
-                            aria-pressed={axis.on}
-                            onClick={axis.flip}
-                            className={cn(
-                              "flex cursor-pointer items-center gap-1 rounded-full border px-1.5 py-[3px] text-[9.5px] font-semibold transition-colors",
-                              axis.on
-                                ? "border-blue-subtle bg-blue-light text-blue-primary"
-                                : "border-border-light bg-white text-text-tertiary hover:border-blue-subtle hover:text-text-secondary"
-                            )}
-                          >
-                            {axis.on ? (
-                              <Pin size={9} strokeWidth={2.4} />
-                            ) : (
-                              <PinOff size={9} strokeWidth={2.4} />
-                            )}
-                            {axis.label}
-                          </button>
-                        </Tooltip>
-                      ))}
-                    </span>
-                  </th>
-                  {matrixOfferings.map((offering) => (
-                    <th
-                      key={offering.id}
-                      className={cn(
-                        "h-[78px] w-[156px] border-b border-r border-border px-2.5 py-2 transition-colors duration-150",
-                        cross?.col === offering.id ? "bg-blue-light" : "bg-surface",
-                        pinOfferings && "sticky top-0 z-20"
-                      )}
-                    >
-                      <Link
-                        href={`/offerings/${offering.id}`}
-                        aria-label={`Open ${offering.name} offering`}
-                        className="heat-map-offering-link group flex h-full flex-col items-center justify-center gap-1.5 rounded-lg text-center transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                      >
-                        <OfferingIcon
-                          name={offering.name}
-                          className="h-5 w-5 shrink-0 rounded-md transition-transform group-hover:scale-105"
-                        />
-                        <p
-                          className={cn(
-                            "flex h-[26px] w-full items-start justify-center overflow-hidden text-[10.5px] font-semibold leading-[1.2] transition-colors duration-150 group-hover:text-primary",
-                            cross?.col === offering.id
-                              ? "text-blue-primary"
-                              : "text-text-primary"
-                          )}
-                        >
-                          <span className="line-clamp-2">
-                            {offering.name}
-                          </span>
-                        </p>
-                      </Link>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {matrixCustomers.map((customer) => (
-                  <tr key={customer.id}>
-                    <th
-                      className={cn(
-                        "w-[220px] border-b border-r border-border px-3.5 py-2 transition-colors duration-150",
-                        cross?.row === customer.id ? "bg-blue-light" : "bg-white",
-                        pinCustomers && "sticky left-0 z-10"
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <CompanyLogo
-                          name={customer.company_name}
-                          className="h-6 w-6 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p
-                            className={cn(
-                              "truncate text-[12px] font-semibold transition-colors duration-150",
-                              cross?.row === customer.id
-                                ? "text-blue-primary"
-                                : "text-text-primary"
-                            )}
-                            title={customer.company_name}
-                          >
-                            {customer.company_name}
-                          </p>
-                          <p className="truncate text-[9.5px] font-normal text-text-tertiary">
-                            {customer.industry || "Industry not set"}
-                          </p>
-                        </div>
-                      </div>
-                    </th>
-                    {matrixOfferings.map((offering) => {
-                      const resolved = resolveHeatMapCell(customer, offering);
-                      const activity = resolved.activity;
-                      const meta = activity
-                        ? CUSTOMER_OFFERING_ACTIVITIES[activity]
-                        : null;
-                      const CellIcon = activity
-                        ? ACTIVITY_ICONS[activity]
-                        : null;
-                      const passes = cellPassesFilters(customer, offering);
-                      const label = passes
-                        ? cellLabel(displayMode, resolved)
-                        : "None";
-                      const isBaseline =
-                        activity === "lead" && !resolved.hasHistory;
-                      const categorical = displayMode === "activity";
-                      const showLabel =
-                        passes && (!categorical || !isBaseline);
-                      const cellText =
-                        meta?.text === "#FFFFFF"
-                          ? meta.color
-                          : meta?.text || "var(--text-tertiary)";
-                      return (
-                        <td
-                          key={offering.id}
-                          className="w-[156px] border-b border-r border-border p-0"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => openCell(customer, offering)}
-                            onMouseEnter={() =>
-                              setCross({ row: customer.id, col: offering.id })
-                            }
-                            title={`${customer.company_name} × ${offering.name}: ${
-                              activity
-                                ? CUSTOMER_OFFERING_ACTIVITIES[activity].label
-                                : "No linked version"
-                            }`}
-                            className={cn(
-                              "group relative flex h-[42px] w-full items-center justify-center gap-1 overflow-hidden px-2 text-center transition-[opacity,background-color,box-shadow] hover:z-[1] hover:brightness-[0.97] hover:shadow-[inset_0_0_0_2px_rgba(0,113,227,0.28)] focus-visible:z-[2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary",
-                              !passes && "opacity-15"
-                            )}
-                            style={{
-                              background:
-                                passes && meta && !isBaseline
-                                  ? meta.color
-                                  : passes && isBaseline
-                                    ? `${meta?.color || "#94A3B8"}0D`
-                                    : "var(--surface)",
-                              color:
-                                passes && meta
-                                  ? isBaseline
-                                    ? cellText
-                                    : meta.text
-                                  : "var(--text-tertiary)",
-                            }}
-                          >
-                            {passes && isBaseline ? (
-                              categorical ? (
-                                <span className="sr-only">{label}</span>
-                              ) : (
-                                <span className="truncate text-[10.5px] font-semibold text-text-tertiary">
-                                  {label}
-                                </span>
-                              )
-                            ) : showLabel ? (
-                              <span
-                                className={cn(
-                                  "flex min-w-0 max-w-full items-center justify-center gap-1.5",
-                                  resolved.hasHistory && "px-3"
-                                )}
-                              >
-                                {CellIcon && (
-                                  <CellIcon
-                                    size={12}
-                                    strokeWidth={2.1}
-                                    className="shrink-0"
-                                  />
-                                )}
-                                <span className="truncate text-[10.5px] font-semibold">
-                                  {label}
-                                </span>
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-text-tertiary">
-                                None
-                              </span>
-                            )}
-                            {resolved.hasHistory && (
-                              <History
-                                size={11}
-                                strokeWidth={2}
-                                className="absolute right-1.5 shrink-0 opacity-65"
-                              />
-                            )}
-                            {/* The beam: always mounted, opacity-toggled, so
-                                it GLIDES between cells instead of blinking.
-                                It lies over coloured cells too — a beam that
-                                skipped them would read as broken — and goes
-                                quiet on the hovered cell itself, whose inset
-                                ring already says "you are here". */}
-                            <span
-                              aria-hidden
-                              className="pointer-events-none absolute inset-0 bg-blue-primary/[0.07] transition-opacity duration-150"
-                              style={{
-                                opacity:
-                                  cross &&
-                                  (cross.row === customer.id ||
-                                    cross.col === offering.id) &&
-                                  !(
-                                    cross.row === customer.id &&
-                                    cross.col === offering.id
-                                  )
-                                    ? 1
-                                    : 0,
-                              }}
-                            />
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      <Modal
-        open={!!selected && !!selectedCustomer && !!selectedOffering}
-        onClose={closeModal}
-        dock={fullScreen}
-        title={
-          selectedCustomer && selectedOffering
-            ? `${selectedCustomer.company_name} × ${selectedOffering.name}`
-            : "Customer offering activity"
-        }
-        size="workflow"
-        dialogClassName="h-[min(760px,calc(100vh-2rem))]"
-      >
+  const cellEditorBody = (
+    <>
         {/* AN EMPTY CELL OPENS TO AN EMPTY LOG, not to an invented draft.
             The button is the only way an activity comes into being (Anir,
             Aug 13: "It should have a button for me to click"). */}
@@ -2053,7 +1633,519 @@ export function CustomerOfferingHeatMap({
           </div>
           </div>
         )}
-      </Modal>
+    </>
+  );
+
+  return (
+    <div className="customer-offering-heat-map space-y-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {[
+          {
+            label: "Customers",
+            value: customers.length.toLocaleString(),
+            sub: "accounts in view",
+            icon: Building2,
+          },
+          {
+            label: "Offerings",
+            value: offerings.length.toLocaleString(),
+            sub: "catalogue columns",
+            icon: Package,
+          },
+          {
+            label: "Active motions",
+            value: summary.active.toLocaleString(),
+            sub: "beyond to pitch",
+            icon: Activity,
+          },
+          {
+            label: "Recorded value",
+            value: formatMoney(summary.value),
+            sub: "across reported activities",
+            icon: BadgeDollarSign,
+          },
+          {
+            label: "Coverage",
+            value: `${summary.coverage}%`,
+            sub: "offerings in motion",
+            icon: Target,
+          },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card
+              key={item.label}
+              className="relative flex h-[96px] min-w-0 flex-col p-4"
+            >
+              <span className="absolute right-3.5 top-3.5 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                <Icon size={15} strokeWidth={2} />
+              </span>
+              <p className="whitespace-nowrap pr-9 text-[9.5px] font-semibold uppercase tracking-[0.045em] text-text-tertiary">
+                {item.label}
+              </p>
+              <p className="mt-1.5 whitespace-nowrap text-[21px] font-bold leading-none tracking-[-0.02em] text-text-primary tnum">
+                {item.value}
+              </p>
+              <p
+                className="mt-1.5 truncate whitespace-nowrap text-[10.5px] text-text-tertiary"
+                title={item.sub}
+              >
+                {item.sub}
+              </p>
+            </Card>
+          );
+        })}
+      </section>
+
+      <Card className="overflow-visible p-3">
+        <SearchPriority
+          query={query}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <PrioritySearchInput
+            grow
+            className="min-w-[250px] flex-1"
+            value={query}
+            onChange={setQuery}
+            placeholder="Search a customer, offering or category"
+            ariaLabel="Search heat map"
+            inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none transition-[border-color,box-shadow] focus:border-blue-primary focus:shadow-input-focus"
+            iconClassName="left-3"
+            iconSize={16}
+          />
+          <ColorSelect
+            value={displayMode}
+            onChange={(value) => setDisplayMode(value as DisplayMode)}
+            options={DISPLAY_OPTIONS}
+            ariaLabel="Cell display"
+            minWidth={150}
+          />
+          <MultiColorSelect
+            values={activityFilter}
+            onChange={setActivityFilter}
+            options={activityOptions(summary.counts)}
+            allLabel="All activities"
+            allIcon={Filter}
+            ariaLabel="Filter by activity"
+            minWidth={165}
+          />
+          <MultiColorSelect
+            values={statusFilter}
+            onChange={setStatusFilter}
+            options={STATUS_OPTIONS}
+            allLabel="All statuses"
+            allIcon={Filter}
+            ariaLabel="Filter by status"
+            minWidth={155}
+          />
+          <FullScreenButton
+            onOpen={() => setFullScreen(true)}
+            label="heat map"
+            className="ml-auto"
+          />
+        </SearchPriority>
+      </Card>
+
+      {fullScreen && (
+        <div
+          onClick={closePopup}
+          className="matrix-backdrop-in fixed inset-0 z-[200] bg-[rgba(15,23,42,0.45)] backdrop-blur-[1px]"
+          aria-hidden="true"
+        />
+      )}
+      {/* FULL SCREEN IS THE SAME CARD, PROMOTED (Anir, Aug 13: "click a button,
+          and it's gonna literally take up my entire screen… It's literally only
+          the entire table"). Promoting the element that is already there beats
+          rendering the matrix twice: there is one grid, so the two views can
+          never drift, and every filter and selection survives the switch. */}
+      <Card
+        className={cn(
+          fullScreen
+            // Inset, so the page stays visible around it and it reads as a
+            // popup rather than a navigation (Anir, Aug 13: "it should still be
+            // a pop-up… I should be able to see the edges").
+            ? "matrix-pop-in fixed inset-6 z-[201] m-0 overflow-hidden rounded-2xl p-0 shadow-[0_40px_100px_-20px_rgba(15,23,42,0.5)]"
+            : "-mb-28 overflow-hidden p-0"
+        )}
+      >
+        <div className={cn(fullScreen && "flex h-full min-h-0 items-stretch")}>
+        <div className={cn(fullScreen && "flex min-w-0 flex-1 flex-col")}>
+        {fullScreen && (
+          <div className="flex h-[53px] items-center justify-between gap-4 border-b border-border-light px-5">
+            <h2 className="text-[15px] font-semibold text-text-primary">
+              Customer Offering Heat Map
+            </h2>
+            <button
+              type="button"
+              onClick={closePopup}
+              aria-label="Close full screen"
+              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
+            >
+              <X size={18} strokeWidth={2} />
+            </button>
+          </div>
+        )}
+        {matrixCustomers.length === 0 ||
+        matrixOfferings.length === 0 ? (
+          <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
+            <Search size={28} strokeWidth={1.5} className="text-text-tertiary" />
+            <h2 className="mt-3 text-[15px] font-semibold text-text-primary">
+              Nothing matches {activityFilter.length || statusFilter.length ? "those filters" : "that search"}
+            </h2>
+            <p className="mt-1 text-[12px] text-text-tertiary">
+              {activityFilter.length || statusFilter.length
+                ? "Choose another activity or status to update the matrix."
+                : "Search by customer, offering name, or offering category."}
+            </p>
+          </div>
+        ) : (
+          <div
+            ref={gridRef}
+            style={!fullScreen && gridHeight ? { height: gridHeight } : undefined}
+            className={cn(
+              // The matrix takes the screen: it is the page's whole point, and
+              // a short window meant scrolling a grid inside a scrolling page
+              // (Anir, Aug 12: "make this entire spreadsheet bigger… all the
+              // way till the bottom of the screen"). The exact height comes
+              // from useFillHeight, measured from where this element actually
+              // starts. NO min-h/max-h here on purpose: a Tailwind clamp beats
+              // the inline height, and a min-height of "most of the viewport"
+              // made the grid overshoot the bottom by exactly the amount the
+              // measurement was trying to remove.
+              "heat-map-scroll overflow-auto",
+              fullScreen && "h-[calc(100vh-101px)] min-w-0 flex-1",
+              // A pinned offering row needs something to outlast: give the
+              // matrix its own scroll area so the header can stay while the
+              // rows move under it. Unpinned, the table grows and the page
+              // scrolls exactly as it always did.
+            )}
+          >
+            <table
+              onMouseLeave={() => setCross(null)}
+              className="table-fixed border-separate border-spacing-0 text-left"
+              style={{
+                width: 220 + matrixOfferings.length * 156,
+              }}
+            >
+              <thead>
+                <tr>
+                  <th
+                    className={cn(
+                      "w-[220px] border-b border-r border-border bg-surface px-4 py-3",
+                      // The corner belongs to both headers, so it sticks in
+                      // whichever directions they do — and outranks them, or
+                      // the customer names would slide underneath it.
+                      (pinCustomers || pinOfferings) && "sticky z-30",
+                      pinCustomers && "left-0",
+                      pinOfferings && "top-0"
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+                        Customer ↓
+                      </span>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-blue-primary">
+                        Offering →
+                      </span>
+                    </span>
+                    <span className="mt-1.5 flex items-center gap-1">
+                      {(
+                        [
+                          {
+                            label: "Customers",
+                            on: pinCustomers,
+                            flip: () =>
+                              setPinCustomersState(pinCustomers ? "off" : "on"),
+                            hint: pinCustomers
+                              ? "Customer names stay put while you scroll sideways. Click to unpin."
+                              : "Pin the customer column so names stay while you scroll sideways.",
+                          },
+                          {
+                            label: "Offerings",
+                            on: pinOfferings,
+                            flip: () =>
+                              setPinOfferingsState(pinOfferings ? "off" : "on"),
+                            hint: pinOfferings
+                              ? "Offering names stay put while you scroll down. Click to unpin."
+                              : "Pin the offering row so names stay while you scroll down.",
+                          },
+                        ] as const
+                      ).map((axis) => (
+                        <Tooltip key={axis.label} label={axis.hint}>
+                          <button
+                            type="button"
+                            aria-pressed={axis.on}
+                            onClick={axis.flip}
+                            className={cn(
+                              "flex cursor-pointer items-center gap-1 rounded-full border px-1.5 py-[3px] text-[9.5px] font-semibold transition-colors",
+                              axis.on
+                                ? "border-blue-subtle bg-blue-light text-blue-primary"
+                                : "border-border-light bg-white text-text-tertiary hover:border-blue-subtle hover:text-text-secondary"
+                            )}
+                          >
+                            {axis.on ? (
+                              <Pin size={9} strokeWidth={2.4} />
+                            ) : (
+                              <PinOff size={9} strokeWidth={2.4} />
+                            )}
+                            {axis.label}
+                          </button>
+                        </Tooltip>
+                      ))}
+                    </span>
+                  </th>
+                  {matrixOfferings.map((offering) => (
+                    <th
+                      key={offering.id}
+                      className={cn(
+                        "h-[78px] w-[156px] border-b border-r border-border px-2.5 py-2 transition-colors duration-150",
+                        cross?.col === offering.id ? "bg-blue-light" : "bg-surface",
+                        pinOfferings && "sticky top-0 z-20"
+                      )}
+                    >
+                      <Link
+                        href={`/offerings/${offering.id}`}
+                        aria-label={`Open ${offering.name} offering`}
+                        className="heat-map-offering-link group flex h-full flex-col items-center justify-center gap-1.5 rounded-lg text-center transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        <OfferingIcon
+                          name={offering.name}
+                          className="h-5 w-5 shrink-0 rounded-md transition-transform group-hover:scale-105"
+                        />
+                        <p
+                          className={cn(
+                            "flex h-[26px] w-full items-start justify-center overflow-hidden text-[10.5px] font-semibold leading-[1.2] transition-colors duration-150 group-hover:text-primary",
+                            cross?.col === offering.id
+                              ? "text-blue-primary"
+                              : "text-text-primary"
+                          )}
+                        >
+                          <span className="line-clamp-2">
+                            {offering.name}
+                          </span>
+                        </p>
+                      </Link>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {matrixCustomers.map((customer) => (
+                  <tr key={customer.id}>
+                    <th
+                      className={cn(
+                        "w-[220px] border-b border-r border-border px-3.5 py-2 transition-colors duration-150",
+                        cross?.row === customer.id ? "bg-blue-light" : "bg-white",
+                        pinCustomers && "sticky left-0 z-10"
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <CompanyLogo
+                          name={customer.company_name}
+                          className="h-6 w-6 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p
+                            className={cn(
+                              "truncate text-[12px] font-semibold transition-colors duration-150",
+                              cross?.row === customer.id
+                                ? "text-blue-primary"
+                                : "text-text-primary"
+                            )}
+                            title={customer.company_name}
+                          >
+                            {customer.company_name}
+                          </p>
+                          {/* Industry is a category, and categories are
+                              colour + icon chips everywhere (standing rule). */}
+                          {customer.industry ? (
+                            <IndustryTag
+                              industry={customer.industry}
+                              size="sm"
+                              className="mt-0.5"
+                            />
+                          ) : (
+                            <p className="truncate text-[9.5px] font-normal text-text-tertiary">
+                              Industry not set
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </th>
+                    {matrixOfferings.map((offering) => {
+                      const resolved = resolveHeatMapCell(customer, offering);
+                      const activity = resolved.activity;
+                      const meta = activity
+                        ? CUSTOMER_OFFERING_ACTIVITIES[activity]
+                        : null;
+                      const CellIcon = activity
+                        ? ACTIVITY_ICONS[activity]
+                        : null;
+                      const passes = cellPassesFilters(customer, offering);
+                      const label = passes
+                        ? cellLabel(displayMode, resolved)
+                        : "None";
+                      const isBaseline =
+                        activity === "lead" && !resolved.hasHistory;
+                      const categorical = displayMode === "activity";
+                      const showLabel =
+                        passes && (!categorical || !isBaseline);
+                      const cellText =
+                        meta?.text === "#FFFFFF"
+                          ? meta.color
+                          : meta?.text || "var(--text-tertiary)";
+                      return (
+                        <td
+                          key={offering.id}
+                          data-heat-cell={`${customer.id}::${offering.id}`}
+                          // h-px is the table trick that lets the button's
+                          // h-full resolve, so the colour floods the whole
+                          // cell instead of a strip inside it.
+                          className="h-px w-[156px] border-b border-r border-border p-0"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openCell(customer, offering)}
+                            onMouseEnter={() =>
+                              setCross({ row: customer.id, col: offering.id })
+                            }
+                            title={`${customer.company_name} × ${offering.name}: ${
+                              activity
+                                ? CUSTOMER_OFFERING_ACTIVITIES[activity].label
+                                : "No linked version"
+                            }`}
+                            className={cn(
+                              "group relative flex h-full min-h-[42px] w-full items-center justify-center gap-1 overflow-hidden px-2 text-center transition-[opacity,background-color,box-shadow] hover:z-[1] hover:brightness-[0.97] hover:shadow-[inset_0_0_0_2px_rgba(0,113,227,0.28)] focus-visible:z-[2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary",
+                              !passes && "opacity-15"
+                            )}
+                            style={{
+                              background:
+                                passes && meta && !isBaseline
+                                  ? meta.color
+                                  : passes && isBaseline
+                                    ? `${meta?.color || "#94A3B8"}0D`
+                                    : "var(--surface)",
+                              color:
+                                passes && meta
+                                  ? isBaseline
+                                    ? cellText
+                                    : meta.text
+                                  : "var(--text-tertiary)",
+                            }}
+                          >
+                            {passes && isBaseline ? (
+                              categorical ? (
+                                <span className="sr-only">{label}</span>
+                              ) : (
+                                <span className="truncate text-[10.5px] font-semibold text-text-tertiary">
+                                  {label}
+                                </span>
+                              )
+                            ) : showLabel ? (
+                              <span
+                                className={cn(
+                                  "flex min-w-0 max-w-full items-center justify-center gap-1.5",
+                                  resolved.hasHistory && "px-3"
+                                )}
+                              >
+                                {CellIcon && (
+                                  <CellIcon
+                                    size={12}
+                                    strokeWidth={2.1}
+                                    className="shrink-0"
+                                  />
+                                )}
+                                <span className="truncate text-[10.5px] font-semibold">
+                                  {label}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-text-tertiary">
+                                None
+                              </span>
+                            )}
+                            {resolved.hasHistory && (
+                              <History
+                                size={11}
+                                strokeWidth={2}
+                                className="absolute right-1.5 shrink-0 opacity-65"
+                              />
+                            )}
+                            {/* The beam: always mounted, opacity-toggled, so
+                                it GLIDES between cells instead of blinking.
+                                It lies over coloured cells too — a beam that
+                                skipped them would read as broken — and goes
+                                quiet on the hovered cell itself, whose inset
+                                ring already says "you are here". */}
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute inset-0 bg-blue-primary/[0.07] transition-opacity duration-150"
+                              style={{
+                                opacity:
+                                  cross &&
+                                  (cross.row === customer.id ||
+                                    cross.col === offering.id) &&
+                                  !(
+                                    cross.row === customer.id &&
+                                    cross.col === offering.id
+                                  )
+                                    ? 1
+                                    : 0,
+                              }}
+                            />
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        </div>
+        {fullScreen && selected && selectedCustomer && selectedOffering && (
+          <aside className="flex w-[min(600px,44vw)] shrink-0 flex-col border-l border-border-light bg-white">
+            <div className="flex h-[53px] shrink-0 items-center justify-between gap-3 border-b border-border-light px-4">
+              <h3 className="min-w-0 truncate text-[13.5px] font-semibold text-text-primary">
+                {selectedCustomer.company_name} × {selectedOffering.name}
+              </h3>
+              <button
+                type="button"
+                onClick={closeModal}
+                aria-label="Close the activity editor"
+                className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
+              >
+                <X size={16} strokeWidth={2} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {cellEditorBody}
+            </div>
+          </aside>
+        )}
+        </div>
+      </Card>
+
+      {/* Centred dialog only OUTSIDE the popup. Inside it, the editor is a
+          pane of the popup itself (below), not a second window (Anir, Aug 13:
+          "In this pop-up… on the right side of this pop-up, not on a separate
+          pop-up"). */}
+      {!fullScreen && !paneMode && (
+        <Modal
+          open={!!selected && !!selectedCustomer && !!selectedOffering}
+          onClose={closeModal}
+          title={
+            selectedCustomer && selectedOffering
+              ? `${selectedCustomer.company_name} × ${selectedOffering.name}`
+              : "Customer offering activity"
+          }
+          size="workflow"
+          dialogClassName="h-[min(760px,calc(100vh-2rem))]"
+        >
+          {cellEditorBody}
+        </Modal>
+      )}
     </div>
   );
 }

@@ -876,7 +876,9 @@ function MasterTab({
                       </span>
                     </button>
                     {!shut && (
-                      <div className="overflow-x-auto border-t border-border-light">
+                      /* The reveal, not a teleport (Anir, Aug 13: "I want a
+                         premium animation… Right now, it's just instant"). */
+                      <div className="tab-panel overflow-x-auto border-t border-border-light">
                         <table className="w-full min-w-[780px] table-fixed">
                           <colgroup>
                             <col style={{ width: "34%" }} />

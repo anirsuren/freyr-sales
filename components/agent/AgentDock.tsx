@@ -762,6 +762,24 @@ export function AgentDock({
         `Who is ${offeringContext.name} best suited for?`,
       ]
     : suggestionsFor(label, offeringsOnly);
+  /**
+   * CLICK ANYWHERE ELSE AND THE ASSISTANT CLOSES (Anir, Aug 13: "when I click
+   * out of the AI assistant, it should automatically close"). Floating bubble
+   * only; the embedded side panel is a deliberate workspace and stays.
+   */
+  const floatPanelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open || embedded) return;
+    const onDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (floatPanelRef.current?.contains(target)) return;
+      if (target.closest?.("[data-agent-dock-launcher]")) return;
+      onOpenChange(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open, embedded, onOpenChange]);
+
   const greeting = offeringContext?.material
     ? `Hi ${firstName}. Freyr AI is focused on **${offeringContext.material.label}** from **${offeringContext.name}**. Ask me anything about this material, or pick a starting point below.`
     : offeringContext
@@ -774,6 +792,7 @@ export function AgentDock({
     <div className={embedded ? "flex h-full min-h-0 w-full flex-col bg-white" : "contents"}>
       {open && (
         <div
+          ref={floatPanelRef}
           className={cn(
             "flex min-h-0 flex-col overflow-hidden bg-white",
             embedded
@@ -917,6 +936,7 @@ export function AgentDock({
       {/* Bubble */}
       {(!embedded || !open) && (
         <button
+          data-agent-dock-launcher
           onClick={() => onOpenChange(!open)}
           aria-label={open ? "Close your agent" : "Open your agent"}
           className={cn(

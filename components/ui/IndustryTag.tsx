@@ -20,16 +20,24 @@ export function industryMeta(industry: string) {
 export function IndustryTag({
   industry,
   className,
+  size = "default",
 }: {
   industry: string;
   className?: string;
+  /** "sm" is the quiet variant for dense tables: smaller, sentence case, so
+   *  the chip never outweighs the name above it (Anir, Aug 13: "the tags are
+   *  too big… I don't think they have to be capitalized"). */
+  size?: "default" | "sm";
 }) {
   if (!industry) return null;
   const { color, icon: Icon } = industryMeta(industry);
   return (
     <span
       className={cn(
-        "semantic-color-pill inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.03em]",
+        "semantic-color-pill inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold",
+        size === "sm"
+          ? "px-1.5 py-[1px] text-[9px] normal-case tracking-normal"
+          : "px-2.5 py-0.5 text-[11px] uppercase tracking-[0.03em]",
         className
       )}
       style={
@@ -39,7 +47,7 @@ export function IndustryTag({
         } as CSSProperties
       }
     >
-      <Icon size={11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
+      <Icon size={size === "sm" ? 9 : 11} strokeWidth={2.2} className="-ml-0.5 shrink-0" />
       {industry}
     </span>
   );
