@@ -127,7 +127,7 @@ export function Modal({
       className={
         dock
           ? // No backdrop and no pointer capture: the popup behind stays live.
-            "pointer-events-none fixed inset-0 z-[230] flex items-stretch justify-end p-4"
+            "pointer-events-none fixed inset-0 z-[230] flex items-stretch justify-end p-6"
           : `fixed inset-0 ${stacked ? "z-[105] bg-black/25" : "z-[95] bg-black/40"} flex items-center justify-center backdrop-blur-sm p-4 backdrop-in`
       }
       /**
