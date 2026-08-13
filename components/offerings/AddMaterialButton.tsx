@@ -463,13 +463,16 @@ export function AddMaterialButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: grant.path, failed: true }),
       }).catch(() => undefined);
-      setProgress(null);
-      toast("The upload didn't finish, try again", "error");
-      setFileProgress((current) => ({
-        ...current,
-        [key]: { percent: current[key]?.percent || 0, status: "failed" },
-      }));
-      return null;
+      // THE DIRECT PUT DIES IN REAL BROWSERS (Anir, Aug 13: "Why is this
+      // creating a fucking error every single time?… You can't keep giving
+      // errors on the uploading files"). Diagnosis, proven with a server-side
+      // repro: FreyaFusion's bucket has NO CORS policy, so the preflight
+      // answers 403 and the browser never sends the bytes — while the very
+      // same signed PUT succeeds from a server. Until the bucket allows our
+      // origins, failing here silently reroutes the file through our own
+      // server, which stores into the SAME bucket server-side. No toast, no
+      // dead end; the rep just sees the upload finish.
+      return uploadThroughServer(f);
     }
 
     setProgress(100);
@@ -531,17 +534,31 @@ export function AddMaterialButton({
   /** The no-Docs-credentials fallback: through our own server, which has to
    *  hold the file in memory, so this one keeps a cap. */
   async function uploadThroughServer(f: File) {
+    const key = fileKey(f);
+    setFileProgress((current) => ({
+      ...current,
+      [key]: { percent: current[key]?.percent || 0, status: "uploading" },
+    }));
     const fd = new FormData();
     fd.append("file", f);
     const up = await fetch(`/api/offerings/${offeringId}/materials/upload`, {
       method: "POST",
       body: fd,
     });
-    const stored = await up.json();
+    const stored = await up.json().catch(() => ({}));
     if (!up.ok || !stored.url) {
       toast(stored.error || "Couldn't upload that file", "error");
+      setFileProgress((current) => ({
+        ...current,
+        [key]: { percent: current[key]?.percent || 0, status: "failed" },
+      }));
       return null;
     }
+    setProgress(null);
+    setFileProgress((current) => ({
+      ...current,
+      [key]: { percent: 100, status: "done" },
+    }));
     return stored;
   }
 

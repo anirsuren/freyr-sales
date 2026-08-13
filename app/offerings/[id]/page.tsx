@@ -101,6 +101,12 @@ export default async function OfferingDetailPage({
    * neither shows the chip nor honours the URL.
    */
   const showReports = getDataMode() !== "live";
+  /* SALES REPS DON'T SEE THE CUSTOMERS TAB — FOR NOW (Suren via Anir,
+   * Aug 13: "anyone with the Sales Rep access should currently NOT be able
+   * to see the 'Customers' tab within an Offering Page", so reps aren't
+   * confused by the thin beta customer list). Managers and admins keep it.
+   * Deliberately temporary: delete this flag to give it back to everyone. */
+  const showOfferingCustomers = me.role !== "sales";
   // The package's contents: FDL components connected by id.
   const allComponents = listFdlComponents();
   const connectedComponents = (o.component_ids ?? [])
@@ -111,7 +117,7 @@ export default async function OfferingDetailPage({
       ? "reports"
       : query?.tab === "materials"
         ? "materials"
-        : query?.tab === "customers"
+        : query?.tab === "customers" && showOfferingCustomers
           ? "customers"
           : query?.tab === "competition"
             ? "competition"
@@ -465,14 +471,18 @@ export default async function OfferingDetailPage({
             label: `Components (${(o.component_ids ?? []).length})`,
             href: `/offerings/${o.id}?tab=components`,
           },
-          {
-            key: "customers",
-            label:
-              offeringCustomers.length > 0
-                ? `Customers (${offeringCustomers.length})`
-                : "Customers",
-            href: `/offerings/${o.id}?tab=customers`,
-          },
+          ...(showOfferingCustomers
+            ? [
+                {
+                  key: "customers",
+                  label:
+                    offeringCustomers.length > 0
+                      ? `Customers (${offeringCustomers.length})`
+                      : "Customers",
+                  href: `/offerings/${o.id}?tab=customers`,
+                },
+              ]
+            : []),
           // COMPETITION (Suren, Aug 11): "for that particular product, list
           // the competitive companies and their product names" — the fifth tab.
           {
