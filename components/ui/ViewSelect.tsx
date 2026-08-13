@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, LayoutGrid, Table2, type LucideIcon } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn, POPOVER_SURFACE } from "@/lib/utils";
@@ -55,20 +56,42 @@ export function ViewSelect<T extends string>({
 }) {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null
+  );
 
   useEffect(() => {
     if (!open) return;
     const onDown = (event: MouseEvent) => {
-      if (!boxRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!boxRef.current?.contains(target) && !menuRef.current?.contains(target)) {
+        setOpen(false);
+      }
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
+    // The menu is PORTALLED to the body (see below), so it must follow the
+    // button if the page scrolls or the window resizes while it is open.
+    const place = () => {
+      const rect = boxRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuPos({
+        top: rect.bottom + 6,
+        right: Math.max(window.innerWidth - rect.right, 8),
+      });
+    };
+    place();
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
     };
   }, [open]);
 
@@ -104,14 +127,25 @@ export function ViewSelect<T extends string>({
         </button>
       </Tooltip>
 
-      {open && (
-        <div
-          role="menu"
-          className={cn(
-            "popover-in absolute right-0 top-[calc(100%+6px)] z-50 w-[132px] overflow-hidden rounded-xl bg-white py-1",
-            POPOVER_SURFACE
-          )}
-        >
+      {/* PORTALLED TO THE BODY: the entrance animations on `.tab-panel` and
+          `.rise-in` fill forwards, so those blocks keep an identity transform
+          and stay stacking contexts for life — content below the toolbar was
+          painting OVER this menu no matter its z-index (Anir, Aug 13: "your
+          grid view is gone, man. It's coming behind"). Outside the tree, no
+          ancestor can trap it. */}
+      {open &&
+        menuPos &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            style={{ top: menuPos.top, right: menuPos.right }}
+            className={cn(
+              "popover-in fixed z-[210] w-[132px] overflow-hidden rounded-xl bg-white py-1",
+              POPOVER_SURFACE
+            )}
+          >
           {options.map(({ value: optionValue, label, Icon }) => {
             const active = optionValue === value;
             return (
@@ -137,8 +171,9 @@ export function ViewSelect<T extends string>({
               </button>
             );
           })}
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
