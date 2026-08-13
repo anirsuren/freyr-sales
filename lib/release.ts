@@ -21,9 +21,12 @@ export function isOfferingsOnly(dataMode: DataMode): boolean {
 
 export function isReleased(href: string, dataMode: DataMode): boolean {
   if (!isOfferingsOnly(dataMode)) return true;
-  return RELEASED_MODULE_PREFIXES.some(
-    (m) => href === m || href.startsWith(`${m}/`)
-  );
+  // Defer to the one path answer below — this used to check only the module
+  // prefixes, so a NON_MODULE path (Admin) rendered fine when you typed the
+  // URL but never appeared in the sidebar. Exactly the drift the comment on
+  // isReleasedPath warns about (Anir, Aug 12: "where the fuck is the admin
+  // page").
+  return isOfferingsReleasePath(href);
 }
 
 // The released modules. Everything under each one travels with it (detail,
