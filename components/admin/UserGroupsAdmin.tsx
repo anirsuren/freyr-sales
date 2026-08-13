@@ -93,7 +93,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         <p className="flex items-center gap-1.5 text-[14px] font-bold text-text-primary">
           <UsersRound size={16} strokeWidth={2} className="text-blue-primary" />
           User groups
-          <InfoHint text="A group is a department with an owner. The owner sees their group on Performance; members' goals add up into the group automatically. Goals are never attached to a group — only to its people." />
+          <InfoHint text={"A group is a department with an owner.\nThe owner sees their group on Performance; members' goals add up into the group automatically.\nGoals are never attached to a group, only to its people."} />
         </p>
         {!creating && (
           <Button onClick={() => setCreating(true)}>

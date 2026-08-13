@@ -294,7 +294,7 @@ export default async function ForecastPage() {
             <h2 className="text-[15px] font-semibold text-text-primary">
               Quota attainment
             </h2>
-            <InfoHint text="Solid blue is what you realistically expect to close. Light blue behind it is the best case. The further right they reach, the closer you are to target." />
+            <InfoHint text={"Solid blue is what you realistically expect to close.\nLight blue behind it is the best case.\nThe further right they reach, the closer you are to target."} />
           </span>
           <span className="text-[13px] text-text-secondary tnum">
             {commitPct}% committed · {bestPct}% best case
@@ -339,7 +339,7 @@ export default async function ForecastPage() {
           <div className="xl:pr-5 flex flex-col">
             <div className="flex items-center gap-1.5 mb-1">
               <h2 className="text-[15px] font-semibold text-text-primary">By stage</h2>
-              <InfoHint text="Your pipeline broken down by step. The light column is the full value. The solid part is that value cut down by how likely each step is to close." />
+              <InfoHint text={"Your pipeline broken down by step.\nThe light column is the full value.\nThe solid part is that value cut down by how likely each step is to close."} />
             </div>
             <div className="flex items-center gap-4 mb-3 text-[11px] text-text-tertiary">
               <span className="inline-flex items-center gap-1.5">

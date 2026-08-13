@@ -202,7 +202,7 @@ export default async function AnalyticsPage({
           <div className="min-w-0">
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
               Pipeline growth
-              <InfoHint text="The big number is your open pipeline today. The line shows how it built up over time. Each point adds in the deals created by that date." />
+              <InfoHint text={"The big number is your open pipeline today.\nThe line shows how it built up over time.\nEach point adds in the deals created by that date."} />
             </p>
             <p className="text-[32px] font-bold text-text-primary tnum leading-none mt-1">
               <CountUp value={openValue} unit="money" />

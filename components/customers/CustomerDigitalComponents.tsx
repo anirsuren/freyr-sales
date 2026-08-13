@@ -328,7 +328,7 @@ export function CustomerDigitalComponents({
                   <div className="min-w-0">
                     <p className="mb-1 flex min-h-[26px] items-center gap-1.5 text-[10px] font-semibold uppercase leading-[1.25] tracking-[0.05em] text-text-tertiary">
                       Version status
-                      <InfoHint text="Released means we have given them this version. Expected means they are waiting for it." />
+                      <InfoHint text={"Released means we have given them this version.\nExpected means they are waiting for it."} />
                     </p>
                     {canEdit ? (
                       <ColorSelect

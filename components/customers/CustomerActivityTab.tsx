@@ -133,7 +133,7 @@ export function CustomerActivityTab({
           <div>
             <h2 className="flex items-center gap-2 text-[16px] font-semibold text-text-primary">
               Offering activity
-              <InfoHint text="There are five kinds of activity: Lead, Opportunity, Pilot, Contract and Delivery. Each one is either Initiated, Under progress or Completed. One activity per offering is marked Current, and that is the one the heat map reads." />
+              <InfoHint text={"There are five kinds of activity: Lead, Opportunity, Pilot, Contract and Delivery.\nEach one is either Initiated, Under progress or Completed.\nOne activity per offering is marked Current, and that is the one the heat map reads."} />
             </h2>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">
               {total > 0

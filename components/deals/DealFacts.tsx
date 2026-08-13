@@ -158,7 +158,7 @@ export function DealFacts({
           <div className="flex items-start justify-between gap-2">
             <span className={`${EYEBROW} inline-flex items-center gap-1`}>
               Deal opened
-              <InfoHint text="The day this deal was created. The snapshot counts days on the stage it is on now. This counts the whole run, start to today." />
+              <InfoHint text={"The day this deal was created.\nThe snapshot counts days on the stage it is on now.\nThis counts the whole run, start to today."} />
             </span>
             <Tile color={MEASURE} Icon={CalendarPlus} />
           </div>

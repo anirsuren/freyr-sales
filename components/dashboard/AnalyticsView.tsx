@@ -204,7 +204,7 @@ export function AnalyticsView({
             </span>
             <p className="flex items-center gap-1 text-[13px] text-text-secondary">
               Qualified rate
-              <InfoHint text="Out of the deals you actually worked on, this is how many reached Qualified or further. It shows how often your effort moves a deal forward. It is not a win rate." />
+              <InfoHint text={"Out of the deals you actually worked on, this is how many reached Qualified or further.\nIt shows how often your effort moves a deal forward.\nIt is not a win rate."} />
             </p>
             <p className="text-[13px] text-text-tertiary mt-1 max-w-[140px]">
               Qualified or further, of all worked deals

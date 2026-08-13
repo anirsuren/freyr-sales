@@ -1320,7 +1320,7 @@ function GoalPopupBody({
         </span>
         <span className="flex items-center gap-1.5">
           <PickedPill goal={goal} live={live} run={run} />
-          <InfoHint text="Tracking means this goal is counted and shown on Org performance. Not tracked means it stays on the master list only." />
+          <InfoHint text={"Tracking means this goal is counted and shown on Org performance.\nNot tracked means it stays on the master list only."} />
           {live && (
             <button
               type="button"
@@ -2147,7 +2147,7 @@ function GoalEditorFields({
         <span className="min-w-0">
           <span className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
             Track on Org performance
-            <InfoHint text="Tracking means this goal is counted and shown on Org performance with its target and actuals. Off means it stays on the master list only." />
+            <InfoHint text={"Tracking means this goal is counted and shown on Org performance with its target and actuals.\nOff means it stays on the master list only."} />
           </span>
           <span className="block text-[11px] text-text-tertiary">
             {picked
@@ -2565,7 +2565,7 @@ function LogActualModal({
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Person
-            <InfoHint text="Whose achievement this is — one person per entry, so nothing is ever counted twice. A shared win is logged once per person, each with their real share." />
+            <InfoHint text={"Whose achievement this is, one person per entry, so nothing is ever counted twice.\nA shared win is logged once per person, each with their real share."} />
           </label>
           <div className="mt-1">
             <PersonSelect
