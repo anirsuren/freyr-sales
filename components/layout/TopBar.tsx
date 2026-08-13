@@ -140,10 +140,6 @@ export function TopBar({
     setReadIds(new Set());
     setNotifOpen(false);
     setUserOpen(false);
-    if (offeringsOnly) {
-      setLoadedNotificationKey(notificationReadKey);
-      return;
-    }
     let on = true;
     const load = () =>
       fetch("/api/notifications", { cache: "no-store" })
@@ -165,7 +161,7 @@ export function TopBar({
       window.clearInterval(timer);
       window.removeEventListener("focus", load);
     };
-  }, [notificationReadKey, offeringsOnly]);
+  }, [notificationReadKey]);
 
   const notificationStateReady =
     loadedNotificationKey === notificationReadKey;
@@ -342,7 +338,13 @@ export function TopBar({
           </button>
         )}
         {feedbackAction}
-        {!offeringsOnly && <div className="relative">
+        {/* THE BELL IS BACK IN THE LIVE WORKSPACE (Anir, Aug 13: "can you
+            add the notifications back?"). It was hidden here because the
+            rows behind it were all derived from pipeline work that does not
+            exist yet during the pilot. The API now answers with the two
+            setup nudges instead — take the walkthrough, set up Touch ID —
+            which are about your own account and true from day one. */}
+        <div className="relative">
           <button
             data-tour="notifications"
             aria-label="Notifications"
@@ -433,7 +435,7 @@ export function TopBar({
               </div>
             </>
           )}
-        </div>}
+        </div>
         <button
           data-tour="help"
           aria-label="Keyboard shortcuts"

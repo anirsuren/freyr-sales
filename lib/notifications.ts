@@ -141,6 +141,11 @@ export function buildNotifications(input: {
    *  (Anir, Aug 12: "if they don't have it, it should be in the notifications
    *  ... until they do it"). Computed server-side; false hides the row. */
   needsPasskey?: boolean;
+  /** True when the signed-in person has never finished the guided walkthrough
+   *  (Anir, Aug 13: "if anyone has not taken the tour, it has to show up in
+   *  notifications"). Same shape as the Touch ID nudge: server-computed, a
+   *  standing row while it is true, gone the moment they finish. */
+  needsTour?: boolean;
 }): AppNotification[] {
   const {
     sessions,
@@ -149,6 +154,7 @@ export function buildNotifications(input: {
     interactions,
     voiceConversations = [],
     needsPasskey = false,
+    needsTour = false,
   } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
   const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
@@ -315,6 +321,30 @@ export function buildNotifications(input: {
   // that regenerates on every load while the account has no passkey, and
   // disappears by itself the moment one is enrolled.
   const securityRows: AppNotification[] = [];
+  /**
+   * THE WALKTHROUGH, UNTIL IT'S TAKEN (Anir, Aug 13: "if anyone has not taken
+   * the tour, it has to show up in notifications… realistically, the only two
+   * notifications should be if they have not taken the product tour and if they
+   * have not set up Touch ID").
+   *
+   * Two setup nudges, both about YOUR OWN account, both self-clearing. Nothing
+   * else belongs in this list during the pilot: an alert someone cannot act on
+   * is worse than an empty bell.
+   */
+  if (needsTour) {
+    securityRows.push({
+      id: "setup-product-tour",
+      type: "security",
+      title: "Take the guided walkthrough",
+      body: "A short tour of the app, one screen at a time.",
+      subject: "Take the guided walkthrough",
+      detail: "Five minutes, and you can stop at any point.",
+      urgency: "today",
+      href: "/onboarding",
+      ts: new Date(nowMs).toISOString(),
+      stamp: "Not taken",
+    });
+  }
   if (needsPasskey) {
     securityRows.push({
       id: "security-passkey",

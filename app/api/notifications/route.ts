@@ -1,12 +1,45 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { buildNotifications } from "@/lib/notifications";
 import { listStoredVoiceConversations } from "@/lib/voiceEvents";
 import { currentUserNeedsPasskey } from "@/lib/passkeyStatus";
+import { currentUserNeedsTour } from "@/lib/tourStatus";
+import { getDataMode } from "@/lib/dataMode";
+import { isOfferingsOnly } from "@/lib/release";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const [needsPasskey, needsTour] = await Promise.all([
+    currentUserNeedsPasskey(),
+    currentUserNeedsTour(request),
+  ]);
+
+  /**
+   * IN THE LIVE WORKSPACE, TWO ROWS AND NOTHING ELSE (Anir, Aug 13:
+   * "realistically, the only two notifications should be if they have not taken
+   * the product tour and if they have not set up Touch ID. It should just be
+   * notifications like that. It's pretty simple").
+   *
+   * The other rows are derived from pipeline work — reviews waiting, follow-ups
+   * due, calls that failed — and during the pilot none of that exists yet, so
+   * they were either silent or, worse, about demo records. Everything
+   * data-derived is skipped here, which also means the bell stops reading the
+   * database every fifteen seconds to conclude there is nothing to say.
+   */
+  if (isOfferingsOnly(getDataMode())) {
+    return NextResponse.json({
+      notifications: buildNotifications({
+        sessions: [],
+        customers: [],
+        contacts: [],
+        interactions: [],
+        needsPasskey,
+        needsTour,
+      }),
+    });
+  }
+
   const db = getDb();
   const [sessions, customers, contacts, interactions, voiceConversations] = await Promise.all([
     db.pitchSessions.list(),
@@ -15,7 +48,6 @@ export async function GET() {
     db.interactions.list(),
     listStoredVoiceConversations(30),
   ]);
-  const needsPasskey = await currentUserNeedsPasskey();
   const notifications = buildNotifications({
     sessions,
     customers,
@@ -23,6 +55,7 @@ export async function GET() {
     interactions,
     voiceConversations,
     needsPasskey,
+    needsTour,
   });
   return NextResponse.json({ notifications });
 }

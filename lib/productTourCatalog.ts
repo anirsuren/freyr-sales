@@ -13,531 +13,423 @@ export type ProductTourStep = {
   title: string;
   description: string;
   targets: readonly string[];
+  /** What this screen is called, for the "Open X" label on the previous step. */
+  pageName: string;
   nextLabel?: string;
   placement?: ProductTourPlacement;
   roles?: readonly WorkspaceRole[];
   availableInOfferingsOnly?: boolean;
   offeringsOnlyRoute?: string;
-  offeringsOnlyOrder?: number;
 };
 
 type ProductTourStepDefinition = Omit<ProductTourStep, "catalogIndex">;
 
 const ALL_ROLES: readonly WorkspaceRole[] = ["sales", "editor", "admin"];
+/** FDL Components, Customers, Reports, Performance and Market Intel are a
+ *  manager-and-admin job (lib/moduleAccess). A rep must never be walked to a
+ *  page they cannot open. */
+const MANAGERS: readonly WorkspaceRole[] = ["editor", "admin"];
 
-function featureTargets(
-  nav: string,
-  primary: readonly string[] = []
-): readonly string[] {
+/**
+ * Primary target first, then the page's own header, then the whole page. The
+ * header is a real, meaningful frame — the title, the one-line explanation and
+ * the page's main action — so a step never falls back to outlining the entire
+ * screen unless the page genuinely has not rendered.
+ */
+function pageTargets(primary: readonly string[] = []): readonly string[] {
   return [
     ...primary,
     '[data-tour="page-header"]',
-    `[data-tour="nav-${nav}"]`,
     '[data-tour="page-content"]',
     "#main-content",
   ];
 }
 
-function navigationStep({
-  id,
-  route,
-  nav,
-  href,
-  destination,
-  description,
-  availableInOfferingsOnly,
-  offeringsOnlyRoute,
-  offeringsOnlyOrder,
-}: {
-  id: string;
-  route: string;
-  nav: string;
-  href: string;
-  destination: string;
-  description: string;
-  availableInOfferingsOnly?: boolean;
-  offeringsOnlyRoute?: string;
-  offeringsOnlyOrder?: number;
-}): ProductTourStepDefinition {
-  return {
-    id,
-    route,
-    kind: "navigation",
-    eyebrow: "Up next",
-    title: `Open ${destination}`,
-    description,
-    targets: [
-      `[data-tour="nav-${nav}"]`,
-      `a[href="${href}"]`,
-      '[data-tour="sidebar"]',
-      "#main-content",
-    ],
-    nextLabel: `Open ${destination}`,
-    placement: "right",
-    roles: ALL_ROLES,
-    availableInOfferingsOnly,
-    offeringsOnlyRoute,
-    offeringsOnlyOrder,
-  };
-}
-
 /**
- * The order is the persisted, zero-based tour order. Keep it stable within a
- * tour version. Role and release filters operate on this list, but persistence
- * always uses catalogIndex so filtering cannot change a saved step's meaning.
+ * THE TOUR WALKS THE APP THAT EXISTS (Anir, Aug 13: "your entire guided
+ * walkthrough is wrong… this is not showing anything… why is it only five
+ * steps, bro?").
+ *
+ * Two things were wrong, and they had the same cause: the tour was written for
+ * an older app. It walked people through Pipeline, Forecast, Contacts,
+ * Sessions, Sequences, Campaigns, Voice, Tasks and Analytics — none of which
+ * are released — and only five of its steps survived the release filter. It
+ * also never mentioned FDL Components, Customers, Reports, Performance or
+ * Market Intel, which are the modules people actually open. One step targeted
+ * an element (`create-new`) that does not exist anywhere in the app, so its
+ * highlight fell back to outlining the whole screen.
+ *
+ * It now has one step per real screen, in the order you meet them, and no
+ * filler: the old catalogue alternated "Open Team" cards with "Team" cards,
+ * which doubled the length and said everything twice. Moving to the next screen
+ * is what the Next button already does — so Next simply says where it goes.
+ *
+ * SETTINGS IS NOT IN THE SIDEBAR (Anir: "why are you saying 'open settings'?
+ * The settings are up top in the top right"). It never was — it lives in the
+ * account menu — so the old "Open Settings" step highlighted the sidebar and
+ * pointed at nothing. The account menu is now its own step, taught up front
+ * where you first look, and the Settings steps simply follow.
+ *
+ * Copy rule for every step below: one plain sentence a salesperson would say
+ * out loud. No "leverage", no "workflow", no narrating what the reader can see.
  */
 const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
   {
-    id: "dashboard-tools",
+    id: "top-search",
     route: "/dashboard",
     offeringsOnlyRoute: "/offerings",
     kind: "feature",
-    eyebrow: "Quick actions",
-    title: "Find, create, and stay current",
+    pageName: "the app",
+    eyebrow: "Top bar",
+    title: "Search from anywhere",
     description:
-      "Use the top bar to search the workspace, create new work, ask the agent for help, and catch important notifications.",
+      "Type a company, a person, or the name of a page. Press Enter and the assistant answers instead.",
     targets: [
-      '[data-tour="topbar"]',
       '[data-tour="global-search"]',
-      '[data-tour="create-new"]',
+      '[data-tour="topbar"]',
       "#main-content",
     ],
     placement: "bottom",
     roles: ALL_ROLES,
     availableInOfferingsOnly: true,
-    offeringsOnlyOrder: 0,
   },
   {
-    id: "dashboard-new-session",
+    id: "account-menu",
     route: "/dashboard",
+    offeringsOnlyRoute: "/offerings",
     kind: "feature",
-    eyebrow: "Dashboard",
-    title: "Start with a real prospect",
+    pageName: "your account",
+    eyebrow: "Top right",
+    title: "Your account lives here",
     description:
-      "New Session brings a prospect, contact, research, offering match, and channel-ready pitch into one guided workflow.",
-    targets: [
-      '[data-tour="new-session"]',
-      'button[title="New Session"]',
-      '[data-tour="sidebar"]',
-      "#main-content",
-    ],
+      "Settings, light or dark, switching to another account, and signing out. This is where Settings is — not the sidebar.",
+    targets: ['[data-tour="account-menu"]', '[data-tour="topbar"]'],
+    placement: "bottom",
+    roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "notifications-bell",
+    route: "/dashboard",
+    offeringsOnlyRoute: "/offerings",
+    kind: "feature",
+    pageName: "notifications",
+    eyebrow: "Top bar",
+    title: "Anything waiting on you",
+    description:
+      "Right now that means two things: finish this walkthrough, and set up Touch ID so you can sign in with your fingerprint.",
+    targets: ['[data-tour="notifications"]', '[data-tour="topbar"]'],
+    placement: "bottom",
+    roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "sidebar-modules",
+    route: "/dashboard",
+    offeringsOnlyRoute: "/offerings",
+    kind: "navigation",
+    pageName: "the menu",
+    eyebrow: "Left side",
+    title: "Everything you can open",
+    description:
+      "The whole app is in this list, and it only shows what your account is allowed to open.",
+    targets: ['[data-tour="sidebar"]', "#main-content"],
     placement: "right",
     roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
   },
-  navigationStep({
-    id: "to-agent",
-    route: "/dashboard",
-    nav: "agent",
-    href: "/agent",
-    destination: "Agent",
-    description:
-      "Continue to the Agent workspace to plan account work and review recommended next moves.",
-  }),
-  {
-    id: "agent-workspace",
-    route: "/agent",
-    kind: "feature",
-    eyebrow: "Agent",
-    title: "Work alongside your sales agent",
-    description:
-      "Ask questions, plan account work, and review agent recommendations while keeping every consequential action under human control.",
-    targets: featureTargets("agent", [
-      '[data-tour="agent-workspace"]',
-      '[data-tour="agent-tabs"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-offerings",
-    route: "/agent",
-    nav: "offerings",
-    href: "/offerings",
-    destination: "Offerings",
-    description:
-      "Next, open the approved catalog of everything Freyr can recommend and sell.",
-  }),
   {
     id: "offerings-browser",
     route: "/offerings",
     kind: "feature",
+    pageName: "Offerings",
     eyebrow: "Offerings",
-    title: "Find the right offering",
+    title: "Everything Freyr sells",
     description:
-      "Search the approved catalog, then use customer fit, availability, owners, and supporting material to choose confidently.",
-    targets: featureTargets("offerings", [
+      "The approved catalogue. Search it, narrow it by category or customer type, and open one to read the pitch and download the sales material.",
+    targets: pageTargets([
       'input[aria-label="Search offerings"]',
       'input[placeholder="Search offerings…"]',
     ]),
     placement: "bottom",
     roles: ALL_ROLES,
     availableInOfferingsOnly: true,
-    offeringsOnlyOrder: 1,
   },
-  navigationStep({
-    id: "to-pipeline",
-    route: "/offerings",
-    nav: "pipeline",
-    href: "/pipeline",
-    destination: "Pipeline",
-    description:
-      "Move from what Freyr sells to the live opportunities progressing through the sales process.",
-  }),
   {
-    id: "pipeline-board",
-    route: "/pipeline",
+    id: "agent-workspace",
+    route: "/agent",
     kind: "feature",
-    eyebrow: "Pipeline",
-    title: "Move every deal forward",
+    pageName: "the assistant",
+    eyebrow: "Assistant",
+    title: "Ask instead of hunting",
     description:
-      "Use the stage board to see active deals, spot stalled work, compare weighted value, and keep the next move visible.",
-    targets: featureTargets("pipeline", [
-      '[data-tour="pipeline-board"]',
-      'div[aria-label="Filter deals by company size"]',
-      'input[placeholder="Search deals…"]',
+      "It has read the catalogue and the material uploaded to it. Ask what fits a customer, or what an offering actually does.",
+    targets: pageTargets([
+      'textarea[placeholder^="Ask about an offering"]',
+      '[data-tour="agent-workspace"]',
     ]),
     roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
   },
-  navigationStep({
-    id: "to-forecast",
-    route: "/pipeline",
-    nav: "forecast",
-    href: "/forecast",
-    destination: "Forecast",
-    description:
-      "Next, turn the open pipeline into a realistic view of what is likely to land.",
-  }),
   {
-    id: "forecast-summary",
-    route: "/forecast",
+    id: "components-browser",
+    route: "/components",
     kind: "feature",
-    eyebrow: "Forecast",
-    title: "See what is likely to land",
+    pageName: "FDL Components",
+    eyebrow: "FDL Components",
+    title: "The parts offerings are built from",
     description:
-      "Review best case, commit, stage-weighted projections, and quota progress so the team can act before the quarter is decided.",
-    targets: featureTargets("forecast", [
-      '[data-tour="forecast-summary"]',
-      '[data-tour="forecast-overview"]',
-    ]),
-    roles: ALL_ROLES,
+      "Each component has its own versions and features. An offering is a bundle of these, so this is where you check what a customer is actually running.",
+    targets: pageTargets(['input[placeholder^="Search components"]']),
+    placement: "bottom",
+    roles: MANAGERS,
+    availableInOfferingsOnly: true,
   },
-  navigationStep({
-    id: "to-customers",
-    route: "/forecast",
-    nav: "customers",
-    href: "/customers",
-    destination: "Customers",
-    description:
-      "Open Customers to connect pipeline numbers to the companies behind them.",
-  }),
   {
     id: "customers-browser",
     route: "/customers",
     kind: "feature",
+    pageName: "Customers",
     eyebrow: "Customers",
-    title: "Build account intelligence",
+    title: "Every account in one place",
     description:
-      "Find an account and open it to see contacts, opportunities, sessions, notes, activity, and matched offerings in one place.",
-    targets: featureTargets("customers", [
+      "Open an account to see its people, the offerings it already runs, and what happened the last time anyone spoke to them.",
+    targets: pageTargets([
       'input[placeholder="Search customers…"]',
       'input[placeholder="Search customers..."]',
     ]),
     placement: "bottom",
-    roles: ALL_ROLES,
+    roles: MANAGERS,
+    availableInOfferingsOnly: true,
   },
-  navigationStep({
-    id: "to-contacts",
-    route: "/customers",
-    nav: "contacts",
-    href: "/contacts",
-    destination: "Contacts",
-    description:
-      "Continue to the people inside those accounts and the context for reaching each one.",
-  }),
   {
-    id: "contacts-browser",
-    route: "/contacts",
-    kind: "feature",
-    eyebrow: "Contacts",
-    title: "Know every buyer",
-    description:
-      "Search contacts by person or company, then keep roles, engagement, account context, and the right next outreach connected.",
-    targets: featureTargets("contacts", [
-      'input[placeholder="Search contacts…"]',
-      'input[placeholder="Search contacts..."]',
-    ]),
-    placement: "bottom",
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-team",
-    route: "/contacts",
-    nav: "team",
-    href: "/team",
-    destination: "Team",
-    description:
-      "Open Team to see who owns the work and how execution compares across the sales floor.",
-  }),
-  {
-    id: "team-performance",
+    id: "team-roster",
     route: "/team",
     kind: "feature",
+    pageName: "Team",
     eyebrow: "Team",
-    title: "See ownership and performance",
+    title: "Who else is in here",
     description:
-      "Compare pipeline ownership, activity, conversion, and coaching signals, then open a rep for the full breakdown.",
-    targets: featureTargets("team", [
-      '[data-tour="team-roster"]',
-      'button[aria-label*=" open pipeline:"]',
-      'button[aria-label="Grid view"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-sessions",
-    route: "/team",
-    nav: "sessions",
-    href: "/sessions",
-    destination: "Sessions",
-    description:
-      "Continue to the durable history of research, pitches, reviews, outcomes, and follow-up context.",
-  }),
-  {
-    id: "sessions-browser",
-    route: "/sessions",
-    kind: "feature",
-    eyebrow: "Sessions",
-    title: "Return to every sales session",
-    description:
-      "Search the session history to reopen research, offering matches, generated pitches, review decisions, and outcomes.",
-    targets: featureTargets("sessions", [
-      'input[placeholder="Search sessions…"]',
-      'input[placeholder="Search sessions..."]',
-    ]),
+      "Everyone with an account, what they are allowed to do, and how to reach them. Message anyone on Teams straight from their row.",
+    targets: pageTargets(['input[placeholder="Search the floor…"]']),
     placement: "bottom",
     roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
   },
-  navigationStep({
-    id: "to-sequences",
-    route: "/sessions",
-    nav: "sequences",
-    href: "/sequences",
-    destination: "Sequences",
-    description:
-      "Open Sequences to turn successful follow-up patterns into a visible, reviewed cadence.",
-  }),
-  {
-    id: "sequences-timeline",
-    route: "/sequences",
-    kind: "feature",
-    eyebrow: "Sequences",
-    title: "Make follow-up consistent",
-    description:
-      "Review every email and call in the timeline, then enroll the right accounts while keeping drafted touches visible for human review.",
-    targets: featureTargets("sequences", [
-      '[data-tour="sequences-timeline"]',
-      '[aria-label$="timeline, scroll horizontally for all steps"]',
-      'input[placeholder="Search sequences..."]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-campaigns",
-    route: "/sequences",
-    nav: "campaigns",
-    href: "/campaigns",
-    destination: "Campaigns",
-    description:
-      "Continue to a coordinated workflow for building and reviewing audience-based campaigns.",
-  }),
-  {
-    id: "campaigns-workflow",
-    route: "/campaigns",
-    kind: "feature",
-    eyebrow: "Campaigns",
-    title: "Build a reviewed campaign",
-    description:
-      "Choose an offering and audience, prepare compliant messaging, review the final campaign, and only then queue it.",
-    targets: featureTargets("campaigns", [
-      '[data-tour="campaigns-overview"]',
-      '[data-testid="campaign-composer"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-voice",
-    route: "/campaigns",
-    nav: "voice",
-    href: "/voice",
-    destination: "Voice agents",
-    description:
-      "Open Voice agents to see how calls are prepared, queued, monitored, and returned to account context.",
-  }),
-  {
-    id: "voice-overview",
-    route: "/voice",
-    kind: "feature",
-    eyebrow: "Voice agents",
-    title: "Run voice outreach with context",
-    description:
-      "See each specialist agent, queued call, live status, recording, and outcome without separating voice work from the customer record.",
-    targets: featureTargets("voice", [
-      '[data-tour="voice-lifecycle"]',
-      '[data-tour="voice-overview"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-tasks",
-    route: "/voice",
-    nav: "tasks",
-    href: "/tasks",
-    destination: "Tasks",
-    description:
-      "Continue to the single queue for reviews, follow-ups, overdue work, and agent-ready actions.",
-  }),
-  {
-    id: "tasks-queue",
-    route: "/tasks",
-    kind: "feature",
-    eyebrow: "Tasks",
-    title: "Work the next action first",
-    description:
-      "Filter the work queue by urgency and type so approvals, follow-ups, and overdue items stay actionable.",
-    targets: featureTargets("tasks", [
-      '[data-tour="tasks-work-queue"]',
-      'div[role="group"][aria-label="Filter tasks"]',
-      'input[aria-label="Search tasks"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-analytics",
-    route: "/tasks",
-    nav: "analytics",
-    href: "/analytics",
-    destination: "Analytics",
-    description:
-      "Open Analytics to move from individual actions to patterns across the whole funnel.",
-  }),
-  {
-    id: "analytics-growth",
-    route: "/analytics",
-    kind: "feature",
-    eyebrow: "Analytics · Growth",
-    title: "See how pipeline is growing",
-    description:
-      "The growth curve shows how open pipeline accumulated over time, including the accounts behind every point and progress toward quota.",
-    targets: featureTargets("analytics", [
-      '[data-tour="analytics-pipeline-growth"]',
-      'svg[role="img"][aria-label^="Trend chart"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  {
-    id: "analytics-stage",
-    route: "/analytics",
-    kind: "feature",
-    eyebrow: "Analytics · Stages",
-    title: "See where pipeline sits",
-    description:
-      "Pipeline by Stage shows where open value is concentrated. Open a stage to reveal the exact deals and people behind it.",
-    targets: featureTargets("analytics", [
-      '[data-tour="analytics-pipeline-stages"]',
-      'button[title^="Prospect,"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-reports",
-    route: "/analytics",
-    nav: "reports",
-    href: "/reports",
-    destination: "Reports",
-    description:
-      "Continue to Reports for a consistent, shareable view of offering revenue and performance.",
-  }),
   {
     id: "reports-revenue",
     route: "/reports",
     kind: "feature",
+    pageName: "Reports",
     eyebrow: "Reports",
-    title: "Share the revenue picture",
+    title: "What each offering earns",
     description:
-      "Review revenue by offering category and contract type, renewal timing, licenses, customers, and work still in flight.",
-    targets: featureTargets("reports", [
-      '[data-tour="reports-revenue"]',
-      '[data-tour="reports-overview"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-activity",
-    route: "/reports",
-    nav: "activity",
-    href: "/activity",
-    destination: "Activity",
-    description:
-      "Open Activity to trace the customer touches and follow-ups behind the summary numbers.",
-  }),
-  {
-    id: "activity-feed",
-    route: "/activity",
-    kind: "feature",
-    eyebrow: "Activity",
-    title: "Trace every customer touch",
-    description:
-      "Use the chronological feed to see what happened, who was involved, what outcome was logged, and what follow-up comes next.",
-    targets: featureTargets("activity", [
-      '[data-tour="activity-feed"]',
-      '[data-tour="activity-timeline"]',
-    ]),
-    roles: ALL_ROLES,
-  },
-  navigationStep({
-    id: "to-settings",
-    route: "/activity",
-    nav: "settings",
-    href: "/settings",
-    destination: "Settings",
-    description:
-      "Finish in Settings, where workspace behavior and this guided tour remain available without occupying the sidebar.",
+      "Revenue by offering and contract type, when things come up for renewal, and the accounts sitting behind every number.",
+    targets: pageTargets(),
+    roles: MANAGERS,
     availableInOfferingsOnly: true,
-    offeringsOnlyRoute: "/offerings",
-    offeringsOnlyOrder: 2,
-  }),
+  },
+  {
+    id: "performance-goals",
+    route: "/performance",
+    kind: "feature",
+    pageName: "Performance",
+    eyebrow: "Performance",
+    title: "Goals and how they are tracking",
+    description:
+      "The goals the company set, who owns each one, and the numbers against them. Empty until targets are filled in — nothing here is guessed.",
+    targets: pageTargets(['input[placeholder^="Search goals"]']),
+    placement: "bottom",
+    roles: MANAGERS,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "market-intel",
+    route: "/market-intel",
+    kind: "feature",
+    pageName: "Market Intel",
+    eyebrow: "Market Intel",
+    title: "What competitors are up to",
+    description:
+      "Companies you track, what they post, and what gets written about them. Sample data for now, and every page says so.",
+    targets: pageTargets(['input[placeholder^="Search customers or people"]']),
+    placement: "bottom",
+    roles: MANAGERS,
+    availableInOfferingsOnly: true,
+  },
   {
     id: "settings-mock-mode",
     route: "/settings?tab=workspace",
     kind: "mode",
-    eyebrow: "Workspace mode",
-    title: "Learn safely in Mock mode",
+    pageName: "Settings",
+    eyebrow: "Settings",
+    title: "Finished, or still being built",
     description:
-      "Mock mode uses safe sample records so you can explore workflows without changing business data. Production mode is controlled by your workspace deployment.",
-    targets: featureTargets("settings", [
+      "The app ships in stages. This switch shows you the parts still under construction, with sample data, so you can look without touching anything real.",
+    targets: pageTargets([
       '[data-tour="settings-data-mode"]',
       'div[aria-label="Workspace data mode"]',
       'button[role="switch"][aria-label="Switch between real mode and mock mode"]',
     ]),
     roles: ALL_ROLES,
     availableInOfferingsOnly: true,
-    offeringsOnlyOrder: 3,
   },
   {
     id: "settings-replay",
     route: "/settings?tab=workspace",
     kind: "feature",
-    eyebrow: "Settings · Help",
-    title: "Revisit this tour anytime",
+    pageName: "Settings",
+    eyebrow: "Settings",
+    title: "Run this again whenever",
     description:
-      "The walkthrough now lives in Settings instead of the permanent sidebar. Come back whenever you want a refresher.",
-    targets: featureTargets("settings", [
+      "The walkthrough lives here. Nothing to remember — come back and start it again any time.",
+    targets: pageTargets([
       '[data-tour="settings-product-tour"]',
       'a[href="/onboarding"]',
     ]),
     nextLabel: "Finish tour",
     roles: ALL_ROLES,
     availableInOfferingsOnly: true,
-    offeringsOnlyOrder: 4,
+  },
+
+  /* ------------------------------------------------------------------ *
+   * Below: modules that only exist in the in-progress (mock) workspace.
+   * They are filtered out of the live tour, and rejoin it automatically
+   * the day each module ships.
+   * ------------------------------------------------------------------ */
+  {
+    id: "pipeline-board",
+    route: "/pipeline",
+    kind: "feature",
+    pageName: "Pipeline",
+    eyebrow: "Pipeline",
+    title: "Every open deal, by stage",
+    description:
+      "Where each deal has got to, what it is worth, and which ones have gone quiet.",
+    targets: pageTargets([
+      '[data-tour="pipeline-board"]',
+      'input[placeholder="Search deals…"]',
+    ]),
+    roles: ALL_ROLES,
+  },
+  {
+    id: "forecast-summary",
+    route: "/forecast",
+    kind: "feature",
+    pageName: "Forecast",
+    eyebrow: "Forecast",
+    title: "What is likely to land",
+    description:
+      "Best case, what you are committing to, and progress against quota — early enough to still do something about it.",
+    targets: pageTargets(['[data-tour="forecast-summary"]']),
+    roles: ALL_ROLES,
+  },
+  {
+    id: "contacts-browser",
+    route: "/contacts",
+    kind: "feature",
+    pageName: "Contacts",
+    eyebrow: "Contacts",
+    title: "The people you sell to",
+    description:
+      "Search by person or company, and open anyone for their history and the next thing to send them.",
+    targets: pageTargets([
+      'input[placeholder="Search contacts…"]',
+      'input[placeholder="Search contacts..."]',
+    ]),
+    placement: "bottom",
+    roles: ALL_ROLES,
+  },
+  {
+    id: "sessions-browser",
+    route: "/sessions",
+    kind: "feature",
+    pageName: "Sessions",
+    eyebrow: "Sessions",
+    title: "Every pitch you have run",
+    description:
+      "Reopen the research, the offering match and the pitch itself, exactly as they were.",
+    targets: pageTargets([
+      'input[placeholder="Search sessions…"]',
+      'input[placeholder="Search sessions..."]',
+    ]),
+    placement: "bottom",
+    roles: ALL_ROLES,
+  },
+  {
+    id: "sequences-timeline",
+    route: "/sequences",
+    kind: "feature",
+    pageName: "Sequences",
+    eyebrow: "Sequences",
+    title: "Follow-up that does not get forgotten",
+    description:
+      "A fixed run of emails and calls. Drafts wait for you to read them before anything is sent.",
+    targets: pageTargets(['[data-tour="sequences-timeline"]']),
+    roles: ALL_ROLES,
+  },
+  {
+    id: "campaigns-workflow",
+    route: "/campaigns",
+    kind: "feature",
+    pageName: "Campaigns",
+    eyebrow: "Campaigns",
+    title: "One message, many accounts",
+    description:
+      "Pick an offering and an audience, write it once, read it back, and only then send.",
+    targets: pageTargets(['[data-tour="campaigns-overview"]']),
+    roles: ALL_ROLES,
+  },
+  {
+    id: "voice-overview",
+    route: "/voice",
+    kind: "feature",
+    pageName: "Voice agents",
+    eyebrow: "Voice agents",
+    title: "Calls made for you",
+    description:
+      "Who was called, what was said, and what came of it — kept on the customer's record.",
+    targets: pageTargets(['[data-tour="voice-lifecycle"]']),
+    roles: ALL_ROLES,
+  },
+  {
+    id: "tasks-queue",
+    route: "/tasks",
+    kind: "feature",
+    pageName: "To-do",
+    eyebrow: "To-do",
+    title: "The next thing to do",
+    description:
+      "One queue for approvals, follow-ups and anything overdue, most urgent at the top.",
+    targets: pageTargets([
+      '[data-tour="tasks-work-queue"]',
+      'input[aria-label="Search tasks"]',
+    ]),
+    roles: ALL_ROLES,
+  },
+  {
+    id: "analytics-growth",
+    route: "/analytics",
+    kind: "feature",
+    pageName: "Analytics",
+    eyebrow: "Analytics",
+    title: "How the whole funnel is doing",
+    description:
+      "Pipeline over time and where it is stuck. Hover anything to see the accounts behind the number.",
+    targets: pageTargets(['[data-tour="analytics-pipeline-growth"]']),
+    roles: ALL_ROLES,
+  },
+  {
+    id: "activity-feed",
+    route: "/activity",
+    kind: "feature",
+    pageName: "Activity",
+    eyebrow: "Activity",
+    title: "Everything that happened",
+    description:
+      "Every touch, in order, with who did it and what came next.",
+    targets: pageTargets(['[data-tour="activity-feed"]']),
+    roles: ALL_ROLES,
   },
 ];
 
@@ -597,13 +489,16 @@ export function getProductTourSteps({
         : step.route,
   }));
 
-  if (offeringsOnly) {
-    filtered.sort(
-      (left, right) =>
-        (left.offeringsOnlyOrder ?? Number.MAX_SAFE_INTEGER) -
-        (right.offeringsOnlyOrder ?? Number.MAX_SAFE_INTEGER)
-    );
-  }
-
-  return filtered;
+  /**
+   * "Next" names where it goes — computed AFTER filtering, so it can never
+   * promise a screen this person's role or release does not have. A step that
+   * stays on the same screen keeps the plain "Next"; only a real move earns
+   * "Open Reports".
+   */
+  return filtered.map((step, index) => {
+    if (step.nextLabel) return step;
+    const next = filtered[index + 1];
+    if (!next || next.route === step.route) return step;
+    return { ...step, nextLabel: `Open ${next.pageName}` };
+  });
 }

@@ -34,12 +34,6 @@ type TourRect = {
   width: number;
   height: number;
 };
-type PageTransition = {
-  from: string;
-  to: string;
-  stepId: string;
-};
-
 const FALLBACK_TARGETS = new Set([
   '[data-tour="page-content"]',
   "#main-content",
@@ -163,9 +157,14 @@ function useTourTarget(
         return;
       }
 
-      if (attempts < 24) {
+      // Give a slow page longer to render its real content before settling for
+      // the page-shaped fallback. Customers and Market Intel are heavy, dynamic
+      // pages: at 1.8s the tour was measuring their loading skeleton, so the
+      // search box it wanted to point at did not exist yet. The MutationObserver
+      // below still upgrades to the real target the moment it appears.
+      if (attempts < 60) {
         attempts += 1;
-        timer = window.setTimeout(locate, 75);
+        timer = window.setTimeout(locate, 100);
       } else {
         const fallback =
           document.querySelector<HTMLElement>(
@@ -397,9 +396,6 @@ export function ProductTourOverlay({
   const { rect, isFallback } = useTourTarget(step, viewport, routeReady);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const previousRouteRef = useRef(step.route);
-  const [pageTransition, setPageTransition] =
-    useState<PageTransition | null>(null);
   const [stepMotion, setStepMotion] = useState<{
     step: number;
     direction: "forward" | "backward";
@@ -425,19 +421,6 @@ export function ProductTourOverlay({
     setStepMotion({ step: currentStep, direction: stepDirection });
   }, [currentStep, stepDirection, stepMotion.step]);
 
-  useEffect(() => {
-    const previousRoute = previousRouteRef.current;
-    const previousPage = routeLabel(previousRoute);
-    if (previousPage !== pageName) {
-      setPageTransition({
-        from: previousPage,
-        to: pageName,
-        stepId: step.id,
-      });
-    }
-    previousRouteRef.current = step.route;
-  }, [pageName, step.id, step.route]);
-
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -450,7 +433,7 @@ export function ProductTourOverlay({
     const observer = new ResizeObserver(measure);
     observer.observe(dialog);
     return () => observer.disconnect();
-  }, [currentStep, error, mounted, pageTransition]);
+  }, [currentStep, error, mounted]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -682,8 +665,18 @@ export function ProductTourOverlay({
     );
   }
 
+  /**
+   * NO RECTANGLE IS BETTER THAN A RECTANGLE ROUND EVERYTHING (Anir, Aug 13:
+   * "the rectangles aren't really aligned properly").
+   *
+   * When the specific thing a step is about has not rendered yet, the target
+   * falls back to the page container — and drawing the highlight around that
+   * outlines the whole screen, which points at nothing and reads as broken.
+   * A fallback now simply dims the page and shows the card; the highlight
+   * reappears by itself the moment the real element lands.
+   */
   const spotlight =
-    rect && rect.width > 0 && rect.height > 0 ? (
+    rect && !isFallback && rect.width > 0 && rect.height > 0 ? (
       <>
         <div
           aria-hidden="true"
@@ -835,11 +828,6 @@ export function ProductTourOverlay({
                   : "product-tour-step-forward")
             )}
           >
-            {/* No "Page changed" banner (Anir, Aug 13: "You don't have to say
-                'page changed'. Remove that, right? You don't need that"). The
-                reader watched the page change — narrating it back cost a third
-                of the card and said nothing they had not just seen. */}
-
             <div className="mb-2.5 flex items-center gap-2">
               <span
                 className={cn(

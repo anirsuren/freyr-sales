@@ -481,6 +481,28 @@ export function ProductTourProvider({
     readyRoute === currentRoute &&
     routeMatches(currentRoute, pathname);
 
+  /**
+   * WARM THE NEXT SCREEN WHILE THEY READ THIS ONE (Anir, Aug 13: "it took like
+   * 10 seconds for the finished tour button to be allowed to be pressed").
+   *
+   * The button is not disabled — the tour is simply waiting for the next page
+   * to exist. Every page here is `force-dynamic`, and Settings is the heaviest
+   * one in the app, so pressing Next there meant a cold server render with the
+   * "Opening Settings…" card sitting on screen for as long as it took. A step
+   * takes several seconds to read; fetching the next route during that time
+   * costs nothing and usually means the page is already in hand on the click.
+   */
+  useEffect(() => {
+    if (!active) return;
+    const next = steps[localStep + 1];
+    if (!next || next.route === currentRoute) return;
+    try {
+      router.prefetch(next.route);
+    } catch {
+      // Prefetching is an optimisation; a failure must never block the tour.
+    }
+  }, [active, currentRoute, localStep, router, steps]);
+
   useEffect(() => {
     if (!active || !currentRoute) {
       setReadyRoute(null);
