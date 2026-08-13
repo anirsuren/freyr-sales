@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ViewSelect } from "@/components/ui/ViewSelect";
+import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -649,6 +650,9 @@ export function CustomersBrowser({
             </button>
           </PriorityTooltip>
           <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
+          {view === "table" && (
+            <PinTableButton id="customers-table" label="column headers" />
+          )}
       </SearchPriority>
       {/* Bulk action bar */}
       {selectMode && selectedInScope.length > 0 && (
@@ -788,7 +792,7 @@ export function CustomersBrowser({
         </div>
       ) : (
         <div className="bg-white border border-border-light rounded-lg shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
+          <PinnableTable id="customers-table">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-surface border-b border-border-light">
@@ -935,7 +939,7 @@ export function CustomersBrowser({
                 })}
               </tbody>
             </table>
-          </div>
+          </PinnableTable>
         </div>
       )}
 

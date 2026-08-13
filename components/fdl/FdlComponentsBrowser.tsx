@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { OfferingIcon, ServiceTag, offeringMark } from "@/components/ui/OfferingIcon";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
@@ -458,6 +459,9 @@ export function FdlComponentsBrowser({
             tileValue="tile"
             tableValue="table"
           />
+          {view === "table" && (
+            <PinTableButton id="fdl-components" label="column headers" />
+          )}
         </div>
       )}
 
@@ -567,7 +571,10 @@ export function FdlComponentsBrowser({
                out so 55 rows can be read down a column instead of hunted
                across 55 cards: what kind of thing it is, the version being
                quoted, how much is in it, and which offerings ship it. */
-            <div className="overflow-x-auto rounded-xl border border-border-light bg-white shadow-card">
+            <PinnableTable
+              id="fdl-components"
+              wrapperClassName="rounded-xl border border-border-light bg-white shadow-card"
+            >
               <table className="w-full min-w-[820px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border-light text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
@@ -747,7 +754,7 @@ export function FdlComponentsBrowser({
                   })}
                 </tbody>
               </table>
-            </div>
+            </PinnableTable>
           )}
         </div>
       )}

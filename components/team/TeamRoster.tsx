@@ -33,6 +33,7 @@ import { PresenceDot } from "@/components/presence/PresenceDot";
 import { PRESENCE_META, presenceOf } from "@/lib/presence";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
+import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -592,6 +593,9 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               tileValue="grid"
               tableValue="table"
             />
+            {view === "table" && (
+              <PinTableButton id="team-roster" label="column headers" />
+            )}
           </span>
         </SearchPriority>
       </div>
@@ -775,7 +779,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
           })}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <PinnableTable id="team-roster">
           <table className="w-full min-w-[900px] border-collapse">
             <thead>
               {/* One line, always. "Open deals" was wrapping in its own column
@@ -1027,7 +1031,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               })}
             </tbody>
           </table>
-        </div>
+        </PinnableTable>
       )}
       </div>
     </Card>

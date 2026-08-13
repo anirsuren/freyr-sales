@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { PersonFan } from "@/components/ui/PersonFan";
@@ -1363,6 +1364,9 @@ export function OfferingsBrowser({
             tileValue="tile"
             tableValue="grid"
           />
+          {view === "grid" && (
+            <PinTableButton id="offerings-grid" label="column headers" />
+          )}
           {/* Export is off the toolbar until there is a catalogue worth
               exporting (Anir, Aug 7: "remove the download button for now,
               we only have one offering that's ready"). exportCsv still
@@ -1427,7 +1431,7 @@ export function OfferingsBrowser({
         // Excel so the whole catalog is scannable in rows. Keyed so switching
         // views re-mounts with the shared fade/lift.
         <Card key="grid-view" className="tab-panel p-0 overflow-hidden">
-          <div className="overflow-x-auto">
+          <PinnableTable id="offerings-grid">
             {/* table-fixed + explicit widths. The min-width was 1280px, wider
                 than the card on a 1512 screen, so the table always scrolled and
                 the last column sat half off the edge (Anir, Jul 28: "it's not
@@ -1703,7 +1707,7 @@ export function OfferingsBrowser({
                 })}
               </tbody>
             </table>
-          </div>
+          </PinnableTable>
         </Card>
       ) : sort === "category" ? (
         <div className="space-y-6">

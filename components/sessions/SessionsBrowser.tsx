@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Download, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
@@ -238,7 +239,7 @@ export function SessionsBrowser({
         </Card>
       ) : (
         <Card className="p-0 overflow-hidden">
-          <div className="overflow-x-auto">
+          <PinnableTable id="sessions-table">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-surface border-b border-border-light">
@@ -450,7 +451,7 @@ export function SessionsBrowser({
                 ))}
               </tbody>
             </table>
-          </div>
+          </PinnableTable>
         </Card>
       )}
     </div>
