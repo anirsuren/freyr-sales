@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { OfferingCategoriesManager } from "@/components/offerings/OfferingCategoriesManager";
 import { listOfferingCategories, listOfferings } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
@@ -28,10 +27,6 @@ export default async function OfferingCategoriesPage() {
       >
         <ArrowLeft size={15} strokeWidth={1.8} /> All offerings
       </Link>
-      <PageHeader
-        title="Offering categories"
-        subtitle="The master list of offering categories: each groups related offerings and has an owner. Offerings are grouped and filtered by these."
-      />
       <OfferingCategoriesManager
         offeringCategories={offeringCategories}
         offeringCounts={offeringCounts}

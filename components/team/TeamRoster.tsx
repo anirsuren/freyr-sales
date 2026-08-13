@@ -23,11 +23,8 @@ import {
   MapPin,
   Phone,
   Search,
-  ShieldCheck,
   Table2,
   TrendingUp,
-  User,
-  UserCog,
   Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -35,7 +32,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { PresenceDot } from "@/components/presence/PresenceDot";
 import { PRESENCE_META, presenceOf } from "@/lib/presence";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { Badge } from "@/components/ui/Badge";
+import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -94,11 +91,19 @@ function topOpenDeals(rep: RosterRep, n = 4) {
     .slice(0, n);
 }
 
-const ROLE_COLOR: Record<string, { bg: string; color: string }> = {
-  Admin: { bg: "rgba(124,58,237,0.12)", color: "#6D28D9" },
-  Manager: { bg: "rgba(0,113,227,0.12)", color: "#0040A0" },
-  Rep: { bg: "rgba(5,150,105,0.12)", color: "#047857" },
-};
+/**
+ * ONE ROLE PALETTE, NOT TWO (Anir, Aug 13: "when it says sales rep, isn't there
+ * a colour associated with that? can you make sure the colour is right?").
+ *
+ * This page had grown a private map, and every single entry contradicted the
+ * shared one in RoleTag: Admin wore Manager's purple, Manager wore Rep's blue,
+ * and Rep wore green — a status colour that must never carry identity
+ * ([[status-colours-are-reserved]]). So the same person read as one colour in
+ * the account menu and a different colour on the roster.
+ *
+ * Nothing is defined here now. RoleTag is the role chip everywhere: same
+ * colour, same icon, same words, and it re-skins itself in dark mode.
+ */
 
 // Attainment colour band — red under target, burnt orange near, green ahead.
 // The mid band is painted as TEXT on the quota row, and amber can't hold text
@@ -521,11 +526,18 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             ariaLabel="Filter by role"
             dense
             width={132}
-            options={[
-              { value: "Admin", label: "Admin", color: "#6D28D9", icon: ShieldCheck },
-              { value: "Manager", label: "Manager", color: "#0071E3", icon: UserCog },
-              { value: "Rep", label: "Rep", color: "#0F766E", icon: User },
-            ]}
+            // Built from ROLE_META, not typed out again — this list had its own
+            // third scrambling of the palette (Rep was wearing Admin's teal), so
+            // filtering by Rep highlighted a colour no Rep chip ever used.
+            options={(["Admin", "Manager", "Rep"] as const).map((value) => {
+              const meta = ROLE_META[roleKey(value)];
+              return {
+                value,
+                label: meta.label,
+                color: meta.color,
+                icon: meta.icon,
+              };
+            })}
           />
           <MultiColorSelect
             values={regionFilter}
@@ -603,7 +615,6 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4 stagger">
           {visible.map((r) => {
-            const rc = ROLE_COLOR[r.role];
             const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
             const ac = attainColor(pct);
             const trendSum = r.trend.reduce((s, x) => s + x, 0);
@@ -639,12 +650,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                           >
                             {r.name}
                           </Link>
-                          <Badge
-                            label={r.role}
-                            bg={rc.bg}
-                            color={rc.color}
-                            className="!normal-case tracking-normal !text-[10px] !px-1.5 !py-0 relative z-10"
-                          />
+                          <RoleTag role={r.role} size="sm" className="relative z-10 shrink-0" />
                         </div>
                         {/* Title alone — the region moved to its own full-width
                             row under the rule so "UK & Ireland" never truncates
@@ -792,11 +798,17 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             </thead>
             <tbody className="divide-y divide-border-light stagger">
               {visible.map((r) => {
-                const rc = ROLE_COLOR[r.role];
-                const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
+                    const pct = r.quota > 0 ? Math.round((r.wonFY / r.quota) * 100) : 0;
                 const ac = attainColor(pct);
                 return (
-                  <tr key={r.identityKey} className="hover:bg-surface transition-colors">
+                  <tr
+                    key={r.identityKey}
+                    className={
+                      r.you
+                        ? "bg-blue-light/35 hover:bg-blue-light/50 transition-colors"
+                        : "hover:bg-surface transition-colors"
+                    }
+                  >
                     <td className="px-4 py-3.5">
                       {/* Row hover popover (Suren: "on the rows page there's no
                           pop-up like the grid"), the rep's mix + headline stats. */}
@@ -922,7 +934,18 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                               <span className="text-[14px] font-semibold text-text-primary group-hover:text-blue-primary truncate">
                                 {r.name}
                               </span>
-                              <Badge label={r.role} bg={rc.bg} color={rc.color} className="!normal-case tracking-normal !text-[10px] !px-1.5 !py-0" />
+                              <RoleTag role={r.role} size="sm" className="shrink-0" />
+                              {/* WHICH ONE AM I (Anir, Aug 13: "can you
+                                  highlight who I am? I think that would be
+                                  helpful. like whichever account i am"). On a
+                                  roster of fifteen near-identical rows, and
+                                  especially while switching between accounts,
+                                  finding yourself was a squint at the email. */}
+                              {r.you && (
+                                <span className="shrink-0 rounded-full bg-blue-primary px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em] text-white">
+                                  You
+                                </span>
+                              )}
                             </span>
                             {/* Inline is fine here — the table column has the
                                 width, but wrap instead of ellipsizing so a

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, ArrowRight, X, Pencil, Package } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -123,27 +124,30 @@ export function OfferingTypesManager({
 
   return (
     <div className="space-y-6">
-      {/* Add-type panel */}
-      <Card className="p-0 overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-border-light">
-          <h2 className="text-[15px] font-semibold text-text-primary">
-            Offering types ({offeringTypes.length})
-          </h2>
-          {canEdit && (
+      {/* THE PAGE HEADER ALREADY SAID ALL OF THIS (Anir, Aug 13: "you're
+          literally repeating the same thing again and again. You don't have to
+          say 'offering categories' again. You can remove that pill right above
+          the entire list").
+
+          The card that used to sit here restated the page title, added a count
+          the list itself makes obvious, and printed a second, near-identical
+          copy of the subtitle — so the first thing on the page was a paragraph
+          you had just finished reading. Only the action survives, directly
+          above the list it adds to. */}
+      <PageHeader
+        title="Offering types"
+        subtitle="The master list of offering types: what Freyr sells, each with a plain-English description. Offerings are grouped and filtered by these."
+        action={
+          canEdit ? (
             <button
               onClick={() => setAdding((a) => !a)}
-              className="inline-flex items-center gap-1 text-[13px] font-semibold text-blue-primary hover:bg-blue-light rounded-md px-2.5 py-1.5"
+              className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[13px] font-semibold text-blue-primary hover:bg-blue-light"
             >
               <Plus size={14} strokeWidth={2} /> Add offering type
             </button>
-          )}
-        </div>
-
-        <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
-          The master list of offering types. Give each one a plain-English
-          description, offerings are grouped and filtered by these.
-        </p>
-      </Card>
+          ) : undefined
+        }
+      />
 
       {/* Create in a POPUP, not a form that shoves the list down — every create
           flow in the app opens a modal (Anir, Jul 25: "whenever there's an add

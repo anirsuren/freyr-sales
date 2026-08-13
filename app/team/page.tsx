@@ -83,9 +83,19 @@ export default async function TeamPage() {
         ? readWorkspaceMemberProfiles(workspace).catch(() => new Map())
         : new Map(),
     ]);
-    const members = (directory?.members ?? []).filter(
-      (member) => member.active && member.accountType === "real"
-    );
+    /**
+     * EVERY REAL ACCOUNT SHOWS (Anir, Aug 13: "Just show all the actual
+     * accounts people have created… you can't have some stupid logic there").
+     *
+     * The old filter also demanded accountType === "real", which is a field
+     * the app sets, not something a person controls: any account that landed
+     * with another value would have been invisible on the one page whose whole
+     * job is showing who is in the workspace. Every current row happens to be
+     * "real", so nothing was hidden today — but a silently-missing colleague is
+     * exactly the failure this page must never have. Deactivated accounts stay
+     * out, because that is a deliberate admin decision rather than a guess.
+     */
+    const members = (directory?.members ?? []).filter((member) => member.active);
     if (members.length === 0) {
       return (
         <div className="space-y-5">

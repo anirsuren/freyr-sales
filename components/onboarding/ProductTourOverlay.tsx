@@ -211,13 +211,33 @@ function useTourTarget(
     };
 
     measure();
+    /**
+     * MEASURE AGAIN ONCE THE PAGE HAS SETTLED (Anir, Aug 13: "the rectangle in
+     * the second screenshot isn't even aligned properly. It's not centering").
+     *
+     * Locating a target calls scrollIntoView and then measures on the very
+     * next frame. The scroll has not finished by then, and neither have the
+     * page's own entrance animations (`rise-in`, `step-in`, the tab panels),
+     * so the box was drawn around where the element USED to be and then never
+     * corrected — nothing moved afterwards, so no scroll or resize event ever
+     * fired to fix it. These follow-up measurements catch the settled position.
+     */
+    const settle = [60, 180, 400, 700].map((delay) =>
+      window.setTimeout(measure, delay)
+    );
     const resizeObserver = new ResizeObserver(measure);
     resizeObserver.observe(target);
+    // The document itself changes height as content lands, which moves the
+    // target without resizing it.
+    const bodyObserver = new ResizeObserver(measure);
+    if (document.body) bodyObserver.observe(document.body);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => {
       window.cancelAnimationFrame(frame);
+      settle.forEach((id) => window.clearTimeout(id));
       resizeObserver.disconnect();
+      bodyObserver.disconnect();
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
@@ -815,28 +835,10 @@ export function ProductTourOverlay({
                   : "product-tour-step-forward")
             )}
           >
-            {pageTransition?.stepId === step.id && (
-              <div className="product-tour-page-change mb-4 flex items-center gap-3 rounded-xl border border-blue-primary/20 bg-blue-light/70 px-3 py-2.5">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-primary text-white shadow-sm">
-                  <Navigation size={13} strokeWidth={2.4} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-blue-primary">
-                    Page changed
-                  </p>
-                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary">
-                    <span className="truncate text-text-secondary">
-                      {pageTransition.from}
-                    </span>
-                    <ArrowRight
-                      size={12}
-                      className="shrink-0 text-blue-primary"
-                    />
-                    <span className="truncate">{pageTransition.to}</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* No "Page changed" banner (Anir, Aug 13: "You don't have to say
+                'page changed'. Remove that, right? You don't need that"). The
+                reader watched the page change — narrating it back cost a third
+                of the card and said nothing they had not just seen. */}
 
             <div className="mb-2.5 flex items-center gap-2">
               <span

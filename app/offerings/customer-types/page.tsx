@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { CustomerTypesManager } from "@/components/offerings/CustomerTypesManager";
 import {
   listCustomerTypes,
@@ -33,10 +32,6 @@ export default async function CustomerTypesPage() {
       >
         <ArrowLeft size={15} strokeWidth={1.8} /> All offerings
       </Link>
-      <PageHeader
-        title="Customer types & markets"
-        subtitle="The customer-type definitions and markets you can attach to each offering. Add more as the catalog grows."
-      />
       <CustomerTypesManager
         customerTypes={listCustomerTypes()}
         markets={listMarkets()}

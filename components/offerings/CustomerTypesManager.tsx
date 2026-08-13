@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, ArrowRight, X, Pill, Dna, FlaskConical, Store, Building, Building2, Globe2, Stethoscope, ShoppingBag, type LucideIcon } from "lucide-react";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -181,27 +182,30 @@ export function CustomerTypesManager({
 
   return (
     <div className="space-y-6">
-      {/* Add-type panel */}
-      <Card className="p-0 overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-border-light">
-          <h2 className="text-[15px] font-semibold text-text-primary">
-            Customer types ({customerTypes.length})
-          </h2>
-          {canEdit && (
+      {/* THE PAGE HEADER ALREADY SAID ALL OF THIS (Anir, Aug 13: "you're
+          literally repeating the same thing again and again. You don't have to
+          say 'offering categories' again. You can remove that pill right above
+          the entire list").
+
+          The card that used to sit here restated the page title, added a count
+          the list itself makes obvious, and printed a second, near-identical
+          copy of the subtitle — so the first thing on the page was a paragraph
+          you had just finished reading. Only the action survives, directly
+          above the list it adds to. */}
+      <PageHeader
+        title="Customer types & markets"
+        subtitle="The customer-type definitions and markets you can attach to each offering. Add more as the catalog grows."
+        action={
+          canEdit ? (
             <button
               onClick={() => setAdding((a) => !a)}
-              className="inline-flex items-center gap-1 text-[13px] font-semibold text-blue-primary hover:bg-blue-light rounded-md px-2.5 py-1.5"
+              className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[13px] font-semibold text-blue-primary hover:bg-blue-light"
             >
               <Plus size={14} strokeWidth={2} /> Add customer type
             </button>
-          )}
-        </div>
-
-        <p className="px-4 py-2.5 text-[12px] text-text-tertiary">
-          Grouped by family, each family shares a product type; revenue,
-          employees and focus vary by size.
-        </p>
-      </Card>
+          ) : undefined
+        }
+      />
 
       {/* Create in a POPUP — every add flow opens a modal (Anir, Jul 25:
           "when I press Add customer type, it should be a pop-up"). */}
