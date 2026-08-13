@@ -33,6 +33,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { AutoFresh } from "@/components/market-intel/AutoFresh";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -394,6 +395,11 @@ export function LiveCompanyBriefing({
 
   return (
     <div>
+      {/* A briefing left open must keep pulling fresh server data; this was
+          only on the "tracking just set up" branch, so THIS page could sit
+          frozen for a day while the Past-day filter drained to nothing
+          (Anir, Aug 13: "It still says zero"). */}
+      <AutoFresh />
       <SmartBack
         fallback={
           briefing.group === "competitor"

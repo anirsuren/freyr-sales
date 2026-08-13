@@ -400,6 +400,13 @@ export function buildBriefing(
   const { points, labels } = weeklyTrend(windowed);
   const { signals, competitorMentions } = deriveSignals(windowed, allNames);
   const mo = momentum(windowed);
+  // "Updated" means the last time ANY data landed. The cheap same-day news
+  // pass stamps `newsAt` without touching `fetchedAt` (which orders the
+  // Apify rotation), so showing fetchedAt alone read "updated 25h ago" over
+  // news collected two hours earlier.
+  const freshest =
+    [company.fetchedAt, company.newsAt].filter(Boolean).sort().pop() ??
+    company.fetchedAt;
   return {
     id: company.id,
     group: company.group === "competitor" ? ("competitor" as const) : ("customer" as const),
@@ -407,8 +414,8 @@ export function buildBriefing(
     followerCount: company.author?.followerCount ?? null,
     logoUrl: company.author?.logoUrl ?? null,
     tldr: company.tldr ?? null,
-    fetchedAt: company.fetchedAt,
-    updatedLabel: updatedLabel(company.fetchedAt),
+    fetchedAt: freshest,
+    updatedLabel: updatedLabel(freshest),
     momentumPct: mo.pct,
     itemsThisMonth: mo.thisMonth,
     trend: points,
