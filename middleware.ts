@@ -40,6 +40,11 @@ const PUBLIC_PATHS = new Set([
 const PUBLIC_WEBHOOK_PATHS = new Set([
   "/api/voice/webhooks/elevenlabs",
   "/api/voice/webhooks/inbound",
+  // The monthly mailout. Called by a schedule, never by a signed-in browser, so
+  // there is no session to check — the route itself demands CRON_SECRET as a
+  // bearer token and 401s without it, exactly as the webhooks above verify
+  // their own provider secrets.
+  "/api/cron/monthly",
 ]);
 
 function isPublicPath(pathname: string): boolean {
