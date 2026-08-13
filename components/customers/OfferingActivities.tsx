@@ -314,24 +314,12 @@ export function OfferingActivities({
                 <th className="w-[184px] py-2 pr-3 font-bold">Dates</th>
                 <th className="w-[104px] py-2 pr-3 font-bold">Value</th>
                 <th className="w-[140px] py-2 pr-2 font-bold">Current</th>
-                <th className="w-[88px] py-1 font-bold">
-                  {/* A WHITE PLUS ON A BLUE SQUARE (Anir, Aug 9: "add activity
-                      should be just the white plus with the blue square, keep
-                      it simple") — now sitting in the column that already owns
-                      the row actions, so it costs no vertical space at all. */}
-                  <span className="flex justify-end pr-1">
-                    <Tooltip label="Add activity">
-                      <button
-                        type="button"
-                        aria-label="Add activity"
-                        onClick={() => openEditor()}
-                        className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-transform hover:scale-105 active:scale-95"
-                      >
-                        <Plus size={14} strokeWidth={2.6} />
-                      </button>
-                    </Tooltip>
-                  </span>
-                </th>
+                {/* A NAMED COLUMN, NOT A FLOATING BUTTON (Anir, Aug 13: "this
+                    seems like a weird place to have the plus sign… and then
+                    there should be an actions column"). The pencil and the bin
+                    sit under a header that says what they are; adding moved to
+                    the footer row below, where a table normally puts it. */}
+                <th className="w-[88px] py-2 pr-1 text-right font-bold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -453,6 +441,21 @@ export function OfferingActivities({
                 );
               })}
             </tbody>
+            {/* Where a table adds a row: the last line of the table itself,
+                full width, reading as an action rather than as data. */}
+            <tfoot>
+              <tr>
+                <td colSpan={7} className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditor()}
+                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-light py-2 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+                  >
+                    <Plus size={14} strokeWidth={2.4} /> Add activity
+                  </button>
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}

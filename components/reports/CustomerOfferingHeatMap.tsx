@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useFillHeight } from "@/components/ui/useFillHeight";
 import {
   useEffect,
   useMemo,
@@ -338,6 +339,8 @@ export function CustomerOfferingHeatMap({
   const [cross, setCross] = useState<{ row: string; col: string } | null>(
     null
   );
+  /* The matrix ends where the window ends, whatever is stacked above it. */
+  const { ref: gridRef, height: gridHeight } = useFillHeight(24, 320);
   const [selected, setSelected] = useState<SelectedCell | null>(null);
   /** Which activity's remove-from-heat-map is awaiting a yes. */
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
@@ -1089,12 +1092,17 @@ export function CustomerOfferingHeatMap({
           </div>
         ) : (
           <div
+            ref={gridRef}
+            style={gridHeight ? { height: gridHeight } : undefined}
             className={cn(
               // The matrix takes the screen: it is the page's whole point, and
               // a short window meant scrolling a grid inside a scrolling page
               // (Anir, Aug 12: "make this entire spreadsheet bigger… all the
-              // way till the bottom of the screen").
-              "heat-map-scroll max-h-[calc(100vh-190px)] min-h-[520px] overflow-auto pb-1.5",
+              // way till the bottom of the screen"). The exact height comes
+              // from useFillHeight, measured from where this element actually
+              // starts. max-h-screen is only a first-paint guard: it is always
+              // larger than the measured value, so it never clamps it.
+              "heat-map-scroll max-h-screen min-h-[320px] overflow-auto pb-1.5",
               // A pinned offering row needs something to outlast: give the
               // matrix its own scroll area so the header can stay while the
               // rows move under it. Unpinned, the table grows and the page

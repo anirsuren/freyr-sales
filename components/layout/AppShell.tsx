@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import { Sidebar } from "./Sidebar";
@@ -45,6 +45,24 @@ export function AppShell({
   currentUser: UserIdentity;
 }) {
   const pathname = usePathname() || "";
+  const scrollerRef = useRef<HTMLElement | null>(null);
+
+  /**
+   * EVERY PAGE OPENS AT THE TOP.
+   *
+   * The app scrolls an inner <main>, not the document, and Next's scroll
+   * restoration only ever resets the document. So navigating from halfway down
+   * one page landed you halfway down the next one (Anir, Aug 13: "when I go to
+   * the FDL components tab, or actually any tab for that matter, any new page,
+   * it should take me to the top. Why is it taking me a little bit down").
+   * Reset the real scroller ourselves on every route change.
+   */
+  useEffect(() => {
+    scrollerRef.current?.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    // Belt and braces: full-bleed pages scroll their own descendants, and the
+    // document itself can hold a position from a previous non-shell route.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname]);
   const searchParams = useSearchParams();
   const isMaterialPage = /^\/offerings\/[^/]+\/materials\/[^/]+$/.test(pathname);
   const isEmbeddedMaterial =
@@ -392,6 +410,7 @@ export function AppShell({
               </main>
             ) : (
               <main
+                ref={scrollerRef}
                 id="main-content"
                 data-tour="page-content"
                 tabIndex={-1}

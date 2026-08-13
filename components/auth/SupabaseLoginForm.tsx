@@ -423,6 +423,14 @@ export function SupabaseLoginForm({
               <span className="font-semibold text-text-primary">{email}</span>.
               Clicking it signs you in automatically, that&apos;s it.
             </p>
+            {/* Say it before they wait ten minutes and give up. A first message
+                from a new sender is exactly what a mail filter holds back, and
+                the people signing up here are on Outlook (Anir, Aug 13: "make
+                sure it tells them to check their spam or their junk"). */}
+            <p className="mt-2 text-[12.5px] leading-relaxed text-text-tertiary">
+              Not there? Check your spam or junk folder, it often lands there
+              the first time.
+            </p>
             {/* A refused RESEND used to leave a red error sitting over an
                 unchanged "we sent it" panel, which reads as the whole thing
                 having failed (Anir, Aug 13: "what the fuck does this mean").
@@ -430,7 +438,7 @@ export function SupabaseLoginForm({
                 is the one sentence that matters here. */}
             {error && (
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-tertiary">
-                Nothing else is needed — open the link that is already there.
+                Nothing else is needed. Open the link that is already there.
               </p>
             )}
           </div>

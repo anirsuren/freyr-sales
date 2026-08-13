@@ -169,7 +169,24 @@ export function VersionTimeline({
   /** Frame the whole history with a margin; also the Fit button. */
   const fit = useCallback(() => {
     const box = shellRef.current?.clientWidth ?? 0;
-    if (!box || dated.length === 0) return;
+    if (!box) return;
+    /**
+     * NO DATES IS STILL A TIMELINE (Anir, Aug 13: "you can still show me the
+     * timeline… Who cares if it's just one point? Show me the full fucking
+     * timeline"). Frame the months either side of today so the axis, the month
+     * ticks and the today marker all draw, and the undated versions sit
+     * underneath waiting for a date. Hiding the whole thing taught nobody what
+     * the timeline was for.
+     */
+    if (dated.length === 0) {
+      const today = Date.now();
+      const half = 150 * DAY;
+      setPxPerDay(
+        Math.min(MAX_PX_PER_DAY, Math.max(MIN_PX_PER_DAY, box / ((half * 2) / DAY)))
+      );
+      setOriginMs(today - half);
+      return;
+    }
     const first = dated[0].ms;
     const last = dated[dated.length - 1].ms;
     const span = Math.max(last - first, 60 * DAY);
@@ -206,10 +223,10 @@ export function VersionTimeline({
   // width floor matters: during hydration the card can measure a transient
   // sliver, and framing against that would lock in a garbage zoom.
   useEffect(() => {
-    if (ready || width < 80 || dated.length === 0) return;
+    if (ready || width < 80) return;
     fit();
     setReady(true);
-  }, [ready, width, dated.length, fit]);
+  }, [ready, width, fit]);
 
   const msPerPx = DAY / pxPerDay;
   const xOf = useCallback(
@@ -373,10 +390,6 @@ export function VersionTimeline({
       </p>
     </div>
   );
-
-  if (dated.length === 0) {
-    return <>{undatedStrip}</>;
-  }
 
   return (
     <div className="mt-3.5">
