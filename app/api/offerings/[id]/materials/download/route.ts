@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { bumpUsage } from "@/lib/usageCounters";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
@@ -68,6 +69,10 @@ export async function GET(
       { error: "That file is not on this offering" },
       { status: 404 }
     );
+
+  // Counted for the monthly note to reps — the rep pulled the actual bytes down. After the
+  // permission check, so a refused request never inflates anyone's number.
+  bumpUsage(actor.userId, "download");
 
   try {
     const presignUrl = (await hasDocsStorage())

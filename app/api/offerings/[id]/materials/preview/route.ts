@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { bumpUsage } from "@/lib/usageCounters";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import {
@@ -126,6 +127,12 @@ export async function GET(
       { error: "That material is not a ZIP archive" },
       { status: 400 }
     );
+
+  // Counted for the monthly note to reps: the rep opened this file to read it.
+  // After the permission checks, so a refused request never inflates anyone's
+  // number, and NOT for a `member` fetch — that is browsing inside an archive
+  // already open, and counting it would report one ZIP as twenty opens.
+  if (!member) bumpUsage(actor.userId, "open");
 
   if (!(await hasDocsStorage()))
     return NextResponse.json(

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bumpUsage } from "@/lib/usageCounters";
 import { getDb } from "@/lib/db";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -127,6 +128,10 @@ export async function POST(request: NextRequest) {
   let token: string;
   let accessGrantToken: string | null = null;
   const approved = access.status === "approved";
+  // ONE OF THE THREE NUMBERS THE MONTHLY NOTE REPORTS. Counted here because
+  // this is the only place a session is actually created — `last_seen_at` is
+  // touched on every page and would count visits, not sign-ins.
+  if (access.status === "approved") bumpUsage(access.userId, "login");
   try {
     token = await signAppSession(principal);
     if (access.status === "approved") {
