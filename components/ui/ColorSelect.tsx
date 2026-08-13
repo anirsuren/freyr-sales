@@ -280,7 +280,7 @@ export function ColorSelect({
         minWidth: compact ? SP_COMPACT_SIZE : minWidth,
       }}
     >
-      <PriorityTooltip label={fullLabel} className="w-full">
+      <PriorityTooltip label={fullLabel} className="w-full" suppressed={open}>
         <button
           type="button"
           onClick={toggleMenu}
@@ -645,7 +645,7 @@ export function MultiColorSelect({
         minWidth: compact ? SP_COMPACT_SIZE : fluid ? 0 : triggerWidth,
       }}
     >
-      <PriorityTooltip label={selectionLabel} className="w-full">
+      <PriorityTooltip label={selectionLabel} className="w-full" suppressed={open}>
         <button
           type="button"
           onClick={toggleMenu}

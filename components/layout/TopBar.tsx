@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Search, Bell, CircleHelp, ChevronDown, Sparkles, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, LogOut, CheckCircle2, Hammer, Sun, Moon } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, Sparkles, Menu, Settings, SlidersHorizontal, BookOpen, Package, Mic, LogOut, CheckCircle2, Hammer, Sun, Moon, UserRoundCog } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { RoleTag } from "@/components/ui/RoleTag";
 import {
@@ -644,6 +644,18 @@ export function TopBar({
                   <div className="my-1 border-t border-border-light" />
                     </>
                   )}
+                  {/* Two different intentions, and only one of them was here.
+                      Log out means "I am done"; switching means "I want to be
+                      someone else for a minute" — which an admin testing what
+                      a Sales Rep can see needs constantly (Anir, Aug 13). */}
+                  <a
+                    role="menuitem"
+                    href="/api/auth/logout?next=/login"
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-text-primary hover:bg-surface transition-colors"
+                  >
+                    <UserRoundCog size={16} strokeWidth={1.7} className="text-text-secondary" />
+                    Switch account
+                  </a>
                   <a
                     role="menuitem"
                     href="/api/auth/logout"

@@ -43,6 +43,32 @@ function safeLogoutUrl(request: NextRequest): URL {
   if (!origin) {
     throw new Error("Authentication redirect is not configured.");
   }
+
+  /**
+   * SIGNING OUT IN ORDER TO SIGN IN AS SOMEONE ELSE (Anir, Aug 13: "there's
+   * literally no way for me to switch my account… if I'm saved, it can just
+   * show the login page at least").
+   *
+   * "Switch account" sends ?next=/login: the cookies still get cleared exactly
+   * as a normal sign-out does, but instead of landing on the marketing page
+   * you arrive at the form, ready to enter a different address.
+   *
+   * Only a same-origin RELATIVE path is honoured. A crafted ?next=https://…
+   * would turn our own sign-out into an open redirect, so anything that is not
+   * a plain "/path" is ignored and the normal destination stands.
+   */
+  const requestedNext = request.nextUrl.searchParams.get("next");
+  if (
+    requestedNext &&
+    requestedNext.startsWith("/") &&
+    !requestedNext.startsWith("//")
+  ) {
+    try {
+      const candidate = new URL(requestedNext, origin);
+      if (candidate.origin === origin) return candidate;
+    } catch {}
+  }
+
   const configured = process.env.AUTH_LOGOUT_URL;
   if (configured && process.env.AUTH_MODE !== "supabase") {
     try {

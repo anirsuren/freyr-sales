@@ -531,7 +531,10 @@ export async function inviteWorkspaceUser(
   actorId: string,
   nameValue: string,
   emailValue: string,
-  role: WorkspaceRole
+  role: WorkspaceRole,
+  /** An optional line from the person doing the inviting. It is theirs, so it
+   *  goes in the email as written (Anir, Aug 13: "a custom note too"). */
+  noteValue?: string
 ): Promise<InvitationDelivery> {
   const name = nameValue.trim().replace(/\s+/g, " ");
   if (name.length < 2 || name.length > 120) {
@@ -539,6 +542,8 @@ export async function inviteWorkspaceUser(
   }
   const email = normalizedEmail(emailValue);
   if (!email) throw new Error("Enter a valid email address.");
+  // Trimmed and capped: this is free text that lands in an outbound email.
+  const note = (noteValue || "").trim().slice(0, 600);
   const client = adminClient();
   const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString();
   const result = await client.from("workspace_invitations").upsert(
@@ -568,6 +573,8 @@ export async function inviteWorkspaceUser(
       `Hi ${name},`,
       "",
       "You’ve been invited to the Freyr Sales Intelligence workspace.",
+      // The inviter's own words, kept verbatim and clearly theirs.
+      ...(note ? ["", note] : []),
       "",
       "Create your account using the exact email address that received this invitation:",
       invitationUrl.toString(),

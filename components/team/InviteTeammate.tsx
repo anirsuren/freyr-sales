@@ -40,6 +40,8 @@ export function InviteTeammate({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Rep");
+  /** Optional line the admin adds to the invitation email. */
+  const [note, setNote] = useState("");
 
   function close() {
     if (busy) return;
@@ -47,6 +49,7 @@ export function InviteTeammate({
     setName("");
     setEmail("");
     setRole("Rep");
+    setNote("");
   }
 
   async function send() {
@@ -64,6 +67,7 @@ export function InviteTeammate({
           name: name.trim(),
           email: email.trim(),
           role: ACCESS_ROLE[role] ?? "sales",
+          ...(note.trim() ? { note: note.trim() } : {}),
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -87,6 +91,7 @@ export function InviteTeammate({
       setName("");
       setEmail("");
       setRole("Rep");
+      setNote("");
     } catch (error) {
       toast(
         error instanceof Error ? error.message : "That invite didn't go out.",
@@ -112,7 +117,23 @@ export function InviteTeammate({
           They get an email with a link that signs them in. The link expires
           after 14 days, and you can change their role any time from Settings.
         </p>
+        {/* ROLE FIRST, THEN WHO, THEN THE NOTE (Anir, Aug 13: "The drop down
+            should be at the top, and then their full name and then their work
+            email" … "a custom note too. That should be the last field").
+            It reads the way the decision is actually made: what kind of access
+            am I handing out, to whom, and anything I want to say about it. */}
         <div className="mt-4 space-y-3.5">
+          <label className="block">
+            <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
+              Starting role
+            </span>
+            <ColorSelect
+              value={role}
+              onChange={setRole}
+              options={ROLE_OPTIONS}
+              ariaLabel="Starting role"
+            />
+          </label>
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
               Full name
@@ -137,13 +158,14 @@ export function InviteTeammate({
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
-              Starting role
+              Note <span className="font-normal text-text-tertiary">Optional</span>
             </span>
-            <ColorSelect
-              value={role}
-              onChange={setRole}
-              options={ROLE_OPTIONS}
-              ariaLabel="Starting role"
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="A line that goes in the invitation email — why you're bringing them in, what to look at first."
+              className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary focus:shadow-input-focus"
             />
           </label>
         </div>

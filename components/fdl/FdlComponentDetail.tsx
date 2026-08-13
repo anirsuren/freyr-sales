@@ -1748,10 +1748,32 @@ export function FdlComponentDetail({
       {/* ------------------------------------------------------- features */}
       <section className={CARD}>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-            <ListChecks size={15} strokeWidth={2} className="text-blue-primary" /> Features
-            <InfoHint text="What is in one version. Pick the version above the table. To compare two versions side by side, use the Compare versions card lower down." />
-          </h2>
+          {/* NAME, PICKER, THEN THE HINT (Anir, Aug 13: "you can probably just
+              say 'Features' and then show the dropdown, and then make sure the
+              text is aligned and stuff, and then the question mark can go
+              after"). The picker used to be lifted onto this line from below
+              with -mt-9 and a 112px left margin — a guess at where the heading
+              ended, which is exactly why nothing lined up. It is a real
+              sibling on a real flex row now, and the sentence "Showing what is
+              in" is gone: the control says what it is. */}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+              <ListChecks size={15} strokeWidth={2} className="text-blue-primary" /> Features
+            </h2>
+            {releases.length > 0 && (
+              <MultiColorSelect
+                values={shownVersionIds}
+                onChange={setShownVersionIds}
+                options={versionOptions}
+                allLabel="Every version"
+                allIcon={ListChecks}
+                ariaLabel="Which versions to show"
+                collapsible={false}
+                minWidth={200}
+              />
+            )}
+            <InfoHint text="What is in one version. Pick the version beside the heading. To compare two versions side by side, use the Compare versions card lower down." />
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             {canEdit && (
               /* Same square as Add customer: on this page a plus always means
@@ -1784,30 +1806,6 @@ export function FdlComponentDetail({
             the first one, which version I want to see the features"). Picking
             the version here also answers "I don't know which version of the
             feature I'm downloading" — the button names it. */}
-        {releases.length > 0 && (
-          /* ON THE HEADING LINE, NOT UNDER IT (Anir, Aug 9: "a lot of space
-             here... look at where the table starts and where the top of the
-             container is, literally half of it is going away. I would probably
-             say the current version next to the features button"). A heading
-             row, then a picker row, then the table header was three stacked
-             bands before a single feature appeared. */
-          <div className="-mt-9 mb-1 flex flex-wrap items-center gap-2 pr-14">
-            <span className="ml-[112px] text-[12.5px] text-text-secondary">
-              Showing what is in
-            </span>
-            <MultiColorSelect
-              values={shownVersionIds}
-              onChange={setShownVersionIds}
-              options={versionOptions}
-              allLabel="Every version"
-              allIcon={ListChecks}
-              ariaLabel="Which versions to show"
-              collapsible={false}
-              minWidth={200}
-            />
-          </div>
-        )}
-
         {component.features.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-secondary">
             {releases.length === 0

@@ -325,13 +325,57 @@ export function VersionTimeline({
     }
   }
 
-  if (dated.length === 0) {
-    return (
-      <p className="mt-3.5 rounded-xl border border-dashed border-border-light px-4 py-8 text-center text-[12.5px] text-text-tertiary">
-        No version has a date yet, so there is nothing to place on a timeline.
-        Add a date to a version and it appears here.
+  /**
+   * A VERSION WITH NO DATE STILL EXISTS (Anir, Aug 13: "if I add a version,
+   * the timeline should still show up… I didn't even know that I had. I didn't
+   * think it worked").
+   *
+   * The old empty state was technically true and practically a lie: he added a
+   * version, switched to Timeline, and the card said there was nothing to
+   * show — so the add looked like it had failed. A missing date is a missing
+   * date, not a missing version. Undated versions now appear as real pills,
+   * with the one thing they need spelled out.
+   */
+  const undatedStrip = undated.length > 0 && (
+    <div
+      className={
+        dated.length === 0
+          ? "mt-3.5 rounded-xl border border-dashed border-border-light px-4 py-5"
+          : "mt-3 rounded-xl border border-dashed border-border-light px-4 py-3"
+      }
+    >
+      <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+        {undated.length === 1 ? "No date yet" : `No date yet (${undated.length})`}
       </p>
-    );
+      <div className="flex flex-wrap items-center gap-2">
+        {undated.map((release) => {
+          const tone = toneOf(release);
+          return (
+            <button
+              key={release.id}
+              type="button"
+              onClick={() => onOpen?.(release.id)}
+              title={`Open ${withV(release.version)}`}
+              className="cursor-pointer whitespace-nowrap rounded-full px-2.5 py-[3px] text-[12px] font-bold tnum text-white transition-transform hover:scale-[1.04] active:scale-95"
+              style={{ background: tone.dot, boxShadow: "0 1px 2px rgba(16,24,40,0.10)" }}
+            >
+              {withV(release.version)}
+              <span className="ml-1.5 text-[9.5px] font-bold uppercase tracking-[0.05em] text-white/75">
+                {tone.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2.5 text-[11.5px] text-text-tertiary">
+        Give {undated.length === 1 ? "it" : "them"} a date and{" "}
+        {undated.length === 1 ? "it moves" : "they move"} onto the timeline.
+      </p>
+    </div>
+  );
+
+  if (dated.length === 0) {
+    return <>{undatedStrip}</>;
   }
 
   return (
@@ -675,19 +719,10 @@ export function VersionTimeline({
       </div>
 
       {/* A version with no date cannot be placed, and silently dropping it
-          would make the timeline quietly lie about how many versions exist. */}
-      {undated.length > 0 && (
-        <p className="mt-2 text-[11.5px] text-text-tertiary">
-          {undated.length === 1
-            ? "1 version has"
-            : `${undated.length} versions have`}{" "}
-          no date, so {undated.length === 1 ? "it is" : "they are"} not on the
-          timeline:{" "}
-          <span className="font-semibold text-text-secondary">
-            {undated.map((r) => withV(r.version)).join(", ")}
-          </span>
-        </p>
-      )}
+          would make the timeline quietly lie about how many versions exist.
+          Same pills as the no-dates-at-all case, so an undated version looks
+          like a version wherever you meet it — and stays clickable. */}
+      {undatedStrip}
     </div>
   );
 }

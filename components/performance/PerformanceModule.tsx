@@ -631,6 +631,10 @@ function MasterTab({
    *  (Anir, Aug 12: "these should be drop-downs instead of pop-ups"). The
    *  cards view keeps the popup, where an inline expansion has no room. */
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  /** Categories the reader has folded shut in the Goal Master table. Local to
+   *  the session and to this browser: hiding Financial to get to Lead
+   *  Generation is a way of looking, not a change to anybody's plan. */
+  const [shutTypes, setShutTypes] = useState<Set<string>>(new Set());
 
   const filtered = state.goals.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
@@ -825,63 +829,81 @@ function MasterTab({
       {/* keyed on the layout so switching cards ⇄ table animates in */}
       <div key={view} className="tab-panel">
         {state.goals.length > 0 && filtered.length > 0 && view === "table" ? (
-          <Card className="mt-4 overflow-x-auto p-0">
-            <table className="w-full min-w-[780px]">
-              <thead>
-                <tr className="border-b border-border-light">
-                  {["Goal", "Counted in", "Target", "Subgoals", "Owners", "Tracking"].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
-                      >
-                        {h}
-                      </th>
-                    )
-                  )}
-                  {/* the expand chevron's lane */}
-                  <th aria-hidden className="w-10" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light">
-                {/* ONE HEADING PER CATEGORY, NOT A CHIP ON EVERY ROW (Anir,
-                    Aug 12: "club them together so you don't see that on every
-                    row — you just have the section, and then all the goals").
-                    Same grouping the cards view uses, so the two agree. */}
-                {[...byType, ...strayTypes]
-                  .filter(({ goals: groupGoals }) => groupGoals.length > 0)
-                  .flatMap(({ type, goals: groupGoals }, groupIndex) =>
-                    [
-                        /* A SECTION HAS TO CLOSE (Anir, Aug 12: "there has to
-                           be a more prominent space" → "the thing should end.
-                           I dunno how to explain it. It should end"). Blank
-                           space alone was not enough: with no rule under the
-                           last goal, the category just trailed off into a gap.
-                           This row keeps the divider it inherits — that line
-                           is the lid on the section — and then holds open real
-                           empty space before the next heading begins. */
-                        ...(groupIndex === 0
-                          ? []
-                          : [
-                              <tr key={`gap-${type}`}>
-                                <td colSpan={7} className="h-9 p-0" />
-                              </tr>,
-                            ]),
-                        <tr key={`head-${type}`} className="!border-t-0">
-                          <td
-                            colSpan={7}
-                            className="border-y border-border-light bg-surface px-4 py-2.5"
-                          >
-                            <span className="flex items-center gap-2">
-                              <TypeChip type={type} />
-                              <span className="text-[11px] font-semibold text-text-tertiary tnum">
-                                {groupGoals.length}{" "}
-                                {groupGoals.length === 1 ? "goal" : "goals"}
-                              </span>
-                            </span>
-                          </td>
-                        </tr>,
-                        ...groupGoals.map((g) => {
+          /* SEPARATE TABLES, NOT ONE LONG ONE (Anir, Aug 13: "I told you it
+             has to be kind of separate tables… This space in the middle should
+             just be white. There shouldn't be another line there"). A gap row
+             inside one table still sits between that table's own borders, so
+             lines ran through the space however tall it got. Each category is
+             its own card now; what lies between them is the page.
+
+             The heading is also the control: click it and the category folds
+             away ("If I just want to remove all the financial goals, I can
+             just press the dropdown… if I wanted to skip to lead generation,
+             it should let me do that"). A shared colgroup keeps every card's
+             columns lined up, so they still read as one table. */
+          <div className="mt-4 space-y-4">
+            {[...byType, ...strayTypes]
+              .filter(({ goals: groupGoals }) => groupGoals.length > 0)
+              .map(({ type, goals: groupGoals }) => {
+                const shut = shutTypes.has(type);
+                return (
+                  <Card key={type} className="overflow-hidden p-0">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShutTypes((current) => {
+                          const next = new Set(current);
+                          if (next.has(type)) next.delete(type);
+                          else next.add(type);
+                          return next;
+                        })
+                      }
+                      aria-expanded={!shut}
+                      className="flex w-full cursor-pointer items-center gap-2 bg-surface px-4 py-2.5 text-left transition-colors hover:bg-blue-light/30"
+                    >
+                      <ChevronDown
+                        size={15}
+                        strokeWidth={2.2}
+                        className={cn(
+                          "shrink-0 text-text-tertiary transition-transform duration-200",
+                          shut && "-rotate-90"
+                        )}
+                      />
+                      <TypeChip type={type} />
+                      <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                        {groupGoals.length}{" "}
+                        {groupGoals.length === 1 ? "goal" : "goals"}
+                      </span>
+                    </button>
+                    {!shut && (
+                      <div className="overflow-x-auto border-t border-border-light">
+                        <table className="w-full min-w-[780px] table-fixed">
+                          <colgroup>
+                            <col style={{ width: "34%" }} />
+                            <col style={{ width: "13%" }} />
+                            <col style={{ width: "12%" }} />
+                            <col style={{ width: "9%" }} />
+                            <col style={{ width: "10%" }} />
+                            <col style={{ width: "16%" }} />
+                            <col style={{ width: "6%" }} />
+                          </colgroup>
+                          <thead>
+                            <tr className="border-b border-border-light">
+                              {["Goal", "Counted in", "Target", "Subgoals", "Owners", "Tracking"].map(
+                                (h) => (
+                                  <th
+                                    key={h}
+                                    className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
+                                  >
+                                    {h}
+                                  </th>
+                                )
+                              )}
+                              <th aria-hidden />
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border-light">
+                            {groupGoals.map((g) => {
                   const owners = [...new Set(g.subgoals.flatMap((s) => s.owners))];
                   return (
                     <Fragment key={g.id}>
@@ -998,12 +1020,15 @@ function MasterTab({
                     )}
                     </Fragment>
                   );
-                        }),
-                      ]
-                )}
-              </tbody>
-            </table>
-          </Card>
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+          </div>
         ) : (
           [...byType, ...strayTypes].map(({ type, goals }) => (
             <div key={type} className="mt-7">

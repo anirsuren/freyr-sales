@@ -84,8 +84,14 @@ export default async function Home() {
                   Open Sales Intelligence
                   <ArrowRight size={18} aria-hidden="true" />
                 </Link>
+                {/* A SAVED SESSION MUST NOT BE A TRAP (Anir, Aug 13: "there's
+                    literally no way for me to switch my account"). Coming back
+                    to this page while signed in only ever offered the way
+                    forward, so testing the app as a rep meant clearing cookies
+                    by hand. This signs out and drops you straight on the form. */}
                 <span className={styles.actionNote}>
-                  Signed in as {session.name || session.email}
+                  Signed in as {session.name || session.email} ·{" "}
+                  <a href="/api/auth/logout?next=/login">Use a different account</a>
                 </span>
               </>
             ) : (

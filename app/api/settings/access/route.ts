@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
         grant.userId,
         body.name || "",
         body.email || "",
-        role
+        role,
+        typeof body.note === "string" ? body.note : undefined
       );
     } else if (body.action === "approve" || body.action === "reject") {
       await reviewAccessRequest(

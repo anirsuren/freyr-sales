@@ -94,7 +94,18 @@ export function SearchPriority({
   children: ReactNode;
 }) {
   const [focused, setFocused] = useState(false);
-  const active = focused || query.trim().length > 0;
+  /**
+   * FOCUS ALONE DECIDES (Anir, Aug 13: "when I click outside the search bar,
+   * it should go away" → "when I type something, I think the search bar should
+   * go away when i click away").
+   *
+   * It used to stay expanded while the box held any text, so the toolbar was
+   * stuck in its compressed, icon-only state for as long as a filter was
+   * applied — you could not read the filters you were using. Clicking away now
+   * always springs the row back; the query itself is untouched, and the
+   * results stay filtered.
+   */
+  const active = focused;
   const value = useMemo<SearchPriorityValue>(
     () => ({ active, setFocused }),
     [active]
@@ -264,14 +275,21 @@ export function PriorityTooltip({
   children,
   className,
   side = "bottom",
+  /** True while this control's own menu is open — then the tooltip is muted.
+   *  A compressed filter's tooltip sits directly under the trigger, which is
+   *  exactly where its menu opens, so it landed on top of the options (Anir,
+   *  Aug 13: "careful here because this pop-up is blocking it when the search
+   *  bar is like that"). You already know what you clicked. */
+  suppressed = false,
 }: {
   label: ReactNode;
   children: ReactNode;
   className?: string;
   side?: "top" | "bottom";
+  suppressed?: boolean;
 }) {
   const settled = usePrioritySettled();
-  if (!settled) return <>{children}</>;
+  if (!settled || suppressed) return <>{children}</>;
   return (
     <Tooltip label={label} side={side} className={className}>
       {children}
