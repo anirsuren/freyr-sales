@@ -263,11 +263,35 @@ export function AddMaterialButton({
     for (const next of picked) unique.set(fileKey(next), next);
     const merged = Array.from(unique.values());
     setFiles(merged);
+    /**
+     * WHAT YOU TYPED IN "NAME" IS THE NAME (Anir, Aug 13: "when I label the
+     * file something, you're overwriting the name that I put").
+     *
+     * The Name field is visible until a file is picked, and hidden afterwards
+     * in favour of the per-file label. So the normal order — type a name, then
+     * choose the file — used to throw the name away: picking the file hid the
+     * box he had just typed in, pre-filled the per-file label from the
+     * FILENAME, and saved that instead. Nothing warned him; the name simply
+     * came back different.
+     *
+     * The typed name now travels onto the first file it can belong to. Only on
+     * the first pick, when the box was actually on screen for him to type in;
+     * files added afterwards still default to their own filename.
+     */
+    const typedName = label.trim();
+    const firstPick = files.length === 0;
     setFileLabels((current) => {
       const next = { ...current };
+      let carried = false;
       for (const file of merged) {
         const key = fileKey(file);
-        if (!next[key]) next[key] = file.name.replace(/\.[^.]+$/, "");
+        if (next[key]) continue;
+        if (typedName && firstPick && !carried) {
+          next[key] = typedName;
+          carried = true;
+          continue;
+        }
+        next[key] = file.name.replace(/\.[^.]+$/, "");
       }
       return next;
     });
