@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { buildNotifications } from "@/lib/notifications";
 import { NotificationsCenter } from "@/components/notifications/NotificationsCenter";
 import { listStoredVoiceConversations } from "@/lib/voiceEvents";
+import { currentUserNeedsPasskey } from "@/lib/passkeyStatus";
 
 export const metadata = { title: "Notifications" };
 export const dynamic = "force-dynamic";
@@ -16,7 +17,8 @@ export default async function NotificationsPage() {
     db.interactions.list(),
     listStoredVoiceConversations(30),
   ]);
-  const items = buildNotifications({ sessions, customers, contacts, interactions, voiceConversations });
+  const needsPasskey = await currentUserNeedsPasskey();
+  const items = buildNotifications({ sessions, customers, contacts, interactions, voiceConversations, needsPasskey });
 
   return (
     <div>

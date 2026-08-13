@@ -252,6 +252,12 @@ export function PerformanceModule({
     goal: PrimaryGoal;
     editing: Subgoal | null;
   } | null>(null);
+  // GOAL MASTER SITS INSIDE EVERY ROOM (Suren, Aug 12: "when all three of
+  // them, Goal Master should be there — what goal has been assigned to him,
+  // and anybody can pick more goals for them"). The strip flips the room
+  // between its numbers and the master list, scoped to who you may assign.
+  const [masterFor, setMasterFor] = useState<Tab | null>(null);
+  const showMaster = tab !== "master" && masterFor === tab;
   const [logOpen, setLogOpen] = useState(false);
   /** Prefill for the Log-an-actual popup when opened from a person's own
    *  goal row (Anir, Aug 12: "I can't edit this because it's me — if I'm
@@ -381,12 +387,55 @@ export function PerformanceModule({
           </div>
         </div>
         <p className="mt-1.5 max-w-[720px] text-[13.5px] leading-relaxed text-text-secondary">
-          {room.subtitle}
+          {showMaster
+            ? "Every goal, by category. Assign one to a person and it starts counting here."
+            : room.subtitle}
         </p>
+        {tab !== "master" && (
+          <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-surface p-1">
+            {[
+              { key: "numbers", label: room.label },
+              { key: "master", label: "Goal Master" },
+            ].map((choice) => {
+              const active =
+                choice.key === "master" ? showMaster : !showMaster;
+              return (
+                <button
+                  key={choice.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() =>
+                    setMasterFor(choice.key === "master" ? tab : null)
+                  }
+                  className={cn(
+                    "cursor-pointer rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-all",
+                    active
+                      ? "bg-white text-text-primary shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  {choice.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div key={tab} className="tab-panel">
-        {tab === "org" ? (
+      <div key={`${tab}-${showMaster ? "master" : "numbers"}`} className="tab-panel">
+        {showMaster ? (
+          <MasterTab
+            state={state}
+            live={live}
+            run={run}
+            busy={busy}
+            suggestions={people}
+            assignablePeople={assignablePeople}
+            isManager={isManager}
+            onNewGoal={() => setGoalModal({ editing: null })}
+            onEditGoal={(g) => setGoalModal({ editing: g })}
+          />
+        ) : tab === "org" ? (
           <OrgPerformanceTab
             state={state}
             live={live}
@@ -632,84 +681,8 @@ function MasterTab({
     ),
   ].map((t) => ({ type: t, goals: filtered.filter((g) => g.type === t) }));
 
-  const trackedCount = state.goals.filter((g) => g.pickedForOrg).length;
-
   return (
     <div>
-      {state.goals.length > 0 && (
-        <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Card className="p-4">
-            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
-              Goals by type
-              <InfoHint text="How the master list splits across the goal types." />
-            </p>
-            <div className="mx-auto mt-2 flex w-full max-w-[420px] items-center justify-center gap-6">
-              <DonutChart
-                size={110}
-                thickness={12}
-                syncId="perf-types"
-                centerLabel={String(state.goals.length)}
-                centerSub="goals"
-                segments={state.types
-                  .map((t) => ({
-                    label: t,
-                    color: typeMeta(t).color,
-                    value: state.goals.filter((g) => g.type === t).length,
-                  }))
-                  .filter((s) => s.value > 0)}
-              />
-              <DonutLegend
-                className="min-w-0 max-w-[230px] flex-1"
-                syncId="perf-types"
-                total={state.goals.length}
-                items={state.types
-                  .map((t) => ({
-                    label: t,
-                    color: typeMeta(t).color,
-                    value: state.goals.filter((g) => g.type === t).length,
-                  }))
-                  .filter((s) => s.value > 0)}
-              />
-            </div>
-          </Card>
-          <Card className="p-4">
-            <p className="flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
-              Tracked vs master-only
-              <InfoHint text="Tracked goals are counted on Org performance. Master-only goals wait on the list." />
-            </p>
-            <div className="mx-auto mt-2 flex w-full max-w-[420px] items-center justify-center gap-6">
-              <DonutChart
-                size={110}
-                thickness={12}
-                syncId="perf-tracked"
-                centerLabel={String(trackedCount)}
-                centerSub="tracking"
-                segments={[
-                  { label: "Tracking", color: "#0071E3", value: trackedCount },
-                  {
-                    label: "Not tracked",
-                    color: "#8AB4E8",
-                    value: state.goals.length - trackedCount,
-                  },
-                ].filter((s) => s.value > 0)}
-              />
-              <DonutLegend
-                className="min-w-0 max-w-[230px] flex-1"
-                syncId="perf-tracked"
-                total={state.goals.length}
-                items={[
-                  { label: "Tracking", color: "#0071E3", value: trackedCount },
-                  {
-                    label: "Not tracked",
-                    color: "#8AB4E8",
-                    value: state.goals.length - trackedCount,
-                  },
-                ].filter((s) => s.value > 0)}
-              />
-            </div>
-          </Card>
-        </div>
-      )}
 
       <SearchPriority query={query} className="flex flex-wrap items-center gap-2">
         <PrioritySearchInput

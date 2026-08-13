@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { buildNotifications } from "@/lib/notifications";
 import { listStoredVoiceConversations } from "@/lib/voiceEvents";
+import { currentUserNeedsPasskey } from "@/lib/passkeyStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +15,14 @@ export async function GET() {
     db.interactions.list(),
     listStoredVoiceConversations(30),
   ]);
+  const needsPasskey = await currentUserNeedsPasskey();
   const notifications = buildNotifications({
     sessions,
     customers,
     contacts,
     interactions,
     voiceConversations,
+    needsPasskey,
   });
   return NextResponse.json({ notifications });
 }

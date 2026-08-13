@@ -4,9 +4,12 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { RecrawlButton } from "@/components/admin/RecrawlButton";
+import { UserGroupsAdmin } from "@/components/admin/UserGroupsAdmin";
+import { listWorkspaceAccess } from "@/lib/accessStore";
+import { getRole } from "@/lib/role";
 import { formatDateTime } from "@/lib/utils";
 
-export const metadata = { title: "Knowledge Base" };
+export const metadata = { title: "Admin" };
 export const dynamic = "force-dynamic";
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -20,6 +23,23 @@ export default async function AdminPage() {
   const db = getDb();
   const kb = await db.freyrKb.get();
   const services = getServiceStatus();
+  // ADMIN IS ITS OWN PAGE, NOT A SETTINGS TAB (Anir, Aug 12: "there should be
+  // a separate admin page — settings shouldn't have anything to do with the
+  // app"). Running the workspace lives here; Settings stays personal.
+  const role = await getRole();
+  const workspace = process.env.FREYR_WORKSPACE_ID;
+  const directory =
+    role === "admin" && workspace
+      ? await listWorkspaceAccess(workspace).catch(() => null)
+      : null;
+  const memberNames = [
+    ...new Set(
+      (directory?.members ?? [])
+        .filter((m) => m.active && m.accountType === "real")
+        .map((m) => m.name.trim())
+        .filter(Boolean)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
 
   let kbStatus: { label: string; bg: string; color: string };
   if (!kb?.crawled_at) {
@@ -53,8 +73,14 @@ export default async function AdminPage() {
     <div>
       <PageHeader
         title="Admin"
-        subtitle="Manage the Freyr site index and check system status."
+        subtitle="Run the workspace: user groups, the Freyr site index, and system status."
       />
+
+      {role === "admin" && (
+        <div className="mb-8">
+          <UserGroupsAdmin memberNames={memberNames} />
+        </div>
+      )}
 
       {/* Knowledge base status */}
       <Card className="mb-8">

@@ -5,6 +5,7 @@ import {
   PhoneCall,
   Sparkles,
   type LucideIcon,
+  Fingerprint,
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { NotificationMark } from "@/components/notifications/NotificationMark";
@@ -43,6 +44,8 @@ const TYPE_META: Record<NotificationType, { icon: LucideIcon; color: string }> =
   followup: { icon: CalendarClock, color: "#7C3AED" },
   // A call.
   voice: { icon: PhoneCall, color: "#0891B2" },
+  // Your own account — the identity purple used for ownership everywhere else.
+  security: { icon: Fingerprint, color: "#6D28D9" },
 };
 
 /**
@@ -51,6 +54,7 @@ const TYPE_META: Record<NotificationType, { icon: LucideIcon; color: string }> =
  * one surface is the wording they see on the other.
  */
 const CHIP_LABEL: Record<string, string> = {
+  "Set up Touch ID": "Your account",
   "Pitch awaiting your approval": "Approval needed",
   "Voice call needs attention": "Call needs attention",
   "Call analysis is ready": "Call ready",

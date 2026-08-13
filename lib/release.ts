@@ -91,6 +91,11 @@ const NON_MODULE_PATHS: ReadonlySet<string> = new Set([
   "/auth/reset-password",
   "/access-pending",
   "/settings",
+  // Running the workspace — user groups and system status. Its own page, not
+  // a Settings tab (Anir, Aug 12: "there should be a separate admin page").
+  // Without this the page 307s in live mode, so the admin who needs it can
+  // never open it; the sections inside are still role-gated.
+  "/admin",
   "/onboarding",
 ]);
 

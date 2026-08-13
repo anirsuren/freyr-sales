@@ -47,7 +47,7 @@ export function GroupPerformanceTab({
       <EmptyState
         icon={Settings2}
         title="No user groups yet"
-        description="Groups are created by admins in Settings → User groups. Once a group exists, its members' goals add up here automatically."
+        description="Groups are created by admins on the Admin page. Once a group exists, its members' goals add up here automatically."
       />
     );
   }
@@ -240,9 +240,9 @@ export function GroupPerformanceTab({
       })}
       <p className="flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
         <Settings2 size={13} strokeWidth={2} />
-        Creating groups and managing who&apos;s in them lives in{" "}
-        <Link href="/settings" className="font-semibold text-blue-primary hover:underline">
-          Settings → User groups
+        Creating groups and managing who&apos;s in them lives on the{" "}
+        <Link href="/admin" className="font-semibold text-blue-primary hover:underline">
+          Admin page
         </Link>{" "}
         — admins only.
       </p>

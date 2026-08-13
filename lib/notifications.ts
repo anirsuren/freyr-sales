@@ -7,7 +7,14 @@ import type { StoredVoiceConversation } from "./voiceEvents";
 
 export const NOTIF_READ_KEY = "freyr.notif.read.v1";
 
-export type NotificationType = "review" | "rotting" | "signal" | "followup" | "voice";
+export type NotificationType =
+  | "review"
+  | "rotting"
+  | "signal"
+  | "followup"
+  | "voice"
+  /** Your own account, not an account you sell to — e.g. Touch ID not set up. */
+  | "security";
 
 /**
  * How pressing an alert is. Five rows that all say "Follow-up due" read as five
@@ -130,8 +137,19 @@ export function buildNotifications(input: {
   contacts: Contact[];
   interactions: Interaction[];
   voiceConversations?: StoredVoiceConversation[];
+  /** True when the signed-in person has no passkey yet — the Touch ID nudge
+   *  (Anir, Aug 12: "if they don't have it, it should be in the notifications
+   *  ... until they do it"). Computed server-side; false hides the row. */
+  needsPasskey?: boolean;
 }): AppNotification[] {
-  const { sessions, customers, contacts, interactions, voiceConversations = [] } = input;
+  const {
+    sessions,
+    customers,
+    contacts,
+    interactions,
+    voiceConversations = [],
+    needsPasskey = false,
+  } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
   const contactById = Object.fromEntries(contacts.map((c) => [c.id, c]));
   const out: AppNotification[] = [];
@@ -292,9 +310,34 @@ export function buildNotifications(input: {
     });
   }
 
-  return out
+  // TOUCH ID, UNTIL IT'S DONE. Not a popup on every login (Anir changed his
+  // mind mid-thought: "let's just throw it in notifications") — a standing row
+  // that regenerates on every load while the account has no passkey, and
+  // disappears by itself the moment one is enrolled.
+  const securityRows: AppNotification[] = [];
+  if (needsPasskey) {
+    securityRows.push({
+      id: "security-passkey",
+      type: "security",
+      title: "Set up Touch ID",
+      body: "Sign in with your fingerprint instead of typing a password.",
+      subject: "Set up Touch ID",
+      detail: "Use your fingerprint to sign in — takes about ten seconds.",
+      urgency: "today",
+      href: "/settings?tab=profile",
+      ts: new Date(nowMs).toISOString(),
+      stamp: "Not set up",
+    });
+  }
+
+  return securityRows.concat(out)
     .map((n) => ({ ...n, stamp: n.stamp || relativeStamp(n.ts, nowMs) }))
     .sort((a, b) => {
+      // Your own account first: a rep can't be nagged about a customer while
+      // their own sign-in is still half-finished.
+      const bySelf =
+        Number(b.type === "security") - Number(a.type === "security");
+      if (bySelf !== 0) return bySelf;
       // Urgency first — overdue work should never sit below a note from today
       // just because the note is newer. Within a bucket, most recent first.
       const byUrgency = urgencyRank(a.urgency) - urgencyRank(b.urgency);

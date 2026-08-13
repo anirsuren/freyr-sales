@@ -610,7 +610,7 @@ export function TopBar({
                     className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-text-primary hover:bg-surface transition-colors"
                   >
                     <BookOpen size={16} strokeWidth={1.7} className="text-text-secondary" />
-                    Knowledge base
+                    Admin
                   </Link>
                   <Link
                     role="menuitem"
