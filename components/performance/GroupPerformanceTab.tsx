@@ -11,6 +11,7 @@ import {
   personGoalRows,
   type PerformanceState,
 } from "@/lib/performanceShared";
+import { GoalZoom } from "./GoalZoom";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -41,6 +42,9 @@ export function GroupPerformanceTab({
   }) => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  /** Which person+goal pair inside an open group is showing its drill-down.
+   *  Same idea as Org performance: the detail opens where you clicked it. */
+  const [openGoal, setOpenGoal] = useState<string | null>(null);
 
   if (state.groups.length === 0) {
     return (
@@ -185,9 +189,22 @@ export function GroupPerformanceTab({
                             r.goal.year,
                             r.goal.measure
                           );
+                          const rowKey = `${person}:${r.goal.id}:${r.subgoal?.id ?? "direct"}`;
+                          const goalOpen = openGoal === rowKey;
                           return (
-                            <div key={`${r.goal.id}:${r.subgoal?.id ?? "direct"}`}>
-                              <div className="flex flex-wrap items-center gap-2">
+                            <div key={rowKey}>
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                aria-expanded={goalOpen}
+                                onClick={() => setOpenGoal(goalOpen ? null : rowKey)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setOpenGoal(goalOpen ? null : rowKey);
+                                  }
+                                }}
+                                className="flex cursor-pointer flex-wrap items-center gap-2 rounded-lg transition-colors hover:bg-surface">
                                 <TypeChip type={r.goal.type} size="sm" />
                                 <span className="text-[12.5px] font-semibold text-text-primary">
                                   {r.goal.name}
@@ -202,13 +219,15 @@ export function GroupPerformanceTab({
                                   {live && (
                                     <button
                                       type="button"
-                                      onClick={() =>
+                                      onClick={(e) => {
+                                        // The row itself is a toggle now.
+                                        e.stopPropagation();
                                         onLogActual({
                                           goalId: r.goal.id,
                                           subgoalId: r.subgoal?.id ?? null,
                                           person,
-                                        })
-                                      }
+                                        });
+                                      }}
                                       className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
                                     >
                                       <PencilLine size={11} strokeWidth={2.2} />{" "}
@@ -226,6 +245,16 @@ export function GroupPerformanceTab({
                                 pace={pace}
                                 showExpected={r.goal.measure === "total"}
                               />
+                              {goalOpen && (
+                                <div className="tab-panel mt-3 rounded-xl border border-border-light bg-surface/50 p-3">
+                                  <GoalZoom
+                                    state={state}
+                                    goalId={r.goal.id}
+                                    meName={meName}
+                                    embedded
+                                  />
+                                </div>
+                              )}
                             </div>
                           );
                         })}
