@@ -24,6 +24,19 @@ import {
 
 const ROW_ID = "performance-management";
 
+/** Mock and Real live in SEPARATE rows, like every other store: a mock edit
+ *  can never reach real numbers, and Mock always has its own full world
+ *  (Anir, Aug 13: "everything should be fake data, and don't affect real
+ *  mode at all"). Outside a request (scripts, boot) this resolves to Real,
+ *  which is the safe default. */
+function activeRowId(): string {
+  try {
+    return getDataMode() === "mock" ? `${ROW_ID}:mock` : ROW_ID;
+  } catch {
+    return ROW_ID;
+  }
+}
+
 function hasDatabase(): boolean {
   return !!(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -226,7 +239,7 @@ async function readRow(): Promise<PerformanceState> {
   const { data, error } = await client()
     .from("offering_catalog_state")
     .select("catalog")
-    .eq("id", ROW_ID)
+    .eq("id", activeRowId())
     .maybeSingle();
   if (error) throw new Error(error.message);
   return normalize(data?.catalog);
@@ -236,7 +249,7 @@ async function writeRow(stateValue: PerformanceState): Promise<void> {
   const { error } = await client()
     .from("offering_catalog_state")
     .upsert({
-      id: ROW_ID,
+      id: activeRowId(),
       catalog: stateValue,
       updated_at: new Date().toISOString(),
     });
@@ -1117,6 +1130,93 @@ function samplePerformance(): PerformanceState {
           });
         }
       }
+    }
+  }
+
+  /* ---- The booking family and the claim/verify world, so Mock shows every
+     new surface full (Anir, Aug 13: "In Mock-mode, I need to see how
+     everything looks"). Deterministic like everything else here. */
+  const parent = goals.find((g) => g.id === "mock-booked-revenue");
+  const componentDefs = [
+    { id: "mock-booked-new", name: "Booked New Business", target: 40_000_000 },
+    { id: "mock-booked-existing", name: "Booked Existing Business", target: 35_000_000 },
+    { id: "mock-renewals", name: "Renewals", target: 25_000_000 },
+  ];
+  if (parent) {
+    parent.componentGoalIds = componentDefs.map((c) => c.id);
+    for (const def of componentDefs) {
+      goals.push({
+        id: def.id,
+        name: def.name,
+        type: parent.type,
+        unit: "currency",
+        measure: "total",
+        year: MOCK_YEAR,
+        target: def.target,
+        pickedForOrg: false,
+        verified: true,
+        subgoals: [],
+        createdBy: by,
+        createdAt,
+      });
+    }
+    // Cadence rules on the master: RFP-style goals cannot be weekly.
+    for (const g of goals) {
+      if (/RFP|Proposals/i.test(g.name)) {
+        g.cadences = ["monthly", "quarterly", "yearly"];
+      }
+    }
+    const groupTuples = MOCK_GROUPS.map(([, name, head, members]) => ({ name, head, members }));
+    const headOf = new Map<string, string>();
+    for (const g of groupTuples) for (const p of [g.head, ...g.members]) headOf.set(p, g.head);
+    const people = [...headOf.keys()];
+    const customers = [
+      "Zenlabs Pharma", "Helix Biotech", "Northwind Biosciences", "Meridian Labs",
+      "BlueSky Therapeutics", "Caldera Health", "Novara Medical", "Atlas Genomics",
+    ];
+    const evidencePacks = [
+      [{ name: "signed-MSA.pdf", url: "#" }],
+      [{ name: "SOW-countersigned.pdf", url: "#" }],
+      [{ name: "renewal-contract.pdf", url: "#" }, { name: "opportunity-summary.docx", url: "#" }],
+    ];
+    const kinds = ["first contract", "adds a service", "renewal"];
+    // Apr 2025 through Aug 2026: fills FY 2025-26 completely and the current
+    // FY through today, including five claims still waiting in August.
+    let k = 0;
+    for (let m = 0; m < 17; m++) {
+      const year = 2025 + Math.floor((3 + m) / 12);
+      const month = (3 + m) % 12;
+      componentDefs.forEach((def, ci) => {
+        const perMonth = m >= 12 ? 2 : 1;
+        for (let e = 0; e < perMonth; e++) {
+          const r = lcg(`bk:${def.id}:${m}:${e}`);
+          const person = people[Math.floor(r() * people.length)];
+          const day = 3 + Math.floor(r() * 22);
+          const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const isAugust = year === 2026 && month === 7;
+          const waiting = isAugust && k % 3 === 0 && day > 6;
+          actuals.push({
+            id: `bk-${def.id}-${m}-${e}`,
+            goalId: def.id,
+            subgoalId: null,
+            person,
+            amount: Math.round((def.target / 14) * (0.5 + r())),
+            date,
+            customer: `${customers[Math.floor(r() * customers.length)]} · ${kinds[ci]}`,
+            evidence: evidencePacks[Math.floor(r() * evidencePacks.length)],
+            status: waiting ? "reported" : "verified",
+            ...(waiting
+              ? {}
+              : {
+                  verifiedBy: headOf.get(person) ?? groupTuples[0].head,
+                  verifiedAt: `${date}T16:00:00.000Z`,
+                }),
+            addedBy: person,
+            addedAt: `${date}T10:00:00.000Z`,
+          });
+          k++;
+        }
+      });
     }
   }
 

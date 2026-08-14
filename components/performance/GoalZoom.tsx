@@ -349,15 +349,15 @@ export function GoalZoom({
       <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.62fr_1fr]">
         {/* ------------------------------------------- period table */}
         <Card className="overflow-hidden p-0">
-          <div className="flex flex-wrap items-center gap-3 border-b border-border-light px-4 py-3">
-            <b className="text-[14px] text-text-primary">
+          <div className="flex items-center gap-3 border-b border-border-light px-4 py-3">
+            <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
               The year, period by period
             </b>
-            <span className="text-[11px] text-text-tertiary">
+            <span className="min-w-0 truncate text-[11px] text-text-tertiary">
               weeks add into months, months into quarters, quarters into{" "}
               {fiscalLabel(fy)}
             </span>
-            <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-border-light bg-white">
+            <span className="ml-auto inline-flex shrink-0 overflow-hidden rounded-lg border border-border-light bg-white">
               {grans
                 .filter((g) => g.allowed)
                 .map((g) => (
@@ -377,7 +377,10 @@ export function GoalZoom({
                 ))}
             </span>
           </div>
-          <div className="overflow-x-auto">
+          {/* Re-mounts on every Weeks/Months/Quarters/Years switch so the rows
+              lift in instead of teleporting (Anir: "Animations, please, when I
+              switch between the four"). */}
+          <div key={gran} className="tab-panel overflow-x-auto">
             <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b border-border-light">
@@ -467,6 +470,7 @@ export function GoalZoom({
                     </td>
                   </tr>
                 ))}
+                {gran !== "years" && (
                 <tr className="border-t-2 border-border-light bg-white">
                   <td className="px-4 py-3">
                     <b className="text-[12.5px]">{fiscalLabel(fy)}</b>
@@ -504,13 +508,13 @@ export function GoalZoom({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    {gran !== "years" &&
-                      pill(
-                        "bg-[rgba(0,113,227,0.10)] text-blue-primary",
-                        "adds into the year"
-                      )}
+                    {pill(
+                      "bg-[rgba(0,113,227,0.10)] text-blue-primary",
+                      "adds into the year"
+                    )}
                   </td>
                 </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -671,7 +675,7 @@ export function GoalZoom({
               <div className="mt-3 space-y-2.5">
                 {groupRows.map((r, i) => (
                   <div key={r.group.id} className="flex items-center gap-2.5">
-                    <span className="w-[130px] truncate text-[12px] font-semibold">
+                    <span className="w-[180px] text-[12px] font-semibold leading-tight">
                       {r.group.name}
                     </span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface">
