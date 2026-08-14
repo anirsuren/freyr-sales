@@ -12,6 +12,7 @@ import {
   personGoalRows,
   type PerformanceState,
 } from "@/lib/performanceShared";
+import { GoalZoom } from "./GoalZoom";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -45,6 +46,10 @@ export function PeopleTab({
 }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
+  /** Which of this person's goal rows is showing its drill-down. Same idea,
+   *  and the same GoalZoom, as Org and Group performance: the detail opens
+   *  where you clicked it rather than on a page of its own. */
+  const [openGoal, setOpenGoal] = useState<string | null>(null);
 
   const names = useMemo(() => knownPeople(state, meName), [state, meName]);
   const person = picked ?? meName;
@@ -173,20 +178,37 @@ export function PeopleTab({
                 person,
               });
               const pace = paceVerdict(actual, r.target, r.goal.year, r.goal.measure);
+              const rowKey = `${r.goal.id}:${r.subgoal?.id ?? "direct"}`;
+              const goalOpen = openGoal === rowKey;
               return (
                 <div
-                  key={`${r.goal.id}:${r.subgoal?.id ?? "direct"}`}
+                  key={rowKey}
                   className="rounded-xl border border-border-light bg-white p-3.5"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={goalOpen}
+                    onClick={() => setOpenGoal(goalOpen ? null : rowKey)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setOpenGoal(goalOpen ? null : rowKey);
+                      }
+                    }}
+                    className="flex cursor-pointer flex-wrap items-center gap-2 rounded-lg transition-colors hover:bg-surface"
+                  >
                     <TypeChip type={r.goal.type} size="sm" />
-                    {/* The same goal name opens the goal from Org performance
-                        but was flat text here, so the drill-down existed on
-                        one tab and not the other (Anir, Aug 14). */}
+                    {/* The row expands in place; this name still takes you to
+                        the full page, which is the option Anir asked to keep
+                        ("if i want to actually go to that page that should be
+                        an option too"). It stops propagation so the link
+                        navigates instead of toggling the row it sits in. */}
                     <Link
                       href={`/performance/goal/${r.goal.id}`}
+                      onClick={(e) => e.stopPropagation()}
                       className="text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
-                      title="Open this goal: financial years, quarters, months, weeks, groups and people"
+                      title="Open this goal on its own page: financial years, quarters, months, weeks, groups and people"
                     >
                       {r.goal.name}
                     </Link>
@@ -210,13 +232,15 @@ export function PeopleTab({
                       {live && (
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={(e) => {
+                            // The row itself is a toggle now.
+                            e.stopPropagation();
                             onLogActual({
                               goalId: r.goal.id,
                               subgoalId: r.subgoal?.id ?? null,
                               person,
-                            })
-                          }
+                            });
+                          }}
                           className="flex cursor-pointer items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary transition-all hover:bg-blue-primary hover:text-white active:scale-[0.97]"
                         >
                           <PencilLine size={11} strokeWidth={2.2} /> Log an actual
@@ -233,6 +257,19 @@ export function PeopleTab({
                     pace={pace}
                     showExpected={r.goal.measure === "total"}
                   />
+                  {goalOpen && (
+                    <div className="tab-panel mt-3 rounded-xl border border-border-light bg-surface/50 p-3">
+                      {/* No `run`: it only drives the verification queue,
+                          which embedded mode does not render. Same call as
+                          Group performance, so the three tabs stay identical. */}
+                      <GoalZoom
+                        state={state}
+                        goalId={r.goal.id}
+                        meName={meName}
+                        embedded
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
