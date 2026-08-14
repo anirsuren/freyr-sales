@@ -157,10 +157,37 @@ export function TrackedPeopleList({
         size="workflow"
       >
         {open && (
-          <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-[minmax(0,1fr)_272px]">
+          /**
+           * TWO PANES, EACH OWNING ITS OWN SCROLL, WITH A LINE BETWEEN THEM.
+           *
+           * First attempt gave the posts a fixed-height scroller nested in the
+           * modal's own, so the outer could sit at the top while the inner sat
+           * mid-post and the first card lost its header. Removing it fixed the
+           * clipping but left the rail and the modal both scrolling, which
+           * read as two scrollbars for one dialog (Anir, Aug 14: "the scroll
+           * bar is a little weird... properly separate the left side and the
+           * right side").
+           *
+           * So on a wide screen the grid takes the height and each column
+           * scrolls itself: posts on the left, the person on the right, a
+           * divider between. The modal body then has nothing left to scroll,
+           * which is what stops the two from fighting. Narrow screens keep one
+           * column and one scroller, the modal's, because side-by-side panes
+           * do not exist there.
+           */
+          <div className="grid grid-cols-1 items-start gap-5 md:h-[70vh] md:grid-cols-[minmax(0,1fr)_296px] md:items-stretch md:gap-0">
             {/* POSTS OWN THE LEFT (Anir, Aug 11: "the person goes on the
-                right, and then on the left are all the posts"). */}
-            <div className="-mr-2 h-[68vh] space-y-4 overflow-y-auto pr-2">
+                right, and then on the left are all the posts").
+
+                ONE SCROLLER, AND IT IS THE MODAL'S. This column used to be
+                h-[68vh] with its own overflow-y-auto, nested inside a modal
+                body that already scrolls. Two scrollbars for one list meant
+                the inner one could sit mid-post while the outer sat at the
+                top, so the first card opened with its date chip and opening
+                line sliced off above the fold (Anir, Aug 14, with a
+                screenshot). The column now takes its natural height and the
+                modal scrolls it, so a post always starts at its beginning. */}
+            <div className="space-y-4 md:min-h-0 md:overflow-y-auto md:pr-5">
               {!openPosts || openPosts.length === 0 ? (
                 <p className="rounded-lg bg-surface px-4 py-5 text-center text-[12.5px] leading-relaxed text-text-secondary">
                   {openPosts === undefined
@@ -214,8 +241,12 @@ export function TrackedPeopleList({
               )}
             </div>
 
-            {/* THE PERSON, compact on the right. */}
-            <aside className="order-first space-y-3 md:order-none md:sticky md:top-0">
+            {/* THE PERSON, compact on the right. Sticky against the modal's
+                own scroller, which is now the only one, so the identity card
+                stays put while the posts move. It carries a max height and
+                its own scroll purely as a safety valve: a long About should
+                make this rail scrollable, never make it clip. */}
+            <aside className="order-first space-y-3 md:order-none md:min-h-0 md:overflow-y-auto md:border-l md:border-border-light md:pl-5">
               <div className="rounded-xl border border-border-light bg-[var(--surface)] p-4 text-center">
                 <Avatar
                   name={open.name}
@@ -285,12 +316,19 @@ export function TrackedPeopleList({
                 </div>
               )}
 
+              {/* ABOUT, IN FULL. It was clamped to ten lines, so the one
+                  paragraph explaining who this person is ended in an ellipsis
+                  every time (Anir, Aug 14: "I can't even see the full About
+                  section"). Truncating with "…" is banned app-wide, and this
+                  is the field it hurt most: it is the only prose about the
+                  human you are deciding whether to approach. The rail above
+                  scrolls, so length costs nothing. */}
               {open.about && (
                 <div className="rounded-xl border border-border-light bg-white p-4">
                   <p className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                     About
                   </p>
-                  <p className="mt-1.5 overflow-hidden whitespace-pre-line text-[12px] leading-relaxed text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:10]">
+                  <p className="mt-1.5 whitespace-pre-line break-words text-[12px] leading-relaxed text-text-secondary">
                     {open.about}
                   </p>
                 </div>

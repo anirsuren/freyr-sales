@@ -145,7 +145,23 @@ export default async function RepPage({
                 creation date, so it is a fact about this person and not a
                 guess. Absent on accounts created before the column existed. */}
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-text-tertiary">
-              {member.email && <span>{member.email}</span>}
+              {/* THE SAME EMAIL TREATMENT AS THE ROSTER: envelope, then a
+                  mailto. Here it was a bare span — no icon and not even
+                  clickable — while the joined date beside it carried a
+                  calendar, so the one line held two conventions and the
+                  address you actually want to use was the dead one (Anir,
+                  Aug 14: "you need the email icon there, just like you show
+                  it on the overall team's page"). */}
+              {member.email && (
+                <a
+                  href={`mailto:${member.email}`}
+                  title={`Email ${member.name}`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-blue-primary"
+                >
+                  <Mail size={12} strokeWidth={2} className="shrink-0" />
+                  {member.email}
+                </a>
+              )}
               {member.joinedAt && (
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarCheck size={12} strokeWidth={2} />
