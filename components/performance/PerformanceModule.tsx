@@ -931,13 +931,18 @@ function MasterTab({
                           </span>
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4">
-                        <UnitChip unit={g.unit} />
-                        {g.measure === "level" && (
-                          <span className="ml-1.5 rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
-                            latest value
-                          </span>
-                        )}
+                      <td className="px-4 py-4">
+                        {/* Both chips stay INSIDE this fixed-width column —
+                            nowrap made "latest value" bleed into the Target
+                            cell and jam against "Set the target". */}
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <UnitChip unit={g.unit} />
+                          {g.measure === "level" && (
+                            <span className="whitespace-nowrap rounded-full bg-[rgba(109,40,217,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:#6D28D9]">
+                              latest value
+                            </span>
+                          )}
+                        </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-[13px] font-semibold text-text-primary tnum">
                         {g.target > 0 ? (
