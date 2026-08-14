@@ -228,7 +228,18 @@ export function ConnectedComponents({
                       underneath it, so "Modules" and "Agents" read as noise
                       above the list rather than as the thing dividing it
                       (Saras, Aug 14, change log #36). Now it carries the
-                      kind's own tint and border and sits at heading size. */}
+                      kind's own tint and border and sits at heading size.
+
+                      AND IT ONLY APPEARS WHEN IT DIVIDES SOMETHING. A band
+                      reading "Modules (5)" above five rows whose Type column
+                      already says Module on every one is a header for a
+                      grouping that isn't happening (Anir, Aug 14: "I don't
+                      understand what that is"). Suren asked for modules at the
+                      top and agents at the bottom, which only means anything
+                      when an offering holds both — today that is
+                      Freya.intelligence and Freya.GRR-PAC. One kind, no
+                      divider. */}
+                  {groups.length > 1 && (
                   <tr>
                     <td
                       colSpan={7}
@@ -253,6 +264,7 @@ export function ConnectedComponents({
                       </span>
                     </td>
                   </tr>
+                  )}
                   {group.items.map((component) => {
                 const current = fdlCurrentVersion(component);
                 return (
@@ -387,8 +399,10 @@ export function ConnectedComponents({
         <div className="mt-4 space-y-5">
           {groups.map((group) => (
           <div key={group.kind}>
-            {/* Same title bar as the table view, so a reader who switches
-                layouts sees the same divider both times (change log #36). */}
+            {/* Same title bar as the table view, and on the same condition:
+                it only appears when there is more than one kind to divide
+                (change log #36, then Anir, Aug 14). */}
+            {groups.length > 1 && (
             <p
               className="mb-2.5 flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-bold tracking-[0.01em]"
               style={{
@@ -406,6 +420,7 @@ export function ConnectedComponents({
                 ({group.items.length})
               </span>
             </p>
+            )}
             <div className="grid gap-3 md:grid-cols-2 stagger">
           {group.items.map((component) => {
             const current = fdlCurrentVersion(component);

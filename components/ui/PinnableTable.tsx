@@ -131,11 +131,31 @@ function PinCorner({ id, floating }: { id: string; floating?: boolean }) {
           aria-label={pinned ? "Unpin the column headers" : "Pin the column headers"}
           aria-pressed={pinned}
           onClick={() => setPinned(id, !pinned)}
+          /**
+           * THE PIN SITS ON TOP OF A COLUMN HEADER, SO IT DOES NOT WEAR A
+           * BACKGROUND UNTIL YOU REACH FOR IT.
+           *
+           * It is absolutely positioned in the table's corner, which means it
+           * always covers whatever the last column is called — and it was a
+           * filled chip: blue once pinned, a white blob before that. Scrolled
+           * far enough for the floating strip, it obscured that header
+           * outright (Anir, Aug 14, with a screenshot: "that pin icon should
+           * be completely transparent... when my mouse hovers over it, then
+           * it can turn properly").
+           *
+           * So the chip is a hover state now. At rest there is only the glyph,
+           * dimmed enough to sit over a header without competing with it and
+           * solid enough to still be findable. Pinned-ness is carried by the
+           * icon itself — filled and blue — not by a plate behind it, so the
+           * state stays readable with nothing covered.
+           */
           className={cn(
-            "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border transition-all",
+            "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-transparent transition-all",
+            "hover:border-border-light hover:bg-white hover:text-blue-primary hover:shadow-sm",
+            "focus-visible:border-border-light focus-visible:bg-white focus-visible:text-blue-primary",
             pinned
-              ? "border-blue-subtle bg-blue-light text-blue-primary"
-              : "border-border-light bg-white/95 text-text-tertiary opacity-70 backdrop-blur-sm hover:text-blue-primary hover:opacity-100"
+              ? "text-blue-primary opacity-90"
+              : "text-text-tertiary opacity-55 hover:opacity-100"
           )}
         >
           <Pin size={13} strokeWidth={2} className={cn(pinned && "fill-current")} />
