@@ -3,7 +3,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
-  Check,
   ChevronDown,
   Crown,
   ClipboardList,
@@ -175,7 +174,6 @@ export function PerformanceModule({
     TABS
   );
   const [busy, setBusy] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   // Which rooms this person gets: org for managers, groups when you head
   // one, and everyone gets their own performance plus the Goal Master.
   const iHeadAGroup = state.groups.some(
@@ -191,27 +189,6 @@ export function PerformanceModule({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, isManager, iHeadAGroup]);
   const [howOpen, setHowOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  // Capture phase, same as Market Intel's title menu: a click elsewhere only
-  // closes the menu, it never also activates whatever sits underneath.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onClickCapture = (event: MouseEvent) => {
-      if (menuRef.current?.contains(event.target as Node)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setMenuOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("click", onClickCapture, true);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("click", onClickCapture, true);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
 
   /**
    * Saves QUEUE rather than drop. The old `if (busy) return` guard meant a
@@ -319,79 +296,72 @@ export function PerformanceModule({
 
   return (
     <div>
-      {/* The title IS the room picker — same pattern as Market Intel. */}
+      {/* The title just says where you are; the tab bar below does the moving,
+          so the heading no longer hides the other destinations behind it. */}
       <div className="rise-in relative z-40 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div ref={menuRef} className="relative">
-            <h1 className="m-0">
+          {/* THE SELECTOR IS THE TITLE. It used to be a heading that named the
+              room and a tab bar UNDER it naming the same room again, so the
+              page said "Org performance" twice and put the control below the
+              label it duplicated (Anir, Aug 14: "you don't even need to say
+              org performance twice because it's already on the selector").
+              The tabs sit where the title was and carry the name themselves;
+              the h1 stays for screen readers and the document outline. */}
+          <div className="relative">
+            <h1 className="sr-only">
+              {showMaster ? "Goal Master" : room.label}
+            </h1>
+            <div className="inline-flex flex-wrap items-center gap-1 rounded-full bg-surface p-1">
+              {visibleTabs.map((key) => {
+                const r = ROOMS[key];
+                const Icon = r.icon;
+                const active = !showMaster && key === tab;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      chooseTab(key);
+                      setMasterFor(null);
+                    }}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
+                      active
+                        ? "bg-white text-text-primary shadow-sm"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    <Icon
+                      size={16}
+                      strokeWidth={2.2}
+                      aria-hidden="true"
+                      style={active ? { color: r.color } : undefined}
+                    />
+                    {r.label}
+                  </button>
+                );
+              })}
               <button
                 type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                className="group flex cursor-pointer items-center gap-2 rounded-lg text-[24px] font-semibold tracking-[-0.02em] text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/35"
+                aria-pressed={showMaster}
+                onClick={() => setMasterFor(tab)}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold tracking-[-0.01em] transition-all",
+                  showMaster
+                    ? "bg-white text-text-primary shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
               >
-                {room.label}
-                <ChevronDown
-                  size={20}
+                <ClipboardList
+                  size={16}
                   strokeWidth={2.2}
-                  className={cn(
-                    "text-text-tertiary transition-transform group-hover:text-blue-primary",
-                    menuOpen && "rotate-180 text-blue-primary"
-                  )}
+                  aria-hidden="true"
+                  style={showMaster ? { color: "#6D28D9" } : undefined}
                 />
+                Goal Master
               </button>
-            </h1>
-            {menuOpen && (
-              <div
-                role="menu"
-                className="menu-in absolute left-0 top-full z-50 mt-2 w-[300px] rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
-              >
-                {visibleTabs.map((key) => {
-                  const r = ROOMS[key];
-                  const Icon = r.icon;
-                  const active = key === tab;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={active}
-                      onClick={() => {
-                        chooseTab(key);
-                        setMenuOpen(false);
-                      }}
-                      className={cn(
-                        "flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                        active ? "bg-[rgba(0,113,227,0.06)]" : "hover:bg-surface"
-                      )}
-                    >
-                      <span
-                        className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                        style={{ color: r.color, background: `${r.color}14` }}
-                      >
-                        <Icon size={14.5} strokeWidth={2.2} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[13px] font-semibold text-text-primary">
-                          {r.label}
-                        </span>
-                        <span className="mt-0.5 block text-[11px] leading-snug text-text-tertiary">
-                          {r.subtitle}
-                        </span>
-                      </span>
-                      {active && (
-                        <Check
-                          size={14}
-                          strokeWidth={2.4}
-                          className="mt-1 shrink-0 text-blue-primary"
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <button
@@ -412,33 +382,6 @@ export function PerformanceModule({
         <p className="mt-1.5 max-w-[720px] text-[13.5px] leading-relaxed text-text-secondary">
           {room.subtitle}
         </p>
-        <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-surface p-1">
-            {[
-              { key: "numbers", label: room.label },
-              { key: "master", label: "Goal Master" },
-            ].map((choice) => {
-              const active =
-                choice.key === "master" ? showMaster : !showMaster;
-              return (
-                <button
-                  key={choice.key}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() =>
-                    setMasterFor(choice.key === "master" ? tab : null)
-                  }
-                  className={cn(
-                    "cursor-pointer rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-all",
-                    active
-                      ? "bg-white text-text-primary shadow-sm"
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {choice.label}
-                </button>
-              );
-          })}
-        </div>
       </div>
 
       <div key={`${tab}-${showMaster ? "master" : "numbers"}`} className="tab-panel">
