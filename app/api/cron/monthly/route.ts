@@ -4,21 +4,31 @@ import {
   buildRepUsageEmails,
   type PreparedEmail,
 } from "@/lib/monthlyEmails";
-import { mailerConfigured, sendMail } from "@/lib/mailer";
-import { resetUsageCounters } from "@/lib/usageCounters";
+import { mailerConfigured } from "@/lib/mailer";
+import { sendMonthlyEmails } from "@/lib/monthlyEmailRun";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * THE MONTHLY SEND.
+ * THE MONTHLY SEND, ON DEMAND.
  *
- * Hit by a schedule (.github/workflows/monthly-emails.yml) on the 1st. Not
+ * The routine path is now the in-app schedule (lib/monthlyEmailCron), which
+ * sends once per calendar month and is the only scheduler available to us: the
+ * `.github/workflows/monthly-emails.yml` this comment used to name was never
+ * created, and the deploy PAT cannot add it. This endpoint stays for the two
+ * things a timer cannot do — preview, and send on request — and it is not
  * reachable by a signed-in person: it needs CRON_SECRET as a bearer token, so
  * nobody can trigger a mailout to the whole company by typing a URL.
  *
- * `?dry=1` builds every message and reports who would get what WITHOUT sending
- * — which is how this gets checked before it is ever pointed at real inboxes.
+ * `?dry=1` builds every message and reports who would get what WITHOUT
+ * sending, which is how this gets checked before it is ever pointed at real
+ * inboxes. A dry run never takes the schedule's lock and never resets a
+ * counter.
+ *
+ * NOTE that POSTing here sends immediately and does NOT mark the month as
+ * done, so it stays a manual override rather than a way to accidentally
+ * suppress the scheduled send.
  */
 function unauthorized() {
   return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -76,29 +86,14 @@ async function run(request: NextRequest) {
     );
   }
 
-  const results: Record<string, { sent: number; failed: string[] }> = {};
-  for (const batch of batches) {
-    const failed: string[] = [];
-    let sent = 0;
-    for (const email of batch.emails) {
-      const result = await sendMail(email);
-      if (result.ok) sent += 1;
-      else failed.push(`${email.to.join(", ")}: ${result.error}`);
-    }
-    results[batch.name] = { sent, failed };
+  const result = await sendMonthlyEmails({
+    only: only === "owners" || only === "reps" ? only : null,
+    nowMs,
+  });
+  if (!result.sent) {
+    return NextResponse.json({ error: result.reason }, { status: 503 });
   }
-
-  /**
-   * Zero the counters only AFTER the rep note has actually gone out, and only
-   * if it did. Resetting first would throw away a month of counting whenever a
-   * send failed, and nobody would know until the next email read zero.
-   */
-  const repRun = results["rep-usage"];
-  const workspace = process.env.FREYR_WORKSPACE_ID;
-  if (workspace && repRun && repRun.sent > 0 && repRun.failed.length === 0) {
-    await resetUsageCounters(workspace);
-  }
-  return NextResponse.json({ ok: true, results });
+  return NextResponse.json({ ok: true, results: result.results });
 }
 
 export async function POST(request: NextRequest) {

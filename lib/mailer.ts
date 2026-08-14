@@ -15,8 +15,32 @@ import "server-only";
 
 export type MailResult = { ok: true; id: string } | { ok: false; error: string };
 
-const FROM =
-  process.env.MAIL_FROM || "Freyr Sales <noreply@anirsuren.com>";
+/**
+ * WHO THE APP'S OWN MAIL COMES FROM.
+ *
+ * `MAIL_FROM` is read first and is set nowhere — not in .env.local, not on the
+ * ECS task definition — so until Aug 14 every product email would have gone
+ * out from a personal domain. `EMAIL_FROM` is the variable that IS configured
+ * and that lib/email.ts already uses, so it is the sensible middle rung: one
+ * sender for everything the app sends, set in one place.
+ *
+ * The last resort stays a domain that is actually verified at Resend, because
+ * Resend refuses a message from an unverified sender outright. Point
+ * MAIL_FROM (or EMAIL_FROM) at a Freyr no-reply address the moment
+ * freyrsolutions.com finishes verifying — that is a task-definition change,
+ * not a code change.
+ */
+const FROM = () =>
+  process.env.MAIL_FROM ||
+  process.env.EMAIL_FROM ||
+  "Freyr Sales <noreply@anirsuren.com>";
+
+/** What the app would actually put in the From line, for the health payload —
+ *  a sender nobody has configured is invisible until a person asks why the
+ *  email looked odd. */
+export function mailerFrom(): string {
+  return FROM();
+}
 
 export function mailerConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
