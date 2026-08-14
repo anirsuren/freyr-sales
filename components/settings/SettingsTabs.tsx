@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { isFullName } from "@/lib/fullName";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -888,8 +889,8 @@ export function SettingsTabs({
       toast("Reps can't invite teammates: ask an admin or manager", "error");
       return;
     }
-    if (!invite.name.trim() || !invite.email) {
-      toast("Full name and email are required", "error");
+    if (!isFullName(invite.name) || !invite.email) {
+      toast("Enter the full name, first and last, plus the email", "error");
       return;
     }
     const accessRole: AccessRole = invite.role === "Admin" ? "admin" : invite.role === "Manager" ? "manager" : "rep";

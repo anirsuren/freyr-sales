@@ -1,5 +1,6 @@
 "use client";
 
+import { FULL_NAME_HINT, isFullName } from "@/lib/fullName";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -316,6 +317,11 @@ export function SupabaseLoginForm({
               onChange={(event) => setName(event.target.value)}
               className={inputClass}
             />
+            {name.trim() !== "" && !isFullName(name) && (
+              <span className="mt-1 block text-[11px] font-normal text-[color:#B45309]">
+                {FULL_NAME_HINT}
+              </span>
+            )}
           </label>
           <label className="block text-[12px] font-semibold text-text-secondary">
             Choose a password

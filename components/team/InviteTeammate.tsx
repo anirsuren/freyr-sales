@@ -1,5 +1,6 @@
 "use client";
 
+import { FULL_NAME_HINT, isFullName } from "@/lib/fullName";
 import { useState } from "react";
 import { UserPlus, UserRound, UsersRound, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -140,10 +141,15 @@ export function InviteTeammate({
             </span>
             <Input
               autoComplete="name"
-              placeholder="Their name"
+              placeholder="First and last name"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
+            {name.trim() !== "" && !isFullName(name) && (
+              <span className="mt-1 block text-[11px] text-[color:#B45309]">
+                {FULL_NAME_HINT}
+              </span>
+            )}
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
@@ -173,7 +179,7 @@ export function InviteTeammate({
           <Button
             onClick={send}
             loading={busy}
-            disabled={!name.trim() || !email.trim()}
+            disabled={!isFullName(name) || !email.trim()}
           >
             Send invitation
           </Button>
