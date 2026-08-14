@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Layers, Paperclip } from "lucide-react";
@@ -55,11 +57,24 @@ export function GoalZoom({
   goalId,
   meName,
   run,
+  embedded = false,
 }: {
   state: PerformanceState;
   goalId: string;
   meName: string;
   run?: RunOp;
+  /**
+   * Render inside an expanded row on the Performance page instead of as a
+   * page of its own: the component cards and the three boxes, without the
+   * back link, the goal header the row already shows, or the verification
+   * queue.
+   *
+   * Anir, Aug 14: "when i click a goal make it a dropdown but if i want to
+   * actually go to that page that should be an option too". So this is the
+   * same component either way rather than a second copy that drifts, and the
+   * standalone page stays reachable from a link at the bottom.
+   */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const goal = state.goals.find((g) => g.id === goalId) as PrimaryGoal;
@@ -205,15 +220,18 @@ export function GoalZoom({
   );
 
   return (
-    <div className="mx-auto max-w-[1500px]">
+    <div className={embedded ? "" : "mx-auto max-w-[1500px]"}>
+      {!embedded && (
       <SmartBack
         fallback="/performance"
         className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2} /> Org performance
       </SmartBack>
+      )}
 
       {/* ------------------------------------------------ header */}
+      {!embedded && (
       <div className="flex items-start gap-3">
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
@@ -270,6 +288,7 @@ export function GoalZoom({
           )}
         </div>
       </div>
+      )}
 
       {/* ------------------------------------------------ component cards */}
       {composite && (
@@ -579,6 +598,17 @@ export function GoalZoom({
         </p>
       </Card>
 
+      {embedded && (
+        <Link
+          href={`/performance/goal/${goalId}`}
+          className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline"
+        >
+          Open the full goal page
+          <ArrowLeft size={13} strokeWidth={2.2} className="rotate-180" />
+        </Link>
+      )}
+
+      {!embedded && (
       <div className="mt-4">
       <Card className="overflow-hidden p-0">
         <div className="flex items-center gap-2 border-b border-border-light px-4 py-2.5">
@@ -707,6 +737,7 @@ export function GoalZoom({
         )}
       </Card>
       </div>
+      )}
     </div>
   );
 }

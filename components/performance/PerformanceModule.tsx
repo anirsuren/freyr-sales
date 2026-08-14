@@ -457,6 +457,7 @@ export function PerformanceModule({
         ) : tab === "org" ? (
           <OrgPerformanceTab
             state={state}
+            meName={meName}
             live={live}
             run={run}
             onLogActual={() => setLogOpen(true)}

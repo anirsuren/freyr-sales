@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatTile } from "@/components/ui/StatTile";
+import { GoalZoom } from "./GoalZoom";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   PrioritySearchInput,
@@ -94,6 +95,7 @@ function monthlyTotals(
 
 export function OrgPerformanceTab({
   state,
+  meName,
   live,
   run,
   onLogActual,
@@ -102,6 +104,7 @@ export function OrgPerformanceTab({
   onEditSubgoal,
 }: {
   state: PerformanceState;
+  meName: string;
   live: boolean;
   run: RunOp;
   onLogActual: () => void;
@@ -425,6 +428,8 @@ export function OrgPerformanceTab({
                 <GoalRows
                   key={g.id}
                   goal={g}
+                  state={state}
+                  meName={meName}
                   actuals={state.actuals}
                   open={openId === g.id}
                   onToggle={() => setOpenId(openId === g.id ? null : g.id)}
@@ -473,6 +478,8 @@ function MiniBar({
 
 function GoalRows({
   goal,
+  state,
+  meName,
   actuals,
   open,
   onToggle,
@@ -493,6 +500,8 @@ function GoalRows({
   periodLabel: string;
   onEditGoal: (g: PrimaryGoal) => void;
   onEditSubgoal: (g: PrimaryGoal, s: PrimaryGoal["subgoals"][number]) => void;
+  state: PerformanceState;
+  meName: string;
 }) {
   const actual = actualValue(actuals, goal);
   const pace = paceVerdict(actual, goal.target, goal.year, goal.measure);
@@ -625,6 +634,17 @@ function GoalRows({
         <tr className="!border-t-0">
           <td colSpan={7} className="bg-[var(--surface)] px-4 pb-5 pt-3">
             <div className="tab-panel space-y-3">
+              {/* The drill-down that used to need a separate page. Same
+                  component, embedded, so the two can never diverge (Anir,
+                  Aug 14: "when i click a goal make it a dropdown"). The link
+                  out to the full page lives at the bottom of it. */}
+              <GoalZoom
+                state={state}
+                goalId={goal.id}
+                meName={meName}
+                run={run}
+                embedded
+              />
               {/* People holding this goal DIRECTLY (Suren, Aug 12: expand a
                   goal and "all the people who have contributed to this, and
                   their individual performance"). */}
