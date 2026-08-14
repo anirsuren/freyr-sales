@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { OfferingIcon, ServiceTag, offeringMark } from "@/components/ui/OfferingIcon";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
+import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
@@ -459,9 +459,6 @@ export function FdlComponentsBrowser({
             tileValue="tile"
             tableValue="table"
           />
-          {view === "table" && (
-            <PinTableButton id="fdl-components" label="column headers" />
-          )}
         </div>
       )}
 

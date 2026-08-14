@@ -23,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
+import { PinnableTable } from "@/components/ui/PinnableTable";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { PersonFan } from "@/components/ui/PersonFan";
@@ -1364,9 +1364,6 @@ export function OfferingsBrowser({
             tileValue="tile"
             tableValue="grid"
           />
-          {view === "grid" && (
-            <PinTableButton id="offerings-grid" label="column headers" />
-          )}
           {/* Export is off the toolbar until there is a catalogue worth
               exporting (Anir, Aug 7: "remove the download button for now,
               we only have one offering that's ready"). exportCsv still

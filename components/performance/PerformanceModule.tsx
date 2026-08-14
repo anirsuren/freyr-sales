@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Check,
@@ -78,6 +78,36 @@ import { GroupPerformanceTab } from "./GroupPerformanceTab";
 
 const TABS = ["org", "groups", "people"] as const;
 const MASTER_VIEWS = ["cards", "table"] as const;
+
+/** A piece of Goal Master UI state that survives leaving the page: filters
+ *  and collapsed sections come back exactly as you left them (Anir, Aug 13:
+ *  "whatever I last had on the gold master page... that should save"). */
+function useStickyValue<T>(key: string, initial: T): [T, (next: T | ((prev: T) => T)) => void] {
+  const [value, setValue] = useState<T>(initial);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw != null) setValue(JSON.parse(raw) as T);
+    } catch {
+      /* first visit or bad JSON — keep the default */
+    }
+  }, [key]);
+  const set = useCallback(
+    (next: T | ((prev: T) => T)) => {
+      setValue((prev) => {
+        const resolved = typeof next === "function" ? (next as (p: T) => T)(prev) : next;
+        try {
+          localStorage.setItem(key, JSON.stringify(resolved));
+        } catch {
+          /* private mode */
+        }
+        return resolved;
+      });
+    },
+    [key]
+  );
+  return [value, set];
+}
 type Tab = (typeof TABS)[number];
 
 const SPLIT_COLORS = ["#0071E3", "#6D28D9", "#0F766E", "#B4318F", "#C2410C", "#0EA5E9"];
@@ -606,10 +636,10 @@ function MasterTab({
   onEditGoal: (goal: PrimaryGoal) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [trackFilter, setTrackFilter] = useState("all");
-  const [unitFilter, setUnitFilter] = useState("all");
-  const [yearFilter, setYearFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useStickyValue("freyr.performance.master.f.type", "all");
+  const [trackFilter, setTrackFilter] = useStickyValue("freyr.performance.master.f.track", "all");
+  const [unitFilter, setUnitFilter] = useStickyValue("freyr.performance.master.f.unit", "all");
+  const [yearFilter, setYearFilter] = useStickyValue("freyr.performance.master.f.year", "all");
   const [view, chooseView] = useStoredView<(typeof MASTER_VIEWS)[number]>(
     "freyr.performance.master.view",
     "cards",
@@ -634,7 +664,11 @@ function MasterTab({
   /** Categories the reader has folded shut in the Goal Master table. Local to
    *  the session and to this browser: hiding Financial to get to Lead
    *  Generation is a way of looking, not a change to anybody's plan. */
-  const [shutTypes, setShutTypes] = useState<Set<string>>(new Set());
+  const [shutList, setShutList] = useStickyValue<string[]>(
+    "freyr.performance.master.shut",
+    []
+  );
+  const shutTypes = useMemo(() => new Set(shutList), [shutList]);
 
   const filtered = state.goals.filter((g) => {
     if (typeFilter !== "all" && g.type !== typeFilter) return false;
@@ -851,12 +885,11 @@ function MasterTab({
                     <button
                       type="button"
                       onClick={() =>
-                        setShutTypes((current) => {
-                          const next = new Set(current);
-                          if (next.has(type)) next.delete(type);
-                          else next.add(type);
-                          return next;
-                        })
+                        setShutList((current) =>
+                          current.includes(type)
+                            ? current.filter((t) => t !== type)
+                            : [...current, type]
+                        )
                       }
                       aria-expanded={!shut}
                       className="flex w-full cursor-pointer items-center gap-2 bg-surface px-4 py-2.5 text-left transition-colors hover:bg-blue-light/30"

@@ -26,14 +26,14 @@ import { cn } from "@/lib/utils";
  * the real markup, so it cannot drift from the columns beneath it, and it
  * disappears the moment the table itself does.
  *
- * THE CONTROL IS AN ICON IN THE TOOLBAR, NOT A ROW OF ITS OWN (Anir, same day:
- * "that's a horrible way to do it… it should just be the pin icon. That's all
- * it should be, and it should be somewhere where it doesn't take up another
- * line"). The first version put a labelled button on its own line above every
- * table, which cost a whole row on five pages to say something the icon says
- * by itself. `PinTableButton` now sits beside the tiles/rows switch, wearing
- * that control's exact chrome, because "how this list is shown" is already
- * what that corner of the toolbar means.
+ * THE CONTROL LIVES ON THE TABLE ITSELF, NOT IN THE TOOLBAR. It moved twice:
+ * first a labelled row of its own (cost a line on five pages), then an icon in
+ * the toolbar (its appearing and disappearing shoved the neighboring controls
+ * around — Anir, Aug 13: "I don't like how you're moving the rest of that
+ * row... move that pin icon somewhere else"). Now PinnableTable renders its
+ * own small corner control over the header's right edge, and a twin inside
+ * the floating strip so pinning can be undone from anywhere. Toolbars never
+ * shift again.
  *
  * The button and the table are far apart in the tree, so the choice lives in a
  * tiny store keyed by table id rather than being passed down through pages.
@@ -91,6 +91,39 @@ function usePinned(id: string): boolean {
 }
 
 /** The control: one icon, in the toolbar, beside the view switch. */
+/** The pin, drawn over the table header's right edge. The absolute position
+ *  lives on an OUTER span: Tooltip wraps its child in a positioned span of
+ *  its own, and an absolute button inside that anchored to the tooltip's
+ *  tiny box instead of the table. */
+function PinCorner({ id, floating }: { id: string; floating?: boolean }) {
+  const pinned = usePinned(id);
+  return (
+    <span
+      className={cn(
+        "absolute z-20",
+        floating ? "right-2 top-1/2 -translate-y-1/2" : "right-1.5 top-1.5"
+      )}
+    >
+      <Tooltip label={pinned ? "Unpin the column headers" : "Keep the column headers visible while you scroll"}>
+        <button
+          type="button"
+          aria-label={pinned ? "Unpin the column headers" : "Pin the column headers"}
+          aria-pressed={pinned}
+          onClick={() => setPinned(id, !pinned)}
+          className={cn(
+            "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border transition-all",
+            pinned
+              ? "border-blue-subtle bg-blue-light text-blue-primary"
+              : "border-border-light bg-white/95 text-text-tertiary opacity-70 backdrop-blur-sm hover:text-blue-primary hover:opacity-100"
+          )}
+        >
+          <Pin size={13} strokeWidth={2} className={cn(pinned && "fill-current")} />
+        </button>
+      </Tooltip>
+    </span>
+  );
+}
+
 export function PinTableButton({
   id,
   className,
@@ -280,6 +313,7 @@ export function PinnableTable({
 
   return (
     <div className={cn("relative", className)}>
+      <PinCorner id={id} />
       <div ref={scrollerRef} className={cn("overflow-x-auto", wrapperClassName)}>
         {children}
       </div>
@@ -294,16 +328,31 @@ export function PinnableTable({
       {floating &&
         typeof document !== "undefined" &&
         createPortal(
-          <div
-            ref={floatRef}
-            aria-hidden="true"
-            className="popover-in pointer-events-none fixed z-30 overflow-hidden border-b-2 border-blue-primary/30 bg-white shadow-[0_10px_24px_-8px_rgba(15,23,42,0.34)]"
-            style={{
-              top: floating.top,
-              left: floating.left,
-              width: floating.width,
-            }}
-          />,
+          <>
+            <div
+              ref={floatRef}
+              aria-hidden="true"
+              className="popover-in pointer-events-none fixed z-30 overflow-hidden border-b-2 border-blue-primary/30 bg-white shadow-[0_10px_24px_-8px_rgba(15,23,42,0.34)]"
+              style={{
+                top: floating.top,
+                left: floating.left,
+                width: floating.width,
+              }}
+            />
+            <div
+              className="fixed z-40"
+              style={{
+                top: floating.top,
+                left: floating.left,
+                width: floating.width,
+                height: 0,
+              }}
+            >
+              <div className="relative h-10">
+                <PinCorner id={id} floating />
+              </div>
+            </div>
+          </>,
           document.body
         )}
     </div>

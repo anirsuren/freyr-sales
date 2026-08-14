@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ViewSelect } from "@/components/ui/ViewSelect";
-import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
+import { PinnableTable } from "@/components/ui/PinnableTable";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -650,9 +650,6 @@ export function CustomersBrowser({
             </button>
           </PriorityTooltip>
           <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
-          {view === "table" && (
-            <PinTableButton id="customers-table" label="column headers" />
-          )}
       </SearchPriority>
       {/* Bulk action bar */}
       {selectMode && selectedInScope.length > 0 && (

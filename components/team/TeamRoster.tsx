@@ -33,7 +33,7 @@ import { PresenceDot } from "@/components/presence/PresenceDot";
 import { PRESENCE_META, presenceOf } from "@/lib/presence";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ROLE_META, RoleTag, roleKey } from "@/components/ui/RoleTag";
-import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
+import { PinnableTable } from "@/components/ui/PinnableTable";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -593,9 +593,6 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               tileValue="grid"
               tableValue="table"
             />
-            {view === "table" && (
-              <PinTableButton id="team-roster" label="column headers" />
-            )}
           </span>
         </SearchPriority>
       </div>
