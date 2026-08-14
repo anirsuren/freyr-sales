@@ -505,17 +505,66 @@ export function AgentDock({
   const focusedSubject =
     offeringContext?.material?.label || offeringContext?.name || subject;
 
-  // Read what's on screen (the page's H1) so the assistant knows the record.
+  /**
+   * WHAT THE ASSISTANT THINKS YOU ARE LOOKING AT.
+   *
+   * This read the page's H1 and re-ran only when the PATH changed. A dialog
+   * changes neither: open a tracked person on Takeda's briefing and the dock
+   * still said "Looking at Takeda" and answered about Takeda, while a named
+   * human filled the screen (Anir, Aug 14: "it thinks I'm looking at Takeda.
+   * It doesn't know I'm looking at this specific person"). That was true of
+   * every modal in the app, not just this one — material viewers, goal
+   * editors, offering dialogs.
+   *
+   * So the subject is now whatever is actually on top: the last open
+   * [role="dialog"], falling back to the page. And it is recomputed on DOM
+   * changes rather than on navigation alone, because opening a dialog is not
+   * a navigation. `subject` feeds the request body, not just this label, so
+   * this is what the model is told, not only what the header shows.
+   */
   useEffect(() => {
     if (typeof document === "undefined") return;
-    // First text node only: briefing H1s carry chips (momentum, follower
-    // counts) whose text would otherwise glue onto the name.
-    const h1El = document.querySelector("main h1");
-    const h1 =
-      h1El?.childNodes?.[0]?.textContent?.trim() ||
-      h1El?.textContent?.trim() ||
-      "";
-    setSubject(h1.length > 0 && h1.length < 60 ? h1 : "");
+
+    const readSubject = () => {
+      // Dialogs stack; the last one in the DOM is the one in front. The dock
+      // itself is a plain div, never role="dialog", so it cannot match here.
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      const top = dialogs[dialogs.length - 1];
+      if (top) {
+        const label =
+          top.querySelector("h2")?.textContent?.trim() ||
+          top.getAttribute("aria-label")?.trim() ||
+          "";
+        // A dialog with no name of its own tells us nothing; fall through to
+        // the page rather than blanking the subject.
+        if (label) return label.length < 60 ? label : "";
+      }
+      // First text node only: briefing H1s carry chips (momentum, follower
+      // counts) whose text would otherwise glue onto the name.
+      const h1El = document.querySelector("main h1");
+      const h1 =
+        h1El?.childNodes?.[0]?.textContent?.trim() ||
+        h1El?.textContent?.trim() ||
+        "";
+      return h1.length > 0 && h1.length < 60 ? h1 : "";
+    };
+
+    setSubject(readSubject());
+
+    // Throttled: this watches the whole body, and every keystroke in a busy
+    // table would otherwise re-query the DOM. A quarter second is far below
+    // the time it takes to open something and start typing a question.
+    let queued = false;
+    const observer = new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      window.setTimeout(() => {
+        queued = false;
+        setSubject(readSubject());
+      }, 250);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [pathname, open]);
 
   useEffect(() => {
