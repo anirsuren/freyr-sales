@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { GoalZoom } from "@/components/performance/GoalZoom";
 import { readPerformance } from "@/lib/performance";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -35,7 +35,10 @@ export default async function GoalZoomPage({
     getRole(),
   ]);
   const goal = state.goals.find((g) => g.id === id);
-  if (!goal) notFound();
+  // A goal id from the OTHER mode (mock ids after switching to Real, and the
+  // reverse) must never strand anyone on a not-found screen — land on Org
+  // performance where every goal of the current mode is one click away.
+  if (!goal) redirect("/performance");
   const manager = isManagerOrAdmin(role);
   const visible = manager ? null : visibleNamesFor(state, me.name);
   const scoped = visible

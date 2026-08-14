@@ -113,13 +113,23 @@ export function TopBar({
         body: JSON.stringify({ mode }),
       });
       if (r.ok) {
-        // STAY ON THE SAME PAGE (Anir, Aug 13: "whatever page I'm on, it has
-        // to show me the same page"). The old behavior bounced every detail
-        // page to its module list because cross-mode ids 404 — but that made
-        // the switch itself feel like a teleport. Reload in place instead;
-        // when the record genuinely does not exist in the other mode, the
-        // branded not-found page with its way back is the accepted outcome
-        // ("when the page just doesn't exist, that's fine").
+        // STAY ON THE SAME PAGE — and never land on a not-found screen
+        // either (Anir, Aug 13: "it shouldn't really ever see that"). The
+        // cookie is already flipped, so fetching the current path renders it
+        // in the NEW mode: if that answers 200 the same page reloads in
+        // place; if the record does not exist over there, land on the
+        // module's list instead.
+        try {
+          const probe = await fetch(window.location.pathname + window.location.search, {
+            cache: "no-store",
+            headers: { accept: "text/html" },
+          });
+          if (probe.status === 404) {
+            const segments = window.location.pathname.split("/").filter(Boolean);
+            window.location.href = segments.length > 0 ? `/${segments[0]}` : "/";
+            return;
+          }
+        } catch {}
         window.location.reload();
         return;
       }

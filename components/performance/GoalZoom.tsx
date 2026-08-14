@@ -214,7 +214,7 @@ export function GoalZoom({
       </SmartBack>
 
       {/* ------------------------------------------------ header */}
-      <div className="flex flex-wrap items-start gap-3">
+      <div className="flex items-start gap-3">
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
           style={{ background: `${meta.color}1F`, color: meta.color }}
@@ -242,27 +242,29 @@ export function GoalZoom({
               : "Verified results only; claims still waiting for a group owner never count."}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-[10.5px] font-extrabold uppercase tracking-[0.06em] text-text-tertiary">
-            Verified so far
-          </p>
-          <p className="text-[28px] font-extrabold tracking-[-0.02em] tnum">
+        {/* Verified, as one compact right-hand cluster on the SAME line as the
+            title — it kept dropping to its own row and breaking the spacing
+            (Anir: "I don't like how it's taking up its own line"). */}
+        <div className="flex shrink-0 items-baseline gap-2 whitespace-nowrap rounded-xl border border-border-light bg-white px-3.5 py-2">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-text-tertiary">
+            Verified
+          </span>
+          <span className="text-[20px] font-extrabold tracking-[-0.02em] tnum">
             {fmtAmount(goal.unit, yearVerified)}
-            {yearTarget > 0 && (
-              <span className="text-[15px] font-semibold text-text-tertiary">
-                {" "}
-                of {fmtAmount(goal.unit, yearTarget)}
-              </span>
-            )}
-          </p>
+          </span>
+          {yearTarget > 0 && (
+            <span className="text-[12px] font-semibold text-text-tertiary tnum">
+              of {fmtAmount(goal.unit, yearTarget)}
+            </span>
+          )}
           {yearAwaiting > 0 ? (
-            <span className="mt-1 inline-block rounded-full bg-[rgba(180,83,9,0.12)] px-2.5 py-0.5 text-[11px] font-bold text-[color:#B45309] tnum">
-              {fmtAmount(goal.unit, yearAwaiting)} awaiting verification
+            <span className="rounded-full bg-[rgba(180,83,9,0.12)] px-2 py-0.5 text-[10.5px] font-bold text-[color:#B45309] tnum">
+              +{fmtAmount(goal.unit, yearAwaiting)} waiting
             </span>
           ) : (
             yearTarget === 0 && (
-              <span className="mt-1 inline-block rounded-full bg-[rgba(0,113,227,0.10)] px-2.5 py-0.5 text-[11px] font-bold text-blue-primary">
-                No target set yet
+              <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10.5px] font-bold text-blue-primary">
+                no target yet
               </span>
             )
           )}
