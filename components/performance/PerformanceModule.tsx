@@ -2531,7 +2531,7 @@ function LogActualModal({
         customer: customer || undefined,
         evidence: evidence.length ? evidence : undefined,
       },
-      "Sent for verification — it counts once the group owner locks it"
+      "Sent for verification. It counts once the group owner locks it"
     );
     if (ok) {
       setAmount("");

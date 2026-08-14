@@ -164,7 +164,7 @@ export function VerifyQueueCard({
           {queue.length || "all clear"}
         </span>
         <span className="ml-auto text-[11px] text-text-tertiary">
-          you own {heads.map((g) => g.name).join(", ")} — only you can lock these
+          you own {heads.map((g) => g.name).join(", ")}. Only you can lock these
         </span>
       </div>
       {queue.length === 0 ? (
@@ -200,7 +200,7 @@ export function VerifyQueueCard({
                       onClick={() =>
                         run(
                           { op: "verify-actual", actualId: a.id },
-                          "Verified and locked — it counts now"
+                          "Verified and locked. It counts now"
                         )
                       }
                       className="cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[11.5px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
