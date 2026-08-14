@@ -119,9 +119,14 @@ export default async function TeamPage() {
         </div>
       );
     }
+    // Stored roles flipped from editor/sales to manager/rep on Aug 13; this
+    // map missed the rename and every manager fell through to Rep (Saras:
+    // "I only see Admin and Rep access levels"). Accept both spellings.
     const ACCESS_ROLE: Record<string, RosterRep["role"]> = {
       admin: "Admin",
+      manager: "Manager",
       editor: "Manager",
+      rep: "Rep",
       sales: "Rep",
     };
     const zeroStages = STAGES.map((stage) => ({

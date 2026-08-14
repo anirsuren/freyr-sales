@@ -22,8 +22,8 @@ const ROLE_OPTIONS: ColorOption[] = [
 ];
 
 const ACCESS_ROLE: Record<string, string> = {
-  Rep: "sales",
-  Manager: "editor",
+  Rep: "rep",
+  Manager: "manager",
   Admin: "admin",
 };
 
@@ -66,7 +66,7 @@ export function InviteTeammate({
           action: "invite",
           name: name.trim(),
           email: email.trim(),
-          role: ACCESS_ROLE[role] ?? "sales",
+          role: ACCESS_ROLE[role] ?? "rep",
           ...(note.trim() ? { note: note.trim() } : {}),
         }),
       });
