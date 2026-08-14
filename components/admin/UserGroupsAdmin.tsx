@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Crown, Plus, Trash2, UsersRound, X } from "lucide-react";
+import { Crown, Pencil, Plus, Trash2, UsersRound, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -27,6 +27,8 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
   const [members, setMembers] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<PerfGroup | null>(null);
+  /** Set while editing an existing group — the same popup, prefilled. */
+  const [editing, setEditing] = useState<PerfGroup | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -72,16 +74,43 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
     setMembers((prev) => [...prev, clean]);
   }
 
-  async function create() {
-    const ok = await run(
-      { op: "add-group", name, head, members },
-      `${name.trim()} created`
-    );
+  function openCreate() {
+    setEditing(null);
+    setName("");
+    setHead("");
+    setMembers([]);
+    setCreating(true);
+  }
+
+  /** A group used to be frozen once created: no way to add the person who
+   *  joined the team in March, hand it to a new owner, or fix a typo. Since
+   *  only a group owner can verify their people's numbers, that left later
+   *  joiners with claims nobody could sign off. */
+  function openEdit(g: PerfGroup) {
+    setEditing(g);
+    setName(g.name);
+    setHead(g.head);
+    setMembers([...g.members]);
+    setCreating(true);
+  }
+
+  function closeEditor() {
+    setCreating(false);
+    setEditing(null);
+  }
+
+  async function save() {
+    const ok = editing
+      ? await run(
+          { op: "update-group", groupId: editing.id, name, head, members },
+          `${name.trim()} saved`
+        )
+      : await run({ op: "add-group", name, head, members }, `${name.trim()} created`);
     if (ok) {
       setName("");
       setHead("");
       setMembers([]);
-      setCreating(false);
+      closeEditor();
     }
   }
 
@@ -96,7 +125,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           <InfoHint text={"A group is a department with an owner.\nThe owner sees their group on Performance; members' goals add up into the group automatically.\nGoals are never attached to a group, only to its people."} />
         </p>
         {!creating && (
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={openCreate}>
             <Plus size={14} strokeWidth={2.2} /> New group
           </Button>
         )}
@@ -106,8 +135,8 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           new group, it should be a pop-up"). */}
       <Modal
         open={creating}
-        onClose={() => setCreating(false)}
-        title="New user group"
+        onClose={closeEditor}
+        title={editing ? `Edit ${editing.name}` : "New user group"}
         size="wide"
         tall
       >
@@ -197,11 +226,11 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         </div>
         <div className="mt-4 flex items-center justify-end">
           <Button
-            onClick={create}
+            onClick={save}
             disabled={!name.trim() || !head || members.length === 0}
             loading={busy}
           >
-            Create group
+            {editing ? "Save changes" : "Create group"}
           </Button>
         </div>
       </Modal>
@@ -225,9 +254,14 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 <span className="block text-[13px] font-semibold text-text-primary">
                   {g.name}
                 </span>
+                {/* Say the word "owner" (Anir, Aug 14: "where is the fucking
+                    owner"). A crown next to a name reads as just another
+                    member unless it is spelled out. */}
                 <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
                   <Crown size={10} strokeWidth={2.6} className="text-[color:#7C3AED]" />
-                  {g.head} · {g.members.length}{" "}
+                  Owner{" "}
+                  <b className="font-semibold text-text-primary">{g.head}</b> ·{" "}
+                  {g.members.length}{" "}
                   {g.members.length === 1 ? "person" : "people"}
                 </span>
               </span>
@@ -241,6 +275,15 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                   />
                 ))}
               </span>
+              <button
+                type="button"
+                title={`Edit ${g.name}`}
+                aria-label={`Edit ${g.name}`}
+                onClick={() => openEdit(g)}
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+              >
+                <Pencil size={13} strokeWidth={2.2} />
+              </button>
               <button
                 type="button"
                 title={`Remove ${g.name}`}

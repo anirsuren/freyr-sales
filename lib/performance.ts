@@ -687,6 +687,48 @@ export async function unassignGoal(input: {
   await writeRow(state);
 }
 
+/** Edit a group that already exists: rename it, hand it to a new owner, add or
+ *  drop people. Without this a group was frozen the moment it was created, and
+ *  since verification runs off group membership, a person who joined later had
+ *  claims nobody on earth could sign off. */
+export async function updateGroup(input: {
+  groupId: string;
+  name?: string;
+  head?: string;
+  members?: string[];
+}): Promise<PerfGroup> {
+  const state = await readRow();
+  const group = state.groups.find((g) => g.id === input.groupId);
+  if (!group) throw new Error("That group is gone. Refresh and retry.");
+
+  if (input.name !== undefined) {
+    const name = str(input.name, 100);
+    if (!name) throw new Error("Give the group a name.");
+    if (
+      state.groups.some(
+        (g) => g.id !== group.id && g.name.toLowerCase() === name.toLowerCase()
+      )
+    ) {
+      throw new Error(`A group called "${name}" already exists.`);
+    }
+    group.name = name;
+  }
+
+  const head = input.head !== undefined ? str(input.head, 80) : group.head;
+  const listed =
+    input.members !== undefined ? input.members : group.members;
+  // The owner always belongs to their own group, exactly as when it was created.
+  const members = [
+    ...new Set([head, ...listed].map((m) => str(m, 80)).filter(Boolean)),
+  ];
+  if (members.length === 0) throw new Error("Add at least one person.");
+  group.head = head || members[0];
+  group.members = members;
+
+  await writeRow(state);
+  return group;
+}
+
 export async function removeGroup(groupId: string): Promise<void> {
   const state = await readRow();
   state.groups = state.groups.filter((g) => g.id !== groupId);

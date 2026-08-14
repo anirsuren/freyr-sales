@@ -16,6 +16,7 @@ import {
   removeActual,
   removeGoal,
   removeGroup,
+  updateGroup,
   removeSubgoal,
   setVerified,
   unassignGoal,
@@ -294,6 +295,16 @@ export async function POST(req: NextRequest) {
           head: String(body.head ?? ""),
           members: Array.isArray(body.members) ? body.members.map(String) : [],
           addedBy: me.name,
+        });
+        break;
+      case "update-group":
+        await updateGroup({
+          groupId: String(body.groupId ?? ""),
+          ...(body.name !== undefined ? { name: String(body.name) } : {}),
+          ...(body.head !== undefined ? { head: String(body.head) } : {}),
+          ...(Array.isArray(body.members)
+            ? { members: body.members.map(String) }
+            : {}),
         });
         break;
       case "remove-group":
