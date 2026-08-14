@@ -92,8 +92,15 @@ export function LiveCompanyCard({
           </span>
         </span>
         {briefing.momentumPct === null ? (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:#0071E3] tnum">
-            <TrendingUp size={11} strokeWidth={2.4} />
+          // A COUNT, not a trend. It used to wear the same up-arrow as the
+          // momentum badge beside it, so "72 this month" and "+914%" read as
+          // the same kind of number in the same slot (Anir, Aug 14). No arrow
+          // here: the arrow means "versus last month", and this one isn't.
+          <span
+            title="New items picked up this month. Not enough history yet to compare it with last month."
+            className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:#0071E3] tnum"
+          >
+            <Newspaper size={11} strokeWidth={2.4} />
             {briefing.itemsThisMonth} this month
           </span>
         ) : (
@@ -144,13 +151,17 @@ export function LiveCompanyCard({
 
       {story && (
         <div
-          className="relative z-10 mt-3 min-h-[54px] overflow-hidden border-t border-border-light pt-2.5"
+          // Fixed height so every card in the grid stays the same size while
+          // the ticker rotates. Two lines cut real headlines mid-word
+          // ("...royalty deal tied to rusfertid…", Anir Aug 14); three fits
+          // the long ones without letting any card grow taller than its row.
+          className="relative z-10 mt-3 min-h-[70px] overflow-hidden border-t border-border-light pt-2.5"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
           <p
             key={index}
-            className="mi-ticker-in pr-12 text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden"
+            className="mi-ticker-in pr-12 text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden"
           >
             <span className="font-semibold text-text-primary">
               {story.source}:

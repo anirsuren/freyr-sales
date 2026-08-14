@@ -133,7 +133,7 @@ const ROOMS: Record<
     icon: Gauge,
     color: "#0071E3",
     subtitle:
-      "The goals being tracked this year — target, actual, met, % met and verified — from the company down to every person.",
+      "The goals being tracked this year: target, actual, met, % met and verified, from the company down to every person.",
   },
   groups: {
     label: "Group performance",
@@ -1096,8 +1096,9 @@ function MasterTab({
       </div>
 
       {/* ------------------------------------------- goal detail popup */}
+      {/* No `tall`: this one only reads out a goal, so the 640px floor left a
+          band of empty white under the last row (Anir, Aug 14). */}
       <Modal
-        tall
         open={openGoal !== null}
         onClose={() => setOpenId(null)}
         title={openGoal ? openGoal.name : ""}
@@ -1244,7 +1245,7 @@ function AssignPersonModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`Assign — ${goal.name}`}
+      title={`Assign: ${goal.name}`}
       size="wide"
       tall
       stacked
@@ -2515,6 +2516,11 @@ function LogActualModal({
     ? (components.find((c) => c.id === componentId) ?? null)
     : goal;
   const sub = effectiveGoal?.subgoals.find((s) => s.id === subgoalId) ?? null;
+  // Which unit the Amount field wears. On a composite, effectiveGoal is null
+  // until a component is picked, and falling through to the count default put
+  // a "#" and "e.g. 12" on a goal whose target is $900K (Anir, Aug 14). A
+  // composite always shares its components' unit, so read it off the parent.
+  const unit = effectiveGoal?.unit ?? goal?.unit ?? null;
   const parsed = parseAmountInput(amount);
 
   async function attachEvidence(files: FileList | null) {
@@ -2585,7 +2591,7 @@ function LogActualModal({
     <Modal tall open={open} onClose={onClose} title="Log an actual" size="wide">
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
         One number at a time: who achieved what, on which goal. Person rolls
-        into group, group rolls into the organization — automatically.
+        into group, group rolls into the organization, automatically.
       </p>
       <div className="mt-3 space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -2704,15 +2710,15 @@ function LogActualModal({
             </label>
             <div className="relative mt-1">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
-                {effectiveGoal?.unit === "currency" ? "$" : effectiveGoal?.unit === "percent" ? "%" : "#"}
+                {unit === "currency" ? "$" : unit === "percent" ? "%" : "#"}
               </span>
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder={
-                  effectiveGoal?.unit === "currency"
+                  unit === "currency"
                     ? "e.g. 250K"
-                    : effectiveGoal?.unit === "percent"
+                    : unit === "percent"
                       ? "e.g. 44"
                       : "e.g. 12"
                 }
@@ -2742,7 +2748,7 @@ function LogActualModal({
         </div>
         {effectiveGoal?.measure === "level" && (
           <p className="rounded-lg bg-[rgba(109,40,217,0.06)] px-3 py-2 text-[11.5px] leading-relaxed text-[color:#6D28D9]">
-            This goal tracks the latest value — this entry becomes the current
+            This goal tracks the latest value, so this entry becomes the current
             number rather than adding to a total.
           </p>
         )}
@@ -2754,7 +2760,7 @@ function LogActualModal({
           <input
             value={customer}
             onChange={(e) => setCustomer(e.target.value)}
-            placeholder="e.g. Zenlabs Pharma — first contract (MSA + Reg Ops)"
+            placeholder="e.g. Zenlabs Pharma, first contract (MSA + Reg Ops)"
             className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
           />
         </div>

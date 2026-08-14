@@ -150,6 +150,20 @@ const SERVICE_LABELS: Record<string, string> = {
 type Member = { name: string; email: string; role: string; you?: boolean };
 
 /** "Just now" → "45m ago" → "7h ago" → "Yesterday" → "4 days ago" → "Jul 29". */
+/** The day an account was created. A date, never "3 days ago": Saras asked for
+ *  this to see WHEN people signed up, and a relative age answers a different
+ *  question than the one the column is there for (change log #34, Aug 14). */
+function signUpLabel(iso: string | null | undefined): string {
+  if (!iso) return "Not recorded";
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "Not recorded";
+  return at.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function lastSeenLabel(iso: string | null | undefined): string {
   if (!iso) return "Not yet";
   const then = new Date(iso).getTime();
@@ -166,7 +180,7 @@ function lastSeenLabel(iso: string | null | undefined): string {
 }
 type AccessRole = "admin" | "manager" | "rep";
 type AccessDirectory = {
-  members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; accountType: "real" | "test"; lastSeenAt: string | null }[];
+  members: { id: string; name: string; email: string | null; role: AccessRole; active: boolean; accountType: "real" | "test"; lastSeenAt: string | null; joinedAt: string | null }[];
   requests: { id: string; name: string; email: string | null; requestedRole: AccessRole; requestedAt: string }[];
   invitations: {
     id: string;
@@ -216,6 +230,7 @@ function initialAccessDirectory(currentUser: UserIdentity): AccessDirectory {
         active: true,
         accountType: "real",
         lastSeenAt: new Date().toISOString(),
+        joinedAt: null,
       },
     ],
     requests: [],
@@ -969,7 +984,7 @@ export function SettingsTabs({
               decision === "approve" && request
                 ? [
                     ...directory.members,
-                    { id: `member-${Date.now()}`, name: request.name, email: request.email, role: accessRole, active: true, accountType: "real", lastSeenAt: null },
+                    { id: `member-${Date.now()}`, name: request.name, email: request.email, role: accessRole, active: true, accountType: "real", lastSeenAt: null, joinedAt: new Date().toISOString() },
                   ]
                 : directory.members,
           };
@@ -1409,14 +1424,25 @@ export function SettingsTabs({
                 <h2 className="text-[14px] font-semibold text-text-primary">Member directory</h2>
                 <p className="text-[11px] text-text-tertiary">Active identity, role, and recent access.</p>
               </div>
-              <span className="text-[11px] font-medium text-text-tertiary">{accessDirectory.members.length} people</span>
+              {/* The tile above says "Active members 24" and this said "25
+                  people": two counts of the same thing, on one screen, with
+                  nothing to explain the gap (Anir, Aug 14). Name the extra. */}
+              <span className="text-[11px] font-medium text-text-tertiary">
+                {(() => {
+                  const total = accessDirectory.members.length;
+                  const suspended = accessDirectory.members.filter((m) => !m.active).length;
+                  const noun = total === 1 ? "person" : "people";
+                  if (!suspended) return `${total} ${noun}`;
+                  return `${total} ${noun}, ${suspended} suspended`;
+                })()}
+              </span>
             </div>
-            <div className="grid grid-cols-[minmax(220px,1fr)_190px_110px_120px] border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              <span>Member</span><span>Role</span><span>Status</span><span>Last seen</span>
+            <div className="grid grid-cols-[minmax(220px,1fr)_190px_110px_120px_130px] border-b border-border-light bg-surface px-5 py-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              <span>Member</span><span>Role</span><span>Status</span><span>Last seen</span><span>Signed up</span>
             </div>
             <ul className="divide-y divide-border-light">
               {accessDirectory.members.map((member) => (
-                <li key={member.id} className="grid grid-cols-[minmax(220px,1fr)_190px_110px_120px] items-center px-5 py-3">
+                <li key={member.id} className="grid grid-cols-[minmax(220px,1fr)_190px_110px_120px_130px] items-center px-5 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar name={member.name} className="h-9 w-9 shrink-0 text-[12px]" />
                     <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{member.name}</span><span className="block truncate text-[11px] text-text-tertiary">{member.email}</span></span>
@@ -1458,6 +1484,17 @@ export function SettingsTabs({
                     title={member.lastSeenAt ? new Date(member.lastSeenAt).toLocaleString() : undefined}
                   >
                     {lastSeenLabel(member.lastSeenAt)}
+                  </span>
+                  {/* WHEN THEY SIGNED UP (Saras, Aug 14, change log #34). The
+                      date was already loaded with the directory and shown on a
+                      person's own profile; it simply never reached the table
+                      an admin actually reads. Hover gives the exact moment,
+                      per the app-wide timestamp rule. */}
+                  <span
+                    className="text-[11px] text-text-tertiary"
+                    title={member.joinedAt ? new Date(member.joinedAt).toLocaleString() : undefined}
+                  >
+                    {signUpLabel(member.joinedAt)}
                   </span>
                 </li>
               ))}

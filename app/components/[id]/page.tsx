@@ -11,6 +11,19 @@ import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
+// The tab has to say which component you have open — every other detail page
+// in the app names itself, and a row of tabs all reading "Freyr Sales
+// Intelligence" is unusable once you have three of them.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  await initializeLiveOfferings().catch(() => undefined);
+  return { title: getFdlComponent(id)?.name ?? "FDL Components" };
+}
+
 export default async function FdlComponentPage({
   params,
   searchParams,

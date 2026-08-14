@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { PencilLine, Search, UserRound } from "lucide-react";
 import {
   actualValue,
@@ -179,12 +180,19 @@ export function PeopleTab({
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <TypeChip type={r.goal.type} size="sm" />
-                    <span className="text-[13px] font-semibold text-text-primary">
+                    {/* The same goal name opens the goal from Org performance
+                        but was flat text here, so the drill-down existed on
+                        one tab and not the other (Anir, Aug 14). */}
+                    <Link
+                      href={`/performance/goal/${r.goal.id}`}
+                      className="text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                      title="Open this goal: financial years, quarters, months, weeks, groups and people"
+                    >
                       {r.goal.name}
-                    </span>
+                    </Link>
                     {r.subgoal ? (
                       <span className="text-[11.5px] text-text-tertiary">
-                        — {r.subgoal.name}
+                        {r.subgoal.name}
                       </span>
                     ) : (
                       <span className="rounded-full bg-[rgba(124,58,237,0.08)] px-2 py-0.5 text-[10px] font-bold text-[color:#7C3AED]">

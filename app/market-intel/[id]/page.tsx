@@ -34,6 +34,21 @@ import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
+// Name the company in the tab. Anyone watching the market keeps five of these
+// open at once, and five tabs all reading "Freyr Sales Intelligence" is no
+// better than none.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const tracked = await readMarketIntelTracking()
+    .then((t) => t.companies.find((c) => c.id === id)?.name)
+    .catch(() => undefined);
+  return { title: tracked ?? miCompany(id)?.name ?? "Market Intel" };
+}
+
 export default async function MarketIntelCompanyPage({
   params,
 }: {

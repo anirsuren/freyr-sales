@@ -33,6 +33,21 @@ function dayClock(ms: number, now: number): string {
   return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${clock(ms)}`;
 }
 
+/**
+ * The chip used to read "Updated 7:53 AM" while every company card underneath
+ * it read "Updated 19 min ago" — two clocks for one fact, on one screen (Anir,
+ * Aug 14). The chip now speaks the cards' language; the exact wall-clock time
+ * is still one click away inside the panel.
+ */
+function agoLabel(ms: number, now: number): string {
+  const mins = Math.max(0, Math.round((now - ms) / 60_000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  return dayClock(ms, now);
+}
+
 export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
   // Stamped after mount so the server and browser never disagree on the time.
   const [now, setNow] = useState<number | null>(null);
@@ -88,7 +103,7 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1A7A35] opacity-50" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
         </span>
-        Updated {dayClock(last, now)}
+        Updated {agoLabel(last, now)}
         <ChevronDown
           size={13}
           strokeWidth={2.2}

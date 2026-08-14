@@ -7,6 +7,7 @@ import { canManageOfferings } from "@/lib/role";
 import { FdlComponentsBrowser } from "@/components/fdl/FdlComponentsBrowser";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
+export const metadata = { title: "FDL Components" };
 export const dynamic = "force-dynamic";
 
 /**

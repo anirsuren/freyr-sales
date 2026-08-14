@@ -113,7 +113,9 @@ export function InviteTeammate({
       {/* Same shape as New user group: wide, tall enough that the role
           dropdown does not fight the bottom edge, and the commit button
           bottom-right where every other dialog in the app puts it. */}
-      <Modal open={open} onClose={close} title="Invite a teammate" size="wide" tall>
+      {/* No `tall`: four fields and a button do not fill a 640px floor, and the
+          gap under Send invitation read as a broken dialog (Anir, Aug 14). */}
+      <Modal open={open} onClose={close} title="Invite a teammate" size="wide">
         <p className="text-[12.5px] text-text-secondary">
           They get an email with a link that signs them in. The link expires
           after 14 days, and you can change their role any time from Settings.

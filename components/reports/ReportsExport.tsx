@@ -48,10 +48,17 @@ export function ReportsExport({ report }: { report: PortfolioReport }) {
     );
   }
 
+  // Nothing logged yet means nothing to export. The button used to stay live
+  // on a page whose body reads "No offering revenue yet", and handed back an
+  // empty spreadsheet (Anir, Aug 14).
+  const empty = report.lineCount === 0;
+
   return (
     <button
       onClick={exportCsv}
-      className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-lg border border-border text-text-secondary hover:bg-surface transition-colors"
+      disabled={empty}
+      title={empty ? "Nothing to export yet: no revenue has been logged." : undefined}
+      className="flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-lg border border-border text-text-secondary hover:bg-surface transition-colors disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
     >
       <Download size={16} strokeWidth={1.5} />
       Export CSV

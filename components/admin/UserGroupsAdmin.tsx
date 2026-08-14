@@ -213,7 +213,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           </p>
         ) : groups.length === 0 ? (
           <p className="rounded-lg bg-surface px-4 py-4 text-center text-[12.5px] text-text-secondary">
-            No groups yet — create the first department and crown its owner.
+            No groups yet. Create the first department and pick who owns it.
           </p>
         ) : (
           groups.map((g) => (

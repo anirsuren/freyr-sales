@@ -1746,7 +1746,11 @@ export function BarChart({
   const longestLabel = data.reduce((n, d) => Math.max(n, d.label.length), 0);
   const wideLabels = hasLogos || longestLabel > 14;
   const COL_GAP = 12; // gap-3
-  const minColumn = wideLabels ? 112 : 64;
+  // 112 tipped six wide-label columns just past a half-width card, so the last
+  // one sat half outside it and read as clipped ("Billed / Colle Revenue" on
+  // Org performance, Anir Aug 14). 100 still fits a wrapped company name and
+  // keeps six columns inside the card instead of behind a sideways scroll.
+  const minColumn = wideLabels ? 100 : 64;
   // A fixed label-block height keeps every column on ONE baseline; sized from
   // the longest name so the tallest wrap still fits without clipping.
   const labelTextHeight = longestLabel > 18 ? 42 : 28;

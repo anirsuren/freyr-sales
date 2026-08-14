@@ -45,6 +45,7 @@ import { requireModuleAccess } from "@/lib/moduleAccessServer";
  * briefing. Everything on these pages is sample content rendered against
  * today's date; Anir is wiring the real feeds himself.
  */
+export const metadata = { title: "Market Intel" };
 export const dynamic = "force-dynamic";
 
 /** Week labels for the 12-week sparkline, so a hovered point says WHEN. */

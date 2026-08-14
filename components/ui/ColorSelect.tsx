@@ -271,13 +271,26 @@ export function ColorSelect({
     );
   };
 
+  // `minWidth` is the caller's floor, not permission to ellipsize. Sized off
+  // the longest option the trigger can ever show, the same way the multi-select
+  // below already does it. Without this a long name was cut mid-word: the log
+  // modal's goal picker read "Booked Revenue (Contract Value …" with 300px of
+  // empty modal to its right (Anir, Aug 14).
+  const longestOption = options.reduce(
+    (longest, o) => (o.label.length > longest.length ? o.label : longest),
+    triggerLabel ?? ""
+  );
+  const roomForLabel = Math.ceil(longestOption.length * 7.2 + 70);
+
   return (
     <div
       ref={ref}
       className={cn("relative transition-[min-width]", SP_MOTION, className)}
       style={{
         width: compact ? SP_COMPACT_SIZE : undefined,
-        minWidth: compact ? SP_COMPACT_SIZE : minWidth,
+        minWidth: compact
+          ? SP_COMPACT_SIZE
+          : Math.max(minWidth, roomForLabel),
       }}
     >
       <PriorityTooltip label={fullLabel} className="w-full" suppressed={open}>
